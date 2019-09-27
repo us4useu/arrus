@@ -12,7 +12,7 @@ classdef MockHAL < HAL
             % - 4-D matrix with dimensions: (x, y, z, n) - collection of RF 
             %   frames to cycle through; the last dimension corresponds to 
             %   the RF frame number. 
-            %  When no argument is provided: a two random RF frames 
+            %  When no argument is provided: three random RF frames 
             %  (32, 512, 32) are generated.
             if nargin == 0
                 obj.data = rand(32, 512, 32, 3);
