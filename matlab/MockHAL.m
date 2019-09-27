@@ -25,7 +25,6 @@ classdef MockHAL < HAL
             obj.frameIdx = 0;
             obj.isConfigured = false;
             obj.isStarted = false;
-            disp("Created MockHAL");
         end 
         
         function configure(obj, json)
