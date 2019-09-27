@@ -1,4 +1,4 @@
-classdef DummyHAL < HAL
+classdef MockHAL < HAL
     properties
         data
         frameIdx
@@ -6,7 +6,14 @@ classdef DummyHAL < HAL
         isConfigured
     end
     methods
-        function obj = DummyHAL(data)
+        function obj = MockHAL(data)
+            % MockHAL's constructor can take one optional argument 'data':
+            % - 3-D matrix with dimensions: (x, y, z) - single 'RF frame'
+            % - 4-D matrix with dimensions: (x, y, z, n) - collection of RF 
+            %   frames to cycle through; the last dimension corresponds to 
+            %   the RF frame number. 
+            %  When no argument is provided: a two random RF frames 
+            %  (32, 512, 32) are generated.
             if nargin == 0
                 obj.data = rand(32, 512, 32, 3);
             else 
@@ -18,7 +25,8 @@ classdef DummyHAL < HAL
             obj.frameIdx = 0;
             obj.isConfigured = false;
             obj.isStarted = false;
-            end 
+            disp("Created MockHAL");
+        end 
         
         function configure(obj, json)
             if obj.isStarted
