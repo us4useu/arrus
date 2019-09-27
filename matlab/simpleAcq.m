@@ -6,8 +6,8 @@
 %% Setup the Arius platform.
 json = fileread('PA-BFR.json'); % load TX/RX JSON config file
 
-hal = DummyHAL(reshape(1:16, 2, 2, 2, 2)); 
-% DummyHAL can take one optional argument 'data':
+hal = MockHAL(rand(32, 512, 32, 3)); 
+% MockHAL's constructor can take one optional argument 'data':
 % - 3-D matrix with dimensions: (x, y, z) - single 'RF frame'
 % - 4-D matrix with dimensions: (x, y, z, n) - collection of RF frames to cycle 
 %   through; the last dimension corresponds to the RF frame number. 
@@ -26,8 +26,8 @@ for i = 1:3
     %figure(1);     % show raw RF data
     %signal_filt = filter(B, A, signal, [], 2); % filter raw RF with HP filter
 
-    plot(signal(:,:)'); % plot RF signal
+    % plot(signal(:,:)'); % plot RF signal
     %drawnow;
     %pause(0.1);
-    disp(signal);
+    % disp(signal);
 end
