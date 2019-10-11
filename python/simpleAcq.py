@@ -1,43 +1,63 @@
 #!/usr/bin/python3
-#==============================================================================
-# simple_acq.py - a simple Python script for ultrasound data acquisition
+# =============================================================================
+# simpleAcq.py - a simple Python script for ultrasound data acquisition
 # with the ARIUS device.
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Copyright (c) 2019 us4us Ltd. / MIT License
-#==============================================================================
-import os, time
-import numpy
-import matplotlib.pyplot as plt
+# =============================================================================
 import arius as ar
-from matplotlib.pyplot import ion
+import argparse
+import numpy as np
+import matplotlib.pyplot as plt
+import time
 
-# Define constants.
-NSAMPLES = 4096     # number of samples in each RF line
-NCHANNELS = 192     # number of channels
 
-print("Detected devices:")
-for device in ar.getAvailableDevices():
-    print("--- %s" % (device.name))
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="ARIUS example - simple acq.")
+    parser.add_argument("--cfg", dest="cfg",
+                        help="Path to the json configuration file.",
+                        required=True)
+    parser.add_argument("--data", dest="data",
+                        help="Path to the RF data to load.",
+                        required=False,
+                        default=None
+                        )
+    args = parser.parse_args()
 
-hal = ar.getHALInstance('MOCKHAL')
+    plt.ion()
 
-# Setup the platform.
-with open("PA-BFR.json", "r") as f:
-    hal.configure(f.read())
+    print("Detected devices:")
+    for device in ar.getAvailableDevices():
+        print("--- %s" % (device.name))
 
-# Start TX/RX.
-hal.start()
-# Perform data acquisition and display.
-for i in range(200):
-    data, metadata = hal.getData()
-    if i == 0:
-        imgplot = plt.imshow(image, cmap=plt.cm.gray, aspect='auto')
-        ion()
-        plt.show()
-    else:
-        imgplot.set_data(image)
-        plt.draw()
-        plt.pause(0.01)
-    hal.sync(metadata.frameIdx)
-# Stop TX/RX.
-hal.stop()
+    # Load the input data.
+    data = None
+    if args.data:
+        data = np.load(args.data)
+    hal = ar.getHALInstance('MOCKHAL', data=data)
+    # Setup the platform.
+    with open(args.cfg, "r") as f:
+        hal.configure(f.read())
+        pass
+
+    # Start TX/RX.
+    hal.start()
+    # Perform data acquisition and display.
+
+    fig, ax, line = None, None, None # matplotlib objects.
+    for i in range(10):
+        data, metadata = hal.getData()
+
+        # Plot acquired i-th line.
+        if i == 0:
+            fig, ax = plt.subplots()
+            line, = ax.plot(data[0, :, i])
+        else:
+            line.set_ydata(data[0, :, i])
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+        time.sleep(0.5)
+
+        hal.sync(metadata.frameIdx)
+    # Stop TX/RX.
+    hal.stop()
