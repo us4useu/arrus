@@ -11,7 +11,7 @@ hal = MockHAL(rand(32, 512, 32, 3));
 % - 3-D matrix with dimensions: (x, y, z) - single 'RF frame'
 % - 4-D matrix with dimensions: (x, y, z, n) - collection of RF frames to cycle 
 %   through; the last dimension corresponds to the RF frame number. 
-%  When no argument is provided: a two random RF frames (32, 512, 32) are 
+%  When no argument is provided: three random RF frames (32, 512, 32) are 
 %  generated.
 
 hal.configure(json);    % init HAL with the TX/RX JSON
