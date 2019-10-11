@@ -17,6 +17,8 @@ classdef (Abstract) HAL < handle
         % Sync. for the next acquisition.
 
         halOutput = getData(obj)
-        % Returns current data buffer. Output data type: double. 
+        % Returns current data buffer. 
+        % Output data type: double. 
+        % Output dimensions: ECS (Event, Sample, Channel).
     end
 end
