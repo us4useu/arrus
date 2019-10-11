@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "http://us4us.eu/arius-sdk/cfg/transducersList.schema.json",
+    "$id": "http://us4us.eu/arius-sdk/cfg/usgTransducersList.schema.json",
     "title": "Transducers",
     "description": "List of transducer definitions.",
     "type": "object",
@@ -22,10 +22,12 @@
                 "type": "string"
             },
             "numElements": {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 1
             },
             "pitch": {
-                "type": "number"
+                "type": "number",
+                "exclusiveMinimum": 0
             }
         }
     }
