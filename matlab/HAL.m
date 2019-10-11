@@ -19,6 +19,6 @@ classdef (Abstract) HAL < handle
         halOutput = getData(obj)
         % Returns current data buffer. 
         % Output data type: double. 
-        % Output dimensions: ECS (Event, Sample, Channel).
+        % Output dimensions: ESC (Event, Sample, Channel).
     end
 end
