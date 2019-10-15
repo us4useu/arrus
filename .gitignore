@@ -31,6 +31,9 @@
 *.out
 *.app
 
+# Intellij IDEA directory
+.idea
+
 # ---- MATLAB
 # Windows default autosave extension
 *.asv
