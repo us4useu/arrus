@@ -1,0 +1,4 @@
+Hej
+To jest test comita. Można go skasować.
+pzdr
+z
