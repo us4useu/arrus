@@ -17,9 +17,7 @@ TRANSDUCER_PITCH = 0.00021
 SAMPLING_FREQUENCY = 50e6
 
 
-def compute_delays(n_samples, n_channels,
-                   sampling_frequency, c,
-                   start_depth, pitch):
+def compute_delays(n_samples, n_channels, sampling_frequency, c, start_depth, pitch):
     """
     Computes delay matrix for given parameters.
 
