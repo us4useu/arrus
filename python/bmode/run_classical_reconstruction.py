@@ -25,10 +25,10 @@ def compute_delays(n_samples, n_channels,
 
     :param n_samples: number of samples to consider
     :param n_channels: number of channels to consider
-    :param sampling_frequency: transducer's sampling frequency
-    :param c: speed of sound
-    :param start_depth: the starting depth
-    :param pitch: transducer's pitch
+    :param sampling_frequency: transducer's sampling frequency [Hz]
+    :param c: speed of sound [m/s]
+    :param start_depth: the starting depth [m]
+    :param pitch: transducer's pitch [m]
     :return: A delay matrix of shape (n_samples, n_channels)
     """
     # The distance from the line origin.
@@ -103,7 +103,7 @@ def adjust_dynamic_range(data, max_db):
     Converts to dB scale and clips to max dB.
 
     :param data: data to process
-    :param max_db: dB threshold
+    :param max_db: dB threshold [dB]
     :return: processed image
     """
     nonzero_idx = data != 0
