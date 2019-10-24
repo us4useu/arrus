@@ -123,7 +123,7 @@ def main():
         required=True)
     parser.add_argument(
         "--speed_of_sound", dest="speed_of_sound",
-        help="Speed of sound, [m/s].",
+        help="Speed of sound [m/s].",
         type=float,
         required=True)
     parser.add_argument(
@@ -142,7 +142,7 @@ def main():
     )
     parser.add_argument(
         "--max_db", dest="max_db",
-        help="Dynamic range adjustment threshold.",
+        help="Dynamic range adjustment threshold [dB].",
         required=False,
         type=float,
         default=40.0
