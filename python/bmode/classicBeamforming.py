@@ -192,7 +192,7 @@ dataFile = '/home/linuser/us4us/usgData/rfBfr.mat'
 rf = rfDataReformat(rf, 'pk')
 
 # compute delays
-delays = computeDelays(4096, txAp, fs, c, [15*pitch, txFoc], pitch)
+delays = computeDelays(4000, txAp, fs, c, [15*pitch, txFoc], pitch)
 
 # image beamforming
 rfBfr = imageBeamform(rf[:, :, 15:-17], delays)
