@@ -17,18 +17,16 @@ TRANSDUCER_PITCH = 0.00021
 SAMPLING_FREQUENCY = 50e6
 
 
-def compute_delays(n_samples, n_channels,
-                   sampling_frequency, c,
-                   start_depth, pitch):
+def compute_delays(n_samples, n_channels, sampling_frequency, c, start_depth, pitch):
     """
     Computes delay matrix for given parameters.
 
     :param n_samples: number of samples to consider
     :param n_channels: number of channels to consider
-    :param sampling_frequency: transducer's sampling frequency
-    :param c: speed of sound
-    :param start_depth: the starting depth
-    :param pitch: transducer's pitch
+    :param sampling_frequency: transducer's sampling frequency [Hz]
+    :param c: speed of sound [m/s]
+    :param start_depth: the starting depth [m]
+    :param pitch: transducer's pitch [m]
     :return: A delay matrix of shape (n_samples, n_channels)
     """
     # The distance from the line origin.
@@ -103,7 +101,7 @@ def adjust_dynamic_range(data, max_db):
     Converts to dB scale and clips to max dB.
 
     :param data: data to process
-    :param max_db: dB threshold
+    :param max_db: dB threshold [dB]
     :return: processed image
     """
     nonzero_idx = data != 0
@@ -123,7 +121,7 @@ def main():
         required=True)
     parser.add_argument(
         "--speed_of_sound", dest="speed_of_sound",
-        help="Speed of sound, [m/s].",
+        help="Speed of sound [m/s].",
         type=float,
         required=True)
     parser.add_argument(
@@ -142,7 +140,7 @@ def main():
     )
     parser.add_argument(
         "--max_db", dest="max_db",
-        help="Dynamic range adjustment threshold.",
+        help="Dynamic range adjustment threshold [dB].",
         required=False,
         type=float,
         default=40.0
