@@ -3,16 +3,17 @@ import scipy.signal as scs
 import matplotlib.pyplot as plt
 import numpy as np
 
-def computeDelays(nSamples, nChannels,
-                  fs, c,
-                  focus, pitch,
-                  depth0 = 0, delay0 = 17):
+
+def compute_delays(n_samples, n_channels,
+                   fs, c,
+                   focus, pitch,
+                   depth0=0, delay0=17):
 
     """
     Computes delay matrix for given parameters.
 
-    :param nSamples: number of samples to consider
-    :param nChannels: number of channels to consider
+    :param n_samples: number of samples to consider
+    :param n_channels: number of channels to consider
     :param fs: transducer's sampling frequency [Hz]
     :param c: speed of sound [m/s]
     :param focus: if float or single element list focus is y focal coordinate.
@@ -24,41 +25,40 @@ def computeDelays(nSamples, nChannels,
     """
 
     # length of transducer
-    transLen = (nChannels - 1)*pitch
+    probe_length = (n_channels - 1) * pitch
 
     # check if focus is scalar or vector
     if type(focus) == float or len(focus) == 1:
-        xFoc = transLen/2
-        yFoc = focus
+        x_focus = probe_length/2
+        y_focus = focus
     else:
-        xFoc = focus[0]
-        yFoc = focus[1]
+        x_focus, y_focus = focus
 
     # The distance from the line origin along y axis. [m]
-    yGrid = np.arange(0, nSamples)/fs*c/2 + depth0
+    y_grid = np.arange(0, n_samples) / fs * c / 2 + depth0
 
     # x coordinates of transducer elements
-    elementPosition = np.arange(0, nChannels)*pitch
+    element_position = np.arange(0, n_channels) * pitch
 
-    # Make yGrid a column vector: (n_samples, 1).
-    yGrid = yGrid.reshape((-1, 1))
+    # Make y_grid a column vector: (n_samples, 1).
+    y_grid = y_grid.reshape((-1, 1))
 
     # Make element position a row vector: (1, n_channels).
-    elementPosition = elementPosition.reshape((1, -1))
+    element_position = element_position.reshape((1, -1))
 
     # distances between elements and imaged point
-    txDistance = yGrid
-    rxDistance = np.sqrt((xFoc - elementPosition)**2 + yGrid**2)
-    totalDistance = txDistance + rxDistance
+    tx_distance = y_grid
+    rx_distance = np.sqrt((x_focus - element_position)**2 + y_grid**2)
+    total_distance = tx_distance + rx_distance
 
     # delay related with focusing
-    if xFoc > transLen/2:
-        focDelay = ((xFoc**2 + yFoc**2)**0.5 - yFoc)/c
+    if x_focus > probe_length/2:
+        focus_delay = ((x_focus**2 + y_focus**2)**0.5 - y_focus)/c
     else:
-        focDelay = (((transLen-xFoc)**2 + yFoc**2)**0.5 - yFoc)/c
+        focus_delay = (((probe_length-x_focus)**2 + y_focus**2)**0.5 - y_focus)/c
 
-    pathDelay = (totalDistance/c)
-    delays = pathDelay + focDelay
+    path_delay = (total_distance/c)
+    delays = path_delay + focus_delay
     delays = delays * fs + 1
     delays = np.round(delays)
     delays += delay0
@@ -67,140 +67,143 @@ def computeDelays(nSamples, nChannels,
     return delays
 
 
-def lineBeamform(rf, delays):
+def beamforming_line(rf, delays):
     """
     Beamforms one line  using delay and sum algorithm.
 
-    :param rf: input RF data of shape (nSamples, nChannels, nLines)
-    :param delays: delay matrix of shape (nSamples, nChannels)
+    :param rf: input RF data of shape (n_samples, n_channels, nLines)
+    :param delays: delay matrix of shape (n_samples, n_channels)
     :return: beamformed single RF line
     """
 
-    nSamples, nChannels = delays.shape
-    theLine = np.zeros((nSamples))
-    for channel in range(nChannels):
-        channelDelays = delays[:, channel]
-        theLine += rf[channelDelays, channel]
+    n_samples, n_channels = delays.shape
+    the_line = np.zeros((n_samples))
+    for channel in range(n_channels):
+        channel_delays = delays[:, channel]
+        the_line += rf[channel_delays, channel]
 
-    return theLine
+    return the_line
 
-def imageBeamform(rf,delays):
+
+def beamforming_image(rf, delays):
     """
     Beamforms image usign lineBeamform function
 
-    :param rf: input RF data of shape (nSamples, nChannels, nLines)
-    :param delays: delay matrix of shape (nSamples, nChannels)
+    :param rf: input RF data of shape (n_samples, n_channels, n_lines)
+    :param delays: delay matrix of shape (n_samples, n_channels)
     :return: beamformed RF image
     """
 
-    nSamples, nChannels = delays.shape
-    nLines = rf.shape[2]
-    image = np.zeros((nSamples, nLines))
-    for iLine in range(nLines):
-        lineRf = rf[:, iLine:(iLine+32), iLine]
-        lineDelays = delays
-        thisLine = lineBeamform(lineRf, lineDelays)
-        # thisLine = np.abs(scs.hilbert(thisLine))
-        image[:,iLine] = thisLine
+    n_samples, n_channels = delays.shape
+    n_lines = rf.shape[2]
+    image = np.zeros((n_samples, n_lines))
+    for i_line in range(n_lines):
+        rf_line = rf[:, i_line:(i_line+32), i_line]
+        this_line = beamforming_line(rf_line, delays)
+        image[:, i_line] = this_line
 
     return image
 
-def rf2env(rf):
+
+def calculate_envelope(rf):
     """
     The function calculate envelope using hilbert transform
     :param rf:
     :return: envelope image
     """
-    nSamples, nLines = rf.shape
-    env = np.zeros((nSamples, nLines))
-    for iLine in range(nLines):
-        thisRfLine = rf[:,iLine]
-        thisEnvLine = np.abs(scs.hilbert(thisRfLine))
-        env[:,iLine] = thisEnvLine
+    n_samples, n_lines = rf.shape
+    envelope = np.zeros((n_samples, n_lines))
+    for i_line in range(n_lines):
+        this_rf_line = rf[:, i_line]
+        this_envelope_line = np.abs(scs.hilbert(this_rf_line))
+        envelope[:, i_line] = this_envelope_line
 
-    return env
+    return envelope
 
-def rfDataReformat(rf, reformatType = 'pk'):
+
+def reformat_rf_data(rf, mode='pk'):
     """
     This function is for classical beamforming data acquired from simulation no.1,
     (Piotr Karwat).
     Rf data reformat from Piotr Karwat format to more convenient.
 
     :param rf:
+    :param mode: 'pk'
     :return: rfRfrm
     """
-    if reformatType == 'pk':
-        rfTr = np.transpose(rf, (1, 0, 2))
-        return rfTr
+    if mode == 'pk':
+        rf_transposed = np.transpose(rf, (1, 0, 2))
+        return rf_transposed
     else:
         print('bad reformat type')
 
-def pkDataLoad(path2File, verbose=1):
+
+def load_data_pk(path2file, verbose=1):
     """
     This function is for classical beamforming data acquired from simulation no.1,
     (Piotr Karwat).
     The function loads the data and optionally write some info about the data
 
-    :param rf:
-    :param verbose = 1:
+    :param path2file:
+    :param verbose:
     :return: [rf, c, fs, fn, pitch, txFoc, txAp, nElem]
     """
-    matData = sio.loadmat(path2File)
-    c = matData.get('c0') * 1e-3
+    matlab_data = sio.loadmat(path2file)
+    c = matlab_data.get('c0') * 1e-3
     c = np.float(c)
 
-    txFoc = matData.get('txFoc') * 1e-3
-    txFoc = np.float(txFoc)
+    tx_focus = matlab_data.get('txFoc') * 1e-3
+    tx_focus = np.float(tx_focus)
 
-    fs = matData.get('fs')
+    fs = matlab_data.get('fs')
     fs = np.float(fs)
 
-    fn = matData.get('fn')
+    fn = matlab_data.get('fn')
     fn = np.float(fn)
 
-    pitch = matData.get('pitch') * 1e-3
+    pitch = matlab_data.get('pitch') * 1e-3
     pitch =np.float(pitch)
 
-    nElem = matData.get('nElem')
-    nElem = np.int(nElem)
+    n_elements = matlab_data.get('nElem')
+    n_elements = np.int(n_elements)
 
-    txAp = matData.get('txAp')
-    txAp = np.int(txAp)
+    tx_aperture = matlab_data.get('txAp')
+    tx_aperture = np.int(tx_aperture)
 
-    rf = matData.get('rfBfr')
+    rf = matlab_data.get('rfBfr')
 
     if verbose:
-        print('imput data keys: ', matData.keys())
+        print('imput data keys: ', matlab_data.keys())
         print('speed of sound: ', c)
         print('pitch: ', pitch)
-        print('aperture length: ', nElem)
-        print('focal length: ', txFoc)
-        print('subaperture length: ', txAp)
+        print('aperture length: ', n_elements)
+        print('focal length: ', tx_focus)
+        print('subaperture length: ', tx_aperture)
 
-    return [rf, c, fs, fn, pitch, txFoc, txAp, nElem]
+    return [rf, c, fs, fn, pitch, tx_focus, tx_aperture, n_elements]
 
-def amp2dB(img):
-    mx = np.max(img)
-    img = np.log10(img/mx)*20
-    return img
+def amp2dB(image):
+    max_image_value = np.max(image)
+    image_dB = np.log10(image / max_image_value) * 20
+    return image_dB
 
 # path do file with the data
-dataFile = '/home/linuser/us4us/usgData/rfBfr.mat'
+path2datafile = '/home/linuser/us4us/usgData/rfBfr.mat'
 
 # load and reformat data
-[rf, c, fs, fn, pitch, txFoc, txAp, nElem] = pkDataLoad(dataFile, 0)
-rf = rfDataReformat(rf, 'pk')
+[rf, c, fs, fn, pitch, tx_focus, tx_aperture, n_elements] = load_data_pk(path2datafile, 0)
+rf = reformat_rf_data(rf, 'pk')
 
 # compute delays
-delays = computeDelays(4000, txAp, fs, c, [15*pitch, txFoc], pitch)
+delays = compute_delays(4000, tx_aperture, fs, c, [15 * pitch, tx_focus], pitch)
 
 # image beamforming
-rfBfr = imageBeamform(rf[:, :, 15:-17], delays)
+rf_image = beamforming_image(rf[:, :, 15:-17], delays)
 # calculate envelope
-img = rf2env(rfBfr)
+amplitude_image = calculate_envelope(rf_image)
 # convert do dB
-imgDB = amp2dB(img)
+bmode_image = amp2dB(amplitude_image)
 
 # show the image
-plt.imshow(imgDB, interpolation = 'bicubic', aspect='auto',cmap='gray', vmin=-40, vmax=0)
+plt.imshow(bmode_image, interpolation ='bicubic', aspect='auto', cmap='gray', vmin=-40, vmax=0)
 plt.show()
