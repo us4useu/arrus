@@ -121,23 +121,6 @@ def calculate_envelope(rf):
     return envelope
 
 
-def reformat_rf_data(rf, mode='pk'):
-    """
-    This function is for classical beamforming data acquired from simulation no.1,
-    (Piotr Karwat).
-    Rf data reformat from Piotr Karwat format to more convenient.
-
-    :param rf:
-    :param mode: 'pk'
-    :return: reorganized rf array
-    """
-    if mode == 'pk':
-        rf_transposed = np.transpose(rf, (1, 0, 2))
-        return rf_transposed
-    else:
-        print('bad reformat type')
-
-
 def load_data_pk(path2file, verbose=1):
     """
     This function is for classical beamforming data acquired from simulation no.1,
@@ -172,6 +155,10 @@ def load_data_pk(path2file, verbose=1):
 
     rf = matlab_data.get('rfBfr')
 
+    # Rf data reformat from Piotr Karwat format to more convenient.
+    rf = np.transpose(rf, (1, 0, 2))
+
+
     if verbose:
         print('imput data keys: ', matlab_data.keys())
         print('speed of sound: ', c)
@@ -192,7 +179,6 @@ path2datafile = '/home/linuser/us4us/usgData/rfBfr.mat'
 
 # load and reformat data
 [rf, c, fs, fn, pitch, tx_focus, tx_aperture, n_elements] = load_data_pk(path2datafile, 0)
-rf = reformat_rf_data(rf, 'pk')
 
 # compute delays
 delays = compute_delays(4000, tx_aperture, fs, c, [15 * pitch, tx_focus], pitch)
