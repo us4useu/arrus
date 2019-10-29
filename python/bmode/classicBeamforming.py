@@ -176,8 +176,61 @@ def amp2dB(image):
     image_dB = np.log10(image / max_image_value) * 20
     return image_dB
 
+
+def make_bmode_image(rf_image, pitch=0.3048*1e-3, c=1540, depth0=0):
+
+    # calculate envelope
+    amplitude_image = calculate_envelope(rf_image)
+
+    # convert do dB
+    bmode_image = amp2dB(amplitude_image)
+
+    # calculate ticks and labels
+    dy = c/2/fs
+    dx = pitch
+    n_samples, n_lines = rf_image.shape
+    max_depth = (n_samples - 1)*dy + depth0
+    image_depth = (n_samples - 1)*dy
+    probe_width = (n_lines - 1)*dx
+    image_proportion = image_depth/probe_width
+
+    n_xticks = 4
+    n_yticks = round(n_xticks * image_proportion)
+
+    xticks = np.linspace(0, n_lines, n_xticks)
+    xtickslabels = np.linspace(-probe_width/2, probe_width/2, n_xticks)*1e3
+    xtickslabels = np.round(xtickslabels, 1)
+
+    yticks = np.linspace(0, n_samples, n_yticks)
+    ytickslabels = np.linspace(depth0, max_depth, n_yticks)*1e3
+    ytickslabels = np.round(ytickslabels, 1)
+
+    # calculate data aspect for proper image proportions
+    data_aspect = dy/dx
+
+    # show the image
+    plt.imshow(bmode_image,
+                    interpolation='bicubic',
+                    aspect=data_aspect,
+                    cmap='gray',
+                    vmin=-50, vmax=0
+                    )
+
+    plt.xticks(xticks, xtickslabels)
+    plt.yticks(yticks, ytickslabels)
+
+    cbar = plt.colorbar()
+    cbar.ax.get_yaxis().labelpad = 10
+    cbar.ax.set_ylabel('[dB]', rotation=90)
+    plt.xlabel('[mm]')
+    plt.ylabel('[mm]')
+    plt.show()
+
+
 # path do file with the data
-path2datafile = '/home/linuser/us4us/usgData/rfBfr.mat'
+# path2datafile = '/home/linuser/us4us/usgData/rfBfr.mat'
+path2datafile = '/media/linuser/data01/praca/us4us/us4us_testData/us4us/rfBfr.mat'
+
 
 # load and reformat data
 [rf, c, fs, fn, pitch, tx_focus, tx_aperture, n_elements] = load_data_pk(path2datafile, 0)
@@ -187,11 +240,6 @@ delays = compute_delays(3000, tx_aperture, fs, c, [15 * pitch, tx_focus], pitch)
 
 # image beamforming
 rf_image = beamforming_image(rf[:, :, 15:-17], delays)
-# calculate envelope
-amplitude_image = calculate_envelope(rf_image)
-# convert do dB
-bmode_image = amp2dB(amplitude_image)
-data_aspect = (c/2/fs)/pitch
-# show the image
-plt.imshow(bmode_image, interpolation='bicubic', aspect=data_aspect, cmap='gray', vmin=-50, vmax=0)
-plt.show()
+
+# show bmode image
+make_bmode_image(rf_image, pitch, c)
