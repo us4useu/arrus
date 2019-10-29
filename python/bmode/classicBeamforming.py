@@ -111,12 +111,14 @@ def calculate_envelope(rf):
     :param rf:
     :return: envelope image
     """
-    n_samples, n_lines = rf.shape
-    envelope = np.zeros((n_samples, n_lines))
-    for i_line in range(n_lines):
-        this_rf_line = rf[:, i_line]
-        this_envelope_line = np.abs(scs.hilbert(this_rf_line))
-        envelope[:, i_line] = this_envelope_line
+    envelope = np.abs(scs.hilbert(rf, axis=0))
+
+    # n_samples, n_lines = rf.shape
+    # envelope = np.zeros((n_samples, n_lines))
+    # for i_line in range(n_lines):
+    #     this_rf_line = rf[:, i_line]
+    #     this_envelope_line = np.abs(scs.hilbert(this_rf_line))
+    #     envelope[:, i_line] = this_envelope_line
 
     return envelope
 
@@ -181,7 +183,7 @@ path2datafile = '/home/linuser/us4us/usgData/rfBfr.mat'
 [rf, c, fs, fn, pitch, tx_focus, tx_aperture, n_elements] = load_data_pk(path2datafile, 0)
 
 # compute delays
-delays = compute_delays(4000, tx_aperture, fs, c, [15 * pitch, tx_focus], pitch)
+delays = compute_delays(3000, tx_aperture, fs, c, [15 * pitch, tx_focus], pitch)
 
 # image beamforming
 rf_image = beamforming_image(rf[:, :, 15:-17], delays)
@@ -189,7 +191,7 @@ rf_image = beamforming_image(rf[:, :, 15:-17], delays)
 amplitude_image = calculate_envelope(rf_image)
 # convert do dB
 bmode_image = amp2dB(amplitude_image)
-
+data_aspect = (c/2/fs)/pitch
 # show the image
-plt.imshow(bmode_image, interpolation ='bicubic', aspect='auto', cmap='gray', vmin=-40, vmax=0)
+plt.imshow(bmode_image, interpolation='bicubic', aspect=data_aspect, cmap='gray', vmin=-50, vmax=0)
 plt.show()
