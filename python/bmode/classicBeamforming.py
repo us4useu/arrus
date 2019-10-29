@@ -21,7 +21,7 @@ def compute_delays(n_samples, n_channels,
     :param pitch: transducer's pitch [m]
     :param depth0: the starting depth [m]
     :param delay0: hardware delay
-    :return: A delay matrix (shape: nSamp x nChan) [samples]
+    :return: A delay matrix (nSamp, nChan) [samples]
     """
 
     # length of transducer
@@ -129,7 +129,7 @@ def reformat_rf_data(rf, mode='pk'):
 
     :param rf:
     :param mode: 'pk'
-    :return: rfRfrm
+    :return: reorganized rf array
     """
     if mode == 'pk':
         rf_transposed = np.transpose(rf, (1, 0, 2))
