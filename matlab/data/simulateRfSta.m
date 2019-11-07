@@ -1,17 +1,29 @@
-% Script for simulation of SSTA rf-channel data (uses Field II).
+% Simulation of SSTA rf-channel data (uses Field II).
 % Requires Field II directory to be added to the MATLAB path.
+function[rfSta] = simulateRfSta(sys,scat)
+% Outputs:
+% rfSta - (nSamp,nElem,nElem) output raw rf data for SSTA scheme
+
+% Inputs:
+% sys - system-related parameters
+% sys.nElem - [elem] number of transducer elements
+% sys.pitch - [m] transducer pitch
+% sys.fs - [Hz] sampling frequency
+% sys.fn - [Hz] carrier (nominal) frequency
+% sys.nPer - [] number of periods in the emitted pulse
+% sys.sos - [m/s] assumed speed of sound in the medium
+% sys.att - [dB/m/Hz] assumed linear attenuation coefficient in the medium
+% scat - medium characterisation (scattering points)
+% scat.x - [m] x-coordinates of scattering points
+% scat.y - [m] y-coordinates of scattering points
+% scat.z - [m] z-coordinates of scattering points
+% scat.s - [] scattering cross-section of scattering points
+
+% scat.x,y,z,s must be the same size
 
 %% parameters
-sos         = 1540;                                     % [m/s] speed of sound in the medium
-fs          = 65e6;                                     % [Hz] sampling frequency
-fn          = 5e6;                                      % [Hz] carrier (nominal) frequency
-nPer        = 2;                                        % [] number of periods in the emitted pulse
-att0        = 0.0e2;                                    % [dB/m] attenuation at nominal frequency fn
-att1        = 0.0e-4;                                   % [dB/m/Hz] attenuation change with frequency
-
-nElem       = 192;                                      % [elem] number of probe elements
-kerf        = 0.0100e-3;                                % [m] kerf
-eleXSize	= 0.2000e-3;                                % [m] length of a single probe element in x-direction (width)
+kerf        = 0.0000e-3;                                % [m] kerf
+eleXSize	= sys.pitch;                                % [m] length of a single probe element in x-direction (width)
 eleYSize	= 4.0000e-3;                                % [m] length of a single probe element in y-direction (elevation)
 eleXSubNum	= 01;                                       % [] number of sub-elements that a single probe element is divided into in x-direction (width)
 eleYSubNum	= 08;                                       % [] number of sub-elements that a single probe element is divided into in y-direction (elevation)
@@ -19,36 +31,9 @@ eleYSubNum	= 08;                                       % [] number of sub-elemen
 focDepth	= 40e-3;                                    % [m] initial focal depth
 focPoint	= [0 0 focDepth];                           % [m] initial focal point
 
-impResp     = sin(2*pi*fn*(0:1/fs:2/fn));               % [] impulse response of probe elements
+impResp     = sin(2*pi*sys.fn*(0:1/sys.fs:2/sys.fn));               % [] impulse response of probe elements
 impResp     = impResp.*hanning(length(impResp))';       % [] impulse response of probe elements
-excitation	= sign(sin(2*pi*fn*(0:1/fs:nPer/fn)));      % [] excitation
-
-%% scatterers setup: tissue-like structure (hours of calculations)
-% % parameters
-% scatDens	= 5*1e9;                                    % [1/m^3] spatial density of scatterers distribution
-% 
-% zRng        = [ 00 60]*1e-3;                            % [m] range of z-coordinates for the tissue block
-% xRng        = [-20 20]*1e-3;                            % [m] range of x-coordinates for the tissue block
-% yRng        = [-05 05]*1e-3;                            % [m] range of y-coordinates for the tissue block
-% 
-% % scatterers
-% tissueVol	= diff(zRng)*diff(xRng)*diff(yRng);         % [m^3] tissue volume
-% scatNum     = round(tissueVol*scatDens);                % [] number of scatterers
-% 
-% rng(7);                                                 % set random number generator to get reproducible results
-% 
-% tissue.z	= rand(scatNum,1)*diff(zRng) + zRng(1);     % [m] vector of z-coordinates of scatterers
-% tissue.x	= rand(scatNum,1)*diff(xRng) + xRng(1);     % [m] vector of x-coordinates of scatterers
-% tissue.y	= rand(scatNum,1)*diff(yRng) + yRng(1);     % [m] vector of y-coordinates of scatterers
-% tissue.s	= ones(scatNum,1);                          % [] vector of scattering coefficients
-
-%% scatterers setup: sparse rectangular grid of point scatterers
-xGrid       = (-15:5:15)*1e-3;      % [m] x-grid vector of point sources
-yGrid       = 0*1e-3;               % [m] y-grid vector of point sources
-zGrid       = (10:5:40)*1e-3;       % [m] z-grid vector of point sources
-
-[x,z,y]     = meshgrid(xGrid,zGrid,yGrid);
-s           = ones(size(x));
+excitation	= sign(sin(2*pi*sys.fn*(0:1/sys.fs:sys.nPer/sys.fn)));      % [] excitation
 
 %% Field II
 % Field initialization
@@ -65,15 +50,15 @@ set_field('use_lines',          0);                     % Use lines in the apert
 set_field('fast_integration',   0);                     % Enables fast integration for bound lines and triangles
 
 % set physical parameters
-set_field('c',                  sos);
-set_field('att',                att0);
-set_field('freq_att',           att1);
-set_field('att_f0',             fn);
-set_field('fs',                 fs);
+set_field('c',                  sys.sos);
+set_field('att',                sys.att*sys.fn);        % [dB/m] attenuation at nominal frequency fn
+set_field('freq_att',           sys.att);               % [dB/m/Hz] attenuation change with frequency
+set_field('att_f0',             sys.fn);
+set_field('fs',                 sys.fs);
 
 % set transmit and receive apertures
-txApert     = xdc_linear_array(nElem,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
-rxApert     = xdc_linear_array(nElem,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
+txApert     = xdc_linear_array(sys.nElem,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
+rxApert     = xdc_linear_array(sys.nElem,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
 
 % set impulse responses
 xdc_impulse(txApert,impResp);
@@ -83,22 +68,22 @@ xdc_impulse(rxApert,impResp);
 xdc_excitation(txApert,excitation);
 
 % SSTA simulation, no focusing, no apodization
-[rfSta,t0]	= calc_scat_all(txApert,rxApert,[x(:) y(:) z(:)],s(:),1);
+[rfSta,t0]	= calc_scat_all(txApert,rxApert,[scat.x(:) scat.y(:) scat.z(:)],scat.s(:),1);
 
 % close field
 field_end;
 
 %% rf data rearrangement
-rfSta       = reshape(rfSta,[],nElem,nElem);
+rfSta       = reshape(rfSta,[],sys.nElem,sys.nElem);
 
 % make the first rx sample be the time t = 0
 if t0 <= 0
-    rfSta(1:-t0*fs,:,:) = [];
+    rfSta(1:-t0*sys.fs,:,:) = [];
 else
-    rfSta = [zeros(t0*fs,nElem,nElem); rfSta];
+    rfSta = [zeros(t0*sys.fs,sys.nElem,sys.nElem); rfSta];
 end
 
-
+end
 
 
 
