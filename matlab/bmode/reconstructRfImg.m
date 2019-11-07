@@ -1,16 +1,18 @@
 % Reconstructs rf image from raw rf
-function[rfImg] = reconstructRfImg(rf,xGrid,zGrid,pitch,fSamp,fCarr,nPer,fstSampShift,sos,txMode,txAp,txFoc,txAng)
+function[rfImg] = reconstructRfImg(rf,sys,xGrid,zGrid,fstSampShift,txMode,txAp,txFoc,txAng)
 % rfImg         - [] (zSize,xSize) output rf image
 
+% Inputs:
 % rf            - [] (nSamp,nRx,nTx) input rf data
+% sys           - system-related parameters
+% sys.pitch     - [m] transducer pitch
+% sys.fs        - [Hz] sampling frequency
+% sys.fn        - [Hz] carrier (nominal) frequency
+% sys.nPer      - [] number of periods in the emitted pulse
+% sys.sos       - [m/s] assumed speed of sound in the medium
 % xGrid         - [m] (1,xSize) x-grid vector for output rf image
 % zGrid         - [m] (1,zSize) z-grid vector for output rf image
-% pitch         - [m] transducer's pitch
-% fSamp         - [Hz] sampling frequency
-% fCarr         - [Hz] carrier frequency
-% nPer          - [] number of sine periods in tx burst
 % fstSampShift	- [samp] number of the sample that reflects the tx start
-% sos           - [m/s] speed of sound
 % txMode        - 'lin', 'sta' or 'pwi' for classical linear scan (LIN), STA scan or PWI scan
 % txAp          - [elem] number of transducer elements forming the tx aperture
 % txFoc         - [m] focal length for STA or LIN scheme
@@ -20,14 +22,14 @@ function[rfImg] = reconstructRfImg(rf,xGrid,zGrid,pitch,fSamp,fCarr,nPer,fstSamp
 zSize	= length(zGrid);
 xSize	= length(xGrid);
 
-xElem	= (-(nRx-1)/2:(nRx-1)/2)*pitch;                                 % [m] x-coordinates of transducer elements
+xElem	= (-(nRx-1)/2:(nRx-1)/2)*sys.pitch;                                 % [m] x-coordinates of transducer elements
 
 %% initial delays
-fstSampDel	= fstSampShift/fSamp;                                       % [s] rx delay with respect to start of tx
-burstFactor	= nPer/(2*fCarr);                                           % [s] burst factor
+fstSampDel	= fstSampShift/sys.fs;                                       % [s] rx delay with respect to start of tx
+burstFactor	= sys.nPer/(2*sys.fn);                                           % [s] burst factor
 if any(strcmp(txMode,{'lin','sta'})) && (txFoc > 0)
     % LIN or MSTA with focusing -> need to compensate for delay of 
-    focDel	= (sqrt(((txAp-1)/2*pitch).^2 + txFoc.^2) - txFoc)/sos;     % [s] focusing delay of center of tx aperture
+    focDel	= (sqrt(((txAp-1)/2*sys.pitch).^2 + txFoc.^2) - txFoc)/sys.sos;     % [s] focusing delay of center of tx aperture
 else
     % SSTA, MSTA with defocusing, PWI -> no focusing
     focDel	= 0;
@@ -51,8 +53,8 @@ for iTx=1:nTx
     switch txMode
         case 'lin'
             % classical linear scanning (only a narrow stripe is reconstructed at a time, no tx apodization)
-            xValid	= ((xGrid-xElem(iTx)) > -(pitch/2)) ...
-                    & ((xGrid-xElem(iTx)) <= (pitch/2));
+            xValid	= ((xGrid-xElem(iTx)) > -(sys.pitch/2)) ...
+                    & ((xGrid-xElem(iTx)) <= (sys.pitch/2));
             nValid	= sum(xValid);
             
             txDist	= repmat(zGrid',[1 nValid]);
@@ -94,10 +96,10 @@ for iTx=1:nTx
         rxApod	= fNum < 0.5;
         
         % calculate total delays
-        delTot	= (txDist + rxDist)/sos + initDel;	% [s]
+        delTot	= (txDist + rxDist)/sys.sos + initDel;	% [s]
         
         % calculate sample numbers to be used in reconstruction (out-of-range sample numbers -> nSamp+1 -> sample=0)
-        iSamp	= delTot*fSamp + 1;                 % [samp]
+        iSamp	= delTot*sys.fs + 1;                 % [samp]
         iSamp(iSamp<1 | iSamp>nSamp) = nSamp+1;
         
         % calculate the rf samples (interpolated) and apodization weights
@@ -105,6 +107,11 @@ for iTx=1:nTx
         rfRx(:,xValid,iRx)	= rfRawLine(floor(iSamp)).*(1-mod(iSamp,1)) ...
                             + rfRawLine( ceil(iSamp)).*(  mod(iSamp,1));
         wghRx(:,xValid,iRx)	= txApod.*rxApod;
+        
+        % modulate if iq signal is used
+        if ~isreal(rf)
+            rfRx(:,xValid,iRx)	= rfRx(:,xValid,iRx).*exp(1i*2*pi*sys.fn*delTot);
+        end
     end
     
     % calculate rf and weights for single tx
