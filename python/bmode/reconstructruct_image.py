@@ -64,34 +64,31 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     tail = np.zeros((1, n_channels, n_transmissions))
     rf = np.concatenate((rf, tail))
 
-
     # from matlab
     # some buffers allocation
-    rf_tx = np.zeros(z_size, x_size, n_transmissions)
-    weight_tx = np.zeros(z_size, x_size, n_transmissions)
-    rf_rx = np.zeros(z_size, x_size, n_channels)
-    weight_rx = np.zeros(z_size, x_size, n_channels)
+    rf_tx = np.zeros((z_size, x_size, n_transmissions))
+    weight_tx = np.zeros((z_size, x_size, n_transmissions))
+    rf_rx = np.zeros((z_size, x_size, n_channels))
+    weight_rx = np.zeros((z_size, x_size, n_channels))
 
     # loop over transmissions
     for itx in range(0, n_transmissions):
 
         # calculate tx delays and apodization
-        switch (tx_mode){ # to jest do zmiany - switch zaimplementowac
-            case 'lin':
 
-                        break
+        # classical linear scanning
+        # (only a narrow stripe is reconstructed  at a time, no tx apodization)
+        if tx_mode == 'lin':
+            print((x_grid-element_position[itx]) )
+            x_valid = (-pitch/2) <= (x_grid-element_position[itx]) > (-pitch/2)
+            print(x_valid)
 
-            case 'sta':
-
-                        break
-
-            case 'pwi':
-
-                        break
-
-            default: print('bad tx_mode!')
-
-        }
+        elif tx_mode == 'sta':
+            print('!')
+        elif tx_mode == 'pwi':
+            print('!')
+        else:
+            print('!')
 
 
 
@@ -99,6 +96,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
         # loop over elements
         for irx in range(0, n_channels):
+            print('')
 
 
 
@@ -168,11 +166,11 @@ def load_simulated_data(file, verbose=1):
 
 
 # ippt
-file = '/home/linuser/us4us/usgData/rfLin_field.mat'
+# file = '/home/linuser/us4us/usgData/rfLin_field.mat'
 
 # hm
-# file = '/media/linuser/data01/praca/us4us/' \
-#        'us4us_testData/dataSets02/rfLin_field.mat'
+file = '/media/linuser/data01/praca/us4us/' \
+       'us4us_testData/dataSets02/rfLin_field.mat'
 
 # load data
 [rf, c, fs, fc, pitch,
