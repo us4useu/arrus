@@ -1,11 +1,11 @@
 % Converts RF signal from SSTA format to other scan formats
-function[rfOut] = convertRfSta(rfSta,pitch,fSamp,sos,mode,txFoc,txAp,txAng,sRej)
+function[rfOut] = convertRfSta(rfSta,sys,mode,txFoc,txAp,txAng,sRej)
 % rfOut     - [] (nSamp,nElem,nTx) output raw rf data
 
 % rfSta     - [] (nSamp,nElem,nElem) input raw rf SSTA data
-% pitch     - [m] transducer's pitch
-% fSamp     - [Hz] sampling frequency
-% sos       - [m/s] speed of sound
+% sys.pitch     - [m] transducer's pitch
+% sys.fs     - [Hz] sampling frequency
+% sys.sos       - [m/s] speed of sound
 % mode      - 'pwi' or 'lin' for plane wave imaging or linear scan respectively
 % txFoc     - [m] tx focal depth (used in 'lin' mode only)
 % txAp      - [elem] tx aperture (used in 'lin' mode only)
@@ -27,18 +27,18 @@ switch mode
         nTx     = length(txAng);
         
         ap      = true(nElem,nTx);
-        del     = (1:nElem).'*pitch.*sind(txAng)/sos;	% [s] [nElem nTx]
+        del     = (1:nElem).'*sys.pitch.*sind(txAng)/sys.sos;	% [s] [nElem nTx]
     case 'lin'
         % for even txAp, the aperture is half txAp +1 at start of the scan (+0 at its end)
         % txFoc is measured in z-direction no matter the txAng
         nTx     = nElem;
         
         ap      = logical(conv2(eye(nElem,nTx),[0;ones(txAp,1)],'same'));	% [logical] [nElem nTx=nElem]
-        del     = -sqrt(txFoc^2 + (((1:nElem).' - (1:nTx))*pitch - tand(txAng)*txFoc ).^2)/sos;	% [s] [nElem nTx=nElem]
+        del     = -sqrt(txFoc^2 + (((1:nElem).' - (1:nTx))*sys.pitch - tand(txAng)*txFoc ).^2)/sys.sos;	% [s] [nElem nTx=nElem]
 end
 
 del     = del - min(del.*ap);	% [s] [nElem nTx=nElem] delays with respect to the first active element of tx aperture
-ds      = del*fSamp;            % [samp] [nTx nLine nAng][nTx nAng]
+ds      = del*sys.fs;            % [samp] [nTx nLine nAng][nTx nAng]
 
 %% rf synthesis (with linear interpolation)
 rfOut	= zeros(nSamp,nElem,nTx);
