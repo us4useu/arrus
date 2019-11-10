@@ -33,13 +33,15 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     """
 
     # making x and z_grid 'vertical vector' (should be more user friendly in future!)
-    x_grid = x_grid[np.newaxis]
+    # x_grid = x_grid[np.newaxis]
     temp = z_grid[np.newaxis]
     z_grid = temp.T
 
     n_samples, n_channels, n_transmissions  = rf.shape
-    z_size = len(z_grid)
-    x_size = len(x_grid)
+    # z_size = len(z_grid)
+    # x_size = len(x_grid)
+    z_size = max(z_grid.shape)
+    x_size = max(x_grid.shape)
 
     # probe/transducer width
     probe_width = (n_channels-1)*pitch
@@ -84,15 +86,15 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
             # difference between image point x coordinate and element x coord
             xdifference = np.array(x_grid-element_xcoord[itx])
+
             # logical indexes of valid x coordinates
             lix_valid = (xdifference >= (-pitch/2)) & (xdifference <= (pitch/2))
             n_valid = np.sum(lix_valid)
 
-            temp = x_grid + z_grid
+            # ix_valid = list(np.nonzero(lix_valid))
+
             tx_distance = npml.repmat(z_grid, 1, n_valid)
             tx_apodization = np.ones((z_size, n_valid))
-            # print('itx:', itx, 'tx_distance:',tx_distance,
-            #       'tx_apodization', tx_apodization)
 
         # synthetic transmit aperture method
         elif tx_mode == 'sta':
@@ -127,29 +129,45 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             rx_apodization = f_number < 0.5
 
             # calculate total delays [s]
-            delay = init_delay + (tx_distance + rx_distance)/c
+            delays = init_delay + (tx_distance + rx_distance)/c
 
             # calculate sample number to be used in reconstruction
-            samples = delay*fs + 1
-            out_of_range = (0 > samples) & (samples > n_samples)
-            samples[out_of_range] = n_samples + 1
-            print(samples[out_of_range])
+            samples = delays*fs + 1
+
+            out_of_range = (0 > samples) | (samples > n_samples)
+            samples[out_of_range] = 0 # tutaj przemyslec
 
             # calculate rf samples (interpolated) and apodization weights
             rf_raw_line = rf[:, irx, itx]
             ceil_samples = np.ceil(samples).astype(int)
             floor_samples = np.floor(samples).astype(int)
-            # print(irx)
-            # print(n_samples)
-            # print(floor_samples)
-            rf_rx = rf_raw_line[floor_samples]*(1 - (samples % 1))\
-                    + rf_raw_line[ceil_samples]*(samples % 1)
 
+            # temp = rf_raw_line[floor_samples]*(1 - (samples % 1)) + rf_raw_line[ceil_samples]*(samples % 1)
 
+            rf_rx[:, lix_valid, irx] = rf_raw_line[floor_samples]*(1 - (samples % 1))\
+                                       + rf_raw_line[ceil_samples]*(samples % 1)
 
+            weight_rx[:, lix_valid, irx] = tx_apodization * rx_apodization
 
+            # modulate if iq signal is used (to trzeba sprawdzic, bo pisane 'na rybke')
+            is_data_complex = np.nonzero(np.imag(rf_rx))[0].size
+            if is_data_complex:
+                rf_rx[:, lix_valid, irx] = rf_rx[:, lix_valid, irx] \
+                                           * np.exp(1j*2*np.pi*fc*delays)
+                print('complex data')
 
-    return 0
+        # calculate rf and weights for single tx
+        rf_tx[:, :, itx] = np.sum(rf_rx * weight_rx, axis=2)
+        weight_tx[:, :, itx] = np.sum(weight_rx, axis=2)
+
+        percentage = round(itx/n_transmissions*1000)/10
+        print(percentage, '%')
+        # print(np.sum(weight_tx, axis=2))
+
+    # calculate final rf image
+    rf_image = np.sum(rf_tx, axis=2)#/np.sum(weight_tx, axis=2)
+
+    return rf_image
 
 
 def load_simulated_data(file, verbose=1):
@@ -209,6 +227,76 @@ def load_simulated_data(file, verbose=1):
 
     return [rf, c, fs, fc, pitch, tx_focus, tx_angle, tx_aperture, n_elements, pulse_periods]
 
+def calculate_envelope(rf):
+    """
+    The function calculate envelope using hilbert transform
+    :param rf:
+    :return: envelope image
+    """
+    envelope = np.abs(scs.hilbert(rf, axis=0))
+
+    return envelope
+
+
+def amp2db(image):
+    max_image_value = np.max(image)
+    image_dB = np.log10(image / max_image_value) * 20
+    return image_dB
+
+
+def make_bmode_image(rf_image, pitch=0.3048*1e-3, c=1540, depth0=0):
+
+    # calculate envelope
+    amplitude_image = calculate_envelope(rf_image)
+
+    # convert do dB
+    bmode_image = amp2dB(amplitude_image)
+
+    # calculate ticks and labels
+    dy = c/2/fs
+    dx = pitch
+    n_samples, n_lines = rf_image.shape
+    max_depth = (n_samples - 1)*dy + depth0
+    image_depth = (n_samples - 1)*dy
+    probe_width = (n_lines - 1)*dx
+    image_proportion = image_depth/probe_width
+
+    n_xticks = 4
+    n_yticks = round(n_xticks * image_proportion)
+
+    xticks = np.linspace(0, n_lines, n_xticks)
+    xtickslabels = np.linspace(-probe_width/2, probe_width/2, n_xticks)*1e3
+    xtickslabels = np.round(xtickslabels, 1)
+
+    yticks = np.linspace(0, n_samples, n_yticks)
+    ytickslabels = np.linspace(depth0, max_depth, n_yticks)*1e3
+    ytickslabels = np.round(ytickslabels, 1)
+
+    # calculate data aspect for proper image proportions
+    data_aspect = dy/dx
+
+    # show the image
+    plt.imshow(bmode_image,
+                    interpolation='bicubic',
+                    aspect=data_aspect,
+                    cmap='gray',
+                    vmin=-50, vmax=0
+                    )
+
+    plt.xticks(xticks, xtickslabels)
+    plt.yticks(yticks, ytickslabels)
+
+    cbar = plt.colorbar()
+    cbar.ax.get_yaxis().labelpad = 10
+    cbar.ax.set_ylabel('[dB]', rotation=90)
+    plt.xlabel('[mm]')
+    plt.ylabel('[mm]')
+    plt.show()
+
+
+
+
+
 
 # ippt
 # file = '/home/linuser/us4us/usgData/rfLin_field.mat'
@@ -223,13 +311,21 @@ file = '/media/linuser/data01/praca/us4us/' \
  n_elements, pulse_periods] = load_simulated_data(file, 0)
 
 # define grid for reconstruction (imaged area)
-x_grid = np.linspace(-20*1e-3, 20*1e-3, 512)
-z_grid = np.linspace(0, 100*1e-3, 32)
+x_grid = np.linspace(-20*1e-3, 20*1e-3, 192)
+z_grid = np.linspace(1*1e-3, 60*1e-3, 256)
 
 
 # reconstruct data
-recrf = reconstruct_rf_img(rf, x_grid, z_grid,
+rf_image = reconstruct_rf_img(rf, x_grid, z_grid,
                            pitch, fs, fc, c,
                            tx_aperture, tx_focus, tx_angle,
                            pulse_periods
                            )
+
+# print(rf_image)
+bmode = amp2db(calculate_envelope(rf_image))
+plt.imshow(bmode, cmap='gray')
+plt.colorbar()
+plt.show()
+
+# make_bmode_image(rf_image, pitch, c)
