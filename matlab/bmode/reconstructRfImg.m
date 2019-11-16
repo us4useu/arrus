@@ -1,9 +1,13 @@
-% Reconstructs rf image from raw rf
-function[rfImg] = reconstructRfImg(rf,sys,xGrid,zGrid,fstSampShift,txMode,txAp,txFoc,txAng)
-% rfImg         - [] (zSize,xSize) output rf image
-
+% Reconstructs rf image from raw rf and for rx aperture covering all the probe elements
+function[rfImg] = reconstructRfImg(rfRaw,sys,xGrid,zGrid,fstSampShift,txMode,txAp,txFoc,txAng)
+% Image reconstruction: delay & sum algorithm.
+% 
+% Outputs:
+% rfImg         - [] (zSize,xSize) rf image
+% 
 % Inputs:
-% rf            - [] (nSamp,nRx,nTx) input rf data
+% rfRaw         - [] (nSamp,nRx,nTx) raw rf data; 
+%               rx aperture must cover all the probe elements;
 % sys           - system-related parameters
 % sys.pitch     - [m] transducer pitch
 % sys.fs        - [Hz] sampling frequency
@@ -18,7 +22,7 @@ function[rfImg] = reconstructRfImg(rf,sys,xGrid,zGrid,fstSampShift,txMode,txAp,t
 % txFoc         - [m] focal length for STA or LIN scheme
 % txAng         - [deg] tilting angles for PWI scheme
 
-[nSamp,nRx,nTx] = size(rf);
+[nSamp,nRx,nTx] = size(rfRaw);
 zSize	= length(zGrid);
 xSize	= length(xGrid);
 
@@ -37,14 +41,13 @@ end
 initDel     = - fstSampDel + focDel + burstFactor;                      % [s] total init delay
 
 %% Delay & Sum
-% add zeros as last samples. If a sample is out of range 1:nSamp, then use the sample no. nSamp+1 which is 0.
-% to be checked if it is faster than irregular memory access.
-rf      = [rf; zeros(1,nRx,nTx)];
+% make last samples = 0. If the algorithm needs a sample which is out of range 1:(nSamp-1), 
+% then it uses the sample no. nSamp which is 0.
+% Option of appending zeros as last samples instead of making last sample equal zero is slower.
+rfRaw(end,:,:)	= 0;
 
 rfTx	= zeros(zSize,xSize,nTx);
 wghTx	= zeros(zSize,xSize,nTx);
-rfRx	= zeros(zSize,xSize,nRx);
-wghRx	= zeros(zSize,xSize,nRx);
 
 wb = waitbar(0,'rf image reconstruction');
 for iTx=1:nTx
@@ -87,8 +90,8 @@ for iTx=1:nTx
             
     end
     
-    rfRx(:)     = 0;
-    wghRx(:)	= 0;
+    rfRx	= zeros(zSize,xSize,nRx);
+    wghRx	= zeros(zSize,xSize,nRx);
     for iRx=1:nRx
         % calculate rx delays and apodization
         rxDist	= sqrt((xGrid(xValid)-xElem(iRx)).^2 + zGrid'.^2);
@@ -100,16 +103,16 @@ for iTx=1:nTx
         
         % calculate sample numbers to be used in reconstruction (out-of-range sample numbers -> nSamp+1 -> sample=0)
         iSamp	= delTot*sys.fs + 1;                 % [samp]
-        iSamp(iSamp<1 | iSamp>nSamp) = nSamp+1;
+        iSamp(iSamp<1 | iSamp>nSamp-1) = nSamp;
         
         % calculate the rf samples (interpolated) and apodization weights
-        rfRawLine           = rf(:,iRx,iTx);
+        rfRawLine           = rfRaw(:,iRx,iTx);
         rfRx(:,xValid,iRx)	= rfRawLine(floor(iSamp)).*(1-mod(iSamp,1)) ...
                             + rfRawLine( ceil(iSamp)).*(  mod(iSamp,1));
         wghRx(:,xValid,iRx)	= txApod.*rxApod;
         
         % modulate if iq signal is used
-        if ~isreal(rf)
+        if ~isreal(rfRaw)
             rfRx(:,xValid,iRx)	= rfRx(:,xValid,iRx).*exp(1i*2*pi*sys.fn*delTot);
         end
     end
