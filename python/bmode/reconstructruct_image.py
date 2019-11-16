@@ -3,6 +3,7 @@ import scipy.signal as scs
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.matlib as npml
+import sys
 
 def reconstruct_rf_img(rf, x_grid, z_grid,
                        pitch, fs, fc, c,
@@ -38,6 +39,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     z_grid = temp.T
 
     n_samples, n_channels, n_transmissions  = rf.shape
+#    print(rf.shape)
     # z_size = len(z_grid)
     # x_size = len(x_grid)
     z_size = max(z_grid.shape)
@@ -48,6 +50,10 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
     # x coordinate of transducer elements
     element_xcoord = np.linspace(-probe_width/2, probe_width, n_channels)
+
+#    print(element_xcoord)
+#    print(x_grid)
+
 
     # initial delays [s]
     delay0 = n_first_samples/fs
@@ -68,7 +74,9 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     # to be checked if it is faster than irregular memory access.
     tail = np.zeros((1, n_channels, n_transmissions))
     rf = np.concatenate((rf, tail))
-
+#    print(rf.shape)
+    
+#    sys.exit('tre')
     # buffers allocation
     rf_tx = np.zeros((z_size, x_size, n_transmissions))
     weight_tx = np.zeros((z_size, x_size, n_transmissions))
@@ -88,8 +96,13 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             xdifference = np.array(x_grid-element_xcoord[itx])
 
             # logical indexes of valid x coordinates
-            lix_valid = (xdifference >= (-pitch/2)) & (xdifference <= (pitch/2))
+            lix_valid = (xdifference > (-pitch/2)) & (xdifference <= (pitch/2))
             n_valid = np.sum(lix_valid)
+#            plt.plot(xdifference)
+#            plt.show()
+#            print('itx:', itx)
+#            print('lix_valid: ', lix_valid)
+            
 
             # ix_valid = list(np.nonzero(lix_valid))
 
@@ -130,12 +143,14 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
             # calculate total delays [s]
             delays = init_delay + (tx_distance + rx_distance)/c
+            
 
             # calculate sample number to be used in reconstruction
             samples = delays*fs + 1
+            
 
-            out_of_range = (0 > samples) | (samples > n_samples)
-            samples[out_of_range] = 0 # tutaj przemyslec
+            out_of_range = (0 > samples) | (samples > n_samples-1)
+            samples[out_of_range] = n_samples # tutaj przemyslec
 
             # calculate rf samples (interpolated) and apodization weights
             rf_raw_line = rf[:, irx, itx]
@@ -143,10 +158,17 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             floor_samples = np.floor(samples).astype(int)
 
             # temp = rf_raw_line[floor_samples]*(1 - (samples % 1)) + rf_raw_line[ceil_samples]*(samples % 1)
-
+            # temp2 = np.count_nonzero(np.isnan(temp))
+            # print(temp2)
+            
+            temp = rf_raw_line[floor_samples]*(1 - (samples % 1))\
+                    + rf_raw_line[ceil_samples]*(samples % 1)
+#            print('temp.shape', temp.shape)
+#            print('rf_rx.shape', rf_rx[:, lix_valid, irx].shape)
             rf_rx[:, lix_valid, irx] = rf_raw_line[floor_samples]*(1 - (samples % 1))\
                                        + rf_raw_line[ceil_samples]*(samples % 1)
-
+#            print(rf_rx[:, lix_valid, irx] )
+            
             weight_rx[:, lix_valid, irx] = tx_apodization * rx_apodization
 
             # modulate if iq signal is used (to trzeba sprawdzic, bo pisane 'na rybke')
@@ -166,7 +188,8 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
     # calculate final rf image
     rf_image = np.sum(rf_tx, axis=2)#/np.sum(weight_tx, axis=2)
-
+    # temp2 = np.count_nonzero(np.isnan(rf_image))
+    # print(temp2)
     return rf_image
 
 
@@ -210,7 +233,7 @@ def load_simulated_data(file, verbose=1):
     rf = matlab_data.get('rfLin')
 
     if verbose:
-        print('imput data keys: ', matlab_data.keys())
+        print('input data keys: ', matlab_data.keys())
         print(' ')
         print(' ')
         print('speed of sound: ', c)
@@ -307,12 +330,12 @@ file = '/media/linuser/data01/praca/us4us/' \
 
 # load data
 [rf, c, fs, fc, pitch,
- tx_focus, tx_angle, tx_aperture,
- n_elements, pulse_periods] = load_simulated_data(file, 0)
+tx_focus, tx_angle, tx_aperture,
+n_elements, pulse_periods] = load_simulated_data(file, 0)
 
 # define grid for reconstruction (imaged area)
 x_grid = np.linspace(-20*1e-3, 20*1e-3, 192)
-z_grid = np.linspace(1*1e-3, 60*1e-3, 256)
+z_grid = np.linspace(28*1e-3, 32*1e-3, 32)
 
 
 # reconstruct data
@@ -324,6 +347,7 @@ rf_image = reconstruct_rf_img(rf, x_grid, z_grid,
 
 # print(rf_image)
 bmode = amp2db(calculate_envelope(rf_image))
+fig = plt.figure()
 plt.imshow(bmode, cmap='gray')
 plt.colorbar()
 plt.show()
