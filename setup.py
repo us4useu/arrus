@@ -14,6 +14,11 @@ setuptools.setup(
     url="https://github.com/us4us/arius-sdk",
     packages=setuptools.find_packages(),
     classifiers=[
+        "Development Status :: 1 - Planning",
+
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Embedded Systems",
