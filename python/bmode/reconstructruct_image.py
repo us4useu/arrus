@@ -26,7 +26,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
                                    sta (synthetic transmit aperture)
                                    pwi (plane wave imaging)
     :param tx_focus: transmit focus [m]
-    :param tx_angle: transmit angle [?] TODO: uzupelnic
+    :param tx_angle: transmit angle [radians]
     :return: rf beamformed image
 
     """
@@ -103,9 +103,26 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
 
         elif tx_mode == 'pwi':
-            pass
-            # TODO: pwi - dopisac
-            # TODO: pwi - przetestowac
+            lix_valid = np.ones((x_size), dtype=bool)
+
+            if tx_angle[itx] >= 0:
+                first_element = 0
+            else:
+                first_element = n_channels-1
+
+
+            tx_distance = \
+                (x_grid - element_xcoord[first_element]) * np.sin(tx_angle[itx])\
+                + z_grid * np.cos(tx_angle[itx])
+
+            r1 = (x_grid - element_xcoord[0]) * np.cos(tx_angle[itx])\
+                 - z_grid * np.sin(tx_angle[itx])
+
+            r2 = (x_grid - element_xcoord[-1]) * np.cos(tx_angle[itx])\
+                 - z_grid * np.sin(tx_angle[itx])
+
+            tx_apodization = (r1 >= 0) & (r2 <= 0)
+
         else:
             print('unknown reconstruction mode!')
 
@@ -131,7 +148,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             
 
             out_of_range = (0 > samples) | (samples > n_samples-1)
-            samples[out_of_range] = n_samples # tutaj przemyslec
+            samples[out_of_range] = n_samples
 
             # calculate rf samples (interpolated) and apodization weights
             rf_raw_line = rf[:, irx, itx]
@@ -178,8 +195,8 @@ def load_simulated_data(file, verbose=1):
     :return:
     """
 
-
     matlab_data = sio.loadmat(file)
+
     c = matlab_data.get('sos')
     c = np.float(c)
 
@@ -191,9 +208,8 @@ def load_simulated_data(file, verbose=1):
 
     n_elements = matlab_data.get('nElem')
     n_elements = np.int(n_elements)
+    
 
-    tx_aperture = matlab_data.get('txAp')
-    tx_aperture = np.int(tx_aperture)
 
     pulse_periods = matlab_data.get('nPer')
     pulse_periods = np.int(pulse_periods)
@@ -201,13 +217,32 @@ def load_simulated_data(file, verbose=1):
     pitch = matlab_data.get('pitch')
     pitch = np.float(pitch)
 
-    tx_focus = matlab_data.get('txFoc')
-    tx_focus = np.float(tx_focus)
-
     tx_angle = matlab_data.get('txAng')
-    tx_angle = np.int(tx_angle)
+    tx_angle = np.radians(tx_angle)
+    tx_angle = tx_angle.T
+    # tx_angle = np.int(tx_angle)
 
-    rf = matlab_data.get('rfLin')
+    if 'txAp' in matlab_data:
+        tx_aperture = matlab_data.get('txAp')
+        tx_aperture = np.int(tx_aperture)
+    else:
+        tx_aperture = n_elements
+
+    if 'txFoc' in matlab_data:
+        tx_focus = matlab_data.get('txFoc')
+        tx_focus = np.float(tx_focus)
+    else:
+        tx_focus = np.inf
+
+
+    if 'rfLin' in matlab_data:
+        rf = matlab_data.get('rfLin')
+        
+    if 'rfPwi' in matlab_data:
+        rf = matlab_data.get('rfPwi')
+
+    if 'rfSta' in matlab_data:
+        rf = matlab_data.get('rfSta')
 
     if verbose:
         print('input data keys: ', matlab_data.keys())
@@ -304,9 +339,15 @@ def make_bmode_image(rf_image, x_grid, y_grid):
 # ippt
 # file = '/home/linuser/us4us/usgData/rfLin_field.mat'
 
-# hm
+# # hm
+# file = '/media/linuser/data01/praca/us4us/' \
+#        'us4us_testData/dataSets02/rfLin_field.mat'
+       
 file = '/media/linuser/data01/praca/us4us/' \
-       'us4us_testData/dataSets02/rfLin_field.mat'
+       'us4us_testData/dataSets02/rfPwi_field.mat'
+       
+       
+       
 
 # load data
 [rf, c, fs, fc, pitch,
@@ -315,13 +356,13 @@ n_elements, pulse_periods] = load_simulated_data(file, 0)
 
 # define grid for reconstruction (imaged area)
 x_grid = np.linspace(-20*1e-3, 20*1e-3, 192)
-z_grid = np.linspace(25*1e-3, 35*1e-3, 64)
+z_grid = np.linspace(29*1e-3, 31*1e-3, 96)
 
 # reconstruct data
 rf_image = reconstruct_rf_img(rf, x_grid, z_grid,
                            pitch, fs, fc, c,
                            tx_aperture, tx_focus, tx_angle,
-                           pulse_periods
+                           pulse_periods, tx_mode='pwi'
                            )
 
 # show image
