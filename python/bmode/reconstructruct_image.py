@@ -92,14 +92,16 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
         # synthetic transmit aperture method
         elif tx_mode == 'sta':
             # TODO: przetestowac
-            lix_valid = np.ones((1, x_size), dtype=bool)
+            lix_valid = np.ones((x_size), dtype=bool)
             tx_distance = np.sqrt((z_grid - tx_focus)**2
                                 + (x_grid - element_xcoord[itx])**2
                           )
+
             # WARNING: sign()=0=>invalid txDist value (warning from matlab file)
             tx_distance = tx_distance*np.sign(z_grid - tx_focus) + tx_focus
             f_number = abs(x_grid - element_xcoord[itx])\
-                       /max(abs(z_grid - tx_focus), 1e-12)
+                       /max(np.append(abs(z_grid - tx_focus), 1e-12))
+            tx_apodization = f_number < 0.5
 
 
         elif tx_mode == 'pwi':
@@ -124,9 +126,9 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             tx_apodization = (r1 >= 0) & (r2 <= 0)
 
         else:
-            print('unknown reconstruction mode!')
+            raise ValueError('unknown reconstruction mode!')
 
-        # buffers allocation
+            # buffers allocation
         rf_rx = np.zeros((z_size, x_size, n_channels))
         weight_rx = np.zeros((z_size, x_size, n_channels))
 
@@ -217,22 +219,28 @@ def load_simulated_data(file, verbose=1):
     pitch = matlab_data.get('pitch')
     pitch = np.float(pitch)
 
-    tx_angle = matlab_data.get('txAng')
-    tx_angle = np.radians(tx_angle)
-    tx_angle = tx_angle.T
-    # tx_angle = np.int(tx_angle)
+
+    if 'txAng' in matlab_data:
+        tx_angle = matlab_data.get('txAng')
+        tx_angle = np.radians(tx_angle)
+        tx_angle = tx_angle.T
+        # tx_angle = np.int(tx_angle)
+    else:
+        tx_angle = 0
+
+
 
     if 'txAp' in matlab_data:
         tx_aperture = matlab_data.get('txAp')
         tx_aperture = np.int(tx_aperture)
     else:
-        tx_aperture = n_elements
+        tx_aperture = 1
 
     if 'txFoc' in matlab_data:
         tx_focus = matlab_data.get('txFoc')
         tx_focus = np.float(tx_focus)
     else:
-        tx_focus = np.inf
+        tx_focus = 0
 
 
     if 'rfLin' in matlab_data:
@@ -344,7 +352,7 @@ def make_bmode_image(rf_image, x_grid, y_grid):
 #        'us4us_testData/dataSets02/rfLin_field.mat'
        
 file = '/media/linuser/data01/praca/us4us/' \
-       'us4us_testData/dataSets02/rfPwi_field.mat'
+       'us4us_testData/dataSets02/rfSta_field.mat'
        
        
        
@@ -352,18 +360,19 @@ file = '/media/linuser/data01/praca/us4us/' \
 # load data
 [rf, c, fs, fc, pitch,
 tx_focus, tx_angle, tx_aperture,
-n_elements, pulse_periods] = load_simulated_data(file, 0)
+n_elements, pulse_periods] = load_simulated_data(file, 1)
 
 # define grid for reconstruction (imaged area)
 x_grid = np.linspace(-20*1e-3, 20*1e-3, 192)
-z_grid = np.linspace(29*1e-3, 31*1e-3, 96)
+z_grid = np.linspace(29*1e-3, 31*1e-3, 32)
 
 # reconstruct data
 rf_image = reconstruct_rf_img(rf, x_grid, z_grid,
                            pitch, fs, fc, c,
                            tx_aperture, tx_focus, tx_angle,
-                           pulse_periods, tx_mode='pwi'
+                           pulse_periods, tx_mode='sta'
                            )
 
 # show image
+# print(rf_image)
 make_bmode_image(rf_image, x_grid, z_grid)
