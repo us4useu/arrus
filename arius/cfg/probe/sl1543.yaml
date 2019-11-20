@@ -1,0 +1,10 @@
+mapping: esaote
+aperture:
+    - card: 0
+      origin: 0
+      size: 128
+    - card: 1
+      origin: 0
+      size: 64
+
+
