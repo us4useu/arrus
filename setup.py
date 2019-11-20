@@ -25,5 +25,8 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "Topic :: Scientific/Engineering :: Medical Science Apps."
     ],
+    install_requires=[
+        "PyYAML==5.1.2"
+    ],
     python_requires='>=3.7',
 )

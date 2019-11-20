@@ -59,7 +59,8 @@ class EsaoteInterface(UltrasoundInterface):
             card1_mapping
         ]
 
-    def _get_esaote_block_mapping(self, origin, block_size):
+    @staticmethod
+    def _get_esaote_block_mapping(origin, block_size):
         block = list(reversed(range(origin, origin+block_size)))
         block[block_size//2-1] = origin+block_size//2-1
         block[block_size//2] = origin+block_size//2

@@ -1,30 +1,51 @@
 """ ARIUS Devices. """
+import numpy as np
 
 class Device:
     def __init__(self, name: str, index: int):
         self.name = name
         self.index = index
 
+    @staticmethod
+    def get_device_id(name, index):
+        return "%s:%d" % (name, index)
+
     def get_id(self):
-        return "%s:%d" % (self.name, self.index)
+        return Device.get_device_id(self.name, self.index)
+
 
 
 class Probe(Device):
     _DEVICE_NAME = "Probe"
 
-    def __init__(self, index: int, host_cards: list):
-        super().__init__("Probe", index)
-        self.host_cards = host_cards
+    @staticmethod
+    def get_probe_id(index):
+        return Device.get_device_id(Probe._DEVICE_NAME, index)
 
-    def transmit_and_record(self, tx_aperture, tx_delay, tx_frequency, rx_time, pga_gain):
-        pass
+    def __init__(self, index: int, model_name: str, dependencies: list):
+        super().__init__(Probe._DEVICE_NAME, index)
+        self.model_name = model_name
+        self.dependencies = dependencies
+
+    def transmit_and_record(self):
+        output = np.zeros(n_channels, n_samples)
+        for i in transmits:
+            for card in cards:
+                output = card.transmit_and_record()
+                output[i:(i+32), :] = output
+        return output
+
 
 
 class AriusCard(Device):
     _DEVICE_NAME = "Arius"
 
+    @staticmethod
+    def get_card_id(index):
+        return Device.get_device_id(AriusCard._DEVICE_NAME, index)
+
     def __init__(self, index: int, device_handle):
-        super().__init__("Arius", index)
+        super().__init__(AriusCard._DEVICE_NAME, index)
         self.device_handle = device_handle
 
     def set_pga_gain(self, gain):
