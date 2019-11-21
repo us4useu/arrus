@@ -88,21 +88,22 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             # ix_valid = list(np.nonzero(lix_valid))
             tx_distance = npml.repmat(z_grid, 1, n_valid)
             tx_apodization = np.ones((z_size, n_valid))
+            # TODO: Should be better image close to the transducer (apodization)
 
         # synthetic transmit aperture method
         elif tx_mode == 'sta':
-            # TODO: przetestowac
             lix_valid = np.ones((x_size), dtype=bool)
             tx_distance = np.sqrt((z_grid - tx_focus)**2
                                 + (x_grid - element_xcoord[itx])**2
                           )
 
-            # WARNING: sign()=0=>invalid txDist value (warning from matlab file)
             tx_distance = tx_distance*np.sign(z_grid - tx_focus) + tx_focus
-            f_number = abs(x_grid - element_xcoord[itx])\
-                       /max(np.append(abs(z_grid - tx_focus), 1e-12))
-            tx_apodization = f_number < 0.5
 
+            f_number = max(np.append(abs(z_grid - tx_focus), 1e-12))\
+                        /abs(x_grid - element_xcoord[itx])*0.5
+
+            tx_apodization = f_number > 2
+            
 
         elif tx_mode == 'pwi':
             lix_valid = np.ones((x_size), dtype=bool)
@@ -138,8 +139,8 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             # calculate rx delays and apodization
             rx_distance = np.sqrt((x_grid[lix_valid] - element_xcoord[irx])**2
                                   + z_grid**2)
-            f_number = abs(x_grid[lix_valid] - element_xcoord[irx]/z_grid)
-            rx_apodization = f_number < 0.5
+            f_number = abs(z_grid/(x_grid[lix_valid] - element_xcoord[irx])*0.5)
+            rx_apodization = f_number > 2
 
             # calculate total delays [s]
             delays = init_delay + (tx_distance + rx_distance)/c
@@ -311,7 +312,7 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     n_yticks = round(n_xticks * image_proportion)
 
     xticks = np.linspace(0, n_lines-1, n_xticks)
-    xtickslabels = np.linspace(-image_width/2, image_width/2, n_xticks)*1e3
+    xtickslabels = np.linspace(x_grid[0], x_grid[-1], n_xticks)*1e3
     xtickslabels = np.round(xtickslabels, 1)
 
     yticks = np.linspace(0, n_samples-1, n_yticks)
@@ -341,20 +342,33 @@ def make_bmode_image(rf_image, x_grid, y_grid):
 
 ################################################################################
 
+# choosing the mode and path to data file
+
+# mode = 'sta'
+mode = 'pwi'
+# mode = 'lin'
+
+if mode == 'sta':
+    file = '/media/linuser/data01/praca/us4us/' \
+         'us4us_testData/dataSets02/rfSta_field.mat'
+    print('STA mode')
+elif mode == 'pwi':
+    file = '/media/linuser/data01/praca/us4us/' \
+           'us4us_testData/dataSets02/rfPwi_field.mat'
+    print('PWI mode')
+elif mode == 'lin':
+    file = '/media/linuser/data01/praca/us4us/' \
+           'us4us_testData/dataSets02/rfLin_field.mat'
+    print('classic mode')
+else:
+    raise ValueError('unknown reconstruction mode!')
 
 
 
 # ippt
 # file = '/home/linuser/us4us/usgData/rfLin_field.mat'
 
-# # hm
-# file = '/media/linuser/data01/praca/us4us/' \
-#        'us4us_testData/dataSets02/rfLin_field.mat'
-       
-file = '/media/linuser/data01/praca/us4us/' \
-       'us4us_testData/dataSets02/rfSta_field.mat'
-       
-       
+
        
 
 # load data
@@ -363,14 +377,14 @@ tx_focus, tx_angle, tx_aperture,
 n_elements, pulse_periods] = load_simulated_data(file, 1)
 
 # define grid for reconstruction (imaged area)
-x_grid = np.linspace(-20*1e-3, 20*1e-3, 192)
-z_grid = np.linspace(29*1e-3, 31*1e-3, 32)
+x_grid = np.linspace(-3*1e-3, 3*1e-3, 32)
+z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 64)
 
 # reconstruct data
 rf_image = reconstruct_rf_img(rf, x_grid, z_grid,
                            pitch, fs, fc, c,
                            tx_aperture, tx_focus, tx_angle,
-                           pulse_periods, tx_mode='sta'
+                           pulse_periods, tx_mode=mode
                            )
 
 # show image
