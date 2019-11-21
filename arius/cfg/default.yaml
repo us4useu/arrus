@@ -1,10 +1,17 @@
+# How many cards are available in the system.
+nAriusCards: 2
+probes:
 - sl1543:
-    interface: esaote # Name of the adapter interface used in the given device.
+    # Name of the interface adapter used in the system.
+    interface: esaote
+    # Arius Card apertures used by given probe.
     aperture:
+        # SL1543's aperture: 0:127
         - card: 0
           master: True
           origin: 0
           size: 128
+        # SL1543's aperture: 128:191
         - card: 1
           origin: 0
           size: 64
