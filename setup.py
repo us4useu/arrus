@@ -26,7 +26,8 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Medical Science Apps."
     ],
     install_requires=[
-        "PyYAML==5.1.2"
+        "numpy>=1.17.4"
+        "PyYAML==5.1.2",
     ],
     python_requires='>=3.7',
 )
