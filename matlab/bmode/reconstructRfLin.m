@@ -24,6 +24,7 @@ function[rfLin] = reconstructRfLin(rfRaw,sys,            txDelCent,txAng,rxApert
 
 [nSamp,nRx,nTx]	= size(rfRaw);
 
+isIq	= any(~isreal(rfRaw));
 
 %% Convert input rf data to a format of scanning rx aperture
 if nargin==5 && ~isempty(rxApert)
@@ -76,6 +77,12 @@ for iRx=1:nRx
 	rfLin(:,:,iRx)	= squeeze(rfRaw(splPrev(:,iRx),iRx,:)).*(1-mod(spl(:,iRx),1)) + ...
                       squeeze(rfRaw(splNext(:,iRx),iRx,:)).*(  mod(spl(:,iRx),1));
 end
+
+% modulate if iq signal is used
+if isIq
+    rfLin	= rfLin.*exp(1i*2*pi*sys.fn*permute(t,[1 3 2]));
+end
+
 rfLin = sum(rfLin.*rxApod,3);
 
 % Optimization:

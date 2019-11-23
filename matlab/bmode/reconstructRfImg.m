@@ -28,6 +28,8 @@ xSize	= length(xGrid);
 
 xElem	= (-(nRx-1)/2:(nRx-1)/2)*sys.pitch;                                 % [m] x-coordinates of transducer elements
 
+isIq	= any(~isreal(rfRaw));
+
 %% initial delays
 fstSampDel	= fstSampShift/sys.fs;                                       % [s] rx delay with respect to start of tx
 burstFactor	= sys.nPer/(2*sys.fn);                                           % [s] burst factor
@@ -112,7 +114,7 @@ for iTx=1:nTx
         wghRx(:,xValid,iRx)	= txApod.*rxApod;
         
         % modulate if iq signal is used
-        if ~isreal(rfRaw)
+        if isIq
             rfRx(:,xValid,iRx)	= rfRx(:,xValid,iRx).*exp(1i*2*pi*sys.fn*delTot);
         end
     end
