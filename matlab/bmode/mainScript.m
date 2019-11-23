@@ -59,8 +59,8 @@ fLo = 0.5*sys.fn;
 fHi = 1.5*sys.fn;
 
 [filtB,filtA] = butter(filtOrd,[fLo fHi]/(sys.fs/2),'bandpass');
-filtDel = phasedelay(filtB,filtA,[0 (fLo+fHi)/2],sys.fs)/2/pi;
-filtDel = filtDel(2); % [s] filtration time delay for frequency = (fLo+fHi)/2
+filtDel = phasez(filtB,filtA,[0 (fLo+fHi)/2],sys.fs)/(2*pi)/sys.fn*sys.fs;
+filtDel = -filtDel(2); % [s] filtration time delay for frequency = (fLo+fHi)/2
 
 rfSta = filter(filtB,filtA,rfSta);
 rfPwi = filter(filtB,filtA,rfPwi);
@@ -98,7 +98,20 @@ imgRfSta = reconstructRfImg(rfSta,sys,xGrid,zGrid,0,'sta',1,0,0);
 imgRfPwi = reconstructRfImg(rfPwi,sys,xGrid,zGrid,0,'pwi',[],[],txAngle);
 imgRfLin = reconstructRfImg(rfLin,sys,xGrid,zGrid,0,'lin',txApert,txFocus,0);
 
+rxApert	= 32;
+% tx delay of aperture center - far from ideal (does not account for txAngle and tx aperture clipping)
+txCentDel= (sqrt(txFocus^2 + (txApert/2*sys.pitch).^2) - txFocus)/sys.sos;
+imgRfLin2= reconstructRfLin(rfLin,sys,txCentDel,0,rxApert);
+
 %% Envelope detection
+nanMaskSta = isnan(imgRfSta);
+nanMaskPwi = isnan(imgRfPwi);
+nanMaskLin = isnan(imgRfLin);
+
+imgRfSta(nanMaskSta) = 0;
+imgRfPwi(nanMaskPwi) = 0;
+imgRfLin(nanMaskLin) = 0;
+
 if isreal(imgRfSta)
     imgRfSta = hilbert(imgRfSta);
 end
@@ -109,9 +122,18 @@ if isreal(imgRfLin)
     imgRfLin = hilbert(imgRfLin);
 end
 
-imgSta = abs(imgRfSta);
-imgPwi = abs(imgRfPwi);
-imgLin = abs(imgRfLin);
+imgRfSta(nanMaskSta) = nan;
+imgRfPwi(nanMaskPwi) = nan;
+imgRfLin(nanMaskLin) = nan;
+
+imgEnvSta = abs(imgRfSta);
+imgEnvPwi = abs(imgRfPwi);
+imgEnvLin = abs(imgRfLin);
+
+%% Compression
+imgSta = 20*log10(imgEnvSta);
+imgPwi = 20*log10(imgEnvPwi);
+imgLin = 20*log10(imgEnvLin);
 
 %% Display
 dynRng	= 40;
@@ -122,6 +144,7 @@ cLimLin = max(max(imgLin(round(zSize*0.25):round(zSize*0.75),round(xSize*0.25):r
 
 figure;
 for n=1:3
+    subplot(1,3,n);
     switch n
         case 1
             imagesc(xGrid*1e3,zGrid*1e3,imgSta);
@@ -134,6 +157,7 @@ for n=1:3
             set(gca,'CLim',cLimLin + [-dynRng 0]);
     end
     
+    daspect([1 1 1]);
     colormap(gray);
     colorbar;
     xlabel('x [mm]');
