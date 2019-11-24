@@ -85,9 +85,10 @@ class AriusCard(Device):
                 "Was powered down, initializing it and powering up...")
             self.card_handle.Powerup()
             self.card_handle.InitializeClocks()
+            self.card_handle.InitializeDDR4()
             self.card_handle.InitializeRX()
             self.card_handle.InitializeTX()
-            self.log("... successfully powered up.")
+            self.log(INFO, "... successfully powered up.")
 
     def get_n_rx_channels(self):
         return self.card_handle.GetNRxChannels()
