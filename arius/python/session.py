@@ -86,6 +86,7 @@ class InteractiveSession:
                 arius_card = arius_cards[card_nr]
                 aperture_origin = aperture["origin"]
                 aperture_size = aperture["size"]
+                arius_card.start()
                 arius_card.set_tx_channel_mapping(tx_m)
                 arius_card.set_rx_channel_mapping(rx_m)
                 # TODO(pjarosik) enable wider range of apertures
