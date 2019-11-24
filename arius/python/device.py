@@ -187,7 +187,7 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def set_pga_gain(self, gain):
-        pass
+        raise NotImplementedError()
 
     def set_rx_time(self, time: float):
         self.card_handle.SetRxTime(time)
@@ -253,7 +253,8 @@ class Probe(Device):
             tx_delays,
             carrier_frequency: float,
             n_tx_periods: int = 1,
-            n_samples: int=4096
+            n_samples: int=4096,
+            rx_time: float=80e-6
     ):
         # Validate input.
         _utils._assert_equal(
@@ -285,8 +286,6 @@ class Probe(Device):
         )
         for s in self.hw_subapertures:
             # Set all TX parameters here (if necessary).
-            # tx_frequency
-            # tx delay
             card, origin, size = s.card, s.origin, s.size
 
             current_start = current_origin
@@ -302,6 +301,8 @@ class Probe(Device):
                     aperture_end-aperture_start,
                     delays=tx_delays[delays_origin:(delays_origin+delays_subarray_size)])
                 delays_origin += delays_subarray_size
+                # TODO(pjarosik) update TX/RX parameters only when it is necessary.
+                # Other TX parameters.
                 card.set_tx_frequency(carrier_frequency)
                 card.set_tx_periods(n_tx_periods)
             current_origin += size
@@ -319,6 +320,9 @@ class Probe(Device):
                 dtype=self.dtype,
                 alignment=4096
             )
+            # Other RX parameters.
+            rx_card.set_rx_time(rx_time)
+
         subapertures_to_process = [
             (s.card, Subaperture(s.origin, s.size))
             for s in self.hw_subapertures
