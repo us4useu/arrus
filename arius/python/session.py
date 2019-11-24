@@ -31,6 +31,9 @@ class InteractiveSession:
         dev_id = dev_path[0]
         return self._devices[dev_id]
 
+    def get_devices(self):
+        return self._devices
+
     @staticmethod
     def _load_devices(cfg_file: str):
         """
@@ -50,7 +53,7 @@ class InteractiveSession:
 
         n_arius_cards = cfg["nAriusCards"]
         arius_handles = (_iarius.Arius(i) for i in range(n_arius_cards))
-        arius_handles = sorted(arius_handles, key=lambda a: a.GetId())
+        arius_handles = sorted(arius_handles, key=lambda a: a.GetID())
         arius_cards = [_device.AriusCard(i, h) for i, h in enumerate(arius_handles)]
         for card in arius_cards:
             result[card.get_id()] = card
@@ -62,29 +65,53 @@ class InteractiveSession:
             apertures = definition['aperture']
             interface = _interface.get_interface(interface_name)
             order = interface.get_card_order()
-            tx_mappings = interface.get_tx_channel_mapping()
-            rx_mappings = interface.get_rx_channel_mapping()
+            tx_mappings = interface.get_tx_channel_mappings()
+            rx_mappings = interface.get_rx_channel_mappings()
 
             hw_subapertures = []
+            master_card = None
             for card_nr, aperture, tx_m, rx_m in zip(order, apertures,
                                                      tx_mappings, rx_mappings):
                 _utils.assert_true(
                     card_nr == aperture["card"],
                     "Card mapping order corresponds to the order defined in cfg."
                 )
+
                 arius_card = arius_cards[card_nr]
+                aperture_origin = aperture["origin"]
+                aperture_size = aperture["size"]
                 arius_card.set_tx_channel_mapping(tx_m)
                 arius_card.set_rx_channel_mapping(rx_m)
+                # TODO(pjarosik) enable wider range of apertures
+                # for example, when subaperture size is smaller
+                # than number of card rx channels.
+                print(aperture_size)
+                _utils.assert_true(
+                    (aperture_size % arius_card.get_n_rx_channels()) == 0,
+                    "Subaperture length should be divisible by %d"
+                    " (number of rx channels of device %s)" % (
+                        arius_card.get_n_rx_channels(),
+                        arius_card.get_id()
+                    )
+                )
                 hw_subapertures.append(
                     _device.ProbeHardwareSubaperture(
                         arius_card,
-                        aperture["origin"],
-                        aperture["size"]
+                        aperture_origin,
+                        aperture_size
                 ))
+                if aperture.get('master', None):
+                    _utils.assert_true(
+                        master_card is None,
+                        "There should be exactly one master card"
+                    )
+                    master_card = arius_card
+                # TODO(pjarosik) zweryfikuj, czy rozmiar subapertury jest podzielny przez rx channels
             probe = _device.Probe(
                 index=i,
                 model_name=model_name,
-                hw_subapertures=hw_subapertures
+                hw_subapertures=hw_subapertures,
+                master_card=master_card
             )
             result[probe.get_id()] = probe
         return result

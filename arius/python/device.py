@@ -1,7 +1,28 @@
 """ ARIUS Devices. """
 import numpy as np
-import arius.python.iarius as _iarius
 from typing import List
+
+
+import arius.python.iarius as _iarius
+import arius.python.utils  as _utils
+
+
+class Subaperture:
+    def __init__(self, origin: int, size: int):
+        self.origin = origin
+        self.size = size
+
+    def __eq__(self, other):
+        if not isinstance(other, Subaperture):
+            return NotImplementedError
+
+        return self.origin == other.origin and self.size == other.size
+
+    def __str__(self):
+        return "Subaperture(origin=%d, size=%d)" % (self.origin, self.size)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Device:
@@ -17,59 +38,7 @@ class Device:
         return Device.get_device_id(self.name, self.index)
 
 
-class Probe(Device):
-    _DEVICE_NAME = "Probe"
-
-    @staticmethod
-    def get_probe_id(index):
-        return Device.get_device_id(Probe._DEVICE_NAME, index)
-
-    def __init__(self,
-                 index: int,
-                 model_name: str,
-                 hw_subapertures: List[ProbeHardwareSubaperture]):
-
-        super().__init__(Probe._DEVICE_NAME, index)
-        self.model_name = model_name
-        self.hw_subapertures = hw_subapertures
-        self.n_channels = sum(s.size for s in self.hw_subapertures)
-        for subaperture in self.hw_subapertures:
-            subaperture.card.start()
-
-    def get_tx_n_channels(self):
-        return self.n_channels
-
-    def get_rx_n_channels(self):
-        return self.n_channels
-
-    def transmit_and_record(self, tx_aperture, n_samples):
-        # tx_delay
-        # tx_frequency
-        # tx_aperture: origin, size
-
-        output = np.zeros(self.n_channels, n_samples)
-
-
-
-        for i in transmits:
-            for card in cards:
-                output = card.transmit_and_record()
-                output[i:(i+32), :] = output
-        return output
-
-
-class Subaperture:
-    def __init__(self, origin: int, size: int):
-        self.origin = origin
-        self.size = size
-
-
-class ProbeHardwareSubaperture(Subaperture):
-    def __init__(self, card: AriusCard, origin: int, size: int):
-        super().__init__(origin, size)
-        self.card = card
-
-def assert_card_is_poweredup(f):
+def assert_card_is_powered_up(f):
     def wrapper(*args):
         arius_card = args[0]
         if arius_card.is_powered_down():
@@ -103,7 +72,13 @@ class AriusCard(Device):
             self.card_handle.InitializeRX()
             self.card_handle.InitializeTX()
 
-    @assert_card_is_poweredup
+    def get_n_rx_channels(self):
+        return self.card_handle.GetNRxChannels()
+
+    def get_n_tx_channels(self):
+        return self.card_handle.GetNTxChannels()
+
+    @assert_card_is_powered_up
     def set_tx_channel_mapping(self, tx_channel_mapping: List[int]):
         """
         Sets card's TX channel mapping.
@@ -117,7 +92,7 @@ class AriusCard(Device):
                 dstChannel=dst
             )
 
-    @assert_card_is_poweredup
+    @assert_card_is_powered_up
     def set_rx_channel_mapping(self, rx_channel_mapping: List[int]):
         """
         Sets card's RX channel mapping.
@@ -131,17 +106,37 @@ class AriusCard(Device):
                 dstChannel=dst
             )
 
-    @assert_card_is_poweredup
-    def set_tx_aperture(self, origin: int, size: int):
+    @assert_card_is_powered_up
+    def set_tx_aperture(self, origin: int, size: int, delays):
         """
         Sets TX aperture.
 
         :param origin: an origin channel of the aperture
         :param size: a length of the aperture
         """
+        _utils._assert_equal(
+            len(delays), size,
+            desc="Array of TX delays should contain %d numbers (card aperture size)" % size
+        )
         self.card_handle.SetTxAperture(origin=origin, size=size)
+        i = origin
+        for delay in delays:
+            self.card_handle.SetTxDelay(i, delay)
+            i += 1
 
-    @assert_card_is_poweredup
+    @assert_card_is_powered_up
+    def set_tx_frequency(self, frequency: float):
+        self.card_handle.SetTxFreqency(frequency)
+
+    @assert_card_is_powered_up
+    def set_tx_periods(self, n_periods: int):
+        self.card_handle.SetTxPeriods(n_periods)
+
+    @assert_card_is_powered_up
+    def sw_trigger(self):
+        self.card_handle.SWTrigger()
+
+    @assert_card_is_powered_up
     def set_rx_aperture(self, origin: int, size: int):
         """
         Sets TX aperture.
@@ -151,34 +146,174 @@ class AriusCard(Device):
         """
         self.card_handle.SetRxAperture(origin=origin, size=size)
 
-    @assert_card_is_poweredup
-    def set_tx_delay(self, channel: int, delay: float):
-        pass
+    @assert_card_is_powered_up
+    def schedule_receive(self, address, length):
+        self.card_handle.ScheduleReceive(address, length)
 
-    @assert_card_is_poweredup
+    @assert_card_is_powered_up
     def set_pga_gain(self, gain):
         pass
 
     def set_rx_time(self, time: float):
         pass
 
-    def schedule_receive(self):
-        pass
-
-    def sw_trigger(self):
-        pass
-
-    def transfer_rx_buffer_to_host(self):
-        pass
-
-    @assert_card_is_poweredup
-    def set_tx_frequency(self, frequency: float):
-        pass
-
-    @assert_card_is_poweredup
-    def set_tx_periods(self, n_periods: int):
-        pass
+    @assert_card_is_powered_up
+    def transfer_rx_buffer_to_host(self, dst_array, src_addr):
+        # TODO(pjarosik) make this method return dst_array
+        # instead of passing the result buffer as a method parameter
+        dst_addr=dst_array.ctypes.data,
+        length=dst_array.nbytes,
+        self.card_handle.TransferRXBufferToHost(
+            dstAddress=dst_addr,
+            length=length,
+            srcAddress=src_addr
+        )
 
     def is_powered_down(self):
         return self.card_handle.IsPowereddown()
+
+
+class ProbeHardwareSubaperture(Subaperture):
+    def __init__(self, card: AriusCard, origin: int, size: int):
+        super().__init__(origin, size)
+        self.card = card
+
+
+class Probe(Device):
+    _DEVICE_NAME = "Probe"
+
+    @staticmethod
+    def get_probe_id(index):
+        return Device.get_device_id(Probe._DEVICE_NAME, index)
+
+    def __init__(self,
+                 index: int,
+                 model_name: str,
+                 hw_subapertures,
+                 master_card: AriusCard
+    ):
+
+        super().__init__(Probe._DEVICE_NAME, index)
+        self.model_name = model_name
+        self.hw_subapertures = hw_subapertures
+        self.master_card = master_card
+        self.n_channels = sum(s.size for s in self.hw_subapertures)
+        self.dtype = np.dtype(np.int16)
+        for subaperture in self.hw_subapertures:
+            subaperture.card.start()
+
+    def get_tx_n_channels(self):
+        return self.n_channels
+
+    def get_rx_n_channels(self):
+        return self.n_channels
+
+    def transmit_and_record(
+            self,
+            tx_aperture: Subaperture,
+            tx_delays,
+            carrier_frequency: float,
+            n_tx_periods: int = 1,
+            n_samples: int=4096
+    ):
+        # Validate input.
+        _utils._assert_equal(
+            len(tx_delays), tx_aperture.size,
+            desc="Array of TX delays should contain %d numbers (probe aperture size)" % tx_aperture.size
+        )
+        _utils.assert_true(
+            carrier_frequency > 0,
+            desc="Carrier frequency should be greater than zero."
+        )
+        _utils.assert_true(
+            n_samples > 0,
+            desc="Number of samples should be greater than zero."
+        )
+        _utils.assert_true(
+            n_samples % 4096 == 0,
+            desc="Number of samples should be a multiple of 4096."
+        )
+        # Probe's Tx aperture settings.
+        tx_start = tx_aperture.origin
+        tx_end = tx_aperture.origin + tx_aperture.size
+        # We set aperture [tx_start, tx_end)
+
+        current_origin = 0
+        delays_origin = 0
+        for s in self.hw_subapertures:
+            # Set all TX parameters here (if necessary).
+            # tx_frequency
+            # tx delay
+            card, origin, size = s.card, s.origin, s.size
+
+            current_start = current_origin
+            current_end = current_origin+size
+            if tx_start < current_end and tx_end > current_start:
+                # Current boundaries of the PROBE subaperture.
+                aperture_start = max(current_start, tx_start)
+                aperture_end = min(current_end, tx_end)
+                # Origin relative to the start of the CARD's aperture.
+                delays_subarray_size = aperture_end-aperture_start
+                card.set_tx_aperture(
+                    origin+(aperture_start-current_origin),
+                    aperture_end-aperture_start,
+                    delays=tx_delays[delays_origin:(delays_origin+delays_subarray_size)])
+                delays_origin += delays_subarray_size
+                card.set_tx_frequency(carrier_frequency)
+                card.set_tx_periods(n_tx_periods)
+            current_origin += size
+
+        # Rx parameters and an output buffer.
+        output = np.zeros((n_samples, self.n_channels), dtype=self.dtype)
+        # Cards, which will be used on the RX step.
+        # Currently all cards are used to acquire RF data.
+        rx_cards = [s.card for s in self.hw_subapertures]
+
+        card_host_buffers = {}
+        for rx_card in rx_cards:
+            card_host_buffers[rx_card.get_id()] = _utils.create_aligned_array(
+                (n_samples, rx_card.get_n_rx_channels()),
+                dtype=self.dtype,
+                alignment=4096
+            )
+        subapertures_to_process = [
+            (s.card, Subaperture(s.origin, s.size))
+            for s in self.hw_subapertures
+        ]
+        buffer_device_addr = 0
+        tx_nr = 0
+        while subapertures_to_process:
+            subapertures_to_remove = set()
+            # Initiate SGDMA.
+            for i, (card, s) in enumerate(subapertures_to_process):
+                #TODO(pjarosik) below won't work properly, when s.size < card.n_rx_channels
+                card.set_rx_aperture(s.origin, card.get_n_rx_channels())
+
+                nbytes = card.get_n_rx_channels() \
+                         * self.dtype.itemsize \
+                         * n_samples
+
+                card.schedule_receive(buffer_device_addr, nbytes)
+                s.origin += card.get_n_rx_channels()
+                if s.origin >= s.size:
+                    subapertures_to_remove.add(i)
+            # Trigger master card.
+            self.master_card.sw_trigger()
+            # Initiate RX transfer from device to host.
+            channel_offset = 0
+            for card, s in subapertures_to_process:
+                buffer = card_host_buffers[card.get_id()]
+                card.transfer_rx_buffer_to_host(
+                    dst_array=buffer,
+                    src_addr=buffer_device_addr
+                )
+                current_channel = channel_offset+tx_nr*card.get_n_rx_channels()
+                output[:,current_channel:(current_channel+card.get_n_rx_channels())] = buffer
+                channel_offset += s.size
+            tx_nr += 1
+            # Remove completed subapertures.
+            for to_remove in subapertures_to_remove:
+                subapertures_to_process.pop(to_remove)
+        return output
+
 

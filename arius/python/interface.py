@@ -1,10 +1,6 @@
 import itertools
 
 
-def get_interface(name: str):
-    return _INTERFACES[name]
-
-
 class UltrasoundInterface:
     """
     Defines an interface provided by multiple Arius cards.
@@ -31,6 +27,12 @@ class EsaoteInterface(UltrasoundInterface):
 
     def get_card_order(self):
         return self.cards
+
+    def get_tx_channel_mappings(self):
+        return self.tx_card_channels
+
+    def get_rx_channel_mappings(self):
+        return self.rx_card_channels
 
     def get_tx_channel_mapping(self, card_idx):
         return self.tx_card_channels[card_idx]
@@ -67,6 +69,10 @@ class EsaoteInterface(UltrasoundInterface):
         return block
 
 
-_INTERFACES: {
+_INTERFACES = {
     'esaote': EsaoteInterface()
 }
+
+def get_interface(name: str):
+    return _INTERFACES[name]
+
