@@ -1,5 +1,6 @@
 """ ARIUS Devices. """
 import numpy as np
+import time
 from typing import List
 import logging
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -159,9 +160,18 @@ class AriusCard(Device):
         self.card_handle.SetTxPeriods(n_periods)
 
     @assert_card_is_powered_up
-    def sw_trigger(self):
-        self.log(DEBUG, "SW Trigger")
+    def sw_trigger(self, timeout=1):
         self.card_handle.SWTrigger()
+        self.log(DEBUG, "Triggered TX/RX scheme.")
+
+        start = time.time()
+        self.log(DEBUG, "Waiting till all data are received...")
+        # TODO(pjarosik) active waiting should be avoided here
+        while not self.card_handle.IsReceived():
+            if time.time() - start > timeout:
+                raise TimeoutError("Timeout while waiting for RX data.")
+            time.sleep(0.001)
+        self.log(DEBUG, "...done.")
 
     @assert_card_is_powered_up
     def set_rx_aperture(self, origin: int, size: int):
