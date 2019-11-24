@@ -248,6 +248,9 @@ class Probe(Device):
         self.master_card = master_card
         self.n_channels = sum(s.size for s in self.hw_subapertures)
         self.dtype = np.dtype(np.int16)
+        self.start()
+
+    def start(self):
         for subaperture in self.hw_subapertures:
             subaperture.card.start()
 
