@@ -298,6 +298,7 @@ class Probe(Device):
             DEBUG,
             "Setting TX aperture: origin=%d, size=%d" % (tx_aperture.origin, tx_aperture.size)
         )
+        self.start()
         for s in self.hw_subapertures:
             # Set all TX parameters here (if necessary).
             card, origin, size = s.card, s.origin, s.size
