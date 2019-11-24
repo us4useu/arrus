@@ -52,11 +52,11 @@ class Device:
 
 
 def assert_card_is_powered_up(f):
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         arius_card = args[0]
         if arius_card.is_powered_down():
             raise RuntimeError("Card is powered down. Start the card first.")
-        return f(*args)
+        return f(*args, **kwargs)
     return wrapper
 
 
