@@ -50,10 +50,10 @@ class InteractiveSessionTest(unittest.TestCase):
         self.assertEqual(("Arius:0", 0, 128), hw_subapertures[0])
         self.assertEqual(("Arius:1", 0, 64), hw_subapertures[1])
         self.assertEqual("Arius:0", probe.master_card.get_id())
-        print(cards[0].card_handle.tx_mapping)
-        print(cards[0].card_handle.rx_mapping)
-        print(cards[1].card_handle.tx_mapping)
-        print(cards[1].card_handle.rx_mapping)
+        # print(cards[0].card_handle.tx_mapping)
+        # print(cards[0].card_handle.rx_mapping)
+        # print(cards[1].card_handle.tx_mapping)
+        # print(cards[1].card_handle.rx_mapping)
 
 
 if __name__ == "__main__":

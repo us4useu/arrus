@@ -1,7 +1,10 @@
 """ ARIUS Devices. """
 import numpy as np
 from typing import List
+import logging
+from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
 
+_logger = logging.getLogger(__name__)
 
 import arius.python.iarius as _iarius
 import arius.python.utils  as _utils
@@ -37,6 +40,15 @@ class Device:
     def get_id(self):
         return Device.get_device_id(self.name, self.index)
 
+    def log(self, level, msg):
+        _logger.log(level, "%s: %s" % (self.get_id(), msg))
+
+    def __str__(self):
+        return self.get_id()
+
+    def __repr__(self):
+        return self.__str__()
+
 
 def assert_card_is_powered_up(f):
     def wrapper(*args):
@@ -67,16 +79,21 @@ class AriusCard(Device):
         Starts the card if is powered down.
         """
         if self.is_powered_down():
+            self.log(
+                INFO,
+                "Was powered down, initializing it and powering up...")
             self.card_handle.Powerup()
             self.card_handle.InitializeClocks()
             self.card_handle.InitializeRX()
             self.card_handle.InitializeTX()
+            self.log("... successfully powered up.")
 
     def get_n_rx_channels(self):
         return self.card_handle.GetNRxChannels()
 
     def get_n_tx_channels(self):
         return self.card_handle.GetNTxChannels()
+
 
     @assert_card_is_powered_up
     def set_tx_channel_mapping(self, tx_channel_mapping: List[int]):
@@ -86,6 +103,7 @@ class AriusCard(Device):
         :param tx_channel_mapping: a list, where
         list[interface channel] = arius card channel
         """
+        self.log(DEBUG, "Setting TX channel mapping: %s" % str(tx_channel_mapping))
         for dst, src in enumerate(tx_channel_mapping):
             self.card_handle.SetTxChannelMapping(
                 srcChannel=src,
@@ -100,6 +118,7 @@ class AriusCard(Device):
         :param rx_channel_mapping: a list, where
         list[interface channel] = arius card channel
         """
+        self.log(DEBUG, "Setting RX channel mapping: %s" % str(rx_channel_mapping))
         for dst, src in enumerate(rx_channel_mapping):
             self.card_handle.SetRxChannelMapping(
                 srcChannel=src,
@@ -114,10 +133,17 @@ class AriusCard(Device):
         :param origin: an origin channel of the aperture
         :param size: a length of the aperture
         """
+        self.log(
+            DEBUG,
+            "Setting TX aperture: origin=%d, size=%d, delays: %s" % (
+            origin, size, delays)
+        )
+
         _utils._assert_equal(
             len(delays), size,
             desc="Array of TX delays should contain %d numbers (card aperture size)" % size
         )
+
         self.card_handle.SetTxAperture(origin=origin, size=size)
         i = origin
         for delay in delays:
@@ -134,6 +160,7 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def sw_trigger(self):
+        self.log(DEBUG, "SW Trigger")
         self.card_handle.SWTrigger()
 
     @assert_card_is_powered_up
@@ -144,10 +171,18 @@ class AriusCard(Device):
         :param origin: an origin channel of the aperture
         :param size: a length of the aperture
         """
+        self.log(
+            DEBUG,
+            "Setting RX aperture: origin=%d, size=%d" % (origin, size)
+        )
         self.card_handle.SetRxAperture(origin=origin, size=size)
 
     @assert_card_is_powered_up
     def schedule_receive(self, address, length):
+        self.log(
+            DEBUG,
+            "Scheduling data receive at address=0x%02X, length=%d" % (address, length)
+        )
         self.card_handle.ScheduleReceive(address, length)
 
     @assert_card_is_powered_up
@@ -155,14 +190,18 @@ class AriusCard(Device):
         pass
 
     def set_rx_time(self, time: float):
-        pass
+        self.card_handle.SetRxTime(time)
 
     @assert_card_is_powered_up
     def transfer_rx_buffer_to_host(self, dst_array, src_addr):
         # TODO(pjarosik) make this method return dst_array
         # instead of passing the result buffer as a method parameter
-        dst_addr=dst_array.ctypes.data,
-        length=dst_array.nbytes,
+        dst_addr = dst_array.ctypes.data
+        length = dst_array.nbytes
+        self.log(
+            DEBUG,
+            "Transferring %d bytes from RX buffer at 0x%02X to host memory" % (src_addr, length)
+        )
         self.card_handle.TransferRXBufferToHost(
             dstAddress=dst_addr,
             length=length,
@@ -240,6 +279,10 @@ class Probe(Device):
 
         current_origin = 0
         delays_origin = 0
+        self.log(
+            DEBUG,
+            "Setting TX aperture: origin=%d, size=%d" % (tx_aperture.origin, tx_aperture.size)
+        )
         for s in self.hw_subapertures:
             # Set all TX parameters here (if necessary).
             # tx_frequency
@@ -283,6 +326,7 @@ class Probe(Device):
         buffer_device_addr = 0
         tx_nr = 0
         while subapertures_to_process:
+            self.log(DEBUG, "Performing transmission nr %d." % tx_nr)
             subapertures_to_remove = set()
             # Initiate SGDMA.
             for i, (card, s) in enumerate(subapertures_to_process):

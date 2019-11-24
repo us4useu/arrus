@@ -2,6 +2,11 @@ import ctypes
 import os
 import yaml
 
+import logging
+from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+_logger = logging.getLogger(__name__)
+
 import arius.python.device as _device
 import arius.python.interface as _interface
 import arius.python.utils as _utils
@@ -55,6 +60,7 @@ class InteractiveSession:
         arius_handles = (_iarius.Arius(i) for i in range(n_arius_cards))
         arius_handles = sorted(arius_handles, key=lambda a: a.GetID())
         arius_cards = [_device.AriusCard(i, h) for i, h in enumerate(arius_handles)]
+        _logger.log(INFO, "Discovered cards: %s" % str(arius_cards))
         for card in arius_cards:
             result[card.get_id()] = card
 
@@ -85,7 +91,6 @@ class InteractiveSession:
                 # TODO(pjarosik) enable wider range of apertures
                 # for example, when subaperture size is smaller
                 # than number of card rx channels.
-                print(aperture_size)
                 _utils.assert_true(
                     (aperture_size % arius_card.get_n_rx_channels()) == 0,
                     "Subaperture length should be divisible by %d"
@@ -114,6 +119,16 @@ class InteractiveSession:
                 master_card=master_card
             )
             result[probe.get_id()] = probe
+            _logger.log(INFO, "Configured %s" % str(probe))
+            for hw_subaperture in hw_subapertures:
+                card = hw_subaperture.card
+                origin = hw_subaperture.origin
+                size = hw_subaperture.size
+                _logger.log(
+                    DEBUG,
+                    "---- %s uses %s, origin=%d, size=%d" %
+                    (probe, card, origin, size)
+                )
         return result
 
     @staticmethod
