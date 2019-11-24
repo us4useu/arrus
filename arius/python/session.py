@@ -111,7 +111,6 @@ class InteractiveSession:
                         "There should be exactly one master card"
                     )
                     master_card = arius_card
-                # TODO(pjarosik) zweryfikuj, czy rozmiar subapertury jest podzielny przez rx channels
             probe = _device.Probe(
                 index=i,
                 model_name=model_name,
