@@ -168,10 +168,12 @@ class AriusCard(Device):
         self.card_handle.SetTxPeriods(n_periods)
 
     @assert_card_is_powered_up
-    def sw_trigger(self, timeout=1):
+    def sw_trigger(self):
         self.card_handle.SWTrigger()
-        self.log(DEBUG, "Triggered TX/RX scheme.")
+        self.log(DEBUG, "Triggered single wave.")
 
+    @assert_card_is_powered_up
+    def wait_until_sgdma_finished(self, timeout=1):
         start = time.time()
         self.log(DEBUG, "Waiting till all data are received...")
         # TODO(pjarosik) active waiting should be avoided here
@@ -368,6 +370,9 @@ class Probe(Device):
                     subapertures_to_remove.add(i)
             # Trigger master card.
             self.master_card.sw_trigger()
+            # Wait until the data is received.
+            for card, s in subapertures_to_process:
+                card.wait_until_sgdma_finished(timeout=1)
             # Initiate RX transfer from device to host.
             channel_offset = 0
             for card, s in subapertures_to_process:
