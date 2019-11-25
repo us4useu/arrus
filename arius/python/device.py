@@ -1,6 +1,7 @@
 """ ARIUS Devices. """
 import numpy as np
 import time
+import ctypes
 from typing import List
 import logging
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -88,6 +89,8 @@ class AriusCard(Device):
             self.card_handle.InitializeDDR4()
             self.card_handle.InitializeRX()
             self.card_handle.InitializeTX()
+            self.set_tx_channel_mapping(self.tx_channel_mapping)
+            self.set_rx_channel_mapping(self.rx_channel_mapping)
             self.log(INFO, "... successfully powered up.")
 
     def get_n_rx_channels(self):
@@ -95,6 +98,10 @@ class AriusCard(Device):
 
     def get_n_tx_channels(self):
         return self.card_handle.GetNTxChannels()
+
+    def store_mappings(self, tx_m, rx_m):
+        self.tx_channel_mapping = tx_m
+        self.rx_channel_mapping = rx_m
 
 
     @assert_card_is_powered_up
@@ -211,9 +218,9 @@ class AriusCard(Device):
         length = dst_array.nbytes
         self.log(
             DEBUG,
-            "Transferring %d bytes from RX buffer at 0x%02X to host memory" % (src_addr, length)
+            "Transferring %d bytes from RX buffer at 0x%02X to host memory" % (length, src_addr)
         )
-        self.card_handle.TransferRXBufferToHost(
+        self.card_handle.TransferRXBufferToHostLocation(
             dstAddress=dst_addr,
             length=length,
             srcAddress=src_addr
