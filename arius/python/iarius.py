@@ -5,7 +5,6 @@
 # the SWIG interface file instead.
 
 from sys import version_info as _swig_python_version_info
-
 if _swig_python_version_info < (2, 7, 0):
     raise RuntimeError("Python 2.7 or later required")
 
@@ -20,14 +19,12 @@ try:
 except ImportError:
     import __builtin__
 
-
 def _swig_repr(self):
     try:
         strthis = "proxy of " + self.this.__repr__()
     except __builtin__.Exception:
         strthis = ""
-    return "<%s.%s; %s >" % (
-    self.__class__.__module__, self.__class__.__name__, strthis,)
+    return "<%s.%s; %s >" % (self.__class__.__module__, self.__class__.__name__, strthis,)
 
 
 def _swig_setattr_nondynamic_instance_variable(set):
@@ -36,13 +33,10 @@ def _swig_setattr_nondynamic_instance_variable(set):
             self.this.own(value)
         elif name == "this":
             set(self, name, value)
-        elif hasattr(self, name) and isinstance(getattr(type(self), name),
-                                                property):
+        elif hasattr(self, name) and isinstance(getattr(type(self), name), property):
             set(self, name, value)
         else:
-            raise AttributeError(
-                "You cannot add instance attributes to %s" % self)
-
+            raise AttributeError("You cannot add instance attributes to %s" % self)
     return set_instance_attr
 
 
@@ -52,16 +46,13 @@ def _swig_setattr_nondynamic_class_variable(set):
             set(cls, name, value)
         else:
             raise AttributeError("You cannot add class attributes to %s" % cls)
-
     return set_class_attr
 
 
 def _swig_add_metaclass(metaclass):
     """Class decorator for adding a metaclass to a SWIG wrapped class - a slimmed down version of six.add_metaclass"""
-
     def wrapper(cls):
         return metaclass(cls.__name__, cls.__bases__, cls.__dict__.copy())
-
     return wrapper
 
 
@@ -71,13 +62,11 @@ class _SwigNonDynamicMeta(type):
 
 
 class Arius(object):
-    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v),
-                       doc="The membership flag")
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
     __repr__ = _swig_repr
 
     def __init__(self, idx):
         _iarius.Arius_swiginit(self, _iarius.new_Arius(idx))
-
     __swig_destroy__ = _iarius.delete_Arius
 
     def SWTrigger(self):
@@ -111,12 +100,10 @@ class Arius(object):
         return _iarius.Arius_InitializeDDR4(self)
 
     def TransferRXBufferToHost(self, dstAddress, length, srcAddress):
-        return _iarius.Arius_TransferRXBufferToHost(self, dstAddress, length,
-                                                    srcAddress)
+        return _iarius.Arius_TransferRXBufferToHost(self, dstAddress, length, srcAddress)
 
     def TransferRXBufferToHostLocation(self, dstAddress, length, srcAddress):
-        return _iarius.Arius_TransferRXBufferToHostLocation(self, dstAddress,
-                                                            length, srcAddress)
+        return _iarius.Arius_TransferRXBufferToHostLocation(self, dstAddress, length, srcAddress)
 
     def LockDMABuffer(self, address, length):
         return _iarius.Arius_LockDMABuffer(self, address, length)
@@ -187,10 +174,8 @@ class Arius(object):
     def Read(self, address, data, length):
         return _iarius.Arius_Read(self, address, data, length)
 
-    def WriteAndRead(self, address, writedata, writelength, readdata,
-                     readlength):
-        return _iarius.Arius_WriteAndRead(self, address, writedata, writelength,
-                                          readdata, readlength)
+    def WriteAndRead(self, address, writedata, writelength, readdata, readlength):
+        return _iarius.Arius_WriteAndRead(self, address, writedata, writelength, readdata, readlength)
 
     def TGCEnable(self):
         return _iarius.Arius_TGCEnable(self)
@@ -210,7 +195,6 @@ class Arius(object):
     def GetNChannels(self):
         return _iarius.Arius_GetNChannels(self)
 
-
 # Register Arius in _iarius:
 _iarius.Arius_swigregister(Arius)
 cvar = _iarius.cvar
@@ -218,4 +202,3 @@ ARIUS_VENDOR_ID = cvar.ARIUS_VENDOR_ID
 ARIUS_DEVICE_ID = cvar.ARIUS_DEVICE_ID
 PCIDMABarNumber = cvar.PCIDMABarNumber
 AriusBarNumber = cvar.AriusBarNumber
-
