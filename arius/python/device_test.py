@@ -72,6 +72,9 @@ class AriusCardMock(Device):
             origin, size = last_subaperture.origin, last_subaperture.size
             dst_array[:, :] = self.mock_data[:, origin:(origin+size)]
 
+    def set_rx_time(self, rx_time):
+        self.rx_time = rx_time
+
 
 class ProbeRxTest(unittest.TestCase):
 
