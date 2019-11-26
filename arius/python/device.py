@@ -311,12 +311,16 @@ class AriusCard(Device):
         length = dst_array.nbytes
         self.log(
             DEBUG,
-            "Transferring %d bytes from RX buffer at 0x%02X to host memory" % (length, src_addr)
+            "Transferring %d bytes from RX buffer at 0x%02X to host memory..." % (length, src_addr)
         )
         self.card_handle.TransferRXBufferToHostLocation(
             dstAddress=dst_addr,
             length=length,
             srcAddress=src_addr
+        )
+        self.log(
+            DEBUG,
+            "... transferred."
         )
 
     def is_powered_down(self):
