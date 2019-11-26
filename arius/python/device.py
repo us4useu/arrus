@@ -486,7 +486,8 @@ class Probe(Device):
 
                 # Set delays
                 card_delays = tx_delays[delays_origin:(delays_origin+delays_subarray_size)]
-                card_delays = [0.0]*(aperture_start-current_start) + card_delays + [0.0]*(current_end-aperture_end)
+                card_delays = [0.0]*(aperture_start-current_start) + card_delays \
+                              + [0.0]*(card.get_n_tx_channels() - (aperture_end-current_origin))
                 card.set_tx_delays(card_delays)
 
                 # Other TX parameters.
