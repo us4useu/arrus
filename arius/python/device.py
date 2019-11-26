@@ -343,7 +343,7 @@ class AriusCard(Device):
     def sync_test_patterns(self):
         self.log(
             DEBUG,
-            "Sycing with test patterns..."
+            "Syncing with test patterns..."
         )
         self.card_handle.SyncTestPatterns()
 
