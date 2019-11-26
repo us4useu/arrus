@@ -498,8 +498,7 @@ class Probe(Device):
                 # Set the final TX Aperture
                 card.set_tx_aperture(
                     origin+(aperture_start-current_origin),
-                    aperture_end-aperture_start,
-                    delays=tx_delays[delays_origin:(delays_origin+delays_subarray_size)])
+                    aperture_end-aperture_start)
                 delays_origin += delays_subarray_size
                 # TODO(pjarosik) update TX/RX parameters only when it is necessary.
             current_origin += size
