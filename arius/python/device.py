@@ -206,6 +206,14 @@ class AriusCard(Device):
         self.card_handle.ScheduleReceive(address, length)
 
     @assert_card_is_powered_up
+    def transfer_data_to_rx_buffer(self, address, length):
+        self.log(
+            DEBUG,
+            "Transfer RX data to buffer at address=0x%02X, length=%d" % (address, length)
+        )
+        self.card_handle.Receive(address, length)
+
+    @assert_card_is_powered_up
     def set_pga_gain(self, gain):
         enum_value = self._convert_to_enum_value(
             enum_name="PGA_GAIN",
@@ -239,17 +247,18 @@ class AriusCard(Device):
     def _convert_to_enum_value(self, enum_name, value, unit):
         _utils.assert_true(
             round(value) == value,
-            "Value for %s should be an integer value." % (enum_name, value)
+            "Value %s for '%s' should be an integer value." % (value, enum_name)
         )
-        const_name = "_". join([enum_name, enum_name, str(value) + unit])
+        const_prefix = enum_name + "_" + enum_name
+        const_name = const_prefix + "_" + str(value) + unit
         try:
             return getattr(_iarius, const_name)
         except AttributeError:
             acceptable_values = set()
             for key in dir(_iarius):
-                if key.startswith("_".join([enum_name, enum_name])):
-                    value_with_unit = key.split("_")[2]
-                    value = int(filter(str.isdigit, value_with_unit))
+                if key.startswith(const_prefix):
+                    value_with_unit = key[len(const_prefix)+1:]
+                    value = int("".join(list(filter(str.isdigit, value_with_unit))))
                     acceptable_values.add(value)
             if not acceptable_values:
                 raise RuntimeError("Invalid enum name: % s" % enum_name)
