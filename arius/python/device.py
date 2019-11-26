@@ -360,7 +360,7 @@ class AriusCard(Device):
         self.card_handle.TransferRXBufferToHostLocation(
             dstAddress=dst_addr,
             length=length,
-            srcAddress=src_addr
+            srcAddress=src_addr+0x100000000
         )
         self.log(
             DEBUG,
