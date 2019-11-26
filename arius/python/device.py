@@ -161,10 +161,18 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def set_tx_frequency(self, frequency: float):
+        self.log(
+            DEBUG,
+            "Setting TX frequency: %f" % frequency
+        )
         self.card_handle.SetTxFreqency(frequency)
 
     @assert_card_is_powered_up
     def set_tx_periods(self, n_periods: int):
+        self.log(
+            DEBUG,
+            "Setting number of bursts: %f" % n_periods
+        )
         self.card_handle.SetTxPeriods(n_periods)
 
     @assert_card_is_powered_up
@@ -199,6 +207,10 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def set_rx_time(self, time: float):
+        self.log(
+            DEBUG,
+            "Setting RX time: %f" % time
+        )
         self.card_handle.SetRxTime(time)
 
     @assert_card_is_powered_up
@@ -219,6 +231,10 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def set_pga_gain(self, gain):
+        self.log(
+            DEBUG,
+            "Setting PGA Gain: %d" % gain
+        )
         enum_value = self._convert_to_enum_value(
             enum_name="PGA_GAIN",
             value=gain,
@@ -228,6 +244,10 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def set_lpf_cutoff(self, cutoff):
+        self.log(
+            DEBUG,
+            "Setting LPF Cutoff: %d" % cutoff
+        )
         enum_value = self._convert_to_enum_value(
             enum_name="LPF_PROG",
             value=cutoff,
@@ -243,6 +263,10 @@ class AriusCard(Device):
 
         :param active_termination: active termination, can be None
         """
+        self.log(
+            DEBUG,
+            "Setting active termination: %d" % active_termination
+        )
         if active_termination:
             enum_value = self._convert_to_enum_value(
                 enum_name="GBL_ACTIVE_TERM",
@@ -261,6 +285,10 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def set_lna_gain(self, gain):
+        self.log(
+            DEBUG,
+            "Setting LNA Gain: %d" % gain
+        )
         enum_value = self._convert_to_enum_value(
             enum_name="LNA_GAIN_GBL",
             value=gain,
@@ -275,6 +303,10 @@ class AriusCard(Device):
 
         :param active_termination: attenuation, can be None
         """
+        self.log(
+            DEBUG,
+            "Setting DTGC: %d" % attenuation
+        )
         if attenuation:
             enum_value = self._convert_to_enum_value(
                 enum_name="DIG_TGC_ATTENUATION",
@@ -293,14 +325,26 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def enable_test_patterns(self):
+        self.log(
+            DEBUG,
+            "Enabling Test Patterns."
+        )
         self.card_handle.EnableTestPatterns()
 
     @assert_card_is_powered_up
     def disable_test_patterns(self):
+        self.log(
+            DEBUG,
+            "Disabling Test Patterns."
+        )
         self.card_handle.DisableTestPatterns()
 
     @assert_card_is_powered_up
     def sync_test_patterns(self):
+        self.log(
+            DEBUG,
+            "Sycing with test patterns..."
+        )
         self.card_handle.SyncTestPatterns()
 
     @assert_card_is_powered_up
