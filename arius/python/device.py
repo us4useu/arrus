@@ -76,7 +76,7 @@ class AriusCard(Device):
         super().__init__(AriusCard._DEVICE_NAME, index)
         self.card_handle = card_handle
 
-    def start(self):
+    def start_if_necessary(self):
         """
         Starts the card if is powered down.
         """
