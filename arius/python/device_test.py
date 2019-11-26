@@ -39,7 +39,7 @@ class AriusCardMock(Device):
     def get_n_tx_channels(self):
         return self.n_tx_channels
 
-    def start(self):
+    def start_if_necessary(self):
         print("MockCard started.")
 
     def set_tx_aperture(self, origin, size, delays):
@@ -64,6 +64,9 @@ class AriusCardMock(Device):
             self.rx_total_bytes += length
 
     def sw_trigger(self):
+        pass
+
+    def wait_until_sgdma_finished(self):
         pass
 
     def transfer_rx_buffer_to_host(self, dst_array, src_addr):

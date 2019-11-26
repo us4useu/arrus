@@ -198,6 +198,10 @@ class AriusCard(Device):
         self.card_handle.SetRxAperture(origin=origin, size=size)
 
     @assert_card_is_powered_up
+    def set_rx_time(self, time: float):
+        self.card_handle.SetRxTime(time)
+
+    @assert_card_is_powered_up
     def schedule_receive(self, address, length):
         self.log(
             DEBUG,
@@ -222,8 +226,82 @@ class AriusCard(Device):
         )
         self.card_handle.SetPGAGain(enum_value)
 
-    def set_rx_time(self, time: float):
-        self.card_handle.SetRxTime(time)
+    @assert_card_is_powered_up
+    def set_lpf_cutoff(self, cutoff):
+        enum_value = self._convert_to_enum_value(
+            enum_name="LPF_PROG",
+            value=cutoff,
+            unit="MHz"
+        )
+        self.card_handle.SetLPFCutoff(cutoff)
+
+    @assert_card_is_powered_up
+    def set_active_termination(self, active_termination):
+        """
+        Sets active termination for this card. When active termination is None,
+        the property is disabled.
+
+        :param active_termination: active termination, can be None
+        """
+        if active_termination:
+            enum_value = self._convert_to_enum_value(
+                enum_name="GBL_ACTIVE_TERM",
+                value=active_termination,
+            )
+            self.card_handle.SetActiveTermination(
+                endis=_iarius.ACTIVE_TERM_EN_ACTIVE_TERM_EN,
+                term=enum_value
+            )
+        else:
+            self.card_handle.SetActiveTermination(
+                endis=_iarius.ACTIVE_TERM_EN_ACTIVE_TERM_DIS,
+                # TODO(pjarosik) when disabled, what value should be set?
+                term=_iarius.GBL_ACTIVE_TERM_GBL_ACTIVE_TERM_50
+            )
+
+    @assert_card_is_powered_up
+    def set_lna_gain(self, gain):
+        enum_value = self._convert_to_enum_value(
+            enum_name="LNA_GAIN_GBL",
+            value=gain,
+            unit="dB"
+        )
+
+    @assert_card_is_powered_up
+    def set_dtgc(self, attenuation):
+        """
+        Sets DTGC for this card. When attenuation is None, this property
+        is set to disabled.
+
+        :param active_termination: attenuation, can be None
+        """
+        if attenuation:
+            enum_value = self._convert_to_enum_value(
+                enum_name="DIG_TGC_ATTENUATION",
+                value=attenuation,
+                unit="dB"
+            )
+            self.card_handle.SetDTGC(
+                endis=_iarius.EN_DIG_TGC_EN_DIG_TGC_EN,
+                att=attenuation
+            )
+        else:
+            self.card_handle.SetDTGC(
+                endis=_iarius.EN_DIG_TGC_EN_DIG_TGC_DIS,
+                att=_iarius.DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_0dB
+            )
+
+    @assert_card_is_powered_up
+    def enable_test_patterns(self):
+        self.card_handle.EnableTestPatterns()
+
+    @assert_card_is_powered_up
+    def disable_test_patterns(self):
+        self.card_handle.DisableTestPatterns()
+
+    @assert_card_is_powered_up
+    def sync_test_patterns(self):
+        self.card_handle.SyncTestPatterns()
 
     @assert_card_is_powered_up
     def transfer_rx_buffer_to_host(self, dst_array, src_addr):
@@ -244,7 +322,7 @@ class AriusCard(Device):
     def is_powered_down(self):
         return self.card_handle.IsPowereddown()
 
-    def _convert_to_enum_value(self, enum_name, value, unit):
+    def _convert_to_enum_value(self, enum_name, value, unit=""):
         _utils.assert_true(
             round(value) == value,
             "Value %s for '%s' should be an integer value." % (value, enum_name)
@@ -296,9 +374,9 @@ class Probe(Device):
         self.n_channels = sum(s.size for s in self.hw_subapertures)
         self.dtype = np.dtype(np.int16)
 
-    def start(self):
+    def start_if_necessary(self):
         for subaperture in self.hw_subapertures:
-            subaperture.card.start()
+            subaperture.card.start_if_necessary()
 
     def get_tx_n_channels(self):
         return self.n_channels
@@ -343,7 +421,7 @@ class Probe(Device):
             DEBUG,
             "Setting TX aperture: origin=%d, size=%d" % (tx_aperture.origin, tx_aperture.size)
         )
-        self.start()
+        self.start_if_necessary()
         for s in self.hw_subapertures:
             # Set all TX parameters here (if necessary).
             card, origin, size = s.card, s.origin, s.size
@@ -408,8 +486,9 @@ class Probe(Device):
             # Trigger master card.
             self.master_card.sw_trigger()
             # Wait until the data is received.
-            for card, s in subapertures_to_process:
-                card.wait_until_sgdma_finished(timeout=1)
+            # TODO(pjarosik) why the second card signals here, that is still busy?
+            # We should wait here for both cards.
+            self.master_card.wait_until_sgdma_finished()
             # Initiate RX transfer from device to host.
             channel_offset = 0
             for card, s in subapertures_to_process:
@@ -426,5 +505,68 @@ class Probe(Device):
             for to_remove in subapertures_to_remove:
                 subapertures_to_process.pop(to_remove)
         return output
+
+    def set_pga_gain(self, gain):
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.set_pga_gain(gain)
+
+    def set_lpf_cutoff(self, cutoff):
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.set_lpf_cutoff(cutoff)
+
+    def set_active_termination(self, active_termination):
+        """
+        Sets active termination for all cards handling this probe.
+        When active termination is None, the property is disabled.
+
+        :param active_termination: active termination, can be None
+        """
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.set_active_termination(active_termination)
+
+    def set_lna_gain(self, gain):
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.set_lna_gain(gain)
+
+    def set_dtgc(self, attenuation):
+        """
+        Sets DTGC for all cards handling this probe.
+        When attenuation is None, this property is set to disabled.
+
+        :param attenuation: attenuation, can be None
+        """
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.set_dtgc(attenuation)
+
+    def disable_test_patterns(self):
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.disable_test_patterns()
+
+    def enable_test_patterns(self):
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.enable_test_patterns()
+
+    def sync_test_patterns(self):
+        self.start_if_necessary()
+        for card in self._get_cards():
+            card.sync_test_patterns()
+
+    def _get_cards(self):
+        card_ids = set()
+        cards = []
+        for hw_subaperture in self.hw_subapertures:
+            card = hw_subaperture.card
+            if not card.get_id() in card_ids:
+                cards.append(card)
+                card_ids.add(card.get_id())
+        return cards
+
 
 
