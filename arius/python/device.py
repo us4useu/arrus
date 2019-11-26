@@ -517,7 +517,7 @@ class Probe(Device):
         tx_nr = 0
         while subapertures_to_process:
             self.log(DEBUG, "Performing transmission nr %d." % tx_nr)
-            subapertures_to_remove = set()
+            next_subapertures = []
             # Initiate SGDMA.
             for i, (card, s) in enumerate(subapertures_to_process):
                 #TODO(pjarosik) below won't work properly, when s.size < card.n_rx_channels
@@ -529,8 +529,8 @@ class Probe(Device):
 
                 card.schedule_receive(buffer_device_addr, nbytes)
                 s.origin += card.get_n_rx_channels()
-                if s.origin >= s.size:
-                    subapertures_to_remove.add(i)
+                if s.origin < s.size:
+                    next_subapertures.append((card, s))
             # Trigger master card.
             self.master_card.sw_trigger()
             # Wait until the data is received.
@@ -550,8 +550,8 @@ class Probe(Device):
                 channel_offset += s.size
             tx_nr += 1
             # Remove completed subapertures.
-            for to_remove in subapertures_to_remove:
-                subapertures_to_process.pop(to_remove)
+            subapertures_to_process = next_subapertures
+
         return output
 
     def set_pga_gain(self, gain):

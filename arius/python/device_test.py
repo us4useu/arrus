@@ -182,7 +182,6 @@ class ProbeTxTest(unittest.TestCase):
             hw_subapertures
         )
 
-
     def test_probe_sets_tx_for_single_card_hw_offset(self):
         # Set.
         hw_subapertures = [
@@ -287,6 +286,49 @@ class ProbeTxTest(unittest.TestCase):
             [
                 list(range(0, 128)),
                 list(range(128, 192)) + [None]*64
+            ],
+            hw_subapertures
+        )
+        for hws in hw_subapertures:
+            self.assertEqual(carrier_frequency, hws.card.tx_frequency)
+            self.assertEqual(n_periods, hws.card.tx_periods)
+
+    def test_probe_sets_tx_for_two_cards_complete_apertures(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            )
+        ]
+
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(0, 256)
+        tx_delays = list(range(0, 256))
+        carrier_frequency = 14e6
+        n_periods = 1
+        probe.transmit_and_record(
+            tx_aperture=tx_aperture,
+            tx_delays=tx_delays,
+            carrier_frequency=carrier_frequency,
+            n_tx_periods=n_periods
+        )
+        # Verify.
+        self.assertEqual(Subaperture(0, 128),
+                         hw_subapertures[0].card.tx_aperture)
+        self.assertEqual(Subaperture(0, 128),
+                         hw_subapertures[1].card.tx_aperture)
+        self._assert_card_delays(
+            [
+                list(range(0, 128)),
+                list(range(128, 256))
             ],
             hw_subapertures
         )
