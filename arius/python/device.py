@@ -135,7 +135,7 @@ class AriusCard(Device):
             )
 
     @assert_card_is_powered_up
-    def set_tx_aperture(self, origin: int, size: int, delays):
+    def set_tx_aperture(self, origin: int, size: int):
         """
         Sets TX aperture.
 
