@@ -207,7 +207,12 @@ class AriusCard(Device):
 
     @assert_card_is_powered_up
     def set_pga_gain(self, gain):
-        raise NotImplementedError()
+        enum_value = self._convert_to_enum_value(
+            enum_name="PGA_GAIN",
+            value=gain,
+            unit="dB"
+        )
+        self.card_handle.SetPGAGain(enum_value)
 
     def set_rx_time(self, time: float):
         self.card_handle.SetRxTime(time)
@@ -230,6 +235,29 @@ class AriusCard(Device):
 
     def is_powered_down(self):
         return self.card_handle.IsPowereddown()
+
+    def _convert_to_enum_value(self, enum_name, value, unit):
+        _utils.assert_true(
+            round(value) == value,
+            "Value for %s should be an integer value." % (enum_name, value)
+        )
+        const_name = "_". join([enum_name, enum_name, str(value) + unit])
+        try:
+            return getattr(_iarius, const_name)
+        except AttributeError:
+            acceptable_values = set()
+            for key in dir(_iarius):
+                if key.startswith("_".join([enum_name, enum_name])):
+                    value_with_unit = key.split("_")[2]
+                    value = int(filter(str.isdigit, value_with_unit))
+                    acceptable_values.add(value)
+            if not acceptable_values:
+                raise RuntimeError("Invalid enum name: % s" % enum_name)
+            else:
+                raise ValueError(
+                    "Invalid value for %s, should be one of the following: %s" %
+                    (enum_name, str(acceptable_values))
+                )
 
 
 class ProbeHardwareSubaperture(Subaperture):
