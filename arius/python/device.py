@@ -144,20 +144,21 @@ class AriusCard(Device):
         """
         self.log(
             DEBUG,
-            "Setting TX aperture: origin=%d, size=%d, delays: %s" % (
-            origin, size, delays)
-        )
-
-        _utils._assert_equal(
-            len(delays), size,
-            desc="Array of TX delays should contain %d numbers (card aperture size)" % size
+            "Setting TX aperture: origin=%d, size=%d" % (origin, size)
         )
 
         self.card_handle.SetTxAperture(origin=origin, size=size)
-        i = origin
-        for delay in delays:
+
+    @assert_card_is_powered_up
+    def set_tx_delays(self, delays):
+        _utils._assert_equal(
+            len(delays), self.get_n_tx_channels(),
+            desc="Array of TX delays should contain %d numbers (card number of TX channels)"
+                 % self.get_n_tx_channels()
+        )
+        self.log(DEBUG, "Setting TX delays: %s" % (delays))
+        for i, delay in enumerate(delays):
             self.card_handle.SetTxDelay(i, delay)
-            i += 1
 
     @assert_card_is_powered_up
     def set_tx_frequency(self, frequency: float):
@@ -482,15 +483,25 @@ class Probe(Device):
                 aperture_end = min(current_end, tx_end)
                 # Origin relative to the start of the CARD's aperture.
                 delays_subarray_size = aperture_end-aperture_start
+
+                # Set delays
+                card_delays = tx_delays[delays_origin:(delays_origin+delays_subarray_size)]
+                card_delays = [0.0]*(aperture_start-current_start) + card_delays + [0.0]*(current_end-aperture_end)
+                card.set_tx_delays(card_delays)
+
+                # Other TX parameters.
+                card.set_tx_frequency(carrier_frequency)
+                card.set_tx_periods(n_tx_periods)
+                card.set_tx_aperture(origin=0, size=0)
+                card.set_rx_time(rx_time)
+
+                # Set the final TX Aperture
                 card.set_tx_aperture(
                     origin+(aperture_start-current_origin),
                     aperture_end-aperture_start,
                     delays=tx_delays[delays_origin:(delays_origin+delays_subarray_size)])
                 delays_origin += delays_subarray_size
                 # TODO(pjarosik) update TX/RX parameters only when it is necessary.
-                # Other TX parameters.
-                card.set_tx_frequency(carrier_frequency)
-                card.set_tx_periods(n_tx_periods)
             current_origin += size
 
         # Rx parameters and an output buffer.
