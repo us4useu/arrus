@@ -652,10 +652,13 @@ class HV256(Device):
         self.hv256_handle = hv256_handle
 
     def enable_hv(self):
+        self.log(INFO, "Enabling HV.")
         self.hv256_handle.EnableHV()
 
     def disable_hv(self):
+        self.log(INFO, "Disabling HV.")
         self.hv256_handle.DisableHV()
 
     def set_hv_voltage(self, voltage):
+        self.log(INFO, "Setting HV voltage %d" % voltage)
         self.hv256_handle.SetHVVoltage(voltage=voltage)
