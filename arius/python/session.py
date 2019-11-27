@@ -138,7 +138,7 @@ class InteractiveSession:
             "There should be exactly one master card"
         )
         system_master_card = master_cards[0]
-        dbar = _dbarLite.DBARLite(system_master_card)
+        dbar = _dbarLite.DBARLite(system_master_card.card_handle)
         hv_handle = _hv256.HV256(dbar.GetI2CHV())
         hv = _device.HV256(hv_handle)
         result[hv.get_id()] = hv
