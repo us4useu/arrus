@@ -547,9 +547,8 @@ class Probe(Device):
                 s.origin += card.get_n_rx_channels()
                 if s.origin < s.size:
                     next_subapertures.append((card, s))
-            # Trigger master card.
-            for card, _ in subapertures_to_process:
-                card.sw_trigger()
+                    
+            self.master_card.sw_trigger()
             # Wait until the data is received.
             for card, _ in subapertures_to_process:
                 card.wait_until_sgdma_finished()
