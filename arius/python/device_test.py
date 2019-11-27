@@ -26,7 +26,7 @@ class AriusCardMock(Device):
         self.n_tx_channels = n_tx_channels
         self.n_rx_channels = n_rx_channels
         self.tx_aperture = None
-        self.tx_delays = [None]*self.n_tx_channels
+        self.tx_delays = [0.0]*self.n_tx_channels
         self.tx_frequency = None
         self.tx_periods = None
         self.rx_apertures = []
@@ -42,12 +42,12 @@ class AriusCardMock(Device):
     def start_if_necessary(self):
         print("MockCard started.")
 
-    def set_tx_aperture(self, origin, size, delays):
+    def set_tx_aperture(self, origin, size):
         self.tx_aperture = Subaperture(origin, size)
-        i = self.tx_aperture.origin
-        for delay in delays:
+
+    def set_tx_delays(self, delays):
+        for i, delay in enumerate(delays):
             self.tx_delays[i] = delay
-            i += 1
 
     def set_tx_frequency(self, f):
         self.tx_frequency = f
@@ -177,7 +177,7 @@ class ProbeTxTest(unittest.TestCase):
 
         self._assert_card_delays(
             [
-                tx_delays + [None]*96
+                tx_delays + [0.0]*96
             ],
             hw_subapertures
         )
@@ -209,9 +209,11 @@ class ProbeTxTest(unittest.TestCase):
                          hw_subapertures[0].card.tx_aperture)
         self.assertEqual(carrier_frequency, hw_subapertures[0].card.tx_frequency)
         self.assertEqual(n_periods, hw_subapertures[0].card.tx_periods)
+        print(tx_delays)
+        print(probe.hw_subapertures[0].card.tx_delays)
         self._assert_card_delays(
             [
-                34*[None] + tx_delays + [None]*(128-(34+len(tx_delays))),
+                34*[0.0] + tx_delays + [0.0]*(128-(34+len(tx_delays))),
             ],
             hw_subapertures
         )
@@ -245,7 +247,7 @@ class ProbeTxTest(unittest.TestCase):
         self.assertEqual(n_periods, hw_subapertures[0].card.tx_periods)
         self._assert_card_delays(
             [
-                14*[None] + tx_delays + [None]*(128-(14+len(tx_delays))),
+                14*[0.0] + tx_delays + [0.0]*(128-(14+len(tx_delays))),
             ],
             hw_subapertures
         )
@@ -285,7 +287,7 @@ class ProbeTxTest(unittest.TestCase):
         self._assert_card_delays(
             [
                 list(range(0, 128)),
-                list(range(128, 192)) + [None]*64
+                list(range(128, 192)) + [0.0]*64
             ],
             hw_subapertures
         )
@@ -372,8 +374,8 @@ class ProbeTxTest(unittest.TestCase):
         self.assertIsNone(hw_subapertures[1].card.tx_aperture)
         self._assert_card_delays(
             [
-                [None]*16 + list(range(0, 64)) + [None]*(128-(16+len(tx_delays))),
-                [None]*128
+                [0.0]*16 + list(range(0, 64)) + [0.0]*(128-(16+len(tx_delays))),
+                [0.0]*128
             ],
             hw_subapertures
         )
@@ -415,8 +417,8 @@ class ProbeTxTest(unittest.TestCase):
         self.assertIsNone(hw_subapertures[0].card.tx_aperture)
         self._assert_card_delays(
             [
-                [None]*128,
-                [None]*2 + list(range(0, 32)) + [None]*(128-(2+len(tx_delays))),
+                [0.0]*128,
+                [0.0]*2 + list(range(0, 32)) + [0.0]*(128-(2+len(tx_delays))),
             ],
             hw_subapertures
         )
@@ -459,7 +461,7 @@ class ProbeTxTest(unittest.TestCase):
         self._assert_card_delays(
             [
                 list(range(0, 128)),
-                [None]*14 + list(range(128, 192)) + [None]*50
+                [0.0]*14 + list(range(128, 192)) + [0.0]*50
             ],
             hw_subapertures
         )
@@ -501,8 +503,8 @@ class ProbeTxTest(unittest.TestCase):
         self.assertIsNone(hw_subapertures[1].card.tx_aperture)
         self._assert_card_delays(
             [
-                [None]*127 + [1],
-                [None]*128
+                [0.0]*127 + [1],
+                [0.0]*128
             ],
             hw_subapertures
         )
@@ -543,8 +545,8 @@ class ProbeTxTest(unittest.TestCase):
                          hw_subapertures[1].card.tx_aperture)
         self._assert_card_delays(
             [
-                [None]*128,
-                [1] + [None]*127
+                [0.0]*128,
+                [1] + [0.0]*127
             ],
             hw_subapertures
         )

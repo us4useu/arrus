@@ -485,12 +485,14 @@ class Probe(Device):
                 delays_subarray_size = aperture_end-aperture_start
 
                 # Set delays
+                # TODO(pjarosik) is it necessary to apply 0.0 to inactive channels?
+                # It would be better to keep old values at inactive positions
                 card_delays = tx_delays[delays_origin:(delays_origin+delays_subarray_size)]
-                card_delays = [0.0]*(aperture_start-current_start) + card_delays \
-                              + [0.0]*(card.get_n_tx_channels() - (aperture_end-current_origin))
+                card_delays = [0.0]*(origin+aperture_start-current_origin) + card_delays \
+                            + [0.0]*(card.get_n_tx_channels() - ((aperture_end-current_origin)+origin))
                 card.set_tx_delays(card_delays)
 
-                # Other TX parameters.
+                # Other TX/RX parameters.
                 card.set_tx_frequency(carrier_frequency)
                 card.set_tx_periods(n_tx_periods)
                 card.set_tx_aperture(origin=0, size=0)
@@ -509,7 +511,6 @@ class Probe(Device):
         # Cards, which will be used on the RX step.
         # Currently all cards are used to acquire RF data.
         rx_cards = [s.card for s in self.hw_subapertures]
-
         card_host_buffers = {}
         for rx_card in rx_cards:
             card_host_buffers[rx_card.get_id()] = _utils.create_aligned_array(
