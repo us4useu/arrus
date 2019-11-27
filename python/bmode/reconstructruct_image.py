@@ -248,7 +248,7 @@ def load_simulated_data(file, verbose=1):
         rf = matlab_data.get('rfLin')
         
     if 'rfPwi' in matlab_data:
-        rf = matlab_data.get('rfPwi')
+            rf = matlab_data.get('rfPwi')
 
     if 'rfSta' in matlab_data:
         rf = matlab_data.get('rfSta')
@@ -339,6 +339,48 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     plt.xlabel('[mm]')
     plt.ylabel('[mm]')
     plt.show()
+
+
+def rf2iq(rf, fc, fs, decimation_factor):
+    """
+    Demodulation and decimation from rf signal to iq (quadrature) signal.
+
+    :param rf: array of rf signals
+    :param fc: carrier frequency
+    :param fs: sampling frequency
+    :param decimation_factor: decimation factor
+    :return: array of decimated iq signals
+
+    """
+    import scipy.signal as signal
+    s = rf.shape
+    n_dim = len(s)
+    n_samples = s[0]
+
+    if n_dim > 1:
+        n_channels = s[1]
+    else:
+        n_channels = 1
+
+    if n_dim > 2:
+        n_transmissions = s[2]
+    else:
+        n_transmissions = 1
+    # creating time array
+    ts = 1/fs
+    t = np.linspace(0, (n_samples-1)*ts, n_samples)
+    t = t[..., np.newaxis, np.newaxis]
+    t = np.tile(t, (1, n_channels, n_transmissions))
+
+    # demodulation
+    iq = rf*np.exp(0-1j*2*np.pi*fc*t)
+
+    # decimation
+    iq = signal.decimate(iq, decimation_factor, axis=0)
+
+    return iq
+
+
 
 ################################################################################
 
