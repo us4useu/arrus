@@ -9,6 +9,7 @@ from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
 _logger = logging.getLogger(__name__)
 
 import arius.python.iarius as _iarius
+import arius.python.hv256 as _hv256
 import arius.python.utils  as _utils
 
 
@@ -37,7 +38,10 @@ class Device:
 
     @staticmethod
     def get_device_id(name, index):
-        return "%s:%d" % (name, index)
+        if index is None:
+            return name
+        else:
+            return "%s:%d" % (name, index)
 
     def get_id(self):
         return Device.get_device_id(self.name, self.index)
@@ -630,4 +634,28 @@ class Probe(Device):
         return cards
 
 
+class HV256(Device):
+    _DEVICE_NAME = "HV256"
 
+    @staticmethod
+    def get_card_id(index):
+        return Device.get_device_id(AriusCard._DEVICE_NAME, index)
+
+    def __init__(self, hv256_handle: _hv256.HV256):
+        """
+        HV 256 Device. Provides means to steer the voltage
+        set on the master Arius card.
+
+        :param card_handle: a handle to the HV256 C++ class.
+        """
+        super().__init__(HV256._DEVICE_NAME, index=None)
+        self.hv256_handle = hv256_handle
+
+    def enable_hv(self):
+        self.hv256_handle.EnableHV()
+
+    def disable_hv(self):
+        self.hv256_handle.DisableHV()
+
+    def set_hv_voltage(self, voltage):
+        self.hv256_handle.SetHVVoltage(voltage=voltage)

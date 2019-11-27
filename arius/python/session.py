@@ -11,6 +11,8 @@ import arius.python.device as _device
 import arius.python.interface as _interface
 import arius.python.utils as _utils
 import arius.python.iarius as _iarius
+import arius.python.dbarLite as _dbarLite
+import arius.python.hv256 as _hv256
 
 
 _ARIUS_PATH_ENV = "ARIUS_PATH"
@@ -56,6 +58,7 @@ class InteractiveSession:
         with open(path, "r") as f:
             cfg = yaml.safe_load(f)
 
+        # --- Cards
         n_arius_cards = cfg["nAriusCards"]
         arius_handles = (_iarius.Arius(i) for i in range(n_arius_cards))
         arius_handles = sorted(arius_handles, key=lambda a: a.GetID())
@@ -63,7 +66,8 @@ class InteractiveSession:
         _logger.log(INFO, "Discovered cards: %s" % str(arius_cards))
         for card in arius_cards:
             result[card.get_id()] = card
-
+        master_cards = []
+        # --- Probes
         probes = cfg['probes']
         for i, probe_def in enumerate(probes):
             model_name, definition = next(iter(probe_def.items()))
@@ -110,6 +114,7 @@ class InteractiveSession:
                         "There should be exactly one master card"
                     )
                     master_card = arius_card
+                    master_cards.append(master_card)
             probe = _device.Probe(
                 index=i,
                 model_name=model_name,
@@ -127,6 +132,16 @@ class InteractiveSession:
                     "---- %s uses %s, origin=%d, size=%d" %
                     (probe, card, origin, size)
                 )
+        ## -- DBAR and HV256
+        _utils.assert_true(
+            len(master_cards) == 1,
+            "There should be exactly one master card"
+        )
+        system_master_card = master_cards[0]
+        dbar = _dbarLite.DBARLite(system_master_card)
+        hv_handle = _hv256.HV256(dbar.GetI2CHV())
+        hv = _device.HV256(hv_handle)
+        result[hv.get_id()] = hv
         return result
 
     @staticmethod
@@ -134,11 +149,5 @@ class InteractiveSession:
         path = os.environ[_ARIUS_PATH_ENV]
         path = os.path.join(path, name)
         return ctypes.cdll.LoadLibrary(path)
-
-
-
-
-
-
 
 
