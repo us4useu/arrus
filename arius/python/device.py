@@ -544,11 +544,12 @@ class Probe(Device):
                 if s.origin < s.size:
                     next_subapertures.append((card, s))
             # Trigger master card.
-            self.master_card.sw_trigger()
+            for card, _ in subapertures_to_process:
+                card.sw_trigger()
             # Wait until the data is received.
-            # TODO(pjarosik) why the second card signals here, that is still busy?
-            # We should wait here for both cards.
-            self.master_card.wait_until_sgdma_finished()
+            for card, _ in subapertures_to_process:
+                card.wait_until_sgdma_finished()
+
             # Initiate RX transfer from device to host.
             channel_offset = 0
             for card, s in subapertures_to_process:
