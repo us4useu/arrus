@@ -73,6 +73,7 @@ class InteractiveSession:
             model_name, definition = next(iter(probe_def.items()))
             interface_name = definition['interface']
             apertures = definition['aperture']
+            pitch = definition['pitch']
             interface = _interface.get_interface(interface_name)
             order = interface.get_card_order()
             tx_mappings = interface.get_tx_channel_mappings()
@@ -119,6 +120,7 @@ class InteractiveSession:
                 index=i,
                 model_name=model_name,
                 hw_subapertures=hw_subapertures,
+                pitch=pitch,
                 master_card=master_card
             )
             result[probe.get_id()] = probe

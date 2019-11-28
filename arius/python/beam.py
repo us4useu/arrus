@@ -6,16 +6,11 @@ import arius.python.device as _device
 import arius.python.utils as _utils
 
 
-class PlaneWaveProfileBuilder:
+class BeamProfileBuilder:
     def __init__(self):
-        self.angle = None
         self.speed_of_sound = None
         self.pitch = None
         self.aperture_size = None
-
-    def set_angle(self, angle: float):
-        self.angle = angle
-        return self
 
     def set_speed_of_sound(self, speed_of_sound: float):
         self.speed_of_sound = speed_of_sound
@@ -29,13 +24,26 @@ class PlaneWaveProfileBuilder:
         self.aperture_size = aperture_size
         return self
 
+    def build(self):
+        raise NotImplementedError
+
+
+class PlaneWaveProfileBuilder(BeamProfileBuilder):
+    def __init__(self):
+        super().__init__()
+        self.angle = None
+
+    def set_angle(self, angle: float):
+        self.angle = angle
+        return self
+
     def build(self) -> (_device.Subaperture, List[float]):
         """
         Returns Subaperture and delays according to builder attributes.
 
         :return: (subaperture, delays)
         """
-        delays = self.compute(
+        delays = self.compute_delays(
             angle=self.angle,
             speed_of_sound=self.speed_of_sound,
             pitch=self.pitch,
@@ -67,17 +75,19 @@ class PlaneWaveProfileBuilder:
         return result
 
 
-def plane_wave(angle: float) -> PlaneWaveProfileBuilder:
+def plane_wave(angle: float, speed_of_sound: float=1540) -> PlaneWaveProfileBuilder:
     """
     Returns a plane wave builder, with partially applied angle.
 
     The return value should be provided as an input to appropriate device
     (i.e. a probe instance).
 
+    :param speed_of_sound: assumed speed of sound
     :param angle: plane wave angle [rad]
     :return: plane wave builder with applied angle
     """
     builder = PlaneWaveProfileBuilder()
     builder.set_angle(angle)
+    builder.set_speed_of_sound(speed_of_sound)
     return builder
 

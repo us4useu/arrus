@@ -11,6 +11,7 @@ _logger = logging.getLogger(__name__)
 import arius.python.iarius as _iarius
 import arius.python.hv256 as _hv256
 import arius.python.utils  as _utils
+import arius.python.beam as _beam
 
 
 class Subaperture:
@@ -417,15 +418,16 @@ class Probe(Device):
                  index: int,
                  model_name: str,
                  hw_subapertures,
+                 pitch,
                  master_card: AriusCard
     ):
-
         super().__init__(Probe._DEVICE_NAME, index)
         self.model_name = model_name
         self.hw_subapertures = hw_subapertures
         self.master_card = master_card
         self.n_channels = sum(s.size for s in self.hw_subapertures)
         self.dtype = np.dtype(np.int16)
+        self.pitch = pitch
 
     def start_if_necessary(self):
         for subaperture in self.hw_subapertures:
@@ -439,14 +441,25 @@ class Probe(Device):
 
     def transmit_and_record(
             self,
-            tx_aperture: Subaperture,
-            tx_delays,
             carrier_frequency: float,
+            beam: _beam.BeamProfileBuilder=None,
+            tx_aperture: Subaperture = None,
+            tx_delays=None,
             n_tx_periods: int = 1,
             n_samples: int=4096,
             rx_time: float=80e-6
     ):
+        _utils.assert_true(
+            (beam is not None) ^ (tx_aperture is not None and tx_delays is not None),
+            "Exactly one of the following parameters should be provided: "
+            "beam, (tx aperture, tx delays)"
+        )
+        if beam is not None:
+            beam.set_pitch(self.pitch)
+            beam.set_aperture_size(self.get_tx_n_channels())
+            tx_aperture, tx_delays = beam.build()
         # Validate input.
+
         _utils._assert_equal(
             len(tx_delays), tx_aperture.size,
             desc="Array of TX delays should contain %d numbers (probe aperture size)" % tx_aperture.size
@@ -547,7 +560,7 @@ class Probe(Device):
                 s.origin += card.get_n_rx_channels()
                 if s.origin < s.size:
                     next_subapertures.append((card, s))
-                    
+
             self.master_card.sw_trigger()
             # Wait until the data is received.
             for card, _ in subapertures_to_process:
