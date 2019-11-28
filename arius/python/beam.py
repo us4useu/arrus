@@ -37,7 +37,7 @@ class PlaneWaveProfileBuilder(BeamProfileBuilder):
         self.angle = angle
         return self
 
-    def build(self) -> (_device.Subaperture, List[float]):
+    def build(self):
         """
         Returns Subaperture and delays according to builder attributes.
 
