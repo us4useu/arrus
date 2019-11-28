@@ -15,15 +15,19 @@ class PlaneWaveProfileBuilder:
 
     def set_angle(self, angle: float):
         self.angle = angle
+        return self
 
     def set_speed_of_sound(self, speed_of_sound: float):
         self.speed_of_sound = speed_of_sound
+        return self
 
     def set_pitch(self, pitch: float):
         self.pitch = pitch
+        return self
 
     def set_aperture_size(self, aperture_size: int):
         self.aperture_size = aperture_size
+        return self
 
     def build(self) -> (_device.Subaperture, List[float]):
         """
@@ -42,6 +46,15 @@ class PlaneWaveProfileBuilder:
 
     @staticmethod
     def compute_delays(angle: float, speed_of_sound: float, pitch: float, aperture_size: int):
+        """
+        Returns array of delays according to given parameters.
+
+        :param angle: plane wave angle [rad]
+        :param speed_of_sound: assumed speed of sound [m/s]
+        :param pitch: a distance between probe's elements [m]
+        :param aperture_size: size of an aperture
+        :return: array of delays [s]
+        """
         _utils.assert_not_none([
             (angle, "angle"),
             (speed_of_sound, "speed of sound"),
@@ -54,7 +67,16 @@ class PlaneWaveProfileBuilder:
         return result
 
 
-def plane_wave(angle: float):
+def plane_wave(angle: float) -> PlaneWaveProfileBuilder:
+    """
+    Returns a plane wave builder, with partially applied angle.
+
+    The return value should be provided as an input to appropriate device
+    (i.e. a probe instance).
+
+    :param angle: plane wave angle [rad]
+    :return: plane wave builder with applied angle
+    """
     builder = PlaneWaveProfileBuilder()
     builder.set_angle(angle)
     return builder
