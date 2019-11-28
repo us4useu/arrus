@@ -61,6 +61,26 @@ class _SwigNonDynamicMeta(type):
     __setattr__ = _swig_setattr_nondynamic_class_variable(type.__setattr__)
 
 
+class II2CMaster(object):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined - class is abstract")
+    __repr__ = _swig_repr
+
+    def Write(self, address, data, length):
+        return _iarius.II2CMaster_Write(self, address, data, length)
+
+    def Read(self, address, data, length):
+        return _iarius.II2CMaster_Read(self, address, data, length)
+
+    def WriteAndRead(self, address, writedata, writelength, readdata, readlength):
+        return _iarius.II2CMaster_WriteAndRead(self, address, writedata, writelength, readdata, readlength)
+    __swig_destroy__ = _iarius.delete_II2CMaster
+
+# Register II2CMaster in _iarius:
+_iarius.II2CMaster_swigregister(II2CMaster)
+
 PGA_GAIN_PGA_GAIN_24dB = _iarius.PGA_GAIN_PGA_GAIN_24dB
 PGA_GAIN_PGA_GAIN_30dB = _iarius.PGA_GAIN_PGA_GAIN_30dB
 LPF_PROG_LPF_PROG_15MHz = _iarius.LPF_PROG_LPF_PROG_15MHz
@@ -92,7 +112,7 @@ DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_36dB = _iarius.DIG_TGC_ATTENUATION_DIG_T
 DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_42dB = _iarius.DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_42dB
 EN_DIG_TGC_EN_DIG_TGC_DIS = _iarius.EN_DIG_TGC_EN_DIG_TGC_DIS
 EN_DIG_TGC_EN_DIG_TGC_EN = _iarius.EN_DIG_TGC_EN_DIG_TGC_EN
-class Arius(object):
+class Arius(II2CMaster):
     thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
     __repr__ = _swig_repr
 
@@ -233,4 +253,3 @@ ARIUS_VENDOR_ID = cvar.ARIUS_VENDOR_ID
 ARIUS_DEVICE_ID = cvar.ARIUS_DEVICE_ID
 PCIDMABarNumber = cvar.PCIDMABarNumber
 AriusBarNumber = cvar.AriusBarNumber
-
