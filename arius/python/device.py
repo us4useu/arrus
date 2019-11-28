@@ -370,12 +370,14 @@ class AriusCard(Device):
         length = dst_array.nbytes
         self.log(
             DEBUG,
-            "Transferring %d bytes from RX buffer at 0x%02X to host memory..." % (length, src_addr)
+            "Transferring %d bytes from RX buffer at 0x%02X to host memory at 0x%02X..." % (
+                length, src_addr, dst_addr
+            )
         )
         self.card_handle.TransferRXBufferToHostLocation(
             dstAddress=dst_addr,
             length=length,
-            srcAddress=src_addr+0x100000000
+            srcAddress=src_addr # address shift is applied by the low-level layer
         )
         self.log(
             DEBUG,
@@ -467,6 +469,7 @@ class Probe(Device):
             beam.set_pitch(self.pitch)
             beam.set_aperture_size(self.get_tx_n_channels())
             tx_aperture, tx_delays = beam.build()
+            tx_delays = tx_delays.tolist()
         # Validate input.
 
         _utils._assert_equal(
