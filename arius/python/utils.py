@@ -8,6 +8,18 @@ def assert_true(value: bool, desc: str = ""):
             msg += ": %s." % desc
         raise ValueError(msg)
 
+def assert_not_none(values):
+    none_values = [(k, v) for k, v in values if v is None]
+    if len(none_values) > 0:
+        none_parameters = [k for k, _ in values]
+        none_parameters = ", ".join(none_parameters)
+        msg = "Validation error: following values are required: %s" % (
+            none_parameters
+        )
+        raise ValueError(msg)
+
+
+
 def _assert_equal(expected, actual, desc: str = ""):
     if expected != actual:
         msg = "Validation error"
