@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
+
 def compute_delays(n_samples, aperture, fs, c, focus, pitch, depth0=0,
                        delay0=17):
     """
@@ -65,7 +66,7 @@ def compute_delays(n_samples, aperture, fs, c, focus, pitch, depth0=0,
     return delays
 
 
-def beamforming_line(rf, delays):
+def line_beamforming(rf, delays):
     """
     Beamforms one line  using delay and sum algorithm.
 
@@ -87,7 +88,7 @@ def beamforming_line(rf, delays):
     return the_line
 
 
-def beamforming_image(rf, tx_aperture, fs, c, focus, pitch):
+def image_beamforming(rf, tx_aperture, fs, c, focus, pitch):
     """
     Beamforms image from conventional tx/rx scheme
 
@@ -106,13 +107,13 @@ def beamforming_image(rf, tx_aperture, fs, c, focus, pitch):
     for i_line in range(0, half_of_aperture):
         rf_line = rf[:, 0:(i_line + half_of_aperture), i_line]
         delays_line = delays[:, (-half_of_aperture - i_line):]
-        this_line = beamforming_line(rf_line, delays_line)
+        this_line = line_beamforming(rf_line, delays_line)
         image[:, i_line] = this_line
 
     # center of the image
     for i_line in range(half_of_aperture, n_channels - half_of_aperture):
         rf_line = rf[:, (i_line - half_of_aperture):(i_line + half_of_aperture), i_line]
-        this_line = beamforming_line(rf_line, delays)
+        this_line = line_beamforming(rf_line, delays)
         image[:, i_line] = this_line
 
     # right margin
@@ -121,10 +122,11 @@ def beamforming_image(rf, tx_aperture, fs, c, focus, pitch):
         delays_line = delays[:, 0:(tx_aperture - iterator)]
         iterator += 1
         rf_line = rf[:, (i_line - half_of_aperture):n_channels, i_line]
-        this_line = beamforming_line(rf_line, delays_line)
+        this_line = line_beamforming(rf_line, delays_line)
         image[:, i_line] = this_line
 
     return image
+
 
 def calculate_envelope(rf):
     """
@@ -133,14 +135,6 @@ def calculate_envelope(rf):
     :return: envelope image
     """
     envelope = np.abs(scs.hilbert(rf, axis=0))
-
-    # n_samples, n_lines = rf.shape
-    # envelope = np.zeros((n_samples, n_lines))
-    # for i_line in range(n_lines):
-    #     this_rf_line = rf[:, i_line]
-    #     this_envelope_line = np.abs(scs.hilbert(this_rf_line))
-    #     envelope[:, i_line] = this_envelope_line
-
     return envelope
 
 
@@ -218,15 +212,6 @@ def load_simulated_data(file, verbose=1):
         print('transmission angles: ', tx_angle.T)
         print('number of pulse periods: ', pulse_periods)
 
-
-    # if verbose:
-    #     print('imput data keys: ', matlab_data.keys())
-    #     print('speed of sound: ', c)
-    #     print('pitch: ', pitch)
-    #     print('aperture length: ', n_elements)
-    #     print('focal length: ', tx_focus)
-    #     print('subaperture length: ', tx_aperture)
-
     return [rf, c, fs, fc, pitch, tx_focus, tx_angle, tx_aperture, n_elements,
             pulse_periods, mode]
 
@@ -235,7 +220,6 @@ def amp2dB(image):
     max_image_value = np.max(image)
     image_dB = np.log10(image / max_image_value) * 20
     return image_dB
-
 
 
 def make_bmode_image(rf_image, dx, dy, depth0=0, draw_colorbar=1):
@@ -313,7 +297,7 @@ n_elements, pulse_periods, mode] = load_simulated_data(file, 1)
 
 print('beamforming...')
 start_time = time.time()
-rf_image = beamforming_image(rf, tx_aperture, fs, c, tx_focus, pitch)
+rf_image = image_beamforming(rf, tx_aperture, fs, c, tx_focus, pitch)
 end_time = time.time() - start_time
 end_time = round(end_time*10)/10
 print("--- %s seconds ---" % end_time)
