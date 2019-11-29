@@ -14,7 +14,7 @@ import arius.python.utils  as _utils
 import arius.python.beam as _beam
 
 #TODO(pjarosik) do not use sleeps here
-_TX_SLEEP = 10e-3 # [s]
+_TX_SLEEP = 1e-3 # [s]
 
 
 class Subaperture:
