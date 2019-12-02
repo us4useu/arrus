@@ -116,5 +116,32 @@ class PlaneWaveProfileBuilderTest(unittest.TestCase):
             desired=np.arange(0, 192)
         )
 
+    def test_compute_delays_angle_35deg_aperture_size_192(self):
+        delays = _beam.PlaneWaveProfileBuilder.compute_delays(
+            angle=math.pi/180*3.5,
+            speed_of_sound=1450,
+            pitch=0.245e-3,
+            aperture_size=192
+        )
+        print(delays)
+        # np.testing.assert_almost_equal(
+        #     actual=delays,
+        #     desired=np.arange(0, 192)
+        # )
+
+    def test_compute_delays_angle_m35deg_aperture_size_192(self):
+        delays = _beam.PlaneWaveProfileBuilder.compute_delays(
+            angle=-math.pi/180*3.5,
+            speed_of_sound=1450,
+            pitch=0.245e-3,
+            aperture_size=192
+        )
+        print(delays)
+        # np.testing.assert_almost_equal(
+        #     actual=delays,
+        #     desired=np.arange(0, 192)
+        # )
+
+
 if __name__ == "__main__":
     unittest.main()
