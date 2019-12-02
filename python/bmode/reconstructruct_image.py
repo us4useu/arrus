@@ -56,7 +56,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     else:
         focus_delay = 0
 
-    init_delay = focus_delay + burst_factor - delay0
+    init_delay = focus_delay + burst_factor + delay0
 
     # Delay & Sum
     # add zeros as last samples.
