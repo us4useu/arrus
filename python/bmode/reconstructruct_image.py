@@ -1,8 +1,9 @@
 import scipy.io as sio
-import scipy.signal as scs
+import scipy.signal as signal
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.matlib as npml
+import argparse
 
 def reconstruct_rf_img(rf, x_grid, z_grid,
                        pitch, fs, fc, c,
@@ -277,7 +278,7 @@ def calculate_envelope(rf):
     :param rf:
     :return: envelope image
     """
-    envelope = np.abs(scs.hilbert(rf, axis=0))
+    envelope = np.abs(signal.hilbert(rf, axis=0))
     return envelope
 
 def make_bmode_image(rf_image, x_grid, y_grid):
@@ -288,8 +289,8 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     :param y_grid: vector of y coordinates
     :return:
     """
-    dx=x_grid[1]-x_grid[0]
-    dy=y_grid[1]-y_grid[0]
+    dx = x_grid[1]-x_grid[0]
+    dy = y_grid[1]-y_grid[0]
 
     # calculate envelope
     amplitude_image = calculate_envelope(rf_image)
@@ -301,7 +302,7 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     # calculate ticks and labels
     n_samples, n_lines = rf_image.shape
     image_height = (n_samples - 1)*dy
-    image_height = z_grid[-1] - z_grid[0]
+    image_height = y_grid[-1] - y_grid[0]
     # max_depth = image_depth + depth0
     # max_depth = z_grid[-1]
     # image_width = (n_lines - 1)*dx
@@ -309,14 +310,14 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     image_proportion = image_height/image_width
 
     n_xticks = 4
-    n_yticks = round(n_xticks * image_proportion)
+    n_yticks = int(round(n_xticks * image_proportion))
 
     xticks = np.linspace(0, n_lines-1, n_xticks)
     xtickslabels = np.linspace(x_grid[0], x_grid[-1], n_xticks)*1e3
     xtickslabels = np.round(xtickslabels, 1)
 
     yticks = np.linspace(0, n_samples-1, n_yticks)
-    ytickslabels = np.linspace(z_grid[0], z_grid[-1], n_yticks)*1e3
+    ytickslabels = np.linspace(y_grid[0], y_grid[-1], n_yticks)*1e3
     ytickslabels = np.round(ytickslabels, 1)
 
     # calculate data aspect for proper image proportions
@@ -381,54 +382,149 @@ def rf2iq(rf, fc, fs, decimation_factor):
     return iq
 
 
+def main():
+
+    description_string = 'this file realize image reconstruction \
+    from ultrasound data which comes from us4us system'
+    parser = argparse.ArgumentParser(description=description_string)
+
+    parser.add_argument("--file", type=str, required=True, default=0,
+                        help='The path to the file with 3D array \
+                        of prebeamformed radio-frequency data',
+                        dest="file")
+
+    parser.add_argument(
+        "--x_grid", dest="x_grid",
+        type=float,
+        nargs=3,
+        help="Definition of interpolation grid along OX axis in [m]. \
+        A tuple: (start, stop, number of points) ",
+        default=(-10*1e-3, 10*1e-3, 96),
+        required=False)
+
+    parser.add_argument(
+        "--z_grid", dest="z_grid",
+        type=float,
+        nargs=3,
+        help="Definition of interpolation grid along OZ axis in [m]. \
+        A tuple: (start, stop, number of points). ",
+        default=(5*1e-3, 20*1e-3, 256),
+        required=False)
+
+    parser.add_argument(
+        "--pitch", dest="pitch",
+        type=float,
+        required=False,
+        default=0.245e-3,
+        help='Distance between neighbouring elements of ultrasound probe, [m]')
+
+    parser.add_argument(
+        "--fs", dest="fs",
+        type=float,
+        required=False,
+        default=65e6,
+        help='The sampling frequency in [Hz].')
+
+    parser.add_argument(
+        "--fc", dest="fc",
+        type=float,
+        required=False,
+        default=5e6,
+        help='The pulse carrier frequency, [Hz].')
+
+    parser.add_argument(
+        "--tx_aperture", dest="tx_aperture",
+        type=int,
+        required=False,
+        default=192,
+        help='Transmit aperture, [number of elements].')
+
+    parser.add_argument(
+        "--tx_focus", dest="tx_focus",
+        type=float,
+        required=False,
+        default=0,
+        help='Transmit focus in [m].')
+
+    parser.add_argument(
+        "--tx_angle", dest="tx_angle",
+        type=float,
+        nargs=3,
+        required=False,
+        default=(0, 0, 1),
+        help='Transmit angles for phased and pwi schemes. \
+         A tuple: (start, stop, number of angles), in [deg]')
+
+    parser.add_argument(
+        "--pulse_periods", dest="pulse_periods",
+        type=int,
+        required=False,
+        default=2,
+        help='The number of periods in transmit pulse.')
+
+    parser.add_argument(
+        "--tx_mode", dest="tx_mode",
+        type=str,
+        required=False,
+        choices=['lin', 'sta', 'pwi'],
+        default='pwi',
+        help='The reconstruction mode. \
+        Can be \"pwi\" (plane wave imaging - default) \
+        \"lin\" (classic), and \"sta\" (synthetic transmit aperture).')
+
+    parser.add_argument(
+        "--n_first_samples", dest="n_first_samples",
+        type=int,
+        required=False,
+        default=315,
+        help='The delay from hardware [number of samples].')
+
+    parser.add_argument(
+        "--speed_of_sound", dest="c",
+        type=float,
+        required=False,
+        default=1490,
+        help='The assumed speed of sound in the medium, [m/s].')
+
+    args = parser.parse_args()
+
+    rf = np.load(args.file)
+
+    x_grid = np.linspace(*args.x_grid)
+    z_grid = np.linspace(*args.z_grid)
+
+    tx_angle = np.deg2rad(
+        np.linspace(args.tx_angle[0], args.tx_angle[1], int(args.tx_angle[2]))
+    )
+
+    rf_image=reconstruct_rf_img(rf,
+                                x_grid,
+                                z_grid,
+                                args.pitch,
+                                args.fs,
+                                args.fc,
+                                args.c,
+                                args.tx_aperture,
+                                args.tx_focus,
+                                tx_angle,
+                                args.pulse_periods,
+                                args.tx_mode,
+                                args.n_first_samples,
+                                )
+
+    f_cut = [args.fc*0.5, args.fc*1.5]
+    fs_img = args.c/(z_grid[1]-z_grid[0])
+    filter_order = 4
+    b, a = signal.butter(filter_order, f_cut, btype='band', analog=False,
+                       output='ba', fs=fs_img)
+
+    rf_image_filt = signal.filtfilt(b, a, rf_image, axis=0)
+
+    # show image
+    make_bmode_image(rf_image_filt, x_grid, z_grid)
 
 ################################################################################
 
-# choosing the mode and path to data file
+if __name__ == "__main__":
+    main()
 
-# mode = 'sta'
-mode = 'pwi'
-# mode = 'lin'
-
-if mode == 'sta':
-    file = '/media/linuser/data01/praca/us4us/' \
-         'us4us_testData/dataSets02/rfSta_field.mat'
-    print('STA mode')
-elif mode == 'pwi':
-    file = '/media/linuser/data01/praca/us4us/' \
-           'us4us_testData/dataSets02/rfPwi_field.mat'
-    print('PWI mode')
-elif mode == 'lin':
-    file = '/media/linuser/data01/praca/us4us/' \
-           'us4us_testData/dataSets02/rfLin_field.mat'
-    print('classic mode')
-else:
-    raise ValueError('unknown reconstruction mode!')
-
-
-
-# ippt
-# file = '/home/linuser/us4us/usgData/rfLin_field.mat'
-
-
-       
-
-# load data
-[rf, c, fs, fc, pitch,
-tx_focus, tx_angle, tx_aperture,
-n_elements, pulse_periods] = load_simulated_data(file, 1)
-
-# define grid for reconstruction (imaged area)
-x_grid = np.linspace(-3*1e-3, 3*1e-3, 32)
-z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 64)
-
-# reconstruct data
-rf_image = reconstruct_rf_img(rf, x_grid, z_grid,
-                           pitch, fs, fc, c,
-                           tx_aperture, tx_focus, tx_angle,
-                           pulse_periods, tx_mode=mode
-                           )
-
-# show image
-# print(rf_image)
-make_bmode_image(rf_image, x_grid, z_grid)
