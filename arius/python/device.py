@@ -453,8 +453,8 @@ class Probe(Device):
     def transmit_and_record(
             self,
             carrier_frequency: float,
-            beam: _beam.BeamProfileBuilder=None,
-            tx_aperture: Subaperture = None,
+            beam=None,
+            tx_aperture: Subaperture=None,
             tx_delays=None,
             n_tx_periods: int = 1,
             n_samples: int=4096,
@@ -595,13 +595,27 @@ class Probe(Device):
 
         return output
 
+    def set_tx_frequency(self, frequency):
+        _utils.assert_true(
+            frequency > 0,
+            desc="Carrier frequency should be greater than zero."
+        )
+        for card in self._get_cards():
+            card.set_tx_frequency(frequency)
+
+    def set_tx_periods(self, n_tx_periods):
+        for card in self._get_cards():
+            card.set_tx_periods(n_tx_periods)
+
+    def set_rx_time(self, rx_time):
+        for card in self._get_cards():
+            card.set_rx_time(rx_time)
+
     def set_pga_gain(self, gain):
-        self.start_if_necessary()
         for card in self._get_cards():
             card.set_pga_gain(gain)
 
     def set_lpf_cutoff(self, cutoff):
-        self.start_if_necessary()
         for card in self._get_cards():
             card.set_lpf_cutoff(cutoff)
 
@@ -612,12 +626,10 @@ class Probe(Device):
 
         :param active_termination: active termination, can be None
         """
-        self.start_if_necessary()
         for card in self._get_cards():
             card.set_active_termination(active_termination)
 
     def set_lna_gain(self, gain):
-        self.start_if_necessary()
         for card in self._get_cards():
             card.set_lna_gain(gain)
 
@@ -628,22 +640,18 @@ class Probe(Device):
 
         :param attenuation: attenuation, can be None
         """
-        self.start_if_necessary()
         for card in self._get_cards():
             card.set_dtgc(attenuation)
 
     def disable_test_patterns(self):
-        self.start_if_necessary()
         for card in self._get_cards():
             card.disable_test_patterns()
 
     def enable_test_patterns(self):
-        self.start_if_necessary()
         for card in self._get_cards():
             card.enable_test_patterns()
 
     def sync_test_patterns(self):
-        self.start_if_necessary()
         for card in self._get_cards():
             card.sync_test_patterns()
 
