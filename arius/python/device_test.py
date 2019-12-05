@@ -57,6 +57,9 @@ class AriusCardMock(Device):
         for i, delay in enumerate(delays):
             self.tx_delays[i] = delay
 
+    def set_tx_delay(self, channel, delay):
+        self.tx_delays[channel] = delay
+
     def set_tx_frequency(self, f):
         self.tx_frequency = f
 
@@ -825,6 +828,185 @@ class ProbeSetTxApertureTest(unittest.TestCase):
             card = hws.card
             self.assertListEqual(expected_delay, card.tx_delays)
 
+
+class ProbeSetTxDelayTest(unittest.TestCase):
+    def test_probe_sets_tx_delay_for_single_card(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=32 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+
+        probe.set_tx_delay(channel_nr=0, delay=1)
+        self._assert_card_delays(
+            [
+                [1.0] + [0.0]*127
+            ],
+            hw_subapertures
+        )
+
+    def test_probe_sets_tx_delay_for_single_card_right_border(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=32 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+
+        probe.set_tx_delay(channel_nr=31, delay=1)
+        self._assert_card_delays(
+            [
+                [0.0]*31 + [1.0] + [0.0]*96
+            ],
+            hw_subapertures
+        )
+
+    def test_probe_sets_tx_delay_for_single_card_interior(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+
+        probe.set_tx_delay(channel_nr=42, delay=1)
+        self._assert_card_delays(
+            [
+                [0.0]*42 + [1.0] + [0.0]*85
+            ],
+            hw_subapertures
+        )
+
+    def test_set_multiple(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+
+        probe.set_tx_delay(channel_nr=42, delay=1)
+        probe.set_tx_delay(channel_nr=0, delay=2)
+        probe.set_tx_delay(channel_nr=127, delay=4)
+        self._assert_card_delays(
+            [
+                [2.0] + [0.0]*41 + [1.0] + [0.0]*84 + [4.0]
+            ],
+            hw_subapertures
+        )
+
+    def test_two_cards_first_card(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128 # Determines the size of the probe's aperture.
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+
+        probe.set_tx_delay(channel_nr=127, delay=1)
+        self._assert_card_delays(
+            [
+                [0.0]*127 + [1.0],
+                [0.0]*128
+            ],
+            hw_subapertures
+        )
+
+    def test_two_cards_second_card(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128 # Determines the size of the probe's aperture.
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        probe.set_tx_delay(channel_nr=128, delay=1)
+        self._assert_card_delays(
+            [
+
+                [0.0]*128,
+                [1.0] + [0.0]*127,
+            ],
+            hw_subapertures
+        )
+
+    def test_two_cards_second_card_end(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128 # Determines the size of the probe's aperture.
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        probe.set_tx_delay(channel_nr=191, delay=1)
+        self._assert_card_delays(
+            [
+
+                [0.0]*128,
+                [0.0]*63 + [1.0] + [0.0]*64
+            ],
+            hw_subapertures
+        )
+
+    def _create_probe(self, apertures, master_card_idx):
+        return Probe(
+            index=0,
+            model_name="test_probe",
+            hw_subapertures=apertures,
+            master_card=apertures[master_card_idx].card,
+            pitch=0.245e-3
+        )
+
+    def _assert_card_delays(
+            self,
+            expected_delays,
+            hw_subapertures
+    ):
+        for hws, expected_delay in zip(hw_subapertures, expected_delays):
+            card = hws.card
+            self.assertListEqual(expected_delay, card.tx_delays)
 
 if __name__ == "__main__":
     unittest.main()

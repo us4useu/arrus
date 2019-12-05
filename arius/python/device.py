@@ -145,7 +145,7 @@ class AriusCard(Device):
     @assert_card_is_powered_up
     def set_tx_aperture(self, origin: int, size: int):
         """
-        Sets TX aperture.
+        Sets position of an active TX aperture.
 
         :param origin: an origin channel of the aperture
         :param size: a length of the aperture
@@ -171,6 +171,25 @@ class AriusCard(Device):
             time.sleep(_TX_SLEEP)
             result_values.append(value)
         self.log(DEBUG, "Applied TX delays: %s" % (result_values))
+        return result_values
+
+    @assert_card_is_powered_up
+    def set_tx_delay(self, channel: int, delay: float):
+        """
+        Sets channel's TX delay.
+
+        :param channel: card's channel number
+        :param delay: delay to set
+        :return a value, which was set
+        """
+        _utils.assert_true(
+            channel < self.get_n_tx_channels(),
+            desc="Channel number cannot exceed number of available TX channels (%d)"
+                 % self.get_n_tx_channels()
+        )
+        self.log(DEBUG, "Setting TX delay: channel=%d, delay=%d" % (channel, delay))
+        value = self.card_handle.SetTxDelay(channel, delay)
+        return value
 
     @assert_card_is_powered_up
     def set_tx_frequency(self, frequency: float):
@@ -594,6 +613,26 @@ class Probe(Device):
             subapertures_to_process = next_subapertures
 
         return output
+
+    def set_tx_delay(self, channel_nr:int, delay:float):
+        _utils.assert_true(
+            self.get_tx_n_channels() > channel_nr,
+            desc="Maximum channel number is %d" % (self.get_tx_n_channels()-1)
+        )
+        _utils.assert_true(
+            delay >= 0.0,
+            desc="Delay should be non-negative (is %d)" % delay
+        )
+        # TODO(pjarosik) optimize below
+        current_origin = 0
+        for subaperture in self.hw_subapertures:
+            current_end = current_origin+subaperture.size
+            if current_origin <= channel_nr < current_end:
+                return subaperture.card.set_tx_delay(
+                    channel=channel_nr-current_origin,
+                    delay=float(delay))
+            current_origin += subaperture.size
+        raise ValueError("Channel not found: %d" % channel_nr)
 
     def set_tx_aperture(self, tx_aperture):
         _utils.assert_true(
