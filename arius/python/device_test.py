@@ -10,6 +10,14 @@ mock_import(
     "arius.python.iarius",
     Arius=AriusMock
 )
+mock_import(
+    "arius.python.dbarLite",
+    DBARLite=None
+)
+mock_import(
+    "arius.python.hv256",
+    HV256=None
+)
 # Project imports.
 from arius.python.device import (
     Device,
@@ -145,7 +153,9 @@ class ProbeRxTest(unittest.TestCase):
             index=0,
             model_name="test_probe",
             hw_subapertures=apertures,
-            master_card=apertures[master_card_idx].card)
+            master_card=apertures[master_card_idx].card,
+            pitch=0.245e-3
+        )
 
 
 class ProbeTxTest(unittest.TestCase):
@@ -559,7 +569,252 @@ class ProbeTxTest(unittest.TestCase):
             index=0,
             model_name="test_probe",
             hw_subapertures=apertures,
-            master_card=apertures[master_card_idx].card)
+            master_card=apertures[master_card_idx].card,
+            pitch=0.245e-3
+        )
+
+    def _assert_card_delays(
+            self,
+            expected_delays,
+            hw_subapertures
+    ):
+        for hws, expected_delay in zip(hw_subapertures, expected_delays):
+            card = hws.card
+            self.assertListEqual(expected_delay, card.tx_delays)
+
+
+class ProbeSetTxApertureTest(unittest.TestCase):
+    #TODO(pjarosik) remove ProbeTxTest
+    def test_probe_sets_tx_for_single_card(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=32 # Determines the size of the probe's aperture.
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(0, 32)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(tx_aperture, hw_subapertures[0].card.tx_aperture)
+
+    def test_probe_sets_tx_for_single_card_hw_offset(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=34,
+                size=32
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(0, 16)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(Subaperture(34, 16),
+                         hw_subapertures[0].card.tx_aperture)
+        print(probe.hw_subapertures[0].card.tx_delays)
+
+    def test_probe_sets_tx_for_single_card_offset_origin(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(14, 32)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(tx_aperture, hw_subapertures[0].card.tx_aperture)
+
+    def test_probe_sets_tx_for_two_cards(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(0, 192)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(Subaperture(0, 128),
+                         hw_subapertures[0].card.tx_aperture)
+        self.assertEqual(Subaperture(0, 64),
+                         hw_subapertures[1].card.tx_aperture)
+
+    def test_probe_sets_tx_for_two_cards_complete_apertures(self):
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(0, 256)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(Subaperture(0, 128),
+                         hw_subapertures[0].card.tx_aperture)
+        self.assertEqual(Subaperture(0, 128),
+                         hw_subapertures[1].card.tx_aperture)
+
+
+    def test_probe_sets_tx_for_two_cards_only_first_card_aperture(self):
+        # Two cards, tx aperture only on the first card
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(16, 64)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(Subaperture(16, 64),
+                         hw_subapertures[0].card.tx_aperture)
+        self.assertIsNone(hw_subapertures[1].card.tx_aperture)
+
+    def test_probe_sets_tx_for_two_cards_only_second_card_aperture(self):
+        # Two cards, tx aperture only on the second card
+
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(130, 32)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(Subaperture(2, 32),
+                         hw_subapertures[1].card.tx_aperture)
+        self.assertIsNone(hw_subapertures[0].card.tx_aperture)
+
+    def test_probe_sets_tx_apeture_two_cards_second_hw_offset(self):
+        # Two cards, second one's aperture starts at origin > 0
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=14,
+                size=64
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(0, 192)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(Subaperture(0, 128),
+                         hw_subapertures[0].card.tx_aperture)
+        self.assertEqual(Subaperture(14, 64),
+                         hw_subapertures[1].card.tx_aperture)
+
+    def test_single_element_aperture_card1(self):
+        # Two cards, single element aperture near right border of the first card aperture
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64
+            )
+        ]
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(127, 1)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertEqual(Subaperture(127, 1),
+                         hw_subapertures[0].card.tx_aperture)
+        self.assertIsNone(hw_subapertures[1].card.tx_aperture)
+
+    def test_single_element_aperture_card2(self):
+        # Two cards, single element aperture near left bofder of the second card aperture
+        # Set.
+        hw_subapertures = [
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=128
+            ),
+            ProbeHardwareSubaperture(
+                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                origin=0,
+                size=64
+            )
+        ]
+
+        # Run.
+        probe = self._create_probe(hw_subapertures, 0)
+        tx_aperture = Subaperture(128, 1)
+        probe.set_tx_aperture(tx_aperture=tx_aperture)
+        # Verify.
+        self.assertIsNone(hw_subapertures[0].card.tx_aperture)
+        self.assertEqual(Subaperture(0, 1),
+                         hw_subapertures[1].card.tx_aperture)
+
+    def _create_probe(self, apertures, master_card_idx):
+        return Probe(
+            index=0,
+            model_name="test_probe",
+            hw_subapertures=apertures,
+            master_card=apertures[master_card_idx].card,
+            pitch=0.245e-3
+        )
 
     def _assert_card_delays(
             self,

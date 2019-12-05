@@ -595,6 +595,31 @@ class Probe(Device):
 
         return output
 
+    def set_tx_aperture(self, tx_aperture):
+        _utils.assert_true(
+            self.get_tx_n_channels() >= tx_aperture.origin+tx_aperture.size,
+            desc="Aperture cannot exceed number of TX channels (%d)" % self.get_tx_n_channels()
+        )
+        self.log(DEBUG,
+            "Setting Probe TX aperture: origin=%d, size=%d" % (tx_aperture.origin, tx_aperture.size)
+        )
+        tx_start = tx_aperture.origin
+        tx_end = tx_aperture.origin + tx_aperture.size
+        current_origin = 0
+        for s in self.hw_subapertures:
+            # Set all TX parameters here (if necessary).
+            card, origin, size = s.card, s.origin, s.size
+            current_start = current_origin
+            current_end = current_origin+size
+            if tx_start < current_end and tx_end > current_start:
+                # Current boundaries of the PROBE subaperture.
+                aperture_start = max(current_start, tx_start)
+                aperture_end = min(current_end, tx_end)
+                card.set_tx_aperture(
+                    origin+(aperture_start-current_origin),
+                    aperture_end-aperture_start)
+            current_origin += size
+
     def set_tx_frequency(self, frequency):
         _utils.assert_true(
             frequency > 0,
