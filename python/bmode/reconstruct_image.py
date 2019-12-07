@@ -353,7 +353,7 @@ def rf2iq(rf, fc, fs, decimation_factor):
     :return: array of decimated iq signals
 
     """
-    import scipy.signal as signal
+
     s = rf.shape
     n_dim = len(s)
     n_samples = s[0]
