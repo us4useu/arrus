@@ -37,7 +37,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     z_grid = temp.T
 
     # getting some size parameters
-    n_samples, n_channels, n_transmissions  = rf.shape
+    n_samples, n_channels, n_transmissions = rf.shape
     z_size = max(z_grid.shape)
     x_size = max(x_grid.shape)
 
@@ -104,7 +104,6 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
                         /abs(x_grid - element_xcoord[itx])*0.5
 
             tx_apodization = f_number > 2
-            
 
         elif tx_mode == 'pwi':
             lix_valid = np.ones((x_size), dtype=bool)
@@ -114,16 +113,15 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             else:
                 first_element = n_channels-1
 
-
             tx_distance = \
                 (x_grid - element_xcoord[first_element]) * np.sin(tx_angle[itx])\
                 + z_grid * np.cos(tx_angle[itx])
 
             r1 = (x_grid - element_xcoord[0]) * np.cos(tx_angle[itx])\
-                 - z_grid * np.sin(tx_angle[itx])
+                - z_grid * np.sin(tx_angle[itx])
 
             r2 = (x_grid - element_xcoord[-1]) * np.cos(tx_angle[itx])\
-                 - z_grid * np.sin(tx_angle[itx])
+                - z_grid * np.sin(tx_angle[itx])
 
             tx_apodization = (r1 >= 0) & (r2 <= 0)
 
@@ -145,11 +143,9 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
             # calculate total delays [s]
             delays = init_delay + (tx_distance + rx_distance)/c
-            
 
             # calculate sample number to be used in reconstruction
             samples = delays*fs + 1
-            
 
             out_of_range = (0 > samples) | (samples > n_samples-1)
             samples[out_of_range] = n_samples
@@ -160,7 +156,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             floor_samples = np.floor(samples).astype(int)
 
             rf_rx[:, lix_valid, irx] = rf_raw_line[floor_samples]*(1 - (samples % 1))\
-                                       + rf_raw_line[ceil_samples]*(samples % 1)
+                                     + rf_raw_line[ceil_samples]*(samples % 1)
 
             weight_rx[:, lix_valid, irx] = tx_apodization * rx_apodization
 
@@ -212,15 +208,12 @@ def load_simulated_data(file, verbose=1):
 
     n_elements = matlab_data.get('nElem')
     n_elements = np.int(n_elements)
-    
-
 
     pulse_periods = matlab_data.get('nPer')
     pulse_periods = np.int(pulse_periods)
 
     pitch = matlab_data.get('pitch')
     pitch = np.float(pitch)
-
 
     if 'txAng' in matlab_data:
         tx_angle = matlab_data.get('txAng')
@@ -229,8 +222,6 @@ def load_simulated_data(file, verbose=1):
         # tx_angle = np.int(tx_angle)
     else:
         tx_angle = 0
-
-
 
     if 'txAp' in matlab_data:
         tx_aperture = matlab_data.get('txAp')
@@ -243,7 +234,6 @@ def load_simulated_data(file, verbose=1):
         tx_focus = np.float(tx_focus)
     else:
         tx_focus = 0
-
 
     if 'rfLin' in matlab_data:
         rf = matlab_data.get('rfLin')
@@ -268,9 +258,8 @@ def load_simulated_data(file, verbose=1):
         print('transmission angles: ', tx_angle)
         print('number of pulse periods: ', pulse_periods)
 
-
-
     return [rf, c, fs, fc, pitch, tx_focus, tx_angle, tx_aperture, n_elements, pulse_periods]
+
 
 def calculate_envelope(rf):
     """
@@ -280,6 +269,7 @@ def calculate_envelope(rf):
     """
     envelope = np.abs(signal.hilbert(rf, axis=0))
     return envelope
+
 
 def make_bmode_image(rf_image, x_grid, y_grid):
     """
@@ -325,11 +315,11 @@ def make_bmode_image(rf_image, x_grid, y_grid):
 
     # show the image
     plt.imshow(bmode_image,
-                    interpolation='bicubic',
-                    aspect=data_aspect,
-                    cmap='gray',
-                    vmin=-60, vmax=0
-                    )
+               interpolation='bicubic',
+               aspect=data_aspect,
+               cmap='gray',
+               vmin=-60, vmax=0
+               )
 
     plt.xticks(xticks, xtickslabels)
     plt.yticks(yticks, ytickslabels)
@@ -497,26 +487,29 @@ def main():
         np.linspace(args.tx_angle[0], args.tx_angle[1], int(args.tx_angle[2]))
     )
 
-    rf_image=reconstruct_rf_img(rf,
-                                x_grid,
-                                z_grid,
-                                args.pitch,
-                                args.fs,
-                                args.fc,
-                                args.c,
-                                args.tx_aperture,
-                                args.tx_focus,
-                                tx_angle,
-                                args.pulse_periods,
-                                args.tx_mode,
-                                args.n_first_samples,
-                                )
+    rf_image = reconstruct_rf_img(rf,
+                                  x_grid,
+                                  z_grid,
+                                  args.pitch,
+                                  args.fs,
+                                  args.fc,
+                                  args.c,
+                                  args.tx_aperture,
+                                  args.tx_focus,
+                                  tx_angle,
+                                  args.pulse_periods,
+                                  args.tx_mode,
+                                  args.n_first_samples,
+                                  )
 
     f_cut = [args.fc*0.5, args.fc*1.5]
     fs_img = args.c/(z_grid[1]-z_grid[0])
     filter_order = 4
-    b, a = signal.butter(filter_order, f_cut, btype='band', analog=False,
-                       output='ba', fs=fs_img)
+    b, a = signal.butter(filter_order,
+                         f_cut, btype='band',
+                         analog=False,
+                         output='ba',
+                         fs=fs_img)
 
     rf_image_filt = signal.filtfilt(b, a, rf_image, axis=0)
 
@@ -524,6 +517,7 @@ def main():
     make_bmode_image(rf_image_filt, x_grid, z_grid)
 
 ################################################################################
+
 
 if __name__ == "__main__":
     main()
