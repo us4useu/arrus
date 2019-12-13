@@ -69,8 +69,8 @@ class PlaneWaveProfileBuilder(BeamProfileBuilder):
             (pitch, "pitch"),
             (aperture_size, "aperture size")
         ])
-        dy = math.tan(angle)*pitch/speed_of_sound
-        result = np.array([i*dy for i in range(aperture_size)])
+        dt = math.tan(angle)*pitch/speed_of_sound
+        result = np.array([i*dt for i in range(aperture_size)])
         result = result-np.min(result)
         return result
 
