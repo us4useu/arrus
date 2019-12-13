@@ -13,10 +13,6 @@ import arius.python.hv256 as _hv256
 import arius.python.utils  as _utils
 import arius.python.beam as _beam
 
-#TODO(pjarosik) do not use sleeps here
-_TX_SLEEP = 1e-3 # [s]
-
-
 class Subaperture:
     def __init__(self, origin: int, size: int):
         self.origin = origin
@@ -155,7 +151,6 @@ class AriusCard(Device):
             "Setting TX aperture: origin=%d, size=%d" % (origin, size)
         )
         self.card_handle.SetTxAperture(origin=origin, size=size)
-        time.sleep(_TX_SLEEP)
 
     @assert_card_is_powered_up
     def set_tx_delays(self, delays):
@@ -168,7 +163,6 @@ class AriusCard(Device):
         result_values = []
         for i, delay in enumerate(delays):
             value = self.card_handle.SetTxDelay(i, delay)
-            time.sleep(_TX_SLEEP)
             result_values.append(value)
         self.log(DEBUG, "Applied TX delays: %s" % (result_values))
         return result_values
@@ -198,7 +192,6 @@ class AriusCard(Device):
             "Setting TX frequency: %f" % frequency
         )
         self.card_handle.SetTxFreqency(frequency)
-        time.sleep(_TX_SLEEP)
 
     @assert_card_is_powered_up
     def set_tx_periods(self, n_periods: int):
@@ -207,7 +200,6 @@ class AriusCard(Device):
             "Setting number of bursts: %f" % n_periods
         )
         self.card_handle.SetTxPeriods(n_periods)
-        time.sleep(_TX_SLEEP)
 
     @assert_card_is_powered_up
     def sw_trigger(self):
@@ -566,8 +558,6 @@ class Probe(Device):
                 dtype=self.dtype,
                 alignment=4096
             )
-            # Other RX parameters.
-            rx_card.set_rx_time(rx_time)
 
         subapertures_to_process = [
             (s.card, Subaperture(s.origin, s.size))
