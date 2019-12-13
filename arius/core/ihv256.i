@@ -10,7 +10,7 @@
 	}
 }
 
-%module hv256
+%module ihv256
 %{
 #include <iostream>
 #include "ii2CMaster.h"

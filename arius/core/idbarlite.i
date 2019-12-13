@@ -9,7 +9,7 @@
 		std::cout << "SWIG exception: "  << e.what() << std::endl;
 	}
 }
-%module dbarlite
+%module idbarlite
 %ignore dbarlite::DBARLite::Write;
 %ignore dbarlite::DBARLite::Read;
 %ignore dbarlite::DBARLite::WriteAndRead;
