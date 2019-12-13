@@ -61,26 +61,6 @@ class _SwigNonDynamicMeta(type):
     __setattr__ = _swig_setattr_nondynamic_class_variable(type.__setattr__)
 
 
-class II2CMaster(object):
-    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
-
-    def __init__(self, *args, **kwargs):
-        raise AttributeError("No constructor defined - class is abstract")
-    __repr__ = _swig_repr
-
-    def Write(self, address, data, length):
-        return _iarius.II2CMaster_Write(self, address, data, length)
-
-    def Read(self, address, data, length):
-        return _iarius.II2CMaster_Read(self, address, data, length)
-
-    def WriteAndRead(self, address, writedata, writelength, readdata, readlength):
-        return _iarius.II2CMaster_WriteAndRead(self, address, writedata, writelength, readdata, readlength)
-    __swig_destroy__ = _iarius.delete_II2CMaster
-
-# Register II2CMaster in _iarius:
-_iarius.II2CMaster_swigregister(II2CMaster)
-
 PGA_GAIN_PGA_GAIN_24dB = _iarius.PGA_GAIN_PGA_GAIN_24dB
 PGA_GAIN_PGA_GAIN_30dB = _iarius.PGA_GAIN_PGA_GAIN_30dB
 LPF_PROG_LPF_PROG_15MHz = _iarius.LPF_PROG_LPF_PROG_15MHz
@@ -112,144 +92,125 @@ DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_36dB = _iarius.DIG_TGC_ATTENUATION_DIG_T
 DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_42dB = _iarius.DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_42dB
 EN_DIG_TGC_EN_DIG_TGC_DIS = _iarius.EN_DIG_TGC_EN_DIG_TGC_DIS
 EN_DIG_TGC_EN_DIG_TGC_EN = _iarius.EN_DIG_TGC_EN_DIG_TGC_EN
-class Arius(II2CMaster):
+class IArius(object):
     thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
-    __repr__ = _swig_repr
 
-    def __init__(self, idx):
-        _iarius.Arius_swiginit(self, _iarius.new_Arius(idx))
-    __swig_destroy__ = _iarius.delete_Arius
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined - class is abstract")
+    __repr__ = _swig_repr
+    __swig_destroy__ = _iarius.delete_IArius
 
     def SWTrigger(self):
-        return _iarius.Arius_SWTrigger(self)
+        return _iarius.IArius_SWTrigger(self)
 
     def IsPowereddown(self):
-        return _iarius.Arius_IsPowereddown(self)
+        return _iarius.IArius_IsPowereddown(self)
 
     def Powerup(self):
-        return _iarius.Arius_Powerup(self)
-
-    def SyncClocks(self):
-        return _iarius.Arius_SyncClocks(self)
-
-    def Receive(self, address, length):
-        return _iarius.Arius_Receive(self, address, length)
-
-    def ScheduleReceive(self, address, length):
-        return _iarius.Arius_ScheduleReceive(self, address, length)
-
-    def IsReceived(self):
-        return _iarius.Arius_IsReceived(self)
+        return _iarius.IArius_Powerup(self)
 
     def InitializeClocks(self):
-        return _iarius.Arius_InitializeClocks(self)
+        return _iarius.IArius_InitializeClocks(self)
 
     def InitializeRX(self):
-        return _iarius.Arius_InitializeRX(self)
+        return _iarius.IArius_InitializeRX(self)
 
     def InitializeDDR4(self):
-        return _iarius.Arius_InitializeDDR4(self)
+        return _iarius.IArius_InitializeDDR4(self)
+
+    def SyncClocks(self):
+        return _iarius.IArius_SyncClocks(self)
+
+    def ScheduleReceive(self, address, length, callback=None):
+        return _iarius.IArius_ScheduleReceive(self, address, length, callback)
+
+    def EnableReceive(self):
+        return _iarius.IArius_EnableReceive(self)
 
     def TransferRXBufferToHost(self, dstAddress, length, srcAddress):
-        return _iarius.Arius_TransferRXBufferToHost(self, dstAddress, length, srcAddress)
-
-    def TransferRXBufferToHostLocation(self, dstAddress, length, srcAddress):
-        return _iarius.Arius_TransferRXBufferToHostLocation(self, dstAddress, length, srcAddress)
+        return _iarius.IArius_TransferRXBufferToHost(self, dstAddress, length, srcAddress)
 
     def LockDMABuffer(self, address, length):
-        return _iarius.Arius_LockDMABuffer(self, address, length)
+        return _iarius.IArius_LockDMABuffer(self, address, length)
 
     def ReleaseDMABuffer(self, address):
-        return _iarius.Arius_ReleaseDMABuffer(self, address)
+        return _iarius.IArius_ReleaseDMABuffer(self, address)
 
     def EnableTestPatterns(self):
-        return _iarius.Arius_EnableTestPatterns(self)
+        return _iarius.IArius_EnableTestPatterns(self)
 
     def DisableTestPatterns(self):
-        return _iarius.Arius_DisableTestPatterns(self)
+        return _iarius.IArius_DisableTestPatterns(self)
 
     def SyncTestPatterns(self):
-        return _iarius.Arius_SyncTestPatterns(self)
+        return _iarius.IArius_SyncTestPatterns(self)
 
     def SetPGAGain(self, gain):
-        return _iarius.Arius_SetPGAGain(self, gain)
+        return _iarius.IArius_SetPGAGain(self, gain)
 
     def SetLPFCutoff(self, cutoff):
-        return _iarius.Arius_SetLPFCutoff(self, cutoff)
+        return _iarius.IArius_SetLPFCutoff(self, cutoff)
 
     def SetActiveTermination(self, endis, term):
-        return _iarius.Arius_SetActiveTermination(self, endis, term)
+        return _iarius.IArius_SetActiveTermination(self, endis, term)
 
     def SetLNAGain(self, gain):
-        return _iarius.Arius_SetLNAGain(self, gain)
+        return _iarius.IArius_SetLNAGain(self, gain)
 
     def SetDTGC(self, endis, att):
-        return _iarius.Arius_SetDTGC(self, endis, att)
-
-    def SWNextTX(self):
-        return _iarius.Arius_SWNextTX(self)
+        return _iarius.IArius_SetDTGC(self, endis, att)
 
     def InitializeTX(self):
-        return _iarius.Arius_InitializeTX(self)
+        return _iarius.IArius_InitializeTX(self)
+
+    def SWNextTX(self):
+        return _iarius.IArius_SWNextTX(self)
 
     def GetID(self):
-        return _iarius.Arius_GetID(self)
+        return _iarius.IArius_GetID(self)
 
-    def SetTxDelay(self, channel, value):
-        return _iarius.Arius_SetTxDelay(self, channel, value)
+    def SetTxDelay(self, *args):
+        return _iarius.IArius_SetTxDelay(self, *args)
 
-    def SetTxFreqency(self, frequency):
-        return _iarius.Arius_SetTxFreqency(self, frequency)
+    def SetTxFreqency(self, *args):
+        return _iarius.IArius_SetTxFreqency(self, *args)
 
-    def SetTxPeriods(self, nop):
-        return _iarius.Arius_SetTxPeriods(self, nop)
+    def SetTxPeriods(self, *args):
+        return _iarius.IArius_SetTxPeriods(self, *args)
 
-    def SetRxAperture(self, origin, size):
-        return _iarius.Arius_SetRxAperture(self, origin, size)
+    def SetRxAperture(self, *args):
+        return _iarius.IArius_SetRxAperture(self, *args)
 
-    def SetTxAperture(self, origin, size):
-        return _iarius.Arius_SetTxAperture(self, origin, size)
+    def SetTxAperture(self, *args):
+        return _iarius.IArius_SetTxAperture(self, *args)
 
-    def SetRxTime(self, time):
-        return _iarius.Arius_SetRxTime(self, time)
+    def SetRxTime(self, *args):
+        return _iarius.IArius_SetRxTime(self, *args)
+
+    def SetNumberOfFirings(self, nFirings):
+        return _iarius.IArius_SetNumberOfFirings(self, nFirings)
+
+    def EnableTransmit(self):
+        return _iarius.IArius_EnableTransmit(self)
 
     def SetRxChannelMapping(self, srcChannel, dstChannel):
-        return _iarius.Arius_SetRxChannelMapping(self, srcChannel, dstChannel)
+        return _iarius.IArius_SetRxChannelMapping(self, srcChannel, dstChannel)
 
     def SetTxChannelMapping(self, srcChannel, dstChannel):
-        return _iarius.Arius_SetTxChannelMapping(self, srcChannel, dstChannel)
-
-    def Write(self, address, data, length):
-        return _iarius.Arius_Write(self, address, data, length)
-
-    def Read(self, address, data, length):
-        return _iarius.Arius_Read(self, address, data, length)
-
-    def WriteAndRead(self, address, writedata, writelength, readdata, readlength):
-        return _iarius.Arius_WriteAndRead(self, address, writedata, writelength, readdata, readlength)
+        return _iarius.IArius_SetTxChannelMapping(self, srcChannel, dstChannel)
 
     def TGCEnable(self):
-        return _iarius.Arius_TGCEnable(self)
+        return _iarius.IArius_TGCEnable(self)
 
     def TGCDisable(self):
-        return _iarius.Arius_TGCDisable(self)
+        return _iarius.IArius_TGCDisable(self)
 
     def TGCSetSamples(self, samples, nSamples):
-        return _iarius.Arius_TGCSetSamples(self, samples, nSamples)
+        return _iarius.IArius_TGCSetSamples(self, samples, nSamples)
 
-    def GetNRxChannels(self):
-        return _iarius.Arius_GetNRxChannels(self)
+# Register IArius in _iarius:
+_iarius.IArius_swigregister(IArius)
 
-    def GetNTxChannels(self):
-        return _iarius.Arius_GetNTxChannels(self)
 
-    def GetNChannels(self):
-        return _iarius.Arius_GetNChannels(self)
-
-# Register Arius in _iarius:
-_iarius.Arius_swigregister(Arius)
-cvar = _iarius.cvar
-ARIUS_VENDOR_ID = cvar.ARIUS_VENDOR_ID
-ARIUS_DEVICE_ID = cvar.ARIUS_DEVICE_ID
-PCIDMABarNumber = cvar.PCIDMABarNumber
-AriusBarNumber = cvar.AriusBarNumber
+def GetArius(idx):
+    return _iarius.GetArius(idx)

@@ -81,31 +81,34 @@ class II2CMaster(object):
 # Register II2CMaster in _hv256:
 _hv256.II2CMaster_swigregister(II2CMaster)
 
-class HV256(object):
+class IHV256(object):
     thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
-    __repr__ = _swig_repr
 
-    def __init__(self, i2cMaster):
-        _hv256.HV256_swiginit(self, _hv256.new_HV256(i2cMaster))
-    __swig_destroy__ = _hv256.delete_HV256
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined - class is abstract")
+    __repr__ = _swig_repr
+    __swig_destroy__ = _hv256.delete_IHV256
 
     def SetHVVoltage(self, voltage):
-        return _hv256.HV256_SetHVVoltage(self, voltage)
+        return _hv256.IHV256_SetHVVoltage(self, voltage)
 
     def SetDefaultHVPVoltage(self, voltage):
-        return _hv256.HV256_SetDefaultHVPVoltage(self, voltage)
+        return _hv256.IHV256_SetDefaultHVPVoltage(self, voltage)
 
     def SetDefaultHVMVoltage(self, voltage):
-        return _hv256.HV256_SetDefaultHVMVoltage(self, voltage)
+        return _hv256.IHV256_SetDefaultHVMVoltage(self, voltage)
 
     def EnableHV(self):
-        return _hv256.HV256_EnableHV(self)
+        return _hv256.IHV256_EnableHV(self)
 
     def DisableHV(self):
-        return _hv256.HV256_DisableHV(self)
+        return _hv256.IHV256_DisableHV(self)
 
-# Register HV256 in _hv256:
-_hv256.HV256_swigregister(HV256)
+# Register IHV256 in _hv256:
+_hv256.IHV256_swigregister(IHV256)
 
+
+def GetHV256(i2cMaster):
+    return _hv256.GetHV256(i2cMaster)
 
 
