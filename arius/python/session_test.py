@@ -27,6 +27,9 @@ class AriusMock:
     def GetNTxChannels(self):
         return 128
 
+def GetArius(index):
+    return AriusMock(index)
+
 class DBARLiteMock:
     def __init__(self, ii2cmaster):
         self.ii2cmaster = ii2cmaster
@@ -39,16 +42,17 @@ class HV256Mock:
         self.ii2cmaster = ii2cmaster
 
 mock_import(
-    "arius.python.iarius",
-    Arius=AriusMock
+    "arius.python.devices.iarius",
+    IArius=AriusMock,
+    GetArius=GetArius
 )
 mock_import(
-    "arius.python.dbarLite",
-    DBARLite=DBARLiteMock
+    "arius.python.devices.idbarlite",
+    IDBARLite=DBARLiteMock
 )
 mock_import(
-    "arius.python.hv256",
-    HV256=HV256Mock
+    "arius.python.devices.ihv256",
+    IHV256=HV256Mock
 )
 
 # Project imports.
@@ -69,7 +73,7 @@ class InteractiveSessionTest(unittest.TestCase):
         self.assertEqual(("Arius:0", 0, 128), hw_subapertures[0])
         self.assertEqual(("Arius:1", 0, 64), hw_subapertures[1])
         self.assertEqual("Arius:0", probe.master_card.get_id())
-        self.assertEqual(sess.get_device("/HV256").hv256_handle.ii2cmaster, cards[0])
+        self.assertEqual(sess.get_device("/HV256").hv256_handle.ii2cmaster.GetID(), cards[0].card_handle.GetID())
         # print(cards[0].card_handle.tx_mapping)
         # print(cards[0].card_handle.rx_mapping)
         # print(cards[1].card_handle.tx_mapping)

@@ -10,9 +10,9 @@ if _swig_python_version_info < (2, 7, 0):
 
 # Import the low-level C/C++ module
 if __package__ or "." in __name__:
-    from . import _hv256
+    from arius.python import _idbarlite
 else:
-    import _hv256
+    import _idbarlite
 
 try:
     import builtins as __builtin__
@@ -69,46 +69,34 @@ class II2CMaster(object):
     __repr__ = _swig_repr
 
     def Write(self, address, data, length):
-        return _hv256.II2CMaster_Write(self, address, data, length)
+        return _idbarlite.II2CMaster_Write(self, address, data, length)
 
     def Read(self, address, data, length):
-        return _hv256.II2CMaster_Read(self, address, data, length)
+        return _idbarlite.II2CMaster_Read(self, address, data, length)
 
     def WriteAndRead(self, address, writedata, writelength, readdata, readlength):
-        return _hv256.II2CMaster_WriteAndRead(self, address, writedata, writelength, readdata, readlength)
-    __swig_destroy__ = _hv256.delete_II2CMaster
+        return _idbarlite.II2CMaster_WriteAndRead(self, address, writedata, writelength, readdata, readlength)
+    __swig_destroy__ = _idbarlite.delete_II2CMaster
 
-# Register II2CMaster in _hv256:
-_hv256.II2CMaster_swigregister(II2CMaster)
+# Register II2CMaster in _idbarlite:
+_idbarlite.II2CMaster_swigregister(II2CMaster)
 
-class IHV256(object):
+class IDBARLite(object):
     thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
 
     def __init__(self, *args, **kwargs):
         raise AttributeError("No constructor defined - class is abstract")
     __repr__ = _swig_repr
-    __swig_destroy__ = _hv256.delete_IHV256
+    __swig_destroy__ = _idbarlite.delete_IDBARLite
 
-    def SetHVVoltage(self, voltage):
-        return _hv256.IHV256_SetHVVoltage(self, voltage)
+    def GetI2CHV(self):
+        return _idbarlite.IDBARLite_GetI2CHV(self)
 
-    def SetDefaultHVPVoltage(self, voltage):
-        return _hv256.IHV256_SetDefaultHVPVoltage(self, voltage)
-
-    def SetDefaultHVMVoltage(self, voltage):
-        return _hv256.IHV256_SetDefaultHVMVoltage(self, voltage)
-
-    def EnableHV(self):
-        return _hv256.IHV256_EnableHV(self)
-
-    def DisableHV(self):
-        return _hv256.IHV256_DisableHV(self)
-
-# Register IHV256 in _hv256:
-_hv256.IHV256_swigregister(IHV256)
+# Register IDBARLite in _idbarlite:
+_idbarlite.IDBARLite_swigregister(IDBARLite)
 
 
-def GetHV256(i2cMaster):
-    return _hv256.GetHV256(i2cMaster)
+def GetDBARLite(i2cMaster):
+    return _idbarlite.GetDBARLite(i2cMaster)
 
 

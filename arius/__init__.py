@@ -13,7 +13,7 @@ if not _logger.handlers:
     _logger.addHandler(console_handler)
 
 from arius.python import *
-import arius.python.device as device
+import arius.python.devices.device as device
 import arius.python.session as session
 import arius.python.interface as interface
 import arius.python.beam as beam

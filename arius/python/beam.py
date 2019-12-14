@@ -1,8 +1,8 @@
-from typing import List
 import math
+
 import numpy as np
 
-import arius.python.device as _device
+import arius.python.devices.device as _device
 import arius.python.utils as _utils
 
 
