@@ -105,7 +105,7 @@ class AriusCard(_device.Device):
         self.card_handle.SetTxAperture(origin, size, firing)
 
     @assert_card_is_powered_up
-    def set_tx_delays(self, delays):
+    def set_tx_delays(self, delays, firing: int=0):
         _utils._assert_equal(
             len(delays), self.get_n_tx_channels(),
             desc="Array of TX delays should contain %d numbers (card number of TX channels)"
@@ -114,18 +114,19 @@ class AriusCard(_device.Device):
         self.log(DEBUG, "Setting TX delays: %s" % (delays))
         result_values = []
         for i, delay in enumerate(delays):
-            value = self.card_handle.SetTxDelay(i, delay)
+            value = self.card_handle.SetTxDelay(i, delay, firing)
             result_values.append(value)
         self.log(DEBUG, "Applied TX delays: %s" % (result_values))
         return result_values
 
     @assert_card_is_powered_up
-    def set_tx_delay(self, channel: int, delay: float):
+    def set_tx_delay(self, channel: int, delay: float, firing: int=0):
         """
         Sets channel's TX delay.
 
         :param channel: card's channel number
         :param delay: delay to set
+        :param firing: firing number
         :return a value, which was set
         """
         _utils.assert_true(
@@ -134,24 +135,24 @@ class AriusCard(_device.Device):
                  % self.get_n_tx_channels()
         )
         self.log(DEBUG, "Setting TX delay: channel=%d, delay=%d" % (channel, delay))
-        value = self.card_handle.SetTxDelay(channel, delay)
+        value = self.card_handle.SetTxDelay(channel, delay, firing)
         return value
 
     @assert_card_is_powered_up
-    def set_tx_frequency(self, frequency: float):
+    def set_tx_frequency(self, frequency: float, firing: int=0):
         self.log(
             DEBUG,
             "Setting TX frequency: %f" % frequency
         )
-        self.card_handle.SetTxFreqency(frequency)
+        self.card_handle.SetTxFreqency(frequency, firing)
 
     @assert_card_is_powered_up
-    def set_tx_periods(self, n_periods: int):
+    def set_tx_periods(self, n_periods: int, firing: int=0):
         self.log(
             DEBUG,
             "Setting number of bursts: %f" % n_periods
         )
-        self.card_handle.SetTxPeriods(n_periods)
+        self.card_handle.SetTxPeriods(n_periods, firing)
 
     @assert_card_is_powered_up
     def sw_trigger(self):
@@ -173,12 +174,20 @@ class AriusCard(_device.Device):
         self.card_handle.SetRxAperture(origin, size, firing)
 
     @assert_card_is_powered_up
-    def set_rx_time(self, time: float):
+    def set_rx_time(self, time: float, firing: int=0):
         self.log(
             DEBUG,
             "Setting RX time: %f" % time
         )
-        self.card_handle.SetRxTime(time)
+        self.card_handle.SetRxTime(time, firing)
+
+    @assert_card_is_powered_up
+    def set_rx_time(self, n_firings: int=0):
+        self.log(
+            DEBUG,
+            "Setting number of firings: %d" % n_firings
+        )
+        self.card_handle.SetNumberOfFirings(n_firings)
 
     @assert_card_is_powered_up
     def schedule_receive(self, address, length):
