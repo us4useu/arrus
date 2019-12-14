@@ -25,3 +25,10 @@
 %}
 %include afe58jd18Registers.h
 %include iarius.h
+
+%inline %{
+// TODO(pjarosik) fix below in more elegant way
+void TransferRXBufferToHostLocation(IArius* that, unsigned long long dstAddress, size_t length, size_t srcAddress) {
+    that->TransferRXBufferToHost((unsigned char*) dstAddress, length, srcAddress);
+}
+%}

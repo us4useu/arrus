@@ -10,7 +10,7 @@ if _swig_python_version_info < (2, 7, 0):
 
 # Import the low-level C/C++ module
 if __package__ or "." in __name__:
-    from arius.python import _iarius
+    from . import _iarius
 else:
     import _iarius
 
@@ -214,3 +214,7 @@ _iarius.IArius_swigregister(IArius)
 
 def GetArius(idx):
     return _iarius.GetArius(idx)
+
+def TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress):
+    return _iarius.TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress)
+

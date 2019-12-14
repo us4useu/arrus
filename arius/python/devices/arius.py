@@ -318,7 +318,8 @@ class AriusCard(_device.Device):
                 length, src_addr, dst_addr
             )
         )
-        self.card_handle.TransferRXBufferToHostLocation(
+        _iarius.TransferRXBufferToHostLocation(
+            that=self.card_handle,
             dstAddress=dst_addr,
             length=length,
             srcAddress=src_addr # address shift is applied by the low-level layer

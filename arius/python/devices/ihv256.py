@@ -10,7 +10,7 @@ if _swig_python_version_info < (2, 7, 0):
 
 # Import the low-level C/C++ module
 if __package__ or "." in __name__:
-    from arius.python import _ihv256
+    from . import _ihv256
 else:
     import _ihv256
 
