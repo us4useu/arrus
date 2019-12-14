@@ -6,7 +6,7 @@
 	try {
 		$action
 	} catch(const std::exception &e) {
-		std::cout << "SWIG exception: "  << e.what() << std::endl;
+	    SWIG_exception(SWIG_RuntimeError, e.what());
 	}
 }
 %module idbarlite
