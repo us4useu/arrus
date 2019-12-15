@@ -32,6 +32,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
     """
 
+
     # making x and z_grid 'vertical vector' (should be more user friendly in future!)
     temp = z_grid[np.newaxis]
     z_grid = temp.T
@@ -40,6 +41,13 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     n_samples, n_channels, n_transmissions = rf.shape
     z_size = max(z_grid.shape)
     x_size = max(x_grid.shape)
+
+    # check if data is iq (i.e. complex) or 'ordinary' rf (i.e. real)
+    is_iqdata = isinstance(rf[1, 1, 1], np.complex)
+    if is_iqdata:
+        print('iq (complex) data on input')
+    else:
+        print('rf (real) data on input')
 
     # probe/transducer width
     probe_width = (n_channels-1)*pitch
@@ -68,6 +76,9 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
     # buffers allocation
     rf_tx = np.zeros((z_size, x_size, n_transmissions))
+    if is_iqdata:
+        rf_tx = rf_tx.astype(complex)
+
     weight_tx = np.zeros((z_size, x_size, n_transmissions))
 
     # loop over transmissions
@@ -93,10 +104,10 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
         # synthetic transmit aperture method
         elif tx_mode == 'sta':
-            lix_valid = np.ones((x_size), dtype=bool)
+            lix_valid = np.ones(x_size, dtype=bool)
             tx_distance = np.sqrt((z_grid - tx_focus)**2
-                                + (x_grid - element_xcoord[itx])**2
-                          )
+                                  + (x_grid - element_xcoord[itx])**2
+                                  )
 
             tx_distance = tx_distance*np.sign(z_grid - tx_focus) + tx_focus
 
@@ -130,6 +141,9 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
             # buffers allocation
         rf_rx = np.zeros((z_size, x_size, n_channels))
+        if is_iqdata:
+            rf_rx = rf_rx.astype(complex)
+
         weight_rx = np.zeros((z_size, x_size, n_channels))
 
         # loop over elements
@@ -154,19 +168,18 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             rf_raw_line = rf[:, irx, itx]
             ceil_samples = np.ceil(samples).astype(int)
             floor_samples = np.floor(samples).astype(int)
-
             rf_rx[:, lix_valid, irx] = rf_raw_line[floor_samples]*(1 - (samples % 1))\
                                      + rf_raw_line[ceil_samples]*(samples % 1)
 
             weight_rx[:, lix_valid, irx] = tx_apodization * rx_apodization
 
             # modulate if iq signal is used (to trzeba sprawdzic, bo pisane 'na rybke')
-            is_data_complex = np.nonzero(np.imag(rf_rx))[0].size
-            if is_data_complex:
+            # is_data_complex = np.nonzero(np.imag(rf_rx))[0].size
+            if is_iqdata:
                 # TODO: przetestowac
                 rf_rx[:, lix_valid, irx] = rf_rx[:, lix_valid, irx] \
                                            * np.exp(1j*2*np.pi*fc*delays)
-                print('complex data')
+                pass
 
         # calculate rf and weights for single tx
         rf_tx[:, :, itx] = np.sum(rf_rx * weight_rx, axis=2)
@@ -279,11 +292,17 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     :param y_grid: vector of y coordinates
     :return:
     """
+    # check if 'rf' or 'iq' data on input
+    is_iqdata = isinstance(rf_image[1, 1], np.complex)
+
     dx = x_grid[1]-x_grid[0]
     dy = y_grid[1]-y_grid[0]
 
     # calculate envelope
-    amplitude_image = calculate_envelope(rf_image)
+    if is_iqdata:
+        amplitude_image = np.abs(rf_image)
+    else:
+        amplitude_image = calculate_envelope(rf_image)
 
     # convert do dB
     max_image_value = np.max(amplitude_image)
@@ -352,22 +371,54 @@ def rf2iq(rf, fc, fs, decimation_factor):
         n_channels = s[1]
     else:
         n_channels = 1
+        rf = rf[..., np.newaxis]
 
     if n_dim > 2:
         n_transmissions = s[2]
     else:
         n_transmissions = 1
+        rf = rf[..., np.newaxis]
     # creating time array
     ts = 1/fs
     t = np.linspace(0, (n_samples-1)*ts, n_samples)
     t = t[..., np.newaxis, np.newaxis]
-    t = np.tile(t, (1, n_channels, n_transmissions))
+    # prawdopodobnie niepotrzebne to co poniżej
+    # t = np.tile(t, (1, n_channels, n_transmissions))
 
     # demodulation
     iq = rf*np.exp(0-1j*2*np.pi*fc*t)
+    # print('iq:', iq.shape)
+    # print('rf:', rf.shape)
+    # print('t:', t.shape)
+
+    # low-pass filtration (assuming 150% band)
+    f_up_cut = fc*1.5/2
+
+    # ir
+    filter_order = 8
+    b, a = signal.butter(filter_order,
+                         f_up_cut,
+                         btype='low',
+                         analog=False,
+                         output='ba',
+                         fs=fs
+                         )
+
+    # fir
+    # b = signal.firwin(128, f_up_cut, fs=fs)
+    # a = 1
+
+    # pomnozenie przez 2 powoduje, ze obwiednie sa takie same z iq i z rf
+    iq = 2*signal.filtfilt(b, a, iq, axis=0)
 
     # decimation
-    iq = signal.decimate(iq, decimation_factor, axis=0)
+    # iq = signal.decimate(iq, decimation_factor, axis=0)
+    if decimation_factor > 1:
+        iq = signal.decimate(iq, decimation_factor, axis=0)
+    else:
+        print('decimation factor <= 1, no decimation')
+
+    iq = np.squeeze(iq)
 
     return iq
 
