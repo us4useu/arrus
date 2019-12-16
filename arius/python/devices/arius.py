@@ -4,6 +4,7 @@ from typing import List
 import arius.python.devices.device as _device
 import arius.python.devices.iarius as _iarius
 import arius.python.utils as _utils
+import math
 
 
 def assert_card_is_powered_up(f):
@@ -100,7 +101,7 @@ class AriusCard(_device.Device):
             )
 
     @assert_card_is_powered_up
-    def set_tx_aperture(self, origin: int, size: int, firing: int = 0):
+    def set_tx_aperture(self, origin: int, size: int, firing: int=0):
         """
         Sets position of an active TX aperture.
 
@@ -166,7 +167,6 @@ class AriusCard(_device.Device):
     @assert_card_is_powered_up
     def sw_trigger(self):
         self.card_handle.SWTrigger()
-        self.log(DEBUG, "Triggered single wave.")
 
     @assert_card_is_powered_up
     def set_rx_aperture(self, origin: int, size: int, firing: int = 0):
@@ -191,12 +191,24 @@ class AriusCard(_device.Device):
         self.card_handle.SetRxTime(time, firing)
 
     @assert_card_is_powered_up
-    def set_rx_time(self, n_firings: int=0):
+    def set_n_firings(self, n_firings: int=0):
         self.log(
             DEBUG,
             "Setting number of firings: %d" % n_firings
         )
         self.card_handle.SetNumberOfFirings(n_firings)
+
+    @assert_card_is_powered_up
+    def sw_next_tx(self):
+        self.card_handle.SWNextTX()
+
+    @assert_card_is_powered_up
+    def enable_receive(self):
+        self.card_handle.EnableReceive()
+
+    @assert_card_is_powered_up
+    def enable_transmit(self):
+        self.card_handle.EnableTransmit()
 
     @assert_card_is_powered_up
     def schedule_receive(self, address, length):
@@ -221,16 +233,25 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def set_lpf_cutoff(self, cutoff):
+        """
+        :param cutoff: cutoff [Hz]
+        """
         self.log(
             DEBUG,
             "Setting LPF Cutoff: %d" % cutoff
         )
+        # TODO(pjarosik) dirty, SetLPFCutoff should take values in Hz
+        cutoff_mhz = int(cutoff/1e6)
+        _utils.assert_true(
+            math.isclose(cutoff_mhz*1e6, cutoff),
+            "Unavailable LPF cutoff value: %f" % cutoff
+        )
         enum_value = self._convert_to_enum_value(
             enum_name="LPF_PROG",
-            value=cutoff,
+            value=cutoff_mhz,
             unit="MHz"
         )
-        self.card_handle.SetLPFCutoff(cutoff)
+        self.card_handle.SetLPFCutoff(enum_value)
 
     @assert_card_is_powered_up
     def set_active_termination(self, active_termination):
