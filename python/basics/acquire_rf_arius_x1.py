@@ -44,8 +44,8 @@ rf = np.zeros((NSAMPLES, module.get_n_rx_channels*NEVENTS), dtype=np.int16)
 
 fig, ax = plt.subplots()
 fig.set_size_inches((7, 7))
-ax.set_xlabel("Depth")
-ax.set_ylabel("Channel")
+ax.set_xlabel("Channels")
+ax.set_ylabel("Samples")
 fig.canvas.mpl_connect("close_event", lambda evt: sys.exit())
 fig.canvas.set_window_title("RF data")
 canvas = plt.imshow(
