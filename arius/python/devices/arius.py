@@ -59,7 +59,6 @@ class AriusCard(_device.Device):
         self.tx_channel_mapping = tx_m
         self.rx_channel_mapping = rx_m
 
-
     @assert_card_is_powered_up
     def set_tx_channel_mapping(self, tx_channel_mapping: List[int]):
         """
@@ -68,7 +67,12 @@ class AriusCard(_device.Device):
         :param tx_channel_mapping: a list, where
         list[interface channel] = arius card channel
         """
+        _utils.assert_true(
+            tx_channel_mapping is not None,
+            "TX channel mapping should be not None."
+        )
         self.log(DEBUG, "Setting TX channel mapping: %s" % str(tx_channel_mapping))
+        self.tx_channel_mapping = tx_channel_mapping
         for dst, src in enumerate(tx_channel_mapping):
             self.card_handle.SetTxChannelMapping(
                 srcChannel=src,
@@ -83,7 +87,12 @@ class AriusCard(_device.Device):
         :param rx_channel_mapping: a list, where
         list[interface channel] = arius card channel
         """
+        _utils.assert_true(
+            rx_channel_mapping is not None,
+            "RX channel mapping should be not None."
+        )
         self.log(DEBUG, "Setting RX channel mapping: %s" % str(rx_channel_mapping))
+        self.rx_channel_mapping = rx_channel_mapping
         for dst, src in enumerate(rx_channel_mapping):
             self.card_handle.SetRxChannelMapping(
                 srcChannel=src,
