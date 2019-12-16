@@ -42,12 +42,23 @@ module.enable_transmit()
 buffer = np.zeros((NEVENTS, NSAMPLES, module.get_n_rx_channels()), dtype=np.int16)
 rf = np.zeros((NSAMPLES, module.get_n_rx_channels*NEVENTS), dtype=np.int16)
 
+# - matplotlib related stuff
 fig, ax = plt.subplots()
 fig.set_size_inches((7, 7))
 ax.set_xlabel("Channels")
 ax.set_ylabel("Samples")
-fig.canvas.mpl_connect("close_event", lambda evt: sys.exit())
 fig.canvas.set_window_title("RF data")
+
+# -- setting window close event handler
+is_closed = False
+
+def set_closed(_):
+    global is_closed
+    # Intentionally not using threading.Lock (or similar) objects here.
+    is_closed = True
+fig.canvas.mpl_connect("close_event", set_closed)
+
+# -- creating and starting canvas
 canvas = plt.imshow(
     rf,
     vmin=np.iinfo(np.int16).min,
@@ -55,7 +66,7 @@ canvas = plt.imshow(
 )
 fig.show()
 
-while True:
+while is_closed:
     module.enable_receive()
 
     # - start the acquisition
