@@ -1,5 +1,6 @@
 from logging import DEBUG, INFO
 from typing import List
+import numpy as np
 
 import arius.python.devices.device as _device
 import arius.python.devices.iarius as _iarius
@@ -17,6 +18,10 @@ def assert_card_is_powered_up(f):
 
 
 class AriusCard(_device.Device):
+    """
+    A single Arius module.
+    """
+
     _DEVICE_NAME = "Arius"
 
     @staticmethod
@@ -24,12 +29,9 @@ class AriusCard(_device.Device):
         return _device.Device.get_device_id(AriusCard._DEVICE_NAME, index)
 
     def __init__(self, index: int, card_handle: _iarius.IArius):
-        """
-        :param index: an index of card
-        :param card_handle: a handle to the Arius C++ class
-        """
         super().__init__(AriusCard._DEVICE_NAME, index)
         self.card_handle = card_handle
+        self.dtype = np.int16
 
     def start_if_necessary(self):
         """
@@ -49,10 +51,20 @@ class AriusCard(_device.Device):
             self.log(INFO, "... successfully powered up.")
 
     def get_n_rx_channels(self):
+        """
+        Returns number of RX channels.
+
+        :return: number of RX channels.
+        """
         return 32 # TODO(pjarosik) should be returned by iarius
         # return self.card_handle.GetNRxChannels()
 
     def get_n_tx_channels(self):
+        """
+        Returns number of TX channels.
+
+        :return: number of TX channels
+        """
         return 128 # TODO(pjarosik) should be returned by iarius
         # return self.card_handle.GetNTxChannels()
 
@@ -105,8 +117,9 @@ class AriusCard(_device.Device):
         """
         Sets position of an active TX aperture.
 
-        :param origin: an origin channel of the aperture
+        :param origin: an origin channel of the aperture, **starts from 0**
         :param size: a length of the aperture
+        :param firing: a firing, in which the delay should apply, **starts from 0**
         """
         self.log(
             DEBUG,
@@ -116,6 +129,14 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def set_tx_delays(self, delays, firing: int=0):
+        """
+        Sets channel's TX delays.
+
+        :param delays: an array of delays to set [s], number of elements
+                       should be equal to the number of module's TX channels
+        :param firing: a firing, in which the delay should apply, **starts from 0**
+        :return an array of values, which were set [s]
+        """
         _utils._assert_equal(
             len(delays), self.get_n_tx_channels(),
             desc="Array of TX delays should contain %d numbers (card number of TX channels)"
@@ -135,9 +156,9 @@ class AriusCard(_device.Device):
         Sets channel's TX delay.
 
         :param channel: card's channel number
-        :param delay: delay to set
-        :param firing: firing number
-        :return a value, which was set
+        :param delay: delay to set [s]
+        :param firing: a firing, in which the delay should apply, **starts from 0**
+        :return a value, which was set [s]
         """
         _utils.assert_true(
             channel < self.get_n_tx_channels(),
@@ -150,6 +171,13 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def set_tx_frequency(self, frequency: float, firing: int=0):
+        """
+        Sets TX frequency.
+
+        :param frequency: frequency to set [Hz]
+        :param firing: a firing, in which the value should apply, **starts from 0**
+        :return a value, which was set [Hz]
+        """
         self.log(
             DEBUG,
             "Setting TX frequency: %f" % frequency
@@ -158,6 +186,12 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def set_tx_periods(self, n_periods: int, firing: int=0):
+        """
+        Sets number of TX periods.
+
+        :param n_periods: number of periods to set
+        :param firing: a firing, in which the value should apply, **starts from 0**
+        """
         self.log(
             DEBUG,
             "Setting number of bursts: %f" % n_periods
@@ -166,15 +200,20 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def sw_trigger(self):
+        """
+        Triggers pulse generation and starts RX transmissions on all
+        (master and slave) modules. Should be called only for a master module.
+        """
         self.card_handle.SWTrigger()
 
     @assert_card_is_powered_up
-    def set_rx_aperture(self, origin: int, size: int, firing: int = 0):
+    def set_rx_aperture(self, origin: int, size: int, firing: int=0):
         """
-        Sets TX aperture.
+        Sets RX aperture’s origin and size.
 
         :param origin: an origin channel of the aperture
         :param size: a length of the aperture
+        :param firing: a firing, in which the parameter value should apply, starts from 0
         """
         self.log(
             DEBUG,
@@ -184,6 +223,12 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def set_rx_time(self, time: float, firing: int=0):
+        """
+        Sets length of acquisition time.
+
+        :param time: expected acquisition time [s]
+        :param firing: a firing, in which the parameter value should apply, starts from 0
+        """
         self.log(
             DEBUG,
             "Setting RX time: %f" % time
@@ -191,7 +236,13 @@ class AriusCard(_device.Device):
         self.card_handle.SetRxTime(time, firing)
 
     @assert_card_is_powered_up
-    def set_n_firings(self, n_firings: int=0):
+    def set_number_of_firings(self, n_firings: int=1):
+        """
+        Sets number firings/acquisitions for new TX/RX sequence.
+        For each firing/acquisition a different TX/RX parameters can be applied.
+
+        :param n_firings: number of firings to set
+        """
         self.log(
             DEBUG,
             "Setting number of firings: %d" % n_firings
@@ -200,26 +251,52 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def sw_next_tx(self):
+        """
+        Sets all TX and RX parameters for the next firing/acquisition.
+        """
         self.card_handle.SWNextTX()
 
     @assert_card_is_powered_up
     def enable_receive(self):
+        """
+        Enables RX data transfer from the probe’s adapter to the module’s internal memory.
+        """
         self.card_handle.EnableReceive()
 
     @assert_card_is_powered_up
     def enable_transmit(self):
+        """
+        Enables TX pulse generation.
+        """
         self.card_handle.EnableTransmit()
 
     @assert_card_is_powered_up
     def schedule_receive(self, address, length):
+        """
+        Schedules a new data transmission from the probe’s adapter to the module’s internal memory.
+        This function queues a new data transmission from all available RX channels to the device’s internal memory.
+        Data transfer starts with the next “SWTrigger” operation call.
+
+        :param address: module’s internal memory address (a number), where RX data should be saved
+        :param length: number of samples from each channel to acquire
+        """
         self.log(
             DEBUG,
             "Scheduling data receive at address=0x%02X, length=%d" % (address, length)
         )
-        self.card_handle.ScheduleReceive(address, length)
+        self.card_handle.ScheduleReceive(
+            address,
+            self.dtype.itemsize*length*self.get_n_rx_channels
+        )
 
     @assert_card_is_powered_up
     def set_pga_gain(self, gain):
+        """
+        Configures programmable-gain amplifier (PGA).
+
+        :param gain: gain to set, available values: 24, 30 [dB]
+        :return:
+        """
         self.log(
             DEBUG,
             "Setting PGA Gain: %d" % gain
@@ -234,7 +311,10 @@ class AriusCard(_device.Device):
     @assert_card_is_powered_up
     def set_lpf_cutoff(self, cutoff):
         """
-        :param cutoff: cutoff [Hz]
+        Sets low-pass filter (LPF) cutoff frequency.
+
+        :param cutoff: cutoff frequency to set, available values:
+                       10e6, 15e6, 20e6, 30e6, 35e6, 50e6 [Hz]
         """
         self.log(
             DEBUG,
@@ -259,7 +339,9 @@ class AriusCard(_device.Device):
         Sets active termination for this card. When active termination is None,
         the property is disabled.
 
-        :param active_termination: active termination, can be None
+        :param active_termination: active termination, available values: 50, 100,
+         200, 400; can be None
+
         """
         self.log(
             DEBUG,
@@ -283,6 +365,12 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def set_lna_gain(self, gain):
+        """
+        Configures low-noise amplifier (LNA) gain.
+
+        :param gain: gain to set; available values: 12, 18, 24 [dB]
+        """
+
         self.log(
             DEBUG,
             "Setting LNA Gain: %d" % gain
@@ -292,14 +380,16 @@ class AriusCard(_device.Device):
             value=gain,
             unit="dB"
         )
+        self.card_handle.SetLNAGain(enum_value)
 
     @assert_card_is_powered_up
     def set_dtgc(self, attenuation):
         """
-        Sets DTGC for this card. When attenuation is None, this property
-        is set to disabled.
+        Configures time gain compensation (TGC).  When attenuation is None,
+        DTGC is set to disabled.
 
-        :param active_termination: attenuation, can be None
+        :param attenuation: attenuation to set, available values: 0, 6, 12,
+                            18, 24, 30, 36, 42 [dB]; can be None
         """
         self.log(
             DEBUG,
@@ -313,7 +403,7 @@ class AriusCard(_device.Device):
             )
             self.card_handle.SetDTGC(
                 endis=_iarius.EN_DIG_TGC_EN_DIG_TGC_EN,
-                att=attenuation
+                att=enum_value
             )
         else:
             self.card_handle.SetDTGC(
@@ -323,6 +413,9 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def enable_test_patterns(self):
+        """
+
+        """
         self.log(
             DEBUG,
             "Enabling Test Patterns."

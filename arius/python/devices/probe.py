@@ -171,11 +171,7 @@ class Probe(_device.Device):
                 #TODO(pjarosik) below won't work properly, when s.size < card.n_rx_channels
                 card.set_rx_aperture(s.origin, card.get_n_rx_channels())
 
-                nbytes = card.get_n_rx_channels() \
-                         * self.dtype.itemsize \
-                         * n_samples
-
-                card.schedule_receive(buffer_device_addr, nbytes)
+                card.schedule_receive(buffer_device_addr, n_samples)
                 s.origin += card.get_n_rx_channels()
                 if s.origin < s.size:
                     next_subapertures.append((card, s))
