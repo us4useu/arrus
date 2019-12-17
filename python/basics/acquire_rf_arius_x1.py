@@ -15,7 +15,7 @@ module.set_rx_mapping(interface.get_rx_channel_mapping(0))
 
 # Configure parameters, that will not change later in the example.
 module.set_pga_gain(30) # [dB]
-module.set_lpf_cutoff(10e6) # [MHz]
+module.set_lpf_cutoff(10e6) # [Hz]
 module.set_active_termination(200)
 module.set_lna_gain(24) #[dB]
 module.set_dtgc(0) # [dB]
