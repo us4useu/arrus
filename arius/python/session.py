@@ -14,13 +14,24 @@ import arius.python.utils as _utils
 import arius.python.devices.iarius as _iarius
 
 
-
 _ARIUS_PATH_ENV = "ARIUS_PATH"
 
 
 class InteractiveSession:
-    def __init__(self):
-        self._devices = self._load_devices("default.yaml")
+    def __init__(self, cfg_path: str=None):
+        """
+        Creates and starts new session.
+
+        If cfg_path is None, an ARIUS_PATH environment variable is used to
+        locate configuration file named "default.yaml".
+
+        :param cfg_path: path to the configuration file, can be None
+        """
+        if cfg_path is None:
+            cfg_path = os.path.join(os.environ.get(_ARIUS_PATH_ENV, ""), "default.yaml")
+        with open(cfg_path, "r") as f:
+            cfg = yaml.safe_load(f)
+            self._devices = self._load_devices(cfg)
 
     def get_device(self, id: str):
         """
@@ -42,7 +53,7 @@ class InteractiveSession:
         return self._devices
 
     @staticmethod
-    def _load_devices(cfg_file: str):
+    def _load_devices(cfg):
         """
         Reads configuration from given file and returns a map of top-level
         devices.
@@ -54,9 +65,7 @@ class InteractiveSession:
         :return: a map: device id -> Device
         """
         result = {}
-        path = os.path.join(os.environ.get(_ARIUS_PATH_ENV, ""), cfg_file)
-        with open(path, "r") as f:
-            cfg = yaml.safe_load(f)
+
 
         # --- Cards
         n_arius_cards = cfg["nAriusCards"]
