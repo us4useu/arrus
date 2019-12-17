@@ -77,7 +77,7 @@ class InteractiveSession:
             result[card.get_id()] = card
         master_cards = []
         # --- Probes
-        probes = cfg['probes']
+        probes = cfg.get('probes', [])
         for i, probe_def in enumerate(probes):
             model_name, definition = next(iter(probe_def.items()))
             interface_name = definition['interface']
