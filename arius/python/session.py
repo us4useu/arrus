@@ -16,7 +16,6 @@ import arius.python.devices.iarius as _iarius
 
 _ARIUS_PATH_ENV = "ARIUS_PATH"
 
-
 class InteractiveSession:
     def __init__(self, cfg_path: str=None):
         """
@@ -39,7 +38,7 @@ class InteractiveSession:
 
         Currently, ONLY TOP-LEVEL DEVICES ARE AVAILABLE.
 
-        :param a path to a device
+        :param id: a path to a device, for example '/Arius:0'
         :return: a device located in given path.
         """
         dev_path = id.split("/")[1:]
@@ -65,8 +64,6 @@ class InteractiveSession:
         :return: a map: device id -> Device
         """
         result = {}
-
-
         # --- Cards
         n_arius_cards = cfg["nAriusCards"]
         arius_handles = (_iarius.GetArius(i) for i in range(n_arius_cards))
@@ -161,11 +158,4 @@ class InteractiveSession:
             hv = _hv256.HV256(hv_handle)
             result[hv.get_id()] = hv
         return result
-
-    @staticmethod
-    def _load_arius_library(name: str):
-        path = os.environ[_ARIUS_PATH_ENV]
-        path = os.path.join(path, name)
-        return ctypes.cdll.LoadLibrary(path)
-
 

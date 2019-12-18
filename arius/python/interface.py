@@ -1,18 +1,36 @@
 import itertools
+from typing import Set
 
 
 class UltrasoundInterface:
     """
-    Defines an interface provided by multiple Arius cards.
-    TODO(pjarosik) inverse mapping?
+    Defines an interface provided by (possibly) multiple Arius module.
     """
+    # TODO(pjarosik) inverse mapping
     def get_card_order(self):
+        """
+        **Deprecated**
+        """
         raise NotImplementedError
 
-    def get_tx_channel_mapping(self, card_idx):
+    def get_tx_channel_mapping(self, module_idx):
+        """
+        Returns TX channel mapping for a module with given index.
+
+        :param module_idx: module index
+        :return: TX channel mapping: a list, where
+        list[interface channel] = arius module channel.
+        """
         raise NotImplementedError
 
-    def get_rx_channel_mapping(self, card_idx):
+    def get_rx_channel_mapping(self, module_idx):
+        """
+        Returns RX channel mapping for a module with given index.
+
+        :param module_idx: module index
+        :return: RX channel mapping: a list, where
+        list[interface channel] = arius module channel.
+        """
         raise NotImplementedError
 
 
@@ -34,11 +52,11 @@ class EsaoteInterface(UltrasoundInterface):
     def get_rx_channel_mappings(self):
         return self.rx_card_channels
 
-    def get_tx_channel_mapping(self, card_idx):
-        return self.tx_card_channels[card_idx]
+    def get_tx_channel_mapping(self, module_idx):
+        return self.tx_card_channels[module_idx]
 
-    def get_rx_channel_mapping(self, card_idx):
-        return self.rx_card_channels[card_idx]
+    def get_rx_channel_mapping(self, module_idx):
+        return self.rx_card_channels[module_idx]
 
     def _compute_tx_channel_mapping(self):
         block_size = 32
@@ -74,5 +92,11 @@ _INTERFACES = {
 }
 
 def get_interface(name: str):
+    """
+    Returns an interface registered in arius-sdk under given name.
+
+    :param name: name to the interface
+    :return: an interface object
+    """
     return _INTERFACES[name]
 

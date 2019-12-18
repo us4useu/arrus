@@ -414,7 +414,8 @@ class AriusCard(_device.Device):
     @assert_card_is_powered_up
     def enable_test_patterns(self):
         """
-
+        Turns off probe’s RX data acquisition and turns on test patterns generation.
+        When test patterns are enabled, sawtooth signal is generated.
         """
         self.log(
             DEBUG,
@@ -424,6 +425,9 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def disable_test_patterns(self):
+        """
+        Turns off test patterns generation and turns on probe’s RX data acquisition.
+        """
         self.log(
             DEBUG,
             "Disabling Test Patterns."
@@ -432,6 +436,9 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def sync_test_patterns(self):
+        """
+        Waits for update of test patterns.
+        """
         self.log(
             DEBUG,
             "Syncing with test patterns..."
@@ -440,6 +447,16 @@ class AriusCard(_device.Device):
 
     @assert_card_is_powered_up
     def transfer_rx_buffer_to_host(self, dst_array, src_addr):
+        """
+        Transfers data from the given module’s memory address to a provided destination
+        array. A provided array must of type numpy.ndarray.
+
+        This method copies exactly dst_array.nbytes data from given src_addr
+        to the destination address (pointer by dst_array.ctypes.data).
+
+        :param dst_array: a numpy ndarray of shape (nfirings, nsamples, nchannels) and type: np.int16
+        :param src_addr: module's memory address, where the RX data was tstored.
+        """
         # TODO(pjarosik) make this method return dst_array
         # instead of passing the result buffer as a method parameter
         dst_addr = dst_array.ctypes.data
@@ -462,6 +479,11 @@ class AriusCard(_device.Device):
         )
 
     def is_powered_down(self):
+        """
+        Returns true, when module is turned off, false otherwise.
+
+        :return: true, when module is turned off, false otherwise
+        """
         return self.card_handle.IsPowereddown()
 
     def _convert_to_enum_value(self, enum_name, value, unit=""):
