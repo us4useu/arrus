@@ -31,7 +31,7 @@ class AriusCard(_device.Device):
     def __init__(self, index: int, card_handle: _iarius.IArius):
         super().__init__(AriusCard._DEVICE_NAME, index)
         self.card_handle = card_handle
-        self.dtype = np.int16
+        self.dtype = np.dtype(np.int16)
 
     def start_if_necessary(self):
         """
@@ -286,7 +286,7 @@ class AriusCard(_device.Device):
         )
         self.card_handle.ScheduleReceive(
             address,
-            self.dtype.itemsize*length*self.get_n_rx_channels
+            self.dtype.itemsize*length*self.get_n_rx_channels()
         )
 
     @assert_card_is_powered_up
