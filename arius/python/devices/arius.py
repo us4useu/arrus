@@ -32,6 +32,7 @@ class AriusCard(_device.Device):
         super().__init__(AriusCard._DEVICE_NAME, index)
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
+        self.host_buffer = np.array([])
 
     def start_if_necessary(self):
         """
@@ -446,21 +447,30 @@ class AriusCard(_device.Device):
         self.card_handle.SyncTestPatterns()
 
     @assert_card_is_powered_up
-    def transfer_rx_buffer_to_host(self, dst_array, src_addr):
+    def transfer_rx_buffer_to_host(self, src_addr, length):
         """
-        Transfers data from the given module’s memory address to a provided destination
-        array. A provided array must of type numpy.ndarray.
 
-        This method copies exactly dst_array.nbytes data from given src_addr
-        to the destination address (pointer by dst_array.ctypes.data).
+        Transfers data from the given module's memory address to the host's
+        memory, and returns data buffer (numpy.ndarray).
 
-        :param dst_array: a numpy ndarray of shape (nfirings, nsamples, nchannels) and type: np.int16
-        :param src_addr: module's memory address, where the RX data was tstored.
+        **NOTE: This function returns a buffer which is managed internally by the module.
+        The content of the buffer may change between successive 'sw_trigger' function calls.
+        Please copy buffer's data to your own array before proceeding with the acquisition.**
+
+        :param src_addr: module's memory address, where the RX data was stored.
+        :param length: how much data to transfer from each module's channel.
+        :return: a buffer (numpy.darray) of shape (length, n_rx_channels), data type: np.int16
         """
-        # TODO(pjarosik) make this method return dst_array
-        # instead of passing the result buffer as a method parameter
-        dst_addr = dst_array.ctypes.data
-        length = dst_array.nbytes
+        required_nbytes = self.get_n_rx_channels()*length*self.dtype.itemsize
+        if self.host_buffer.nbytes != required_nbytes:
+            # Intentionally not '<' (we must return an array with given shape).
+            self.host_buffer = _utils.create_aligned_array(
+                (length, self.get_n_rx_channels()),
+                dtype=np.int16,
+                alignment=4096
+            )
+        dst_addr = self.host_buffer.ctypes.data
+        length = self.host_buffer.nbytes
         self.log(
             DEBUG,
             "Transferring %d bytes from RX buffer at 0x%02X to host memory at 0x%02X..." % (
@@ -477,6 +487,7 @@ class AriusCard(_device.Device):
             DEBUG,
             "... transferred."
         )
+        return self.host_buffer
 
     def is_powered_down(self):
         """
