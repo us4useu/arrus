@@ -11,7 +11,7 @@ setuptools.setup(
     description="Arius Software Development Kit",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/us4us/arius-sdk",
+    url="https://us4us.eu",
     packages=setuptools.find_packages(),
     classifiers=[
         "Development Status :: 1 - Planning",
@@ -29,5 +29,8 @@ setuptools.setup(
         "numpy>=1.17.4",
         "PyYAML==5.1.2",
     ],
+    package_data={
+        'arius': ['python/devices/*.pyd', 'python/devices/*.lib']
+    },
     python_requires='>=3.7',
 )
