@@ -278,7 +278,7 @@ class AriusCard(_device.Device):
         This function queues a new data transmission from all available RX channels to the device’s internal memory.
         Data transfer starts with the next “SWTrigger” operation call.
 
-        :param address: module’s internal memory address (a number), where RX data should be saved
+        :param address: module's internal memory address, counted in number of samples
         :param length: number of samples from each channel to acquire
         """
         self.log(
@@ -286,7 +286,7 @@ class AriusCard(_device.Device):
             "Scheduling data receive at address=0x%02X, length=%d" % (address, length)
         )
         self.card_handle.ScheduleReceive(
-            address,
+            address*self.dtype.itemsize*self.get_n_rx_channels(),
             self.dtype.itemsize*length*self.get_n_rx_channels()
         )
 
