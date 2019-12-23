@@ -20,8 +20,8 @@ class InteractiveSession:
     """
     An user interactive session with available devices.
 
-    If cfg_path is None, session looks for a file "$ARIUS_PATH/default.yaml,
-    where ARIUS_PATH is user-defined environment variable.
+    If cfg_path is None, session looks for a file ``$ARIUS_PATH/default.yaml``,
+    where ARIUS_PATH is an user-defined environment variable.
 
     :param cfg_path: path to the configuration file, can be None
     """

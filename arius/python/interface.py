@@ -4,7 +4,7 @@ from typing import Set
 
 class UltrasoundInterface:
     """
-    Defines an interface provided by (possibly) multiple Arius module.
+    Defines an interface provided by (possibly) multiple Arius modules.
     """
     # TODO(pjarosik) inverse mapping
     def get_card_order(self):
