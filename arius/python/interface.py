@@ -8,9 +8,7 @@ class UltrasoundInterface:
     """
     # TODO(pjarosik) inverse mapping
     def get_card_order(self):
-        """
-        **Deprecated**
-        """
+        # TODO(pjarosik) deprecated
         raise NotImplementedError
 
     def get_tx_channel_mapping(self, module_idx):
@@ -18,8 +16,7 @@ class UltrasoundInterface:
         Returns TX channel mapping for a module with given index.
 
         :param module_idx: module index
-        :return: TX channel mapping: a list, where
-        list[interface channel] = arius module channel.
+        :return: TX channel mapping: a list, where list[probe's channel] = arius module channel.
         """
         raise NotImplementedError
 
@@ -28,8 +25,7 @@ class UltrasoundInterface:
         Returns RX channel mapping for a module with given index.
 
         :param module_idx: module index
-        :return: RX channel mapping: a list, where
-        list[interface channel] = arius module channel.
+        :return: RX channel mapping: a list, where list[probe's channel] = arius module channel.
         """
         raise NotImplementedError
 
