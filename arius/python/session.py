@@ -17,15 +17,15 @@ import arius.python.devices.iarius as _iarius
 _ARIUS_PATH_ENV = "ARIUS_PATH"
 
 class InteractiveSession:
+    """
+    An user interactive session with available devices.
+
+    If cfg_path is None, session looks for a file "$ARIUS_PATH/default.yaml,
+    where ARIUS_PATH is user-defined environment variable.
+
+    :param cfg_path: path to the configuration file, can be None
+    """
     def __init__(self, cfg_path: str=None):
-        """
-        Creates and starts new session.
-
-        If cfg_path is None, an ARIUS_PATH environment variable is used to
-        locate configuration file named "default.yaml".
-
-        :param cfg_path: path to the configuration file, can be None
-        """
         if cfg_path is None:
             cfg_path = os.path.join(os.environ.get(_ARIUS_PATH_ENV, ""), "default.yaml")
         with open(cfg_path, "r") as f:
@@ -34,9 +34,7 @@ class InteractiveSession:
 
     def get_device(self, id: str):
         """
-        Returns device from given path.
-
-        Currently, ONLY TOP-LEVEL DEVICES ARE AVAILABLE.
+        Returns a device located at given path.
 
         :param id: a path to a device, for example '/Arius:0'
         :return: a device located in given path.
@@ -49,6 +47,11 @@ class InteractiveSession:
         return self._devices[dev_id]
 
     def get_devices(self):
+        """
+        Returns a list of all devices available in this session.
+
+        :return: a list of available devices
+        """
         return self._devices
 
     @staticmethod
@@ -59,8 +62,7 @@ class InteractiveSession:
 
         Currently only probes (and required cards) are loaded.
 
-        :param cfg_file: name of the configuration file to read, relative to
-                         ARIUS_PATH
+        :param cfg: configuration to read
         :return: a map: device id -> Device
         """
         result = {}

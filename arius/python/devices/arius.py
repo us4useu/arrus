@@ -1,6 +1,7 @@
 from logging import DEBUG, INFO
 from typing import List
 import numpy as np
+from functools import wraps
 
 import arius.python.devices.device as _device
 import arius.python.devices.iarius as _iarius
@@ -9,6 +10,7 @@ import math
 
 
 def assert_card_is_powered_up(f):
+    @wraps(f)
     def wrapper(*args, **kwargs):
         arius_card = args[0]
         if arius_card.is_powered_down():
@@ -78,8 +80,7 @@ class AriusCard(_device.Device):
         """
         Sets card's TX channel mapping.
 
-        :param tx_channel_mapping: a list, where
-        list[interface channel] = arius card channel
+        :param tx_channel_mapping: a list, where list[interface channel] = arius card channel
         """
         _utils.assert_true(
             tx_channel_mapping is not None,
@@ -98,8 +99,7 @@ class AriusCard(_device.Device):
         """
         Sets card's RX channel mapping.
 
-        :param rx_channel_mapping: a list, where
-        list[interface channel] = arius card channel
+        :param rx_channel_mapping: a list, where list[interface channel] = arius card channel
         """
         _utils.assert_true(
             rx_channel_mapping is not None,
@@ -136,7 +136,7 @@ class AriusCard(_device.Device):
         :param delays: an array of delays to set [s], number of elements
                        should be equal to the number of module's TX channels
         :param firing: a firing, in which the delay should apply, **starts from 0**
-        :return an array of values, which were set [s]
+        :return: an array of values, which were set [s]
         """
         _utils._assert_equal(
             len(delays), self.get_n_tx_channels(),
@@ -159,7 +159,7 @@ class AriusCard(_device.Device):
         :param channel: card's channel number
         :param delay: delay to set [s]
         :param firing: a firing, in which the delay should apply, **starts from 0**
-        :return a value, which was set [s]
+        :return: a value, which was set [s]
         """
         _utils.assert_true(
             channel < self.get_n_tx_channels(),
@@ -177,7 +177,7 @@ class AriusCard(_device.Device):
 
         :param frequency: frequency to set [Hz]
         :param firing: a firing, in which the value should apply, **starts from 0**
-        :return a value, which was set [Hz]
+        :return: a value, which was set [Hz]
         """
         self.log(
             DEBUG,
