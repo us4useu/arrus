@@ -14,6 +14,34 @@ import types
 import sys
 import importlib
 
+# -- Mocking modules libs ----------------------------------------------------
+
+import types
+# TODO(pjarosik) don't duplicate logic from test_tools.mock_import
+# or just do not use mocking here
+def mock_import(module_name: str, **kwargs):
+    mock_module = types.ModuleType(module_name)
+    for key, value in kwargs.items():
+        setattr(mock_module, key, value)
+    sys.modules[module_name] = mock_module
+    module_path = module_name.split(".")
+    if len(module_path) > 1:
+        print(".".join(module_path[:-1]))
+        parent = importlib.import_module(".".join(module_path[:-1]))
+        setattr(parent, module_path[-1], mock_module)
+    sys.modules[module_name] = mock_module
+    return mock_module
+
+mock_import(
+    "arius.python.devices.iarius",
+    IArius=None
+)
+mock_import(
+    "arius.python.devices.idbarLite",
+)
+mock_import(
+    "arius.python.devices.ihv256",
+)
 
 # -- Project information -----------------------------------------------------
 
