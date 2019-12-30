@@ -1,41 +1,50 @@
 % Reconstructs rf image from raw rf and for rx aperture covering all the probe elements
-function[rfImg] = reconstructRfImg(rfRaw,sys,xGrid,zGrid,fstSampShift,txMode,txAp,txFoc,txAng)
+function[rfBfr] = reconstructRfImg(rfRaw,sys,acq,proc)
 % Image reconstruction: delay & sum algorithm.
 % 
 % Outputs:
-% rfImg         - [] (zSize,xSize) rf image
+% rfBfr                     - (zSize,xSize) output beamformed rf
 % 
 % Inputs:
-% rfRaw         - [] (nSamp,nRx,nTx) raw rf data; 
-%               rx aperture must cover all the probe elements;
-% sys           - system-related parameters
-% sys.pitch     - [m] transducer pitch
-% sys.fs        - [Hz] sampling frequency
-% sys.fn        - [Hz] carrier (nominal) frequency
-% sys.nPer      - [] number of periods in the emitted pulse
-% sys.sos       - [m/s] assumed speed of sound in the medium
-% xGrid         - [m] (1,xSize) x-grid vector for output rf image
-% zGrid         - [m] (1,zSize) z-grid vector for output rf image
-% fstSampShift	- [samp] number of the sample that reflects the tx start
-% txMode        - 'lin', 'sta' or 'pwi' for classical linear scan (LIN), STA scan or PWI scan
-% txAp          - [elem] number of transducer elements forming the tx aperture
-% txFoc         - [m] focal length for STA or LIN scheme
-% txAng         - [deg] tilting angles for PWI scheme
+% rfRaw                     - (nSamp,nRx,nTx) raw rf data
+%                           rx aperture must cover all the probe elements;
+% sys                       - system-related parameters
+% sys.nElements             - [elem] number of probe elements
+% sys.pitch                 - [m] transducer pitch
+% 
+% acq.mode                  - 'sta' or 'pwi' for STA scan or PWI scan
+% acq.rx.samplingFrequency	- [Hz] sampling frequency
+% acq.tx.frequency          - [Hz] carrier (nominal) frequency
+% acq.tx.nPeriods           - [] number of periods in the emitted pulse
+% acq.speedOfSound          - [m/s] speed of sound used in calculation of tx delays
+% acq.tx.apertureSize       - [elem] number of probe's elements forming the tx aperture
+% acq.tx.focus              - [m] focal length for STA scheme
+% acq.tx.angle              - [rad] tilting angles for PWI scheme
+% 
+% proc.speedOfSound         - [m/s] speed of sound used in reconstruction
+% proc.ddc.decimation       - [] decimation factor
+% proc.ddc.iqEnable         - [logical] 
+% proc.das.xGrid            - [m] (1,xSize) x-grid vector for output rf image
+% proc.das.zGrid            - [m] (1,zSize) z-grid vector for output rf image
+
+% TODO
+% focDel, firstSampShift
+fstSampShift = 0;	% [samp] number of the sample that reflects the tx start
 
 [nSamp,nRx,nTx] = size(rfRaw);
-zSize	= length(zGrid);
-xSize	= length(xGrid);
+zSize	= length(proc.das.zGrid);
+xSize	= length(proc.das.xGrid);
 
-xElem	= (-(nRx-1)/2:(nRx-1)/2)*sys.pitch;                                 % [m] x-coordinates of transducer elements
+xElem	= (-(sys.nElements-1)/2:(sys.nElements-1)/2)*sys.pitch;
 
-isIq	= any(~isreal(rfRaw));
+fs      = acq.rx.samplingFrequency/proc.ddc.decimation;
 
 %% initial delays
-fstSampDel	= fstSampShift/sys.fs;                                       % [s] rx delay with respect to start of tx
-burstFactor	= sys.nPer/(2*sys.fn);                                           % [s] burst factor
-if any(strcmp(txMode,{'lin','sta'})) && (txFoc > 0)
-    % LIN or MSTA with focusing -> need to compensate for delay of 
-    focDel	= (sqrt(((txAp-1)/2*sys.pitch).^2 + txFoc.^2) - txFoc)/sys.sos;     % [s] focusing delay of center of tx aperture
+fstSampDel	= fstSampShift/acq.rx.samplingFrequency;                                       % [s] rx delay with respect to start of tx
+burstFactor	= acq.tx.nPeriods/(2*acq.tx.frequency);                                           % [s] burst factor
+if strcmp(acq.mode,'sta') && (acq.tx.focus > 0)
+    % MSTA with focusing -> need to compensate for delay of 
+    focDel	= (sqrt(((acq.tx.apertureSize-1)/2*sys.pitch).^2 + acq.tx.focus.^2) - acq.tx.focus)/acq.speedOfSound;     % [s] focusing delay of center of tx aperture
 else
     % SSTA, MSTA with defocusing, PWI -> no focusing
     focDel	= 0;
@@ -55,39 +64,26 @@ wb = waitbar(0,'rf image reconstruction');
 for iTx=1:nTx
     
     % calculate tx delays and apodization
-    switch txMode
-        case 'lin'
-            % classical linear scanning (only a narrow stripe is reconstructed at a time, no tx apodization)
-            xValid	= ((xGrid-xElem(iTx)) > -(sys.pitch/2)) ...
-                    & ((xGrid-xElem(iTx)) <= (sys.pitch/2));
-            nValid	= sum(xValid);
-            
-            txDist	= repmat(zGrid',[1 nValid]);
-            txApod	= ones(zSize,nValid);
-            
+    switch acq.mode
         case 'sta'
             % synthetic transmit aperture method
-            xValid	= true(1,xSize);
+            txDist	= sqrt((proc.das.zGrid' - acq.tx.focus).^2 + (proc.das.xGrid-xElem(iTx)).^2);
+            txDist	= txDist.*sign(proc.das.zGrid' - acq.tx.focus) + acq.tx.focus;          % WARNING: sign()=0 => invalid txDist value
             
-            txDist	= sqrt((zGrid' - txFoc).^2 + (xGrid-xElem(iTx)).^2);
-            txDist	= txDist.*sign(zGrid' - txFoc) + txFoc;          % WARNING: sign()=0 => invalid txDist value
-            
-            fNum	= abs((xGrid-xElem(iTx))) ./ max(abs(zGrid' - txFoc),1e-12);
+            fNum	= abs((proc.das.xGrid-xElem(iTx))) ./ max(abs(proc.das.zGrid' - acq.tx.focus),1e-12);
             txApod	= double(fNum < 0.5);
             
         case 'pwi'
             % plane wave imaging method
-            xValid	= true(1,xSize);
-            
-            if txAng(iTx) >= 0
+            if acq.tx.angle(iTx) >= 0
                 eFst	= 1;
             else
-                eFst	= nRx;
+                eFst	= sys.nElements;
             end
-            txDist	= (xGrid-xElem(eFst))*sind(txAng(iTx)) + zGrid'*cosd(txAng(iTx));
+            txDist	= (proc.das.xGrid-xElem(eFst))*sin(acq.tx.angle(iTx)) + proc.das.zGrid'*cos(acq.tx.angle(iTx));
             
-            r1      = (xGrid-xElem(   1))*cosd(txAng(iTx)) - zGrid'*sind(txAng(iTx));
-            r2      = (xGrid-xElem( end))*cosd(txAng(iTx)) - zGrid'*sind(txAng(iTx));
+            r1      = (proc.das.xGrid-xElem(   1))*cos(acq.tx.angle(iTx)) - proc.das.zGrid'*sin(acq.tx.angle(iTx));
+            r2      = (proc.das.xGrid-xElem( end))*cos(acq.tx.angle(iTx)) - proc.das.zGrid'*sin(acq.tx.angle(iTx));
             txApod	= double(r1 >= 0 & r2 <= 0);
             
     end
@@ -96,26 +92,26 @@ for iTx=1:nTx
     wghRx	= zeros(zSize,xSize,nRx);
     for iRx=1:nRx
         % calculate rx delays and apodization
-        rxDist	= sqrt((xGrid(xValid)-xElem(iRx)).^2 + zGrid'.^2);
-        fNum	=  abs((xGrid(xValid)-xElem(iRx))./zGrid');
+        rxDist	= sqrt((proc.das.xGrid-xElem(iRx)).^2 + proc.das.zGrid'.^2);
+        fNum	=  abs((proc.das.xGrid-xElem(iRx))./proc.das.zGrid');
         rxApod	= fNum < 0.5;
         
         % calculate total delays
-        delTot	= (txDist + rxDist)/sys.sos + initDel;	% [s]
+        delTot	= (txDist + rxDist)/proc.speedOfSound + initDel;	% [s]
         
         % calculate sample numbers to be used in reconstruction (out-of-range sample numbers -> nSamp+1 -> sample=0)
-        iSamp	= delTot*sys.fs + 1;                 % [samp]
+        iSamp	= delTot*fs + 1;                 % [samp]
         iSamp(iSamp<1 | iSamp>nSamp-1) = nSamp;
         
         % calculate the rf samples (interpolated) and apodization weights
-        rfRawLine           = rfRaw(:,iRx,iTx);
-        rfRx(:,xValid,iRx)	= rfRawLine(floor(iSamp)).*(1-mod(iSamp,1)) ...
+        rfRawLine       = rfRaw(:,iRx,iTx);
+        rfRx(:,:,iRx)	= rfRawLine(floor(iSamp)).*(1-mod(iSamp,1)) ...
                             + rfRawLine( ceil(iSamp)).*(  mod(iSamp,1));
-        wghRx(:,xValid,iRx)	= txApod.*rxApod;
+        wghRx(:,:,iRx)	= txApod.*rxApod;
         
         % modulate if iq signal is used
-        if isIq
-            rfRx(:,xValid,iRx)	= rfRx(:,xValid,iRx).*exp(1i*2*pi*sys.fn*delTot);
+        if proc.ddc.iqEnable
+            rfRx(:,:,iRx)	= rfRx(:,:,iRx).*exp(1i*2*pi*acq.tx.frequency*delTot);
         end
     end
     
@@ -128,7 +124,7 @@ end
 close(wb);
 
 % calculate the final rf image
-rfImg	= sum(rfTx,3)./sum(wghTx,3);
+rfBfr	= sum(rfTx,3)./sum(wghTx,3);
 
 end
 

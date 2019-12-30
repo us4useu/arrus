@@ -1,168 +1,151 @@
 
-%% System setup
-sys.nElem = 192;            % [elem] number of transducer elements
-sys.pitch = 0.21e-3;        % [m] transducer pitch
-sys.fs = 65e6;              % [Hz] sampling frequency
-sys.fn = 5e6;               % [Hz] carrier frequency
-sys.nPer = 2;               % [] number of sine periods in tx burst
-sys.sos = 1540;             % [m/s] speed of sound
-sys.att = 0.5e-4;           % [dB/m/Hz]
+%% --------------------------------------------------------
+%% ------------------------ SETUP -------------------------
+%% --------------------------------------------------------
 
-txAngle = -20:1:20;     % [deg] tx angles (for PWI)
-txFocus = 20e-3;        % [m] tx focus (for LIN)
-txApert = 32;           % [elem] tx aperture (for LIN)
+% ---- Phantom parameters ---- (phantom = sparse rectangular grid of point scatterers)
+phantomParameters.speedOfSound = 1540;              % [m/s] speed of sound
+phantomParameters.attenuation = 0.5e-4;             % [dB/m/Hz] linear attenuation coefficient
 
-%% Medium setup: 
-if 0
-    % tissue-like structure (hours of calculations)
-    % parameters
-    scatDens	= 5*1e9;                                    % [1/m^3] spatial density of scatterers distribution
-    
-    zRng        = [ 00 60]*1e-3;                            % [m] range of z-coordinates for the tissue block
-    xRng        = [-20 20]*1e-3;                            % [m] range of x-coordinates for the tissue block
-    yRng        = [-05 05]*1e-3;                            % [m] range of y-coordinates for the tissue block
-    
-    % scatterers
-    tissueVol	= diff(zRng)*diff(xRng)*diff(yRng);         % [m^3] tissue volume
-    scatNum     = round(tissueVol*scatDens);                % [] number of scatterers
-    
-    rng(7);                                                 % set random number generator to get reproducible results
-    
-    scat.z	= rand(scatNum,1)*diff(zRng) + zRng(1);     % [m] vector of z-coordinates of scatterers
-    scat.x	= rand(scatNum,1)*diff(xRng) + xRng(1);     % [m] vector of x-coordinates of scatterers
-    scat.y	= rand(scatNum,1)*diff(yRng) + yRng(1);     % [m] vector of y-coordinates of scatterers
-    scat.s	= ones(scatNum,1);                          % [] vector of scattering coefficients
-else
-    % sparse rectangular grid of point scatterers
-    xGrid       = (-15:5:15)*1e-3;      % [m] x-grid vector of point sources
-    yGrid       = 0*1e-3;               % [m] y-grid vector of point sources
-    zGrid       = (10:5:40)*1e-3;       % [m] z-grid vector of point sources
-    
-    [scat.x,scat.z,scat.y] = meshgrid(xGrid,zGrid,yGrid);
-    scat.s      = ones(size(scat.x));
-end
-%% Raw rf data simulation
+xGrid       = (-15:5:15)*1e-3;                      % [m] x-grid vector of point sources
+yGrid       = 0*1e-3;                               % [m] y-grid vector of point sources
+zGrid       = (10:5:40)*1e-3;                       % [m] z-grid vector of point sources
+
+[phantomParameters.particles.xPosition, ...         % [m] x-position of point sources
+phantomParameters.particles.zPosition, ...
+phantomParameters.particles.yPosition] = meshgrid(xGrid,zGrid,yGrid);
+phantomParameters.particles.scattering = ones(size(phantomParameters.particles.xPosition));
+
+% ---- System parameters ----
+systemParameters.nElements = 192;                   % [elem] number of probe elements
+systemParameters.pitch = 0.21e-3;                   % [m] transducer pitch
+
+% ---- Acquisition parameters ----
+acquisitionParameters.mode = 'lin';
+
+acquisitionParameters.speedOfSound = 1540;          % [m/s] speed of sound
+acquisitionParameters.attenuation = 0.5e-4;         % [dB/m/Hz] linear attenuation coefficient
+
+acquisitionParameters.tx.frequency = 5e6;           % [Hz] carrier frequency
+acquisitionParameters.tx.nPeriods = 2;              % [] number of sine periods in tx burst
+acquisitionParameters.tx.angle = 0*(pi/180);        % [rad] tx angles (for PWI,LIN)
+acquisitionParameters.tx.focus = 20e-3;             % [m] tx focus (for LIN)
+acquisitionParameters.tx.apertureSize = 32;         % [elem] tx aperture (for LIN)
+
+acquisitionParameters.rx.samplingFrequency = 65e6;	% [Hz] sampling frequency
+acquisitionParameters.rx.apertureSize = 48;         % [elem] rx aperture (for LIN)
+
+% ---- Processing parameters ----
+% Band-pass filtration
+filterOrder = 2;
+cutoffLow = 0.5*acquisitionParameters.tx.frequency/(acquisitionParameters.rx.samplingFrequency/2);
+cutoffHigh = 1.5*acquisitionParameters.tx.frequency/(acquisitionParameters.rx.samplingFrequency/2);
+cutoffMean = (cutoffLow+cutoffHigh)/2;
+[b,a] = butter(filterOrder,[cutoffLow cutoffHigh],'bandpass');
+del = phasez(b,a,[0 cutoffMean],acquisitionParameters.rx.samplingFrequency) ...
+    /(2*pi)/acquisitionParameters.tx.frequency*acquisitionParameters.rx.samplingFrequency;
+del = -del(2);
+
+processingParameters.filter.enable = true;
+processingParameters.filter.b = b;
+processingParameters.filter.a = a;
+processingParameters.filter.delay = del;
+
+% Digital Down Conversion
+processingParameters.ddc.iqEnable = true;
+processingParameters.ddc.cicOrder = 2;
+processingParameters.ddc.decimation = 2;
+
+% Delay And Sum
+processingParameters.das.xGrid = (-20:0.1:20)*1e-3;	% [m]
+processingParameters.das.zGrid = (0:0.05:50)*1e-3; % [m]
+
+%% --------------------------------------------------------
+%% -------------------- RF SIMULATION ---------------------
+%% --------------------------------------------------------
 
 % add path to Field II (this one works for me)
 addpath([userpath '\Lib_Field']);
 
 % simulate rf data for SSTA scheme
-rfSta = simulateRfSta(sys,scat);
+rfRaw = simulateRfSta(systemParameters,acquisitionParameters,phantomParameters);
 
 % convert the SSTA data to LIN or PWI format
-rfPwi = convertRfSta(rfSta,sys,'pwi',[],[],txAngle,0);
-rfLin = convertRfSta(rfSta,sys,'lin',txFocus,txApert,0,0);
-
-%% Raw rf data filtration
-filtOrd = 2;
-fLo = 0.5*sys.fn;
-fHi = 1.5*sys.fn;
-
-[filtB,filtA] = butter(filtOrd,[fLo fHi]/(sys.fs/2),'bandpass');
-filtDel = phasez(filtB,filtA,[0 (fLo+fHi)/2],sys.fs)/(2*pi)/sys.fn*sys.fs;
-filtDel = -filtDel(2); % [s] filtration time delay for frequency = (fLo+fHi)/2
-
-rfSta = filter(filtB,filtA,rfSta);
-rfPwi = filter(filtB,filtA,rfPwi);
-rfLin = filter(filtB,filtA,rfLin);
-
-% CPU - 'filter'+IIR is fast enough; 'filtfilt'+IIR or 'filter/convn'+FIR is too slow
-% GPU - 'filter'+IIR is fast enough; 'filter'+FIR doesn't work; 'convn'+FIR is quite fast; 'filtfilt' doesn't work;
-
-%% Digital Down Conversion
-if 1
-    sampPerPrd = 4;
-    bandWidth = 1;
-    
-    cicOrd = 2;
-    
-    dec = floor((sys.fs/sampPerPrd) / (sys.fn*bandWidth/2));
-    
-    rfSta = downConv(rfSta,sys,dec,cicOrd);
-    rfPwi = downConv(rfPwi,sys,dec,cicOrd);
-    rfLin = downConv(rfLin,sys,dec,cicOrd);
-    
-    sys.fs = sys.fs/dec;
-    
-    % warning: both filtration and decimation introduce phase shift!
+if any(strcmp(acquisitionParameters.mode,{'pwi','lin'}))
+    rfRaw = convertRfSta(rfRaw,systemParameters,acquisitionParameters);
 end
+
+%% --------------------------------------------------------
+%% ---------------------- PROCESSING ----------------------
+%% --------------------------------------------------------
+
+%% Move data to GPU if possible
+gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp'));
+if gpuEnable
+    rfRaw = gpuArray(rfRaw);
+end
+
+%% Preprocessing
+
+% Raw rf data filtration
+if processingParameters.filter.enable
+    rfRaw = filter(processingParameters.filter.b,processingParameters.filter.a,rfRaw);
+end
+
+% Digital Down Conversion
+rfRaw = downConv(rfRaw,acquisitionParameters,processingParameters);
+
+% warning: both filtration and decimation introduce phase delay!
 
 %% Image reconstruction
-xGrid = (-20:0.1:20)*1e-3;	% [m] 
-zGrid = (0:0.05:50)*1e-3;   % [m]
-
-xSize = length(xGrid);
-zSize = length(zGrid);
-
-imgRfSta = reconstructRfImg(rfSta,sys,xGrid,zGrid,0,'sta',1,0,0);
-imgRfPwi = reconstructRfImg(rfPwi,sys,xGrid,zGrid,0,'pwi',[],[],txAngle);
-imgRfLin = reconstructRfImg(rfLin,sys,xGrid,zGrid,0,'lin',txApert,txFocus,0);
-
-rxApert	= 32;
-% tx delay of aperture center - far from ideal (does not account for txAngle and tx aperture clipping)
-txCentDel= (sqrt(txFocus^2 + (txApert/2*sys.pitch).^2) - txFocus)/sys.sos;
-imgRfLin2= reconstructRfLin(rfLin,sys,txCentDel,0,rxApert);
-
-%% Envelope detection
-nanMaskSta = isnan(imgRfSta);
-nanMaskPwi = isnan(imgRfPwi);
-nanMaskLin = isnan(imgRfLin);
-
-imgRfSta(nanMaskSta) = 0;
-imgRfPwi(nanMaskPwi) = 0;
-imgRfLin(nanMaskLin) = 0;
-
-if isreal(imgRfSta)
-    imgRfSta = hilbert(imgRfSta);
-end
-if isreal(imgRfPwi)
-    imgRfPwi = hilbert(imgRfPwi);
-end
-if isreal(imgRfLin)
-    imgRfLin = hilbert(imgRfLin);
+if strcmp(acquisitionParameters.mode,'lin')
+    % tx delay of aperture center - far from ideal (does not account for acquisitionParameters.tx.angle and tx aperture clipping)
+    txCentDel= (sqrt(acquisitionParameters.tx.focus^2 + (acquisitionParameters.tx.apertureSize/2*systemParameters.pitch).^2) - acquisitionParameters.tx.focus)/acquisitionParameters.speedOfSound;
+    rfBfr = reconstructRfLin(rfRaw,systemParameters,acquisitionParameters,processingParameters,txCentDel);
+else
+    rfBfr = reconstructRfImg(rfRaw,systemParameters,acquisitionParameters,processingParameters);
 end
 
-imgRfSta(nanMaskSta) = nan;
-imgRfPwi(nanMaskPwi) = nan;
-imgRfLin(nanMaskLin) = nan;
+%% --------------------------------------------------------
+%% ------------------- POSTPROCESSING ---------------------
+%% --------------------------------------------------------
+% Obtain complex signal (if it isn't complex already)
+if ~processingParameters.ddc.iqEnable
+    nanMask = isnan(rfBfr);
+    rfBfr(nanMask) = 0;
+    rfBfr = hilbert(rfBfr);
+    rfBfr(nanMask) = nan;
+end
 
-imgEnvSta = abs(imgRfSta);
-imgEnvPwi = abs(imgRfPwi);
-imgEnvLin = abs(imgRfLin);
+% Scan conversion (for 'lin' mode)
+if strcmp(acquisitionParameters.mode,'lin')
+    rfBfr = scanConvert(rfBfr,systemParameters,acquisitionParameters,processingParameters);
+end
 
-%% Compression
-imgSta = 20*log10(imgEnvSta);
-imgPwi = 20*log10(imgEnvPwi);
-imgLin = 20*log10(imgEnvLin);
+% Envelope detection
+envImg = abs(rfBfr);
 
-%% Display
+% Compression
+imgBMode = 20*log10(envImg);
+
+%% --------------------------------------------------------
+%% ----------------------- DISPLAY ------------------------
+%% --------------------------------------------------------
+if gpuEnable
+    imgBMode = gather(imgBMode);
+end
+
 dynRng	= 40;
-
-cLimSta = max(max(imgSta(round(zSize*0.25):round(zSize*0.75),round(xSize*0.25):round(xSize*0.75))));
-cLimPwi = max(max(imgPwi(round(zSize*0.25):round(zSize*0.75),round(xSize*0.25):round(xSize*0.75))));
-cLimLin = max(max(imgLin(round(zSize*0.25):round(zSize*0.75),round(xSize*0.25):round(xSize*0.75))));
+cMax = max(imgBMode(:));
 
 figure;
-for n=1:3
-    subplot(1,3,n);
-    switch n
-        case 1
-            imagesc(xGrid*1e3,zGrid*1e3,imgSta);
-            set(gca,'CLim',cLimSta + [-dynRng 0]);
-        case 2
-            imagesc(xGrid*1e3,zGrid*1e3,imgPwi);
-            set(gca,'CLim',cLimPwi + [-dynRng 0]);
-        case 3
-            imagesc(xGrid*1e3,zGrid*1e3,imgLin);
-            set(gca,'CLim',cLimLin + [-dynRng 0]);
-    end
-    
-    daspect([1 1 1]);
-    colormap(gray);
-    colorbar;
-    xlabel('x [mm]');
-    ylabel('z [mm]');
-    
-end
+imagesc(processingParameters.das.xGrid*1e3,processingParameters.das.zGrid*1e3,imgBMode);
+set(gca,'CLim',cMax + [-dynRng 0]);
+daspect([1 1 1]);
+colormap(gray);
+colorbar;
+xlabel('x [mm]');
+ylabel('z [mm]');
+
 
 

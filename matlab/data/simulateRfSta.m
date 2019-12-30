@@ -1,64 +1,73 @@
 % Simulation of SSTA rf-channel data (uses Field II).
-% Requires Field II directory to be added to the MATLAB path.
-function[rfSta] = simulateRfSta(sys,scat)
+function[rfSta] = simulateRfSta(sys,acq,pha)
 % Outputs:
-% rfSta - (nSamp,nElem,nElem) output raw rf data for SSTA scheme
-
+% 
+% rfSta                     - (nSamp,nElem,nElem) output raw rf data for SSTA scheme
+% 
+% 
 % Inputs:
-% sys - system-related parameters
-% sys.nElem - [elem] number of transducer elements
-% sys.pitch - [m] transducer pitch
-% sys.fs - [Hz] sampling frequency
-% sys.fn - [Hz] carrier (nominal) frequency
-% sys.nPer - [] number of periods in the emitted pulse
-% sys.sos - [m/s] assumed speed of sound in the medium
-% sys.att - [dB/m/Hz] assumed linear attenuation coefficient in the medium
-% scat - medium characterisation (scattering points)
-% scat.x - [m] x-coordinates of scattering points
-% scat.y - [m] y-coordinates of scattering points
-% scat.z - [m] z-coordinates of scattering points
-% scat.s - [] scattering cross-section of scattering points
-
-% scat.x,y,z,s must be the same size
+% 
+% sys                       - system-related parameters
+% sys.nElements             - [elem] number of probe's elements
+% sys.pitch                 - [m] probe's pitch
+% 
+% acq                       - acquisition-related parameters
+% acq.rx.samplingFrequency	- [Hz] sampling frequency
+% acq.tx.frequency          - [Hz] carrier (nominal) frequency
+% acq.tx.nPeriods           - [] number of periods in the emitted pulse
+% 
+% pha                       - phantom-related parameters
+% pha.speedOfSound          - [m/s] speed of sound in the medium
+% pha.attenuation           - [dB/m/Hz] linear attenuation coefficient in the medium
+% pha.particles.xPosition	- [m] x-coordinates of scattering points
+% pha.particles.yPosition	- [m] y-coordinates of scattering points
+% pha.particles.zPosition	- [m] z-coordinates of scattering points
+% pha.particles.scattering	- [] scattering cross-section of scattering points
+% 
+% 
+% Restrictions:
+% 
+% requires Field II directory to be added to the MATLAB path.
+% pha.particles.xPosition,yPosition,zPosition,scattering must be the same size
 
 %% parameters
-kerf        = 0.0000e-3;                                % [m] kerf
-eleXSize	= sys.pitch;                                % [m] length of a single probe element in x-direction (width)
-eleYSize	= 4.0000e-3;                                % [m] length of a single probe element in y-direction (elevation)
-eleXSubNum	= 01;                                       % [] number of sub-elements that a single probe element is divided into in x-direction (width)
-eleYSubNum	= 08;                                       % [] number of sub-elements that a single probe element is divided into in y-direction (elevation)
+kerf        = 0.0000e-3;	% [m] kerf
+eleXSize	= sys.pitch;	% [m] length of a single probe element in x-direction (width)
+eleYSize	= 4.0000e-3;	% [m] length of a single probe element in y-direction (elevation)
+eleXSubNum	= 01;           % [] number of sub-elements that a single probe element is divided into in x-direction
+eleYSubNum	= 08;           % [] number of sub-elements that a single probe element is divided into in y-direction
 
-focDepth	= 40e-3;                                    % [m] initial focal depth
-focPoint	= [0 0 focDepth];                           % [m] initial focal point
+focDepth	= 40e-3;            % [m] initial focal depth
+focPoint	= [0 0 focDepth];	% [m] initial focal point
 
-impResp     = sin(2*pi*sys.fn*(0:1/sys.fs:2/sys.fn));               % [] impulse response of probe elements
+impResp     = sin(2*pi*acq.tx.frequency*(0:1/acq.rx.samplingFrequency:2/acq.tx.frequency));
 impResp     = impResp.*hanning(length(impResp))';       % [] impulse response of probe elements
-excitation	= sign(sin(2*pi*sys.fn*(0:1/sys.fs:sys.nPer/sys.fn)));      % [] excitation
+excitation	= sign(sin(2*pi*acq.tx.frequency*(0:1/acq.rx.samplingFrequency:acq.tx.nPeriods/acq.tx.frequency)));	% [] excitation
 
 %% Field II
 % Field initialization
-field_init(0);                                          % Initialization
+field_init(0);                      % Initialization
 
 % set execution parameters
-% set_field('threads',            4);                     % Set number of threads (for parallel Field version)
-set_field('show_times',         5);                     % Enable remaining time display (flag>2 sets the time between successive reports)
-set_field('debug',              0);                     % Enable debug information display
-set_field('use_att',            1);                     % Enables the attenuation
-set_field('use_rectangles',     1);                     % Use rectangles in the aperture modeling
-set_field('use_triangles',      0);                     % Use triangles in the aperture modeling
-set_field('use_lines',          0);                     % Use lines in the aperture modeling
-set_field('fast_integration',   0);                     % Enables fast integration for bound lines and triangles
+% set_field('threads',            4);	% Set number of threads (for parallel Field version)
+set_field('show_times',         5);	% Enable remaining time display (flag>2 sets the time between successive reports)
+set_field('debug',              0);	% Enable debug information display
+set_field('use_att',            1);	% Enables the attenuation
+set_field('use_rectangles',     1);	% Use rectangles in the aperture modeling
+set_field('use_triangles',      0);	% Use triangles in the aperture modeling
+set_field('use_lines',          0);	% Use lines in the aperture modeling
+set_field('fast_integration',   0);	% Enables fast integration for bound lines and triangles
 
 % set physical parameters
-set_field('c',                  sys.sos);
-set_field('att',                sys.att*sys.fn);        % [dB/m] attenuation at nominal frequency fn
-set_field('freq_att',           sys.att);               % [dB/m/Hz] attenuation change with frequency
-set_field('att_f0',             sys.fn);
-set_field('fs',                 sys.fs);
+set_field('c',                  pha.speedOfSound);
+set_field('att',                pha.attenuation*acq.tx.frequency);	% [dB/m] attenuation at tx frequency
+set_field('freq_att',           pha.attenuation);                   % [dB/m/Hz] attenuation change with frequency
+set_field('att_f0',             acq.tx.frequency);
+set_field('fs',                 acq.rx.samplingFrequency);
 
 % set transmit and receive apertures
-txApert     = xdc_linear_array(sys.nElem,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
-rxApert     = xdc_linear_array(sys.nElem,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
+txApert     = xdc_linear_array(sys.nElements,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
+rxApert     = xdc_linear_array(sys.nElements,eleXSize,eleYSize,kerf,eleXSubNum,eleYSubNum,focPoint);
 
 % set impulse responses
 xdc_impulse(txApert,impResp);
@@ -68,19 +77,22 @@ xdc_impulse(rxApert,impResp);
 xdc_excitation(txApert,excitation);
 
 % SSTA simulation, no focusing, no apodization
-[rfSta,t0]	= calc_scat_all(txApert,rxApert,[scat.x(:) scat.y(:) scat.z(:)],scat.s(:),1);
+[rfSta,t0]	= calc_scat_all(txApert,rxApert,[pha.particles.xPosition(:) ...
+                                             pha.particles.yPosition(:) ...
+                                             pha.particles.zPosition(:)], ...
+                                             pha.particles.scattering(:),1);
 
 % close field
 field_end;
 
 %% rf data rearrangement
-rfSta       = reshape(rfSta,[],sys.nElem,sys.nElem);
+rfSta       = reshape(rfSta,[],sys.nElements,sys.nElements);
 
 % make the first rx sample be the time t = 0
 if t0 <= 0
-    rfSta(1:-t0*sys.fs,:,:) = [];
+    rfSta(1:-t0*acq.rx.samplingFrequency,:,:) = [];
 else
-    rfSta = [zeros(t0*sys.fs,sys.nElem,sys.nElem); rfSta];
+    rfSta = [zeros(t0*acq.rx.samplingFrequency,sys.nElements,sys.nElements); rfSta];
 end
 
 end
