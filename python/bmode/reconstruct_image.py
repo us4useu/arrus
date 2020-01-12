@@ -431,7 +431,7 @@ def main():
 
     parser.add_argument("--file", type=str, required=True, default=0,
                         help='The path to the file with 3D array \
-                        of prebeamformed radio-frequency data',
+                        of pre-beamformed radio-frequency data',
                         dest="file")
 
     parser.add_argument(
@@ -530,7 +530,7 @@ def main():
     args = parser.parse_args()
 
     rf = np.load(args.file)
-
+    # rf = load_simulated_data(args.file)
     x_grid = np.linspace(*args.x_grid)
     z_grid = np.linspace(*args.z_grid)
 
