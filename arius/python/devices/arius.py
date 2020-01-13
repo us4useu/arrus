@@ -497,6 +497,91 @@ class AriusCard(_device.Device):
         """
         return self.card_handle.IsPowereddown()
 
+    @assert_card_is_powered_up
+    def clear_schedule_receive(self):
+        """
+        Clears scheduled receive queue.
+        """
+        self.log(
+            DEBUG,
+            "Clearing schedule receive queue..."
+        )
+        self.card_handle.ClearScheduledReceive()
+
+    @assert_card_is_powered_up
+    def trigger_start(self):
+        """
+        Starts generation of the hardware trigger.
+        """
+        self.log(
+            DEBUG,
+            "Starting generation of the hardware trigger..."
+        )
+        self.card_handle.TriggerStart()
+
+    @assert_card_is_powered_up
+    def trigger_stop(self):
+        """
+        Stops generation of the hardware trigger.
+        """
+        self.log(
+            DEBUG,
+            "Stops generation of the hardware trigger..."
+        )
+        self.card_handle.TriggerStop()
+
+    @assert_card_is_powered_up
+    def trigger_sync(self):
+        """
+        Resumes generation of the hardware trigger.
+        """
+        self.log(
+            DEBUG,
+            "Resumes generation of the hardware trigger..."
+        )
+        self.card_handle.TriggerSync()
+
+    @assert_card_is_powered_up
+    def set_n_triggers(self, n_triggers):
+        """
+        Sets the number of trigger to be generated.
+
+        :param n_triggers: number of triggers to set
+
+        """
+        self.log(
+            DEBUG,
+            "Setting number of triggers to generate to %d..." % n_triggers
+        )
+        self.card_handle.SetNTriggers(n_triggers)
+
+    @assert_card_is_powered_up
+    def set_trigger(self, time_to_next_trigger, time_to_next_tx, is_sync_required, idx):
+        """
+        Sets parameters of the trigger event.
+		Each trigger event will generate a trigger signal for the current
+		firing/acquisition and set next firing parameters.
+
+		:param timeToNextTrigger: time between current and the next trigger [uS]
+		:param timeToNextTx: delay between current trigger and setting next firing parameters [uS]
+		:param syncReq: should the trigger generator pause and wait for the TriggerSync() call
+		:param idx: a firing, in which the parameters values should apply, **starts from 0**
+        """
+        self.log(
+            DEBUG,
+            ("Setting trigger generation parameters to: "
+             "trigger number: %d, "
+             "time to next trigger: %d, "
+             "time to next tx: %d, "
+             "is sync required: %s") % (idx, time_to_next_trigger, time_to_next_tx, str(is_sync_required))
+        )
+        self.card_handle.SetTrigger(
+            timeToNextTrigger=time_to_next_trigger,
+            timeToNextTx=time_to_next_tx,
+            syncReq=is_sync_required,
+            idx=idx
+        )
+
     def _convert_to_enum_value(self, enum_name, value, unit=""):
         _utils.assert_true(
             round(value) == value,
