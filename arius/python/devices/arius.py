@@ -578,7 +578,7 @@ class AriusCard(_device.Device):
         self.card_handle.SetTrigger(
             timeToNextTrigger=time_to_next_trigger,
             timeToNextTx=time_to_next_tx,
-            syncReq=is_sync_required,
+            syncReq=int(is_sync_required),
             idx=idx
         )
 
