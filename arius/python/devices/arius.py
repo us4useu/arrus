@@ -498,13 +498,13 @@ class AriusCard(_device.Device):
         return self.card_handle.IsPowereddown()
 
     @assert_card_is_powered_up
-    def clear_schedule_receive(self):
+    def clear_scheduled_receive(self):
         """
         Clears scheduled receive queue.
         """
         self.log(
             DEBUG,
-            "Clearing schedule receive queue..."
+            "Clearing scheduled receive requests..."
         )
         self.card_handle.ClearScheduledReceive()
 
