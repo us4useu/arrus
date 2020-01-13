@@ -127,6 +127,9 @@ class IArius(object):
     def EnableReceive(self):
         return _iarius.IArius_EnableReceive(self)
 
+    def ClearScheduledReceive(self):
+        return _iarius.IArius_ClearScheduledReceive(self)
+
     def TransferRXBufferToHost(self, dstAddress, length, srcAddress):
         return _iarius.IArius_TransferRXBufferToHost(self, dstAddress, length, srcAddress)
 
@@ -208,6 +211,21 @@ class IArius(object):
     def TGCSetSamples(self, samples, nSamples):
         return _iarius.IArius_TGCSetSamples(self, samples, nSamples)
 
+    def TriggerStart(self):
+        return _iarius.IArius_TriggerStart(self)
+
+    def TriggerStop(self):
+        return _iarius.IArius_TriggerStop(self)
+
+    def TriggerSync(self):
+        return _iarius.IArius_TriggerSync(self)
+
+    def SetNTriggers(self, n):
+        return _iarius.IArius_SetNTriggers(self, n)
+
+    def SetTrigger(self, timeToNextTrigger, timeToNextTx, syncReq, idx):
+        return _iarius.IArius_SetTrigger(self, timeToNextTrigger, timeToNextTx, syncReq, idx)
+
 # Register IArius in _iarius:
 _iarius.IArius_swigregister(IArius)
 
@@ -217,4 +235,3 @@ def GetArius(idx):
 
 def TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress):
     return _iarius.TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress)
-
