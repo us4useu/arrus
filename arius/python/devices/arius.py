@@ -564,7 +564,7 @@ class AriusCard(_device.Device):
 
 		:param timeToNextTrigger: time between current and the next trigger [uS]
 		:param timeToNextTx: delay between current trigger and setting next firing parameters [uS]
-		:param syncReq: should the trigger generator pause and wait for the TriggerSync() call
+		:param syncReq: should the trigger generator pause and wait for the trigger_sync() call
 		:param idx: a firing, in which the parameters values should apply, **starts from 0**
         """
         self.log(
