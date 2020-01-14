@@ -155,8 +155,8 @@ class InteractiveSession:
             import arius.python.devices.ihv256 as _ihv256
             import arius.python.devices.hv256 as _hv256
             system_master_card = master_cards[0]
-            dbar = _dbarlite.IDBARLite(system_master_card.card_handle)
-            hv_handle = _ihv256.IHV256(dbar.GetI2CHV())
+            dbar = _dbarlite.GetDBARLite(system_master_card.card_handle)
+            hv_handle = _ihv256.GetHV256(dbar.GetI2CHV())
             hv = _hv256.HV256(hv_handle)
             result[hv.get_id()] = hv
         return result
