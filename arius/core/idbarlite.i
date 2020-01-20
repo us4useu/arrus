@@ -16,8 +16,8 @@
 %ignore dbarlite::DBARLiteException;
 %{
 #include <iostream>
-#include "ii2CMaster.h"
+#include "iI2CMaster.h"
 #include "idbarLite.h"
 %}
-%include ii2CMaster.h
+%include iI2CMaster.h
 %include idbarLite.h
