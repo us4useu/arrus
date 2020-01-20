@@ -13,9 +13,9 @@
 %module ihv256
 %{
 #include <iostream>
-#include "ii2CMaster.h"
+#include "iI2CMaster.h"
 #include "ihv256.h"
 %}
 
-%include ii2CMaster.h
+%include iI2CMaster.h
 %include ihv256.h

@@ -232,6 +232,31 @@ _iarius.IArius_swigregister(IArius)
 
 def GetArius(idx):
     return _iarius.GetArius(idx)
+class II2CMaster(object):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined - class is abstract")
+    __repr__ = _swig_repr
+
+    def Write(self, address, data, length):
+        return _iarius.II2CMaster_Write(self, address, data, length)
+
+    def Read(self, address, data, length):
+        return _iarius.II2CMaster_Read(self, address, data, length)
+
+    def WriteAndRead(self, address, writedata, writelength, readdata, readlength):
+        return _iarius.II2CMaster_WriteAndRead(self, address, writedata, writelength, readdata, readlength)
+    __swig_destroy__ = _iarius.delete_II2CMaster
+
+# Register II2CMaster in _iarius:
+_iarius.II2CMaster_swigregister(II2CMaster)
+
 
 def TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress):
     return _iarius.TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress)
+
+def castToII2CMaster(ptr):
+    return _iarius.castToII2CMaster(ptr)
+
+

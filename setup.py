@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="arius",
-    version="0.1.0",
+    version="0.2.0",
     author="us4us Ltd.",
     author_email="piotr.jarosik@us4us.eu",
     description="Arius Software Development Kit",
