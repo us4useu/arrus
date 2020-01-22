@@ -259,4 +259,7 @@ def TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress):
 def castToII2CMaster(ptr):
     return _iarius.castToII2CMaster(ptr)
 
+def EnableReceiveDelayed(ptr):
+    return _iarius.EnableReceiveDelayed(ptr)
+
 

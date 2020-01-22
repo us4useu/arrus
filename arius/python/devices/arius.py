@@ -262,7 +262,7 @@ class AriusCard(_device.Device):
         """
         Enables RX data transfer from the probe’s adapter to the module’s internal memory.
         """
-        self.card_handle.EnableReceive()
+        _iarius.EnableReceiveDelayed(self.card_handle)
 
     @assert_card_is_powered_up
     def enable_transmit(self):
@@ -344,11 +344,11 @@ class AriusCard(_device.Device):
          200, 400; can be None
 
         """
-        self.log(
-            DEBUG,
-            "Setting active termination: %d" % active_termination
-        )
         if active_termination:
+            self.log(
+                DEBUG,
+                "Setting active termination: %d" % active_termination
+            )
             enum_value = self._convert_to_enum_value(
                 enum_name="GBL_ACTIVE_TERM",
                 value=active_termination,
@@ -358,6 +358,7 @@ class AriusCard(_device.Device):
                 term=enum_value
             )
         else:
+            self.log(DEBUG, "Disabling active termination.")
             self.card_handle.SetActiveTermination(
                 endis=_iarius.ACTIVE_TERM_EN_ACTIVE_TERM_DIS,
                 # TODO(pjarosik) when disabled, what value should be set?
@@ -392,11 +393,12 @@ class AriusCard(_device.Device):
         :param attenuation: attenuation to set, available values: 0, 6, 12,
                             18, 24, 30, 36, 42 [dB]; can be None
         """
-        self.log(
-            DEBUG,
-            "Setting DTGC: %d" % attenuation
-        )
+
         if attenuation:
+            self.log(
+                DEBUG,
+                "Setting DTGC: %d" % attenuation
+            )
             enum_value = self._convert_to_enum_value(
                 enum_name="DIG_TGC_ATTENUATION",
                 value=attenuation,
@@ -407,10 +409,39 @@ class AriusCard(_device.Device):
                 att=enum_value
             )
         else:
+            self.log(DEBUG, "Disabling DTGC")
             self.card_handle.SetDTGC(
                 endis=_iarius.EN_DIG_TGC_EN_DIG_TGC_DIS,
                 att=_iarius.DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_0dB
             )
+
+    @assert_card_is_powered_up
+    def enable_tgc(self):
+        """
+        Enables Time Gain Compensation (TGC).
+        :return:
+        """
+        self.card_handle.TGCEnable()
+        self.log(DEBUG, "TGC enabled.")
+
+    @assert_card_is_powered_up
+    def disable_tgc(self):
+        """
+        Disables Time Gain Compensation (TGC).
+        :return:
+        """
+        self.card_handle.TGCDisable()
+        self.log(DEBUG, "TGC disabled.")
+
+    @assert_card_is_powered_up
+    def set_tgc_samples(self, samples):
+        """
+        Sets TGC samples.
+
+        :param samples: TGC samples to set
+        """
+        self.log(DEBUG, "Setting TGC samples: %s" % str(samples))
+        self.card_handle.TGCSetSamples(samples, len(samples))
 
     @assert_card_is_powered_up
     def enable_test_patterns(self):
