@@ -61,6 +61,18 @@ class _SwigNonDynamicMeta(type):
     __setattr__ = _swig_setattr_nondynamic_class_variable(type.__setattr__)
 
 
+
+def new_uint16Array(nelements):
+    return _iarius.new_uint16Array(nelements)
+
+def delete_uint16Array(ary):
+    return _iarius.delete_uint16Array(ary)
+
+def uint16Array_getitem(ary, index):
+    return _iarius.uint16Array_getitem(ary, index)
+
+def uint16Array_setitem(ary, index, value):
+    return _iarius.uint16Array_setitem(ary, index, value)
 PGA_GAIN_PGA_GAIN_24dB = _iarius.PGA_GAIN_PGA_GAIN_24dB
 PGA_GAIN_PGA_GAIN_30dB = _iarius.PGA_GAIN_PGA_GAIN_30dB
 LPF_PROG_LPF_PROG_15MHz = _iarius.LPF_PROG_LPF_PROG_15MHz

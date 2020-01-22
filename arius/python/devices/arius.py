@@ -441,7 +441,15 @@ class AriusCard(_device.Device):
         :param samples: TGC samples to set
         """
         self.log(DEBUG, "Setting TGC samples: %s" % str(samples))
-        self.card_handle.TGCSetSamples(samples, len(samples))
+        n = len(samples)
+        array = None
+        try:
+            array = _iarius.new_uint16Array(n)
+            for i, sample in enumerate(samples):
+                _iarius.uint16Array_setitem(array, i, sample)
+            self.card_handle.TGCSetSamples(array, n)
+        finally:
+            _iarius.delete_uint16Array(array)
 
     @assert_card_is_powered_up
     def enable_test_patterns(self):

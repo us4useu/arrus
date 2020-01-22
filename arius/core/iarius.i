@@ -11,6 +11,10 @@
 }
 
 %module iarius
+
+%include "carrays.i"
+%array_functions(unsigned short, uint16Array);
+
 %ignore arius::AriusException;
 %ignore arius::afe58jd18::Register195;
 %ignore arius::afe58jd18::Register196;
