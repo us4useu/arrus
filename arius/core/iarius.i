@@ -11,6 +11,10 @@
 }
 
 %module iarius
+
+%include <std_shared_ptr.i>
+%shared_ptr(IArius)
+
 %ignore arius::AriusException;
 %ignore arius::afe58jd18::Register195;
 %ignore arius::afe58jd18::Register196;
@@ -23,6 +27,7 @@
 #include <afe58jd18Registers.h>
 #include <iarius.h>
 #include "iI2CMaster.h"
+#include <memory>
 %}
 %include afe58jd18Registers.h
 %include iarius.h
@@ -36,5 +41,9 @@ void TransferRXBufferToHostLocation(IArius* that, unsigned long long dstAddress,
 
 II2CMaster* castToII2CMaster(IArius* ptr) {
     return dynamic_cast<II2CMaster*>(ptr);
+}
+
+std::shared_ptr<IArius> getAriusPtr(unsigned idx) {
+    return std::shared_ptr<IArius>(GetArius(0));
 }
 %}
