@@ -262,7 +262,8 @@ class AriusCard(_device.Device):
         """
         Enables RX data transfer from the probe’s adapter to the module’s internal memory.
         """
-        self.card_handle.EnableReceive()
+        # self.card_handle.EnableReceive()
+        _iarius.EnableReceiveDelayed(self.card_handle)
 
     @assert_card_is_powered_up
     def enable_transmit(self):

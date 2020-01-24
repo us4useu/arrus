@@ -245,4 +245,7 @@ def castToII2CMaster(ptr):
 def getAriusPtr(idx):
     return _iarius.getAriusPtr(idx)
 
+def EnableReceiveDelayed(ptr):
+    return _iarius.EnableReceiveDelayed(ptr)
+
 

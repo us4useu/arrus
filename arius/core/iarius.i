@@ -27,7 +27,8 @@
 #include <afe58jd18Registers.h>
 #include <iarius.h>
 #include "iI2CMaster.h"
-#include <memory>
+#include <thread>
+#include <chrono>
 %}
 %include afe58jd18Registers.h
 %include iarius.h
@@ -44,6 +45,11 @@ II2CMaster* castToII2CMaster(IArius* ptr) {
 }
 
 std::shared_ptr<IArius> getAriusPtr(unsigned idx) {
-    return std::shared_ptr<IArius>(GetArius(0));
+    return std::shared_ptr<IArius>(GetArius(idx));
+}
+
+void EnableReceiveDelayed(IArius* ptr) {
+    ptr->EnableReceive();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 %}
