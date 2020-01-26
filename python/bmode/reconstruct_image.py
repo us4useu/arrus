@@ -2,15 +2,17 @@ import scipy.io as sio
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 import numpy as np
+import cupy as cp
 import numpy.matlib as npml
 import argparse
+
 
 def reconstruct_rf_img(rf, x_grid, z_grid,
                        pitch, fs, fc, c,
                        tx_aperture, tx_focus, tx_angle,
                        n_pulse_periods, tx_mode='lin', n_first_samples=0,
+                       use_gpu=0,
                        ):
-
     """
     Function for image reconstruction using delay-and-sum approach.
 
@@ -20,21 +22,33 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     :param pitch: the distance between contiguous elements [m]
     :param fs: sampling frequency [Hz]
     :param fc: carrier frequency [Hz]
-    :param n_pulse_periods: the length of the pulse in periods
-    :param n_first_samples: samples recorded before transmission
     :param c: assumed speed of sound [m/s]
+    :param tx_aperture: transmit aperture length [elements]
+    :param tx_focus: transmit focus [m]
+    :param tx_angle: transmit angle [radians]
+    :param n_pulse_periods: the length of the pulse in periods
     :param tx_mode: imaging mode - lin (classical),
                                    sta (synthetic transmit aperture)
                                    pwi (plane wave imaging)
-    :param tx_focus: transmit focus [m]
-    :param tx_angle: transmit angle [radians]
+    :param n_first_samples: samples recorded before transmission
+    :param use_gpu: if 0 - the cpu is used (default),
+                    if 1 - the gpu is used (only for nvidia card with CUDA)
     :return: rf beamformed image
 
     """
+    if use_gpu:
+        rf = cp.array(rf)
+        x_grid = cp.array(x_grid)
+        z_grid = cp.array(z_grid)
+        tx_angle = cp.array(tx_angle)
+        print('recontruction using gpu')
+    else:
+        print('recontruction using cpu')
+    xp = cp.get_array_module(rf)
 
 
     # making x and z_grid 'vertical vector' (should be more user friendly in future!)
-    temp = z_grid[np.newaxis]
+    temp = z_grid[xp.newaxis]
     z_grid = temp.T
 
     # getting some size parameters
@@ -43,7 +57,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     x_size = max(x_grid.shape)
 
     # check if data is iq (i.e. complex) or 'ordinary' rf (i.e. real)
-    is_iqdata = isinstance(rf[1, 1, 1], np.complex)
+    is_iqdata = isinstance(rf[1, 1, 1], xp.complex)
     if is_iqdata:
         print('iq (complex) data on input')
     else:
@@ -53,33 +67,33 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     probe_width = (n_channels-1)*pitch
 
     # x coordinate of transducer elements
-    element_xcoord = np.linspace(-probe_width/2, probe_width/2, n_channels)
+    element_xcoord = xp.linspace(-probe_width/2, probe_width/2, n_channels)
 
     # initial delays [s]
     delay0 = n_first_samples/fs
     burst_factor = 0.5*n_pulse_periods/fc
     is_lin_or_sta = tx_mode == 'lin' or tx_mode == 'sta'
     if is_lin_or_sta and tx_focus > 0:
-        focus_delay = (np.sqrt(((tx_aperture-1)*pitch/2)**2 + tx_focus**2)
-                       - tx_focus)/c
+        focus_delay = (xp.sqrt(((tx_aperture-1)*pitch/2)**2+tx_focus**2)
+                      -tx_focus)/c
     else:
         focus_delay = 0
 
-    init_delay = focus_delay + burst_factor + delay0
+    init_delay = focus_delay+burst_factor+delay0
 
     # Delay & Sum
     # add zeros as last samples.
     # If a sample is out of range 1: nSamp, then use the sample no.nSamp + 1 which is 0.
     # to be checked if it is faster than irregular memory access.
-    tail = np.zeros((1, n_channels, n_transmissions))
-    rf = np.concatenate((rf, tail))
+    tail = xp.zeros((1, n_channels, n_transmissions))
+    rf = xp.concatenate((rf, tail))
 
     # buffers allocation
-    rf_tx = np.zeros((z_size, x_size, n_transmissions))
+    rf_tx = xp.zeros((z_size, x_size, n_transmissions))
     if is_iqdata:
         rf_tx = rf_tx.astype(complex)
 
-    weight_tx = np.zeros((z_size, x_size, n_transmissions))
+    weight_tx = xp.zeros((z_size, x_size, n_transmissions))
 
     # loop over transmissions
     for itx in range(0, n_transmissions):
@@ -91,33 +105,35 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
         if tx_mode == 'lin':
 
             # difference between image point x coordinate and element x coord
-            xdifference = np.array(x_grid-element_xcoord[itx])
+            xdifference = xp.array(x_grid-element_xcoord[itx])
 
             # logical indexes of valid x coordinates
             lix_valid = (xdifference > (-pitch/2)) & (xdifference <= (pitch/2))
-            n_valid = np.sum(lix_valid)
+            n_valid = xp.sum(lix_valid)
+            n_valid = int(n_valid)
 
             # ix_valid = list(np.nonzero(lix_valid))
-            tx_distance = npml.repmat(z_grid, 1, n_valid)
-            tx_apodization = np.ones((z_size, n_valid))
+            tx_distance = xp.tile(z_grid, (1, n_valid))
+            tx_apodization = xp.ones((z_size, n_valid))
             # TODO: Should be better image close to the transducer (apodization)
 
         # synthetic transmit aperture method
         elif tx_mode == 'sta':
-            lix_valid = np.ones(x_size, dtype=bool)
-            tx_distance = np.sqrt((z_grid - tx_focus)**2
-                                  + (x_grid - element_xcoord[itx])**2
-                                  )
+            lix_valid = xp.ones(x_size, dtype=bool)
+            tx_distance = xp.sqrt((z_grid-tx_focus)**2
+                                + (x_grid-element_xcoord[itx])**2
+                                )
 
-            tx_distance = tx_distance*np.sign(z_grid - tx_focus) + tx_focus
+            tx_distance = tx_distance*xp.sign(z_grid-tx_focus) + tx_focus
 
-            f_number = max(np.append(abs(z_grid - tx_focus), 1e-12))\
-                        /abs(x_grid - element_xcoord[itx])*0.5
+            f_number = max(abs(z_grid-tx_focus))
+            f_number = max(f_number, xp.array(1e-12))\
+                     /abs(x_grid-element_xcoord[itx])*0.5
 
             tx_apodization = f_number > 2
 
         elif tx_mode == 'pwi':
-            lix_valid = np.ones((x_size), dtype=bool)
+            lix_valid = xp.ones((x_size), dtype=bool)
 
             if tx_angle[itx] >= 0:
                 first_element = 0
@@ -125,65 +141,68 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
                 first_element = n_channels-1
 
             tx_distance = \
-                (x_grid - element_xcoord[first_element]) * np.sin(tx_angle[itx])\
-                + z_grid * np.cos(tx_angle[itx])
+                (x_grid-element_xcoord[first_element])*xp.sin(tx_angle[itx]) \
+                +z_grid*xp.cos(tx_angle[itx])
 
-            r1 = (x_grid - element_xcoord[0]) * np.cos(tx_angle[itx])\
-                - z_grid * np.sin(tx_angle[itx])
+            r1 = (x_grid-element_xcoord[0])*xp.cos(tx_angle[itx]) \
+                 -z_grid*xp.sin(tx_angle[itx])
 
-            r2 = (x_grid - element_xcoord[-1]) * np.cos(tx_angle[itx])\
-                - z_grid * np.sin(tx_angle[itx])
+            r2 = (x_grid-element_xcoord[-1])*xp.cos(tx_angle[itx]) \
+                 -z_grid*xp.sin(tx_angle[itx])
 
             tx_apodization = (r1 >= 0) & (r2 <= 0)
 
         else:
             raise ValueError('unknown reconstruction mode!')
 
-            # buffers allocation
-        rf_rx = np.zeros((z_size, x_size, n_channels))
+        # buffers allocation
+        rf_rx = xp.zeros((z_size, x_size, n_channels))
         if is_iqdata:
             rf_rx = rf_rx.astype(complex)
 
-        weight_rx = np.zeros((z_size, x_size, n_channels))
+        weight_rx = xp.zeros((z_size, x_size, n_channels))
 
         # loop over elements
         for irx in range(0, n_channels):
 
             # calculate rx delays and apodization
-            rx_distance = np.sqrt((x_grid[lix_valid] - element_xcoord[irx])**2
-                                  + z_grid**2)
-            f_number = abs(z_grid/(x_grid[lix_valid] - element_xcoord[irx])*0.5)
-            rx_apodization = f_number > 2
+            rx_distance = xp.sqrt((x_grid[lix_valid]-element_xcoord[irx])**2
+                                  +z_grid**2)
+            f_number = abs(z_grid/(x_grid[lix_valid]-element_xcoord[irx])*0.5)
+            rx_apodization = f_number>2
+
 
             # calculate total delays [s]
-            delays = init_delay + (tx_distance + rx_distance)/c
+            delays = init_delay + (tx_distance+rx_distance)/c
+
 
             # calculate sample number to be used in reconstruction
-            samples = delays*fs + 1
-
-            out_of_range = (0 > samples) | (samples > n_samples-1)
+            samples = delays*fs+1
+            out_of_range = (0>samples)|(samples>n_samples-1)
             samples[out_of_range] = n_samples
+
 
             # calculate rf samples (interpolated) and apodization weights
             rf_raw_line = rf[:, irx, itx]
-            ceil_samples = np.ceil(samples).astype(int)
-            floor_samples = np.floor(samples).astype(int)
-            rf_rx[:, lix_valid, irx] = rf_raw_line[floor_samples]*(1 - (samples % 1))\
-                                     + rf_raw_line[ceil_samples]*(samples % 1)
+            ceil_samples = xp.ceil(samples).astype(int)
+            floor_samples = xp.floor(samples).astype(int)
+            valid = xp.where(lix_valid)[0].tolist()
+            rf_rx[:, valid, irx] = rf_raw_line[floor_samples]*(1-(samples%1)) \
+                                  +rf_raw_line[ceil_samples]*(samples%1)
+            weight_rx[:, valid, irx] = tx_apodization*rx_apodization
 
-            weight_rx[:, lix_valid, irx] = tx_apodization * rx_apodization
 
             # modulate if iq signal is used (to trzeba sprawdzic, bo pisane 'na rybke')
-            # is_data_complex = np.nonzero(np.imag(rf_rx))[0].size
             if is_iqdata:
                 # TODO: przetestowac
                 rf_rx[:, lix_valid, irx] = rf_rx[:, lix_valid, irx] \
-                                           * np.exp(1j*2*np.pi*fc*delays)
+                                          *xp.exp(1j*2*xp.pi*fc*delays)
                 pass
 
+
         # calculate rf and weights for single tx
-        rf_tx[:, :, itx] = np.sum(rf_rx * weight_rx, axis=2)
-        weight_tx[:, :, itx] = np.sum(weight_rx, axis=2)
+        rf_tx[:, :, itx] = xp.sum(rf_rx*weight_rx, axis=2)
+        weight_tx[:, :, itx] = xp.sum(weight_rx, axis=2)
 
         # show progress
         percentage = round((itx+1)/n_transmissions*1000)/10
@@ -195,9 +214,9 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             print('\r', percentage, '%', end='')
 
     # calculate final rf image
-    rf_image = np.sum(rf_tx, axis=2)/np.sum(weight_tx, axis=2)
+    rf_image = xp.sum(rf_tx, axis=2)/np.sum(weight_tx, axis=2)
 
-    return rf_image
+    return cp.asnumpy(rf_image)
 
 
 def load_simulated_data(file, verbose=1):
@@ -232,7 +251,6 @@ def load_simulated_data(file, verbose=1):
         tx_angle = matlab_data.get('txAng')
         tx_angle = np.radians(tx_angle)
         tx_angle = tx_angle.T
-        # tx_angle = np.int(tx_angle)
     else:
         tx_angle = 0
 
@@ -250,9 +268,9 @@ def load_simulated_data(file, verbose=1):
 
     if 'rfLin' in matlab_data:
         rf = matlab_data.get('rfLin')
-        
+
     if 'rfPwi' in matlab_data:
-            rf = matlab_data.get('rfPwi')
+        rf = matlab_data.get('rfPwi')
 
     if 'rfSta' in matlab_data:
         rf = matlab_data.get('rfSta')
@@ -271,7 +289,8 @@ def load_simulated_data(file, verbose=1):
         print('transmission angles: ', tx_angle)
         print('number of pulse periods: ', pulse_periods)
 
-    return [rf, c, fs, fc, pitch, tx_focus, tx_angle, tx_aperture, n_elements, pulse_periods]
+    return [rf, c, fs, fc, pitch, tx_focus, tx_angle, tx_aperture, n_elements,
+            pulse_periods]
 
 
 def calculate_envelope(rf):
@@ -292,6 +311,7 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     :param y_grid: vector of y coordinates
     :return:
     """
+
     # check if 'rf' or 'iq' data on input
     is_iqdata = isinstance(rf_image[1, 1], np.complex)
 
@@ -306,20 +326,20 @@ def make_bmode_image(rf_image, x_grid, y_grid):
 
     # convert do dB
     max_image_value = np.max(amplitude_image)
-    bmode_image = np.log10(amplitude_image / max_image_value) * 20
+    bmode_image = np.log10(amplitude_image/max_image_value)*20
 
     # calculate ticks and labels
     n_samples, n_lines = rf_image.shape
-    image_height = (n_samples - 1)*dy
-    image_height = y_grid[-1] - y_grid[0]
+    image_height = (n_samples-1)*dy
+    image_height = y_grid[-1]-y_grid[0]
     # max_depth = image_depth + depth0
     # max_depth = z_grid[-1]
     # image_width = (n_lines - 1)*dx
-    image_width = x_grid[-1] - x_grid[0]
+    image_width = x_grid[-1]-x_grid[0]
     image_proportion = image_height/image_width
 
     n_xticks = 4
-    n_yticks = int(round(n_xticks * image_proportion))
+    n_yticks = int(round(n_xticks*image_proportion))
 
     xticks = np.linspace(0, n_lines-1, n_xticks)
     xtickslabels = np.linspace(x_grid[0], x_grid[-1], n_xticks)*1e3
@@ -344,7 +364,7 @@ def make_bmode_image(rf_image, x_grid, y_grid):
     plt.yticks(yticks, ytickslabels)
 
     cbar = plt.colorbar()
-    cbar.ax.get_yaxis().labelpad = 10
+    cbar.ax.get_yaxis().labelpad=10
     cbar.ax.set_ylabel('[dB]', rotation=90)
     plt.xlabel('[mm]')
     plt.ylabel('[mm]')
@@ -382,14 +402,11 @@ def rf2iq(rf, fc, fs, decimation_factor):
     ts = 1/fs
     t = np.linspace(0, (n_samples-1)*ts, n_samples)
     t = t[..., np.newaxis, np.newaxis]
-    # prawdopodobnie niepotrzebne to co poniżej
-    # t = np.tile(t, (1, n_channels, n_transmissions))
+
 
     # demodulation
     iq = rf*np.exp(0-1j*2*np.pi*fc*t)
-    # print('iq:', iq.shape)
-    # print('rf:', rf.shape)
-    # print('t:', t.shape)
+
 
     # low-pass filtration (assuming 150% band)
     f_up_cut = fc*1.5/2
@@ -404,15 +421,10 @@ def rf2iq(rf, fc, fs, decimation_factor):
                          fs=fs
                          )
 
-    # fir
-    # b = signal.firwin(128, f_up_cut, fs=fs)
-    # a = 1
-
     # pomnozenie przez 2 powoduje, ze obwiednie sa takie same z iq i z rf
     iq = 2*signal.filtfilt(b, a, iq, axis=0)
 
     # decimation
-    # iq = signal.decimate(iq, decimation_factor, axis=0)
     if decimation_factor > 1:
         iq = signal.decimate(iq, decimation_factor, axis=0)
     else:
@@ -424,10 +436,9 @@ def rf2iq(rf, fc, fs, decimation_factor):
 
 
 def main():
-
     description_string = 'this file realize image reconstruction \
     from ultrasound data which comes from us4us system'
-    parser = argparse.ArgumentParser(description=description_string)
+    parser=argparse.ArgumentParser(description=description_string)
 
     parser.add_argument("--file", type=str, required=True, default=0,
                         help='The path to the file with 3D array \
@@ -529,7 +540,7 @@ def main():
 
     args = parser.parse_args()
 
-    rf = np.load(args.file)
+    rf  = np.load(args.file)
     # rf = load_simulated_data(args.file)
     x_grid = np.linspace(*args.x_grid)
     z_grid = np.linspace(*args.z_grid)
@@ -566,6 +577,7 @@ def main():
 
     # show image
     make_bmode_image(rf_image_filt, x_grid, z_grid)
+
 
 ################################################################################
 
