@@ -61,6 +61,7 @@ class _SwigNonDynamicMeta(type):
     __setattr__ = _swig_setattr_nondynamic_class_variable(type.__setattr__)
 
 
+SHARED_PTR_DISOWN = _iarius.SHARED_PTR_DISOWN
 PGA_GAIN_PGA_GAIN_24dB = _iarius.PGA_GAIN_PGA_GAIN_24dB
 PGA_GAIN_PGA_GAIN_30dB = _iarius.PGA_GAIN_PGA_GAIN_30dB
 LPF_PROG_LPF_PROG_15MHz = _iarius.LPF_PROG_LPF_PROG_15MHz
@@ -240,5 +241,11 @@ def TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress):
 
 def castToII2CMaster(ptr):
     return _iarius.castToII2CMaster(ptr)
+
+def getAriusPtr(idx):
+    return _iarius.getAriusPtr(idx)
+
+def EnableReceiveDelayed(ptr):
+    return _iarius.EnableReceiveDelayed(ptr)
 
 
