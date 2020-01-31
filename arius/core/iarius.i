@@ -12,6 +12,9 @@
 
 %module iarius
 
+%include <std_shared_ptr.i>
+%shared_ptr(IArius)
+
 %include "carrays.i"
 %array_functions(unsigned short, uint16Array);
 
@@ -42,6 +45,10 @@ void TransferRXBufferToHostLocation(IArius* that, unsigned long long dstAddress,
 
 II2CMaster* castToII2CMaster(IArius* ptr) {
     return dynamic_cast<II2CMaster*>(ptr);
+}
+
+std::shared_ptr<IArius> getAriusPtr(unsigned idx) {
+    return std::shared_ptr<IArius>(GetArius(idx));
 }
 
 void EnableReceiveDelayed(IArius* ptr) {
