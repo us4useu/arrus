@@ -5,6 +5,7 @@ Version 0.2.0
 -------------
 - Added functions to trigger TX pulse asynchronously (AriusCard.{trigger_start, trigger_stop}).
 - Added functions to enable/disable TGC and set TGC samples.
+- Function AriusCard.set_tx_periods is no more available; use AriusCard.set_tx_half_periods instead.
 
 Version 0.1.1
 -------------
