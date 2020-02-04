@@ -171,17 +171,6 @@ class AriusCard(_device.Device):
         return value
 
     @assert_card_is_powered_up
-    def set_rx_delay(self, delay: float, firing: int=0):
-        """
-        Sets the starting point of the acquisition time [s]
-
-		:param delay: expected acquisition time starting point relative to trigger [s]
-		:param firing: an firing, in which the parameter value should apply, **starts from 0**
-        """
-        self.log(DEBUG, "Setting RX delay = %f for firing %d" % (delay, firing))
-        self.card_handle.SetRxDelay(delay=delay, firing=firing)
-
-    @assert_card_is_powered_up
     def set_tx_frequency(self, frequency: float, firing: int=0):
         """
         Sets TX frequency.
@@ -197,19 +186,18 @@ class AriusCard(_device.Device):
         self.card_handle.SetTxFreqency(frequency, firing)
 
     @assert_card_is_powered_up
-    def set_tx_half_periods(self, n_half_periods: int, firing: int=0):
+    def set_tx_periods(self, n_periods: int, firing: int=0):
         """
-        Sets number of TX signal half-periods.
+        Sets number of TX periods.
 
-		:param n_half_periods: number of half-periods to set
-		:param firing: a firing, in which the parameter value should apply, **starts from 0**
-		:return: an exact number of half-periods that has been set on a given module
+        :param n_periods: number of periods to set
+        :param firing: a firing, in which the value should apply, **starts from 0**
         """
         self.log(
             DEBUG,
-            "Setting number of half periods: %f" % n_half_periods
+            "Setting number of bursts: %f" % n_periods
         )
-        return self.card_handle.SetTxHalfPeriods(n_half_periods, firing)
+        self.card_handle.SetTxPeriods(n_periods, firing)
 
     @assert_card_is_powered_up
     def sw_trigger(self):
@@ -274,6 +262,7 @@ class AriusCard(_device.Device):
         """
         Enables RX data transfer from the probe’s adapter to the module’s internal memory.
         """
+        # self.card_handle.EnableReceive()
         _iarius.EnableReceiveDelayed(self.card_handle)
 
     @assert_card_is_powered_up
@@ -356,11 +345,11 @@ class AriusCard(_device.Device):
          200, 400; can be None
 
         """
-        if active_termination is not None:
-            self.log(
-                DEBUG,
-                "Setting active termination: %d" % active_termination
-            )
+        self.log(
+            DEBUG,
+            "Setting active termination: %d" % active_termination
+        )
+        if active_termination:
             enum_value = self._convert_to_enum_value(
                 enum_name="GBL_ACTIVE_TERM",
                 value=active_termination,
@@ -370,7 +359,6 @@ class AriusCard(_device.Device):
                 term=enum_value
             )
         else:
-            self.log(DEBUG, "Disabling active termination.")
             self.card_handle.SetActiveTermination(
                 endis=_iarius.ACTIVE_TERM_EN_ACTIVE_TERM_DIS,
                 # TODO(pjarosik) when disabled, what value should be set?
@@ -405,12 +393,11 @@ class AriusCard(_device.Device):
         :param attenuation: attenuation to set, available values: 0, 6, 12,
                             18, 24, 30, 36, 42 [dB]; can be None
         """
-
-        if attenuation is not None:
-            self.log(
-                DEBUG,
-                "Setting DTGC: %d" % attenuation
-            )
+        self.log(
+            DEBUG,
+            "Setting DTGC: %d" % attenuation
+        )
+        if attenuation:
             enum_value = self._convert_to_enum_value(
                 enum_name="DIG_TGC_ATTENUATION",
                 value=attenuation,
@@ -421,75 +408,10 @@ class AriusCard(_device.Device):
                 att=enum_value
             )
         else:
-            self.log(DEBUG, "Disabling DTGC")
             self.card_handle.SetDTGC(
                 endis=_iarius.EN_DIG_TGC_EN_DIG_TGC_DIS,
                 att=_iarius.DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_0dB
             )
-
-    @assert_card_is_powered_up
-    def enable_tgc(self):
-        """
-        Enables Time Gain Compensation (TGC).
-        :return:
-        """
-        self.card_handle.TGCEnable()
-        self.log(DEBUG, "TGC enabled.")
-
-    @assert_card_is_powered_up
-    def disable_tgc(self):
-        """
-        Disables Time Gain Compensation (TGC).
-        :return:
-        """
-        self.card_handle.TGCDisable()
-        self.log(DEBUG, "TGC disabled.")
-
-    @assert_card_is_powered_up
-    def set_tgc_samples(self, samples):
-        """
-        Sets TGC samples.
-
-        :param samples: TGC samples to set
-        """
-        self.log(DEBUG, "Setting TGC samples: %s" % str(samples))
-        n = len(samples)
-        array = None
-        try:
-            array = _iarius.new_uint16Array(n)
-            for i, sample in enumerate(samples):
-                _iarius.uint16Array_setitem(array, i, sample)
-            self.card_handle.TGCSetSamples(array, n)
-        finally:
-            _iarius.delete_uint16Array(array)
-
-    @assert_card_is_powered_up
-    def set_tx_invert(self, is_enable: bool, firing: int=0):
-        """
-        Enables/disables inversion of TX signal.
-
-        :param is_enable: should the inversion be enabled?
-		:param firing: a firing, in which the parameter value should apply
-        """
-        if is_enable:
-            self.log(DEBUG, "Enabling inversion of TX signal.")
-        else:
-            self.log(DEBUG, "Disabling inversion of TX signal.")
-        self.card_handle.SetTxInvert(onoff=is_enable, firing=firing)
-
-    @assert_card_is_powered_up
-    def set_tx_cw(self, is_enable: bool, firing: int=0):
-        """
-        Enables/disables generation of long TX bursts.
-
-		:param is_enable: should the generation of long TX bursts be enabled?
-		:param firing: a firing, in which the parameter value should apply
-        """
-        if is_enable:
-            self.log(DEBUG, "Enabling generation of long TX bursts.")
-        else:
-            self.log(DEBUG, "Disabling geneartion of long TX bursts.")
-        self.card_handle.SetTxCw(onoff=is_enable, firing=firing)
 
     @assert_card_is_powered_up
     def enable_test_patterns(self):
@@ -575,91 +497,6 @@ class AriusCard(_device.Device):
         :return: true, when module is turned off, false otherwise
         """
         return self.card_handle.IsPowereddown()
-
-    @assert_card_is_powered_up
-    def clear_scheduled_receive(self):
-        """
-        Clears scheduled receive queue.
-        """
-        self.log(
-            DEBUG,
-            "Clearing scheduled receive requests..."
-        )
-        self.card_handle.ClearScheduledReceive()
-
-    @assert_card_is_powered_up
-    def trigger_start(self):
-        """
-        Starts generation of the hardware trigger.
-        """
-        self.log(
-            DEBUG,
-            "Starting generation of the hardware trigger..."
-        )
-        self.card_handle.TriggerStart()
-
-    @assert_card_is_powered_up
-    def trigger_stop(self):
-        """
-        Stops generation of the hardware trigger.
-        """
-        self.log(
-            DEBUG,
-            "Stops generation of the hardware trigger..."
-        )
-        self.card_handle.TriggerStop()
-
-    @assert_card_is_powered_up
-    def trigger_sync(self):
-        """
-        Resumes generation of the hardware trigger.
-        """
-        self.log(
-            DEBUG,
-            "Resumes generation of the hardware trigger..."
-        )
-        self.card_handle.TriggerSync()
-
-    @assert_card_is_powered_up
-    def set_n_triggers(self, n_triggers):
-        """
-        Sets the number of trigger to be generated.
-
-        :param n_triggers: number of triggers to set
-
-        """
-        self.log(
-            DEBUG,
-            "Setting number of triggers to generate to %d..." % n_triggers
-        )
-        self.card_handle.SetNTriggers(n_triggers)
-
-    @assert_card_is_powered_up
-    def set_trigger(self, time_to_next_trigger, time_to_next_tx, is_sync_required, idx):
-        """
-        Sets parameters of the trigger event.
-		Each trigger event will generate a trigger signal for the current
-		firing/acquisition and set next firing parameters.
-
-		:param timeToNextTrigger: time between current and the next trigger [uS]
-		:param timeToNextTx: delay between current trigger and setting next firing parameters [uS]
-		:param syncReq: should the trigger generator pause and wait for the trigger_sync() call
-		:param idx: a firing, in which the parameters values should apply, **starts from 0**
-        """
-        self.log(
-            DEBUG,
-            ("Setting trigger generation parameters to: "
-             "trigger number: %d, "
-             "time to next trigger: %d, "
-             "time to next tx: %d, "
-             "is sync required: %s") % (idx, time_to_next_trigger, time_to_next_tx, str(is_sync_required))
-        )
-        self.card_handle.SetTrigger(
-            timeToNextTrigger=time_to_next_trigger,
-            timeToNextTx=time_to_next_tx,
-            syncReq=is_sync_required,
-            idx=idx
-        )
 
     def _convert_to_enum_value(self, enum_name, value, unit=""):
         _utils.assert_true(

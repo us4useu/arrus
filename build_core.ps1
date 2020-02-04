@@ -1,6 +1,6 @@
 $ARIUS_PY_PATH="C:\Python\Python37"
 $ARIUS_PATH="C:\Users\pjarosik\src\Arius-software"
-$ARIUS_BIN_PATH="$ARIUS_PATH\x64\Debug"
+$ARIUS_BIN_PATH="C:\Users\pjarosik\Downloads\arius-sdk-0.1.0\arius-sdk-0.1.0\lib64"
 
 del arius\core\iarius_wrap.cxx -ErrorAction SilentlyContinue
 swig -c++ -python -I"$ARIUS_PATH\Arius\include" -I"$ARIUS_PATH\include" -outdir arius\python\devices\ arius\core\iarius.i
