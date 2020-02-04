@@ -171,6 +171,17 @@ class AriusCard(_device.Device):
         return value
 
     @assert_card_is_powered_up
+    def set_rx_delay(self, delay: float, firing: int=0):
+        """
+        Sets the starting point of the acquisition time [s]
+
+		:param delay: expected acquisition time starting point relative to trigger [s]
+		:param firing: an firing, in which the parameter value should apply, **starts from 0**
+        """
+        self.log(DEBUG, "Setting RX delay = %f for firing %d" % (delay, firing))
+        self.card_handle.SetRxDelay(delay=delay, firing=firing)
+
+    @assert_card_is_powered_up
     def set_tx_frequency(self, frequency: float, firing: int=0):
         """
         Sets TX frequency.
@@ -186,18 +197,19 @@ class AriusCard(_device.Device):
         self.card_handle.SetTxFreqency(frequency, firing)
 
     @assert_card_is_powered_up
-    def set_tx_periods(self, n_periods: int, firing: int=0):
+    def set_tx_half_periods(self, n_half_periods: int, firing: int=0):
         """
-        Sets number of TX periods.
+        Sets number of TX signal half-periods.
 
-        :param n_periods: number of periods to set
-        :param firing: a firing, in which the value should apply, **starts from 0**
+		:param n_half_periods: number of half-periods to set
+		:param firing: a firing, in which the parameter value should apply, **starts from 0**
+		:return: an exact number of half-periods that has been set on a given module
         """
         self.log(
             DEBUG,
-            "Setting number of bursts: %f" % n_periods
+            "Setting number of half periods: %f" % n_half_periods
         )
-        self.card_handle.SetTxPeriods(n_periods, firing)
+        return self.card_handle.SetTxHalfPeriods(n_half_periods, firing)
 
     @assert_card_is_powered_up
     def sw_trigger(self):
@@ -344,7 +356,7 @@ class AriusCard(_device.Device):
          200, 400; can be None
 
         """
-        if active_termination:
+        if active_termination is not None:
             self.log(
                 DEBUG,
                 "Setting active termination: %d" % active_termination
@@ -394,7 +406,7 @@ class AriusCard(_device.Device):
                             18, 24, 30, 36, 42 [dB]; can be None
         """
 
-        if attenuation:
+        if attenuation is not None:
             self.log(
                 DEBUG,
                 "Setting DTGC: %d" % attenuation
@@ -450,6 +462,34 @@ class AriusCard(_device.Device):
             self.card_handle.TGCSetSamples(array, n)
         finally:
             _iarius.delete_uint16Array(array)
+
+    @assert_card_is_powered_up
+    def set_tx_invert(self, is_enable: bool, firing: int=0):
+        """
+        Enables/disables inversion of TX signal.
+
+        :param is_enable: should the inversion be enabled?
+		:param firing: a firing, in which the parameter value should apply
+        """
+        if is_enable:
+            self.log(DEBUG, "Enabling inversion of TX signal.")
+        else:
+            self.log(DEBUG, "Disabling inversion of TX signal.")
+        self.card_handle.SetTxInvert(onoff=is_enable, firing=firing)
+
+    @assert_card_is_powered_up
+    def set_tx_cw(self, is_enable: bool, firing: int=0):
+        """
+        Enables/disables generation of long TX bursts.
+
+		:param is_enable: should the generation of long TX bursts be enabled?
+		:param firing: a firing, in which the parameter value should apply
+        """
+        if is_enable:
+            self.log(DEBUG, "Enabling generation of long TX bursts.")
+        else:
+            self.log(DEBUG, "Disabling geneartion of long TX bursts.")
+        self.card_handle.SetTxCw(onoff=is_enable, firing=firing)
 
     @assert_card_is_powered_up
     def enable_test_patterns(self):
