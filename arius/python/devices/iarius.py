@@ -62,6 +62,18 @@ class _SwigNonDynamicMeta(type):
 
 
 SHARED_PTR_DISOWN = _iarius.SHARED_PTR_DISOWN
+
+def new_uint16Array(nelements):
+    return _iarius.new_uint16Array(nelements)
+
+def delete_uint16Array(ary):
+    return _iarius.delete_uint16Array(ary)
+
+def uint16Array_getitem(ary, index):
+    return _iarius.uint16Array_getitem(ary, index)
+
+def uint16Array_setitem(ary, index, value):
+    return _iarius.uint16Array_setitem(ary, index, value)
 PGA_GAIN_PGA_GAIN_24dB = _iarius.PGA_GAIN_PGA_GAIN_24dB
 PGA_GAIN_PGA_GAIN_30dB = _iarius.PGA_GAIN_PGA_GAIN_30dB
 LPF_PROG_LPF_PROG_15MHz = _iarius.LPF_PROG_LPF_PROG_15MHz
@@ -128,6 +140,9 @@ class IArius(object):
     def EnableReceive(self):
         return _iarius.IArius_EnableReceive(self)
 
+    def ClearScheduledReceive(self):
+        return _iarius.IArius_ClearScheduledReceive(self)
+
     def TransferRXBufferToHost(self, dstAddress, length, srcAddress):
         return _iarius.IArius_TransferRXBufferToHost(self, dstAddress, length, srcAddress)
 
@@ -170,14 +185,23 @@ class IArius(object):
     def GetID(self):
         return _iarius.IArius_GetID(self)
 
+    def SetTxPeriods(self, nop):
+        return _iarius.IArius_SetTxPeriods(self, nop)
+
     def SetTxDelay(self, *args):
         return _iarius.IArius_SetTxDelay(self, *args)
 
     def SetTxFreqency(self, *args):
         return _iarius.IArius_SetTxFreqency(self, *args)
 
-    def SetTxPeriods(self, *args):
-        return _iarius.IArius_SetTxPeriods(self, *args)
+    def SetTxHalfPeriods(self, nop, firing):
+        return _iarius.IArius_SetTxHalfPeriods(self, nop, firing)
+
+    def SetTxInvert(self, onoff, firing):
+        return _iarius.IArius_SetTxInvert(self, onoff, firing)
+
+    def SetTxCw(self, onoff, firing):
+        return _iarius.IArius_SetTxCw(self, onoff, firing)
 
     def SetRxAperture(self, *args):
         return _iarius.IArius_SetRxAperture(self, *args)
@@ -187,6 +211,9 @@ class IArius(object):
 
     def SetRxTime(self, *args):
         return _iarius.IArius_SetRxTime(self, *args)
+
+    def SetRxDelay(self, delay, firing):
+        return _iarius.IArius_SetRxDelay(self, delay, firing)
 
     def SetNumberOfFirings(self, nFirings):
         return _iarius.IArius_SetNumberOfFirings(self, nFirings)
@@ -208,6 +235,21 @@ class IArius(object):
 
     def TGCSetSamples(self, samples, nSamples):
         return _iarius.IArius_TGCSetSamples(self, samples, nSamples)
+
+    def TriggerStart(self):
+        return _iarius.IArius_TriggerStart(self)
+
+    def TriggerStop(self):
+        return _iarius.IArius_TriggerStop(self)
+
+    def TriggerSync(self):
+        return _iarius.IArius_TriggerSync(self)
+
+    def SetNTriggers(self, n):
+        return _iarius.IArius_SetNTriggers(self, n)
+
+    def SetTrigger(self, timeToNextTrigger, timeToNextTx, syncReq, idx):
+        return _iarius.IArius_SetTrigger(self, timeToNextTrigger, timeToNextTx, syncReq, idx)
 
 # Register IArius in _iarius:
 _iarius.IArius_swigregister(IArius)
