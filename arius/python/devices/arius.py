@@ -356,7 +356,7 @@ class AriusCard(_device.Device):
          200, 400; can be None
 
         """
-        if active_termination:
+        if active_termination is not None:
             self.log(
                 DEBUG,
                 "Setting active termination: %d" % active_termination
@@ -406,7 +406,7 @@ class AriusCard(_device.Device):
                             18, 24, 30, 36, 42 [dB]; can be None
         """
 
-        if attenuation:
+        if attenuation is not None:
             self.log(
                 DEBUG,
                 "Setting DTGC: %d" % attenuation
