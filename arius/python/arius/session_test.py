@@ -1,6 +1,7 @@
 import unittest
-from arius.python.test_tools import mock_import
-import numpy as np
+
+from arius.python.arius.test_tools import mock_import
+
 
 # Module mocks.
 class AriusMock:
@@ -56,7 +57,7 @@ mock_import(
 )
 
 # Project imports.
-import arius.python.session as session
+import arius.python.arius.session as session
 
 class InteractiveSessionTest(unittest.TestCase):
 

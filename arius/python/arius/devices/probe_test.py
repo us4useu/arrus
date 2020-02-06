@@ -1,8 +1,7 @@
+import numpy as np
 import unittest
 
-import numpy as np
-
-from arius.python.test_tools import mock_import
+from arius.python.arius.test_tools import mock_import
 
 
 # Module mocks.
@@ -23,9 +22,9 @@ mock_import(
 )
 # Project imports.
 
-from arius.python.devices.device import Device
+from arius.python.arius.devices.device import Device
 
-from arius.python.devices.probe import (
+from arius.python.arius.devices.probe import (
     Probe,
     ProbeHardwareSubaperture,
     Subaperture
