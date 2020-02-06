@@ -3,5 +3,5 @@ project(arius-sdk LANGUAGES CXX PYTHON VERSION 0.2.0)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_subdirectory(docs)
+add_subdirectory(docs/python)
 
