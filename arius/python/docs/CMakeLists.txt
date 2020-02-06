@@ -18,7 +18,7 @@ file(MAKE_DIRECTORY ${SPHINX_BUILD})
 ################################################################################
 # Sphinx Latex PDF geneartor
 ################################################################################
-set(SPHINX_LATEX_CONF_FILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/conf.py.in)
+set(SPHINX_LATEX_CONF_FILE_IN conf.py.in)
 set(SPHINX_LATEX_CONF_DIR ${CMAKE_CURRENT_BINARY_DIR}/latex)
 set(SPHINX_LATEX_CONF_FILE_OUT ${SPHINX_LATEX_CONF_DIR}/conf.py)
 configure_file(${SPHINX_LATEX_CONF_FILE_IN} ${SPHINX_LATEX_CONF_FILE_OUT} @ONLY)
@@ -33,7 +33,6 @@ add_custom_command(OUTPUT ${SPHINX_PDF_FILE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS
         ${DOC_FILES}
-        ${DOXYGEN_INDEX_FILE}
     MAIN_DEPENDENCY @{SPHINX_LATEX_CONF_FILE_OUT} ${SPHINX_LATEX_CONF_FILE_IN}
     COMMENT "Generating PDF documentation with Sphinx"
 )

@@ -21,7 +21,7 @@ def assert_card_is_powered_up(f):
 
 class AriusCard(_device.Device):
     """
-    A single Arius module.
+    A single Arius module. asdsadasd asd sad a
     """
 
     _DEVICE_NAME = "Arius"
