@@ -12,6 +12,3 @@ if not _logger.handlers:
     console_handler.setFormatter(logger_formatter)
     _logger.addHandler(console_handler)
 
-from arius.python import *
-import arius.python.arius.devices.device as device
-import arius.python.arius.beam as beam

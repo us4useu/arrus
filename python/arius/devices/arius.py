@@ -5,8 +5,7 @@ from functools import wraps
 from logging import DEBUG, INFO
 from typing import List
 
-import arius.python.arius.devices.device as _device
-import arius.python.arius.utils as _utils
+from python import arius as _device, arius as _utils
 
 
 def assert_card_is_powered_up(f):

@@ -2,8 +2,8 @@ import arius.python.devices.device as _device
 import numpy as np
 from logging import DEBUG
 
-import arius.python.arius.utils as _utils
-from arius.python.arius.devices import arius as _arius
+from python import arius as _utils
+from python.arius import arius as _arius
 
 
 class Subaperture:

@@ -1,4 +1,4 @@
-import arius.python.arius.devices.device as _device
+from python import arius as _device
 
 
 class BeamProfileBuilder:

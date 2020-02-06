@@ -16,5 +16,5 @@ set(ARIUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Sub-projects
 ################################################################################
-add_subdirectory(arius/python/docs)
+add_subdirectory(python)
 
