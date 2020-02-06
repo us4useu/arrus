@@ -29,7 +29,6 @@ add_custom_command(OUTPUT ${SPHINX_PDF_FILE}
     COMMAND
         ${SPHINX_EXECUTABLE} -M latexpdf
         ${SPHINX_SOURCE} ${SPHINX_BUILD}
-        -Dbreathe_projects.arius=${DOXYGEN_OUTPUT_DIR}/xml
         -c ${SPHINX_LATEX_CONF_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS
@@ -39,7 +38,7 @@ add_custom_command(OUTPUT ${SPHINX_PDF_FILE}
     COMMENT "Generating PDF documentation with Sphinx"
 )
 
-add_custom_target(matlab_sphinx_pdf ALL DEPENDS ${SPHINX_PDF_FILE})
+add_custom_target(python_sphinx_pdf ALL DEPENDS ${SPHINX_PDF_FILE})
 
 install(
     FILES
