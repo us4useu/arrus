@@ -2,28 +2,33 @@ from typing import get_type_hints
 import numpy as np
 import scipy.io
 import python.utils
+from dataclasses import dataclass
 
 class BmodeDescriptor:
     pass
 
+@dataclass(frozen=True)
 class SystemParameters(BmodeDescriptor):
     n_elements: np.uint16
     pitch: np.float64
 
 
+@dataclass(frozen=True)
 class Tx(BmodeDescriptor):
     frequency: np.float64
-    n_periods: np.unit16
-    angles: np.ndarray
+    n_periods: np.uint16
+    angles: list
     focus: np.float64
     aperture_size: np.uint16
 
 
+@dataclass(frozen=True)
 class Rx(BmodeDescriptor):
     sampling_frequency: np.float64
     aperture_size: np.uint16
 
 
+@dataclass(frozen=True)
 class AcquisitionParameters(BmodeDescriptor):
     mode: str
     speed_of_sound: np.float64
@@ -35,6 +40,9 @@ MATLAB_ROOT_STRUCTURES = [
     ("systemParameters", SystemParameters),
     ("acquisitionParameters", AcquisitionParameters)
 ]
+
+
+MATLAB_ROOT_STRUCTURES_DICT = dict(MATLAB_ROOT_STRUCTURES)
 
 
 def load_matlab_file(mat_file):
@@ -51,31 +59,59 @@ def load_matlab_file(mat_file):
                  for attr_name, attr_class in MATLAB_ROOT_STRUCTURES)
 
 
+def save_matlab_file(path, **args):
+    result = {}
+    for key, value in args.items():
+        matlab_keys_camel_cased = [
+            python.utils.convert_camel_to_snake_case(k)
+            for k, _ in MATLAB_ROOT_STRUCTURES
+        ]
+        if key not in matlab_keys_camel_cased:
+            raise ValueError(
+                "Unrecognized parameter: '%s' should be one of: '%s'."
+                    % (str(key), str(matlab_keys_camel_cased))
+            )
+        matlab_key = python.utils.convert_snake_to_camel_case(key)
+        expected_class = MATLAB_ROOT_STRUCTURES_DICT[matlab_key]
+        if expected_class != value.__class__:
+            raise ValueError(
+                "Expected '%s' instead of '%s' for '%s'."
+                    % (str(expected_class), str(value.__class__), key)
+            )
+        result[matlab_key] = _convert_to_matlab_structure(value)
+    scipy.io.savemat(path, result)
+
+
 def _load_matlab_structure(py_class, mat_structure):
     py_class_attrs = get_type_hints(py_class)
-    py_class_instance = py_class()
+    py_constructor_kwargs = {}
     for attr, attr_class in py_class_attrs.items():
         attr_mat_name = python.utils.convert_snake_to_camel_case(attr)
-        if not attr_mat_name in mat_structure:
+        if not attr_mat_name in mat_structure.dtype.names:
             raise ValueError(
                 "Given MATLAB data does not contain '%s' field." % attr_mat_name
             )
-        mat_array = mat_structure[attr_mat_name]
         mat_value = mat_structure[attr_mat_name][0][0]
-        if mat_array.size == 0:
+        if mat_value.size == 0:
             value = None
-        if issubclass(attr_class, BmodeDescriptor):
+        elif issubclass(attr_class, BmodeDescriptor):
             value = _load_matlab_structure(attr_class, mat_value)
         elif attr_class == np.ndarray:
             value = mat_value.squeeze()
+        elif attr_class == list:
+            value = mat_value.squeeze().tolist()
+        elif attr_class == str:
+            value = str(mat_value[0])
         else:
             # Scalar.
             mat_value_shape = mat_value.squeeze().shape
-            if len(mat_value_shape) > 1 or mat_value_shape[0] > 1:
+            if (len(mat_value_shape) > 1 or
+               (len(mat_value_shape) == 1 and mat_value_shape[0] > 1)):
                 raise ValueError("Value for '%s' should be a scalar.")
             value = mat_value[0][0]
             if type(value) != attr_class:
-                if np.can_cast(type(value), attr_class, casting="safe"):
+                if (np.can_cast(type(value), attr_class, casting="safe")
+                    or np.can_cast(value, attr_class, casting="safe")):
                     value = attr_class(value)
                 else:
                     raise ValueError(
@@ -87,7 +123,56 @@ def _load_matlab_structure(py_class, mat_structure):
                 "Invalid value for '%s': should be '%s', is '%s'." %
                     (attr, attr_class, type(value))
             )
-        setattr(py_class_instance, attr, value)
-    return py_class_instance
+        py_constructor_kwargs[attr] = value
+    return py_class(**py_constructor_kwargs)
+
+
+def _convert_to_matlab_structure(structure):
+    result = {}
+    # Validate input structure.
+    cls = structure.__class__
+    py_class_attrs = get_type_hints(cls)
+    structure_fields = dict(vars(structure))
+    if structure_fields.keys() != py_class_attrs.keys():
+        raise ValueError(
+            "A structure of class '%s' should have exactly fields: %s. "
+                % (cls, str(list(py_class_attrs.keys())))
+        )
+    for attr, expected_cls in py_class_attrs.items():
+        value = structure_fields[attr]
+        # TODO(pjarosik) consider marking an attr as an optional somehow
+        value_type = type(value)
+        if value is None:
+            value = []
+        elif issubclass(expected_cls, BmodeDescriptor):
+            _assert_is_type_of(value, expected_cls, attr)
+            value = _convert_to_matlab_structure(value)
+        elif expected_cls == list:
+            _assert_is_type_of(value, expected_cls, attr)
+        elif expected_cls == np.ndarray:
+            if value_type == list:
+                value = np.array(value)
+            else:
+                _assert_is_type_of(value, expected_cls, attr)
+
+        # The first part of the below condition is to handle str correctly.
+        elif (np.can_cast(value_type, expected_cls, casting='safe') or
+              np.can_cast(value, expected_cls, casting="safe")):
+            value = expected_cls(value)
+        else:
+            raise ValueError(
+                "Unsupported value type '%s' for '%s'."
+                    %(type(value), attr)
+            )
+        result[python.utils.convert_snake_to_camel_case(attr)] = value
+    return result
+
+
+def _assert_is_type_of(value, cls, attr):
+    if not isinstance(value, cls):
+        raise ValueError(
+            "A value for '%s' should be of type: %s, but is '%s'."
+            % (attr, str(cls), str(type(value)))
+        )
 
 
