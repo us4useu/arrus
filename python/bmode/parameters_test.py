@@ -18,11 +18,12 @@ class TestReadingCorrectData(unittest.TestCase):
     def perform_test(self, acq_params, sys_params):
         parameters.save_matlab_file(
             self.filepath,
+            rf=np.zeros((5, 5, 5)),
             acquisition_parameters=acq_params,
             system_parameters=sys_params
         )
         # Load descriptors from the matlab file.
-        read_sys_params, read_acq_params = \
+        _, read_sys_params, read_acq_params = \
             parameters.load_matlab_file(self.filepath)
 
         # Verify.

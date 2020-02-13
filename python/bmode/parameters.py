@@ -3,18 +3,22 @@ import numpy as np
 import scipy.io
 import python.utils
 from dataclasses import dataclass
+import inspect
 
 class BmodeDescriptor:
+    """An abstract class for a b-mode acquisition descriptor."""
     pass
 
 @dataclass(frozen=True)
 class SystemParameters(BmodeDescriptor):
+    """All parameters related to the system-wide configuration."""
     n_elements: np.uint16
     pitch: np.float64
 
 
 @dataclass(frozen=True)
 class Tx(BmodeDescriptor):
+    """A description of the signal transmission."""
     frequency: np.float64
     n_periods: np.uint16
     angles: list
@@ -24,12 +28,14 @@ class Tx(BmodeDescriptor):
 
 @dataclass(frozen=True)
 class Rx(BmodeDescriptor):
+    """A description of the signal reception."""
     sampling_frequency: np.float64
     aperture_size: np.uint16
 
 
 @dataclass(frozen=True)
 class AcquisitionParameters(BmodeDescriptor):
+    """All parameters related to an acquisition of the given RF frame."""
     mode: str
     speed_of_sound: np.float64
     tx: Tx
@@ -47,25 +53,55 @@ MATLAB_ROOT_STRUCTURES_DICT = dict(MATLAB_ROOT_STRUCTURES)
 
 def load_matlab_file(mat_file):
     """
-    
+    Reads a given MATLAB file and returns RF data and pythonized structures
+    describing how the data have been acquired.
+
+    Currently, this function returns a tuple:
+    - a :class:`numpy.ndarray` which contains RF data,
+    - an instance of :class:`.SystemParameters`,
+    - an instance of :class:`.AcquisitionParameters`.
+
+    Each empty MATLAB array value ([]) will be replaced with 'None' value.
+
     :param mat_file: a file to load; if str,
-        a path to given mat_file, will be loaded using scipy.io.loadmat,
-        otherwise expects matlab structure
-    :return: a tupple: system_parameters, acquisition_parameters
+        a path to given mat_file, the data will be loaded
+        using :func:`scipy.io.loadmat`,
+        otherwise expects matlab workspace as an input
+    :return: a tuple: rf, system_parameters, acquisition_parameters
     """
     if type(mat_file) == str:
         mat_file = scipy.io.loadmat(mat_file)
-    return tuple(_load_matlab_structure(attr_class, mat_file[attr_name])
+    rf = mat_file['rf']
+    structures = tuple(_load_matlab_structure(attr_class, mat_file[attr_name])
                  for attr_name, attr_class in MATLAB_ROOT_STRUCTURES)
+    return (rf,) + structures
 
 
-def save_matlab_file(path, **args):
+def save_matlab_file(path, rf, system_parameters, acquisition_parameters):
+    """
+    Saves a given RF data frame and all related structures to a .mat file
+    located in a given `path`.
+
+    This function saves 'None' values as an empty matlab array ([]).
+
+    :param path: a location with filename where to save a given matlab file
+    :param rf: an RF data frame to save
+    :param system_parameters: a :class:`.SystemParameters` of a given RF frame
+    :param acquisition_parameters: a :class:`.AcquisitionParameters` of a given RF frame
+    """
     result = {}
-    for key, value in args.items():
-        matlab_keys_camel_cased = [
-            python.utils.convert_camel_to_snake_case(k)
-            for k, _ in MATLAB_ROOT_STRUCTURES
-        ]
+    func_frame = inspect.currentframe()
+    args, _, _, vals = inspect.getargvalues(func_frame)
+    args = [(arg, vals[arg]) for arg in args[1:]]
+
+    matlab_keys_camel_cased = [
+        python.utils.convert_camel_to_snake_case(k)
+        for k, _ in MATLAB_ROOT_STRUCTURES
+    ]
+    for key, value in args:
+        if key == 'rf':
+            result[key] = value
+            continue
         if key not in matlab_keys_camel_cased:
             raise ValueError(
                 "Unrecognized parameter: '%s' should be one of: '%s'."
@@ -107,7 +143,8 @@ def _load_matlab_structure(py_class, mat_structure):
             mat_value_shape = mat_value.squeeze().shape
             if (len(mat_value_shape) > 1 or
                (len(mat_value_shape) == 1 and mat_value_shape[0] > 1)):
-                raise ValueError("Value for '%s' should be a scalar.")
+                raise ValueError(
+                    "Value for '%s' should be a scalar." % attr)
             value = mat_value[0][0]
             if type(value) != attr_class:
                 if (np.can_cast(type(value), attr_class, casting="safe")
@@ -140,7 +177,7 @@ def _convert_to_matlab_structure(structure):
         )
     for attr, expected_cls in py_class_attrs.items():
         value = structure_fields[attr]
-        # TODO(pjarosik) consider marking an attr as an optional somehow
+        # TODO(pjarosik) consider marking an attr as an optional value somehow
         value_type = type(value)
         if value is None:
             value = []
