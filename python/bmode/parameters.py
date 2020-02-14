@@ -11,14 +11,27 @@ class BmodeDescriptor:
 
 @dataclass(frozen=True)
 class SystemParameters(BmodeDescriptor):
-    """All parameters related to the system-wide configuration."""
+    """
+    All parameters related to the system-wide configuration.
+
+    :var n_elements: number of probe's elements [elements]
+    :var pitch: distance between elements of the probe [m]
+    """
     n_elements: np.uint16
     pitch: np.float64
 
 
 @dataclass(frozen=True)
 class Tx(BmodeDescriptor):
-    """A description of the signal transmission."""
+    """
+    A description of the signal transmission.
+
+    :var frequency: transmitted carrier/nominal/center frequency [Hz]
+    :var n_periods: number of sine periods in the transmitted burst
+    :var angles: array of transmission angles [rad]
+    :var focus: focal depth [m]
+    :var aperture_size: size of a transmit aperture [elements]
+    """
     frequency: np.float64
     n_periods: np.uint16
     angles: list
@@ -28,14 +41,26 @@ class Tx(BmodeDescriptor):
 
 @dataclass(frozen=True)
 class Rx(BmodeDescriptor):
-    """A description of the signal reception."""
+    """
+    A description of the signal reception.
+
+    :var sampling_frequency: signal sampling frequency [Hz]
+    :var aperture_size: size of rx aperture [elements]
+    """
     sampling_frequency: np.float64
     aperture_size: np.uint16
 
 
 @dataclass(frozen=True)
 class AcquisitionParameters(BmodeDescriptor):
-    """All parameters related to an acquisition of the given RF frame."""
+    """
+    All parameters related to an acquisition of the given RF frame.
+
+    :var mode: transmission scheme type {‘sta’,’pwi’,’lin’}
+    :var speed_of_sound: assumed speed of sound [m/s]
+    :var tx: description of the signal transmission
+    :var rx: description of the signal reception
+    """
     mode: str
     speed_of_sound: np.float64
     tx: Tx
