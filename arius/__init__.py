@@ -3,11 +3,12 @@
 import logging
 
 _logger = logging.getLogger(__package__)
-_logger.setLevel(logging.INFO)
+LOGGER_LEVEL = logging.INFO
+_logger.setLevel(LOGGER_LEVEL)
 
 if not _logger.handlers:
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(LOGGER_LEVEL)
     logger_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     console_handler.setFormatter(logger_formatter)
     _logger.addHandler(console_handler)
