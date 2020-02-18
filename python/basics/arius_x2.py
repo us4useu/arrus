@@ -50,7 +50,7 @@ NSAMPLES = 8*1024
 TX_FREQUENCY = 5.5e6
 SAMPLING_FREQUENCY = 65e6
 NCHANNELS = master_card.get_n_rx_channels()
-PRI = 1000
+PRI = 1000e-6
 
 b, a = scipy.signal.butter(
     2,
@@ -139,7 +139,6 @@ while not is_closed:
         card.enable_receive()
     master_card.trigger_sync()
     time.sleep(1*PRI*1e-6*NEVENTS)
-    # time.sleep(0.005)
 
     # - transfer data from module's internal memory to the host memory
     buffers = []
