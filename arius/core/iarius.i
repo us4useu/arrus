@@ -10,7 +10,7 @@
 	}
 }
 
-%module iarius
+%module(directors="1") iarius
 
 %include <std_shared_ptr.i>
 %shared_ptr(IArius)
@@ -32,12 +32,37 @@
 #include "iI2CMaster.h"
 #include <thread>
 #include <chrono>
+#include "arius/core/events/DataAcquiredEvent.h"
 %}
 %include afe58jd18Registers.h
 %include iarius.h
 %include iI2CMaster.h
+%include "arius/core/events/Event.h"
+%include "arius/core/events/DataAcquiredEvent.h"
+
+%feature("director") ScheduleReceiveCallback;
 
 %inline %{
+// TODO (pjarosik) move this callback to some other place
+class ScheduleReceiveCallback {
+public:
+    virtual void run(const arius::DataAcquiredEvent& event) const = 0;
+    virtual ~ScheduleReceiveCallback() {};
+};
+
+// TODO(pjarosik) unify below functions
+void ScheduleReceiveWithCallback(IArius* that, const size_t address, const size_t length,
+                                 ScheduleReceiveCallback& callback) {
+    const arius::DataAcquiredEvent& event = arius::DataAcquiredEvent(address, length);
+    that->ScheduleReceive(address, length, [&event, &callback] () {
+        std::cout << "ScheduleReceive callback" << std::endl;
+        callback.run(event);
+    });
+}
+void ScheduleReceiveWithoutCallback(IArius* that, const size_t address, const size_t length) {
+    that->ScheduleReceive(address, length);
+}
+
 // TODO(pjarosik) fix below in more elegant way
 void TransferRXBufferToHostLocation(IArius* that, unsigned long long dstAddress, size_t length, size_t srcAddress) {
     that->TransferRXBufferToHost((unsigned char*) dstAddress, length, srcAddress+0x1'0000'0000);

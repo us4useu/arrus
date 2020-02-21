@@ -5,6 +5,7 @@ from functools import wraps
 
 import arius.python.devices.device as _device
 import arius.python.devices.iarius as _iarius
+import arius.python.devices.callbacks as _callbacks
 import arius.python.utils as _utils
 import math
 
@@ -284,7 +285,7 @@ class AriusCard(_device.Device):
         self.card_handle.EnableTransmit()
 
     @assert_card_is_powered_up
-    def schedule_receive(self, address, length):
+    def schedule_receive(self, address, length, callback=None):
         """
         Schedules a new data transmission from the probe’s adapter to the module’s internal memory.
         This function queues a new data transmission from all available RX channels to the device’s internal memory.
@@ -292,15 +293,29 @@ class AriusCard(_device.Device):
 
         :param address: module's internal memory address, counted in number of samples
         :param length: number of samples from each channel to acquire
+        :param: callback: a callback function to call when data become available.
+        The callback function should take one parameter of type DataAcquiredEvent.
         """
         self.log(
             DEBUG,
             "Scheduling data receive at address=0x%02X, length=%d" % (address, length)
         )
-        self.card_handle.ScheduleReceive(
-            address*self.dtype.itemsize*self.get_n_rx_channels(),
-            self.dtype.itemsize*length*self.get_n_rx_channels()
-        )
+
+        address = address*self.dtype.itemsize*self.get_n_rx_channels()
+        length = self.dtype.itemsize*length*self.get_n_rx_channels()
+        if callback is None:
+            _iarius.ScheduleReceiveWithoutCallback(
+                self.card_handle,
+                address=address,
+                length=length
+            )
+        else:
+            _iarius.ScheduleReceiveWithCallback(
+                self.card_handle,
+                address=address,
+                length=length,
+                callback=_callbacks.ScheduleReceiveCallback(callback)
+            )
 
     @assert_card_is_powered_up
     def set_pga_gain(self, gain):

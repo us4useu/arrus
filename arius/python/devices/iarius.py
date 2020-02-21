@@ -61,6 +61,8 @@ class _SwigNonDynamicMeta(type):
     __setattr__ = _swig_setattr_nondynamic_class_variable(type.__setattr__)
 
 
+import weakref
+
 SHARED_PTR_DISOWN = _iarius.SHARED_PTR_DISOWN
 
 def new_uint16Array(nelements):
@@ -134,7 +136,7 @@ class IArius(object):
     def SyncClocks(self):
         return _iarius.IArius_SyncClocks(self)
 
-    def ScheduleReceive(self, address, length, callback=None):
+    def ScheduleReceive(self, address, length, callback=0):
         return _iarius.IArius_ScheduleReceive(self, address, length, callback)
 
     def EnableReceive(self):
@@ -277,6 +279,62 @@ class II2CMaster(object):
 # Register II2CMaster in _iarius:
 _iarius.II2CMaster_swigregister(II2CMaster)
 
+class Event(object):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+    __repr__ = _swig_repr
+
+    def __init__(self):
+        _iarius.Event_swiginit(self, _iarius.new_Event())
+    __swig_destroy__ = _iarius.delete_Event
+
+# Register Event in _iarius:
+_iarius.Event_swigregister(Event)
+
+class DataAcquiredEvent(Event):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+    __repr__ = _swig_repr
+
+    def __init__(self, address, length):
+        _iarius.DataAcquiredEvent_swiginit(self, _iarius.new_DataAcquiredEvent(address, length))
+    __swig_destroy__ = _iarius.delete_DataAcquiredEvent
+
+    def getAddress(self):
+        return _iarius.DataAcquiredEvent_getAddress(self)
+
+    def getLength(self):
+        return _iarius.DataAcquiredEvent_getLength(self)
+
+# Register DataAcquiredEvent in _iarius:
+_iarius.DataAcquiredEvent_swigregister(DataAcquiredEvent)
+
+class ScheduleReceiveCallback(object):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+    __repr__ = _swig_repr
+
+    def run(self, event):
+        return _iarius.ScheduleReceiveCallback_run(self, event)
+    __swig_destroy__ = _iarius.delete_ScheduleReceiveCallback
+
+    def __init__(self):
+        if self.__class__ == ScheduleReceiveCallback:
+            _self = None
+        else:
+            _self = self
+        _iarius.ScheduleReceiveCallback_swiginit(self, _iarius.new_ScheduleReceiveCallback(_self, ))
+    def __disown__(self):
+        self.this.disown()
+        _iarius.disown_ScheduleReceiveCallback(self)
+        return weakref.proxy(self)
+
+# Register ScheduleReceiveCallback in _iarius:
+_iarius.ScheduleReceiveCallback_swigregister(ScheduleReceiveCallback)
+
+
+def ScheduleReceiveWithCallback(that, address, length, callback):
+    return _iarius.ScheduleReceiveWithCallback(that, address, length, callback)
+
+def ScheduleReceiveWithoutCallback(that, address, length):
+    return _iarius.ScheduleReceiveWithoutCallback(that, address, length)
 
 def TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress):
     return _iarius.TransferRXBufferToHostLocation(that, dstAddress, length, srcAddress)
