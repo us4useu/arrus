@@ -47,13 +47,13 @@ mock_import(
 
 
 project = 'arius-sdk (python)'
-copyright = '2019, us4us Ltd.'
+copyright = '2020, us4us Ltd.'
 author = 'us4us Ltd.'
 
 
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '0.2.0rc1'
 
 # -- General configuration ---------------------------------------------------
 
