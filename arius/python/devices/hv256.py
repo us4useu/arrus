@@ -1,11 +1,12 @@
 import arius.python.devices.arius as _arius
 import arius.python.devices.device as _device
 import arius.python.devices.ihv256 as _hv256
-from logging import DEBUG, INFO
+from logging import DEBUG, INFO, WARN
 
 
 class HV256(_device.Device):
     _DEVICE_NAME = "HV256"
+    _N_RETRIES = 2
 
     @staticmethod
     def get_card_id(index):
@@ -22,13 +23,47 @@ class HV256(_device.Device):
         self.hv256_handle = hv256_handle
 
     def enable_hv(self):
+        """
+        Enables HV power supplier.
+        """
         self.log(INFO, "Enabling HV.")
-        self.hv256_handle.EnableHV()
+
+        for i in range(HV256._N_RETRIES):
+            try:
+                self.hv256_handle.EnableHV()
+                return
+            except RuntimeError as e:
+                # TODO(pjarosik) write time out should be handled on lower level
+                # see Arius-software#29
+                self.log(WARN,
+                    ("An error occurred while enabling HV: '%s'" % (str(e)))
+                    + (". Trying again..." if (i+1) < HV256._N_RETRIES else "")
+                )
+
 
     def disable_hv(self):
+        """
+        Disables HV power supplier.
+        """
         self.log(INFO, "Disabling HV.")
         self.hv256_handle.DisableHV()
 
     def set_hv_voltage(self, voltage):
-        self.log(INFO, "Setting HV voltage %d" % voltage)
-        self.hv256_handle.SetHVVoltage(voltage=voltage)
+        """
+        Sets HV voltage to a given value.
+
+        :param voltage: voltage to set [V]
+        """
+        self.log(INFO, "Setting HV voltage to %d [V]" % voltage)
+        for i in range(HV256._N_RETRIES):
+            try:
+                self.hv256_handle.SetHVVoltage(voltage=voltage)
+                return
+            except RuntimeError as e:
+                # TODO(pjarosik) write time out should be handled on lower level
+                # see Arius-software#29
+                self.log(WARN,
+                 ("An error occurred while setting HV voltage: '%s'" % (str(e)))
+                 + (". Trying again..." if (i+1) < HV256._N_RETRIES else "")
+                )
+
