@@ -1,6 +1,7 @@
 from logging import DEBUG, INFO
 from typing import List
 import numpy as np
+import time
 from functools import wraps
 
 import arius.python.devices.device as _device
@@ -35,6 +36,8 @@ class AriusCard(_device.Device):
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
         self.host_buffer = np.array([])
+        self.pri_list = None
+        self.pri_total = None
 
     def start_if_necessary(self):
         """
@@ -596,7 +599,12 @@ class AriusCard(_device.Device):
             DEBUG,
             "Starting generation of the hardware trigger..."
         )
+        if self.pri_list is None and self.pri_total is None:
+            raise ValueError("Call 'set_n_triggers' first")
+        self.pri_total = sum(self.pri_list)
+        self.pri_list = None
         self.card_handle.TriggerStart()
+        time.sleep(self.pri_total)
 
     @assert_card_is_powered_up
     def trigger_stop(self):
@@ -616,9 +624,12 @@ class AriusCard(_device.Device):
         """
         self.log(
             DEBUG,
-            "Resumes generation of the hardware trigger..."
+            "Resuming generation of the hardware trigger..."
         )
+        if self.pri_total is None:
+            raise ValueError("Call 'trigger_start' first.")
         self.card_handle.TriggerSync()
+        time.sleep(self.pri_total)
 
     @assert_card_is_powered_up
     def set_n_triggers(self, n_triggers):
@@ -632,6 +643,9 @@ class AriusCard(_device.Device):
             DEBUG,
             "Setting number of triggers to generate to %d..." % n_triggers
         )
+        # TODO(pjarosik) trigger_sync should wait until all data is available
+        self.pri_total = None
+        self.pri_list = [0.0]*n_triggers
         self.card_handle.SetNTriggers(n_triggers)
 
     @assert_card_is_powered_up
@@ -686,6 +700,7 @@ class AriusCard(_device.Device):
             syncReq=is_sync_required,
             idx=idx
         )
+        self.pri_list[idx] = time_to_next_trigger
 
     def _convert_to_enum_value(self, enum_name, value, unit=""):
         _utils.assert_true(
