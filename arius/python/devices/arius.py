@@ -602,6 +602,7 @@ class AriusCard(_device.Device):
         if self.pri_list is None and self.pri_total is None:
             raise ValueError("Call 'set_n_triggers' first")
         self.pri_total = sum(self.pri_list)
+        print(self.pri_total)
         self.pri_list = None
         self.card_handle.TriggerStart()
         time.sleep(self.pri_total)
