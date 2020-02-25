@@ -434,7 +434,6 @@ class AriusCard(_device.Device):
     def enable_tgc(self):
         """
         Enables Time Gain Compensation (TGC).
-        :return:
         """
         self.card_handle.TGCEnable()
         self.log(DEBUG, "TGC enabled.")
@@ -443,7 +442,6 @@ class AriusCard(_device.Device):
     def disable_tgc(self):
         """
         Disables Time Gain Compensation (TGC).
-        :return:
         """
         self.card_handle.TGCDisable()
         self.log(DEBUG, "TGC disabled.")
@@ -602,7 +600,6 @@ class AriusCard(_device.Device):
         if self.pri_list is None and self.pri_total is None:
             raise ValueError("Call 'set_n_triggers' first")
         self.pri_total = sum(self.pri_list)
-        print(self.pri_total)
         self.pri_list = None
         self.card_handle.TriggerStart()
         time.sleep(self.pri_total)
