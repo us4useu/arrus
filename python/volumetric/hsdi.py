@@ -73,7 +73,7 @@ def reconstruct_hri(rf, acq_params, sys_params, n_z):
         rf = rf.reshape((1,) + rf.shape)
     n_emissions, n_x, n_y, n_samples = rf.shape
     dz = 0
-    hri = np.zeros(shape=(n_x, n_y, n_z), dtype=np.complex64)
+    hri = np.zeros(shape=(n_x, n_y, n_z), dtype=np.complex128)
     for emission in range(n_emissions):
         print("Emission: %d" % emission, end='\r')
         lri, dz = reconstruct_lri(
@@ -122,9 +122,9 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     freq = np.arange(-n_samples//2+1, n_samples//2+1)*df
 
     # FFT over OX, OY
-    rf_ft = np.zeros(shape=(padded_n_x, padded_n_y, n_samples),dtype=np.complex64)
+    rf_ft = np.zeros(shape=(padded_n_x, padded_n_y, n_samples),dtype=np.complex128)
     for t in range(n_samples):
-        tmp = np.zeros(shape=(padded_n_x, padded_n_y), dtype=np.complex64)
+        tmp = np.zeros(shape=(padded_n_x, padded_n_y), dtype=np.complex128)
         tmp[left_m_x:right_m_x, left_m_y: right_m_y] = rf_ft_t[:, :, t]
         tmp = np.fft.fft2(tmp)
         tmp = np.fft.fftshift(tmp)
@@ -146,7 +146,7 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
 
     rf_ft_interp = np.zeros(
         shape=(padded_n_x, padded_n_y, n_z),
-        dtype=np.complex64
+        dtype=np.complex128
     )
     for x in range(padded_n_x) :
         for y in range(padded_n_y):
