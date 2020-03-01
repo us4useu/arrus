@@ -4,6 +4,7 @@ import pathlib
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
+import argparse
 
 # Load mat file and data.
 @dataclass(frozen=True)
@@ -68,17 +69,21 @@ def reconstruct_hri(rf, acq_params, sys_params, n_z):
     :param n_z: number of points along OZ axis
     :return: a volume of shape (nx, ny, nz)
     """
+    if len(rf.shape) == 3:
+        rf = rf.reshape((1,) + rf.shape)
     n_emissions, n_x, n_y, n_samples = rf.shape
+    dz = 0
     hri = np.zeros(shape=(n_x, n_y, n_z), dtype=np.complex64)
     for emission in range(n_emissions):
         print("Emission: %d" % emission, end='\r')
-        hri += reconstruct_lri(
+        lri, dz = reconstruct_lri(
             rf[emission, :, :, :],
             acq_params,
             sys_params,
             n_z
         )
-    return hri
+        hri += lri
+    return hri, dz
 
 
 def reconstruct_lri(rf, acq_params, sys_params, n_z):
@@ -110,11 +115,11 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     # Find the smallest 2**k >= n_samples
     n_samples = 1 << (n_samples-1).bit_length()
     rf_ft_t = np.fft.fft(rf, n_samples, axis=-1)
-    rf_ft_t = np.fft.fftshift(rf_ft_t)
+    rf_ft_t = np.fft.fftshift(rf_ft_t, axes=-1)
 
-    dt = 1./acq_params.sampling_frequency
-    freq = np.fft.fftfreq(n_samples, d=dt)
-    freq = np.fft.fftshift(freq)
+    dt = 1/acq_params.sampling_frequency
+    df = 1/(n_samples*dt)
+    freq = np.arange(-n_samples//2+1, n_samples//2+1)*df
 
     # FFT over OX, OY
     rf_ft = np.zeros(shape=(padded_n_x, padded_n_y, n_samples),dtype=np.complex64)
@@ -135,35 +140,45 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     f_max = freq[n_samples-1]
     kz_max = 2*np.pi*f_max/acq_params.speed_of_sound
     kz = np.linspace(0.0, kz_max, num=n_z)
+    dkz = kz[1]-kz[0]
+    dz = (2*np.pi) / (n_z*dkz)
+
 
     rf_ft_interp = np.zeros(
         shape=(padded_n_x, padded_n_y, n_z),
         dtype=np.complex64
     )
-    for x, y in zip(range(padded_n_x), range(padded_n_y)):
-        ft_line = rf_ft[x, y, :]
-        samples = acq_params.speed_of_sound/(4*np.pi) \
-                  * ((kz**2+kx[x]**2+ky[y]**2) / kz)
-        w       = acq_params.speed_of_sound/(4*np.pi) \
-                  * ((kz**2-kx[x]**2-ky[y]**2) / kz)
-        samples[0] = 0
-        w[0] = 0
-        ft_line_interp = np.interp(samples, freq, ft_line, left=0, right=0)
-        rf_ft_interp[x, y, :] = w*ft_line_interp
+    for x in range(padded_n_x) :
+        for y in range(padded_n_y):
+            ft_line = rf_ft[x, y, :]
+            samples = acq_params.speed_of_sound/(4*np.pi) \
+                    * ((kz**2+kx[x]**2+ky[y]**2) / kz)
+            w       = acq_params.speed_of_sound/(4*np.pi) \
+                    * ((kz**2-kx[x]**2-ky[y]**2) / kz)
+
+            samples[0] = 0
+            w[0] = 0
+            ft_line_interp = np.interp(samples, freq, ft_line, left=0, right=0)
+            rf_ft_interp[x, y, :] = w*ft_line_interp
 
     # IFFT over OZ
     result = np.fft.ifft(rf_ft_interp, axis=-1)
+    # IFF over OX, OY
     for z in range(n_z):
-        tmp = np.fft.ifft2(result[:, :, z])
+        tmp = result[:, :, z]
+        tmp = np.fft.ifft2(tmp)
         result[:, :, z] = tmp
-    return result[left_m_x:right_m_x, left_m_y: right_m_y, :]
+    return result[left_m_x:right_m_x, left_m_y:right_m_y, :], dz
 
 
 if __name__ == "__main__":
-    rf, acq_params, sys_params = load_data(
-        "/home/pjarosik/data/us4us/hsdi/data/field/scattered_field_3D_biala_real_TXRX4x4.mat"
-    )
-    volume = reconstruct_hri(rf, acq_params, sys_params, n_z=1024)
+    parser = argparse.ArgumentParser("Reconstructs volume using HSDI method.")
+
+    parser.add_argument("--file", dest="file", required=True)
+    args = parser.parse_args()
+
+    rf, acq_params, sys_params = load_data(args.file)
+    volume, dz = reconstruct_hri(rf, acq_params, sys_params, n_z=1024)
     n_x, n_y, n_z = volume.shape
     print(volume.shape)
     volume = np.abs(volume)
@@ -174,8 +189,14 @@ if __name__ == "__main__":
     plane1 = volume[n_x//2, :, :].T
     plane2 = volume[:, n_y//2, :].T
 
+    X = np.arange(-n_x//2+1, n_x//2+1)*sys_params.probe.pitch*1000
+    Y = np.arange(-n_y//2+1, n_y//2+1)*sys_params.probe.pitch*1000
+    Z = np.arange(0, n_z)*dz*1000
+
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
-    ax1.imshow(
+    fig.set_size_inches((3, 20))
+    ax1.pcolor(
+        Y, Z,
         np.clip(
             20*np.log10(plane1/np.max(plane1)),
             a_min=-40,
@@ -183,13 +204,18 @@ if __name__ == "__main__":
         ),
         cmap='gray'
     )
-    ax2.imshow(
+    ax1.set_ylim([90, 0])
+    ax1.set_xlim([-5, 5])
+    ax2.pcolor(
+        X, Z,
         np.clip(
             20*np.log10(plane2/np.max(plane2)),
             a_min=-40,
             a_max=0
         ),
         cmap='gray')
+    ax2.set_ylim([90, 0])
+    ax2.set_xlim([-5, 5])
     plt.show()
 
 
