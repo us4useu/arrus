@@ -140,6 +140,8 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     f_max = freq[n_samples-1]
     kz_max = 2*np.pi*f_max/acq_params.speed_of_sound
     kz = np.linspace(0.0, kz_max, num=n_z)
+    # Avoid dividing by zero by removing the zero from the array.
+    kz = kz[1:]
     dkz = kz[1]-kz[0]
     dz = (2*np.pi) / (n_z*dkz)
 
@@ -156,8 +158,9 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
             w       = acq_params.speed_of_sound/(4*np.pi) \
                     * ((kz**2-kx[x]**2-ky[y]**2) / kz)
 
-            samples[0] = 0
-            w[0] = 0
+            # Insert missing zero element.
+            samples = np.insert(samples, 0, 0.0)
+            w = np.insert(w, 0, 0.0)
             ft_line_interp = np.interp(samples, freq, ft_line, left=0, right=0)
             rf_ft_interp[x, y, :] = w*ft_line_interp
 
