@@ -114,23 +114,16 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     # FFT over time
     # Find the smallest 2**k >= n_samples
     n_samples = 1 << (n_samples-1).bit_length()
-    rf_ft_t = np.fft.fft(rf, n_samples, axis=-1)
-    rf_ft_t = np.fft.fftshift(rf_ft_t, axes=-1)
+    rf_ft = np.zeros(shape=(padded_n_x, padded_n_y, n_samples), dtype=np.float64)
+    rf_ft[left_m_x:right_m_x, left_m_y:right_m_y, :rf.shape[-1]] = rf
+    rf_ft = np.fft.fftn(rf_ft)
+    rf_ft = np.fft.fftshift(rf_ft)
 
+    # Interpolate.
     dt = 1/acq_params.sampling_frequency
     df = 1/(n_samples*dt)
     freq = np.arange(-n_samples//2+1, n_samples//2+1)*df
 
-    # FFT over OX, OY
-    rf_ft = np.zeros(shape=(padded_n_x, padded_n_y, n_samples),dtype=np.complex128)
-    for t in range(n_samples):
-        tmp = np.zeros(shape=(padded_n_x, padded_n_y), dtype=np.complex128)
-        tmp[left_m_x:right_m_x, left_m_y: right_m_y] = rf_ft_t[:, :, t]
-        tmp = np.fft.fft2(tmp)
-        tmp = np.fft.fftshift(tmp)
-        rf_ft[:, :, t] = tmp
-
-    # Interpolate.
     dx, dy = sys_params.probe.pitch, sys_params.probe.pitch
     dkx = 2*np.pi/(padded_n_x*dx)
     dky = 2*np.pi/(padded_n_y*dy)
