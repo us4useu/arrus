@@ -183,7 +183,6 @@ if __name__ == "__main__":
     rf, acq_params, sys_params = load_data(args.file)
     volume, dz = reconstruct_hri(rf, acq_params, sys_params, n_z=1024)
     n_x, n_y, n_z = volume.shape
-    print(volume.shape)
     volume = np.abs(volume)
     v_max = np.max(volume)
     volume = volume / v_max
