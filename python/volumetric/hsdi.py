@@ -32,6 +32,8 @@ def load_data(path: str):
     rf = None
     with h5py.File(path, "r") as f:
         rf = f["Matrix"][:]
+    if len(rf.shape) == 3:
+        rf = rf.reshape((1,) + rf.shape)
     filename = pathlib.Path(path).name
     dims = re.findall(r"TXRX(\d+)x(\d+)\.mat", filename)
     if len(dims) > 0 and len(dims[0]) != 2:
