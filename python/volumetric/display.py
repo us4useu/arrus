@@ -12,7 +12,6 @@ def main(path: str):
     shape = data.shape[:3] + (NSAMPLES,)
     arr = np.fromfile('pdata.bin', dtype=DTYPE)
     arr = arr.reshape(shape)
-    print(np.max(np.abs(data[:, :, :, :2048]-arr)))
 
 
 if __name__ == "__main__":
