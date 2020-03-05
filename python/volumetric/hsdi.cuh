@@ -1,3 +1,5 @@
+#include <cstdio>
+
 typedef double dtype;
 
 inline unsigned divup(unsigned x, unsigned div) {
@@ -11,7 +13,7 @@ __global__ void padHalfWithZeros(double* dst, double* src,
 {
     const int x = blockDim.x*blockIdx.x + threadIdx.x;
     const int y = blockDim.y*blockIdx.y + threadIdx.y;
-    const int z = blockDim.x*blockIdx.z + threadIdx.z;
+    const int z = blockDim.z*blockIdx.z + threadIdx.z;
     const int dstIdx = z + y*depth + x*depth*dstH;
 
     const int leftBorderX = (dstW-srcW)/2;
@@ -25,7 +27,7 @@ __global__ void padHalfWithZeros(double* dst, double* src,
         if (x >= leftBorderX && x < rightBorderX &&
             y >= leftBorderY && y < rightBorderY) {
 
-            const int srcIdx = z+(y-leftBorderY)*depth+(x-leftBorderX)*depth*dstH;
+            const int srcIdx = z+(y-leftBorderY)*depth+(x-leftBorderX)*depth*srcH;
             dst[dstIdx] = src[srcIdx];
         }
         else {
