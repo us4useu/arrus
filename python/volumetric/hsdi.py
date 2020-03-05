@@ -122,15 +122,20 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     rf_ft = np.zeros(shape=(padded_n_x, padded_n_y, n_samples), dtype=np.float64)
     rf_ft[left_m_x:right_m_x, left_m_y:right_m_y, :rf.shape[-1]] = rf
     rf_ft = np.fft.rfftn(rf_ft)
-    rf_ft = np.fft.fftshift(rf_ft, axes=(0, 1))
 
     freq = np.fft.rfftfreq(n_samples, d=1./acq_params.sampling_frequency)
 
     dx, dy = sys_params.probe.pitch, sys_params.probe.pitch
     dkx = 2*np.pi/(padded_n_x*dx)
     dky = 2*np.pi/(padded_n_y*dy)
-    kx = np.arange(-padded_n_x/2+1, padded_n_x/2+1)*dkx
-    ky = np.arange(-padded_n_y/2+1, padded_n_y/2+1)*dky
+    kx = np.concatenate((
+        np.arange(0, padded_n_x//2+1)*dkx,
+        np.arange(-padded_n_x//2+1, 0)*dkx
+    ))
+    ky = np.concatenate((
+        np.arange(0, padded_n_y//2+1)*dky,
+        np.arange(-padded_n_y//2+1, 0)*dky
+    ))
 
     f_max = freq[-1]
     kz_max = 2*np.pi*f_max/acq_params.speed_of_sound
