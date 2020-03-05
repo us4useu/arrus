@@ -1,11 +1,14 @@
 #include <iostream>
 #include <fstream>
 #include <array>
-#include "hsdi.cuh"
+#include <cuda_runtime.h>
+#include <cufft.h>
 
+
+#include "hsdi.cuh"
+#include "helper.h"
 
 // SHAPE (NEVENTS, NCHANNELS_OX, NCHANNELS_OY, NSAMPLES)
-
 
 const unsigned NEVENTS = 1;
 const unsigned NCHANNELS_OX = 32;
@@ -22,19 +25,17 @@ std::array<dtype, PADDED_DATA_SIZE> outputBuffer;
 int main(int argc, char* argv[])
 {
     // Read data
-    std::cout << "Reading the data." << std::endl;
-    double* devInBuffer = 0;
+    double *devInBuffer, *devProcBuffer;
+    cufftHandle fftPlanFwd, fftPlanInv;
+
     std::ifstream input{"data.bin", std::ios::binary};
-
     input.read((char*)(inputBuffer.data()), inputBuffer.size()*sizeof(dtype));
-    cudaMalloc(&devInBuffer, DATA_SIZE*sizeof(dtype));
-    cudaMemcpy(&devInBuffer, inputBuffer.data(), DATA_SIZE*sizeof(dtype),
-               cudaMemcpyHostToDevice);
+    checkCudaErrors(cudaMalloc(&devInBuffer, DATA_SIZE*sizeof(dtype)));
+    checkCudaErrors(cudaMemcpy(devInBuffer, inputBuffer.data(), DATA_SIZE*sizeof(dtype),
+                               cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMalloc(&devProcBuffer, PADDED_DATA_SIZE*sizeof(dtype)));
 
-    // Padd data with zeros.
-    double* devProcBuffer = 0;
-    cudaMalloc(&devProcBuffer, PADDED_DATA_SIZE*sizeof(dtype));
-
+    // Pad with zeros.
     dim3 threads(32, 8, 1);
     dim3 grid(divup(PADDED_OX, threads.x),
               divup(PADDED_OY, threads.y),
@@ -44,15 +45,17 @@ int main(int argc, char* argv[])
     padHalfWithZeros<<<grid, threads>>>(devProcBuffer, devInBuffer,
                                         PADDED_OX, PADDED_OY,
                                         NCHANNELS_OX, NCHANNELS_OY, NSAMPLES);
+    // 3D FFT
 
-    // Produce output.
+    // Write output to a file.
     std::cout << "Producing the output, size: "
               << PADDED_DATA_SIZE*sizeof(dtype)
               << std::endl;
     std::ofstream output{"pdata.bin", std::ios::binary};
 
-    cudaMemcpy(&outputBuffer, devProcBuffer, PADDED_DATA_SIZE*sizeof(dtype),
-               cudaMemcpyDeviceToHost);
+    checkCudaErrors(cudaMemcpy(outputBuffer.data(), devProcBuffer,
+                               PADDED_DATA_SIZE*sizeof(dtype),
+                               cudaMemcpyDeviceToHost));
 
     output.write((char*)(outputBuffer.data()), outputBuffer.size()*sizeof(dtype));
     cudaFree(devInBuffer);
