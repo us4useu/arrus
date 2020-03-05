@@ -160,12 +160,7 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
             rf_ft_interp[x, y, :] = w*ft_line_interp
 
     # IFFT over OZ
-    result = np.fft.ifft(rf_ft_interp, axis=-1)
-    # IFF over OX, OY
-    for z in range(n_z):
-        tmp = result[:, :, z]
-        tmp = np.fft.ifft2(tmp)
-        result[:, :, z] = tmp
+    result = np.fft.ifftn(rf_ft_interp)
     return result[left_m_x:right_m_x, left_m_y:right_m_y, :], dz
 
 
