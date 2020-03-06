@@ -4,7 +4,6 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
-
 #include "hsdi.cuh"
 #include "helper.h"
 
@@ -24,16 +23,27 @@ std::array<dtype, PADDED_DATA_SIZE> outputBuffer;
 
 int main(int argc, char* argv[])
 {
+    typedef double realType;
+    typedef cufftDoubleComplex complexType;
     // Read data
-    double *devInBuffer, *devProcBuffer;
+    realType *devInBuffer, *devProcBuffer, *devOutputBuffer;
+    complexType *fftBuffer;
     cufftHandle fftPlanFwd, fftPlanInv;
 
     std::ifstream input{"data.bin", std::ios::binary};
     input.read((char*)(inputBuffer.data()), inputBuffer.size()*sizeof(dtype));
     checkCudaErrors(cudaMalloc(&devInBuffer, DATA_SIZE*sizeof(dtype)));
-    checkCudaErrors(cudaMemcpy(devInBuffer, inputBuffer.data(), DATA_SIZE*sizeof(dtype),
-                               cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(devInBuffer, inputBuffer.data(), DATA_SIZE*sizeof(dtype), cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMalloc(&devProcBuffer, PADDED_DATA_SIZE*sizeof(dtype)));
+    checkCudaErrors(cudaMalloc(&fftBuffer,
+                               (PADDED_DATA_SIZE/2+1)*sizeof(complexType)));
+    checkCudaErrors(cudaMalloc(&devOutputBuffer,
+                               (PADDED_DATA_SIZE)*sizeof(realType)));
+    checkCudaErrors(cufftPlan3d(&fftPlanFwd, PADDED_OX, PADDED_OY,
+                                NSAMPLES, CUFFT_D2Z));
+    checkCudaErrors(cufftPlan3d(&fftPlanInv, PADDED_OX, PADDED_OY,
+                                NSAMPLES, CUFFT_Z2D));
+
 
     // Pad with zeros.
     dim3 threads(32, 8, 1);
@@ -45,7 +55,15 @@ int main(int argc, char* argv[])
     padHalfWithZeros<<<grid, threads>>>(devProcBuffer, devInBuffer,
                                         PADDED_OX, PADDED_OY,
                                         NCHANNELS_OX, NCHANNELS_OY, NSAMPLES);
-    // 3D FFT
+    // FFT
+    checkCudaErrors(cufftExecD2Z(fftPlanFwd, devProcBuffer, fftBuffer));
+
+    // Interpolation & weighting
+
+    // IFFT
+    checkCudaErrors(cufftExecZ2D(fftPlanInv, fftBuffer, devOutputBuffer));
+
+    // Abs, norm?
 
     // Write output to a file.
     std::cout << "Producing the output, size: "
@@ -60,5 +78,7 @@ int main(int argc, char* argv[])
     output.write((char*)(outputBuffer.data()), outputBuffer.size()*sizeof(dtype));
     cudaFree(devInBuffer);
     cudaFree(devProcBuffer);
+    cufftDestroy(fftPlanFwd);
+    cufftDestroy(fftPlanInv);
     return 0;
 }
