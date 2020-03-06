@@ -92,6 +92,9 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     """
     Reconstructs single low-resolution image from the provided RF signal data
     acquired from a single emission.
+
+    The order of rf axes should be CCS.
+    The input signal in RF matrix should be real.
     """
     n_x, n_y, n_samples = rf.shape
 
@@ -118,21 +121,23 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     n_samples = 1 << (n_samples-1).bit_length()
     rf_ft = np.zeros(shape=(padded_n_x, padded_n_y, n_samples), dtype=np.float64)
     rf_ft[left_m_x:right_m_x, left_m_y:right_m_y, :rf.shape[-1]] = rf
-    rf_ft = np.fft.fftn(rf_ft)
-    rf_ft = np.fft.fftshift(rf_ft)
+    rf_ft = np.fft.rfftn(rf_ft)
 
-    # Interpolate.
-    dt = 1/acq_params.sampling_frequency
-    df = 1/(n_samples*dt)
-    freq = np.arange(-n_samples//2+1, n_samples//2+1)*df
+    freq = np.fft.rfftfreq(n_samples, d=1./acq_params.sampling_frequency)
 
     dx, dy = sys_params.probe.pitch, sys_params.probe.pitch
     dkx = 2*np.pi/(padded_n_x*dx)
     dky = 2*np.pi/(padded_n_y*dy)
-    kx = np.arange(-padded_n_x/2+1, padded_n_x/2+1)*dkx
-    ky = np.arange(-padded_n_y/2+1, padded_n_y/2+1)*dky
+    kx = np.concatenate((
+        np.arange(0, padded_n_x//2+1)*dkx,
+        np.arange(-padded_n_x//2+1, 0)*dkx
+    ))
+    ky = np.concatenate((
+        np.arange(0, padded_n_y//2+1)*dky,
+        np.arange(-padded_n_y//2+1, 0)*dky
+    ))
 
-    f_max = freq[n_samples-1]
+    f_max = freq[-1]
     kz_max = 2*np.pi*f_max/acq_params.speed_of_sound
     kz = np.linspace(0.0, kz_max, num=n_z)
     # Avoid dividing by zero by removing the zero from the array.
@@ -160,12 +165,7 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
             rf_ft_interp[x, y, :] = w*ft_line_interp
 
     # IFFT over OZ
-    result = np.fft.ifft(rf_ft_interp, axis=-1)
-    # IFF over OX, OY
-    for z in range(n_z):
-        tmp = result[:, :, z]
-        tmp = np.fft.ifft2(tmp)
-        result[:, :, z] = tmp
+    result = np.fft.ifftn(rf_ft_interp)
     return result[left_m_x:right_m_x, left_m_y:right_m_y, :], dz
 
 
