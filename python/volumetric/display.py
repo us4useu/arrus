@@ -3,18 +3,12 @@ import matplotlib.pyplot as plt
 import argparse
 import hsdi
 
-NSAMPLES = 2048
-DTYPE = np.complex128
-
 def main(path: str):
-    print("Displaying the data")
-    data, _, _ = hsdi.load_data(path)
-    shape = (64, 64, 1024)
-    arr = np.fromfile('pdata.bin', dtype=DTYPE)
+    print("Producing the output volume.")
+    shape = (32, 32, 1024)
+    arr = np.fromfile('pdata.bin', dtype=np.float64)
     print(arr)
     arr = arr.reshape(shape)
-    arr = arr[16:48, 16:48, :]
-    arr = np.abs(arr)
     v_max = np.max(arr)
     arr = arr/v_max
     n_x, n_y, n_z = arr.shape

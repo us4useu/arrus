@@ -16,22 +16,25 @@ const unsigned NSAMPLES = 2048;
 const unsigned DATA_SIZE = NEVENTS*NCHANNELS_OX*NCHANNELS_OY*NSAMPLES;
 std::array<dtype, DATA_SIZE> inputBuffer;
 
-const unsigned PADDED_OX = NCHANNELS_OX*2;
-const unsigned PADDED_OY = NCHANNELS_OY*2;
 const unsigned NDEPTH = 1024;
-const unsigned PADDED_DATA_SIZE = NEVENTS*PADDED_OX*PADDED_OY*NDEPTH;
-std::array<complexType, PADDED_DATA_SIZE> outputBuffer;
+
+const unsigned OUTPUT_SIZE = NCHANNELS_OX*NCHANNELS_OY*NDEPTH;
+std::array<dtype, OUTPUT_SIZE> outputBuffer;
 
 int main(int argc, char* argv[])
 {
     typedef double realType;
     typedef cufftDoubleComplex complexType;
     // Read data
-    realType *devInBuffer, *devPaddedBuffer;
+    realType *devInBuffer, *devPaddedBuffer, *devOutputBuffer;
     complexType *fftBuffer, *devInterpBuffer, *devIfftBuffer;
     cufftHandle fftPlanFwd, fftPlanInv;
 
-    // Precomputed parameters.
+    // ========================================== PREPARE
+    const unsigned PADDED_OX = NCHANNELS_OX*2;
+    const unsigned PADDED_OY = NCHANNELS_OY*2;
+
+
     const dtype SPEED_OF_SOUND = 1540;
     const dtype SAMPLING_FREQ = 25e6;
     const dtype PITCH = 0.3e-3;
@@ -60,12 +63,16 @@ int main(int argc, char* argv[])
                                INTERP_SIZE*sizeof(complexType)));
     checkCudaErrors(cudaMalloc(&devIfftBuffer,
                                INTERP_SIZE*sizeof(complexType)));
+    checkCudaErrors(cudaMalloc(&devOutputBuffer,
+                               OUTPUT_SIZE*sizeof(dtype)));
 
     // Cufft plans.
     checkCudaErrors(cufftPlan3d(&fftPlanFwd, PADDED_OX, PADDED_OY,
                                 NSAMPLES, CUFFT_D2Z));
     checkCudaErrors(cufftPlan3d(&fftPlanInv, PADDED_OX, PADDED_OY,
                                 NDEPTH, CUFFT_Z2Z));
+
+    // ========================================== PROCESS
     // Pad with zeros.
     dim3 threads(32, 8, 1);
     dim3 grid(divup(PADDED_OX, threads.x),
@@ -94,22 +101,28 @@ int main(int argc, char* argv[])
                  DF);
 
     // IFFT
-    checkCudaErrors(cufftExecZ2Z(fftPlanInv, devInterpBuffer, devIfftBuffer, CUFFT_INVERSE));
-    // TODO(pjarosik) unpadd?
+    checkCudaErrors(cufftExecZ2Z(fftPlanInv, devInterpBuffer,
+                                 devIfftBuffer, CUFFT_INVERSE));
+
+    // remove padding, compute absolute value 
+    unpadAbs<<<gridInterp, threadsInterp>>>(devOutputBuffer, devIfftBuffer,
+                                           NCHANNELS_OX, NCHANNELS_OY,
+                                           PADDED_OX, PADDED_OY, NDEPTH);
 
     // TODO(pjarosik) Abs, norm?
-
-    checkCudaErrors(cudaMemcpy(outputBuffer.data(), devIfftBuffer,
-                               INTERP_SIZE*sizeof(complexType),
+    // ========================================== DISPLAY OUTPUT
+    checkCudaErrors(cudaMemcpy(outputBuffer.data(), devOutputBuffer,
+                               OUTPUT_SIZE*sizeof(realType),
                                cudaMemcpyDeviceToHost));
     // Write output to a file.
     std::ofstream output{"pdata.bin", std::ios::binary};
 
-    output.write((char*)(outputBuffer.data()), outputBuffer.size()*sizeof(complexType));
+    output.write((char*)(outputBuffer.data()), outputBuffer.size()*sizeof(realType));
     cudaFree(devInBuffer);
     cudaFree(devPaddedBuffer);
     cudaFree(devInterpBuffer);
     cudaFree(devIfftBuffer);
+    cudaFree(devOutputBuffer);
     cufftDestroy(fftPlanFwd);
     cufftDestroy(fftPlanInv);
     return 0;

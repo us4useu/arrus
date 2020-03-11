@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <math.h>
 #include <cufft.h>
+#include <cuComplex.h>
 
 typedef double dtype;
 typedef cufftDoubleComplex complexType;
@@ -88,5 +89,23 @@ __global__ void interpWeight(complexType* dst, complexType* src,
             dst[dstIdx] = {w*((1-alpha)*y1.x+alpha*y2.x),
                            w*((1-alpha)*y1.y+alpha*y2.y)};
         }
+    }
+}
+
+__global__ void unpadAbs(dtype* dst, complexType* src,
+                         int dstW, int dstH,
+                         int srcW, int srcH, int depth)
+{
+    const int x = blockDim.x*blockIdx.x + threadIdx.x;
+    const int y = blockDim.y*blockIdx.y + threadIdx.y;
+    const int z = blockDim.z*blockIdx.z + threadIdx.z;
+    const int dstIdx = z + y*depth + x*depth*dstH;
+
+    const int leftBorderX = (srcW-dstW)/2;
+    const int leftBorderY = (srcH-dstH)/2;
+
+    if(x < dstW && y < dstH && z < depth) {
+        const int srcIdx = z+(y+leftBorderY)*depth+(x+leftBorderX)*depth*srcH;
+        dst[dstIdx] = cuCabs(src[srcIdx]);
     }
 }
