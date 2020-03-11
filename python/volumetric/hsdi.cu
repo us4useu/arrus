@@ -27,8 +27,8 @@ int main(int argc, char* argv[])
     typedef double realType;
     typedef cufftDoubleComplex complexType;
     // Read data
-    realType *devInBuffer, *devProcBuffer;
-    complexType *fftBuffer, *devOutputBuffer;
+    realType *devInBuffer, *devPaddedBuffer;
+    complexType *fftBuffer, *devInterpBuffer, *devIfftBuffer;
     cufftHandle fftPlanFwd, fftPlanInv;
 
     // Precomputed parameters.
@@ -46,18 +46,26 @@ int main(int argc, char* argv[])
     std::ifstream input{"data.bin", std::ios::binary};
     input.read((char*)(inputBuffer.data()), inputBuffer.size()*sizeof(dtype));
     checkCudaErrors(cudaMalloc(&devInBuffer, DATA_SIZE*sizeof(dtype)));
-    checkCudaErrors(cudaMemcpy(devInBuffer, inputBuffer.data(), DATA_SIZE*sizeof(dtype), cudaMemcpyHostToDevice));
-    checkCudaErrors(cudaMalloc(&devProcBuffer, PADDED_DATA_SIZE*sizeof(dtype)));
+    checkCudaErrors(cudaMemcpy(devInBuffer, inputBuffer.data(),
+                               DATA_SIZE*sizeof(dtype), cudaMemcpyHostToDevice));
+
+    const unsigned INPUT_PADDED_SIZE = NEVENTS*PADDED_OX*PADDED_OY*NSAMPLES;
+    checkCudaErrors(cudaMalloc(&devPaddedBuffer, INPUT_PADDED_SIZE*sizeof(dtype)));
+
+    const unsigned FFT_SIZE = INPUT_PADDED_SIZE/2+1;
     checkCudaErrors(cudaMalloc(&fftBuffer,
-                               (PADDED_DATA_SIZE/2+1)*sizeof(complexType)));
-    checkCudaErrors(cudaMalloc(&devOutputBuffer,
-                               (PADDED_DATA_SIZE)*sizeof(complexType)));
+                               FFT_SIZE*sizeof(complexType)));
+    const unsigned INTERP_SIZE = PADDED_OX*PADDED_OY*NDEPTH;
+    checkCudaErrors(cudaMalloc(&devInterpBuffer,
+                               INTERP_SIZE*sizeof(complexType)));
+    checkCudaErrors(cudaMalloc(&devIfftBuffer,
+                               INTERP_SIZE*sizeof(complexType)));
+
+    // Cufft plans.
     checkCudaErrors(cufftPlan3d(&fftPlanFwd, PADDED_OX, PADDED_OY,
                                 NSAMPLES, CUFFT_D2Z));
     checkCudaErrors(cufftPlan3d(&fftPlanInv, PADDED_OX, PADDED_OY,
-                                NSAMPLES, CUFFT_Z2Z));
-
-
+                                NDEPTH, CUFFT_Z2Z));
     // Pad with zeros.
     dim3 threads(32, 8, 1);
     dim3 grid(divup(PADDED_OX, threads.x),
@@ -65,14 +73,20 @@ int main(int argc, char* argv[])
               divup(NSAMPLES, threads.z));
 
     std::cout << "Padding with zeros" << std::endl;
-    padHalfWithZeros<<<grid, threads>>>(devProcBuffer, devInBuffer,
+    padHalfWithZeros<<<grid, threads>>>(devPaddedBuffer, devInBuffer,
                                         PADDED_OX, PADDED_OY,
                                         NCHANNELS_OX, NCHANNELS_OY, NSAMPLES);
+
     // FFT
-    checkCudaErrors(cufftExecD2Z(fftPlanFwd, devProcBuffer, fftBuffer));
+    checkCudaErrors(cufftExecD2Z(fftPlanFwd, devPaddedBuffer, fftBuffer));
 
     // Interpolation & weighting
-    interpWeight<<<grid, threads>>>(devOutputBuffer, fftBuffer,
+    dim3 threadsInterp(32, 8, 1);
+    dim3 gridInterp(divup(PADDED_OX, threadsInterp.x),
+                    divup(PADDED_OY, threadsInterp.y),
+                    divup(NDEPTH, threadsInterp.z));
+    interpWeight<<<gridInterp, threadsInterp>>>(
+                 devInterpBuffer, fftBuffer,
                  PADDED_OX, PADDED_OY, NDEPTH,
                  PADDED_OX, PADDED_OY, NSAMPLES/2+1, // R2C was used
                  SPEED_OF_SOUND,
@@ -80,23 +94,22 @@ int main(int argc, char* argv[])
                  DF);
 
     // IFFT
-    checkCudaErrors(cufftExecZ2Z(fftPlanInv, fftBuffer, devOutputBuffer, CUFFT_INVERSE));
-
+    checkCudaErrors(cufftExecZ2Z(fftPlanInv, devInterpBuffer, devIfftBuffer, CUFFT_INVERSE));
     // TODO(pjarosik) unpadd?
 
     // TODO(pjarosik) Abs, norm?
 
+    checkCudaErrors(cudaMemcpy(outputBuffer.data(), devIfftBuffer,
+                               INTERP_SIZE*sizeof(complexType),
+                               cudaMemcpyDeviceToHost));
     // Write output to a file.
     std::ofstream output{"pdata.bin", std::ios::binary};
 
-    checkCudaErrors(cudaMemcpy(outputBuffer.data(), devOutputBuffer,
-                               PADDED_DATA_SIZE*sizeof(complexType),
-                               cudaMemcpyDeviceToHost));
-
     output.write((char*)(outputBuffer.data()), outputBuffer.size()*sizeof(complexType));
     cudaFree(devInBuffer);
-    cudaFree(devProcBuffer);
-    cudaFree(devOutputBuffer);
+    cudaFree(devPaddedBuffer);
+    cudaFree(devInterpBuffer);
+    cudaFree(devIfftBuffer);
     cufftDestroy(fftPlanFwd);
     cufftDestroy(fftPlanInv);
     return 0;

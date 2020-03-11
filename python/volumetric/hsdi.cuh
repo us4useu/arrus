@@ -65,17 +65,26 @@ __global__ void interpWeight(complexType* dst, complexType* src,
             dtype kz = dkz*z;
 
             dtype sample = speedOfSound/(4*M_PI)*((kz*kz+kx*kx+ky*ky)/kz);
+            
             // Sample at df should be equal one (just cast frequencies to
-            // an index numbers).
+            // index numbers).
             sample = sample/df;
             dtype w = speedOfSound/(4*M_PI)*((kz*kz-kx*kx-ky*ky)/kz);
 
             // linear interp.
             int z1 = int(sample);
+            if(z1 >= srcD) {
+                dst[dstIdx] = {0.0, 0.0};
+                return;
+            }
             int z2 = z1+1;
+            if(z2 >= srcD) {
+                dst[dstIdx] = src[z1+y*srcD+x*srcD*srcH];
+                return;
+            }
             dtype alpha = sample-z1;
-            complexType y1 = src[z1*y*dstD+x*dstD*dstH];
-            complexType y2 = src[z2*y*dstD+x*dstD*dstH];
+            complexType y1 = src[z1+y*srcD+x*srcD*srcH];
+            complexType y2 = src[z2+y*srcD+x*srcD*srcH];
             dst[dstIdx] = {w*((1-alpha)*y1.x+alpha*y2.x),
                            w*((1-alpha)*y1.y+alpha*y2.y)};
         }
