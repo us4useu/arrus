@@ -30,30 +30,30 @@ def main(path: str):
     Z = np.arange(0, n_z)*dz*1000
 
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
+    print(plane1.shape)
+    print(plane2.shape)
     fig.set_size_inches((3, 20))
-    ax1.imshow(plane1, cmap='gray')
-    # ax1.pcolor(
-    #     Y, Z,
-    #     np.clip(
-    #         20*np.log10(plane1/np.max(plane1)),
-    #         a_min=-40,
-    #         a_max=0
-    #     ),
-    #     cmap='gray'
-    # )
-    # ax1.set_ylim([90, 0])
-    # ax1.set_xlim([-5, 5])
-    ax2.imshow(plane2, cmap='gray')
-    # ax2.pcolor(
-    #     X, Z,
-    #     np.clip(
-    #         20*np.log10(plane2/np.max(plane2)),
-    #         a_min=-40,
-    #         a_max=0
-    #     ),
-    #     cmap='gray')
-    # ax2.set_ylim([90, 0])
-    # ax2.set_xlim([-5, 5])
+    ax1.pcolor(
+        Y, Z,
+        np.clip(
+            20*np.log10(plane1/np.max(plane1)),
+            a_min=-40,
+            a_max=0
+        ),
+        cmap='gray'
+    )
+    ax1.set_ylim([90, 0])
+    ax1.set_xlim([-5, 5])
+    ax2.pcolor(
+        X, Z,
+        np.clip(
+            20*np.log10(plane2/np.max(plane2)),
+            a_min=-40,
+            a_max=0
+        ),
+        cmap='gray')
+    ax2.set_ylim([90, 0])
+    ax2.set_xlim([-5, 5])
 
     fig.savefig('test.png')
 
