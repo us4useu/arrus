@@ -2,14 +2,15 @@
 #include <math.h>
 #include <cufft.h>
 #include <cuComplex.h>
+#include "helper.h"
 
 typedef double dtype;
+typedef double realType;
 typedef cufftDoubleComplex complexType;
 
 inline unsigned divup(unsigned x, unsigned div) {
     return (x + div-1) / div;
 }
-
 
 __global__ void padHalfWithZeros(dtype* dst, dtype* src,
                                  int dstW, int dstH,
@@ -19,7 +20,6 @@ __global__ void padHalfWithZeros(dtype* dst, dtype* src,
     const int y = blockDim.y*blockIdx.y + threadIdx.y;
     const int z = blockDim.z*blockIdx.z + threadIdx.z;
     const int dstIdx = z + y*depth + x*depth*dstH;
-
     const int leftBorderX = (dstW-srcW)/2;
     const int rightBorderX = leftBorderX+srcW;
 
@@ -109,3 +109,133 @@ __global__ void unpadAbs(dtype* dst, complexType* src,
         dst[dstIdx] = cuCabs(src[srcIdx]);
     }
 }
+
+
+class HSDIOp {
+public:
+    HSDIOp(const unsigned gpuIdx,
+           const unsigned nChannelsOx,
+           const unsigned nChannelsOy,
+           const unsigned nSamples,
+           const unsigned outputDepth,
+           const unsigned padding=2
+           ) {
+        this->gpuIdx = gpuIdx;
+        this->nChannelsOx = nChannelsOx;
+        this->nChannelsOy = nChannelsOy;
+        this->nSamples = nSamples;
+        this->outputDepth = outputDepth;
+
+        // Precomputing standard values.
+        this->paddedOx = padding*nChannelsOx;
+        this->paddedOy = padding*nChannelsOy;
+
+        const dtype samplingFreq = 25e6;
+        const dtype pitch = 0.3e-3;
+        this->speedOfSound = 1540;
+
+        this->df = samplingFreq/this->nSamples;
+        this->dkx = 2*M_PI/(this->paddedOx*pitch);
+        this->dky = 2*M_PI/(this->paddedOy*pitch);
+
+        const dtype fMax = samplingFreq/2.0;
+        const dtype kzMax = 2*M_PI*fMax/this->speedOfSound;
+        this->dkz = kzMax/(this->outputDepth-1);
+
+
+        // Allocating memory.
+        this->inputSize = nChannelsOx*nChannelsOy*nSamples;
+        const unsigned inputPaddedSize = paddedOx*paddedOy*nSamples;
+        checkCudaErrors(cudaMalloc(&devInBuffer, this->inputSize*sizeof(dtype)));
+        checkCudaErrors(cudaMalloc(&devPaddedBuffer,
+                                   inputPaddedSize*sizeof(dtype)));
+        const unsigned fftSize = inputPaddedSize/2+1;
+        checkCudaErrors(cudaMalloc(&fftBuffer,
+                                   fftSize*sizeof(complexType)));
+        const unsigned interpSize = paddedOx*paddedOy*outputDepth;
+        checkCudaErrors(cudaMalloc(&devInterpBuffer,
+                                   interpSize*sizeof(complexType)));
+        checkCudaErrors(cudaMalloc(&devIfftBuffer,
+                                   interpSize*sizeof(complexType)));
+        const unsigned outputSize = nChannelsOx*nChannelsOy*outputDepth;
+        checkCudaErrors(cudaMalloc(&devOutputBuffer,
+                                   outputSize*sizeof(dtype)));
+
+        // Cufft plans
+        checkCudaErrors(cufftPlan3d(&fftPlanFwd, paddedOx, paddedOy,
+                                    nSamples, CUFFT_D2Z));
+        checkCudaErrors(cufftPlan3d(&fftPlanInv, paddedOx, paddedOy,
+                                    outputDepth, CUFFT_Z2Z));
+    }
+
+    void process(dtype* inputBuffer) {
+        checkCudaErrors(cudaMemcpy(this->devInBuffer, inputBuffer,
+                                   this->inputSize*sizeof(dtype),
+                                   cudaMemcpyHostToDevice));
+        // Pad with zeros.
+        dim3 threads(32, 8, 1);
+        dim3 grid(divup(this->paddedOx, threads.x),
+                  divup(this->paddedOy, threads.y),
+                  divup(this->nSamples, threads.z));
+        padHalfWithZeros<<<grid, threads>>>(this->devPaddedBuffer,
+                                            this->devInBuffer,
+                                            this->paddedOx, this->paddedOy,
+                                            this->nChannelsOx, this->nChannelsOy,
+                                            this->nSamples);
+        // FFT
+        checkCudaErrors(cufftExecD2Z(fftPlanFwd,
+                                     this->devPaddedBuffer,
+                                     this->fftBuffer));
+
+        // Interpolation & weighting
+        dim3 threadsInterp(32, 8, 1);
+        dim3 gridInterp(divup(this->paddedOx, threadsInterp.x),
+                        divup(this->paddedOy, threadsInterp.y),
+                        divup(this->outputDepth, threadsInterp.z));
+        interpWeight<<<gridInterp, threadsInterp>>>(
+                        this->devInterpBuffer,
+                        this->fftBuffer,
+                        this->paddedOx, this->paddedOy, this->outputDepth,
+                        this->paddedOx, this->paddedOy, this->nSamples/2+1,
+                        this->speedOfSound,
+                        this->dkx, this->dky, this->dkz,
+                        this->df);
+        // IFFT
+        checkCudaErrors(cufftExecZ2Z(fftPlanInv,
+                                     this->devInterpBuffer,
+                                     this->devIfftBuffer,
+                                     CUFFT_INVERSE));
+        // remove padding, compute absolute value 
+        unpadAbs<<<gridInterp, threadsInterp>>>(this->devOutputBuffer,
+                                                this->devIfftBuffer,
+                                                this->nChannelsOx,
+                                                this->nChannelsOy,
+                                                this->paddedOx,
+                                                this->paddedOy,
+                                                this->outputDepth);
+    }
+
+    ~HSDIOp() {
+        checkCudaErrors(cudaFree(devInBuffer));
+        checkCudaErrors(cudaFree(devPaddedBuffer));
+        checkCudaErrors(cudaFree(devInterpBuffer));
+        checkCudaErrors(cudaFree(devIfftBuffer));
+        checkCudaErrors(cudaFree(devOutputBuffer));
+        checkCudaErrors(cufftDestroy(fftPlanFwd));
+        checkCudaErrors(cufftDestroy(fftPlanInv));
+    }
+
+    realType* getOutput() {
+        return this->devOutputBuffer;
+    }
+
+private:
+    unsigned gpuIdx;
+    realType *devInBuffer, *devPaddedBuffer, *devOutputBuffer;
+    complexType *fftBuffer, *devInterpBuffer, *devIfftBuffer;
+    cufftHandle fftPlanFwd, fftPlanInv;
+    unsigned nChannelsOx, nChannelsOy, nSamples, outputDepth, padding,
+        paddedOx, paddedOy;
+    unsigned inputSize;
+    dtype speedOfSound, dkx, dky, dkz, df;
+};
