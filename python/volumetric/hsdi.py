@@ -154,6 +154,10 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
             w       = acq_params.speed_of_sound/(4*np.pi) \
                     * ((kz**2-kx[x]**2-ky[y]**2) / kz)
 
+            if x == 32 and y == 32:
+                print(samples)
+                print(w)
+
             # Insert missing zero element.
             samples = np.insert(samples, 0, 0.0)
             w = np.insert(w, 0, 0.0)
@@ -183,6 +187,7 @@ if __name__ == "__main__":
     rf, acq_params, sys_params = load_data(args.file)
     rf = apply_tgc(rf, acq_params)
     volume, dz = reconstruct_hri(rf, acq_params, sys_params, n_z=1024)
+    print(dz)
     n_x, n_y, n_z = volume.shape
     volume = np.abs(volume)
     v_max = np.max(volume)
