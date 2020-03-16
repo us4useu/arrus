@@ -56,10 +56,6 @@ def load_data(path: str):
     return rf, acq_parameters, sys_parameters
 
 
-def perform_tgc():
-    raise NotImplementedError
-
-
 def reconstruct_hri(rf, acq_params, sys_params, n_z):
     """
     Reconstructs volume data ("High Resolution Image")
@@ -169,6 +165,15 @@ def reconstruct_lri(rf, acq_params, sys_params, n_z):
     return result[left_m_x:right_m_x, left_m_y:right_m_y, :], dz
 
 
+def apply_tgc(rf, acq_params):
+    alfa = 100*(0.5/8.686)
+    dr = acq_params.speed_of_sound/acq_params.sampling_frequency/2
+    n_emissions, n_x, n_y, n_samples = rf.shape
+    rvector = np.arange(0, n_samples)*dr
+    gain = np.exp(2*alfa*acq_params.tx_frequency*1e-6*rvector)
+    gain = gain.reshape((1, 1, 1, n_samples))
+    return rf*gain
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Reconstructs volume using HSDI method.")
 
@@ -176,6 +181,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     rf, acq_params, sys_params = load_data(args.file)
+    rf = apply_tgc(rf, acq_params)
     volume, dz = reconstruct_hri(rf, acq_params, sys_params, n_z=1024)
     n_x, n_y, n_z = volume.shape
     volume = np.abs(volume)
@@ -196,7 +202,7 @@ if __name__ == "__main__":
         Y, Z,
         np.clip(
             20*np.log10(plane1/np.max(plane1)),
-            a_min=-40,
+            a_min=-35,
             a_max=0
         ),
         cmap='gray'
@@ -207,7 +213,7 @@ if __name__ == "__main__":
         X, Z,
         np.clip(
             20*np.log10(plane2/np.max(plane2)),
-            a_min=-40,
+            a_min=-35,
             a_max=0
         ),
         cmap='gray')
