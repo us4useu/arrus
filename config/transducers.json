@@ -1,0 +1,65 @@
+// ========================================================
+// Geometry definition of the ultrasound transducres
+// - to be referenced by name in TX/RX JSON files.
+// --------------------------------------------------------
+// Copyright (c) 2019 us4us Ltd. / MIT License
+// ========================================================
+{
+	"transducers": [
+		{
+			"name": "AL2442",
+			"numElements": 192,
+			"pitch": 0.00021
+		},
+		{
+			"name": "AL2442_128ch",
+			"numElements": 128,
+			"pitch": 0.00021
+		},
+		{
+			"name": "SL1543",
+			"numElements": 192,
+			"pitch": 0.000245
+		},
+		{
+			"name": "SL1543_128ch",
+			"numElements": 128,
+			"pitch": 0.000245
+		},
+		{
+			"name": "SP2430",
+			"numElements": 96,
+			"pitch": 0.00022
+		},
+		{
+			"name": "AC2541",
+			"numElements": 192,
+			"pitch": 0.0003
+		},
+		{
+			"name": "XAIM0023",
+			"numElements": 128,
+			"pitch": 0.00060
+		},
+		{
+			"name": "XAAB0213",
+			"numElements": 64,
+			"pitch": 0.00060
+		},
+		{
+			"name": "XAAB0183",
+			"numElements": 32,
+			"pitch": 0.00031
+		},
+		{
+			"name": "eXo_pMUT_37",
+			"numElements": 32,
+			"pitch": 0.00021
+		},
+		{
+			"name": "eXo_alpha_128",
+			"numElements": 128,
+			"pitch": 0.00017
+		}
+	]
+}

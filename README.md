@@ -1,2 +1,0 @@
-# arius-sdk
-ARIUS SDK
