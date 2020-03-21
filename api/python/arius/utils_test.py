@@ -1,10 +1,12 @@
 import unittest
-import numpy as np
-import arius
-create_aligned_array = arius.utils.create_aligned_array
-convert_camel_to_snake_case = arius.utils.convert_camel_to_snake_case
-convert_snake_to_camel_case = arius.utils.convert_snake_to_camel_case
 
+import numpy as np
+
+from arius.utils import (
+    create_aligned_array,
+    convert_camel_to_snake_case,
+    convert_snake_to_camel_case
+)
 
 class CreateAlignedArrayTest(unittest.TestCase):
 

@@ -31,7 +31,7 @@ setuptools.setup(
         "scipy>=1.3.1"
     ],
     package_data={
-        'arius': ['python/devices/*.pyd', 'python/devices/*.lib']
+        'arius': ['devices/*.pyd', 'devices/*.lib']
     },
     python_requires='>=3.7',
 )

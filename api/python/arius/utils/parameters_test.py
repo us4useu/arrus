@@ -1,4 +1,4 @@
-import python.bmode.parameters as parameters
+import arius.utils.parameters as parameters
 import unittest
 import os
 import tempfile

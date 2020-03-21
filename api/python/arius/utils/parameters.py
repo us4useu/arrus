@@ -1,9 +1,12 @@
+import inspect
+from dataclasses import dataclass
 from typing import get_type_hints
+
 import numpy as np
 import scipy.io
-import arius.utils
-from dataclasses import dataclass
-import inspect
+
+import arius
+
 
 class BmodeDescriptor:
     """An abstract class for a b-mode acquisition descriptor."""

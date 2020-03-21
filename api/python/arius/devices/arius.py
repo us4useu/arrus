@@ -1,13 +1,14 @@
-from logging import DEBUG, INFO
-from typing import List
-import numpy as np
+import math
 import time
 from functools import wraps
+from logging import DEBUG, INFO
+from typing import List
 
-import arius.python.devices.device as _device
-import arius.python.devices.iarius as _iarius
-import arius.python.utils as _utils
-import math
+import numpy as np
+
+import arius.devices.device as _device
+import arius.devices.iarius as _iarius
+import arius.utils as _utils
 
 
 def assert_card_is_powered_up(f):
