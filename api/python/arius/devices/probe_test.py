@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from arius.python.test_tools import mock_import
+from arius.test_tools import mock_import
 
 
 # Module mocks.
@@ -10,22 +10,19 @@ class AriusMock:
     pass
 
 mock_import(
-    "arius.python.devices.iarius",
+    "arius.devices.iarius",
     IArius=AriusMock
 )
 mock_import(
-    "arius.python.devices.idbarLite",
+    "arius.devices.idbarLite",
     DBARLite=None
 )
 mock_import(
-    "arius.python.devices.ihv256",
+    "arius.devices.ihv256",
     HV256=None
 )
 # Project imports.
-
-from arius.python.devices.device import Device
-
-from arius.python.devices.probe import (
+from arius.devices.probe import (
     Probe,
     ProbeHardwareSubaperture,
     Subaperture

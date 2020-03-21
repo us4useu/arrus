@@ -1,8 +1,11 @@
+from logging import DEBUG
+
+import arius.devices.device as _device
 import numpy as np
-import arius.python.devices.device as _device
-import arius.python.devices.arius as _arius
-import arius.python.utils as _utils
-from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+import arius.devices.arius as _arius
+import arius.utils as _utils
+
 
 class Subaperture:
     def __init__(self, origin: int, size: int):

@@ -10,7 +10,6 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-import types
 import sys
 import importlib
 
@@ -33,19 +32,17 @@ def mock_import(module_name: str, **kwargs):
     return mock_module
 
 mock_import(
-    "arius.python.devices.iarius",
+    "arius.devices.iarius",
     IArius=None
 )
 mock_import(
-    "arius.python.devices.idbarLite",
+    "arius.devices.idbarLite",
 )
 mock_import(
-    "arius.python.devices.ihv256",
+    "arius.devices.ihv256",
 )
 
 # -- Project information -----------------------------------------------------
-
-
 project = 'arius-sdk (python)'
 copyright = '2020, us4us Ltd.'
 author = 'us4us Ltd.'

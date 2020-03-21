@@ -40,7 +40,7 @@ Devices
 
 Currently only the AriusCard device handler is provided.
 
-.. autoclass:: arius.python.devices.arius.AriusCard
+.. autoclass:: arius.devices.arius.AriusCard
     :members:
 
 
