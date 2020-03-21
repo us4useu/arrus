@@ -1,5 +1,4 @@
 import numpy as np
-import cupy as cp
 
 def reconstruct_rf_img(rf, x_grid, z_grid,
                        pitch, fs, fc, c,
@@ -33,19 +32,19 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     tx_angle = np.squeeze(tx_angle)
 
     if use_gpu:
+        import cupy as cp
         rf = cp.array(rf)
         x_grid = cp.array(x_grid)
         z_grid = cp.array(z_grid)
         tx_angle = cp.array(tx_angle)
         print('recontruction using gpu')
+        xp = cp
     else:
         print('recontruction using cpu')
-    xp = cp.get_array_module(rf)
-
+        xp = np
 
     if tx_focus is None:
         tx_focus = 0
-
 
     # making x and z_grid 'vertical vector' (should be more user friendly in future!)
     temp = z_grid[xp.newaxis]
@@ -216,4 +215,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     # calculate final rf image
     rf_image = xp.sum(rf_tx, axis=2)/np.sum(weight_tx, axis=2)
 
-    return cp.asnumpy(rf_image)
+    if use_gpu:
+        return cp.asnumpy(rf_image)
+    else:
+        return rf_image
