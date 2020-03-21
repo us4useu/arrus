@@ -1,4 +1,3 @@
-import ctypes
 import logging
 import os
 from logging import DEBUG, INFO
@@ -7,11 +6,11 @@ import yaml
 
 _logger = logging.getLogger(__name__)
 
-import arius.python.devices.probe as _probe
-import arius.python.devices.arius as _arius
-import arius.python.interface as _interface
-import arius.python.utils as _utils
-import arius.python.devices.iarius as _iarius
+import arius.devices.probe as _probe
+import arius.devices.arius as _arius
+import arius.interface as _interface
+import arius.utils as _utils
+import arius.devices.iarius as _iarius
 
 
 _ARIUS_PATH_ENV = "ARIUS_PATH"
@@ -151,9 +150,9 @@ class InteractiveSession:
             )
 
             # Intentionally loading modules only when the HV256 is used.
-            import arius.python.devices.idbarlite as _dbarlite
-            import arius.python.devices.ihv256 as _ihv256
-            import arius.python.devices.hv256 as _hv256
+            import api.python.arius.devices.idbarlite as _dbarlite
+            import api.python.arius.devices.ihv256 as _ihv256
+            import api.python.arius.devices.hv256 as _hv256
             system_master_card = master_cards[0]
             dbar = _dbarlite.GetDBARLite(_iarius.castToII2CMaster(system_master_card.card_handle))
             hv_handle = _ihv256.GetHV256(dbar.GetI2CHV())

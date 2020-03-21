@@ -1,7 +1,9 @@
-import arius.python.devices.arius as _arius
-import arius.python.devices.device as _device
-import arius.python.devices.ihv256 as _hv256
-from logging import DEBUG, INFO, WARN
+from logging import INFO, WARN
+
+import arius.devices.device as _device
+import arius.devices.ihv256 as _hv256
+
+import arius.devices.arius as _arius
 
 
 class HV256(_device.Device):

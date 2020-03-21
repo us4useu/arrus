@@ -1,6 +1,7 @@
 import unittest
-from arius.python.test_tools import mock_import
-import numpy as np
+
+from arius.test_tools import mock_import
+
 
 # Module mocks.
 class AriusMock:
@@ -42,21 +43,21 @@ class HV256Mock:
         self.ii2cmaster = ii2cmaster
 
 mock_import(
-    "arius.python.devices.iarius",
+    "arius.devices.iarius",
     IArius=AriusMock,
     GetArius=GetArius
 )
 mock_import(
-    "arius.python.devices.idbarlite",
+    "arius.devices.idbarlite",
     IDBARLite=DBARLiteMock
 )
 mock_import(
-    "arius.python.devices.ihv256",
+    "arius.devices.ihv256",
     IHV256=HV256Mock
 )
 
 # Project imports.
-import arius.python.session as session
+import arius.session as session
 
 class InteractiveSessionTest(unittest.TestCase):
 
