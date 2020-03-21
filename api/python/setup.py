@@ -1,15 +1,12 @@
 import setuptools
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
 setuptools.setup(
     name="arius",
     version="0.2.0rc1",
     author="us4us Ltd.",
     author_email="piotr.jarosik@us4us.eu",
     description="Arius Software Development Kit",
-    long_description=long_description,
+    long_description="Arius Software Development Kit",
     long_description_content_type="text/markdown",
     url="https://us4us.eu",
     packages=setuptools.find_packages(),
