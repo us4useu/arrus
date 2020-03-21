@@ -36,6 +36,8 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     :return: rf beamformed image
 
     """
+    tx_angle = np.squeeze(tx_angle)
+
     if use_gpu:
         rf = cp.array(rf)
         x_grid = cp.array(x_grid)
@@ -61,7 +63,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     x_size = max(x_grid.shape)
 
     # check if data is iq (i.e. complex) or 'ordinary' rf (i.e. real)
-    is_iqdata = isinstance(rf[1, 1, 1], xp.complex)
+    is_iqdata = isinstance(rf[0, 0, 0], xp.complex)
     if is_iqdata:
         print('iq (complex) data on input')
     else:
@@ -307,7 +309,7 @@ def calculate_envelope(rf):
     return envelope
 
 
-def make_bmode_image(rf_image, x_grid, y_grid):
+def make_bmode_image(rf_image, x_grid, y_grid, dB_threshold=-60):
     """
     The function for creating b-mode image
     :param rf_image: 2D rf image
@@ -361,7 +363,7 @@ def make_bmode_image(rf_image, x_grid, y_grid):
                interpolation='bicubic',
                aspect=data_aspect,
                cmap='gray',
-               vmin=-60, vmax=0
+               vmin=dB_threshold, vmax=0
                )
 
     plt.xticks(xticks, xtickslabels)
