@@ -1,11 +1,14 @@
-import arius.python.devices.iarius as _iarius
 import math
-import numpy as np
+import time
 from functools import wraps
 from logging import DEBUG, INFO
 from typing import List
 
-from python import arius as _device, arius as _utils
+import numpy as np
+
+import arius.devices.device as _device
+import arius.devices.iarius as _iarius
+import arius.utils as _utils
 
 
 def assert_card_is_powered_up(f):
@@ -20,7 +23,7 @@ def assert_card_is_powered_up(f):
 
 class AriusCard(_device.Device):
     """
-    A single Arius module. asdsadasd asd sad a
+    A single Arius module.
     """
 
     _DEVICE_NAME = "Arius"
@@ -34,6 +37,8 @@ class AriusCard(_device.Device):
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
         self.host_buffer = np.array([])
+        self.pri_list = None
+        self.pri_total = None
 
     def start_if_necessary(self):
         """
@@ -430,7 +435,6 @@ class AriusCard(_device.Device):
     def enable_tgc(self):
         """
         Enables Time Gain Compensation (TGC).
-        :return:
         """
         self.card_handle.TGCEnable()
         self.log(DEBUG, "TGC enabled.")
@@ -439,7 +443,6 @@ class AriusCard(_device.Device):
     def disable_tgc(self):
         """
         Disables Time Gain Compensation (TGC).
-        :return:
         """
         self.card_handle.TGCDisable()
         self.log(DEBUG, "TGC disabled.")
@@ -595,7 +598,12 @@ class AriusCard(_device.Device):
             DEBUG,
             "Starting generation of the hardware trigger..."
         )
+        if self.pri_list is None and self.pri_total is None:
+            raise ValueError("Call 'set_n_triggers' first")
+        self.pri_total = sum(self.pri_list)
+        self.pri_list = None
         self.card_handle.TriggerStart()
+        time.sleep(self.pri_total)
 
     @assert_card_is_powered_up
     def trigger_stop(self):
@@ -615,9 +623,12 @@ class AriusCard(_device.Device):
         """
         self.log(
             DEBUG,
-            "Resumes generation of the hardware trigger..."
+            "Resuming generation of the hardware trigger..."
         )
+        if self.pri_total is None:
+            raise ValueError("Call 'trigger_start' first.")
         self.card_handle.TriggerSync()
+        time.sleep(self.pri_total)
 
     @assert_card_is_powered_up
     def set_n_triggers(self, n_triggers):
@@ -631,34 +642,64 @@ class AriusCard(_device.Device):
             DEBUG,
             "Setting number of triggers to generate to %d..." % n_triggers
         )
+        # TODO(pjarosik) trigger_sync should wait until all data is available
+        self.pri_total = None
+        self.pri_list = [0.0]*n_triggers
         self.card_handle.SetNTriggers(n_triggers)
 
     @assert_card_is_powered_up
-    def set_trigger(self, time_to_next_trigger, time_to_next_tx, is_sync_required, idx):
+    def set_trigger(self,
+                    time_to_next_trigger: float,
+                    time_to_next_tx: float=0.0,
+                    is_sync_required: bool=False,
+                    idx: int=0):
         """
         Sets parameters of the trigger event.
 		Each trigger event will generate a trigger signal for the current
 		firing/acquisition and set next firing parameters.
 
-		:param timeToNextTrigger: time between current and the next trigger [uS]
-		:param timeToNextTx: delay between current trigger and setting next firing parameters [uS]
+		:param timeToNextTrigger: time between current and the next trigger [s]
+		:param timeToNextTx: delay between current trigger and setting next firing parameters [s]
 		:param syncReq: should the trigger generator pause and wait for the trigger_sync() call
 		:param idx: a firing, in which the parameters values should apply, **starts from 0**
         """
+
+        #TODO(pjarosik) dirty, should be handled by an IArius implementation
+        time_to_next_trigger_us = int(time_to_next_trigger*1e6)
+        if not math.isclose(time_to_next_trigger_us/1e6, time_to_next_trigger):
+            raise RuntimeError(
+                "Numeric error when computing time to next trigger, "
+                "input value %.10f [s], value to set %.10f [us]."
+                    %(time_to_next_trigger, time_to_next_trigger_us)
+            )
+
+        time_to_next_tx_us = int(time_to_next_tx*1e6)
+        if not math.isclose(time_to_next_tx_us/1e6, time_to_next_tx):
+            raise RuntimeError(
+                "Numeric error when computing time to next TX, "
+                "input value %.10f [s], value to set %.10f [us]."
+                    %(time_to_next_tx, time_to_next_tx_us)
+            )
+
         self.log(
             DEBUG,
             ("Setting trigger generation parameters to: "
              "trigger number: %d, "
-             "time to next trigger: %d, "
-             "time to next tx: %d, "
-             "is sync required: %s") % (idx, time_to_next_trigger, time_to_next_tx, str(is_sync_required))
+             "time to next trigger: %f [s] (%d [us]), "
+             "time to next tx: %f [s] (%d [us]), "
+             "is sync required: %s") %
+            (idx,
+             time_to_next_trigger, time_to_next_trigger_us,
+             time_to_next_tx, time_to_next_tx_us,
+             str(is_sync_required))
         )
         self.card_handle.SetTrigger(
-            timeToNextTrigger=time_to_next_trigger,
+            timeToNextTrigger=time_to_next_trigger_us,
             timeToNextTx=time_to_next_tx,
             syncReq=is_sync_required,
             idx=idx
         )
+        self.pri_list[idx] = time_to_next_trigger
 
     def _convert_to_enum_value(self, enum_name, value, unit=""):
         _utils.assert_true(

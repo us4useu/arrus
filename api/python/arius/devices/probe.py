@@ -1,9 +1,10 @@
-import arius.python.devices.device as _device
-import numpy as np
 from logging import DEBUG
 
-from python import arius as _utils
-from python.arius import arius as _arius
+import arius.devices.device as _device
+import numpy as np
+
+import arius.devices.arius as _arius
+import arius.utils as _utils
 
 
 class Subaperture:

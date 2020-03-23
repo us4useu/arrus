@@ -185,14 +185,11 @@ class IArius(object):
     def GetID(self):
         return _iarius.IArius_GetID(self)
 
-    def SetTxPeriods(self, nop):
-        return _iarius.IArius_SetTxPeriods(self, nop)
+    def SetTxDelay(self, channel, value, firing):
+        return _iarius.IArius_SetTxDelay(self, channel, value, firing)
 
-    def SetTxDelay(self, *args):
-        return _iarius.IArius_SetTxDelay(self, *args)
-
-    def SetTxFreqency(self, *args):
-        return _iarius.IArius_SetTxFreqency(self, *args)
+    def SetTxFreqency(self, frequency, firing):
+        return _iarius.IArius_SetTxFreqency(self, frequency, firing)
 
     def SetTxHalfPeriods(self, nop, firing):
         return _iarius.IArius_SetTxHalfPeriods(self, nop, firing)
@@ -203,14 +200,14 @@ class IArius(object):
     def SetTxCw(self, onoff, firing):
         return _iarius.IArius_SetTxCw(self, onoff, firing)
 
-    def SetRxAperture(self, *args):
-        return _iarius.IArius_SetRxAperture(self, *args)
+    def SetRxAperture(self, origin, size, firing):
+        return _iarius.IArius_SetRxAperture(self, origin, size, firing)
 
-    def SetTxAperture(self, *args):
-        return _iarius.IArius_SetTxAperture(self, *args)
+    def SetTxAperture(self, origin, size, firing):
+        return _iarius.IArius_SetTxAperture(self, origin, size, firing)
 
-    def SetRxTime(self, *args):
-        return _iarius.IArius_SetRxTime(self, *args)
+    def SetRxTime(self, time, firing):
+        return _iarius.IArius_SetRxTime(self, time, firing)
 
     def SetRxDelay(self, delay, firing):
         return _iarius.IArius_SetRxDelay(self, delay, firing)
