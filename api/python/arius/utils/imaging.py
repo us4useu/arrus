@@ -1,4 +1,6 @@
 import numpy as np
+import scipy.signal as scs
+import matplotlib.pyplot as plt
 
 def reconstruct_rf_img(rf, x_grid, z_grid,
                        pitch, fs, fc, c,
@@ -244,7 +246,7 @@ def make_bmode_image(rf_image, x_grid, y_grid, dB_threshold=-40):
     if is_iqdata:
         amplitude_image = np.abs(rf_image)
     else:
-        amplitude_image = calculate_envelope(rf_image)
+        amplitude_image = np.abs(scs.hilbert(rf_image, axis=0))
 
     # convert do dB
     max_image_value = np.max(amplitude_image)
