@@ -24,7 +24,7 @@ setuptools.setup(
     ],
     install_requires=[
         "numpy>=1.17.4",
-        "PyYAML==5.1.2",
+        "PyYAML>=5.1.2",
         "scipy>=1.3.1"
     ],
     package_data={
