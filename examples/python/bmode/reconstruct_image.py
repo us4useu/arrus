@@ -36,7 +36,9 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     :return: rf beamformed image
 
     """
-    tx_angle = np.squeeze(tx_angle)
+    tx_angle = np.array(tx_angle)
+    if tx_angle.size != 1:
+        tx_angle = np.squeeze(tx_angle)
 
     if use_gpu:
         rf = cp.array(rf)
