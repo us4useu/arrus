@@ -222,3 +222,72 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
         return cp.asnumpy(rf_image)
     else:
         return rf_image
+
+
+
+def make_bmode_image(rf_image, x_grid, y_grid, dB_threshold=-40):
+    """
+    The function for creating b-mode image
+    :param rf_image: 2D rf image
+    :param x_grid: vector of x coordinates
+    :param y_grid: vector of y coordinates
+    :return:
+    """
+
+    # check if 'rf' or 'iq' data on input
+    is_iqdata = isinstance(rf_image[1, 1], np.complex)
+
+    dx = x_grid[1]-x_grid[0]
+    dy = y_grid[1]-y_grid[0]
+
+    # calculate envelope
+    if is_iqdata:
+        amplitude_image = np.abs(rf_image)
+    else:
+        amplitude_image = calculate_envelope(rf_image)
+
+    # convert do dB
+    max_image_value = np.max(amplitude_image)
+    bmode_image = np.log10(amplitude_image/max_image_value)*20
+
+    # calculate ticks and labels
+    n_samples, n_lines = rf_image.shape
+    image_height = (n_samples-1)*dy
+    image_height = y_grid[-1]-y_grid[0]
+    # max_depth = image_depth + depth0
+    # max_depth = z_grid[-1]
+    # image_width = (n_lines - 1)*dx
+    image_width = x_grid[-1]-x_grid[0]
+    image_proportion = image_height/image_width
+
+    n_xticks = 4
+    n_yticks = int(round(n_xticks*image_proportion))
+
+    xticks = np.linspace(0, n_lines-1, n_xticks)
+    xtickslabels = np.linspace(x_grid[0], x_grid[-1], n_xticks)*1e3
+    xtickslabels = np.round(xtickslabels, 1)
+
+    yticks = np.linspace(0, n_samples-1, n_yticks)
+    ytickslabels = np.linspace(y_grid[0], y_grid[-1], n_yticks)*1e3
+    ytickslabels = np.round(ytickslabels, 1)
+
+    # calculate data aspect for proper image proportions
+    data_aspect = dy/dx
+
+    # show the image
+    plt.imshow(bmode_image,
+               interpolation='bicubic',
+               aspect=data_aspect,
+               cmap='gray',
+               vmin=dB_threshold, vmax=0
+               )
+
+    plt.xticks(xticks, xtickslabels)
+    plt.yticks(yticks, ytickslabels)
+
+    cbar = plt.colorbar()
+    cbar.ax.get_yaxis().labelpad=10
+    cbar.ax.set_ylabel('[dB]', rotation=90)
+    plt.xlabel('[mm]')
+    plt.ylabel('[mm]')
+    plt.show()
