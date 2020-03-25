@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.17.0)
 
 project(arius-sdk LANGUAGES CXX VERSION 0.2.0)
 set(CMAKE_CXX_STANDARD 17)
@@ -16,5 +16,6 @@ set(ARIUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Sub-projects
 ################################################################################
-add_subdirectory(python)
+
+add_subdirectory(api/python)
 
