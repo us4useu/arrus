@@ -47,17 +47,23 @@ endforeach()
 # Python packaging
 ################################################################################
 set(SOURCE_FILES
-    "arius/beam.py"
-    "arius/interface.py"
-    "arius/session.py"
-    "arius/devices/__init__.py"
-    "arius/devices/arius.py"
-    "arius/devices/device.py"
-    "arius/devices/hv256.py"
-    "arius/devices/probe.py"
-    "arius/utils/__init__.py"
-    "arius/utils/imaging.py"
-    "arius/utils/parameters.py"
+        "arius/beam.py"
+        "arius/beam_test.py"
+        "arius/interface.py"
+        "arius/session.py"
+        "arius/session_test.py"
+        "arius/test_tools.py"
+        "arius/utils_test.py"
+        "arius/devices/__init__.py"
+        "arius/devices/arius.py"
+        "arius/devices/device.py"
+        "arius/devices/hv256.py"
+        "arius/devices/probe.py"
+        "arius/devices/probe_test.py"
+        "arius/utils/__init__.py"
+        "arius/utils/imaging.py"
+        "arius/utils/parameters.py"
+        "arius/utils/parameters_test.py"
 )
 
 find_package(PythonInterp REQUIRED)
