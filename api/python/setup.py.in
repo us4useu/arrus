@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="arius",
-    version="0.2.0rc1",
+    version="${PROJECT_VERSION}",
     author="us4us Ltd.",
     author_email="piotr.jarosik@us4us.eu",
     description="Arius Software Development Kit",

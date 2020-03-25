@@ -42,14 +42,39 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
        Us4::${component}
         ${PYTHON_LIBRARIES}
     )
-
 endforeach()
 ################################################################################
-# Python wheel
+# Python packaging
 ################################################################################
-# <- pyd
-# <- impl
-# -> whl file
+set(SOURCE_FILES
+    "arius/beam.py"
+    "arius/interface.py"
+    "arius/session.py"
+    "arius/devices/__init__.py"
+    "arius/devices/arius.py"
+    "arius/devices/device.py"
+    "arius/devices/hv256.py"
+    "arius/devices/probe.py"
+    "arius/utils/__init__.py"
+    "arius/utils/imaging.py"
+    "arius/utils/parameters.py"
+)
+
+find_package(PythonInterp REQUIRED)
+set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
+set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
+set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
+
+configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
+
+add_custom_command(OUTPUT ${TIMESTAMP}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/arius ${CMAKE_CURRENT_BINARY_DIR}/arius
+    COMMAND ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
+    COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} sdist bdist_wheel
+    DEPENDS ${SOURCE_FILES} iarius ihv256 idbarlite
+)
+
+add_custom_target(python-whl ALL DEPENDS ${TIMESTAMP})
 
 
 
