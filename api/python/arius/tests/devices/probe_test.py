@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from arius.test_tools import mock_import
+from arius.tests.tools import mock_import
 
 
 # Module mocks.

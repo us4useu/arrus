@@ -48,22 +48,22 @@ endforeach()
 ################################################################################
 set(SOURCE_FILES
         "arius/beam.py"
-        "arius/beam_test.py"
         "arius/interface.py"
         "arius/session.py"
-        "arius/session_test.py"
-        "arius/test_tools.py"
-        "arius/utils_test.py"
         "arius/devices/__init__.py"
         "arius/devices/arius.py"
         "arius/devices/device.py"
         "arius/devices/hv256.py"
         "arius/devices/probe.py"
-        "arius/devices/probe_test.py"
         "arius/utils/__init__.py"
         "arius/utils/imaging.py"
         "arius/utils/parameters.py"
-        "arius/utils/parameters_test.py"
+        "arius/tests/beam_test.py"
+        "arius/tests/session_test.py"
+        "arius/tests/tools.py"
+        "arius/tests/utils_test.py"
+        "arius/tests/devices/probe_test.py"
+        "arius/tests/utils/parameters_test.py"
 )
 
 find_package(PythonInterp REQUIRED)
@@ -76,7 +76,7 @@ configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/arius ${CMAKE_CURRENT_BINARY_DIR}/arius
     COMMAND ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
-    COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} sdist bdist_wheel
+    COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
     DEPENDS ${SOURCE_FILES} iarius ihv256 idbarlite
 )
 

@@ -9,7 +9,8 @@ setuptools.setup(
     long_description="Arius Software Development Kit",
     long_description_content_type="text/markdown",
     url="https://us4us.eu",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(
+        exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     classifiers=[
         "Development Status :: 1 - Planning",
 
