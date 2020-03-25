@@ -24,12 +24,14 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
         TYPE SHARED
         LANGUAGE PYTHON
         OUTPUT_DIR arius/devices
-        OUTFILE_DIR arius/devices
+        OUTFILE_DIR wrappers
         SOURCES wrappers/${wrapper}.i
     )
-    set_property(
-        TARGET ${wrapper}
-        PROPERTY SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+    set_target_properties(${wrapper}
+        PROPERTIES
+            SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+            RUNTIME_OUTPUT_DIRECTORY
+            "${CMAKE_CURRENT_BINARY_DIR}/arius/devices/$<$<CONFIG:Debug>:>"
     )
     target_include_directories(${wrapper}
         PRIVATE
@@ -42,7 +44,6 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     )
 
 endforeach()
-
 ################################################################################
 # Python wheel
 ################################################################################
