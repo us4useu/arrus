@@ -20,6 +20,13 @@ find_package(Us4 REQUIRED Us4Components)
 
 foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     set_property(SOURCE wrappers/${wrapper}.i PROPERTY CPLUSPLUS ON)
+    if(MSVC)
+        set_property(
+            SOURCE wrappers/${wrapper}.i
+            PROPERTY
+                GENERATED_COMPILE_OPTIONS /Od /EHsc
+        )
+    endif()
     swig_add_library(${wrapper}
         TYPE SHARED
         LANGUAGE PYTHON
