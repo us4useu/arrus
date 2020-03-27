@@ -55,6 +55,7 @@ endforeach()
 # Python packaging
 ################################################################################
 set(SOURCE_FILES
+        "arius/__init__.py"
         "arius/beam.py"
         "arius/interface.py"
         "arius/session.py"
