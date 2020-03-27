@@ -151,7 +151,7 @@ class AriusCard(_device.Device):
             array = _iarius.new_uint16Array(n)
             for i, sample in enumerate(aperture_list):
                 _iarius.uint16Array_setitem(array, i, sample)
-            _iarius.setTxAperture(self.card_handle, array, n, firing)
+            _iarius.setTxApertureCustom(self.card_handle, array, n, firing)
         finally:
             _iarius.delete_uint16Array(array)
 
@@ -181,7 +181,7 @@ class AriusCard(_device.Device):
             array = _iarius.new_uint16Array(n)
             for i, sample in enumerate(aperture_list):
                 _iarius.uint16Array_setitem(array, i, sample)
-            _iarius.setRxAperture(self.card_handle, array, n, firing)
+            _iarius.setRxApertureCustom(self.card_handle, array, n, firing)
         finally:
             _iarius.delete_uint16Array(array)
 
@@ -195,6 +195,12 @@ class AriusCard(_device.Device):
         :param firing: a firing, in which the delay should apply, **starts from 0**
         :return: an array of values, which were set [s]
         """
+        if isinstance(delays, np.ndarray):
+            if len(delays.shape) != 1:
+                raise ValueError("Delays should be a vector.")
+            if delays.shape[0] != self.get_n_tx_channels():
+                raise ValueError("You should provide %d delays." % self.get_n_tx_channels())
+            delays = delays.tolist()
         _utils._assert_equal(
             len(delays), self.get_n_tx_channels(),
             desc="Array of TX delays should contain %d numbers (card number of TX channels)"
@@ -492,6 +498,11 @@ class AriusCard(_device.Device):
 
         :param samples: TGC samples to set
         """
+        if isinstance(samples, np.ndarray):
+            if len(samples.shape) != 1:
+                raise ValueError("'Samples' should be a vector.")
+            samples = samples.tolist()
+
         self.log(DEBUG, "Setting TGC samples: %s" % str(samples))
         n = len(samples)
         array = None
