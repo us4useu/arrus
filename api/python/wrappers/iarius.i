@@ -59,23 +59,23 @@ void EnableReceiveDelayed(IArius* ptr) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 
-void setTxAperture(IArius* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
+void setTxApertureCustom(IArius* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
     std::bitset<NCH> aperture;
     for(int i=0; i < length; ++i) {
         if(enabled[i]) {
             aperture.set(i);
         }
     }
-    that->setTxAperture(aperture, firing);
+    that->SetTxAperture(aperture, firing);
 }
 
-void setRxAperture(IArius* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
+void setRxApertureCustom(IArius* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
     std::bitset<NCH> aperture;
     for(int i=0; i < length; ++i) {
         if(enabled[i]) {
             aperture.set(i);
         }
     }
-    that->setRxAperture(aperture, firing);
+    that->SetRxAperture(aperture, firing);
 }
 %}
