@@ -2,7 +2,6 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.signal
 import arius
 
 # Start new session with the device.
@@ -32,7 +31,9 @@ for card in cards:
     card.set_lna_gain(24)  # [dB]
     card.set_dtgc(0)
     # card.disable_tgc()
-    card.set_tgc_samples([0x9001] + (0x4000 + np.arange(1500, 0, -14)).tolist() + [0x4000 + 3000])
+    card.set_tgc_samples([0x9001]
+                      + (0x4000 + np.arange(2500, 0, -50)).tolist()
+                      + [0x4000 + 3000])
     card.enable_tgc()
 
 # Configure TX/RX scheme.
@@ -42,15 +43,19 @@ NSAMPLES = 8*1024
 TX_FREQUENCY = 8.125e6
 PRI = 1000e-6
 
+for card in cards:
+    card.set_number_of_firings(NEVENTS)
+    card.clear_scheduled_receive()
+
 for i in range(NEVENTS):
     for arius_number in range(NARIUS):
-        card = cards[i]
+        card = cards[arius_number]
         if arius_number == 0:
             card.set_tx_delays(
                 delays=[1e-6]*32
-                     + [0]*32
+                     + [0.0]*32
                      + [1e-6]*32
-                     + [0]*32,
+                     + [0.0]*32,
                      firing=i)
             card.set_tx_aperture(
                 aperture=np.array(
@@ -64,9 +69,9 @@ for i in range(NEVENTS):
             if i == 0:
                 card.set_rx_aperture(
                     aperture=np.array(
-                          [False] * 32
+                          [True] * 32
                         + [False] * 32
-                        + [True]  * 32
+                        + [False] * 32
                         + [False] * 32
                     ),
                     firing=i
@@ -74,18 +79,18 @@ for i in range(NEVENTS):
             else:
                 card.set_rx_aperture(
                     aperture=np.array(
-                          [True]  * 32
+                          [False] * 32
                         + [False] * 32
-                        + [False] * 32
+                        + [True]  * 32
                         + [False] * 32
                     ),
                     firing=i
                 )
         else:
             card.set_tx_delays(
-                delays=  [0] * 32
+                delays=  [0.0] * 32
                        + [1e-6] * 32
-                       + [0] * 32
+                       + [0.0] * 32
                        + [1e-6] * 32,
                 firing=i)
             card.set_tx_aperture(
@@ -101,9 +106,9 @@ for i in range(NEVENTS):
                 card.set_rx_aperture(
                     aperture=np.array(
                           [False] * 32
-                        + [False] * 32
-                        + [False] * 32
                         + [True]  * 32
+                        + [False] * 32
+                        + [False] * 32
                     ),
                     firing=i
                 )
@@ -111,21 +116,23 @@ for i in range(NEVENTS):
                 card.set_rx_aperture(
                     aperture=np.array(
                           [False] * 32
+                        + [False] * 32
+                        + [False] * 32
                         + [True]  * 32
-                        + [False] * 32
-                        + [False] * 32
                     ),
                     firing=i
                 )
         card.set_tx_frequency(frequency=TX_FREQUENCY, firing=i)
         card.set_tx_half_periods(n_half_periods=2, firing=i)
-        card.set_tx_invert(is_enable=False)
+        card.set_tx_invert(is_enable=False, firing=i)
         card.set_rx_time(time=250e-6, firing=i)
         card.set_rx_delay(delay=5e-6, firing=i)
-        card.set_number_of_firings(NEVENTS)
         card.enable_transmit()
 
+
 for card in cards:
+    card.enable_transmit()
+    card.clear_scheduled_receive()
     for i in range(NEVENTS):
         card.schedule_receive(i*NSAMPLES, NSAMPLES)
     card.enable_receive()
@@ -133,8 +140,8 @@ for card in cards:
 master_card.set_n_triggers(NEVENTS)
 
 for i in range(NEVENTS):
-    master_card.set_trigger(PRI, 0, 0, i)
-master_card.set_trigger(PRI, 0, 1, NEVENTS-1)
+    master_card.set_trigger(PRI, 0, False, i)
+master_card.set_trigger(PRI, 0, True, NEVENTS-1)
 
 # Run the scheme:
 # - prepare figure to display
