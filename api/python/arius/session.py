@@ -150,9 +150,9 @@ class InteractiveSession:
             )
 
             # Intentionally loading modules only when the HV256 is used.
-            import api.python.arius.devices.idbarlite as _dbarlite
-            import api.python.arius.devices.ihv256 as _ihv256
-            import api.python.arius.devices.hv256 as _hv256
+            import arius.devices.idbarlite as _dbarlite
+            import arius.devices.ihv256 as _ihv256
+            import arius.devices.hv256 as _hv256
             system_master_card = master_cards[0]
             dbar = _dbarlite.GetDBARLite(_iarius.castToII2CMaster(system_master_card.card_handle))
             hv_handle = _ihv256.GetHV256(dbar.GetI2CHV())
