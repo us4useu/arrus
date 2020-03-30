@@ -3,7 +3,7 @@
 ################################################################################
 find_package(Sphinx REQUIRED)
 
-set(SPHINX_SOURCE .)
+set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/sphinx)
 
 set(DOC_FILES
@@ -21,9 +21,10 @@ file(MAKE_DIRECTORY ${SPHINX_BUILD})
 set(SPHINX_LATEX_CONF_FILE_IN conf.py.in)
 set(SPHINX_LATEX_CONF_DIR ${CMAKE_CURRENT_BINARY_DIR}/latex)
 set(SPHINX_LATEX_CONF_FILE_OUT ${SPHINX_LATEX_CONF_DIR}/conf.py)
-configure_file(${SPHINX_LATEX_CONF_FILE_IN} ${SPHINX_LATEX_CONF_FILE_OUT} @ONLY)
+configure_file(${SPHINX_LATEX_CONF_FILE_IN} ${SPHINX_LATEX_CONF_FILE_OUT})
 
-set(SPHINX_PDF_FILE "${SPHINX_BUILD}/latex/arius-sdk-python.pdf")
+set(SPHINX_PDF_FILE "${SPHINX_BUILD}/latex/arius-sdkpython.pdf")
+string(TIMESTAMP CURRENT_YEAR "%Y")
 
 add_custom_command(OUTPUT ${SPHINX_PDF_FILE}
     COMMAND
@@ -44,5 +45,7 @@ install(
         ${SPHINX_PDF_FILE}
     DESTINATION
         ${ARIUS_DOCS_INSTALL_DIR}
+    RENAME
+        "arius-sdk-python.pdf"
 )
 
