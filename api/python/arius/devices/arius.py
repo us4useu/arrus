@@ -48,11 +48,8 @@ class AriusCard(_device.Device):
             self.log(
                 INFO,
                 "Was powered down, initializing it and powering up...")
-            self.card_handle.Powerup()
-            self.card_handle.InitializeClocks()
-            self.card_handle.InitializeDDR4()
-            self.card_handle.InitializeRX()
-            self.card_handle.InitializeTX()
+
+            self.card_handle.Initialize()
             self.set_tx_channel_mapping(self.tx_channel_mapping)
             self.set_rx_channel_mapping(self.rx_channel_mapping)
             self.log(INFO, "... successfully powered up.")
