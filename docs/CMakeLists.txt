@@ -18,13 +18,11 @@ file(MAKE_DIRECTORY ${SPHINX_BUILD})
 ################################################################################
 # Sphinx Latex PDF geneartor
 ################################################################################
-set(SPHINX_LATEX_CONF_FILE_IN conf.py.in)
 set(SPHINX_LATEX_CONF_DIR ${CMAKE_CURRENT_BINARY_DIR}/latex)
 set(SPHINX_LATEX_CONF_FILE_OUT ${SPHINX_LATEX_CONF_DIR}/conf.py)
-configure_file(${SPHINX_LATEX_CONF_FILE_IN} ${SPHINX_LATEX_CONF_FILE_OUT})
+configure_file(${SPHINX_CONF_FILE_IN} ${SPHINX_LATEX_CONF_FILE_OUT})
 
 set(SPHINX_PDF_FILE "${SPHINX_BUILD}/latex/arius-sdkpython.pdf")
-string(TIMESTAMP CURRENT_YEAR "%Y")
 
 add_custom_command(OUTPUT ${SPHINX_PDF_FILE}
     COMMAND
@@ -34,7 +32,7 @@ add_custom_command(OUTPUT ${SPHINX_PDF_FILE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS
         ${DOC_FILES}
-    MAIN_DEPENDENCY @{SPHINX_LATEX_CONF_FILE_OUT} ${SPHINX_LATEX_CONF_FILE_IN}
+    MAIN_DEPENDENCY @{SPHINX_LATEX_CONF_FILE_OUT} ${SPHINX_CONF_FILE_IN}
     COMMENT "Generating PDF documentation with Sphinx"
 )
 
@@ -47,5 +45,35 @@ install(
         ${ARIUS_DOCS_INSTALL_DIR}
     RENAME
         "arius-sdk-python.pdf"
+)
+
+################################################################################
+# Sphinx HTML geneartor
+################################################################################
+set(SPHINX_HTML_CONF_DIR ${CMAKE_CURRENT_BINARY_DIR}/html)
+set(SPHINX_HTML_CONF_FILE_OUT ${SPHINX_HTML_CONF_DIR}/conf.py)
+configure_file(${SPHINX_CONF_FILE_IN} ${SPHINX_HTML_CONF_FILE_OUT})
+
+set(SPHINX_HTML_FILE "${SPHINX_BUILD}/html/index.html")
+
+add_custom_command(OUTPUT ${SPHINX_HTML_FILE}
+    COMMAND
+        ${SPHINX_EXECUTABLE} -M html
+        ${SPHINX_SOURCE} ${SPHINX_BUILD}
+        -c ${SPHINX_HTML_CONF_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    DEPENDS
+        ${DOC_FILES}
+    MAIN_DEPENDENCY @{SPHINX_LATEX_CONF_FILE_OUT} ${SPHINX_CONF_FILE_IN}
+    COMMENT "Generating HTML documentation with Sphinx"
+)
+
+add_custom_target(python_sphinx_html ALL DEPENDS ${SPHINX_HTML_FILE})
+
+install(
+    FILES
+        ${SPHINX_HTML_FILE}
+    DESTINATION
+        ${ARIUS_DOCS_INSTALL_DIR}
 )
 
