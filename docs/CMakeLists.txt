@@ -14,6 +14,7 @@ set(DOC_FILES
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 file(MAKE_DIRECTORY ${SPHINX_BUILD})
+set(SPHINX_CONF_FILE_IN "${SPHINX_SOURCE}/conf.py.in")
 
 ################################################################################
 # Sphinx Latex PDF geneartor
@@ -54,9 +55,10 @@ set(SPHINX_HTML_CONF_DIR ${CMAKE_CURRENT_BINARY_DIR}/html)
 set(SPHINX_HTML_CONF_FILE_OUT ${SPHINX_HTML_CONF_DIR}/conf.py)
 configure_file(${SPHINX_CONF_FILE_IN} ${SPHINX_HTML_CONF_FILE_OUT})
 
-set(SPHINX_HTML_FILE "${SPHINX_BUILD}/html/index.html")
+set(SPHINX_HTML_DIR "${SPHINX_BUILD}/html")
+set(SPHINX_HTML_INDEX_FILE "${SPHINX_HTML_DIR}/index.html")
 
-add_custom_command(OUTPUT ${SPHINX_HTML_FILE}
+add_custom_command(OUTPUT ${SPHINX_HTML_INDEX_FILE}
     COMMAND
         ${SPHINX_EXECUTABLE} -M html
         ${SPHINX_SOURCE} ${SPHINX_BUILD}
@@ -68,12 +70,13 @@ add_custom_command(OUTPUT ${SPHINX_HTML_FILE}
     COMMENT "Generating HTML documentation with Sphinx"
 )
 
-add_custom_target(python_sphinx_html ALL DEPENDS ${SPHINX_HTML_FILE})
+add_custom_target(python_sphinx_html ALL DEPENDS ${SPHINX_HTML_INDEX_FILE})
 
 install(
-    FILES
-        ${SPHINX_HTML_FILE}
+    DIRECTORY
+        ${SPHINX_HTML_DIR}
     DESTINATION
-        ${ARIUS_DOCS_INSTALL_DIR}
+        ${ARIUS_DOCS_INSTALL_DIR}/html/python
+    COMPONENT DOCS_HTML
 )
 
