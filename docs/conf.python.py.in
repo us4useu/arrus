@@ -43,7 +43,7 @@ mock_import(
 )
 
 # -- Project information -----------------------------------------------------
-project = 'arius-sdk (python)'
+project = 'arius-sdk (${LANGUAGE})'
 copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 

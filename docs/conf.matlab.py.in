@@ -16,7 +16,7 @@ import importlib
 
 
 # -- Project information -----------------------------------------------------
-project = 'arius-sdk (matlab)'
+project = 'arius-sdk (${LANGUAGE})'
 copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 
