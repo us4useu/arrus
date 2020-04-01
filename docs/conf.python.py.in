@@ -48,7 +48,7 @@ copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 
 release = '${PROJECT_VERSION}'
-rst_epilog = ".. |api_language| replace:: %s" % '${LANGUAGE}
+rst_epilog = ".. |api_language| replace:: %s" % '${LANGUAGE}'
 
 # -- General configuration ---------------------------------------------------
 
