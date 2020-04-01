@@ -227,14 +227,36 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
 
 
-def make_bmode_image(rf_image, x_grid, y_grid, dB_threshold=-40):
+def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
     """
     The function for creating b-mode image
     :param rf_image: 2D rf image
     :param x_grid: vector of x coordinates
     :param y_grid: vector of y coordinates
+    :param db_range: dynamic range in [dB].
+           If int or float, it is the lower bound of dynamic range,
+           and upper bound equal 0 is assumed.
+           If list or tuple - min and max values are treated
+           as bounds of the dynamic range.
     :return:
     """
+    if isinstance(db_range, int):
+        db_range = [db_range, 0]
+
+    elif isinstance(db_range, float):
+        db_range = [db_range, 0]
+
+    elif isinstance(db_range, list):
+        db_range = [min(db_range), max(db_range)]
+
+    elif isinstance(db_range, tuple):
+        db_range = [min(db_range), max(db_range)]
+
+    else:
+        #  default dynamic range
+        print('warning: invalid image dynamic range, '
+              'default dynamic range [-60, 0] is set')
+        db_range = [min(db_range), max(db_range)]
 
     # check if 'rf' or 'iq' data on input
     is_iqdata = isinstance(rf_image[1, 1], np.complex)
@@ -277,11 +299,12 @@ def make_bmode_image(rf_image, x_grid, y_grid, dB_threshold=-40):
     data_aspect = dy/dx
 
     # show the image
+
     plt.imshow(bmode_image,
                interpolation='bicubic',
                aspect=data_aspect,
                cmap='gray',
-               vmin=dB_threshold, vmax=0
+               vmin=db_range[0], vmax=db_range[1]
                )
 
     plt.xticks(xticks, xtickslabels)
