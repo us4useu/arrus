@@ -194,3 +194,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 /python/bmode/rfBfr.mat
+
+# CMake
+CMakeGraphVizOptions.cmake

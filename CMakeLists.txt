@@ -18,6 +18,14 @@ option(BUILD_PY "Build python API." OFF)
 option(BUILD_DOCS "Build documentation." OFF)
 option(RUN_TESTS "Run all tests builded packages." OFF)
 
+option(BUILD_SWIG "Build swig wrappers. \
+NOTE: this should turned on in order to build proper API. Turn it off \
+only for testing and development, for example to work on currently unsupported \
+platforms." ON)
+if(NOT BUILD_SWIG)
+    message(WARNING "BUILDING PACKAGE WITHOUT LOW-LEVEL API WRAPPERS!")
+endif()
+
 ################################################################################
 # Sub-projects
 ################################################################################

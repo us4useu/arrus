@@ -3,6 +3,9 @@
 ################################################################################
 # - Targets
 ################################################################################
+
+if(BUILD_SWIG)
+
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 find_package(PythonLibs REQUIRED)
@@ -50,6 +53,8 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
         ${PYTHON_LIBRARIES}
     )
 endforeach()
+
+endif()
 ################################################################################
 # Python packaging
 ################################################################################
@@ -92,7 +97,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
         ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
-    DEPENDS ${SOURCE_FILES} iarius ihv256 idbarlite
+    DEPENDS ${SOURCE_FILES} ${Us4Wrappers}
 )
 
 add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})
