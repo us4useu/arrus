@@ -13,8 +13,10 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 # Global options and settings
 ################################################################################
 set(ARIUS_DOCS_INSTALL_DIR docs)
+
 option(BUILD_PY "Build python API." OFF)
 option(BUILD_DOCS "Build documentation." OFF)
+option(RUN_TESTS "Run all tests builded packages." OFF)
 
 ################################################################################
 # Sub-projects

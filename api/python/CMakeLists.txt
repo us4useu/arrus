@@ -5,7 +5,6 @@
 ################################################################################
 find_package(SWIG REQUIRED)
 include(UseSWIG)
-find_package(PythonInterp REQUIRED)
 find_package(PythonLibs REQUIRED)
 set(Us4Components
     US4OEM
@@ -54,6 +53,10 @@ endforeach()
 ################################################################################
 # Python packaging
 ################################################################################
+include(python)
+find_package(PythonInterp REQUIRED)
+set(PYTHON_PACKAGE_NAME arius)
+
 set(SOURCE_FILES
         "arius/__init__.py"
         "arius/beam.py"
@@ -82,13 +85,21 @@ set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
 
 add_custom_command(OUTPUT ${TIMESTAMP}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/arius ${CMAKE_CURRENT_BINARY_DIR}/arius
-    COMMAND ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
-    COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
+    COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/arius ${CMAKE_CURRENT_BINARY_DIR}/arius
+    COMMAND
+        ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
+    COMMAND
+        ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
     DEPENDS ${SOURCE_FILES} iarius ihv256 idbarlite
 )
 
-add_custom_target(python-whl ALL DEPENDS ${TIMESTAMP})
-
-
-
+add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})
+set_target_properties(
+    python_whl
+    PROPERTIES
+        PACKAGE_TIMESTAMP ${TIMESTAMP}
+        PACKAGE_NAME ${PYTHON_PACKAGE_NAME}
+        PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist
+)

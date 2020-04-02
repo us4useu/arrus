@@ -1,9 +1,6 @@
 ################################################################################
 # Sphinx
 ################################################################################
-find_package(Sphinx REQUIRED)
-find_package(PythonInterp REQUIRED)
-
 set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DOC_FILES
@@ -20,7 +17,12 @@ list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 ################################################################################
 # Sphinx Docs generator.
 ################################################################################
-function(CREATE_DOC_TARGET LANGUAGE FORMAT)
+function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
+    get_target_property(VENV_PY_EXECUTABLE ${VENV_TARGET} VENV_EXECUTABLE)
+    get_target_property(SPHINX_EXECUTABLE ${SPHINX_TARGET} SPHINX_EXECUTABLE)
+    if(NOT "${DEPS}" STREQUAL "")
+        get_target_property(ARIUS_INSTALL_STAMP ${DEPS} INSTALL_TIMESTAMP)
+    endif()
     if(FORMAT STREQUAL "pdf")
         set(FORMAT_OUT_DIR "latex")
         set(FORMAT_SPHINX_METHOD "latexpdf")
@@ -43,6 +45,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT)
 
     set(SPHINX_TRACKED_DIR "${SPHINX_BUILD}/${FORMAT_OUT_DIR}")
     set(SPHINX_TRACKED_FILE "${SPHINX_TRACKED_DIR}/${FORMAT_TRACKED_FILE}")
+
     add_custom_command(OUTPUT ${SPHINX_TRACKED_FILE}
         COMMAND
             ${CMAKE_COMMAND} -E copy_directory
@@ -53,7 +56,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT)
                 ${CMAKE_CURRENT_SOURCE_DIR}/index.rst
                 ${SPHINX_CURRENT_LANG_DIR}/index.rst
         COMMAND
-            ${PYTHON_EXECUTABLE}
+            ${VENV_PY_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/restructure_tree.py
                 --root_dir ${SPHINX_CURRENT_LANG_DIR}
                 --language ${LANGUAGE}
@@ -63,7 +66,8 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT)
                 -c ${SPHINX_LATEX_CONF_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_LANG_DIR}
         DEPENDS
-            ${DOC_FILES}
+            ${DOC_FILES} ${VENV_TARGET} ${SPHINX_TARGET} ${DEPS}
+            ${ARIUS_INSTALL_STAMP}
         MAIN_DEPENDENCY @{SPHINX_LATEX_CONF_FILE_OUT} ${SPHINX_CONF_FILE_IN}
         COMMENT "Generating ${FORMAT} documentation for ${LANGUAGE} with Sphinx"
     )
@@ -94,8 +98,18 @@ endfunction()
 ################################################################################
 # Targets and installs.
 ################################################################################
-CREATE_DOC_TARGET(python pdf)
-CREATE_DOC_TARGET(python html)
-CREATE_DOC_TARGET(matlab pdf)
-CREATE_DOC_TARGET(matlab html)
+include(python)
+create_python_venv(docs_venv ${CMAKE_CURRENT_BINARY_DIR})
+install_sphinx_package(sphinx_package docs_venv)
+
+if(BUILD_PY)
+    install_arius_package(arius_package docs_venv python_whl)
+    CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arius_package)
+    CREATE_DOC_TARGET(python html docs_venv sphinx_package arius_package)
+endif()
+
+if(BUILD_MATLAB)
+    CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package "")
+    CREATE_DOC_TARGET(matlab html docs_venv sphinx_package "")
+endif()
 
