@@ -108,7 +108,7 @@ if(ARIUS_BUILD_PY)
     CREATE_DOC_TARGET(python html docs_venv sphinx_package arius_package)
 endif()
 
-if(BUILD_MATLAB)
+if(ARIUS_BUILD_MATLAB)
     CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package "")
     CREATE_DOC_TARGET(matlab html docs_venv sphinx_package "")
 endif()

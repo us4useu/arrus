@@ -15,6 +15,7 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(ARIUS_DOCS_INSTALL_DIR docs)
 
 option(ARIUS_BUILD_PY "Build python API." OFF)
+option(ARIUS_BUILD_MATLAB "Build MATLAB API." OFF)
 option(ARIUS_BUILD_DOCS "Build documentation." OFF)
 option(ARIUS_RUN_TESTS "Run all tests builded packages." OFF)
 
