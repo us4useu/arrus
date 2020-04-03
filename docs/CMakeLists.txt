@@ -5,6 +5,10 @@ set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DOC_FILES
     "index.rst"
+    "content/introduction/index.rst"
+    "content/introduction/coordinate_system.jpeg"
+    "content/introduction/apertures.jpeg"
+    "content/introduction/delays.jpeg"
     "content/api.python.rst"
     "content/api.matlab.rst"
     "content/release_notes.rst"

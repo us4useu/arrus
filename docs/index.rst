@@ -6,6 +6,7 @@ Welcome to arius-sdk documentation!
     :maxdepth: 2
     :caption: User documentation
 
+    content/introduction/index
     content/examples/index
 
 .. toctree::
