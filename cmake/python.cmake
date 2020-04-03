@@ -16,7 +16,7 @@ function(search_python_module MODULE_NAME)
     else()
         message(
             FATAL_ERROR
-            "Can't find python module \"${MODULE_NAME}\", user install it using pip...")
+            "Can't find python module \"${MODULE_NAME}\", install it using pip install ${MODULE_NAME}")
     endif()
 endfunction()
 
