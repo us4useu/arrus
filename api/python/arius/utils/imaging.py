@@ -315,4 +315,4 @@ def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
     cbar.ax.set_ylabel('[dB]', rotation=90)
     plt.xlabel('[mm]')
     plt.ylabel('[mm]')
-    plt.show()
+#    plt.show()
