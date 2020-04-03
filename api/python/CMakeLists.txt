@@ -4,7 +4,7 @@
 # - Targets
 ################################################################################
 
-if(BUILD_SWIG)
+if(ARIUS_BUILD_SWIG)
 
 find_package(SWIG REQUIRED)
 include(UseSWIG)
