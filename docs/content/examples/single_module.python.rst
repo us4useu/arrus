@@ -8,31 +8,32 @@ Single Module
 
 In the following example we show:
 
-1. how to configure TX and RX subsystems in order to generate a plane wave,
-2. how to trigger a pulse generation and acquire a complete RF frame.
+#. how to configure TX and RX subsystems in order to generate a plane wave,
+#. how to trigger a pulse generation and acquire a complete RF frame.
 
 Make sure that you have installed an appropriate ``arius`` wheel file.
 
 A complete source code is available in a ``python/examples/basics/arius_x1.py``.
 To run it in your shell:
 
-1. change your current location to a directory: ``python/example/basics``,
-2. execute following command: ``python arius_x1.py``.
+#. change your current location to a directory: ``python/example/basics``,
+#. execute following command: ``python arius_x1.py``.
 
 
 Initialization
 --------------
 
 First, an interactive session with a device must be created.
-Assuming you are running the example from the directory, in which the script is originally located, following should work:
+Assuming you are running the example from the directory, in which the script is
+originally located, following should work:
 
 .. code-block:: python
 
     sess = ar.session.InteractiveSession("cfg.yaml")
 
-The configuration file ``python/examples/basics/cfg.yaml`` contains information about
-devices that should be visible in a session. In our example, cfg.yaml states
-that:
+The configuration file ``python/examples/basics/cfg.yaml`` contains information
+about devices that should be visible in a session. In our example, cfg.yaml
+states that:
 
 - there is only one arius module available,
 - no HV256 (power supplier) module will be used.
@@ -43,8 +44,8 @@ We also have to obtain a handle to the device with which we want to communicate:
 
     module = sess.get_device("/Arius:0")
 
-Next, we need to take into account a probe adapter that is currently installed on our board, thus an appropriate
-RX and TX channels mapping must be set:
+Next, we need to take into account a probe adapter that is currently installed
+on our board, thus an appropriate RX and TX channels mapping must be set:
 
 .. code-block:: python
 
@@ -60,7 +61,8 @@ Then, we start the device:
 
     module.start_if_necessary()
 
-In this place we also set all RX parameters that we will not change later in the example:
+In this place we also set all RX parameters that we will not change later in
+the example:
 
 .. code-block:: python
 
@@ -77,12 +79,12 @@ In this place we also set all RX parameters that we will not change later in the
 
 That is:
 
-1. we set amplifier gain,
-2. set low-pass cutoff frequency,
-3. we enable active termination,
-4. we set low-noise amplifier gain,
-5. and enable digital time gain compensation,
-6. turn on TGC and set TGC samples.
+#. we set amplifier gain,
+#. set low-pass cutoff frequency,
+#. we enable active termination,
+#. we set low-noise amplifier gain,
+#. and enable digital time gain compensation,
+#. turn on TGC and set TGC samples.
 
 Check :ref:`api-main` for more information on each method.
 
@@ -90,10 +92,11 @@ Defining TX/RX acquisitions
 ---------------------------
 
 In this example we want to transmit and capture a signal using 128 channels.
-In us4OEM module there are 32 receive channels in total, but each receive channel
-is connected to 4 different transducers through the T/R switches.
+In us4OEM module there are 32 receive channels in total, but each receive
+channel is connected to 4 different transducers through the T/R switches.
 This architecture enables handling 128 element probes with low-cost hardware.
-Full 128-channel data capture can be done with a sequence of 4 transmit/receive acquisitions.
+Full 128-channel data capture can be done with a sequence of 4 transmit/receive
+acquisitions.
 
 .. credits to DC
 

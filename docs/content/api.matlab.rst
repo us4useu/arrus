@@ -6,16 +6,18 @@ AriusMEX API
 
 .. caution::
 
-    Arius SDK is currently under development and its API will be modified in the future. Please expect breaking changes.
+    Arius SDK is currently under development and its API will be modified in
+    the future. Please expect breaking changes.
 
 General formula
 ===============
 
-Use ``AriusMEX`` MATLAB function to communicate with the provided hardware. This function allows to perform some particular **operation** with
+Use ``AriusMEX`` MATLAB function to communicate with the provided hardware.
+This function allows to perform some particular **operation** with
 given **parameters** on a selected **us4OEM module** (a card).
 
-Before calling ``AriusMEX`` function make sure that a variable ``nArius`` is set in you current workspace and is equal
-to the number of available modules.
+Before calling ``AriusMEX`` function make sure that a variable ``nArius`` is
+set in you current workspace and is equal to the number of available modules.
 
 ..  mat:function:: AriusMEX(moduleIndex, operation, varargin)
 
