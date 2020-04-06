@@ -3,8 +3,8 @@ import scipy.signal as signal
 import matplotlib.pyplot as plt
 import numpy as np
 import cupy as cp
-import numpy.matlib as npml
 import argparse
+import parameters as par
 
 
 def reconstruct_rf_img(rf, x_grid, z_grid,
@@ -36,6 +36,8 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     :return: rf beamformed image
 
     """
+    tx_angle = np.squeeze(tx_angle)
+
     if use_gpu:
         rf = cp.array(rf)
         x_grid = cp.array(x_grid)
@@ -45,6 +47,10 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     else:
         print('recontruction using cpu')
     xp = cp.get_array_module(rf)
+
+
+    if tx_focus is None:
+        tx_focus = 0
 
 
     # making x and z_grid 'vertical vector' (should be more user friendly in future!)
@@ -57,7 +63,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     x_size = max(x_grid.shape)
 
     # check if data is iq (i.e. complex) or 'ordinary' rf (i.e. real)
-    is_iqdata = isinstance(rf[1, 1, 1], xp.complex)
+    is_iqdata = isinstance(rf[0, 0, 0], xp.complex)
     if is_iqdata:
         print('iq (complex) data on input')
     else:
@@ -303,7 +309,7 @@ def calculate_envelope(rf):
     return envelope
 
 
-def make_bmode_image(rf_image, x_grid, y_grid):
+def make_bmode_image(rf_image, x_grid, y_grid, dB_threshold=-60):
     """
     The function for creating b-mode image
     :param rf_image: 2D rf image
@@ -357,7 +363,7 @@ def make_bmode_image(rf_image, x_grid, y_grid):
                interpolation='bicubic',
                aspect=data_aspect,
                cmap='gray',
-               vmin=-60, vmax=0
+               vmin=dB_threshold, vmax=0
                )
 
     plt.xticks(xticks, xtickslabels)
@@ -438,7 +444,7 @@ def rf2iq(rf, fc, fs, decimation_factor):
 def main():
     description_string = 'this file realize image reconstruction \
     from ultrasound data which comes from us4us system'
-    parser=argparse.ArgumentParser(description=description_string)
+    parser = argparse.ArgumentParser(description=description_string)
 
     parser.add_argument("--file", type=str, required=True, default=0,
                         help='The path to the file with 3D array \
@@ -451,7 +457,7 @@ def main():
         nargs=3,
         help="Definition of interpolation grid along OX axis in [m]. \
         A tuple: (start, stop, number of points) ",
-        default=(-10*1e-3, 10*1e-3, 96),
+        # default=(-10*1e-3, 10*1e-3, 96),
         required=False)
 
     parser.add_argument(
@@ -460,42 +466,42 @@ def main():
         nargs=3,
         help="Definition of interpolation grid along OZ axis in [m]. \
         A tuple: (start, stop, number of points). ",
-        default=(5*1e-3, 20*1e-3, 256),
+        # default=(5*1e-3, 20*1e-3, 256),
         required=False)
 
     parser.add_argument(
         "--pitch", dest="pitch",
         type=float,
         required=False,
-        default=0.245e-3,
+        # default=0.245e-3,
         help='Distance between neighbouring elements of ultrasound probe, [m]')
 
     parser.add_argument(
         "--fs", dest="fs",
         type=float,
         required=False,
-        default=65e6,
+        # default=65e6,
         help='The sampling frequency in [Hz].')
 
     parser.add_argument(
         "--fc", dest="fc",
         type=float,
         required=False,
-        default=5e6,
+        # default=5e6,
         help='The pulse carrier frequency, [Hz].')
 
     parser.add_argument(
         "--tx_aperture", dest="tx_aperture",
         type=int,
         required=False,
-        default=192,
+        # default=192,
         help='Transmit aperture, [number of elements].')
 
     parser.add_argument(
         "--tx_focus", dest="tx_focus",
         type=float,
         required=False,
-        default=0,
+        # default=0,
         help='Transmit focus in [m].')
 
     parser.add_argument(
@@ -503,15 +509,15 @@ def main():
         type=float,
         nargs=3,
         required=False,
-        default=(0, 0, 1),
+        # default=(0, 0, 1),
         help='Transmit angles for phased and pwi schemes. \
          A tuple: (start, stop, number of angles), in [deg]')
 
     parser.add_argument(
-        "--pulse_periods", dest="pulse_periods",
+        "--n_pulse_periods", dest="n_pulse_periods",
         type=int,
         required=False,
-        default=2,
+        # default=2,
         help='The number of periods in transmit pulse.')
 
     parser.add_argument(
@@ -519,7 +525,7 @@ def main():
         type=str,
         required=False,
         choices=['lin', 'sta', 'pwi'],
-        default='pwi',
+        # default='pwi',
         help='The reconstruction mode. \
         Can be \"pwi\" (plane wave imaging - default) \
         \"lin\" (classic), and \"sta\" (synthetic transmit aperture).')
@@ -535,48 +541,119 @@ def main():
         "--speed_of_sound", dest="c",
         type=float,
         required=False,
-        default=1490,
+        # default=1490,
         help='The assumed speed of sound in the medium, [m/s].')
 
+    parser.add_argument(
+        "--use_gpu", dest="use_gpu",
+        type=int,
+        required=False,
+        default=0,
+        help='if use_gpu==1, the gpu will be used (cupy).')
+
     args = parser.parse_args()
+    data = par.load_matlab_file(args.file)
 
-    rf  = np.load(args.file)
-    # rf = load_simulated_data(args.file)
-    x_grid = np.linspace(*args.x_grid)
-    z_grid = np.linspace(*args.z_grid)
 
-    tx_angle = np.deg2rad(
-        np.linspace(args.tx_angle[0], args.tx_angle[1], int(args.tx_angle[2]))
-    )
+    if args.x_grid is None:
+        x_grid = np.linspace(-3*1e-3, 3*1e-3, 16)
+    else:
+        x_grid = args.x_grid
 
-    rf_image = reconstruct_rf_img(rf,
+    if args.z_grid is None:
+        z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 64)
+    else:
+        z_grid = args.z_grid
+
+
+    if args.pitch is None:
+        pitch = data[1].pitch
+    else:
+        pitch = args.pitch
+
+
+    if args.fs is None:
+        fs = data[2].rx.sampling_frequency
+    else:
+        fs = args.fs
+
+
+    if args.fc is None:
+        fc = data[2].tx.frequency
+    else:
+        fc = args.fc
+
+
+    if args.c is None:
+        c = data[2].speed_of_sound
+    else:
+        c = args.c
+
+    if args.tx_aperture is None:
+        tx_aperture = data[2].tx.aperture_size
+    else:
+        tx_aperture = args.tx_aperture
+
+
+    if args.tx_focus is None:
+        tx_focus = data[2].tx.focus
+    else:
+        tx_focus = args.tx_focus
+
+
+    if args.tx_angle is None:
+        tx_angle = data[2].tx.angles
+    else:
+        tx_angle = args.tx_angle
+
+
+    if args.n_pulse_periods is None:
+        n_pulse_periods = data[2].tx.n_periods
+    else:
+        n_pulse_periods = args.n_pulse_periods
+
+
+    if args.tx_mode is None:
+        tx_mode = data[2].mode
+    else:
+        tx_mode = args.tx_mode
+
+
+    # reconstruct data
+    rf_image = reconstruct_rf_img(data[0],
                                   x_grid,
                                   z_grid,
-                                  args.pitch,
-                                  args.fs,
-                                  args.fc,
-                                  args.c,
-                                  args.tx_aperture,
-                                  args.tx_focus,
+                                  pitch,
+                                  fs,
+                                  fc,
+                                  c,
+                                  tx_aperture,
+                                  tx_focus,
                                   tx_angle,
-                                  args.pulse_periods,
-                                  args.tx_mode,
-                                  args.n_first_samples,
+                                  n_pulse_periods,
+                                  tx_mode,
+                                  n_first_samples=0,
+                                  use_gpu=args.use_gpu
                                   )
 
-    f_cut = [args.fc*0.5, args.fc*1.5]
-    fs_img = args.c/(z_grid[1]-z_grid[0])
-    filter_order = 4
-    b, a = signal.butter(filter_order,
-                         f_cut, btype='band',
-                         analog=False,
-                         output='ba',
-                         fs=fs_img)
 
-    rf_image_filt = signal.filtfilt(b, a, rf_image, axis=0)
+    make_bmode_image(rf_image, x_grid, z_grid)
 
-    # show image
-    make_bmode_image(rf_image_filt, x_grid, z_grid)
+
+    ### with filtration
+    # f_cut = [fc*0.25, fc*1.75]
+    # fs_img = c/(z_grid[1]-z_grid[0])
+    # filter_order = 4
+    # b, a = signal.butter(filter_order,
+    #                      f_cut, btype='band',
+    #                      analog=False,
+    #                      output='ba',
+    #                      fs=fs_img)
+    #
+    # rf_image_filt = signal.filtfilt(b, a, rf_image, axis=0)
+
+    # # show image
+    # make_bmode_image(rf_image_filt, x_grid, z_grid)
 
 
 ################################################################################
