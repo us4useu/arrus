@@ -1,0 +1,16 @@
+name: arius-dev
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - cmake=3.17
+  - gtest=1.10
+  - protobuf=3.11
+  - swig=4.0
+  - python=3.7
+  - pip
+  - pip:
+      - virtualenv
+
+
+
