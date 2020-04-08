@@ -8,6 +8,7 @@ if(ARIUS_BUILD_SWIG)
 
 find_package(SWIG REQUIRED)
 include(UseSWIG)
+find_package(PythonInterp REQUIRED)
 find_package(PythonLibs REQUIRED)
 set(Us4Components
     US4OEM
