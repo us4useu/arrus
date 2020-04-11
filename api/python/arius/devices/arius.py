@@ -8,6 +8,7 @@ import numpy as np
 
 import arius.devices.device as _device
 import arius.devices.iarius as _iarius
+import arius.devices.callbacks as _callbacks
 import arius.utils as _utils
 
 

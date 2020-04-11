@@ -52,10 +52,9 @@ public:
 
 // TODO(pjarosik) unify below functions
 void ScheduleReceiveWithCallback(IArius* that, const size_t address, const size_t length,
-                                 ScheduleReceiveCallback& callback) {
+                                 ScheduleReceiveCallikack& callback) {
     const arius::DataAcquiredEvent& event = arius::DataAcquiredEvent(address, length);
     that->ScheduleReceive(address, length, [&event, &callback] () {
-        std::cout << "ScheduleReceive callback" << std::endl;
         callback.run(event);
     });
 }
