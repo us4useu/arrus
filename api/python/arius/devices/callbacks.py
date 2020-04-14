@@ -1,4 +1,4 @@
-import arius.python.devices.iarius as _iarius
+import arius.devices.iarius as _iarius
 
 class ScheduleReceiveCallback(_iarius.ScheduleReceiveCallback):
     def __init__(self, callback_fn):
