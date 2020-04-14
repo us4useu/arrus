@@ -54,7 +54,7 @@ public:
 void ScheduleReceiveWithCallback(IArius* that, const size_t address, const size_t length,
                                  ScheduleReceiveCallback& callback) {
     const arius::DataAcquiredEvent& event = arius::DataAcquiredEvent(address, length);
-    auto fn = [] () {
+    auto fn = [&callback, &event] () {
         callback.run(event);
     };
     that->ScheduleReceive(address, length, fn);
