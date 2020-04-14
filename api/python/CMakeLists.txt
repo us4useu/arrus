@@ -47,6 +47,7 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     )
     target_link_libraries(${wrapper}
        PRIVATE
+       core
        Us4::${component}
         ${PYTHON_LIBRARIES}
     )
@@ -64,6 +65,7 @@ set(SOURCE_FILES
         "arius/devices/device.py"
         "arius/devices/hv256.py"
         "arius/devices/probe.py"
+        "arius/devices/callbacks.py"
         "arius/utils/__init__.py"
         "arius/utils/imaging.py"
         "arius/utils/parameters.py"

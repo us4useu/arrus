@@ -3,7 +3,7 @@
 
 #include <cstddef>
 
-#include "arius/core/events/Event.h"
+#include "core/api/Event.h"
 
 namespace arius {
     class DataAcquiredEvent : public Event {

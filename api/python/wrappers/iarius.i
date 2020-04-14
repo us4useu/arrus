@@ -32,13 +32,13 @@
 #include "iI2CMaster.h"
 #include <thread>
 #include <chrono>
-#include "arius/core/events/DataAcquiredEvent.h"
+#include "core/api/DataAcquiredEvent.h"
 %}
 %include afe58jd18Registers.h
 %include iarius.h
 %include iI2CMaster.h
-%include "arius/core/events/Event.h"
-%include "arius/core/events/DataAcquiredEvent.h"
+%include "core/api/Event.h"
+%include "core/api/DataAcquiredEvent.h"
 
 %feature("director") ScheduleReceiveCallback;
 
@@ -52,11 +52,12 @@ public:
 
 // TODO(pjarosik) unify below functions
 void ScheduleReceiveWithCallback(IArius* that, const size_t address, const size_t length,
-                                 ScheduleReceiveCallikack& callback) {
+                                 ScheduleReceiveCallback& callback) {
     const arius::DataAcquiredEvent& event = arius::DataAcquiredEvent(address, length);
-    that->ScheduleReceive(address, length, [&event, &callback] () {
+    auto fn = [] () {
         callback.run(event);
-    });
+    };
+    that->ScheduleReceive(address, length, fn);
 }
 void ScheduleReceiveWithoutCallback(IArius* that, const size_t address, const size_t length) {
     that->ScheduleReceive(address, length);
