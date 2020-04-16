@@ -1,6 +1,10 @@
 Release notes
 =============
 
+Version 0.3.0
+-------------
+- Added a function to set rx/tx aperture mask - see AriusCard.set_tx_aperture(aperture) and AriusCard.set_rx_aperture(aperture)
+
 Version 0.2.0
 -------------
 - Added functions to trigger TX pulse asynchronously (AriusCard.{trigger_start, trigger_stop}).

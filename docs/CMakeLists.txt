@@ -16,7 +16,7 @@ list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 file(MAKE_DIRECTORY ${SPHINX_BUILD})
 
 ################################################################################
-# Sphinx Latex PDF geneartor
+# Sphinx Latex PDF generator
 ################################################################################
 set(SPHINX_LATEX_CONF_FILE_IN conf.py.in)
 set(SPHINX_LATEX_CONF_DIR ${CMAKE_CURRENT_BINARY_DIR}/latex)
