@@ -5,6 +5,7 @@
 ################################################################################
 find_package(SWIG REQUIRED)
 include(UseSWIG)
+find_package(PythonInterp REQUIRED)
 find_package(PythonLibs REQUIRED)
 set(Us4Components
     US4OEM
@@ -54,6 +55,7 @@ endforeach()
 # Python packaging
 ################################################################################
 set(SOURCE_FILES
+        "arius/__init__.py"
         "arius/beam.py"
         "arius/interface.py"
         "arius/session.py"
@@ -73,7 +75,6 @@ set(SOURCE_FILES
         "arius/tests/utils/parameters_test.py"
 )
 
-find_package(PythonInterp REQUIRED)
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
 set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")

@@ -48,11 +48,8 @@ class AriusCard(_device.Device):
             self.log(
                 INFO,
                 "Was powered down, initializing it and powering up...")
-            self.card_handle.Powerup()
-            self.card_handle.InitializeClocks()
-            self.card_handle.InitializeDDR4()
-            self.card_handle.InitializeRX()
-            self.card_handle.InitializeTX()
+
+            self.card_handle.Initialize()
             self.set_tx_channel_mapping(self.tx_channel_mapping)
             self.set_rx_channel_mapping(self.rx_channel_mapping)
             self.log(INFO, "... successfully powered up.")
@@ -202,7 +199,7 @@ class AriusCard(_device.Device):
                 raise ValueError("You should provide %d delays." % self.get_n_tx_channels())
             delays = delays.tolist()
         _utils._assert_equal(
-            len(delays), self.get_n_tx_channels(),
+            len(np.squeeze(delays)), self.get_n_tx_channels(),
             desc="Array of TX delays should contain %d numbers (card number of TX channels)"
                  % self.get_n_tx_channels()
         )
