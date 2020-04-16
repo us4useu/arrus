@@ -123,9 +123,23 @@ class AriusCard(_device.Device):
             )
 
     @assert_card_is_powered_up
-    def set_tx_aperture(self, aperture, firing: int=0):
+    def set_tx_aperture(self, origin: int, size: int, firing: int=0):
         """
         Sets position of an active TX aperture.
+        :param origin: an origin channel of the aperture, **starts from 0**
+        :param size: a length of the aperture
+        :param firing: a firing, in which the delay should apply, **starts from 0**
+        """
+        self.log(
+            DEBUG,
+            "Setting TX aperture: origin=%d, size=%d" % (origin, size)
+        )
+        self.card_handle.SetTxAperture(origin, size, firing)
+
+    @assert_card_is_powered_up
+    def set_tx_aperture_mask(self, aperture, firing: int=0):
+        """
+        Sets mask of active TX aperture channels.
 
         :param aperture: a boolean numpy array of get_number_of_channels() channels, 'True' means to activate chanel on a given position.
         :param firing: a firing, in which the delay should apply, **starts from 0**
@@ -153,7 +167,22 @@ class AriusCard(_device.Device):
             _iarius.delete_uint16Array(array)
 
     @assert_card_is_powered_up
-    def set_rx_aperture(self, aperture, firing: int = 0):
+    def set_rx_aperture(self, origin: int, size: int, firing: int=0):
+        """
+        Sets RX aperture’s origin and size.
+
+        :param origin: an origin channel of the aperture
+        :param size: a length of the aperture
+        :param firing: a firing, in which the parameter value should apply, starts from 0
+        """
+        self.log(
+            DEBUG,
+            "Setting RX aperture: origin=%d, size=%d" % (origin, size)
+        )
+        self.card_handle.SetRxAperture(origin, size, firing)
+
+    @assert_card_is_powered_up
+    def set_rx_aperture_mask(self, aperture, firing: int = 0):
         """
         Sets position of an active RX aperture.
 
