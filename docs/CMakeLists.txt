@@ -13,6 +13,7 @@ set(DOC_FILES
     "content/examples/single_module.matlab.rst"
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
+file(MAKE_DIRECTORY ${SPHINX_BUILD})
 
 ################################################################################
 # Sphinx Docs generator.

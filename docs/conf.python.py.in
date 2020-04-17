@@ -86,4 +86,6 @@ html_static_path = ['_static']
 latex_elements = {
     # No index.
     'printindex' : r'',
+    # No TOC.
+    'tableofcontents': r''
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17.0)
 
-project(arius-sdk LANGUAGES CXX VERSION 0.2.0)
+project(arius-sdk LANGUAGES CXX VERSION 0.3.0)
 string(TIMESTAMP CURRENT_YEAR "%Y")
 set(CMAKE_CXX_STANDARD 17)
 
