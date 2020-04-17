@@ -14,6 +14,7 @@ if not _logger.handlers:
 
 # TODO temporary ommiting importing some of the modules here, when
 # low-level API is not available (for example currently on Unix systems).
+import importlib
 import importlib.util
 is_iarius = importlib.util.find_spec("arius.devices._iarius")
 is_ihv256 = importlib.util.find_spec("arius.devices._ihv256")
