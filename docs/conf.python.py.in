@@ -43,14 +43,12 @@ mock_import(
 )
 
 # -- Project information -----------------------------------------------------
-project = 'arius-sdk (python)'
-copyright = '2020, us4us Ltd.'
+project = 'arius-sdk (${LANGUAGE})'
+copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 
-
-
-# The full version, including alpha/beta/rc tags
-release = '0.2.0rc1'
+release = '${PROJECT_VERSION}'
+rst_epilog = ".. |api_language| replace:: %s" % '${LANGUAGE}'
 
 # -- General configuration ---------------------------------------------------
 
