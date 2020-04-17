@@ -2,7 +2,7 @@
 classdef us4R
     
     
-    properties (Access = private)
+    properties %(Access = private)
         
         sys
         seq
@@ -14,39 +14,46 @@ classdef us4R
     methods
         
         % To do: 
-        % Priority=Lo; Check the param sizes
+        % Priority=Hi; usProbes.mat->function (DONE)
+        % Priority=Hi; exclude calcTxParams
+        % Priority=Hi; Rx aperture motion for LIN
+        % Priority=Hi; Rx aperture for STA/PWI
+        %               setSeqParams, calcTxParams, 
+        %               programHW(nSubTx),
+        %               execSequence(reorganize).
+        
+        % Priority=Hi; Check the param sizes
+        
+        % Priority=Lo; scanConv after envelope detection, scanConv coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
         
         function obj = us4R(nArius,probeName)
             
 %             path(path, '..\..\x64\Release');
             addpath('C:\arius\matlab');
-            
-            % load probe parameters
-            load('usProbes.mat','probes');
-            probesAux	= struct2cell(probes(:));
-            iProbe      = find(strcmpi(probesAux(1,:),probeName),1);
-            if isempty(iProbe)
-                % Throw exception
-            end
+%             addpath('C:\Users\Public\us4oem-releases\ref-43\matlab');
+%             addpath('C:\Users\Public\us4oem-releases\ref-43\lib64');
             
             % System parameters
             obj.sys.nArius      = nArius;                               % number of Arius modules
             obj.sys.nChArius	= 32;
-            obj.sys.pitch       = probes(iProbe).pitch;
-            obj.sys.nElem       = probes(iProbe).nElements;
+            
+            probe               = probeParams(probeName);
+            obj.sys.adapType	= probe.adapType;                       % 0-old(00001111); 1-new(01010101);
+            obj.sys.pitch       = probe.pitch;
+            obj.sys.nElem       = probe.nElem;
             obj.sys.xElem       = (-(obj.sys.nElem-1)/2 : ...
                                     (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
             
             for iArius=0:(nArius-1)
                 % Set Rx channel mapping
                 for ch=1:32
-                    AriusMEX(iArius, "SetRxChannelMapping", probes(iProbe).rxChannelMap(iArius+1,ch), ch);
+                    AriusMEX(iArius, "SetRxChannelMapping", probe.rxChannelMap(iArius+1,ch), ch);
                 end
                 
                 % Set Tx channel mapping
                 for ch=1:128
-                    AriusMEX(iArius, "SetTxChannelMapping", probes(iProbe).txChannelMap(iArius+1,ch), ch);
+                    AriusMEX(iArius, "SetTxChannelMapping", probe.txChannelMap(iArius+1,ch), ch);
                 end
                 
                 % init RX
@@ -58,12 +65,14 @@ classdef us4R
                 AriusMEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
                 AriusMEX(iArius, "TGCEnable");
                 
-                % ?????
-                AriusMEX(0,"EnableHV");
-                AriusMEX(0,"SetHVVoltage", 50);
+                try
+                    AriusMEX(0,"EnableHV");
+                catch
+                    warning('1st "EnableHV" failed');
+                    AriusMEX(0,"EnableHV");
+                end
                 
-%                 AriusMEX(iArius, "DisableTestPatterns");
-%                 AriusMEX(iArius, "SyncTestPatterns");
+                AriusMEX(0,"SetHVVoltage", 10);
             end
             
         end
@@ -79,7 +88,6 @@ classdef us4R
                                 'txCenterElement',  'txCentElem'; ...
                                 'txApertureCenter', 'txApCent'; ...
                                 'txApertureSize',   'txApSize'; ...
-                                'rxApertureSize',   'rxApSize'; ...
                                 'txFocus',          'txFoc'; ...
                                 'txAngle',          'txAng'; ...
                                 'speedOfSound',     'c'; ...
@@ -113,8 +121,8 @@ classdef us4R
             
             %% Resulting parameters
             if isempty(obj.seq.txApCent) && ~isempty(obj.seq.txCentElem)
-                obj.seq.txApCent        = obj.seq.xElem(floor(obj.seq.txCentElem))*(1-mod(obj.seq.txCentElem,1)) + ...
-                                          obj.seq.xElem( ceil(obj.seq.txCentElem))*(  mod(obj.seq.txCentElem,1));
+                obj.seq.txApCent        = obj.sys.xElem(floor(obj.seq.txCentElem)).*(1-mod(obj.seq.txCentElem,1)) + ...
+                                          obj.sys.xElem( ceil(obj.seq.txCentElem)).*(  mod(obj.seq.txCentElem,1));
             end
             
             switch obj.seq.type
@@ -128,13 +136,26 @@ classdef us4R
             
             obj = obj.calcTxParams;
             
+            if strcmp(obj.seq.type,'lin')
+                obj.seq.nSubTx          = 1;
+            else
+                if ~obj.sys.adapType
+                    % old adapter type (00001111)
+                    obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / obj.sys.nChArius));
+                else
+                    % new adapter type (01010101)
+                    obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / (obj.sys.nChArius * obj.sys.nArius)));
+                end
+            end
+            
             %% Fixed parameters
-            obj.seq.nSubTx      = 4;
             obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
-            obj.seq.rxTime      = 80e-6;                                % [us] rx time (max 4000)
+            obj.seq.rxTime      = 160e-6;                                % [s] rx time (max 4000us)
+            obj.seq.rxDel       = 5e-6;
+            obj.seq.pauseMultip	= 1.5;
             
             %% Program hardware
-            obj.programHW;
+            obj	= obj.programHW;
             
         end
         
@@ -160,7 +181,8 @@ classdef us4R
             end
             
             for iPar=1:size(recParamMapping,1)
-                eval(['obj.seq.' recParamMapping{iPar,2} ' = [];']);
+%                 eval(['obj.seq.' recParamMapping{iPar,2} ' = [];']);
+                eval(['obj.rec.' recParamMapping{iPar,2} ' = [];']);
             end
             
             nPar = length(varargin)/2;
@@ -256,8 +278,8 @@ classdef us4R
             %% Make the apertures/delays fit the number of channels
             txDel(~txApMask)	= 0;
             
-            txApMask	= [txApMask; false(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
             txDel       = [txDel;	 zeros(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
+            txApMask	= [txApMask; false(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
             
             %% Save the apertures and delays to the obj
             obj.seq.txApMask	= txApMask;
@@ -268,10 +290,11 @@ classdef us4R
         
         
         
-        function [] = programHW(obj)
+        function obj = programHW(obj)
             
             nArius	= obj.sys.nArius;
             nSamp	= obj.seq.nSamp;
+            nChan	= obj.sys.nChArius;
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nSubTx*nTx;
@@ -282,18 +305,26 @@ classdef us4R
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
                         
-                        txSubApSize	= sum(obj.seq.txApMask((1:128)+iArius*128, iTx));
-                        txSubApOrig	= find(obj.seq.txApMask((1:128)+iArius*128, iTx),1,'first');
+                        if ~obj.sys.adapType
+                            % old adapter type (00001111)
+                            selectElem	= (1:128) + iArius*128;
+                        else
+                            % new adapter type (01010101)
+                            selectElem	= reshape((1:nChan)' + (0:3)*nChan*nArius,1,[]) + iArius*nChan;
+                        end
+                        txSubApDel	= obj.seq.txDel(selectElem,iTx);
+                        txSubApSize	= sum(obj.seq.txApMask(selectElem, iTx));
+                        txSubApOrig	= find(obj.seq.txApMask(selectElem, iTx),1,'first');
                         if isempty(txSubApOrig)
                             txSubApOrig = 1;
                         end
                         
                         AriusMEX(iArius, "SetTxAperture", txSubApOrig, txSubApSize, iEvent);
-                        AriusMEX(iArius, "SetTxDelays", obj.seq.txDel((1:128)+128*iArius,iTx), iEvent);
+                        AriusMEX(iArius, "SetTxDelays", txSubApDel, iEvent);
                         
                         AriusMEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
-                        AriusMEX(iArius, "SetTxPeriods", obj.seq.txNPer, iEvent);
-                        
+                        AriusMEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
+                        AriusMEX(iArius, "SetTxInvert", 0, iEvent);
                     end
                 end
                 AriusMEX(iArius, "SetNumberOfFirings", nEvent);
@@ -301,27 +332,86 @@ classdef us4R
             end
             
             %% Program RX
+            if strcmp(obj.seq.type,'lin')
+                obj.seq.rxApOrig	= nan(1,nTx);
+            end
+            
             for iArius=0:(nArius-1)
                 AriusMEX(iArius, "ClearScheduledReceive");
                 for iTx=1:nTx
+                    
+                    if strcmp(obj.seq.type,'lin') && iArius == 0
+                        rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent(iTx));
+                        if ~obj.sys.adapType
+                            % old adapter type (00001111)
+                            obj.seq.rxApOrig(iTx)	= round(rxCentElem - (nChan-1)/2);
+                        else
+                            % new adapter type (01010101)
+                            obj.seq.rxApOrig(iTx)	= round(rxCentElem - (nChan*nArius-1)/2);
+                        end
+                    end
+                    
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
                         
                         AriusMEX(iArius, "ScheduleReceive", iEvent*nSamp, nSamp);
                         
                         AriusMEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
-                        AriusMEX(iArius, "SetRxAperture", (iTx-1)*32+1, 32, iEvent);
+                        AriusMEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
+                        
+                        if strcmp(obj.seq.type,'lin')
+                            if ~obj.sys.adapType
+                                % old adapter type (00001111)
+                                rxSubApOrig	= obj.seq.rxApOrig(iTx) - 4*nChan*iArius;
+                            else
+                                % new adapter type (01010101)
+                                rxSubApOrig	= obj.seq.rxApOrig(iTx) - nChan*iArius;
+                                rxSubApOrig	= 1 + min(nChan,mod(rxSubApOrig-1,nChan*nArius)) ...
+                                                + nChan*floor((rxSubApOrig-1)/(nChan*nArius));
+                            end
+                            
+                            rxSubApSize	= max(0, min([nChan, nChan + rxSubApOrig - 1, 4*nChan - rxSubApOrig + 1]));
+                            rxSubApOrig	= max(1, min(4*nChan,rxSubApOrig));
+                        else
+                            rxSubApOrig	= 1 + (iSubTx-1)*nChan;
+                            rxSubApSize	= nChan;
+                        end
+                        AriusMEX(iArius, "SetRxAperture", rxSubApOrig, rxSubApSize, iEvent);
                     end
                 end
                 AriusMEX(iArius, "EnableReceive");
             end
             
             %% Program triggering
+%             AriusMEX(0, "SetNTriggers", nEvent-1);
+            AriusMEX(0, "SetNTriggers", nEvent);
             for iEvent=0:(nEvent-1)
                 AriusMEX(0, "SetTrigger", obj.seq.txPri, 0, 0, iEvent);
             end
             AriusMEX(0, "SetTrigger", obj.seq.txPri, 0, 1, nEvent-1);
-            AriusMEX(0, "SetNTriggers", nEvent-1);
+            
+        end
+        
+        
+        
+        function [] = openSequence(obj)
+            
+            nSubTx	= obj.seq.nSubTx;
+            nTx     = obj.seq.nTx;
+            nEvent	= nTx*nSubTx;
+            
+            %% Start acquisitions (1st sequence exec., no transfer to host)
+            AriusMEX(0, "TriggerStart");
+            pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
+            
+        end
+        
+        
+        
+        function [] = closeSequence(obj)
+            
+            %% Stop acquisition
+            AriusMEX(0, "TriggerStop");
             
         end
         
@@ -337,23 +427,53 @@ classdef us4R
             nEvent	= nTx*nSubTx;
             
             %% Capture data
-%             AriusMEX(0, "SWTrigger");
-            
-            AriusMEX(0, "TriggerStart");
-            pause(1*obj.seq.txPri*1e-6*nEvent);
-            AriusMEX(0, "TriggerStop");
+            for iArius=0:(nArius-1)
+                AriusMEX(iArius, "EnableReceive");
+            end
+            AriusMEX(0, "TriggerSync");
+            pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
             
             %% Transfer to PC
-            rf	= zeros(nChan*nSamp*nEvent,nArius);
+            rf	= zeros(nChan,nSamp*nEvent,nArius);
             for iArius=0:(nArius-1)
-                rf(:,iArius+1)	= AriusMEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
+                rf(:,:,iArius+1)	= AriusMEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
             end
             
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nArius]);
-            rf	= permute(rf,[2 1 3 5 4]);
-            rf	= reshape(rf,nSamp,nChan*nSubTx*nArius,nTx);
-            rf	= rf(:,1:min(obj.sys.nElem,nChan*nSubTx*nArius),:);
+            
+            if ~obj.sys.adapType
+                % old adapter type (00001111)
+                rf	= permute(rf,[2 1 3 5 4]);
+                rf	= reshape(rf,nSamp,nChan*nSubTx*nArius,nTx);
+            else
+                % new adapter type (01010101)
+                rf	= permute(rf,[2 1 5 3 4]);
+                rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx);
+            end
+            
+            if strcmp(obj.seq.type,'lin')
+                rxApOrig	= obj.seq.rxApOrig;
+                if ~obj.sys.adapType
+                    % old adapter type (00001111)
+                    for iTx=1:nTx
+                        rf(:,:,iTx)	= circshift(rf(:,:,iTx),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
+                    end
+                    rf	= rf(:,1:nChan,:);
+                    for iTx=1:nTx
+                        if ~(rxApOrig(iTx) > 1+nChan*(4-1) && rxApOrig(iTx) < 1+nChan*4)
+                            rf(:,:,iTx)	= circshift(rf(:,:,iTx),-mod(rxApOrig(iTx)-1,nChan),2);
+                        end
+                    end
+                else
+                    % new adapter type (01010101)
+                    for iTx=1:nTx
+                        rf(:,:,iTx)	= circshift(rf(:,:,iTx),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
+                    end
+                end
+            else
+                rf	= rf(:,1:min(obj.sys.nElem,nChan*nSubTx*nArius),:);
+            end
             
         end
         
@@ -415,29 +535,97 @@ classdef us4R
         
         
         
-        function [] = run(obj)
+        function [] = runOnce(obj)
+            
+            %% TX/RX sequence
+            obj.openSequence;
+            rf	= obj.execSequence;
+            obj.closeSequence;
+            
+            %% Reconstruction
+            img	= obj.execReconstr(rf);
+            
+            %% Display
+            if obj.rec.filtEnable
+                rf = filter(obj.rec.filtB,obj.rec.filtA,rf);
+            end
+            
+            nTx     = obj.seq.nTx;
+            nTx     = min(3,nTx);   % limits the number of displayed data sets
+            
+            figure;
+            for iTx=1:nTx
+                subplot(1,nTx,iTx);
+                imagesc(rf(:,:,iTx));
+                xlabel('Chan #');
+                ylabel('Samp #');
+                colormap(jet);
+                colorbar;
+                set(gca,'CLim',[-1 1]*1e2);
+            end
+            set(gcf,'Position',get(gcf,'Position') + [560 0 0 0]);
+            
+            figure;
+            imagesc(obj.rec.xGrid*1e3,obj.rec.zGrid*1e3,img);
+            xlabel('x [mm]');
+            ylabel('z [mm]');
+            daspect([1 1 1]);
+%             set(gca,'CLim',[40 80]);
+            colormap(gray);
+            colorbar;
+            
+        end
+        
+        
+        
+        function [] = runLoop(obj,showTimes)
+            
+            if nargin<2
+                showTimes = false;
+            end
             
             %% Prepare the display
-            img     = zeros(obj.rec.zSize,obj.rec.xSize);
             hFig	= figure;
-            hImg	= imagesc(obj.rec.xGrid,obj.rec.zGrid,img);
+            hImg	= imagesc(obj.rec.xGrid*1e3,obj.rec.zGrid*1e3,[]);
+            xlabel('x [mm]');
+            ylabel('z [mm]');
             daspect([1 1 1]);
-            set(gca,'CLim',[40 80]);
+            set(gca,'XLim',obj.rec.xGrid([1 end])*1e3);
+            set(gca,'YLim',obj.rec.zGrid([1 end])*1e3);
+            set(gca,'CLim',[-20 80]);
             colormap(gray);
             colorbar;
             
             %% TX/RX / Reconstruction / Display
+            obj.openSequence;
+            iFrame = 0;
             while(ishghandle(hFig))
+                iFrame = iFrame + 1;
+                
+                % TX/RX sequence
+                tic;
+                rf	= obj.execSequence;
+                tSeq = toc;
+                
+                % Reconstruction
+                tic;
+                img	= obj.execReconstr(rf);
+                tRec = toc;
+                
                 % Display
                 set(hImg, 'CData', img);
                 drawnow;
                 
-                % TX/RX sequence
-                rf	= obj.execSequence;
-                
-                % Reconstruction
-                img	= obj.execReconstr(rf);
+                % Show times
+                if showTimes
+                    disp(['Frame no. ' num2str(iFrame)]);
+                    disp(['Acq.  time = ' num2str(tSeq,         '%5.3f') ' s']);
+                    disp(['Rec.  time = ' num2str(tRec,         '%5.3f') ' s']);
+                    disp(['Frame rate = ' num2str(1/(tSeq+tRec),'%5.1f') ' fps']);
+                    disp('--------------------');
+                end
             end
+            obj.closeSequence;
             
         end
         

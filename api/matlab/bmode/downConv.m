@@ -10,36 +10,36 @@ function[rfOut] = downConv(rfIn,acq,proc)
 % rfIn                      - (nSamp,nRx,nTx) input rf data
 % 
 % acq                       - acquisition-related parameters
-% acq.rx.samplingFrequency	- [Hz] sampling frequency
-% acq.tx.frequency          - [Hz] carrier (nominal) frequency
+% acq.rxSampFreq            - [Hz] sampling frequency
+% acq.txFreq                - [Hz] carrier (nominal) frequency
 % 
 % proc                      - processing-related parameters
-% proc.ddc.iqEnable         - [logical] enables the quadrature demodulation
-% proc.ddc.cicOrder         - [] order of the CIC filter
-% proc.ddc.decimation       - [] decimation factor
+% proc.iqEnable             - [logical] enables the quadrature demodulation
+% proc.cicOrd               - [] order of the CIC filter
+% proc.dec                  - [] decimation factor
 
 %% Quadrature demodulation
-if proc.ddc.iqEnable
+if proc.iqEnable
     nSample = size(rfIn,1);
-    t = (0:nSample-1)'/acq.rx.samplingFrequency;
+    t = (0:nSample-1)'/acq.rxSampFreq;
     
-    rfOut = 2*rfIn.*cos(-2*pi*acq.tx.frequency*t) ...
-          + 2*rfIn.*sin(-2*pi*acq.tx.frequency*t)*1i;
+    rfOut = 2*rfIn.*cos(-2*pi*acq.txFreq*t) ...
+          + 2*rfIn.*sin(-2*pi*acq.txFreq*t)*1i;
 else
     rfOut = rfIn;
 end
 
 %% Downsampling (CIC filtration + decimation)
 % Integrator
-for ord=1:proc.ddc.cicOrder
+for ord=1:proc.cicOrd
     rfOut = cumsum(rfOut);
 end
 
 % Decimator
-rfOut = rfOut(proc.ddc.decimation:proc.ddc.decimation:end,:,:);
+rfOut = rfOut(proc.dec:proc.dec:end,:,:);
 
 % Comb
-for ord=1:proc.ddc.cicOrder
+for ord=1:proc.cicOrd
     rfOut = [rfOut(1,:,:); diff(rfOut)];
 end
 
