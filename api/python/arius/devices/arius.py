@@ -140,7 +140,7 @@ class AriusCard(_device.Device):
         :return: an array of values, which were set [s]
         """
         _utils._assert_equal(
-            len(delays), self.get_n_tx_channels(),
+            len(np.squeeze(delays)), self.get_n_tx_channels(),
             desc="Array of TX delays should contain %d numbers (card number of TX channels)"
                  % self.get_n_tx_channels()
         )
