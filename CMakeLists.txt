@@ -30,6 +30,9 @@ endif()
 ################################################################################
 # Sub-projects
 ################################################################################
+if(ARIUS_RUN_TESTS)
+    enable_testing()
+endif()
 if(ARIUS_BUILD_PY)
     add_subdirectory(api/python)
 endif()

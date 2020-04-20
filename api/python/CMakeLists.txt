@@ -63,24 +63,26 @@ find_package(PythonInterp REQUIRED)
 set(PYTHON_PACKAGE_NAME arius)
 
 set(SOURCE_FILES
-        "arius/__init__.py"
-        "arius/beam.py"
-        "arius/interface.py"
-        "arius/session.py"
-        "arius/devices/__init__.py"
-        "arius/devices/arius.py"
-        "arius/devices/device.py"
-        "arius/devices/hv256.py"
-        "arius/devices/probe.py"
-        "arius/utils/__init__.py"
-        "arius/utils/imaging.py"
-        "arius/utils/parameters.py"
-        "arius/tests/beam_test.py"
-        "arius/tests/session_test.py"
-        "arius/tests/tools.py"
-        "arius/tests/utils_test.py"
-        "arius/tests/devices/probe_test.py"
-        "arius/tests/utils/parameters_test.py"
+    "arius/__init__.py"
+    "arius/beam.py"
+    "arius/interface.py"
+    "arius/session.py"
+    "arius/devices/__init__.py"
+    "arius/devices/arius.py"
+    "arius/devices/device.py"
+    "arius/devices/hv256.py"
+    "arius/devices/probe.py"
+    "arius/utils/__init__.py"
+    "arius/utils/imaging.py"
+    "arius/utils/parameters.py"
+    "arius/tests/tools.py"
+)
+set(TEST_FILES
+    "arius/tests/beam_test.py"
+    "arius/tests/session_test.py"
+    "arius/tests/utils_test.py"
+    "arius/tests/devices/probe_test.py"
+    "arius/tests/utils/parameters_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -97,7 +99,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
         ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
-    DEPENDS ${SOURCE_FILES} ${Us4Wrappers}
+    DEPENDS ${SOURCE_FILES} ${TEST_FILES} ${Us4Wrappers}
 )
 
 add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})
@@ -106,5 +108,22 @@ set_target_properties(
     PROPERTIES
         PACKAGE_TIMESTAMP ${TIMESTAMP}
         PACKAGE_NAME ${PYTHON_PACKAGE_NAME}
+        PACKAGE_SETUP_PY_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist
 )
+
+################################################################################
+# Python tests
+################################################################################
+if(ARIUS_RUN_TESTS)
+    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
+    install_arius_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
+    foreach(TEST_FILE IN LISTS TEST_FILES)
+        add_test(
+            NAME ${TEST_FILE}
+            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
+        )
+    endforeach()
+endif()
+

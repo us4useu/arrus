@@ -104,7 +104,7 @@ create_python_venv(docs_venv ${CMAKE_CURRENT_BINARY_DIR})
 install_sphinx_package(sphinx_package docs_venv)
 
 if(ARIUS_BUILD_PY)
-    install_arius_package(arius_package docs_venv python_whl)
+    install_arius_package(arius_package docs_venv python_whl "PKG")
     CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arius_package)
     CREATE_DOC_TARGET(python html docs_venv sphinx_package arius_package)
 endif()
