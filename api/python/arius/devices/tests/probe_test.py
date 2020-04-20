@@ -51,7 +51,7 @@ class AriusCardMock(Device):
         return self.n_tx_channels
 
     def start_if_necessary(self):
-        print("MockCard started.")
+        pass
 
     def set_tx_aperture(self, origin, size):
         self.tx_aperture = Subaperture(origin, size)
@@ -97,8 +97,8 @@ class ProbeRxTest(unittest.TestCase):
 
     def test_probe_sets_rx_for_two_cards(self):
         pass
-        # TODO(pjarosik) fix the below test
         # Set.
+        # TODO(pjarosik) consider removing or fixing this test
         # hw_subapertures = [
         #     ProbeHardwareSubaperture(
         #         card=AriusCardMock(
@@ -227,8 +227,6 @@ class ProbeTxTest(unittest.TestCase):
                          hw_subapertures[0].card.tx_aperture)
         self.assertEqual(carrier_frequency, hw_subapertures[0].card.tx_frequency)
         self.assertEqual(n_periods, hw_subapertures[0].card.tx_periods)
-        print(tx_delays)
-        print(probe.hw_subapertures[0].card.tx_delays)
         self._assert_card_delays(
             [
                 34*[0.0] + tx_delays + [0.0]*(128-(34+len(tx_delays))),
@@ -625,7 +623,6 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Verify.
         self.assertEqual(Subaperture(34, 16),
                          hw_subapertures[0].card.tx_aperture)
-        print(probe.hw_subapertures[0].card.tx_delays)
 
     def test_probe_sets_tx_for_single_card_offset_origin(self):
         # Set.

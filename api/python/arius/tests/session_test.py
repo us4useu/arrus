@@ -62,9 +62,10 @@ import arius.session as session
 class InteractiveSessionTest(unittest.TestCase):
 
     def test_init(self):
-        # TODO(pjarosik) fix the test
         pass
+        # TODO(pjarosik) consider removing/enabling this test
         # sess = session.InteractiveSession()
+        # print(sess.get_devices())
         # probe = sess.get_device("/Probe:0")
         # hw_subapertures = probe.hw_subapertures
         # cards = [hw.card for hw in hw_subapertures]

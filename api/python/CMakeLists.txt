@@ -80,9 +80,9 @@ set(SOURCE_FILES
 set(TEST_FILES
     "arius/tests/beam_test.py"
     "arius/tests/session_test.py"
-    "arius/tests/utils_test.py"
-    "arius/tests/devices/probe_test.py"
-    "arius/tests/utils/parameters_test.py"
+    "arius/devices/tests/probe_test.py"
+    "arius/utils/tests/utils_test.py"
+    "arius/utils/tests/parameters_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -99,7 +99,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
         ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
-    DEPENDS ${SOURCE_FILES} ${TEST_FILES} ${Us4Wrappers}
+    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} ${Us4Wrappers}
 )
 
 add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})

@@ -1,7 +1,6 @@
 import math
-import unittest
-
 import numpy as np
+import unittest
 
 from arius.tests.tools import mock_import
 
@@ -125,7 +124,6 @@ class PlaneWaveProfileBuilderTest(unittest.TestCase):
             pitch=0.245e-3,
             aperture_size=192
         )
-        print(delays)
         # np.testing.assert_almost_equal(
         #     actual=delays,
         #     desired=np.arange(0, 192)
@@ -138,7 +136,6 @@ class PlaneWaveProfileBuilderTest(unittest.TestCase):
             pitch=0.245e-3,
             aperture_size=192
         )
-        print(delays)
         # np.testing.assert_almost_equal(
         #     actual=delays,
         #     desired=np.arange(0, 192)
