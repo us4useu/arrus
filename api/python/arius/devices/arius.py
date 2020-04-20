@@ -72,6 +72,14 @@ class AriusCard(_device.Device):
         return 128 # TODO(pjarosik) should be returned by iarius
         # return self.card_handle.GetNTxChannels()
 
+    def get_n_channels(self):
+        """
+        Returns number of channels available for this module.
+
+        :return: number of channels of the module
+        """
+        return 128 # TODO(pjarosik) should be returned by iarius
+
     def store_mappings(self, tx_m, rx_m):
         self.tx_channel_mapping = tx_m
         self.rx_channel_mapping = rx_m
@@ -118,7 +126,6 @@ class AriusCard(_device.Device):
     def set_tx_aperture(self, origin: int, size: int, firing: int=0):
         """
         Sets position of an active TX aperture.
-
         :param origin: an origin channel of the aperture, **starts from 0**
         :param size: a length of the aperture
         :param firing: a firing, in which the delay should apply, **starts from 0**
@@ -130,6 +137,81 @@ class AriusCard(_device.Device):
         self.card_handle.SetTxAperture(origin, size, firing)
 
     @assert_card_is_powered_up
+    def set_tx_aperture_mask(self, aperture, firing: int=0):
+        """
+        Sets mask of active TX aperture channels.
+
+        :param aperture: a boolean numpy array of get_number_of_channels() channels, 'True' means to activate chanel on a given position.
+        :param firing: a firing, in which the delay should apply, **starts from 0**
+        """
+        if isinstance(aperture, list):
+            aperture = np.array(aperture).astype(np.bool)
+        if len(aperture.shape) != 1:
+            raise ValueError("Aperture should be a vector.")
+        if aperture.shape[0] != self.get_n_channels():
+            raise ValueError("Aperture should have %d elements."
+                             % aperture.shape[0])
+        if aperture.dtype != np.bool:
+            raise ValueError("Aperture should be a vector of booleans.")
+        aperture = aperture.astype(np.uint16)
+        aperture_list = aperture.tolist()
+        n = len(aperture_list)
+        self.log(DEBUG, "Setting TX aperture: %s" % str(aperture_list))
+        array = None
+        try:
+            array = _iarius.new_uint16Array(n)
+            for i, sample in enumerate(aperture_list):
+                _iarius.uint16Array_setitem(array, i, sample)
+            _iarius.setTxApertureCustom(self.card_handle, array, n, firing)
+        finally:
+            _iarius.delete_uint16Array(array)
+
+    @assert_card_is_powered_up
+    def set_rx_aperture(self, origin: int, size: int, firing: int=0):
+        """
+        Sets RX aperture’s origin and size.
+
+        :param origin: an origin channel of the aperture
+        :param size: a length of the aperture
+        :param firing: a firing, in which the parameter value should apply, starts from 0
+        """
+        self.log(
+            DEBUG,
+            "Setting RX aperture: origin=%d, size=%d" % (origin, size)
+        )
+        self.card_handle.SetRxAperture(origin, size, firing)
+
+    @assert_card_is_powered_up
+    def set_rx_aperture_mask(self, aperture, firing: int = 0):
+        """
+        Sets position of an active RX aperture.
+
+        :param aperture: a boolean numpy array of get_number_of_channels() channels, 'True' means to activate chanel on a given position.
+        :param firing: a firing, in which the delay should apply, **starts from 0**
+        """
+        if isinstance(aperture, list):
+            aperture = np.array(aperture).astype(np.bool)
+        if len(aperture.shape) != 1:
+            raise ValueError("Aperture should be a vector.")
+        if aperture.shape[0] != self.get_n_channels():
+            raise ValueError("Aperture should have %d elements."
+                             % aperture.shape[0])
+        if aperture.dtype != np.bool:
+            raise ValueError("Aperture should be a vector of booleans.")
+        aperture = aperture.astype(np.uint16)
+        aperture_list = aperture.tolist()
+        n = len(aperture_list)
+        self.log(DEBUG, "Setting TX aperture: %s" % str(aperture_list))
+        array = None
+        try:
+            array = _iarius.new_uint16Array(n)
+            for i, sample in enumerate(aperture_list):
+                _iarius.uint16Array_setitem(array, i, sample)
+            _iarius.setRxApertureCustom(self.card_handle, array, n, firing)
+        finally:
+            _iarius.delete_uint16Array(array)
+
+    @assert_card_is_powered_up
     def set_tx_delays(self, delays, firing: int=0):
         """
         Sets channel's TX delays.
@@ -139,8 +221,14 @@ class AriusCard(_device.Device):
         :param firing: a firing, in which the delay should apply, **starts from 0**
         :return: an array of values, which were set [s]
         """
+        if isinstance(delays, np.ndarray):
+            if len(delays.shape) != 1:
+                raise ValueError("Delays should be a vector.")
+            if delays.shape[0] != self.get_n_tx_channels():
+                raise ValueError("You should provide %d delays." % self.get_n_tx_channels())
+            delays = delays.tolist()
         _utils._assert_equal(
-            len(delays), self.get_n_tx_channels(),
+            len(np.squeeze(delays)), self.get_n_tx_channels(),
             desc="Array of TX delays should contain %d numbers (card number of TX channels)"
                  % self.get_n_tx_channels()
         )
@@ -176,8 +264,8 @@ class AriusCard(_device.Device):
         """
         Sets the starting point of the acquisition time [s]
 
-		:param delay: expected acquisition time starting point relative to trigger [s]
-		:param firing: an firing, in which the parameter value should apply, **starts from 0**
+        :param delay: expected acquisition time starting point relative to trigger [s]
+        :param firing: an firing, in which the parameter value should apply, **starts from 0**
         """
         self.log(DEBUG, "Setting RX delay = %f for firing %d" % (delay, firing))
         self.card_handle.SetRxDelay(delay=delay, firing=firing)
@@ -219,21 +307,6 @@ class AriusCard(_device.Device):
         (master and slave) modules. Should be called only for a master module.
         """
         self.card_handle.SWTrigger()
-
-    @assert_card_is_powered_up
-    def set_rx_aperture(self, origin: int, size: int, firing: int=0):
-        """
-        Sets RX aperture’s origin and size.
-
-        :param origin: an origin channel of the aperture
-        :param size: a length of the aperture
-        :param firing: a firing, in which the parameter value should apply, starts from 0
-        """
-        self.log(
-            DEBUG,
-            "Setting RX aperture: origin=%d, size=%d" % (origin, size)
-        )
-        self.card_handle.SetRxAperture(origin, size, firing)
 
     @assert_card_is_powered_up
     def set_rx_time(self, time: float, firing: int=0):
@@ -451,6 +524,11 @@ class AriusCard(_device.Device):
 
         :param samples: TGC samples to set
         """
+        if isinstance(samples, np.ndarray):
+            if len(samples.shape) != 1:
+                raise ValueError("'Samples' should be a vector.")
+            samples = samples.tolist()
+
         self.log(DEBUG, "Setting TGC samples: %s" % str(samples))
         n = len(samples)
         array = None
@@ -468,7 +546,7 @@ class AriusCard(_device.Device):
         Enables/disables inversion of TX signal.
 
         :param is_enable: should the inversion be enabled?
-		:param firing: a firing, in which the parameter value should apply
+        :param firing: a firing, in which the parameter value should apply
         """
         if is_enable:
             self.log(DEBUG, "Enabling inversion of TX signal.")
@@ -481,8 +559,8 @@ class AriusCard(_device.Device):
         """
         Enables/disables generation of long TX bursts.
 
-		:param is_enable: should the generation of long TX bursts be enabled?
-		:param firing: a firing, in which the parameter value should apply
+        :param is_enable: should the generation of long TX bursts be enabled?
+        :param firing: a firing, in which the parameter value should apply
         """
         if is_enable:
             self.log(DEBUG, "Enabling generation of long TX bursts.")
@@ -652,13 +730,13 @@ class AriusCard(_device.Device):
                     idx: int=0):
         """
         Sets parameters of the trigger event.
-		Each trigger event will generate a trigger signal for the current
-		firing/acquisition and set next firing parameters.
+        Each trigger event will generate a trigger signal for the current
+        firing/acquisition and set next firing parameters.
 
-		:param timeToNextTrigger: time between current and the next trigger [s]
-		:param timeToNextTx: delay between current trigger and setting next firing parameters [s]
-		:param syncReq: should the trigger generator pause and wait for the trigger_sync() call
-		:param idx: a firing, in which the parameters values should apply, **starts from 0**
+        :param timeToNextTrigger: time between current and the next trigger [s]
+        :param timeToNextTx: delay between current trigger and setting next firing parameters [s]
+        :param syncReq: should the trigger generator pause and wait for the trigger_sync() call
+        :param idx: a firing, in which the parameters values should apply, **starts from 0**
         """
 
         #TODO(pjarosik) dirty, should be handled by an IArius implementation
@@ -721,3 +799,4 @@ class AriusCard(_device.Device):
                     "Invalid value for %s, should be one of the following: %s" %
                     (enum_name, str(acceptable_values))
                 )
+

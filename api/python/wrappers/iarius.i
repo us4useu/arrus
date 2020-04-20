@@ -32,10 +32,13 @@
 #include "iI2CMaster.h"
 #include <thread>
 #include <chrono>
+#include <bitset>
+static constexpr size_t NCH = IArius::NCH;
 %}
 %include afe58jd18Registers.h
 %include iarius.h
 %include iI2CMaster.h
+
 
 %inline %{
 // TODO(pjarosik) fix below in more elegant way
@@ -54,5 +57,25 @@ std::shared_ptr<IArius> getAriusPtr(unsigned idx) {
 void EnableReceiveDelayed(IArius* ptr) {
     ptr->EnableReceive();
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+}
+
+void setTxApertureCustom(IArius* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
+    std::bitset<NCH> aperture;
+    for(int i=0; i < length; ++i) {
+        if(enabled[i]) {
+            aperture.set(i);
+        }
+    }
+    that->SetTxAperture(aperture, firing);
+}
+
+void setRxApertureCustom(IArius* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
+    std::bitset<NCH> aperture;
+    for(int i=0; i < length; ++i) {
+        if(enabled[i]) {
+            aperture.set(i);
+        }
+    }
+    that->SetRxAperture(aperture, firing);
 }
 %}
