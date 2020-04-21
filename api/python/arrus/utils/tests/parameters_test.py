@@ -1,4 +1,4 @@
-import arius.utils.parameters as parameters
+import arrus.utils.parameters as parameters
 import unittest
 import os
 import tempfile

@@ -6,27 +6,27 @@ import yaml
 
 _logger = logging.getLogger(__name__)
 
-import arius.devices.probe as _probe
-import arius.devices.arius as _arius
-import arius.interface as _interface
-import arius.utils as _utils
-import arius.devices.iarius as _iarius
+import arrus.devices.probe as _probe
+import arrus.devices.arius as _arius
+import arrus.interface as _interface
+import arrus.utils as _utils
+import arrus.devices.iarius as _iarius
 
 
-_ARIUS_PATH_ENV = "ARIUS_PATH"
+_ARRUS_PATH_ENV = "ARRUS_PATH"
 
 class InteractiveSession:
     """
     An user interactive session with available devices.
 
-    If cfg_path is None, session looks for a file ``$ARIUS_PATH/default.yaml``,
-    where ARIUS_PATH is an user-defined environment variable.
+    If cfg_path is None, session looks for a file ``$ARRUS_PATH/default.yaml``,
+    where ARRUS_PATH is an user-defined environment variable.
 
     :param cfg_path: path to the configuration file, can be None
     """
     def __init__(self, cfg_path: str=None):
         if cfg_path is None:
-            cfg_path = os.path.join(os.environ.get(_ARIUS_PATH_ENV, ""), "default.yaml")
+            cfg_path = os.path.join(os.environ.get(_ARRUS_PATH_ENV, ""), "default.yaml")
         with open(cfg_path, "r") as f:
             cfg = yaml.safe_load(f)
             self._devices = self._load_devices(cfg)
@@ -150,9 +150,9 @@ class InteractiveSession:
             )
 
             # Intentionally loading modules only when the HV256 is used.
-            import arius.devices.idbarlite as _dbarlite
-            import arius.devices.ihv256 as _ihv256
-            import arius.devices.hv256 as _hv256
+            import arrus.devices.idbarlite as _dbarlite
+            import arrus.devices.ihv256 as _ihv256
+            import arrus.devices.hv256 as _hv256
             system_master_card = master_cards[0]
             dbar = _dbarlite.GetDBARLite(_iarius.castToII2CMaster(system_master_card.card_handle))
             hv_handle = _ihv256.GetHV256(dbar.GetI2CHV())
