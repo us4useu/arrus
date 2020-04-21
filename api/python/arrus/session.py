@@ -7,7 +7,7 @@ import yaml
 _logger = logging.getLogger(__name__)
 
 import arrus.devices.probe as _probe
-import arrus.devices.arius as _arius
+import arrus.devices.us4oem as _arius
 import arrus.interface as _interface
 import arrus.utils as _utils
 import arrus.devices.ius4oem as _ius4oem

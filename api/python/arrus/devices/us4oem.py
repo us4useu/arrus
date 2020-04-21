@@ -14,8 +14,8 @@ import arrus.utils as _utils
 def assert_card_is_powered_up(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        arius_card = args[0]
-        if arius_card.is_powered_down():
+        us4oem = args[0]
+        if us4oem.is_powered_down():
             raise RuntimeError("Card is powered down. Start the card first.")
         return f(*args, **kwargs)
     return wrapper
@@ -23,7 +23,7 @@ def assert_card_is_powered_up(f):
 
 class AriusCard(_device.Device):
     """
-    A single Arius module.
+    A single Us4OEM.
     """
 
     _DEVICE_NAME = "Arius"

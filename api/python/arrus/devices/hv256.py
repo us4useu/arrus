@@ -3,7 +3,7 @@ from logging import INFO, WARN
 import arrus.devices.device as _device
 import arrus.devices.ihv256 as _hv256
 
-import arrus.devices.arius as _arius
+import arrus.devices.us4oem as _us4oem
 
 
 class HV256(_device.Device):
@@ -12,12 +12,12 @@ class HV256(_device.Device):
 
     @staticmethod
     def get_card_id(index):
-        return _device.Device.get_device_id(_arius.AriusCard._DEVICE_NAME, index)
+        return _device.Device.get_device_id(_us4oem.AriusCard._DEVICE_NAME, index)
 
     def __init__(self, hv256_handle: _hv256.IHV256):
         """
         HV 256 Device. Provides means to steer the voltage
-        set on the master Arius card.
+        set on the master Us4OEM.
 
         :param card_handle: a handle to the HV256 C++ class.
         """

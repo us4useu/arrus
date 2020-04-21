@@ -4,7 +4,7 @@ probes:
 - sl1543:
     # Name of the interface adapter used in the system.
     interface: esaote
-    # Arius Card apertures used by given probe.
+    # Us4OEM apertures used by given probe.
     pitch: 0.245e-3
     aperture:
         # SL1543's aperture: 0:127
