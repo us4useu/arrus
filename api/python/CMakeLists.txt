@@ -70,7 +70,7 @@ set(SOURCE_FILES
         "arrus/tests/session_test.py"
         "arrus/tests/tools.py"
         "arrus/devices/__init__.py"
-        "arrus/devices/arius.py"
+        "arrus/devices/us4oem.py"
         "arrus/devices/device.py"
         "arrus/devices/hv256.py"
         "arrus/devices/probe.py"

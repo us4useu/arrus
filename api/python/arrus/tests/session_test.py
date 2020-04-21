@@ -4,7 +4,7 @@ from arrus.tests.tools import mock_import
 
 
 # Module mocks.
-class AriusMock:
+class Us4OEMMock:
     def __init__(self, index):
         self.index = index
         self.tx_mapping = [0]*self.GetNTxChannels()
@@ -28,8 +28,8 @@ class AriusMock:
     def GetNTxChannels(self):
         return 128
 
-def GetArius(index):
-    return AriusMock(index)
+def GetUs4OEM(index):
+    return Us4OEMMock(index)
 
 class DBARLiteMock:
     def __init__(self, ii2cmaster):
@@ -44,8 +44,8 @@ class HV256Mock:
 
 mock_import(
     "arrus.devices.ius4oem",
-    IArius=AriusMock,
-    GetArius=GetArius
+    IArius=Us4OEMMock,
+    GetArius=GetUs4OEM
 )
 mock_import(
     "arrus.devices.idbarlite",

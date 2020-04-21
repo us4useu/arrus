@@ -7,7 +7,7 @@ from arrus.tests.tools import mock_import
 
 # Module mocks.
 # TODO(pjarosik) beam module should not depend on device modules
-class AriusMock:
+class Us4OEMMock:
     pass
 
 class DBARLiteMock:
@@ -18,7 +18,7 @@ class HV256Mock:
 
 mock_import(
     "arrus.devices.ius4oem",
-    Arius=AriusMock,
+    Arius=Us4OEMMock,
 )
 mock_import(
     "arrus.devices.idbarLite",

@@ -7,7 +7,7 @@ import yaml
 _logger = logging.getLogger(__name__)
 
 import arrus.devices.probe as _probe
-import arrus.devices.us4oem as _arius
+import arrus.devices.us4oem as _us4oem
 import arrus.interface as _interface
 import arrus.utils as _utils
 import arrus.devices.ius4oem as _ius4oem
@@ -66,13 +66,13 @@ class InteractiveSession:
         """
         result = {}
         # --- Cards
-        n_arius_cards = cfg["nAriusCards"]
-        arius_handles = (_ius4oem.getAriusPtr(i) for i in range(n_arius_cards))
-        arius_handles = sorted(arius_handles, key=lambda a: a.GetID())
-        arius_cards = [_arius.Us4OEM(i, h) for i, h in enumerate(arius_handles)]
-        _logger.log(INFO, "Discovered cards: %s" % str(arius_cards))
-        for card in arius_cards:
-            result[card.get_id()] = card
+        n_us4oems = cfg["nUs4OEMs"]
+        us4oem_handles = (_ius4oem.getAriusPtr(i) for i in range(n_us4oems))
+        us4oem_handles = sorted(us4oem_handles, key=lambda a: a.GetID())
+        us4oems = [_us4oem.Us4OEM(i, h) for i, h in enumerate(us4oem_handles)]
+        _logger.log(INFO, "Discovered cards: %s" % str(us4oems))
+        for us4oem in us4oems:
+            result[us4oem.get_id()] = us4oem
         master_cards = []
         # --- Probes
         probes = cfg.get('probes', [])
@@ -95,24 +95,24 @@ class InteractiveSession:
                     "Card mapping order corresponds to the order defined in cfg."
                 )
 
-                arius_card = arius_cards[card_nr]
+                us4oem = us4oems[card_nr]
                 aperture_origin = aperture["origin"]
                 aperture_size = aperture["size"]
-                arius_card.store_mappings(tx_m, rx_m)
+                us4oem.store_mappings(tx_m, rx_m)
                 # TODO(pjarosik) enable wider range of apertures
                 # for example, when subaperture size is smaller
                 # than number of card rx channels.
                 _utils.assert_true(
-                    (aperture_size % arius_card.get_n_rx_channels()) == 0,
+                    (aperture_size % us4oem.get_n_rx_channels()) == 0,
                     "Subaperture length should be divisible by %d"
                     " (number of rx channels of device %s)" % (
-                        arius_card.get_n_rx_channels(),
-                        arius_card.get_id()
+                        us4oem.get_n_rx_channels(),
+                        us4oem.get_id()
                     )
                 )
                 hw_subapertures.append(
                     _probe.ProbeHardwareSubaperture(
-                        arius_card,
+                        us4oem,
                         aperture_origin,
                         aperture_size
                 ))
@@ -121,7 +121,7 @@ class InteractiveSession:
                         master_card is None,
                         "There should be exactly one master card"
                     )
-                    master_card = arius_card
+                    master_card = us4oem
                     master_cards.append(master_card)
             probe = _probe.Probe(
                 index=i,
@@ -133,13 +133,13 @@ class InteractiveSession:
             result[probe.get_id()] = probe
             _logger.log(INFO, "Configured %s" % str(probe))
             for hw_subaperture in hw_subapertures:
-                card = hw_subaperture.card
+                us4oem = hw_subaperture.card
                 origin = hw_subaperture.origin
                 size = hw_subaperture.size
                 _logger.log(
                     DEBUG,
                     "---- %s uses %s, origin=%d, size=%d" %
-                    (probe, card, origin, size)
+                    (probe, us4oem, origin, size)
                 )
         is_hv256 = cfg.get("HV256", None)
         if is_hv256:
