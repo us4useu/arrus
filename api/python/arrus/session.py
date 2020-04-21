@@ -69,7 +69,7 @@ class InteractiveSession:
         n_arius_cards = cfg["nAriusCards"]
         arius_handles = (_ius4oem.getAriusPtr(i) for i in range(n_arius_cards))
         arius_handles = sorted(arius_handles, key=lambda a: a.GetID())
-        arius_cards = [_arius.AriusCard(i, h) for i, h in enumerate(arius_handles)]
+        arius_cards = [_arius.Us4OEM(i, h) for i, h in enumerate(arius_handles)]
         _logger.log(INFO, "Discovered cards: %s" % str(arius_cards))
         for card in arius_cards:
             result[card.get_id()] = card

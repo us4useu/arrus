@@ -12,7 +12,7 @@ class HV256(_device.Device):
 
     @staticmethod
     def get_card_id(index):
-        return _device.Device.get_device_id(_us4oem.AriusCard._DEVICE_NAME, index)
+        return _device.Device.get_device_id(_us4oem.Us4OEM._DEVICE_NAME, index)
 
     def __init__(self, hv256_handle: _hv256.IHV256):
         """

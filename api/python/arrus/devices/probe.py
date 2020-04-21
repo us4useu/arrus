@@ -25,7 +25,7 @@ class Subaperture:
         return self.__str__()
 
 class ProbeHardwareSubaperture(Subaperture):
-    def __init__(self, card: _us4oem.AriusCard, origin: int, size: int):
+    def __init__(self, card: _us4oem.Us4OEM, origin: int, size: int):
         super().__init__(origin, size)
         self.card = card
 
@@ -42,7 +42,7 @@ class Probe(_device.Device):
                  model_name: str,
                  hw_subapertures,
                  pitch,
-                 master_card: _us4oem.AriusCard
+                 master_card: _us4oem.Us4OEM
     ):
         super().__init__(Probe._DEVICE_NAME, index)
         self.model_name = model_name

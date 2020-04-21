@@ -21,7 +21,7 @@ def assert_card_is_powered_up(f):
     return wrapper
 
 
-class AriusCard(_device.Device):
+class Us4OEM(_device.Device):
     """
     A single Us4OEM.
     """
@@ -30,10 +30,10 @@ class AriusCard(_device.Device):
 
     @staticmethod
     def get_card_id(index):
-        return _device.Device.get_device_id(AriusCard._DEVICE_NAME, index)
+        return _device.Device.get_device_id(Us4OEM._DEVICE_NAME, index)
 
     def __init__(self, index: int, card_handle: _ius4oem.IArius):
-        super().__init__(AriusCard._DEVICE_NAME, index)
+        super().__init__(Us4OEM._DEVICE_NAME, index)
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
         self.host_buffer = np.array([])

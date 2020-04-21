@@ -38,9 +38,9 @@ A session object allows you to obtain an appropriate device handler.
 Devices
 =======
 
-Currently only the AriusCard device handler is provided.
+Currently only the Us4OEM device handler is provided.
 
-.. autoclass:: arrus.devices.arius.AriusCard
+.. autoclass:: arrus.devices.arius.Us4OEM
     :members:
 
 
