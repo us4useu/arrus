@@ -6,7 +6,7 @@ AriusMEX API
 
 .. caution::
 
-    Arius SDK is currently under development and its API will be modified in the future. Please expect breaking changes.
+    ARRUS is currently under development and its API will be modified in the future. Please expect breaking changes.
 
 General formula
 ===============

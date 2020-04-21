@@ -24,7 +24,7 @@
 %ignore arius::afe58jd18::Register196;
 %ignore arius::afe58jd18::Register203;
 %ignore arius::afe58jd18::REGISTER_ADDRESS;
-// TODO(pjarosik) should not be part of the iarius interface!
+// TODO(pjarosik) should not be part of the ius4oem interface!
 %ignore AttachCVSeries;
 %{
 #include <iostream>

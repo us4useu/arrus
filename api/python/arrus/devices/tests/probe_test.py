@@ -9,7 +9,7 @@ class AriusMock:
     pass
 
 mock_import(
-    "arrus.devices.iarius",
+    "arrus.devices.ius4oem",
     IArius=AriusMock
 )
 mock_import(

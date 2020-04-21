@@ -17,7 +17,7 @@ class HV256Mock:
     pass
 
 mock_import(
-    "arrus.devices.iarius",
+    "arrus.devices.ius4oem",
     Arius=AriusMock,
 )
 mock_import(

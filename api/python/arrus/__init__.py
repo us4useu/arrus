@@ -16,10 +16,10 @@ if not _logger.handlers:
 # low-level API is not available (for example currently on Unix systems).
 import importlib
 import importlib.util
-is_iarius = importlib.util.find_spec("arrus.devices._iarius")
+is_ius4oem = importlib.util.find_spec("arrus.devices._ius4oem")
 is_ihv256 = importlib.util.find_spec("arrus.devices._ihv256")
 is_idbarlite = importlib.util.find_spec("arrus.devices._idbarlite")
-if is_iarius and is_ihv256 and is_idbarlite:
+if is_ius4oem and is_ihv256 and is_idbarlite:
     # Legacy support attributes.
     import arrus.devices.device as device
     import arrus.session as session

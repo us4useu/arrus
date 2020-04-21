@@ -10,7 +10,7 @@ import arrus.devices.probe as _probe
 import arrus.devices.arius as _arius
 import arrus.interface as _interface
 import arrus.utils as _utils
-import arrus.devices.iarius as _iarius
+import arrus.devices.ius4oem as _ius4oem
 
 
 _ARRUS_PATH_ENV = "ARRUS_PATH"
@@ -67,7 +67,7 @@ class InteractiveSession:
         result = {}
         # --- Cards
         n_arius_cards = cfg["nAriusCards"]
-        arius_handles = (_iarius.getAriusPtr(i) for i in range(n_arius_cards))
+        arius_handles = (_ius4oem.getAriusPtr(i) for i in range(n_arius_cards))
         arius_handles = sorted(arius_handles, key=lambda a: a.GetID())
         arius_cards = [_arius.AriusCard(i, h) for i, h in enumerate(arius_handles)]
         _logger.log(INFO, "Discovered cards: %s" % str(arius_cards))
@@ -154,7 +154,7 @@ class InteractiveSession:
             import arrus.devices.ihv256 as _ihv256
             import arrus.devices.hv256 as _hv256
             system_master_card = master_cards[0]
-            dbar = _dbarlite.GetDBARLite(_iarius.castToII2CMaster(system_master_card.card_handle))
+            dbar = _dbarlite.GetDBARLite(_ius4oem.castToII2CMaster(system_master_card.card_handle))
             hv_handle = _ihv256.GetHV256(dbar.GetI2CHV())
             hv = _hv256.HV256(hv_handle)
             result[hv.get_id()] = hv

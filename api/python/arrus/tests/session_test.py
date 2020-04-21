@@ -43,7 +43,7 @@ class HV256Mock:
         self.ii2cmaster = ii2cmaster
 
 mock_import(
-    "arrus.devices.iarius",
+    "arrus.devices.ius4oem",
     IArius=AriusMock,
     GetArius=GetArius
 )

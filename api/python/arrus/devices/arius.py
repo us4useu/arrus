@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 
 import arrus.devices.device as _device
-import arrus.devices.iarius as _iarius
+import arrus.devices.ius4oem as _ius4oem
 import arrus.utils as _utils
 
 
@@ -32,7 +32,7 @@ class AriusCard(_device.Device):
     def get_card_id(index):
         return _device.Device.get_device_id(AriusCard._DEVICE_NAME, index)
 
-    def __init__(self, index: int, card_handle: _iarius.IArius):
+    def __init__(self, index: int, card_handle: _ius4oem.IArius):
         super().__init__(AriusCard._DEVICE_NAME, index)
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
@@ -60,7 +60,7 @@ class AriusCard(_device.Device):
 
         :return: number of RX channels.
         """
-        return 32 # TODO(pjarosik) should be returned by iarius
+        return 32 # TODO(pjarosik) should be returned by us4oem
         # return self.card_handle.GetNRxChannels()
 
     def get_n_tx_channels(self):
@@ -69,7 +69,7 @@ class AriusCard(_device.Device):
 
         :return: number of TX channels
         """
-        return 128 # TODO(pjarosik) should be returned by iarius
+        return 128 # TODO(pjarosik) should be returned by ius4oem
         # return self.card_handle.GetNTxChannels()
 
     def get_n_channels(self):
@@ -78,7 +78,7 @@ class AriusCard(_device.Device):
 
         :return: number of channels of the module
         """
-        return 128 # TODO(pjarosik) should be returned by iarius
+        return 128 # TODO(pjarosik) should be returned by ius4oem
 
     def store_mappings(self, tx_m, rx_m):
         self.tx_channel_mapping = tx_m
@@ -159,12 +159,12 @@ class AriusCard(_device.Device):
         self.log(DEBUG, "Setting TX aperture: %s" % str(aperture_list))
         array = None
         try:
-            array = _iarius.new_uint16Array(n)
+            array = _ius4oem.new_uint16Array(n)
             for i, sample in enumerate(aperture_list):
-                _iarius.uint16Array_setitem(array, i, sample)
-            _iarius.setTxApertureCustom(self.card_handle, array, n, firing)
+                _ius4oem.uint16Array_setitem(array, i, sample)
+            _ius4oem.setTxApertureCustom(self.card_handle, array, n, firing)
         finally:
-            _iarius.delete_uint16Array(array)
+            _ius4oem.delete_uint16Array(array)
 
     @assert_card_is_powered_up
     def set_rx_aperture(self, origin: int, size: int, firing: int=0):
@@ -204,12 +204,12 @@ class AriusCard(_device.Device):
         self.log(DEBUG, "Setting TX aperture: %s" % str(aperture_list))
         array = None
         try:
-            array = _iarius.new_uint16Array(n)
+            array = _ius4oem.new_uint16Array(n)
             for i, sample in enumerate(aperture_list):
-                _iarius.uint16Array_setitem(array, i, sample)
-            _iarius.setRxApertureCustom(self.card_handle, array, n, firing)
+                _ius4oem.uint16Array_setitem(array, i, sample)
+            _ius4oem.setRxApertureCustom(self.card_handle, array, n, firing)
         finally:
-            _iarius.delete_uint16Array(array)
+            _ius4oem.delete_uint16Array(array)
 
     @assert_card_is_powered_up
     def set_tx_delays(self, delays, firing: int=0):
@@ -348,7 +348,7 @@ class AriusCard(_device.Device):
         """
         Enables RX data transfer from the probe’s adapter to the module’s internal memory.
         """
-        _iarius.EnableReceiveDelayed(self.card_handle)
+        _ius4oem.EnableReceiveDelayed(self.card_handle)
 
     @assert_card_is_powered_up
     def enable_transmit(self):
@@ -440,15 +440,15 @@ class AriusCard(_device.Device):
                 value=active_termination,
             )
             self.card_handle.SetActiveTermination(
-                endis=_iarius.ACTIVE_TERM_EN_ACTIVE_TERM_EN,
+                endis=_ius4oem.ACTIVE_TERM_EN_ACTIVE_TERM_EN,
                 term=enum_value
             )
         else:
             self.log(DEBUG, "Disabling active termination.")
             self.card_handle.SetActiveTermination(
-                endis=_iarius.ACTIVE_TERM_EN_ACTIVE_TERM_DIS,
+                endis=_ius4oem.ACTIVE_TERM_EN_ACTIVE_TERM_DIS,
                 # TODO(pjarosik) when disabled, what value should be set?
-                term=_iarius.GBL_ACTIVE_TERM_GBL_ACTIVE_TERM_50
+                term=_ius4oem.GBL_ACTIVE_TERM_GBL_ACTIVE_TERM_50
             )
 
     @assert_card_is_powered_up
@@ -491,14 +491,14 @@ class AriusCard(_device.Device):
                 unit="dB"
             )
             self.card_handle.SetDTGC(
-                endis=_iarius.EN_DIG_TGC_EN_DIG_TGC_EN,
+                endis=_ius4oem.EN_DIG_TGC_EN_DIG_TGC_EN,
                 att=enum_value
             )
         else:
             self.log(DEBUG, "Disabling DTGC")
             self.card_handle.SetDTGC(
-                endis=_iarius.EN_DIG_TGC_EN_DIG_TGC_DIS,
-                att=_iarius.DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_0dB
+                endis=_ius4oem.EN_DIG_TGC_EN_DIG_TGC_DIS,
+                att=_ius4oem.DIG_TGC_ATTENUATION_DIG_TGC_ATTENUATION_0dB
             )
 
     @assert_card_is_powered_up
@@ -533,12 +533,12 @@ class AriusCard(_device.Device):
         n = len(samples)
         array = None
         try:
-            array = _iarius.new_uint16Array(n)
+            array = _ius4oem.new_uint16Array(n)
             for i, sample in enumerate(samples):
-                _iarius.uint16Array_setitem(array, i, sample)
+                _ius4oem.uint16Array_setitem(array, i, sample)
             self.card_handle.TGCSetSamples(array, n)
         finally:
-            _iarius.delete_uint16Array(array)
+            _ius4oem.delete_uint16Array(array)
 
     @assert_card_is_powered_up
     def set_tx_invert(self, is_enable: bool, firing: int=0):
@@ -633,7 +633,7 @@ class AriusCard(_device.Device):
                 length, src_addr, dst_addr
             )
         )
-        _iarius.TransferRXBufferToHostLocation(
+        _ius4oem.TransferRXBufferToHostLocation(
             that=self.card_handle,
             dstAddress=dst_addr,
             length=length,
@@ -784,10 +784,10 @@ class AriusCard(_device.Device):
         const_prefix = enum_name + "_" + enum_name
         const_name = const_prefix + "_" + str(value) + unit
         try:
-            return getattr(_iarius, const_name)
+            return getattr(_ius4oem, const_name)
         except AttributeError:
             acceptable_values = set()
-            for key in dir(_iarius):
+            for key in dir(_ius4oem):
                 if key.startswith(const_prefix):
                     value_with_unit = key[len(const_prefix)+1:]
                     value = int("".join(list(filter(str.isdigit, value_with_unit))))
