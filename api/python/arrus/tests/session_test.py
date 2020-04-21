@@ -1,6 +1,6 @@
 import unittest
 
-from arius.tests.tools import mock_import
+from arrus.tests.tools import mock_import
 
 
 # Module mocks.
@@ -43,16 +43,16 @@ class HV256Mock:
         self.ii2cmaster = ii2cmaster
 
 mock_import(
-    "arius.devices.iarius",
+    "arrus.devices.iarius",
     IArius=AriusMock,
     GetArius=GetArius
 )
 mock_import(
-    "arius.devices.idbarlite",
+    "arrus.devices.idbarlite",
     IDBARLite=DBARLiteMock
 )
 mock_import(
-    "arius.devices.ihv256",
+    "arrus.devices.ihv256",
     IHV256=HV256Mock
 )
 

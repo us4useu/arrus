@@ -2,7 +2,7 @@ import math
 import numpy as np
 import unittest
 
-from arius.tests.tools import mock_import
+from arrus.tests.tools import mock_import
 
 
 # Module mocks.
@@ -17,19 +17,19 @@ class HV256Mock:
     pass
 
 mock_import(
-    "arius.devices.iarius",
+    "arrus.devices.iarius",
     Arius=AriusMock,
 )
 mock_import(
-    "arius.devices.idbarLite",
+    "arrus.devices.idbarLite",
     DBARLite=DBARLiteMock,
 )
 mock_import(
-    "arius.devices.ihv256",
+    "arrus.devices.ihv256",
     HV256=HV256Mock
 )
 
-import arius.beam as _beam
+import arrus.beam as _beam
 
 class PlaneWaveProfileBuilderTest(unittest.TestCase):
 

@@ -5,7 +5,7 @@ from typing import get_type_hints
 import numpy as np
 import scipy.io
 
-import arius
+import arrus
 
 
 class BmodeDescriptor:
@@ -123,7 +123,7 @@ def save_matlab_file(path, rf, system_parameters, acquisition_parameters):
     args = [(arg, vals[arg]) for arg in args[1:]]
 
     matlab_keys_camel_cased = [
-        arius.utils.convert_camel_to_snake_case(k)
+        arrus.utils.convert_camel_to_snake_case(k)
         for k, _ in MATLAB_ROOT_STRUCTURES
     ]
     for key, value in args:
@@ -135,7 +135,7 @@ def save_matlab_file(path, rf, system_parameters, acquisition_parameters):
                 "Unrecognized parameter: '%s' should be one of: '%s'."
                     % (str(key), str(matlab_keys_camel_cased))
             )
-        matlab_key = arius.utils.convert_snake_to_camel_case(key)
+        matlab_key = arrus.utils.convert_snake_to_camel_case(key)
         expected_class = MATLAB_ROOT_STRUCTURES_DICT[matlab_key]
         if expected_class != value.__class__:
             raise ValueError(
@@ -150,7 +150,7 @@ def _load_matlab_structure(py_class, mat_structure):
     py_class_attrs = get_type_hints(py_class)
     py_constructor_kwargs = {}
     for attr, attr_class in py_class_attrs.items():
-        attr_mat_name = arius.utils.convert_snake_to_camel_case(attr)
+        attr_mat_name = arrus.utils.convert_snake_to_camel_case(attr)
         if not attr_mat_name in mat_structure.dtype.names:
             raise ValueError(
                 "Given MATLAB data does not contain '%s' field." % attr_mat_name
@@ -229,7 +229,7 @@ def _convert_to_matlab_structure(structure):
                 "Unsupported value type '%s' for '%s'."
                     %(type(value), attr)
             )
-        result[arius.utils.convert_snake_to_camel_case(attr)] = value
+        result[arrus.utils.convert_snake_to_camel_case(attr)] = value
     return result
 
 

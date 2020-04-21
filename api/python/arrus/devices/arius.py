@@ -6,9 +6,9 @@ from typing import List
 
 import numpy as np
 
-import arius.devices.device as _device
-import arius.devices.iarius as _iarius
-import arius.utils as _utils
+import arrus.devices.device as _device
+import arrus.devices.iarius as _iarius
+import arrus.utils as _utils
 
 
 def assert_card_is_powered_up(f):
@@ -89,7 +89,7 @@ class AriusCard(_device.Device):
         """
         Sets card's TX channel mapping.
 
-        :param tx_channel_mapping: a list, where list[interface channel] = arius card channel
+        :param tx_channel_mapping: a list, where list[interface channel] = us4oem channel
         """
         _utils.assert_true(
             tx_channel_mapping is not None,
@@ -108,7 +108,7 @@ class AriusCard(_device.Device):
         """
         Sets card's RX channel mapping.
 
-        :param rx_channel_mapping: a list, where list[interface channel] = arius card channel
+        :param rx_channel_mapping: a list, where list[interface channel] = us4oem channel
         """
         _utils.assert_true(
             rx_channel_mapping is not None,

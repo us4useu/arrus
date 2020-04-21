@@ -3,10 +3,10 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal
-import arius
+import arrus
 
 # Start new session with the device.
-sess = arius.session.InteractiveSession("cfg.yaml")
+sess = arrus.session.InteractiveSession("cfg.yaml")
 cards = [sess.get_device("/Arius:0"), sess.get_device("/Arius:1")]
 
 master_card = sess.get_device("/Arius:0")
@@ -18,7 +18,7 @@ events = {
 hv256 = sess.get_device("/HV256")
 
 # Configure module's adapter and start the device.
-interface = arius.interface.get_interface("esaote")
+interface = arrus.interface.get_interface("esaote")
 for i, card in enumerate(cards):
     card.store_mappings(
         interface.get_tx_channel_mapping(i),

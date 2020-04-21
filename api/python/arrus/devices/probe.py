@@ -1,10 +1,10 @@
 from logging import DEBUG
 
-import arius.devices.device as _device
+import arrus.devices.device as _device
 import numpy as np
 
-import arius.devices.arius as _arius
-import arius.utils as _utils
+import arrus.devices.arius as _arius
+import arrus.utils as _utils
 
 
 class Subaperture:

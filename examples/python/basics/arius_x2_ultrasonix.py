@@ -2,17 +2,17 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-import arius
+import arrus
 
 # Start new session with the device.
-sess = arius.session.InteractiveSession("cfg_ultrasonix.yaml")
+sess = arrus.session.InteractiveSession("cfg_ultrasonix.yaml")
 cards = [sess.get_device("/Arius:0"), sess.get_device("/Arius:1")]
 
 master_card = sess.get_device("/Arius:0")
 hv256 = sess.get_device("/HV256")
 
 # Configure module's adapter and start the device.
-interface = arius.interface.get_interface("ultrasonix")
+interface = arrus.interface.get_interface("ultrasonix")
 for i, card in enumerate(cards):
     card.store_mappings(
         interface.get_tx_channel_mapping(i),
