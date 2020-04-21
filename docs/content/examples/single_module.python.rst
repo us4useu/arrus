@@ -3,7 +3,7 @@ Single Module
 
 .. caution::
 
-    Arius SDK is currently under development and its API will be modified in the
+    ARRUS is currently under development and its API will be modified in the
     future. Please expect breaking changes.
 
 In the following example we show:
@@ -11,7 +11,7 @@ In the following example we show:
 1. how to configure TX and RX subsystems in order to generate a plane wave,
 2. how to trigger a pulse generation and acquire a complete RF frame.
 
-Make sure that you have installed an appropriate ``arius`` wheel file.
+Make sure that you have installed an appropriate ``arrus`` wheel file.
 
 A complete source code is available in a ``python/examples/basics/arius_x1.py``.
 To run it in your shell:

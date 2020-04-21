@@ -16,7 +16,7 @@ import importlib
 
 
 # -- Project information -----------------------------------------------------
-project = 'arius-sdk (${LANGUAGE})'
+project = 'ARRUS (${LANGUAGE})'
 copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 

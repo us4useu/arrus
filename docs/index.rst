@@ -1,4 +1,4 @@
-Welcome to arius-sdk documentation!
+Welcome to ARRUS documentation!
 ===================================
 
 
