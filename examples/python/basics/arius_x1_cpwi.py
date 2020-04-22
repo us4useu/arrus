@@ -4,7 +4,7 @@ import arrus
 
 # Start new session with the device.
 sess = arrus.session.InteractiveSession("cfg.yaml")
-module = sess.get_device("/Arius:0")
+module = sess.get_device("/Us4OEM:0")
 hv = sess.get_device("/HV256")
 # Configure module's adapter.
 interface = arrus.interface.get_interface("esaote")

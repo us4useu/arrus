@@ -7,12 +7,12 @@ import arrus
 
 # Start new session with the device.
 sess = arrus.session.InteractiveSession("cfg.yaml")
-cards = [sess.get_device("/Arius:0"), sess.get_device("/Arius:1")]
+cards = [sess.get_device("/Us4OEM:0"), sess.get_device("/Us4OEM:1")]
 
-master_card = sess.get_device("/Arius:0")
+master_card = sess.get_device("/Us4OEM:0")
 events = {
-    "Arius:0": [0, 1, 2, 3],
-    "Arius:1": [0, 1, 2, 3]
+    "Us4OEM:0": [0, 1, 2, 3],
+    "Us4OEM:1": [0, 1, 2, 3]
 }
 
 hv256 = sess.get_device("/HV256")
