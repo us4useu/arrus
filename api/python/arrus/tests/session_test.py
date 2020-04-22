@@ -44,8 +44,8 @@ class HV256Mock:
 
 mock_import(
     "arrus.devices.ius4oem",
-    IArius=Us4OEMMock,
-    GetArius=GetUs4OEM
+    IUs4OEM=Us4OEMMock,
+    GetUs4OEM=GetUs4OEM
 )
 mock_import(
     "arrus.devices.idbarlite",
@@ -72,9 +72,9 @@ class InteractiveSessionTest(unittest.TestCase):
         #     (hw_aperture.card.get_id(), hw_aperture.origin, hw_aperture.size)
         #     for hw_aperture in hw_subapertures
         # ]
-        # self.assertEqual(("Arius:0", 0, 128), hw_subapertures[0])
-        # self.assertEqual(("Arius:1", 0, 64), hw_subapertures[1])
-        # self.assertEqual("Arius:0", probe.master_card.get_id())
+        # self.assertEqual(("Us4OEM:0", 0, 128), hw_subapertures[0])
+        # self.assertEqual(("Us4OEM:1", 0, 64), hw_subapertures[1])
+        # self.assertEqual("Us4OEM:0", probe.master_card.get_id())
         # self.assertEqual(sess.get_device("/HV256").hv256_handle.ii2cmaster.GetID(), cards[0].card_handle.GetID())
         # print(cards[0].card_handle.tx_mapping)
         # print(cards[0].card_handle.rx_mapping)

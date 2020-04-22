@@ -9,9 +9,9 @@ In the following example we show:
 A complete source code is available in a ``matlab/examples/basics`` directory and is divided into two parts:
 
 1. script ``init_x1.m``, which initializes system base configuration,
-2. script ``arius_x1.m``, which configures TX/RX scheme, and then in a loop: acquires current RF data frame and displays it.
+2. script ``us4oem_x1.m``, which configures TX/RX scheme, and then in a loop: acquires current RF data frame and displays it.
 
-To run example, you need to execute ``arius_x1.m`` only. This script calls ``init_x1.m`` before performing any
+To run example, you need to execute ``us4oem_x1.m`` only. This script calls ``init_x1.m`` before performing any
 further processing.
 
 
@@ -20,7 +20,7 @@ Initialization
 
 A base configuration is set using ``init_x1.m`` script.
 
-First, a path to ``AriusMEX.mexw64`` file must be set. Assuming you are running the example from the directory, in which the script is originally located, following should work:
+First, a path to ``Us4MEX.mexw64`` file must be set. Assuming you are running the example from the directory, in which the script is originally located, following should work:
 
 .. code-block:: matlab
 
@@ -30,7 +30,7 @@ Then indicate the number of available us4OEM modules:
 
 .. code-block:: matlab
 
-    nArius = 1;
+    nUs4OEM = 1;
 
 We need to take into account a probe adapter that is currently installed on our board, thus an appropriate
 RX and TX channels mapping must be set (using :ref:`mex-SetRxChannelMapping` and :ref:`mex-SetTxChannelMapping`):
@@ -40,11 +40,11 @@ RX and TX channels mapping must be set (using :ref:`mex-SetRxChannelMapping` and
     probe = "AL2442";
     % Channel mapping for specific probe.
     if probe == "AL2442"
-        rxChannelMap = zeros(nArius, 32);
+        rxChannelMap = zeros(nUs4OEM, 32);
         rxChannelMap(1,:) = 32:-1:1;
         rxChannelMap(1,16) = 16;
         rxChannelMap(1,17) = 17;
-        txChannelMap = zeros(nArius, 128);
+        txChannelMap = zeros(nUs4OEM, 128);
         txChannelMap(1,1:32) = 32:-1:1;
         txChannelMap(1,16) = 16;
         txChannelMap(1,17) = 17;
@@ -58,10 +58,10 @@ RX and TX channels mapping must be set (using :ref:`mex-SetRxChannelMapping` and
         txChannelMap(1,112) = 112;
         txChannelMap(1,113) = 113;
         for ch=1:32
-            AriusMEX(0, "SetRxChannelMapping", rxChannelMap(1,ch), ch);
+            Us4MEX(0, "SetRxChannelMapping", rxChannelMap(1,ch), ch);
         end
         for ch=1:128
-            AriusMEX(0, "SetTxChannelMapping", txChannelMap(1,ch), ch);
+            Us4MEX(0, "SetTxChannelMapping", txChannelMap(1,ch), ch);
         end
     end
 
@@ -70,14 +70,14 @@ In this place we also set all RX parameters that we will not change later in the
 .. code-block:: matlab
 
     % init RX
-    AriusMEX(0, "SetPGAGain","30dB");
-    AriusMEX(0, "SetLPFCutoff","15MHz");
-    AriusMEX(0, "SetActiveTermination","EN", "200");
-    AriusMEX(0, "SetLNAGain","24dB");
+    Us4MEX(0, "SetPGAGain","30dB");
+    Us4MEX(0, "SetLPFCutoff","15MHz");
+    Us4MEX(0, "SetActiveTermination","EN", "200");
+    Us4MEX(0, "SetLNAGain","24dB");
     % digital TGC
-    AriusMEX(0, "SetDTGC","EN", "0dB");
-    AriusMEX(0,"TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
-    AriusMEX(0, "TGCEnable");
+    Us4MEX(0, "SetDTGC","EN", "0dB");
+    Us4MEX(0,"TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
+    Us4MEX(0, "TGCEnable");
 
 That is:
 
@@ -98,7 +98,7 @@ with a sequence of 4 transmit/receive acquisitions.
 
 .. credits to DC
 
-Definition of a TX/RX sequence is located in ``arius_x1.m`` file. We want to perform 4 TX/RX acquisition to complete one RF frame;
+Definition of a TX/RX sequence is located in ``us4oem_x1.m`` file. We want to perform 4 TX/RX acquisition to complete one RF frame;
 in order to do that, we need to define TX/RX parameters first, for each firing/acquisition (an *event*) separately.
 
 .. code-block:: matlab
@@ -109,28 +109,28 @@ in order to do that, we need to define TX/RX parameters first, for each firing/a
     txDelays = (0:127)*0e-6/128;
     % ...
 
-    % Define TX/RX scheme details to be executed on Arius module.
+    % Define TX/RX scheme details to be executed on a Us4OEM module.
 
-    AriusMEX(0, "ClearScheduledReceive")
-    AriusMEX(0, "SetNTriggers", NEVENTS);
-    AriusMEX(0, "SetNumberOfFirings", NEVENTS);
+    Us4MEX(0, "ClearScheduledReceive")
+    Us4MEX(0, "SetNTriggers", NEVENTS);
+    Us4MEX(0, "SetNumberOfFirings", NEVENTS);
     for i=0:NEVENTS-1
         % TX
-        txDelaysSet = AriusMEX(0, "SetTxDelays", txDelays, i);
-        AriusMEX(0, "SetTxFrequency", 5e6, i);
-        AriusMEX(0, "SetTxHalfPeriods", 2, i);
-        AriusMEX(0, "SetTxAperture", 1, 128, i);
+        txDelaysSet = Us4MEX(0, "SetTxDelays", txDelays, i);
+        Us4MEX(0, "SetTxFrequency", 5e6, i);
+        Us4MEX(0, "SetTxHalfPeriods", 2, i);
+        Us4MEX(0, "SetTxAperture", 1, 128, i);
         % RX
-        AriusMEX(0, "SetRxTime", 200e-6, i);
-        AriusMEX(0, "SetRxDelay", 20e-6, i);
-        AriusMEX(0, "SetRxAperture", i*32+1, 32, i);
-        AriusMEX(0, "ScheduleReceive", i*NSAMPLES, NSAMPLES);
+        Us4MEX(0, "SetRxTime", 200e-6, i);
+        Us4MEX(0, "SetRxDelay", 20e-6, i);
+        Us4MEX(0, "SetRxAperture", i*32+1, 32, i);
+        Us4MEX(0, "ScheduleReceive", i*NSAMPLES, NSAMPLES);
         % Trigger
-        AriusMEX(0, "SetTrigger", 1000, 0, 0, i);
+        Us4MEX(0, "SetTrigger", 1000, 0, 0, i);
     end
 
-    AriusMEX(0, "EnableTransmit");
-    AriusMEX(0, "SetTrigger", 1000, 0, 1, NEVENTS-1);
+    Us4MEX(0, "EnableTransmit");
+    Us4MEX(0, "SetTrigger", 1000, 0, 1, NEVENTS-1);
 
 Please note:
 
@@ -141,13 +141,13 @@ Please note:
     - functions: :ref:`mex-SetTxDelay`, :ref:`mex-SetTxFrequency`, :ref:`mex-SetTxHalfPeriods`, :ref:`mex-SetTxAperture`,
       :ref:`mex-SetRxAperture`, :ref:`mex-SetRxTime`, :ref:`mex-SetRxDelay` and :ref:`mex-SetTrigger`
       take an event number as a last parameter; for example, to set TX
-      delay on the fifth channel in the fourth event you need to call: ``AriusMEX(0, "SetTxDelay", 5, delay, 3)``,
+      delay on the fifth channel in the fourth event you need to call: ``Us4MEX(0, "SetTxDelay", 5, delay, 3)``,
     - schedule new transfer from an ADC to us4OEM module's internal memory using :ref:`mex-ScheduleReceive`,
-    - you have to set a maximum event number; use ``AriusMEX(0, "SetNumberOfFirings", NEVENTS)``,
-    - you have to set a number of triggers to perform to acquire a single RF frame; use ``AriusMEX(0, "SetNTriggers", NEVENTS)``,
-    - you have to enable TX before starting trigger pulse generation; use ``AriusMEX(0, "EnableTransmit")``,
+    - you have to set a maximum event number; use ``Us4MEX(0, "SetNumberOfFirings", NEVENTS)``,
+    - you have to set a number of triggers to perform to acquire a single RF frame; use ``Us4MEX(0, "SetNTriggers", NEVENTS)``,
+    - you have to enable TX before starting trigger pulse generation; use ``Us4MEX(0, "EnableTransmit")``,
     - to stop trigger generation after the last event set ``syncReq`` parameter of the ``SetTrigger`` function to ``1``,
-      e.g. ``AriusMEX(0, "SetTrigger", 1000, 0, 1, NEVENTS-1)``
+      e.g. ``Us4MEX(0, "SetTrigger", 1000, 0, 1, NEVENTS-1)``
 
 Acquiring data
 --------------
@@ -164,14 +164,14 @@ A complete data capture procedure is presented below:
 
 .. code-block:: matlab
 
-    AriusMEX(0, "TriggerStart");
+    Us4MEX(0, "TriggerStart");
     pause(0.1);
     while(ishghandle(h))
-        AriusMEX(0, "EnableReceive");
-        AriusMEX(0, "TriggerSync");
+        Us4MEX(0, "EnableReceive");
+        Us4MEX(0, "TriggerSync");
         pause(0.005);
 
-        rf0 = AriusMEX(0, "TransferRXBufferToHost", 0, NSAMPLES * NEVENTS);
+        rf0 = Us4MEX(0, "TransferRXBufferToHost", 0, NSAMPLES * NEVENTS);
         rf(1:32,:)      = rf0(:,1:NSAMPLES);
         rf(33:64,:)     = rf0(:,NSAMPLES+1:2*NSAMPLES);
         rf(65:96,:)     = rf0(:,2*NSAMPLES+1:3*NSAMPLES);
@@ -179,7 +179,7 @@ A complete data capture procedure is presented below:
 
         % display rf variable...
     end
-    AriusMEX(0, "TriggerStop");
+    Us4MEX(0, "TriggerStop");
 
 Variable ``rf`` should now contain all the collected samples. To stop trigger generation, call :ref:`mex-TriggerStop`.
 

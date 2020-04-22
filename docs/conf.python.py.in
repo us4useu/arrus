@@ -33,7 +33,7 @@ def mock_import(module_name: str, **kwargs):
 
 mock_import(
     "arrus.devices.ius4oem",
-    IArius=None
+    IUs4OEM=None
 )
 mock_import(
     "arrus.devices.idbarLite",

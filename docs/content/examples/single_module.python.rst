@@ -13,11 +13,11 @@ In the following example we show:
 
 Make sure that you have installed an appropriate ``arrus`` wheel file.
 
-A complete source code is available in a ``python/examples/basics/arius_x1.py``.
+A complete source code is available in a ``python/examples/basics/us4oem_x1.py``.
 To run it in your shell:
 
 1. change your current location to a directory: ``python/example/basics``,
-2. execute following command: ``python arius_x1.py``.
+2. execute following command: ``python us4oem_x1.py``.
 
 
 Initialization
@@ -34,14 +34,14 @@ The configuration file ``python/examples/basics/cfg.yaml`` contains information 
 devices that should be visible in a session. In our example, cfg.yaml states
 that:
 
-- there is only one arius module available,
+- there is only one us4oem module available,
 - no HV256 (power supplier) module will be used.
 
 We also have to obtain a handle to the device with which we want to communicate:
 
 .. code-block:: python
 
-    module = sess.get_device("/Arius:0")
+    module = sess.get_device("/Us4OEM:0")
 
 Next, we need to take into account a probe adapter that is currently installed on our board, thus an appropriate
 RX and TX channels mapping must be set:

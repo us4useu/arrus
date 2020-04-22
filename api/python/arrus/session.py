@@ -35,7 +35,7 @@ class InteractiveSession:
         """
         Returns a device located at given path.
 
-        :param id: a path to a device, for example '/Arius:0'
+        :param id: a path to a device, for example '/Us4OEM:0'
         :return: a device located in given path.
         """
         dev_path = id.split("/")[1:]
@@ -67,7 +67,7 @@ class InteractiveSession:
         result = {}
         # --- Cards
         n_us4oems = cfg["nUs4OEMs"]
-        us4oem_handles = (_ius4oem.getAriusPtr(i) for i in range(n_us4oems))
+        us4oem_handles = (_ius4oem.getUs4OEMPtr(i) for i in range(n_us4oems))
         us4oem_handles = sorted(us4oem_handles, key=lambda a: a.GetID())
         us4oems = [_us4oem.Us4OEM(i, h) for i, h in enumerate(us4oem_handles)]
         _logger.log(INFO, "Discovered cards: %s" % str(us4oems))

@@ -10,7 +10,7 @@ class Us4OEMMock:
 
 mock_import(
     "arrus.devices.ius4oem",
-    IArius=Us4OEMMock
+    IUs4OEM=Us4OEMMock
 )
 mock_import(
     "arrus.devices.idbarLite",

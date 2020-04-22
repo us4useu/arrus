@@ -40,7 +40,7 @@ Devices
 
 Currently only the Us4OEM device handler is provided.
 
-.. autoclass:: arrus.devices.arius.Us4OEM
+.. autoclass:: arrus.devices.us4oem.Us4OEM
     :members:
 
 

@@ -18,7 +18,7 @@ class HV256Mock:
 
 mock_import(
     "arrus.devices.ius4oem",
-    Arius=Us4OEMMock,
+    IUs4OEM=Us4OEMMock,
 )
 mock_import(
     "arrus.devices.idbarLite",

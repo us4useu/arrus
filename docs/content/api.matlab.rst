@@ -1,7 +1,7 @@
 .. _api-main:
 
 ============
-AriusMEX API
+Us4OEM API
 ============
 
 .. caution::
@@ -11,13 +11,13 @@ AriusMEX API
 General formula
 ===============
 
-Use ``AriusMEX`` MATLAB function to communicate with the provided hardware. This function allows to perform some particular **operation** with
+Use ``Us4MEX`` MATLAB function to communicate with the provided hardware. This function allows to perform some particular **operation** with
 given **parameters** on a selected **us4OEM module** (a card).
 
-Before calling ``AriusMEX`` function make sure that a variable ``nArius`` is set in you current workspace and is equal
+Before calling ``Us4MEX`` function make sure that a variable ``nUs4OEM`` is set in you current workspace and is equal
 to the number of available modules.
 
-..  mat:function:: AriusMEX(moduleIndex, operation, varargin)
+..  mat:function:: Us4MEX(moduleIndex, operation, varargin)
 
     Executes an operation on a module with a given index.
 
@@ -29,13 +29,13 @@ to the number of available modules.
 Operations
 ==========
 
-Below we present a list of operations that can be performed on us4OEM module using AriusMEX function.
+Below we present a list of operations that can be performed on us4OEM module using Us4MEX function.
 
 .. _mex-SetRxChannelMapping:
 
 SetRxChannelMapping
 -------------------
-..  mat:function:: AriusMEX(moduleIndex, "SetRxChannelMapping", srcChannel, dstChannel)
+..  mat:function:: Us4MEX(moduleIndex, "SetRxChannelMapping", srcChannel, dstChannel)
 
     Sets RX mapping from the source (module's) channel to the destination (Probe's) channel.
 
@@ -47,7 +47,7 @@ SetRxChannelMapping
 SetTxChannelMapping
 -------------------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetTxChannelMapping", srcChannel, dstChannel)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxChannelMapping", srcChannel, dstChannel)
 
     Sets TX mapping from the source (module's) channel to the destination (Probe's) channel.
 
@@ -59,7 +59,7 @@ SetTxChannelMapping
 ScheduleReceive
 ---------------
 
-..  mat:function:: AriusMEX(moduleIndex, "ScheduleReceive", address, length)
+..  mat:function:: Us4MEX(moduleIndex, "ScheduleReceive", address, length)
 
     Schedules a new data transmission from the probe's adapter to the module's internal memory.
 
@@ -74,7 +74,7 @@ ScheduleReceive
 ClearScheduledReceive
 ---------------------
 
-..  mat:function:: AriusMEX(moduleIndex, "ClearScheduledReceive")
+..  mat:function:: Us4MEX(moduleIndex, "ClearScheduledReceive")
 
     Clears a queue of RX tasks, should be called before defining any new TX/RX scheme.
 
@@ -83,7 +83,7 @@ ClearScheduledReceive
 SetNumberOfFirings
 ------------------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetNumberOfFirings", numberOfFirings)
+..  mat:function:: Us4MEX(moduleIndex, "SetNumberOfFirings", numberOfFirings)
 
     Sets number firings/acquisitions for new TX/RX sequence. For each firing/acquisition a different TX/RX parameters can be applied.
 
@@ -94,7 +94,7 @@ SetNumberOfFirings
 SetTxDelay
 ----------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetTxDelay", channel, delay, firingIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxDelay", channel, delay, firingIndex)
 
     Sets TX delay for a given channel. Returns an exact delay value that has been set on a give module.
 
@@ -108,7 +108,7 @@ SetTxDelay
 SetTxDelays
 -----------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetTxDelays", delays, firingIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxDelays", delays, firingIndex)
 
     Sets delays on the whole TX aperture. Returns an array of delays that has been set on a given module.
 
@@ -121,7 +121,7 @@ SetTxDelays
 SetTxFrequency
 --------------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetTxFrequency", frequency, firingIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxFrequency", frequency, firingIndex)
 
     Sets TX frequency.
 
@@ -134,7 +134,7 @@ SetTxFrequency
 SetTxHalfPeriods
 ----------------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetTxPeriods", nPeriods, firingIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxPeriods", nPeriods, firingIndex)
 
     Sets number of TX signal half-periods.
 
@@ -148,7 +148,7 @@ SetTxHalfPeriods
 SetRxAperture
 -------------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetRxAperture", origin, size, acqIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetRxAperture", origin, size, acqIndex)
 
     Sets RX aperture's origin and size.
 
@@ -161,7 +161,7 @@ SetRxAperture
 SetTxAperture
 -------------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetTxAperture", origin, size, firingIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxAperture", origin, size, firingIndex)
 
     Sets TX aperture's origin and size.
 
@@ -174,7 +174,7 @@ SetTxAperture
 SetRxTime
 ---------
 
-..  mat:function:: AriusMEX(moduleIndex, "SetRxTime", time, acqIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetRxTime", time, acqIndex)
 
     Sets length of acquisition time.
 
@@ -185,7 +185,7 @@ SetRxTime
 
 SetTxInvert
 -----------
-..  mat:function:: AriusMEX(moduleIndex, "SetTxInvert", onoff, firingIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxInvert", onoff, firingIndex)
 
     Enables/disables inversion of TX signal.
 
@@ -196,7 +196,7 @@ SetTxInvert
 
 SetTxCw
 -------
-..  mat:function:: AriusMEX(moduleIndex, "SetTxCw", onoff, firingIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetTxCw", onoff, firingIndex)
 
     Enables/disables generation of long TX bursts.
 
@@ -207,7 +207,7 @@ SetTxCw
 
 SetRxDelay
 ----------
-..  mat:function:: AriusMEX(moduleIndex, "SetRxDelay", delay, acqIndex)
+..  mat:function:: Us4MEX(moduleIndex, "SetRxDelay", delay, acqIndex)
 
     Sets the starting point of the acquisition time [s].
 
@@ -219,7 +219,7 @@ SetRxDelay
 EnableReceive
 -------------
 
-..  mat:function:: AriusMEX(moduleIndex, "EnableReceive")
+..  mat:function:: Us4MEX(moduleIndex, "EnableReceive")
 
     Enables RX data transfer from the probe's adapter to the module's internal memory.
 
@@ -228,7 +228,7 @@ EnableReceive
 EnableTransmit
 --------------
 
-..  mat:function:: AriusMEX(moduleIndex, "EnableTransmit")
+..  mat:function:: Us4MEX(moduleIndex, "EnableTransmit")
 
     Enables TX pulse generation.
 
@@ -237,7 +237,7 @@ EnableTransmit
 SWTrigger
 ---------
 
-..  mat:function:: AriusMEX(moduleIndex, "SWTrigger")
+..  mat:function:: Us4MEX(moduleIndex, "SWTrigger")
 
     Triggers pulse generation and starts RX transmissions on all (master and slave) modules. Should be called only for a master module.
 
@@ -246,7 +246,7 @@ SWTrigger
 SWNextTX
 --------
 
-..  mat:function:: AriusMEX(moduleIndex, "SWNextTX")
+..  mat:function:: Us4MEX(moduleIndex, "SWNextTX")
 
     Sets all TX and RX parameters for next firing/acquisition.
 
@@ -256,7 +256,7 @@ SWNextTX
 TransferRXBufferToHost
 ----------------------
 
-..  mat:function:: AriusMEX(moduleIndex, "TransferRXBuffertToHost", srcAddress, length)
+..  mat:function:: Us4MEX(moduleIndex, "TransferRXBuffertToHost", srcAddress, length)
 
     Transfers data from the given module's memory address to the computer's memory, and returns a new MATALB array
     of shape (number of RX channels, length)
@@ -272,7 +272,7 @@ TransferRXBufferToHost
 EnableTestPatterns
 ------------------
 
-..  mat:function:: AriusMEX(moduleIndex, "EnableTestPatterns")
+..  mat:function:: Us4MEX(moduleIndex, "EnableTestPatterns")
 
     Turns off probe's RX data acquisition and turns on test patterns generation.
     When test patterns are enabled, sawtooth signal is generated.
@@ -282,7 +282,7 @@ EnableTestPatterns
 DisableTestPatterns
 -------------------
 
-..  mat:function:: AriusMEX(moduleIndex, "DisableTestPatterns")
+..  mat:function:: Us4MEX(moduleIndex, "DisableTestPatterns")
 
     Turns off test patterns generation and turns on probe's RX data acquisition.
 
@@ -291,7 +291,7 @@ SyncTestPatterns
 ----------------
 .. TODO(pjarosik) not sure of this description.
 
-..  mat:function:: AriusMEX(moduleIndex, "SyncTestPatterns")
+..  mat:function:: Us4MEX(moduleIndex, "SyncTestPatterns")
 
     Waits for update of test patterns.
 
@@ -299,7 +299,7 @@ SyncTestPatterns
 
 SetPGAGain
 ----------
-..  mat:function:: AriusMEX(moduleIndex, "SetPGAGain", gain)
+..  mat:function:: Us4MEX(moduleIndex, "SetPGAGain", gain)
 
     Configures programmable-gain amplifier (PGA).
 
@@ -309,7 +309,7 @@ SetPGAGain
 
 SetLNAGain
 ----------
-..  mat:function:: AriusMEX(moduleIndex, "SetLNAGain", gain)
+..  mat:function:: Us4MEX(moduleIndex, "SetLNAGain", gain)
 
     Configures low-noise amplifier (LNA) gain.
 
@@ -319,7 +319,7 @@ SetLNAGain
 
 SetDTGC
 -------
-..  mat:function:: AriusMEX(moduleIndex, "SetDTGC", isEnabled, attenuation)
+..  mat:function:: Us4MEX(moduleIndex, "SetDTGC", isEnabled, attenuation)
 
     Configures time gain compensation (TGC).
 
@@ -330,7 +330,7 @@ SetDTGC
 
 TGCEnable
 ---------
-..  mat:function:: AriusMEX(moduleIndex, "TGCEnable")
+..  mat:function:: Us4MEX(moduleIndex, "TGCEnable")
 
     Enables time gain compensation (TGC).
 
@@ -338,7 +338,7 @@ TGCEnable
 
 TGCDisable
 ----------
-..  mat:function:: AriusMEX(moduleIndex, "TGCDisable")
+..  mat:function:: Us4MEX(moduleIndex, "TGCDisable")
 
     Disables time gain compensation (TGC).
 
@@ -348,7 +348,7 @@ TGCSetSamples
 -------------
 .. TODO(pjarosik) determine more verbose comment here
 
-..  mat:function:: AriusMEX(moduleIndex, "TGCSetSamples")
+..  mat:function:: Us4MEX(moduleIndex, "TGCSetSamples")
 
     Sets samples for a time gain compensation (TGC).
 
@@ -358,7 +358,7 @@ TGCSetSamples
 
 SetLPFCutoff
 ------------
-..  mat:function:: AriusMEX(moduleIndex, "SetLPFCutoff", cutoffFrequency)
+..  mat:function:: Us4MEX(moduleIndex, "SetLPFCutoff", cutoffFrequency)
 
     Sets low-pass filter (LPF) cutoff frequency.
 
@@ -369,7 +369,7 @@ SetLPFCutoff
 
 SetActiveTermination
 --------------------
-..  mat:function:: AriusMEX(moduleIndex, "SetActiveTermination", isEnabled, value)
+..  mat:function:: Us4MEX(moduleIndex, "SetActiveTermination", isEnabled, value)
 
     Sets active termination.
 
@@ -380,7 +380,7 @@ SetActiveTermination
 
 TriggerStart
 ------------
-..  mat:function:: AriusMEX(moduleIndex, "TriggerStart")
+..  mat:function:: Us4MEX(moduleIndex, "TriggerStart")
 
     Starts generation of the hardware trigger.
 
@@ -388,7 +388,7 @@ TriggerStart
 
 TriggerStop
 -----------
-..  mat:function:: AriusMEX(moduleIndex, "TriggerStop")
+..  mat:function:: Us4MEX(moduleIndex, "TriggerStop")
 
     Stops generation of the hardware trigger.
 
@@ -396,7 +396,7 @@ TriggerStop
 
 TriggerSync
 -----------
-..  mat:function:: AriusMEX(moduleIndex, "TriggerSync")
+..  mat:function:: Us4MEX(moduleIndex, "TriggerSync")
 
     Resumes generation of the hardware trigger.
 
@@ -404,7 +404,7 @@ TriggerSync
 
 SetNTriggers
 ------------
-..  mat:function:: AriusMEX(moduleIndex, "SetNTriggers", n)
+..  mat:function:: Us4MEX(moduleIndex, "SetNTriggers", n)
 
     Sets the number of triggers to be generated.
 
@@ -414,7 +414,7 @@ SetNTriggers
 
 SetTrigger
 ----------
-..  mat:function:: AriusMEX(moduleIndex, "SetTrigger", timeToNextTrigger, timeToNextTx, syncReq, idx)
+..  mat:function:: Us4MEX(moduleIndex, "SetTrigger", timeToNextTrigger, timeToNextTx, syncReq, idx)
 
     Sets parameters of the trigger event.
 	Each trigger event will generate a trigger signal for the current firing/acquisition and set next firing parameters.

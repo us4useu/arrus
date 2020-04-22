@@ -31,7 +31,7 @@ class Us4OEM(_device.Device):
     def get_card_id(index):
         return _device.Device.get_device_id(Us4OEM._DEVICE_NAME, index)
 
-    def __init__(self, index: int, card_handle: _ius4oem.IArius):
+    def __init__(self, index: int, card_handle: _ius4oem.IUs4OEM):
         super().__init__(Us4OEM._DEVICE_NAME, index)
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
@@ -738,7 +738,7 @@ class Us4OEM(_device.Device):
         :param idx: a firing, in which the parameters values should apply, **starts from 0**
         """
 
-        #TODO(pjarosik) dirty, should be handled by an IArius implementation
+        #TODO(pjarosik) dirty, should be handled by an IUs4OEM implementation
         time_to_next_trigger_us = int(time_to_next_trigger*1e6)
         if not math.isclose(time_to_next_trigger_us/1e6, time_to_next_trigger):
             raise RuntimeError(
