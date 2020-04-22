@@ -4,6 +4,7 @@ Release notes
 Version 0.3.0
 -------------
 - Added a function to set rx/tx aperture mask - see Us4OEM.set_tx_aperture(aperture) and Us4OEM.set_rx_aperture(aperture)
+- Renamed the Arius project to ARRUS. Renamed Arius module to Us4OEM.
 
 Version 0.2.0
 -------------

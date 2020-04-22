@@ -26,13 +26,8 @@ for i, card in enumerate(cards):
     )
     card.start_if_necessary()
 
-try:
-    hv256.enable_hv()
-    hv256.set_hv_voltage(50)
-except RuntimeError:
-    print("First try with hv256 didn't work, trying again.")
-    hv256.enable_hv()
-    hv256.set_hv_voltage(50)
+hv256.enable_hv()
+hv256.set_hv_voltage(50)
 
 # Configure parameters, that will not change later in the example.
 for card in cards:
