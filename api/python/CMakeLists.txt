@@ -14,7 +14,7 @@ set(Us4Components
     DBARLite
 )
 set(Us4Wrappers
-    iarius
+    ius4oem
     ihv256
     idbarlite
 )

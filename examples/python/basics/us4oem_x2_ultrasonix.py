@@ -21,7 +21,7 @@ for i, us4oem in enumerate(us4oems):
     us4oem.start_if_necessary()
 
 hv256.enable_hv()
-hv256.set_hv_voltage(50)
+hv256.set_hv_voltage(20)
 
 # Configure parameters, that will not change later in the example.
 for us4oem in us4oems:
@@ -57,7 +57,7 @@ for i in range(NEVENTS):
                      + [1e-6]*32
                      + [0.0]*32,
                      firing=i)
-            us4oem.set_tx_aperture(
+            us4oem.set_tx_aperture_mask(
                 aperture=np.array(
                     [True] * 32
                   + [False]* 32
@@ -67,7 +67,7 @@ for i in range(NEVENTS):
                 firing=i
             )
             if i == 0:
-                us4oem.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [True] * 32
                         + [False] * 32
@@ -77,7 +77,7 @@ for i in range(NEVENTS):
                     firing=i
                 )
             else:
-                us4oem.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [False] * 32
                         + [False] * 32
@@ -93,7 +93,7 @@ for i in range(NEVENTS):
                        + [0.0] * 32
                        + [1e-6] * 32,
                 firing=i)
-            us4oem.set_tx_aperture(
+            us4oem.set_tx_aperture_mask(
                 aperture=np.array(
                       [False] * 32
                     + [True] * 32
@@ -103,7 +103,7 @@ for i in range(NEVENTS):
                 firing=i
             )
             if i == 0:
-                us4oem.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [False] * 32
                         + [True]  * 32
@@ -113,7 +113,7 @@ for i in range(NEVENTS):
                     firing=i
                 )
             else:
-                us4oem.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [False] * 32
                         + [False] * 32

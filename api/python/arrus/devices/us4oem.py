@@ -32,7 +32,7 @@ class Us4OEM(_device.Device):
         return _device.Device.get_device_id(Us4OEM._DEVICE_NAME, index)
 
     def __init__(self, index: int, card_handle: _ius4oem.IArius):
-        super().__init__(Us4OEM._DEVICE_NAME, index, Us4OEM._ALTERNATIVE_NAMES)
+        super().__init__(Us4OEM._DEVICE_NAME, index)
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
         self.host_buffer = np.array([])
