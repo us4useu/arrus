@@ -7,6 +7,7 @@
 if(ARRUS_BUILD_SWIG)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
+find_package(PythonInterp REQUIRED)
 find_package(PythonLibs REQUIRED)
 set(Us4Components
     US4OEM
@@ -58,7 +59,6 @@ endif()
 # Python packaging
 ################################################################################
 include(python)
-find_package(PythonInterp REQUIRED)
 set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
