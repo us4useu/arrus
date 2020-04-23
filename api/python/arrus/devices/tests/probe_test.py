@@ -1,27 +1,27 @@
 import unittest
 
-from arius.devices.device import Device
-from arius.tests.tools import mock_import
+from arrus.devices.device import Device
+from arrus.tests.tools import mock_import
 
 
 # Module mocks.
-class AriusMock:
+class Us4OEMMock:
     pass
 
 mock_import(
-    "arius.devices.iarius",
-    IArius=AriusMock
+    "arrus.devices.ius4oem",
+    IUs4OEM=Us4OEMMock
 )
 mock_import(
-    "arius.devices.idbarLite",
+    "arrus.devices.idbarLite",
     DBARLite=None
 )
 mock_import(
-    "arius.devices.ihv256",
+    "arrus.devices.ihv256",
     HV256=None
 )
 # Project imports.
-from arius.devices.probe import (
+from arrus.devices.probe import (
     Probe,
     ProbeHardwareSubaperture,
     Subaperture
@@ -29,9 +29,9 @@ from arius.devices.probe import (
 
 
 # Class mocks
-class AriusCardMock(Device):
+class Us4OEMCardMock(Device):
     def __init__(self, index, n_rx_channels, n_tx_channels, mock_data=None):
-        super().__init__("AriusCardMock", index)
+        super().__init__("Us4OEMCardMock", index)
         self.n_tx_channels = n_tx_channels
         self.n_rx_channels = n_rx_channels
         self.tx_aperture = None
@@ -99,7 +99,7 @@ class ProbeRxTest(unittest.TestCase):
         # TODO(pjarosik) consider removing or fixing this test
         # hw_subapertures = [
         #     ProbeHardwareSubaperture(
-        #         card=AriusCardMock(
+        #         card=Us4OEMCardMock(
         #             0, n_rx_channels=32, n_tx_channels=128,
         #             mock_data=np.tile(np.array(range(0, 128)), 4096).reshape((4096, 128))
         #         ),
@@ -107,7 +107,7 @@ class ProbeRxTest(unittest.TestCase):
         #         size=128
         #     ),
         #     ProbeHardwareSubaperture(
-        #         card=AriusCardMock(
+        #         card=Us4OEMCardMock(
         #             1, n_rx_channels=32, n_tx_channels=128,
         #             mock_data=np.tile(np.array(range(128, 192)), 4096).reshape((4096, 64))
         #         ),
@@ -169,7 +169,7 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=32 # Determines the size of the probe's aperture.
             )
@@ -202,7 +202,7 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=34,
                 size=32
             )
@@ -237,7 +237,7 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -270,12 +270,12 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -313,12 +313,12 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             )
@@ -358,12 +358,12 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -402,12 +402,12 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -444,12 +444,12 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=14,
                 size=64
             )
@@ -488,12 +488,12 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -530,12 +530,12 @@ class ProbeTxTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -593,7 +593,7 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=32 # Determines the size of the probe's aperture.
             )
@@ -609,7 +609,7 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=34,
                 size=32
             )
@@ -626,7 +626,7 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -642,12 +642,12 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -666,12 +666,12 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             )
@@ -692,12 +692,12 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -717,12 +717,12 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -741,12 +741,12 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=14,
                 size=64
             )
@@ -766,12 +766,12 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -790,12 +790,12 @@ class ProbeSetTxApertureTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(1, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(1, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64
             )
@@ -834,7 +834,7 @@ class ProbeSetTxDelayTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=32 # Determines the size of the probe's aperture.
             )
@@ -854,7 +854,7 @@ class ProbeSetTxDelayTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=32 # Determines the size of the probe's aperture.
             )
@@ -874,7 +874,7 @@ class ProbeSetTxDelayTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128 # Determines the size of the probe's aperture.
             )
@@ -894,7 +894,7 @@ class ProbeSetTxDelayTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128 # Determines the size of the probe's aperture.
             )
@@ -916,12 +916,12 @@ class ProbeSetTxDelayTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128 # Determines the size of the probe's aperture.
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64 # Determines the size of the probe's aperture.
             )
@@ -942,12 +942,12 @@ class ProbeSetTxDelayTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128 # Determines the size of the probe's aperture.
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64 # Determines the size of the probe's aperture.
             )
@@ -968,12 +968,12 @@ class ProbeSetTxDelayTest(unittest.TestCase):
         # Set.
         hw_subapertures = [
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=128 # Determines the size of the probe's aperture.
             ),
             ProbeHardwareSubaperture(
-                card=AriusCardMock(0, n_rx_channels=32, n_tx_channels=128),
+                card=Us4OEMCardMock(0, n_rx_channels=32, n_tx_channels=128),
                 origin=0,
                 size=64 # Determines the size of the probe's aperture.
             )

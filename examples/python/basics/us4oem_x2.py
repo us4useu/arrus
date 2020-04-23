@@ -3,22 +3,22 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal
-import arius
+import arrus
 
 # Start new session with the device.
-sess = arius.session.InteractiveSession("cfg.yaml")
-cards = [sess.get_device("/Arius:0"), sess.get_device("/Arius:1")]
+sess = arrus.session.InteractiveSession("cfg.yaml")
+cards = [sess.get_device("/Us4OEM:0"), sess.get_device("/Us4OEM:1")]
 
-master_card = sess.get_device("/Arius:0")
+master_card = sess.get_device("/Us4OEM:0")
 events = {
-    "Arius:0": [0, 1, 2, 3],
-    "Arius:1": [0, 1, 2, 3]
+    "Us4OEM:0": [0, 1, 2, 3],
+    "Us4OEM:1": [0, 1, 2, 3]
 }
 
 hv256 = sess.get_device("/HV256")
 
 # Configure module's adapter and start the device.
-interface = arius.interface.get_interface("esaote")
+interface = arrus.interface.get_interface("esaote")
 for i, card in enumerate(cards):
     card.store_mappings(
         interface.get_tx_channel_mapping(i),
@@ -26,13 +26,8 @@ for i, card in enumerate(cards):
     )
     card.start_if_necessary()
 
-try:
-    hv256.enable_hv()
-    hv256.set_hv_voltage(50)
-except RuntimeError:
-    print("First try with hv256 didn't work, trying again.")
-    hv256.enable_hv()
-    hv256.set_hv_voltage(50)
+hv256.enable_hv()
+hv256.set_hv_voltage(50)
 
 # Configure parameters, that will not change later in the example.
 for card in cards:

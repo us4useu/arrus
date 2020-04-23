@@ -1,4 +1,4 @@
-"""Arius SDK."""
+"""ARRUS."""
 import logging
 
 _logger = logging.getLogger(__package__)
@@ -16,15 +16,15 @@ if not _logger.handlers:
 # low-level API is not available (for example currently on Unix systems).
 import importlib
 import importlib.util
-is_iarius = importlib.util.find_spec("arius.devices._iarius")
-is_ihv256 = importlib.util.find_spec("arius.devices._ihv256")
-is_idbarlite = importlib.util.find_spec("arius.devices._idbarlite")
-if is_iarius and is_ihv256 and is_idbarlite:
+is_ius4oem = importlib.util.find_spec("arrus.devices._ius4oem")
+is_ihv256 = importlib.util.find_spec("arrus.devices._ihv256")
+is_idbarlite = importlib.util.find_spec("arrus.devices._idbarlite")
+if is_ius4oem and is_ihv256 and is_idbarlite:
     # Legacy support attributes.
-    import arius.devices.device as device
-    import arius.session as session
-    import arius.interface as interface
-    import arius.beam as beam
+    import arrus.devices.device as device
+    import arrus.session as session
+    import arrus.interface as interface
+    import arrus.beam as beam
 else:
     _logger.warn("Low-level API libraries are currently not available, "
                  "providing minimal version of the package.")

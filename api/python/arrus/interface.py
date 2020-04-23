@@ -4,7 +4,7 @@ from typing import Set
 
 class UltrasoundInterface:
     """
-    Defines an interface provided by (possibly) multiple Arius modules.
+    Defines an interface provided by (possibly) multiple us4oem's.
     """
     # TODO(pjarosik) inverse mapping
     def get_card_order(self):
@@ -16,7 +16,7 @@ class UltrasoundInterface:
         Returns TX channel mapping for a module with given index.
 
         :param module_idx: module index
-        :return: TX channel mapping: a list, where list[probe's channel] = arius module channel.
+        :return: TX channel mapping: a list, where list[probe's channel] = us4oem channel.
         """
         raise NotImplementedError
 
@@ -25,7 +25,7 @@ class UltrasoundInterface:
         Returns RX channel mapping for a module with given index.
 
         :param module_idx: module index
-        :return: RX channel mapping: a list, where list[probe's channel] = arius module channel.
+        :return: RX channel mapping: a list, where list[probe's channel] = us4oem channel.
         """
         raise NotImplementedError
 
@@ -35,7 +35,7 @@ class EsaoteInterface(UltrasoundInterface):
     def __init__(self):
         self.cards = (0, 1)
         # A list of lists;
-        # for each list, list[interface channel] = arius card channel.
+        # for each list, list[interface channel] = us4oem channel.
         self.tx_card_channels = self._compute_tx_channel_mapping()
         self.rx_card_channels = self._compute_rx_channel_mapping()
 
@@ -87,7 +87,7 @@ class UltrasonixInterface(UltrasoundInterface):
     def __init__(self):
         self.cards = (0, 1)
         # A list of lists;
-        # for each list, list[interface channel] = arius card channel.
+        # for each list, list[interface channel] = us4oem channel.
         self.tx_card_channels = self._compute_tx_channel_mapping()
         self.rx_card_channels = self._compute_rx_channel_mapping()
 
@@ -139,7 +139,7 @@ _INTERFACES = {
 
 def get_interface(name: str):
     """
-    Returns an interface registered in arius-sdk under given name.
+    Returns an interface registered in arrus under given name.
 
     :param name: name to the interface
     :return: an interface object
