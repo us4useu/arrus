@@ -2,12 +2,12 @@ import math
 import numpy as np
 import unittest
 
-from arius.tests.tools import mock_import
+from arrus.tests.tools import mock_import
 
 
 # Module mocks.
 # TODO(pjarosik) beam module should not depend on device modules
-class AriusMock:
+class Us4OEMMock:
     pass
 
 class DBARLiteMock:
@@ -17,19 +17,19 @@ class HV256Mock:
     pass
 
 mock_import(
-    "arius.devices.iarius",
-    Arius=AriusMock,
+    "arrus.devices.ius4oem",
+    IUs4OEM=Us4OEMMock,
 )
 mock_import(
-    "arius.devices.idbarLite",
+    "arrus.devices.idbarLite",
     DBARLite=DBARLiteMock,
 )
 mock_import(
-    "arius.devices.ihv256",
+    "arrus.devices.ihv256",
     HV256=HV256Mock
 )
 
-import arius.beam as _beam
+import arrus.beam as _beam
 
 class PlaneWaveProfileBuilderTest(unittest.TestCase):
 

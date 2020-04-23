@@ -1,10 +1,10 @@
 import unittest
 
-from arius.tests.tools import mock_import
+from arrus.tests.tools import mock_import
 
 
 # Module mocks.
-class AriusMock:
+class Us4OEMMock:
     def __init__(self, index):
         self.index = index
         self.tx_mapping = [0]*self.GetNTxChannels()
@@ -28,8 +28,8 @@ class AriusMock:
     def GetNTxChannels(self):
         return 128
 
-def GetArius(index):
-    return AriusMock(index)
+def GetUs4OEM(index):
+    return Us4OEMMock(index)
 
 class DBARLiteMock:
     def __init__(self, ii2cmaster):
@@ -43,16 +43,16 @@ class HV256Mock:
         self.ii2cmaster = ii2cmaster
 
 mock_import(
-    "arius.devices.iarius",
-    IArius=AriusMock,
-    GetArius=GetArius
+    "arrus.devices.ius4oem",
+    IUs4OEM=Us4OEMMock,
+    GetUs4OEM=GetUs4OEM
 )
 mock_import(
-    "arius.devices.idbarlite",
+    "arrus.devices.idbarlite",
     IDBARLite=DBARLiteMock
 )
 mock_import(
-    "arius.devices.ihv256",
+    "arrus.devices.ihv256",
     IHV256=HV256Mock
 )
 
@@ -72,9 +72,9 @@ class InteractiveSessionTest(unittest.TestCase):
         #     (hw_aperture.card.get_id(), hw_aperture.origin, hw_aperture.size)
         #     for hw_aperture in hw_subapertures
         # ]
-        # self.assertEqual(("Arius:0", 0, 128), hw_subapertures[0])
-        # self.assertEqual(("Arius:1", 0, 64), hw_subapertures[1])
-        # self.assertEqual("Arius:0", probe.master_card.get_id())
+        # self.assertEqual(("Us4OEM:0", 0, 128), hw_subapertures[0])
+        # self.assertEqual(("Us4OEM:1", 0, 64), hw_subapertures[1])
+        # self.assertEqual("Us4OEM:0", probe.master_card.get_id())
         # self.assertEqual(sess.get_device("/HV256").hv256_handle.ii2cmaster.GetID(), cards[0].card_handle.GetID())
         # print(cards[0].card_handle.tx_mapping)
         # print(cards[0].card_handle.rx_mapping)

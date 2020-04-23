@@ -2,8 +2,8 @@ import math
 
 import numpy as np
 
-import arius.devices.device as _device
-import arius.utils as _utils
+import arrus.devices.device as _device
+import arrus.utils as _utils
 
 
 class BeamProfileBuilder:

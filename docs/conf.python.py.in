@@ -32,18 +32,18 @@ def mock_import(module_name: str, **kwargs):
     return mock_module
 
 mock_import(
-    "arius.devices.iarius",
-    IArius=None
+    "arrus.devices.ius4oem",
+    IUs4OEM=None
 )
 mock_import(
-    "arius.devices.idbarLite",
+    "arrus.devices.idbarLite",
 )
 mock_import(
-    "arius.devices.ihv256",
+    "arrus.devices.ihv256",
 )
 
 # -- Project information -----------------------------------------------------
-project = 'arius-sdk (${LANGUAGE})'
+project = 'ARRUS (${LANGUAGE})'
 copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 

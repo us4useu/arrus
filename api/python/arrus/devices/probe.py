@@ -1,10 +1,10 @@
 from logging import DEBUG
 
-import arius.devices.device as _device
+import arrus.devices.device as _device
 import numpy as np
 
-import arius.devices.arius as _arius
-import arius.utils as _utils
+import arrus.devices.us4oem as _us4oem
+import arrus.utils as _utils
 
 
 class Subaperture:
@@ -25,7 +25,7 @@ class Subaperture:
         return self.__str__()
 
 class ProbeHardwareSubaperture(Subaperture):
-    def __init__(self, card: _arius.AriusCard, origin: int, size: int):
+    def __init__(self, card: _us4oem.Us4OEM, origin: int, size: int):
         super().__init__(origin, size)
         self.card = card
 
@@ -42,7 +42,7 @@ class Probe(_device.Device):
                  model_name: str,
                  hw_subapertures,
                  pitch,
-                 master_card: _arius.AriusCard
+                 master_card: _us4oem.Us4OEM
     ):
         super().__init__(Probe._DEVICE_NAME, index)
         self.model_name = model_name

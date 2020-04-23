@@ -1,4 +1,4 @@
-""" ARIUS Devices. """
+""" ARRUS Devices. """
 import logging
 
 _logger = logging.getLogger(__name__)

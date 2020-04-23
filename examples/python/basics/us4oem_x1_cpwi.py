@@ -1,13 +1,13 @@
 import numpy as np
 
-import arius
+import arrus
 
 # Start new session with the device.
-sess = arius.session.InteractiveSession("cfg.yaml")
-module = sess.get_device("/Arius:0")
+sess = arrus.session.InteractiveSession("cfg.yaml")
+module = sess.get_device("/Us4OEM:0")
 hv = sess.get_device("/HV256")
 # Configure module's adapter.
-interface = arius.interface.get_interface("esaote")
+interface = arrus.interface.get_interface("esaote")
 module.store_mappings(
     interface.get_tx_channel_mapping(0),
     interface.get_rx_channel_mapping(0)

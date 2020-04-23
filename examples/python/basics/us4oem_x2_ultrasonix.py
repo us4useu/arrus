@@ -2,62 +2,62 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-import arius
+import arrus
 
 # Start new session with the device.
-sess = arius.session.InteractiveSession("cfg_ultrasonix.yaml")
-cards = [sess.get_device("/Arius:0"), sess.get_device("/Arius:1")]
+sess = arrus.session.InteractiveSession("cfg_ultrasonix.yaml")
+us4oems = [sess.get_device("/Us4OEM:0"), sess.get_device("/Us4OEM:1")]
 
-master_card = sess.get_device("/Arius:0")
+master_module = sess.get_device("/Us4OEM:0")
 hv256 = sess.get_device("/HV256")
 
 # Configure module's adapter and start the device.
-interface = arius.interface.get_interface("ultrasonix")
-for i, card in enumerate(cards):
-    card.store_mappings(
+interface = arrus.interface.get_interface("ultrasonix")
+for i, us4oem in enumerate(us4oems):
+    us4oem.store_mappings(
         interface.get_tx_channel_mapping(i),
         interface.get_rx_channel_mapping(i)
     )
-    card.start_if_necessary()
+    us4oem.start_if_necessary()
 
 hv256.enable_hv()
-hv256.set_hv_voltage(50)
+hv256.set_hv_voltage(20)
 
 # Configure parameters, that will not change later in the example.
-for card in cards:
-    card.set_pga_gain(30)  # [dB]
-    card.set_lpf_cutoff(15e6)  # [Hz]
-    card.set_active_termination(200)
-    card.set_lna_gain(24)  # [dB]
-    card.set_dtgc(0)
+for us4oem in us4oems:
+    us4oem.set_pga_gain(30)  # [dB]
+    us4oem.set_lpf_cutoff(15e6)  # [Hz]
+    us4oem.set_active_termination(200)
+    us4oem.set_lna_gain(24)  # [dB]
+    us4oem.set_dtgc(0)
     # card.disable_tgc()
-    card.set_tgc_samples([0x9001]
-                      + (0x4000 + np.arange(2500, 0, -50)).tolist()
-                      + [0x4000 + 3000])
-    card.enable_tgc()
+    us4oem.set_tgc_samples([0x9001]
+                           +(0x4000 + np.arange(2500, 0, -50)).tolist()
+                           +[0x4000 + 3000])
+    us4oem.enable_tgc()
 
 # Configure TX/RX scheme.
-NARIUS = 2
+NMODULES = 2
 NEVENTS = 2
 NSAMPLES = 8*1024
 TX_FREQUENCY = 8.125e6
 PRI = 1000e-6
 
-for card in cards:
-    card.set_number_of_firings(NEVENTS)
-    card.clear_scheduled_receive()
+for us4oem in us4oems:
+    us4oem.set_number_of_firings(NEVENTS)
+    us4oem.clear_scheduled_receive()
 
 for i in range(NEVENTS):
-    for arius_number in range(NARIUS):
-        card = cards[arius_number]
-        if arius_number == 0:
-            card.set_tx_delays(
+    for module_number in range(NMODULES):
+        us4oem = us4oems[module_number]
+        if module_number == 0:
+            us4oem.set_tx_delays(
                 delays=[1e-6]*32
                      + [0.0]*32
                      + [1e-6]*32
                      + [0.0]*32,
                      firing=i)
-            card.set_tx_aperture(
+            us4oem.set_tx_aperture_mask(
                 aperture=np.array(
                     [True] * 32
                   + [False]* 32
@@ -67,7 +67,7 @@ for i in range(NEVENTS):
                 firing=i
             )
             if i == 0:
-                card.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [True] * 32
                         + [False] * 32
@@ -77,7 +77,7 @@ for i in range(NEVENTS):
                     firing=i
                 )
             else:
-                card.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [False] * 32
                         + [False] * 32
@@ -87,13 +87,13 @@ for i in range(NEVENTS):
                     firing=i
                 )
         else:
-            card.set_tx_delays(
+            us4oem.set_tx_delays(
                 delays=  [0.0] * 32
                        + [1e-6] * 32
                        + [0.0] * 32
                        + [1e-6] * 32,
                 firing=i)
-            card.set_tx_aperture(
+            us4oem.set_tx_aperture_mask(
                 aperture=np.array(
                       [False] * 32
                     + [True] * 32
@@ -103,7 +103,7 @@ for i in range(NEVENTS):
                 firing=i
             )
             if i == 0:
-                card.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [False] * 32
                         + [True]  * 32
@@ -113,7 +113,7 @@ for i in range(NEVENTS):
                     firing=i
                 )
             else:
-                card.set_rx_aperture(
+                us4oem.set_rx_aperture_mask(
                     aperture=np.array(
                           [False] * 32
                         + [False] * 32
@@ -122,26 +122,26 @@ for i in range(NEVENTS):
                     ),
                     firing=i
                 )
-        card.set_tx_frequency(frequency=TX_FREQUENCY, firing=i)
-        card.set_tx_half_periods(n_half_periods=2, firing=i)
-        card.set_tx_invert(is_enable=False, firing=i)
-        card.set_rx_time(time=250e-6, firing=i)
-        card.set_rx_delay(delay=5e-6, firing=i)
-        card.enable_transmit()
+        us4oem.set_tx_frequency(frequency=TX_FREQUENCY, firing=i)
+        us4oem.set_tx_half_periods(n_half_periods=2, firing=i)
+        us4oem.set_tx_invert(is_enable=False, firing=i)
+        us4oem.set_rx_time(time=250e-6, firing=i)
+        us4oem.set_rx_delay(delay=5e-6, firing=i)
+        us4oem.enable_transmit()
 
 
-for card in cards:
-    card.enable_transmit()
-    card.clear_scheduled_receive()
+for us4oem in us4oems:
+    us4oem.enable_transmit()
+    us4oem.clear_scheduled_receive()
     for i in range(NEVENTS):
-        card.schedule_receive(i*NSAMPLES, NSAMPLES)
-    card.enable_receive()
+        us4oem.schedule_receive(i*NSAMPLES, NSAMPLES)
+    us4oem.enable_receive()
 
-master_card.set_n_triggers(NEVENTS)
+master_module.set_n_triggers(NEVENTS)
 
 for i in range(NEVENTS):
-    master_card.set_trigger(PRI, 0, False, i)
-master_card.set_trigger(PRI, 0, True, NEVENTS-1)
+    master_module.set_trigger(PRI, 0, False, i)
+master_module.set_trigger(PRI, 0, True, NEVENTS-1)
 
 # Run the scheme:
 # - prepare figure to display
@@ -173,18 +173,18 @@ canvas = plt.imshow(
 )
 fig.show()
 
-master_card.trigger_start()
+master_module.trigger_start()
 
 while not is_closed:
     start = time.time()
-    for card in cards:
-        card.enable_receive()
-    master_card.trigger_sync()
+    for us4oem in us4oems:
+        us4oem.enable_receive()
+    master_module.trigger_sync()
 
     # - transfer data from module's internal memory to the host memory
     buffers = []
-    for card in cards:
-        buffer = card.transfer_rx_buffer_to_host(0, NEVENTS * NSAMPLES)
+    for us4oem in us4oems:
+        buffer = us4oem.transfer_rx_buffer_to_host(0, NEVENTS*NSAMPLES)
         buffers.append(buffer)
     # - reorder acquired data
     rf[:, 0:32] = buffers[0][0:NSAMPLES, :]
@@ -200,6 +200,6 @@ while not is_closed:
     fig.canvas.flush_events()
     plt.draw()
 
-master_card.trigger_stop()
+master_module.trigger_stop()
 
 
