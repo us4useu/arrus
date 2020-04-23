@@ -47,7 +47,7 @@ class ReconstructRfImgEdgeCaseTest(unittest.TestCase):
 
     def test_single_input_channel(self):
         # Given:
-        rf = np.zeros((1024, 1, 1), dtype=np.int16)
+        rf = np.zeros((1024, 37, 1), dtype=np.int16)
 
         actual = reconstruct_rf_img(
             rf,
