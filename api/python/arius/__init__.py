@@ -15,6 +15,7 @@ if not _logger.handlers:
 # TODO temporary ommiting importing some of the modules here, when
 # low-level API is not available (for example currently on Unix systems).
 import importlib
+import importlib.util
 is_iarius = importlib.util.find_spec("arius.devices._iarius")
 is_ihv256 = importlib.util.find_spec("arius.devices._ihv256")
 is_idbarlite = importlib.util.find_spec("arius.devices._idbarlite")
@@ -27,3 +28,4 @@ if is_iarius and is_ihv256 and is_idbarlite:
 else:
     _logger.warn("Low-level API libraries are currently not available, "
                  "providing minimal version of the package.")
+
