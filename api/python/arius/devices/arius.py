@@ -40,6 +40,7 @@ class AriusCard(_device.Device):
         self.host_buffer = np.array([])
         self.pri_list = None
         self.pri_total = None
+        self.callbacks = []
 
     def start_if_necessary(self):
         """
@@ -384,11 +385,13 @@ class AriusCard(_device.Device):
                 length=length
             )
         else:
+            cbk = _callbacks.ScheduleReceiveCallback(callback)
+            self.callbacks.append(cbk)
             _iarius.ScheduleReceiveWithCallback(
                 self.card_handle,
                 address=address,
                 length=length,
-                callback=_callbacks.ScheduleReceiveCallback(callback)
+                callback=cbk
             )
 
     @assert_card_is_powered_up

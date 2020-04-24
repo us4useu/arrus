@@ -33,6 +33,7 @@
 #include <thread>
 #include <chrono>
 #include "core/api/DataAcquiredEvent.h"
+#include <typeinfo>
 
 #include <bitset>
 static constexpr size_t NCH = IArius::NCH;
@@ -54,14 +55,27 @@ public:
 };
 
 // TODO(pjarosik) unify below functions
+
 void ScheduleReceiveWithCallback(IArius* that, const size_t address, const size_t length,
                                  ScheduleReceiveCallback& callback) {
-    const arius::DataAcquiredEvent& event = arius::DataAcquiredEvent(address, length);
-    auto fn = [&callback, &event] () {
-        callback.run(event);
+	std::cout << address << length << std::endl;
+    auto fn = [&callback, address, length] () {
+		// TODO(pjarosik) consider creating event outside the lambda function, to reduce interrupt handling time.
+		
+		const arius::DataAcquiredEvent& event = arius::DataAcquiredEvent(address, length);
+		
+		PyGILState_STATE gstate = PyGILState_Ensure();
+		try {	
+			callback.run(event);
+		} catch(const std::exception &e) {
+			// TODO(pjarosik) use logger here
+			std::cerr << e.what() << std::endl;
+		}
+		PyGILState_Release(gstate);
     };
     that->ScheduleReceive(address, length, fn);
 }
+
 void ScheduleReceiveWithoutCallback(IArius* that, const size_t address, const size_t length) {
     that->ScheduleReceive(address, length);
 }
