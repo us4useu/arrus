@@ -206,7 +206,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
         # calculate rf and weights for single tx
         rf_tx[:, :, itx] = xp.sum(rf_rx*weight_rx, axis=2)
-        weight_tx[:, :, itx] = xp.sum(weight_rx, axis=2)
+        weight_tx[:, :, itx] = 1/(1+xp.sum(weight_rx, axis=2))
 
         # show progress
         percentage = round((itx+1)/n_transmissions*1000)/10
@@ -218,7 +218,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             print('\r', percentage, '%', end='')
 
     # calculate final rf image
-    rf_image = xp.sum(rf_tx, axis=2)/np.sum(weight_tx, axis=2)
+    rf_image = xp.sum(rf_tx, axis=2)*np.sum(weight_tx, axis=2)
 
     if use_gpu:
         return cp.asnumpy(rf_image)

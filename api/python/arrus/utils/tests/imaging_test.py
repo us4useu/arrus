@@ -5,7 +5,6 @@ import arius.tests.tools as tools
 import arius.utils.parameters
 from arius.utils.imaging import reconstruct_rf_img
 
-
 class ReconstructRfImgEdgeCaseTest(unittest.TestCase):
     """
     Tests edge cases for RF frame reconstruction.
@@ -41,13 +40,12 @@ class ReconstructRfImgEdgeCaseTest(unittest.TestCase):
         # We expect an array of all zeros (no input signal, no output signal).
         np.testing.assert_equal(
             actual=actual,
-            # TODO(zkLog) use len(self.x_grid), len(self.z_grid) instead
-            desired=np.zeros((64, 16))
+            desired=np.zeros((len(self.z_grid), len(self.x_grid)))
         )
 
     def test_single_input_channel(self):
         # Given:
-        rf = np.zeros((1024, 37, 1), dtype=np.int16)
+        rf = np.zeros((1024, 1, 1), dtype=np.int16)
 
         actual = reconstruct_rf_img(
             rf,
@@ -60,12 +58,8 @@ class ReconstructRfImgEdgeCaseTest(unittest.TestCase):
         # Should be:
         np.testing.assert_equal(
             actual=actual,
-            desired=np.zeros((64, 16))
+            desired=np.zeros((len(self.z_grid), len(self.x_grid)))
         )
-        # TODO(zkLog) this test will not pass:
-        # I've assumed here all zeros, but we get NaNs
-        # This will also contain NaNs for 16 or 24 channels.
-        # Will work for 32 channels.
 
 
 class ReconstructRfImgSimulatedDataTest(unittest.TestCase):
