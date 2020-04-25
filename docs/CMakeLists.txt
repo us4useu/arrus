@@ -21,7 +21,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
     get_target_property(VENV_PY_EXECUTABLE ${VENV_TARGET} VENV_EXECUTABLE)
     get_target_property(SPHINX_EXECUTABLE ${SPHINX_TARGET} SPHINX_EXECUTABLE)
     if(NOT "${DEPS}" STREQUAL "")
-        get_target_property(ARRUS_INSTALL_STAMP ${DEPS} INSTALL_TIMESTAMP)
+        get_target_property(DEPS_STAMP ${DEPS} ARRUS_TIMESTAMP)
     endif()
     if(FORMAT STREQUAL "pdf")
         set(FORMAT_OUT_DIR "latex")
@@ -67,7 +67,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
         WORKING_DIRECTORY ${CMAKE_CURRENT_LANG_DIR}
         DEPENDS
             ${DOC_FILES} ${VENV_TARGET} ${SPHINX_TARGET} ${DEPS}
-            ${ARRUS_INSTALL_STAMP}
+            ${DEPS_STAMP}
         MAIN_DEPENDENCY @{SPHINX_LATEX_CONF_FILE_OUT} ${SPHINX_CONF_FILE_IN}
         COMMENT "Generating ${FORMAT} documentation for ${LANGUAGE} with Sphinx"
     )
@@ -109,7 +109,10 @@ if(ARRUS_BUILD_PY)
 endif()
 
 if(ARRUS_BUILD_MATLAB)
-    CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package "")
-    CREATE_DOC_TARGET(matlab html docs_venv sphinx_package "")
+    get_target_property(
+            MATLAB_TOOLBOX_DIR
+            matlab_toolbox  MATLAB_TOOLBOX_BIN_DIR)
+    CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package matlab_toolbox)
+    CREATE_DOC_TARGET(matlab html docs_venv sphinx_package matlab_toolbox)
 endif()
 

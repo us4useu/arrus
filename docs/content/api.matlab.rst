@@ -8,6 +8,14 @@ Us4OEM API
 
     ARRUS is currently under development and its API will be modified in the future. Please expect breaking changes.
 
+Test:
+
+.. mat:automodule:: arrus
+
+.. mat:autoclass:: Us4R
+    :members:
+
+
 General formula
 ===============
 

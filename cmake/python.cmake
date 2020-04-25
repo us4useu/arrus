@@ -77,7 +77,7 @@ function(install_arrus_package TARGET_NAME VENV_TARGET PACKAGE_TARGET)
     add_custom_target(${TARGET_NAME} ALL DEPENDS ${INSTALL_TIMESTAMP})
     set_target_properties(${TARGET_NAME}
         PROPERTIES
-            INSTALL_TIMESTAMP ${INSTALL_TIMESTAMP}
+            ARRUS_TIMESTAMP ${INSTALL_TIMESTAMP}
     )
 endfunction()
 
@@ -108,7 +108,7 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
 
     set_target_properties(${TARGET_NAME}
         PROPERTIES
-            INSTALL_TIMESTAMP ${INSTALL_TIMESTAMP}
+            ARRUS_TIMESTAMP ${INSTALL_TIMESTAMP}
             SPHINX_EXECUTABLE ${VENV_SPHINX_EXECUTABLE}
     )
 endfunction()

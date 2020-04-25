@@ -1,18 +1,15 @@
-% class for system control
 classdef Us4R < handle
+    % A short description of the class.
 
-    properties %(Access = private)
-
+    properties(Access = private)
         sys
         seq
         rec
-        
     end
 
 
-    methods
-        
-        % To do: 
+    methods(Access=public)
+        % To do:
         % Priority=Hi; usProbes.mat->function (DONE)
         % Priority=Hi; exclude calcTxParams
         % Priority=Hi; Rx aperture motion for LIN
@@ -27,7 +24,10 @@ classdef Us4R < handle
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
         
         function obj = Us4R(nArius,probeName)
-            
+            % What does this function do?
+            %
+            % :param probeName: probe name not to use
+
 %             path(path, '..\..\x64\Release');
             addpath('C:\arius\matlab');
 %             addpath('C:\Users\Public\us4oem-releases\ref-43\matlab');
@@ -77,9 +77,9 @@ classdef Us4R < handle
         end
         
         
-        
+
         function obj = setSeqParams(obj,varargin)
-            
+
             %% Set sequence parameters
             % Sequence parameters names mapping
             %                    public name         private name
@@ -94,36 +94,36 @@ classdef Us4R < handle
                                 'txNPeriods',       'txNPer'; ...
                                 'rxNSamples',       'nSamp'; ...
                                 'txPri',            'txPri'};
-            
+
             if mod(length(varargin),2) == 1
                 % Throw exception
             end
-            
+
             for iPar=1:size(seqParamMapping,1)
                 eval(['obj.seq.' seqParamMapping{iPar,2} ' = [];']);
             end
-            
+
             nPar = length(varargin)/2;
             for iPar=1:nPar
                 idPar = find(strcmpi(varargin{iPar*2-1},seqParamMapping(:,1)));
-                
+
                 if isempty(idPar)
                     % Throw exception
                 end
-                
+
                 if ~isnumeric(varargin{iPar*2})
                     % Throw exception
                 end
-                
+
                 eval(['obj.seq.' seqParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
             end
-            
+
             %% Resulting parameters
             if isempty(obj.seq.txApCent) && ~isempty(obj.seq.txCentElem)
                 obj.seq.txApCent        = obj.sys.xElem(floor(obj.seq.txCentElem)).*(1-mod(obj.seq.txCentElem,1)) + ...
                                           obj.sys.xElem( ceil(obj.seq.txCentElem)).*(  mod(obj.seq.txCentElem,1));
             end
-            
+
             switch obj.seq.type
                 case 'sta'
                     obj.seq.nTx         = length(obj.seq.txApCent);
@@ -132,9 +132,9 @@ classdef Us4R < handle
                 case 'lin'
                     obj.seq.nTx         = length(obj.seq.txApCent);
             end
-            
+
             obj = obj.calcTxParams;
-            
+
             if strcmp(obj.seq.type,'lin')
                 obj.seq.nSubTx          = 1;
             else
@@ -146,16 +146,16 @@ classdef Us4R < handle
                     obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / (obj.sys.nChArius * obj.sys.nArius)));
                 end
             end
-            
+
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
             obj.seq.rxTime      = 160e-6;                                % [s] rx time (max 4000us)
             obj.seq.rxDel       = 5e-6;
             obj.seq.pauseMultip	= 1.5;
-            
+
             %% Program hardware
             obj	= obj.programHW;
-            
+
         end
         
         
