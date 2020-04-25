@@ -1,16 +1,15 @@
 % class for system control
-classdef us4R
-    
-    
+classdef Us4R < handle
+
     properties %(Access = private)
-        
+
         sys
         seq
         rec
         
     end
-    
-    
+
+
     methods
         
         % To do: 
@@ -27,7 +26,7 @@ classdef us4R
         % Priority=Lo; scanConv after envelope detection, scanConv coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
         
-        function obj = us4R(nArius,probeName)
+        function obj = Us4R(nArius,probeName)
             
 %             path(path, '..\..\x64\Release');
             addpath('C:\arius\matlab');
