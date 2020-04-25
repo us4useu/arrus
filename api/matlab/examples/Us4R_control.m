@@ -6,7 +6,7 @@ probeName	= 'SL1543';
 % probeName	= 'L14-5/38';
 
 %% Initialize the system
-us	= us4R(nArius,probeName);
+us	= Us4R(nArius,probeName);
 
 %% Set the TX/RX parameters
 % PWI
