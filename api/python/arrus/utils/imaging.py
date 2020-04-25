@@ -35,7 +35,6 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     if tx_angle.size != 1:
         tx_angle = np.squeeze(tx_angle)
 
-
     if use_gpu:
         import cupy as cp
         rf = cp.array(rf)
@@ -51,11 +50,10 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     if tx_focus is None:
         tx_focus = 0
 
-    # making x and z_grid 'vertical vector' (should be more user friendly in future!)
-    temp = z_grid[xp.newaxis]
-    z_grid = temp.T
+    # making x and z_grid column vector
+    z_grid = z_grid[xp.newaxis].T
 
-    # getting some size parameters
+    # getting size parameters
     n_samples, n_channels, n_transmissions = rf.shape
     z_size = max(z_grid.shape)
     x_size = max(x_grid.shape)
@@ -87,7 +85,8 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
     # Delay & Sum
     # add zeros as last samples.
-    # If a sample is out of range 1: nSamp, then use the sample no.nSamp + 1 which is 0.
+    # If a sample is out of range 1: nSamp,
+    # then use the sample no.nSamp + 1 which is 0.
     # to be checked if it is faster than irregular memory access.
     tail = xp.zeros((1, n_channels, n_transmissions))
     rf = xp.concatenate((rf, tail))
@@ -171,42 +170,39 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
             # calculate rx delays and apodization
             rx_distance = xp.sqrt((x_grid[lix_valid]-element_xcoord[irx])**2
-                                  +z_grid**2)
+                                  + z_grid**2)
             f_number = abs(z_grid/(x_grid[lix_valid]-element_xcoord[irx])*0.5)
-            rx_apodization = f_number>2
-
+            rx_apodization = f_number > 2
 
             # calculate total delays [s]
             delays = init_delay + (tx_distance+rx_distance)/c
 
-
             # calculate sample number to be used in reconstruction
             samples = delays*fs+1
-            out_of_range = (0>samples)|(samples>n_samples-1)
+            out_of_range = (0 > samples) | (samples > n_samples-1)
             samples[out_of_range] = n_samples
-
 
             # calculate rf samples (interpolated) and apodization weights
             rf_raw_line = rf[:, irx, itx]
             ceil_samples = xp.ceil(samples).astype(int)
             floor_samples = xp.floor(samples).astype(int)
             valid = xp.where(lix_valid)[0].tolist()
-            rf_rx[:, valid, irx] = rf_raw_line[floor_samples]*(1-(samples%1)) \
-                                  +rf_raw_line[ceil_samples]*(samples%1)
+            rf_rx[:, valid, irx] = rf_raw_line[floor_samples]*(1-(samples % 1)) \
+                                   + rf_raw_line[ceil_samples]*(samples % 1)
             weight_rx[:, valid, irx] = tx_apodization*rx_apodization
 
-
-            # modulate if iq signal is used (to trzeba sprawdzic, bo pisane 'na rybke')
+            # modulate if iq signal is used
             if is_iqdata:
-                # TODO: przetestowac
                 rf_rx[:, lix_valid, irx] = rf_rx[:, lix_valid, irx] \
-                                          *xp.exp(1j*2*xp.pi*fc*delays)
+                                          * xp.exp(1j*2*xp.pi*fc*delays)
                 pass
-
 
         # calculate rf and weights for single tx
         rf_tx[:, :, itx] = xp.sum(rf_rx*weight_rx, axis=2)
-        weight_tx[:, :, itx] = 1/(1+xp.sum(weight_rx, axis=2))
+        sumwrx = xp.sum(weight_rx, axis=2)
+        weight_tx[:, :, itx] = xp.divide(1, sumwrx,
+                                         out=xp.zeros_like(sumwrx),
+                                         where=sumwrx!=0)
 
         # show progress
         percentage = round((itx+1)/n_transmissions*1000)/10
@@ -224,7 +220,6 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
         return cp.asnumpy(rf_image)
     else:
         return rf_image
-
 
 
 def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
