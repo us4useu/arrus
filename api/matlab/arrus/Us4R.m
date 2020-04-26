@@ -1,32 +1,18 @@
 classdef Us4R < handle
-    % A short description of the class.
+    % A short description of the Us4R class.
 
     properties(Access = private)
         sys
         seq
-        rec
     end
+    
+    methods
 
-
-    methods(Access=private)
-        % TODO:
-        % Priority=Hi; usProbes.mat->function (DONE)
-        % Priority=Hi; exclude calcTxParams
-        % Priority=Hi; Rx aperture motion for LIN
-        % Priority=Hi; Rx aperture for STA/PWI
-        %               setSeqParams, calcTxParams, 
-        %               programHW(nSubTx),
-        %               execSequence(reorganize).
-        
-        % Priority=Hi; Check the param sizes
-        
-        % Priority=Lo; scanConv after envelope detection, scanConv coordinates
-        % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
-        
         function obj = Us4R(nArius,probeName)
             % Us4R handle constructor.
             %
-            % :param probeName: probe name not to use
+            % :param nArius: number of arius modules available in the system
+            % :param probeName: probe name to use
             % :return: Us4R instance
 
             % System parameters
@@ -73,11 +59,60 @@ classdef Us4R < handle
         end
         
         function rf = run(obj, operation)
-           obj.setSeqParams()
+
+            sequenceType = []
+
+            % TODO(piotrkarwat) use operation class directly in the private
+            switch(class(operation))
+                case 'PWISequence'
+                    sequenceType = "pwi"
+                case 'STASequence'
+                    sequenceType = "sta"
+                case "LINSequence"
+                    sequenceType = 'lin'
+                otherwise
+                    throw(MException(
+                        "Arrus:params", ...
+                        ['Unrecognized operation type ', class(operation)]
+                    ))
+            end
+            obj.setSeqParams(
+                'sequenceType', sequenceType, ...
+                'txCenterElement', operation.txCenterElement, ...
+                'txApertureCenter', operation.txApertureCenter, ...
+                'txApertureSize', operation.txApertureSize, ...
+                'txFocus', operation.txFocus, ...
+                'txAngle', operation.txAngle, ...
+                'speedOfSound', operation.speedOfSound, ...
+                'txFrequency', opeartion.txFrequency, ...
+                'txNPeriods', operation.txNPeriods, ...
+                'rxNSamples', operation.rxNSamples, ...
+                'txPri', operation.txPri
+            )
+            obj.openSequence;
+            rf = obj.execSequence;
+            obj.closeSequence;
         end
         
-
-        function obj = setSeqParams(obj,varargin)
+    end
+        
+    methods(Access = private)
+        % TODO:
+        % Priority=Hi; usProbes.mat->function (DONE)
+        % Priority=Hi; exclude calcTxParams
+        % Priority=Hi; Rx aperture motion for LIN
+        % Priority=Hi; Rx aperture for STA/PWI
+        %               setSeqParams, calcTxParams, 
+        %               programHW(nSubTx),
+        %               execSequence(reorganize).
+        
+        % Priority=Hi; Check the param sizes
+        
+        % Priority=Lo; scanConv after envelope detection, scanConv coordinates
+        % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
+        
+        
+        function setSeqParams(obj,varargin)
 
             %% Set sequence parameters
             % Sequence parameters names mapping
@@ -96,7 +131,7 @@ classdef Us4R < handle
                                 'txPri',            'txPri'};
 
             if mod(length(varargin),2) == 1
-                % Throw exception
+                % TODO(piotrkarwat) Throw exception
             end
 
             for iPar=1:size(seqParamMapping,1)
@@ -108,11 +143,11 @@ classdef Us4R < handle
                 idPar = find(strcmpi(varargin{iPar*2-1},seqParamMapping(:,1)));
 
                 if isempty(idPar)
-                    % Throw exception
+                    % TODO(piotrkarwat) Throw exception
                 end
 
                 if ~isnumeric(varargin{iPar*2})
-                    % Throw exception
+                    % TODO(piotrkarwat) Throw exception
                 end
 
                 eval(['obj.seq.' seqParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
@@ -158,58 +193,6 @@ classdef Us4R < handle
 
         end
         
-        
-        
-        function obj = setRecParams(obj,varargin)
-            
-            %% Set reconstruction parameters
-            % Reconstruction parameters names mapping
-            %                    public name         private name
-            recParamMapping = { 'filterEnable',     'filtEnable'; ...
-                                'filterACoeff',     'filtA'; ...
-                                'filterBCoeff',     'filtB'; ...
-                                'filterDelay',      'filtDel'; ...
-                                'iqEnable',         'iqEnable'; ...
-                                'cicOrder',         'cicOrd'; ...
-                                'decimation',       'dec'; ...
-                                'xGrid',            'xGrid'; ...
-                                'zGrid',            'zGrid'};
-            
-            if mod(length(varargin),2) == 1
-                % Throw exception
-            end
-            
-            for iPar=1:size(recParamMapping,1)
-%                 eval(['obj.seq.' recParamMapping{iPar,2} ' = [];']);
-                eval(['obj.rec.' recParamMapping{iPar,2} ' = [];']);
-            end
-            
-            nPar = length(varargin)/2;
-            for iPar=1:nPar
-                idPar = find(strcmpi(varargin{iPar*2-1},recParamMapping(:,1)));
-                
-                if isempty(idPar)
-                    % Throw exception
-                end
-                
-                if ~isnumeric(varargin{iPar*2})
-                    % Throw exception
-                end
-                
-                eval(['obj.rec.' recParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
-            end
-            
-            %% Resulting parameters
-            obj.rec.zSize	= length(obj.rec.zGrid);
-            obj.rec.xSize	= length(obj.rec.xGrid);
-            
-            %% Fixed parameters
-            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp'));
-            
-        end
-        
-        
-        
         function val = get(obj,paramName)
             
             if isfield(obj.sys,paramName)
@@ -227,9 +210,7 @@ classdef Us4R < handle
             end
             
         end
-        
-        
-        
+
         function obj = calcTxParams(obj)
             % calcTxParams appends the following fields to the in/out obj:
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
@@ -286,8 +267,6 @@ classdef Us4R < handle
             obj.seq.txDelCent	= txDelCent;
             
         end
-        
-        
         
         function obj = programHW(obj)
             
@@ -394,7 +373,6 @@ classdef Us4R < handle
         
         
         function [] = openSequence(obj)
-            
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nTx*nSubTx;
@@ -402,20 +380,14 @@ classdef Us4R < handle
             %% Start acquisitions (1st sequence exec., no transfer to host)
             AriusMEX(0, "TriggerStart");
             pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
-            
         end
-        
-        
-        
+
         function [] = closeSequence(obj)
-            
             %% Stop acquisition
             AriusMEX(0, "TriggerStop");
             
         end
-        
-        
-        
+
         function rf = execSequence(obj)
             
             nArius	= obj.sys.nArius;
@@ -475,160 +447,5 @@ classdef Us4R < handle
             end
             
         end
-        
-        
-        
-        function img = execReconstr(obj,rfRaw)
-            
-            %% Move data to GPU if possible
-            if obj.rec.gpuEnable
-                rfRaw = gpuArray(rfRaw);
-            end
-            
-            %% Preprocessing
-            % Raw rf data filtration
-            if obj.rec.filtEnable
-                rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
-            end
-            
-            % Digital Down Conversion
-            rfRaw = downConv(rfRaw,obj.seq,obj.rec);
-            
-            % warning: both filtration and decimation introduce phase delay!
-            % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
-            
-            %% Reconstruction
-            if strcmp(obj.seq.type,'lin')
-                rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
-            else
-                rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
-            end
-            
-            %% Postprocessing
-            % Obtain complex signal (if it isn't complex already)
-            if ~obj.rec.iqEnable
-                nanMask = isnan(rfBfr);
-                rfBfr(nanMask) = 0;
-                rfBfr = hilbert(rfBfr);
-                rfBfr(nanMask) = nan;
-            end
-            
-            % Scan conversion (for 'lin' mode)
-            if strcmp(obj.seq.type,'lin')
-                rfBfr = scanConv(rfBfr,obj.sys,obj.seq,obj.rec);
-            end
-            
-            % Envelope detection
-            envImg = abs(rfBfr);
-            
-            % Compression
-            img = 20*log10(envImg);
-            
-            % Gather data from GPU
-            if obj.rec.gpuEnable
-                img = gather(img);
-            end
-            
-            
-        end
-
-
-
-        function [] = runOnce(obj)
-
-            %% TX/RX sequence
-            obj.openSequence;
-            rf	= obj.execSequence;
-            obj.closeSequence;
-
-            %% Reconstruction
-            img	= obj.execReconstr(rf);
-
-            %% Display
-            if obj.rec.filtEnable
-                rf = filter(obj.rec.filtB,obj.rec.filtA,rf);
-            end
-
-            nTx     = obj.seq.nTx;
-            nTx     = min(3,nTx);   % limits the number of displayed data sets
-
-            figure;
-            for iTx=1:nTx
-                subplot(1,nTx,iTx);
-                imagesc(rf(:,:,iTx));
-                xlabel('Chan #');
-                ylabel('Samp #');
-                colormap(jet);
-                colorbar;
-                set(gca,'CLim',[-1 1]*1e2);
-            end
-            set(gcf,'Position',get(gcf,'Position') + [560 0 0 0]);
-
-            figure;
-            imagesc(obj.rec.xGrid*1e3,obj.rec.zGrid*1e3,img);
-            xlabel('x [mm]');
-            ylabel('z [mm]');
-            daspect([1 1 1]);
-%             set(gca,'CLim',[40 80]);
-            colormap(gray);
-            colorbar;
-
-        end
-
-
-
-        function [] = runLoop(obj,showTimes)
-
-            if nargin<2
-                showTimes = false;
-            end
-
-            %% Prepare the display
-            hFig	= figure;
-            hImg	= imagesc(obj.rec.xGrid*1e3,obj.rec.zGrid*1e3,[]);
-            xlabel('x [mm]');
-            ylabel('z [mm]');
-            daspect([1 1 1]);
-            set(gca,'XLim',obj.rec.xGrid([1 end])*1e3);
-            set(gca,'YLim',obj.rec.zGrid([1 end])*1e3);
-            set(gca,'CLim',[-20 80]);
-            colormap(gray);
-            colorbar;
-
-            %% TX/RX / Reconstruction / Display
-            obj.openSequence;
-            iFrame = 0;
-            while(ishghandle(hFig))
-                iFrame = iFrame + 1;
-
-                % TX/RX sequence
-                tic;
-                rf	= obj.execSequence;
-                tSeq = toc;
-
-                % Reconstruction
-                tic;
-                img	= obj.execReconstr(rf);
-                tRec = toc;
-
-                % Display
-                set(hImg, 'CData', img);
-                drawnow;
-
-                % Show times
-                if showTimes
-                    disp(['Frame no. ' num2str(iFrame)]);
-                    disp(['Acq.  time = ' num2str(tSeq,         '%5.3f') ' s']);
-                    disp(['Rec.  time = ' num2str(tRec,         '%5.3f') ' s']);
-                    disp(['Frame rate = ' num2str(1/(tSeq+tRec),'%5.1f') ' fps']);
-                    disp('--------------------');
-                end
-            end
-            obj.closeSequence;
-
-        end
-
-
-
     end
 end
