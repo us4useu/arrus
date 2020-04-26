@@ -28,7 +28,7 @@ def main():
     extra_options = []
     if args.targets is not None:
         extra_options = [
-            "--target", args.targets
+            "--target", " ".join(args.targets)
         ]
 
     cmake_cmd = [
