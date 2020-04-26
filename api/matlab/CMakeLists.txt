@@ -42,4 +42,11 @@ set_target_properties(
         MATLAB_TOOLBOX_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+install(
+	DIRECTORY
+		${TOOLBOX_OUTPUT_DIR}
+    DESTINATION
+        ${ARRUS_MATLAB_INSTALL_DIR}
+)
+
 
