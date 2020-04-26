@@ -8,8 +8,8 @@ classdef Us4R < handle
     end
 
 
-    methods(Access=public)
-        % To do:
+    methods(Access=private)
+        % TODO:
         % Priority=Hi; usProbes.mat->function (DONE)
         % Priority=Hi; exclude calcTxParams
         % Priority=Hi; Rx aperture motion for LIN
@@ -24,25 +24,21 @@ classdef Us4R < handle
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
         
         function obj = Us4R(nArius,probeName)
-            % What does this function do?
+            % Us4R handle constructor.
             %
             % :param probeName: probe name not to use
+            % :return: Us4R instance
 
-%             path(path, '..\..\x64\Release');
-            addpath('C:\arius\matlab');
-%             addpath('C:\Users\Public\us4oem-releases\ref-43\matlab');
-%             addpath('C:\Users\Public\us4oem-releases\ref-43\lib64');
-            
             % System parameters
-            obj.sys.nArius      = nArius;                               % number of Arius modules
-            obj.sys.nChArius	= 32;
+            obj.sys.nArius = nArius; % number of Arius modules
+            obj.sys.nChArius = 32;
             
-            probe               = probeParams(probeName);
-            obj.sys.adapType	= probe.adapType;                       % 0-old(00001111); 1-new(01010101);
-            obj.sys.pitch       = probe.pitch;
-            obj.sys.nElem       = probe.nElem;
-            obj.sys.xElem       = (-(obj.sys.nElem-1)/2 : ...
-                                    (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
+            probe = probeParams(probeName);
+            obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
+            obj.sys.pitch = probe.pitch;
+            obj.sys.nElem = probe.nElem;
+            obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
+                            (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
             
             for iArius=0:(nArius-1)
                 % Set Rx channel mapping
@@ -76,6 +72,9 @@ classdef Us4R < handle
             
         end
         
+        function rf = run(obj, operation)
+           obj.setSeqParams()
+        end
         
 
         function obj = setSeqParams(obj,varargin)
@@ -84,6 +83,7 @@ classdef Us4R < handle
             % Sequence parameters names mapping
             %                    public name         private name
             seqParamMapping = { 'sequenceType',     'type'
+                                % aperture
                                 'txCenterElement',  'txCentElem'; ...
                                 'txApertureCenter', 'txApCent'; ...
                                 'txApertureSize',   'txApSize'; ...
@@ -531,27 +531,27 @@ classdef Us4R < handle
             
             
         end
-        
-        
-        
+
+
+
         function [] = runOnce(obj)
-            
+
             %% TX/RX sequence
             obj.openSequence;
             rf	= obj.execSequence;
             obj.closeSequence;
-            
+
             %% Reconstruction
             img	= obj.execReconstr(rf);
-            
+
             %% Display
             if obj.rec.filtEnable
                 rf = filter(obj.rec.filtB,obj.rec.filtA,rf);
             end
-            
+
             nTx     = obj.seq.nTx;
             nTx     = min(3,nTx);   % limits the number of displayed data sets
-            
+
             figure;
             for iTx=1:nTx
                 subplot(1,nTx,iTx);
@@ -563,7 +563,7 @@ classdef Us4R < handle
                 set(gca,'CLim',[-1 1]*1e2);
             end
             set(gcf,'Position',get(gcf,'Position') + [560 0 0 0]);
-            
+
             figure;
             imagesc(obj.rec.xGrid*1e3,obj.rec.zGrid*1e3,img);
             xlabel('x [mm]');
@@ -572,17 +572,17 @@ classdef Us4R < handle
 %             set(gca,'CLim',[40 80]);
             colormap(gray);
             colorbar;
-            
+
         end
-        
-        
-        
+
+
+
         function [] = runLoop(obj,showTimes)
-            
+
             if nargin<2
                 showTimes = false;
             end
-            
+
             %% Prepare the display
             hFig	= figure;
             hImg	= imagesc(obj.rec.xGrid*1e3,obj.rec.zGrid*1e3,[]);
@@ -594,27 +594,27 @@ classdef Us4R < handle
             set(gca,'CLim',[-20 80]);
             colormap(gray);
             colorbar;
-            
+
             %% TX/RX / Reconstruction / Display
             obj.openSequence;
             iFrame = 0;
             while(ishghandle(hFig))
                 iFrame = iFrame + 1;
-                
+
                 % TX/RX sequence
                 tic;
                 rf	= obj.execSequence;
                 tSeq = toc;
-                
+
                 % Reconstruction
                 tic;
                 img	= obj.execReconstr(rf);
                 tRec = toc;
-                
+
                 % Display
                 set(hImg, 'CData', img);
                 drawnow;
-                
+
                 % Show times
                 if showTimes
                     disp(['Frame no. ' num2str(iFrame)]);
@@ -625,10 +625,10 @@ classdef Us4R < handle
                 end
             end
             obj.closeSequence;
-            
+
         end
-        
-        
-        
+
+
+
     end
 end
