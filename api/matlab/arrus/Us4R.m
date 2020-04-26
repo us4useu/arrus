@@ -1,6 +1,11 @@
 classdef Us4R < handle
-    % A short description of the Us4R class.
-
+    % A handle to the Us4R system. 
+    %
+    % This class provides functions to configure the system and perform
+    % data acquisition using the Us4R.
+    %
+    % Please note: only one instance of this class can be in use at a time!
+    
     properties(Access = private)
         sys
         seq
@@ -14,7 +19,7 @@ classdef Us4R < handle
             % :param nArius: number of arius modules available in the \
             %  us4R system
             % :param probeName: probe name to use
-            % :return: Us4R instance
+            % :returns: Us4R instance
 
             % System parameters
             obj.sys.nArius = nArius; % number of Arius modules
@@ -67,24 +72,19 @@ classdef Us4R < handle
             %
             % :param operation: operation to perform on the us4R system
             % :returns: RF frame
-
-            sequenceType = []
-
-            % TODO(piotrkarwat) use operation class directly in the private
+            
             switch(class(operation))
                 case 'PWISequence'
-                    sequenceType = "pwi"
+                    sequenceType = "pwi";
                 case 'STASequence'
-                    sequenceType = "sta"
+                    sequenceType = "sta";
                 case "LINSequence"
-                    sequenceType = 'lin'
+                    sequenceType = 'lin';
                 otherwise
-                    throw(MException(
-                        "Arrus:params", ...
-                        ['Unrecognized operation type ', class(operation)]
-                    ))
+                    error("ARRUS:IllegalArgument", ...
+                        ['Unrecognized operation type ', class(operation)])
             end
-            obj.setSeqParams(
+            obj.setSeqParams(...
                 'sequenceType', sequenceType, ...
                 'txCenterElement', operation.txCenterElement, ...
                 'txApertureCenter', operation.txApertureCenter, ...
@@ -95,8 +95,7 @@ classdef Us4R < handle
                 'txFrequency', opeartion.txFrequency, ...
                 'txNPeriods', operation.txNPeriods, ...
                 'rxNSamples', operation.rxNSamples, ...
-                'txPri', operation.txPri
-            )
+                'txPri', operation.txPri);
             obj.openSequence;
             rf = obj.execSequence;
             obj.closeSequence;
