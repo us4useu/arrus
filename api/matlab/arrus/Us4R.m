@@ -11,32 +11,33 @@ classdef Us4R < handle
         function obj = Us4R(nArius,probeName)
             % Us4R handle constructor.
             %
-            % :param nArius: number of arius modules available in the system
+            % :param nArius: number of arius modules available in the \
+            %  us4R system
             % :param probeName: probe name to use
             % :return: Us4R instance
 
             % System parameters
             obj.sys.nArius = nArius; % number of Arius modules
             obj.sys.nChArius = 32;
-            
+
             probe = probeParams(probeName);
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
             obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
                             (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
-            
+
             for iArius=0:(nArius-1)
                 % Set Rx channel mapping
                 for ch=1:32
                     AriusMEX(iArius, "SetRxChannelMapping", probe.rxChannelMap(iArius+1,ch), ch);
                 end
-                
+
                 % Set Tx channel mapping
                 for ch=1:128
                     AriusMEX(iArius, "SetTxChannelMapping", probe.txChannelMap(iArius+1,ch), ch);
                 end
-                
+
                 % init RX
                 AriusMEX(iArius, "SetPGAGain","30dB");
                 AriusMEX(iArius, "SetLPFCutoff","15MHz");
@@ -45,20 +46,27 @@ classdef Us4R < handle
                 AriusMEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
                 AriusMEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
                 AriusMEX(iArius, "TGCEnable");
-                
+
                 try
                     AriusMEX(0,"EnableHV");
                 catch
                     warning('1st "EnableHV" failed');
                     AriusMEX(0,"EnableHV");
                 end
-                
+
                 AriusMEX(0,"SetHVVoltage", 10);
             end
-            
+
         end
-        
+
         function rf = run(obj, operation)
+            % Runs operation in the us4R system.
+            %
+            % Currently, only supports :class:`SimpleTxRxSequence`
+            % implementations.
+            %
+            % :param operation: operation to perform on the us4R system
+            % :returns: RF frame
 
             sequenceType = []
 
@@ -93,25 +101,25 @@ classdef Us4R < handle
             rf = obj.execSequence;
             obj.closeSequence;
         end
-        
+
     end
-        
+
     methods(Access = private)
         % TODO:
         % Priority=Hi; usProbes.mat->function (DONE)
         % Priority=Hi; exclude calcTxParams
         % Priority=Hi; Rx aperture motion for LIN
         % Priority=Hi; Rx aperture for STA/PWI
-        %               setSeqParams, calcTxParams, 
+        %               setSeqParams, calcTxParams,
         %               programHW(nSubTx),
         %               execSequence(reorganize).
-        
+
         % Priority=Hi; Check the param sizes
-        
+
         % Priority=Lo; scanConv after envelope detection, scanConv coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
-        
-        
+
+
         function setSeqParams(obj,varargin)
 
             %% Set sequence parameters
@@ -192,9 +200,9 @@ classdef Us4R < handle
             obj	= obj.programHW;
 
         end
-        
+
         function val = get(obj,paramName)
-            
+
             if isfield(obj.sys,paramName)
                 val = eval(['obj.sys.' paramName]);
             else
@@ -208,7 +216,7 @@ classdef Us4R < handle
                     end
                 end
             end
-            
+
         end
 
         function obj = calcTxParams(obj)
@@ -216,73 +224,73 @@ classdef Us4R < handle
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
             % obj.seq.txDel         - [s] (nArius*128 x nTx) tx delays for each element
             % obj.seq.txDelCent     - [s] (1 x nTx) tx delays for tx aperture centers
-            
+
             %% CALCULATE APERTURE MASKS
             %Rounding!!!
             txApMask	= abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
-            
+
             %% CALCULATE DELAYS
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
                 txDel       = (obj.sys.xElem.'  .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
                 txDelCent	= (obj.seq.txApCent .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
-                
+
             else
                 % Focal point positions
                 xFoc        = obj.seq.txFoc .* sin(obj.seq.txAng) + obj.seq.txApCent;	% [m] (1 x nTx) x-position of the focal point
                 zFoc        = obj.seq.txFoc .* cos(obj.seq.txAng);                      % [m] (1 x nTx) z-position of the focal point
-                
+
                 % Delays due to the element - focal point distances
                 txDel       = sqrt((xFoc - obj.sys.xElem.' ).^2 + zFoc.^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
                 txDelCent	= sqrt((xFoc - obj.seq.txApCent).^2 + zFoc.^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
-                
+
                 % Inverse the delays for the 'focusing' option (zFoc>0)
                 % For 'defocusing' the delays remain unchanged
                 focDefoc	= 1 - 2*max(0,sign(zFoc));
                 txDel       = txDel     .* focDefoc;
                 txDelCent	= txDelCent .* focDefoc;
             end
-            
+
             % Make delays = nan outside the tx aperture
             txDel(~txApMask)	= nan;
-            
+
             % Make delays >= 0 in the tx aperture
             txDelShift	= - nanmin(txDel);              % [s] (1 x nTx)
             txDel       = txDel     + txDelShift;       % [s] (nElem x nTx)
             txDelCent	= txDelCent + txDelShift;       % [s] (1 x nTx)
-            
+
             % Equalize the txCentDel
             txDel       = txDel - txDelCent + max(txDelCent);
             txDelCent	= max(txDelCent);
-            
+
             %% Make the apertures/delays fit the number of channels
             txDel(~txApMask)	= 0;
-            
+
             txDel       = [txDel;	 zeros(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
             txApMask	= [txApMask; false(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
-            
+
             %% Save the apertures and delays to the obj
             obj.seq.txApMask	= txApMask;
             obj.seq.txDel       = txDel;
             obj.seq.txDelCent	= txDelCent;
-            
+
         end
-        
+
         function obj = programHW(obj)
-            
+
             nArius	= obj.sys.nArius;
             nSamp	= obj.seq.nSamp;
             nChan	= obj.sys.nChArius;
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nSubTx*nTx;
-            
+
             %% Program TX
             for iArius=0:(nArius-1)
                 for iTx=1:nTx
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
-                        
+
                         if ~obj.sys.adapType
                             % old adapter type (00001111)
                             selectElem	= (1:128) + iArius*128;
@@ -296,10 +304,10 @@ classdef Us4R < handle
                         if isempty(txSubApOrig)
                             txSubApOrig = 1;
                         end
-                        
+
                         AriusMEX(iArius, "SetTxAperture", txSubApOrig, txSubApSize, iEvent);
                         AriusMEX(iArius, "SetTxDelays", txSubApDel, iEvent);
-                        
+
                         AriusMEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
                         AriusMEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
                         AriusMEX(iArius, "SetTxInvert", 0, iEvent);
@@ -308,16 +316,16 @@ classdef Us4R < handle
                 AriusMEX(iArius, "SetNumberOfFirings", nEvent);
                 AriusMEX(iArius, "EnableTransmit");
             end
-            
+
             %% Program RX
             if strcmp(obj.seq.type,'lin')
                 obj.seq.rxApOrig	= nan(1,nTx);
             end
-            
+
             for iArius=0:(nArius-1)
                 AriusMEX(iArius, "ClearScheduledReceive");
                 for iTx=1:nTx
-                    
+
                     if strcmp(obj.seq.type,'lin') && iArius == 0
                         rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent(iTx));
                         if ~obj.sys.adapType
@@ -328,15 +336,15 @@ classdef Us4R < handle
                             obj.seq.rxApOrig(iTx)	= round(rxCentElem - (nChan*nArius-1)/2);
                         end
                     end
-                    
+
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
-                        
+
                         AriusMEX(iArius, "ScheduleReceive", iEvent*nSamp, nSamp);
-                        
+
                         AriusMEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
                         AriusMEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
-                        
+
                         if strcmp(obj.seq.type,'lin')
                             if ~obj.sys.adapType
                                 % old adapter type (00001111)
@@ -347,7 +355,7 @@ classdef Us4R < handle
                                 rxSubApOrig	= 1 + min(nChan,mod(rxSubApOrig-1,nChan*nArius)) ...
                                                 + nChan*floor((rxSubApOrig-1)/(nChan*nArius));
                             end
-                            
+
                             rxSubApSize	= max(0, min([nChan, nChan + rxSubApOrig - 1, 4*nChan - rxSubApOrig + 1]));
                             rxSubApOrig	= max(1, min(4*nChan,rxSubApOrig));
                         else
@@ -359,7 +367,7 @@ classdef Us4R < handle
                 end
                 AriusMEX(iArius, "EnableReceive");
             end
-            
+
             %% Program triggering
 %             AriusMEX(0, "SetNTriggers", nEvent-1);
             AriusMEX(0, "SetNTriggers", nEvent);
@@ -367,16 +375,16 @@ classdef Us4R < handle
                 AriusMEX(0, "SetTrigger", obj.seq.txPri, 0, 0, iEvent);
             end
             AriusMEX(0, "SetTrigger", obj.seq.txPri, 0, 1, nEvent-1);
-            
+
         end
-        
-        
-        
+
+
+
         function [] = openSequence(obj)
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nTx*nSubTx;
-            
+
             %% Start acquisitions (1st sequence exec., no transfer to host)
             AriusMEX(0, "TriggerStart");
             pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
@@ -385,34 +393,34 @@ classdef Us4R < handle
         function [] = closeSequence(obj)
             %% Stop acquisition
             AriusMEX(0, "TriggerStop");
-            
+
         end
 
         function rf = execSequence(obj)
-            
+
             nArius	= obj.sys.nArius;
             nChan	= obj.sys.nChArius;
             nSamp	= obj.seq.nSamp;
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nTx*nSubTx;
-            
+
             %% Capture data
             for iArius=0:(nArius-1)
                 AriusMEX(iArius, "EnableReceive");
             end
             AriusMEX(0, "TriggerSync");
             pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
-            
+
             %% Transfer to PC
             rf	= zeros(nChan,nSamp*nEvent,nArius);
             for iArius=0:(nArius-1)
                 rf(:,:,iArius+1)	= AriusMEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
             end
-            
+
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nArius]);
-            
+
             if ~obj.sys.adapType
                 % old adapter type (00001111)
                 rf	= permute(rf,[2 1 3 5 4]);
@@ -422,7 +430,7 @@ classdef Us4R < handle
                 rf	= permute(rf,[2 1 5 3 4]);
                 rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx);
             end
-            
+
             if strcmp(obj.seq.type,'lin')
                 rxApOrig	= obj.seq.rxApOrig;
                 if ~obj.sys.adapType
@@ -445,7 +453,7 @@ classdef Us4R < handle
             else
                 rf	= rf(:,1:min(obj.sys.nElem,nChan*nSubTx*nArius),:);
             end
-            
+
         end
     end
 end

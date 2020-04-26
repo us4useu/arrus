@@ -3,6 +3,13 @@
 ################################################################################
 set(SOURCE_FILES
     "arrus/Us4R.m"
+    "arrus/Us4RDisplay.m"
+    "arrus/Operation.m"
+    "arrus/SimpleTxRxSequence.m"
+    "arrus/PWISequence.m"
+    "arrus/STASequence.m"
+    "arrus/LINSequence.m"
+    "arrus/mustBeDivisible.m"
     "arrus/probeParams.m"
     "arrus/downConv.m"
     "arrus/reconstructRfImg.m"

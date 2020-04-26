@@ -1,6 +1,9 @@
 classdef SimpleTxRxSequence < Operation
     % A sequence of Tx/Rx operations to perform on a device.
     %
+    % :param txCenterElement: an array of tx aperture center elements
+    % :param txAperturecenter: an array of tx aperture center positions [m]
+    % :param txApertureSize: the size of the Tx aperture [element]
     
     properties
         txCenterElement
