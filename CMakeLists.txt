@@ -14,6 +14,7 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 # Global options and settings
 ################################################################################
 set(ARRUS_DOCS_INSTALL_DIR docs)
+set(ARRUS_MATLAB_INSTALL_DIR matlab)
 
 option(ARRUS_BUILD_PY "Build python API." OFF)
 option(ARRUS_BUILD_MATLAB "Build MATLAB API." OFF)
@@ -33,6 +34,9 @@ endif()
 ################################################################################
 if(ARRUS_BUILD_PY)
     add_subdirectory(api/python)
+endif()
+if(ARRUS_BUILD_MATLAB)
+    add_subdirectory(api/matlab)
 endif()
 if(ARRUS_BUILD_DOCS)
     add_subdirectory(docs)
