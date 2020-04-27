@@ -311,3 +311,81 @@ def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
     plt.xlabel('[mm]')
     plt.ylabel('[mm]')
 #    plt.show()
+
+
+def compute_tx_delays(angles, focus, pitch, c=1490, n_chanels=128):
+    # transducer indexes
+    x_i = np.linspace(0, n_chanels-1, n_chanels)
+
+    # transducer coordinates
+    x_c = x_i*pitch
+
+    # convert angles to ndarray, angles.shape can not be equal ()
+    angles = np.array([angles])
+    n_angles = angles.size
+
+    # allocating memory for delays
+    delays = np.zeros(shape=(n_angles, n_chanels))
+
+    angles = np.array(angles)
+    if angles.size != 0:
+        # reducing possible singleton dimensions of 'angles'
+        angles = np.squeeze(angles)
+        if angles.shape == ():
+            angles = np.array([angles])
+
+        # allocating memory for delays
+        delays = np.zeros(shape=(n_angles, n_chanels))
+
+        # calculating delays for each angle
+        for i_angle in range(0, n_angles):
+            this_angle = angles[i_angle]
+            this_delays = x_c*np.sin(this_angle)/c
+            if this_angle < 0:
+                this_delays = this_delays-this_delays[-1]
+            delays[i_angle, :] = this_delays
+    else:
+        delays = np.zeros(shape=(1, n_chanels))
+
+    focus = np.array(focus)
+    if focus.size == 0:
+        return delays
+
+    elif focus.size == 1:
+        xf = (n_chanels-1)*pitch/2
+        yf = focus
+
+    elif focus.size == 2:
+        xf = focus[0] + (n_chanels-1)*pitch/2
+        yf = focus[1]
+
+    else:
+        print('Bad focus value, set to [] (plane wave)')
+        return delays
+
+    # distance between origin of coordinate system and focus
+    s0 = np.sqrt(yf**2+xf**2)
+    focus_sign = np.sign(yf)
+
+    # cosinus of the angle between array (y=0) and focus position vector
+    if s0 == 0:
+        cos_alpha = 0
+    else:
+        cos_alpha = xf/s0
+
+    # distances between elements and focus
+    si = np.sqrt(s0**2 + x_c**2 - 2*s0*x_c*cos_alpha)
+
+    # focusing delays
+    delays_foc = (s0-si)/c
+    delays_foc = delays_foc*focus_sign
+
+    # set min(delays_foc) as delay==0
+    d0 = np.min(delays_foc)
+    delays_foc = delays_foc - d0
+
+    # full delays
+    delays = delays + delays_foc
+
+    return delays
+
