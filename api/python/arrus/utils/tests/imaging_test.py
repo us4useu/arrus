@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 import scipy.io
-import arius.tests.tools as tools
-import arius.utils.parameters
-from arius.utils.imaging import reconstruct_rf_img
+import arrus.tests.tools as tools
+import arrus.utils.parameters
+from arrus.utils.imaging import reconstruct_rf_img
 
 class ReconstructRfImgEdgeCaseTest(unittest.TestCase):
     """
