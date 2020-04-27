@@ -64,14 +64,14 @@ classdef Us4R < handle
 
         end
 
-        function rf = run(obj, operation)
-            % Runs operation in the us4R system.
+        function obj = upload(obj, operation)
+            % Uploads operation to the us4R system.
             %
             % Currently, only supports :class:`SimpleTxRxSequence`
             % implementations.
             %
             % :param operation: operation to perform on the us4R system
-            % :returns: RF frame
+            % :returns: updated Us4R object
             
             switch(class(operation))
                 case 'PWISequence'
@@ -84,6 +84,7 @@ classdef Us4R < handle
                     error("ARRUS:IllegalArgument", ...
                         ['Unrecognized operation type ', class(operation)])
             end
+            
             obj.setSeqParams(...
                 'sequenceType', sequenceType, ...
                 'txCenterElement', operation.txCenterElement, ...
@@ -96,6 +97,18 @@ classdef Us4R < handle
                 'txNPeriods', operation.txNPeriods, ...
                 'rxNSamples', operation.rxNSamples, ...
                 'txPri', operation.txPri);
+            
+        end
+        
+        function rf = run(obj)
+            % Runs uploaded operation in the us4R system.
+            %
+            % Currently, only supports :class:`SimpleTxRxSequence`
+            % implementations.
+            %
+            % :param operation: operation to perform on the us4R system
+            % :returns: RF frame
+            
             obj.openSequence;
             rf = obj.execSequence;
             obj.closeSequence;
