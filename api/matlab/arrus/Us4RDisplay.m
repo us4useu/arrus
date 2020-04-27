@@ -66,7 +66,7 @@ classdef Us4RDisplay < handle
             end
 
             % Digital Down Conversion
-            rfRaw = downConv(rfRaw,obj.seq,obj.rec);
+            rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
 
             % warning: both filtration and decimation introduce phase delay!
             % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
@@ -89,7 +89,7 @@ classdef Us4RDisplay < handle
 
             % Scan conversion (for 'lin' mode)
             if strcmp(obj.seq.type,'lin')
-                rfBfr = scanConv(rfBfr,obj.sys,obj.seq,obj.rec);
+                rfBfr = scanConversion(rfBfr,obj.sys,obj.seq,obj.rec);
             end
 
             % Envelope detection

@@ -1,5 +1,5 @@
 % Digital Down Converter - quadrature demodulation, decimation & CIC filtration
-function[rfOut] = downConv(rfIn,acq,proc)
+function[rfOut] = downConversion(rfIn,acq,proc)
 % Outputs:
 % 
 % rfOut                     - (nSamp/dec,nRx,nTx) output rf/iq data

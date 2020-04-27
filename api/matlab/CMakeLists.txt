@@ -11,10 +11,10 @@ set(SOURCE_FILES
     "arrus/LINSequence.m"
     "arrus/mustBeDivisible.m"
     "arrus/probeParams.m"
-    "arrus/downConv.m"
+    "arrus/downConversion.m"
     "arrus/reconstructRfImg.m"
     "arrus/reconstructRfLin.m"
-    "arrus/scanConv.m"
+    "arrus/scanConversion.m"
 )
 
 ################################################################################

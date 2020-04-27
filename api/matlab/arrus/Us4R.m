@@ -115,7 +115,7 @@ classdef Us4R < handle
 
         % Priority=Hi; Check the param sizes
 
-        % Priority=Lo; scanConv after envelope detection, scanConv coordinates
+        % Priority=Lo; scanConversion after envelope detection, scanConversion coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
 
 

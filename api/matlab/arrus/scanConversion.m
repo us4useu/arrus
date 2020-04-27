@@ -1,5 +1,5 @@
 % Scan convertion
-function[rfBfrOut] = scanConv(rfBfrIn,sys,acq,proc)
+function[rfBfrOut] = scanConversion(rfBfrIn,sys,acq,proc)
 
 [nSamp,nTx]	= size(rfBfrIn);
 
