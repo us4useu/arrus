@@ -47,10 +47,14 @@ rec = Reconstruction(   'filterEnable',     true, ...
 us.upload(seqSTA,rec);
 
 %% Run sequence and reconstruction
-[rf,img] = us.run;
+% [rf,img] = us.run;
+% 
+% figure;
+% imagesc(img);
+% set(gca,'CLim',[20 80]);
 
-figure;
-imagesc(img);
-set(gca,'CLim',[20 80]);
+
+display = Us4RDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
+us.runLoop(@display.isOpen, @display.updateImg);
 
 
