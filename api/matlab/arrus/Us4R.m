@@ -9,6 +9,7 @@ classdef Us4R < handle
     properties(Access = private)
         sys
         seq
+        rec
     end
     
     methods
@@ -64,16 +65,17 @@ classdef Us4R < handle
 
         end
 
-        function obj = upload(obj, operation)
-            % Uploads operation to the us4R system.
+        function upload(obj, sequenceOperation, reconstructOperation)
+            % Uploads operations to the us4R system.
             %
             % Currently, only supports :class:`SimpleTxRxSequence`
-            % implementations.
+            % and `Reconstruction` implementations.
             %
-            % :param operation: operation to perform on the us4R system
+            % :param sequenceOperation: TX/RX sequence to perform on the us4R system
+            % :param reconstructOperation: reconstruction to perform with the collected data
             % :returns: updated Us4R object
             
-            switch(class(operation))
+            switch(class(sequenceOperation))
                 case 'PWISequence'
                     sequenceType = "pwi";
                 case 'STASequence'
@@ -82,36 +84,58 @@ classdef Us4R < handle
                     sequenceType = 'lin';
                 otherwise
                     error("ARRUS:IllegalArgument", ...
-                        ['Unrecognized operation type ', class(operation)])
+                        ['Unrecognized operation type ', class(sequenceOperation)])
             end
             
             obj.setSeqParams(...
                 'sequenceType', sequenceType, ...
-                'txCenterElement', operation.txCenterElement, ...
-                'txApertureCenter', operation.txApertureCenter, ...
-                'txApertureSize', operation.txApertureSize, ...
-                'txFocus', operation.txFocus, ...
-                'txAngle', operation.txAngle, ...
-                'speedOfSound', operation.speedOfSound, ...
-                'txFrequency', operation.txFrequency, ...
-                'txNPeriods', operation.txNPeriods, ...
-                'rxNSamples', operation.rxNSamples, ...
-                'txPri', operation.txPri);
+                'txCenterElement', sequenceOperation.txCenterElement, ...
+                'txApertureCenter', sequenceOperation.txApertureCenter, ...
+                'txApertureSize', sequenceOperation.txApertureSize, ...
+                'txFocus', sequenceOperation.txFocus, ...
+                'txAngle', sequenceOperation.txAngle, ...
+                'speedOfSound', sequenceOperation.speedOfSound, ...
+                'txFrequency', sequenceOperation.txFrequency, ...
+                'txNPeriods', sequenceOperation.txNPeriods, ...
+                'rxNSamples', sequenceOperation.rxNSamples, ...
+                'txPri', sequenceOperation.txPri);
+            
+            if nargin==2
+                return;
+            end
+                
+            obj.setRecParams(...
+                'filterEnable', reconstructOperation.filterEnable, ...
+                'filterACoeff', reconstructOperation.filterACoeff, ...
+                'filterBCoeff', reconstructOperation.filterBCoeff, ...
+                'filterDelay', reconstructOperation.filterDelay, ...
+                'iqEnable', reconstructOperation.iqEnable, ...
+                'cicOrder', reconstructOperation.cicOrder, ...
+                'decimation', reconstructOperation.decimation, ...
+                'xGrid', reconstructOperation.xGrid, ...
+                'zGrid', reconstructOperation.zGrid);
+            
+            obj.rec.enable = true;
             
         end
         
-        function rf = run(obj)
-            % Runs uploaded operation in the us4R system.
+        function [rf,img] = run(obj)
+            % Runs uploaded operations in the us4R system.
             %
-            % Currently, only supports :class:`SimpleTxRxSequence`
+            % Currently, only supports :class:`SimpleTxRxSequence` and `Reconstruction`
             % implementations.
             %
-            % :param operation: operation to perform on the us4R system
-            % :returns: RF frame
+            % :returns: RF frame and reconstructed image (if `Reconstruction` operation was uploaded)
             
             obj.openSequence;
             rf = obj.execSequence;
             obj.closeSequence;
+            
+            if obj.rec.enable
+                img = obj.execReconstr(rf);
+            else
+                img = [];
+            end
         end
 
     end
@@ -213,6 +237,52 @@ classdef Us4R < handle
 
         end
 
+        function setRecParams(obj,varargin)
+            %% Set reconstruction parameters
+            % Reconstruction parameters names mapping
+            %                    public name         private name
+            recParamMapping = { 'filterEnable',     'filtEnable'; ...
+                                'filterACoeff',     'filtA'; ...
+                                'filterBCoeff',     'filtB'; ...
+                                'filterDelay',      'filtDel'; ...
+                                'iqEnable',         'iqEnable'; ...
+                                'cicOrder',         'cicOrd'; ...
+                                'decimation',       'dec'; ...
+                                'xGrid',            'xGrid'; ...
+                                'zGrid',            'zGrid'};
+
+            if mod(length(varargin),2) == 1
+                % Throw exception
+            end
+
+            for iPar=1:size(recParamMapping,1)
+%                 eval(['obj.seq.' recParamMapping{iPar,2} ' = [];']);
+                eval(['obj.rec.' recParamMapping{iPar,2} ' = [];']);
+            end
+
+            nPar = length(varargin)/2;
+            for iPar=1:nPar
+                idPar = find(strcmpi(varargin{iPar*2-1},recParamMapping(:,1)));
+
+                if isempty(idPar)
+                    % Throw exception
+                end
+
+                if ~isnumeric(varargin{iPar*2})
+                    % Throw exception
+                end
+
+                eval(['obj.rec.' recParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
+            end
+
+            %% Resulting parameters
+            obj.rec.zSize	= length(obj.rec.zGrid);
+            obj.rec.xSize	= length(obj.rec.xGrid);
+
+            %% Fixed parameters
+            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp'));
+        end
+        
         function val = get(obj,paramName)
 
             if isfield(obj.sys,paramName)
@@ -390,8 +460,6 @@ classdef Us4R < handle
 
         end
 
-
-
         function [] = openSequence(obj)
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
@@ -467,5 +535,60 @@ classdef Us4R < handle
             end
 
         end
+        
+        function img = execReconstr(obj,rfRaw)
+
+            %% Move data to GPU if possible
+            if obj.rec.gpuEnable
+                rfRaw = gpuArray(rfRaw);
+            end
+
+            %% Preprocessing
+            % Raw rf data filtration
+            if obj.rec.filtEnable
+                rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
+            end
+
+            % Digital Down Conversion
+            rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
+
+            % warning: both filtration and decimation introduce phase delay!
+            % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
+
+            %% Reconstruction
+            if strcmp(obj.seq.type,'lin')
+                rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
+            else
+                rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
+            end
+
+            %% Postprocessing
+            % Obtain complex signal (if it isn't complex already)
+            if ~obj.rec.iqEnable
+                nanMask = isnan(rfBfr);
+                rfBfr(nanMask) = 0;
+                rfBfr = hilbert(rfBfr);
+                rfBfr(nanMask) = nan;
+            end
+
+            % Scan conversion (for 'lin' mode)
+            if strcmp(obj.seq.type,'lin')
+                rfBfr = scanConversion(rfBfr,obj.sys,obj.seq,obj.rec);
+            end
+
+            % Envelope detection
+            envImg = abs(rfBfr);
+
+            % Compression
+            img = 20*log10(envImg);
+
+            % Gather data from GPU
+            if obj.rec.gpuEnable
+                img = gather(img);
+            end
+
+
+        end
+
     end
 end
