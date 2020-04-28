@@ -137,6 +137,32 @@ classdef Us4R < handle
                 img = [];
             end
         end
+        
+        function runLoop(obj, isContinue, callback)
+            % Runs the uploaded operations in a loop.
+            % 
+            % Currently, only supports :class:`SimpleTxRxSequence` and \
+            % `Reconstruction` implementations.
+            %
+            % :param isContinue: should the system continue executing \
+            % the op? Takes no parmeters and returns a boolean value.
+            % :param callback: a function to call after executing the \ 
+            % operation. Should take one parameter, which will be feed with \
+            % the output of the executed op.
+            
+            obj.openSequence;
+            while(isContinue())
+                rf = obj.execSequence;
+                
+                if obj.rec.enable
+                    img = obj.execReconstr(rf);
+                    callback(img);
+                else
+                    callback(rf);
+                end
+            end
+            obj.closeSequence;
+        end
 
     end
 
