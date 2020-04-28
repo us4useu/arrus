@@ -24,7 +24,7 @@ classdef Us4RDisplay < handle
             state = ishghandle(obj.hFig);
         end
         
-        function update(obj, img)
+        function updateImg(obj, img)
             set(obj.hImg, 'CData', img);
             drawnow;
         end
