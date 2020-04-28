@@ -10,7 +10,7 @@ samplingFrequency = 65e6;
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/2),'bandpass');
 
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM,probeName);
+us	= Us4R(nUs4OEM, probeName, 50);
 
 seqSTA = STASequence(	'txCenterElement',  [], ...
                         'txApertureCenter', (-15:3:15)*1e-3, ...

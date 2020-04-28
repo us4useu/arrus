@@ -14,7 +14,7 @@ classdef Us4R < handle
     
     methods
 
-        function obj = Us4R(nArius,probeName)
+        function obj = Us4R(nArius, probeName, voltage)
             % Us4R handle constructor.
             %
             % :param nArius: number of arius modules available in the \
@@ -60,7 +60,7 @@ classdef Us4R < handle
                     Us4MEX(0,"EnableHV");
                 end
 
-                Us4MEX(0,"SetHVVoltage", 50);
+                Us4MEX(0, "SetHVVoltage", voltage);
             end
 
         end
