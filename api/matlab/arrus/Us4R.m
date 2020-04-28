@@ -36,31 +36,31 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 % Set Rx channel mapping
                 for ch=1:32
-                    AriusMEX(iArius, "SetRxChannelMapping", probe.rxChannelMap(iArius+1,ch), ch);
+                    Us4MEX(iArius, "SetRxChannelMapping", probe.rxChannelMap(iArius+1,ch), ch);
                 end
 
                 % Set Tx channel mapping
                 for ch=1:128
-                    AriusMEX(iArius, "SetTxChannelMapping", probe.txChannelMap(iArius+1,ch), ch);
+                    Us4MEX(iArius, "SetTxChannelMapping", probe.txChannelMap(iArius+1,ch), ch);
                 end
 
                 % init RX
-                AriusMEX(iArius, "SetPGAGain","30dB");
-                AriusMEX(iArius, "SetLPFCutoff","15MHz");
-                AriusMEX(iArius, "SetActiveTermination","EN", "200");
-                AriusMEX(iArius, "SetLNAGain","24dB");
-                AriusMEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
-                AriusMEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
-                AriusMEX(iArius, "TGCEnable");
+                Us4MEX(iArius, "SetPGAGain","30dB");
+                Us4MEX(iArius, "SetLPFCutoff","15MHz");
+                Us4MEX(iArius, "SetActiveTermination","EN", "200");
+                Us4MEX(iArius, "SetLNAGain","24dB");
+                Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
+                Us4MEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
+                Us4MEX(iArius, "TGCEnable");
 
                 try
-                    AriusMEX(0,"EnableHV");
+                    Us4MEX(0,"EnableHV");
                 catch
                     warning('1st "EnableHV" failed');
-                    AriusMEX(0,"EnableHV");
+                    Us4MEX(0,"EnableHV");
                 end
 
-                AriusMEX(0,"SetHVVoltage", 10);
+                Us4MEX(0,"SetHVVoltage", 50);
             end
 
         end
@@ -387,16 +387,16 @@ classdef Us4R < handle
                             txSubApOrig = 1;
                         end
 
-                        AriusMEX(iArius, "SetTxAperture", txSubApOrig, txSubApSize, iEvent);
-                        AriusMEX(iArius, "SetTxDelays", txSubApDel, iEvent);
+                        Us4MEX(iArius, "SetTxAperture", txSubApOrig, txSubApSize, iEvent);
+                        Us4MEX(iArius, "SetTxDelays", txSubApDel, iEvent);
 
-                        AriusMEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
-                        AriusMEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
-                        AriusMEX(iArius, "SetTxInvert", 0, iEvent);
+                        Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
+                        Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
+                        Us4MEX(iArius, "SetTxInvert", 0, iEvent);
                     end
                 end
-                AriusMEX(iArius, "SetNumberOfFirings", nEvent);
-                AriusMEX(iArius, "EnableTransmit");
+                Us4MEX(iArius, "SetNumberOfFirings", nEvent);
+                Us4MEX(iArius, "EnableTransmit");
             end
 
             %% Program RX
@@ -405,7 +405,7 @@ classdef Us4R < handle
             end
 
             for iArius=0:(nArius-1)
-                AriusMEX(iArius, "ClearScheduledReceive");
+                Us4MEX(iArius, "ClearScheduledReceive");
                 for iTx=1:nTx
 
                     if strcmp(obj.seq.type,'lin') && iArius == 0
@@ -422,10 +422,10 @@ classdef Us4R < handle
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
 
-                        AriusMEX(iArius, "ScheduleReceive", iEvent*nSamp, nSamp);
+                        Us4MEX(iArius, "ScheduleReceive", iEvent*nSamp, nSamp);
 
-                        AriusMEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
-                        AriusMEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
+                        Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
+                        Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
 
                         if strcmp(obj.seq.type,'lin')
                             if ~obj.sys.adapType
@@ -444,19 +444,19 @@ classdef Us4R < handle
                             rxSubApOrig	= 1 + (iSubTx-1)*nChan;
                             rxSubApSize	= nChan;
                         end
-                        AriusMEX(iArius, "SetRxAperture", rxSubApOrig, rxSubApSize, iEvent);
+                        Us4MEX(iArius, "SetRxAperture", rxSubApOrig, rxSubApSize, iEvent);
                     end
                 end
-                AriusMEX(iArius, "EnableReceive");
+                Us4MEX(iArius, "EnableReceive");
             end
 
             %% Program triggering
-%             AriusMEX(0, "SetNTriggers", nEvent-1);
-            AriusMEX(0, "SetNTriggers", nEvent);
+%             Us4MEX(0, "SetNTriggers", nEvent-1);
+            Us4MEX(0, "SetNTriggers", nEvent);
             for iEvent=0:(nEvent-1)
-                AriusMEX(0, "SetTrigger", obj.seq.txPri, 0, 0, iEvent);
+                Us4MEX(0, "SetTrigger", obj.seq.txPri, 0, 0, iEvent);
             end
-            AriusMEX(0, "SetTrigger", obj.seq.txPri, 0, 1, nEvent-1);
+            Us4MEX(0, "SetTrigger", obj.seq.txPri, 0, 1, nEvent-1);
 
         end
 
@@ -466,13 +466,13 @@ classdef Us4R < handle
             nEvent	= nTx*nSubTx;
 
             %% Start acquisitions (1st sequence exec., no transfer to host)
-            AriusMEX(0, "TriggerStart");
+            Us4MEX(0, "TriggerStart");
             pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
         end
 
         function [] = closeSequence(obj)
             %% Stop acquisition
-            AriusMEX(0, "TriggerStop");
+            Us4MEX(0, "TriggerStop");
 
         end
 
@@ -487,15 +487,15 @@ classdef Us4R < handle
 
             %% Capture data
             for iArius=0:(nArius-1)
-                AriusMEX(iArius, "EnableReceive");
+                Us4MEX(iArius, "EnableReceive");
             end
-            AriusMEX(0, "TriggerSync");
+            Us4MEX(0, "TriggerSync");
             pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
 
             %% Transfer to PC
             rf	= zeros(nChan,nSamp*nEvent,nArius);
             for iArius=0:(nArius-1)
-                rf(:,:,iArius+1)	= AriusMEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
+                rf(:,:,iArius+1)	= Us4MEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
             end
 
             %% Reorganize
