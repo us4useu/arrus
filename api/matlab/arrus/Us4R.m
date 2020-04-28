@@ -392,6 +392,8 @@ classdef Us4R < handle
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nSubTx*nTx;
+            
+            actChanGroupMask = ["1111111111111111"; "0101010101010101"];
 
             %% Program TX
             for iArius=0:(nArius-1)
@@ -419,6 +421,8 @@ classdef Us4R < handle
                         Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
                         Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
                         Us4MEX(iArius, "SetTxInvert", 0, iEvent);
+                        
+                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iEvent);
                     end
                 end
                 Us4MEX(iArius, "SetNumberOfFirings", nEvent);
