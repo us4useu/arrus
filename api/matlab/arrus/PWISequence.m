@@ -6,12 +6,37 @@ classdef PWISequence < SimpleTxRxSequence
     methods
         function obj = PWISequence(varargin)
             obj = obj@SimpleTxRxSequence(varargin{:});
-            [~, y] = size(obj.txAngle);
-            obj.txFocus = inf(1, y);
+            
+            nTx = length(obj.txAngle);
+            
+            % Manage the txFocus size
+            if length(obj.txFocus)~=nTx
+                if isscalar(obj.txFocus)
+                    obj.txFocus = obj.txFocus .* ones(1,nTx);
+                else
+                    error("ARRUS:IllegalArgument", ...
+                          "PWISequence: txFocus must be scalar or be the same size as txAngle");
+                end
+            end
+            
+            % Manage the txApertureCenter size
+            if length(obj.txApertureCenter)~=nTx
+                if isscalar(obj.txApertureCenter)
+                    obj.txApertureCenter = obj.txApertureCenter .* ones(1,nTx);
+                else
+                    error("ARRUS:IllegalArgument", ...
+                          "PWISequence: txApertureCenter must be scalar or be the same size as txAngle");
+                end
+            end
+            
+            % Fix the txFocus value
+            if any(~isinf(obj.txFocus))
+                obj.txFocus(:) = inf;
+                warning("PWISequence: txFocus is forced to be all inf");
+            end
+            
         end
         
-        % TODO(piotrkarwat) modify setter and getter for txFocus.
-        % It should be disabled to set values different than inf.
     end
 end
 

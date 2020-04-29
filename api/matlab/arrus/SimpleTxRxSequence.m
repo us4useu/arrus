@@ -6,14 +6,14 @@ classdef SimpleTxRxSequence < Operation
     % :param txApertureSize: the size of the Tx aperture [element]
     
     properties
-        txCenterElement
-        txApertureCenter
-        txApertureSize
-        txFocus
-        txAngle
-        speedOfSound
-        txFrequency
-        txNPeriods
+        txCenterElement (1,:)
+        txApertureCenter (1,:)
+        txApertureSize (1,1)
+        txFocus (1,:)
+        txAngle (1,:)
+        speedOfSound (1,1)
+        txFrequency (1,1)
+        txNPeriods (1,1)
         rxNSamples (1,1) ...
                    {mustBeInteger,...
                    mustBePositive,...
@@ -25,10 +25,8 @@ classdef SimpleTxRxSequence < Operation
         function obj = SimpleTxRxSequence(varargin)
             % assign property to the object
             if mod(nargin, 2) == 1
-                throw( ...
-                    MException( ...
-                        "Arrus:params", ...
-                        "Input should be a list of  'key', value params."))
+                error("Arrus:params", ...
+                      "Input should be a list of  'key', value params.");
             end
             for i = 1:2:nargin
                 obj.(varargin{i}) = varargin{i+1};
