@@ -59,8 +59,13 @@ classdef Us4R < handle
                     warning('1st "EnableHV" failed');
                     Us4MEX(0,"EnableHV");
                 end
-
-                Us4MEX(0, "SetHVVoltage", voltage);
+                
+                try
+                    Us4MEX(0, "SetHVVoltage", voltage);
+                catch
+                    warning('1st "SetHVVoltage" failed');
+                    Us4MEX(0, "SetHVVoltage", voltage);
+                end
             end
 
         end
