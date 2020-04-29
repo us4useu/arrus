@@ -4,9 +4,9 @@ classdef Reconstruction < Operation
     % :param filterEnable: boolean, enable filtering the input signal
     % :param filterACoeff: 1-D filter denominator coefficient
     % :param filterBCoeff: 1-D filter numerator coefficient
-    % :param filterDelay:
+    % :param filterDelay: delay introduced by the filter [samples] (not implemented yet)
     % :param iqEnable: boolean, enable iq signal reconstruction instead of raw RF
-    % :param cicOrder:
+    % :param cicOrder: order of the Cascaded-Integrator-Comb anti-aliasing filter
     % :param decimation: decimation factor
     % :param xGrid: (1, width) vector, x-coordinates of the image pixels [m]
     % :param zGrid: (1, depth) vector z-coordinates of the image pixels [m]
