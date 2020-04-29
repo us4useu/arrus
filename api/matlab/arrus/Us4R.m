@@ -10,17 +10,28 @@ classdef Us4R < handle
         sys
         seq
         rec
+        logTime
     end
     
     methods
 
-        function obj = Us4R(nArius, probeName, voltage)
+        function obj = Us4R(nArius, probeName, voltage, logTime)
             % Us4R handle constructor.
             %
             % :param nArius: number of arius modules available in the \
             %  us4R system
             % :param probeName: probe name to use
+            % :param voltage: a voltage to set, should be in range 0-90 \
+            % [Vpp]
+            % param logTime: set to true if you want to dispaly acquistion\ 
+            % and reconstruction time (optional)
             % :returns: Us4R instance
+            
+            if nargin < 4
+                obj.logTime = false;
+            else
+                obj.logTime = logTime;
+            end
 
             % System parameters
             obj.sys.nArius = nArius; % number of Arius modules
@@ -157,14 +168,31 @@ classdef Us4R < handle
             % the output of the executed op.
             
             obj.openSequence;
+            i = 0;
             while(isContinue())
+                i = i + 1;
+                
+                tic;
                 rf = obj.execSequence;
+                acqTime = toc;
                 
                 if obj.rec.enable
+                    tic;
                     img = obj.execReconstr(rf);
+                    recTime = toc;
                     callback(img);
                 else
                     callback(rf);
+                end
+                
+                if obj.logTime
+                    disp(['Frame no. ' num2str(i)]);
+                    disp(['Acq.  time = ' num2str(acqTime,         '%5.3f') ' s']);
+                    if exist('recTime', 'var')
+                        disp(['Rec.  time = ' num2str(recTime,         '%5.3f') ' s']);
+                        disp(['Frame rate = ' num2str(1/(acqTime+recTime),'%5.1f') ' fps']);
+                    end    
+                    disp('--------------------');
                 end
             end
             obj.closeSequence;
