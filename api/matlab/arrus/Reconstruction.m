@@ -3,7 +3,7 @@ classdef Reconstruction < Operation
     %
     % :param filterEnable: boolean, enable filtering the input signal
     % :param filterACoeff: 1-D filter denominator coefficient
-    % :param filterBCoeff: 1-D numerator coefficient
+    % :param filterBCoeff: 1-D filter numerator coefficient
     % :param filterDelay:
     % :param iqEnable: boolean, enable iq signal reconstruction instead of raw RF
     % :param cicOrder:
