@@ -1,4 +1,4 @@
-classdef Us4RDisplay < handle
+classdef BModeDisplay < handle
     properties(Access = private)
         hFig
         hImg
