@@ -15,7 +15,7 @@ classdef Reconstruction < Operation
         filterEnable
         filterACoeff
         filterBCoeff
-        filterDelay
+        filterDelay = 0
         iqEnable
         cicOrder
         decimation
@@ -26,10 +26,8 @@ classdef Reconstruction < Operation
     methods
         function obj = Reconstruction(varargin)
             if mod(nargin, 2) == 1
-                throw( ...
-                    MException( ...
-                        "Arrus:params", ...
-                        "Input should be a list of  'key', value params."))
+                error("Arrus:params", ...
+                      "Input should be a list of  'key', value params.");
             end
             for i = 1:2:nargin
                 obj.(varargin{i}) = varargin{i+1};
