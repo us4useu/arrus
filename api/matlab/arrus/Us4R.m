@@ -101,6 +101,7 @@ classdef Us4R < handle
                 'txPri', sequenceOperation.txPri);
             
             if nargin==2
+                obj.rec.enable = false;
                 return;
             end
                 
