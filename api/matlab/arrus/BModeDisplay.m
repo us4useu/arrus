@@ -6,7 +6,7 @@ classdef BModeDisplay < handle
     end
     
     methods
-        function obj = Us4RDisplay(xGrid, zGrid)
+        function obj = BModeDisplay(xGrid, zGrid)
             % Create figure.
             obj.hFig = figure();
             obj.hImg = imagesc(xGrid*1e3, zGrid*1e3,[]);
