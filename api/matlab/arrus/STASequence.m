@@ -1,12 +1,12 @@
 classdef STASequence < SimpleTxRxSequence
-    % Synthetic Transmit Aperture Imaging sequenece.
-    
-    
+    % Synthetic Transmit Aperture Tx/Rx Sequence.
+    %
+    % The length of the STA sequence is determined by the length of txApertureCenter.
+    % The txFocus and txAngle must be scalars or be the same length as txApertureCenter.
     
     methods
         function obj = STASequence(varargin)
             obj = obj@SimpleTxRxSequence(varargin{:});
-            
             
             nTx = length(obj.txApertureCenter);
             

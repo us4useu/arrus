@@ -1,7 +1,9 @@
 classdef PWISequence < SimpleTxRxSequence
     % Plane Wave Imaging Tx/Rx Sequence.
     %
-    % The PWI sequence has set txFocus to inf by defualt.
+    % The length of the PWI sequence is determined by the length of txAngle.
+    % The txFocus and txApertureCenter must be scalars or be the same length as txAngle.
+    % The PWI sequence has txFocus set to inf by defualt.
     
     methods
         function obj = PWISequence(varargin)

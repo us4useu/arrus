@@ -1,9 +1,16 @@
 classdef SimpleTxRxSequence < Operation
     % A sequence of Tx/Rx operations to perform on a device.
     %
-    % :param txCenterElement: an array of tx aperture center elements
-    % :param txAperturecenter: an array of tx aperture center positions [m]
-    % :param txApertureSize: the size of the Tx aperture [element]
+    % :param txCenterElement: vector of center elements of tx aperture [element] (for LINSequence)
+    % :param txAperturecenter: vector of tx aperture center positions [m]
+    % :param txApertureSize: size of the tx aperture [element]
+    % :param txFocus: tx focal length [m]
+    % :param txAngle: tx angle [rad]
+    % :param speedOfSound: speed of sound for [m/s]
+    % :param txFrequency: tx frequency [Hz]
+    % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
+    % :param rxNSamples: number of recorded samples per channel [sample]
+    % :param txPri: tx pulse repetition interval [s]
     
     properties
         txCenterElement (1,:)
