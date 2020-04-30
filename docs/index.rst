@@ -4,12 +4,16 @@ Welcome to ARRUS documentation!
 
 .. toctree::
     :maxdepth: 2
-    :caption: API Reference
+    :caption: User Documentation
 
+    content/introduction/index
+    content/examples/index
     content/api
 
 .. toctree::
     :maxdepth: 2
-    :caption: Release notes
+    :caption: Miscellaneous
 
-    content/release_notes
+    content/misc/acknowledgments
+    content/misc/release_notes
+

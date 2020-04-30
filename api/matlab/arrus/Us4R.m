@@ -145,10 +145,10 @@ classdef Us4R < handle
             % `Reconstruction` implementations.
             %
             % :param isContinue: should the system continue executing \
-            % the op? Takes no parmeters and returns a boolean value.
-            % :param callback: a function to call after executing the \ 
-            % operation. Should take one parameter, which will be feed with \
-            % the output of the executed op.
+            %   the op? Takes no parameters and returns a boolean value.
+            % :param callback: a function to call after executing the \
+            %   operation. Should take one parameter, which will be feed with \
+            %   the output of the executed op.
             
             obj.openSequence;
             while(isContinue())

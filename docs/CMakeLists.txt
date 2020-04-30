@@ -7,10 +7,18 @@ set(DOC_FILES
     "index.rst"
     "content/api.python.rst"
     "content/api.matlab.rst"
-    "content/release_notes.rst"
+    "content/introduction/index.rst"
+    "content/introduction/apertures.jpeg"
+    "content/introduction/coordinate_system.jpeg"
+    "content/introduction/delays.jpeg"
     "content/examples/index.rst"
+    "content/examples/bmode_imaging.matlab.rst"
+    "content/examples/rf_acquisition.matlab.rst"
     "content/examples/single_module.python.rst"
-    "content/examples/single_module.matlab.rst"
+    "content/misc/release_notes.rst"
+    "content/misc/acknowledgments.rst"
+    "content/misc/ncbr.png"
+    "content/misc/us4us.png"
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 
