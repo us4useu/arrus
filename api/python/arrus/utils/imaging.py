@@ -207,11 +207,11 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
         # show progress
         percentage = round((itx+1)/n_transmissions*1000)/10
         if itx == 0:
-            print(percentage, '%', end='')
+            print('{}%'.format(percentage), end='')
         elif itx == n_transmissions-1:
-            print('\r', percentage, '%')
+            print('\r{}%'.format(percentage))
         else:
-            print('\r', percentage, '%', end='')
+            print('\r{}%'.format(percentage), end='')
 
     # calculate final rf image
     rf_image = xp.sum(rf_tx, axis=2)*np.sum(weight_tx, axis=2)
