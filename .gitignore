@@ -198,3 +198,6 @@ dmypy.json
 # CMake
 CMakeGraphVizOptions.cmake
 CMakeFiles
+
+# vs code
+.vscode

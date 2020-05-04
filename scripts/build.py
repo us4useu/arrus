@@ -3,8 +3,16 @@ import os
 import subprocess
 import shutil
 
+COLOR_ERROR = '\033[91m'
+COLOR_END = '\033[0m'
+
 SRC_ENVIRON = "ARRUS_SRC_PATH"
 INSTALL_ENVIRON = "ARRUS_INSTALL_PATH"
+
+def assert_no_error(return_code):
+    if return_code != 0:
+        print(COLOR_ERROR + "Failed building targets." + COLOR_END)
+        exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
@@ -38,7 +46,8 @@ def main():
     ] + extra_options
 
     print("Calling: %s" % (" ".join(cmake_cmd)))
-    subprocess.call(cmake_cmd)
+    result = subprocess.call(cmake_cmd)
+    assert_no_error(result)
 
     cmake_install_cmd = [
         "cmake",
@@ -46,7 +55,8 @@ def main():
         "--prefix", install_dir
     ]
     print("Calling: %s"%(" ".join(cmake_install_cmd)))
-    subprocess.call(cmake_install_cmd)
+    result = subprocess.call(cmake_install_cmd)
+    assert_no_error(result)
 
 
 

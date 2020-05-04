@@ -6,19 +6,22 @@ import shutil
 SRC_ENVIRON = "ARRUS_SRC_PATH"
 INSTALL_ENVIRON = "ARRUS_INSTALL_PATH"
 
+COLOR_ERROR = '\033[91m'
+COLOR_END = '\033[0m'
+
+def assert_no_error(return_code):
+    if return_code != 0:
+        print(COLOR_ERROR + "Failed building targets." + COLOR_END)
+        exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
     parser.add_argument("--targets", dest="targets",
                         type=str, required=True, nargs="+")
-    parser.add_argument("--no_swig", dest="no_swig", action="store_true")
-    parser.set_defaults(no_swig=False)
 
     args = parser.parse_args()
     targets = args.targets
     options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
-    if args.no_swig:
-        options.append("-DARRUS_BUILD_SWIG=OFF")
 
     src_dir = os.environ.get(SRC_ENVIRON, None)
     install_dir = os.environ.get(INSTALL_ENVIRON, None)
@@ -45,7 +48,8 @@ def main():
         "-G", cmake_generator,
     ] + options
     print("Calling: %s" % (" ".join(cmake_cmd)))
-    subprocess.call(cmake_cmd)
+    result = subprocess.call(cmake_cmd)
+    assert_no_error(result)
 
 
 if __name__ == "__main__":
