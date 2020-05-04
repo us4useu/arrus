@@ -1,8 +1,7 @@
 classdef SimpleTxRxSequence < Operation
     % A sequence of Tx/Rx operations to perform on a device.
     %
-    % :param txCenterElement: vector of center elements of tx aperture [element] (for LINSequence)
-    % :param txAperturecenter: vector of tx aperture center positions [m]
+    % :param txApertureCenter: vector of tx aperture center positions [m]
     % :param txApertureSize: size of the tx aperture [element]
     % :param txFocus: tx focal length [m]
     % :param txAngle: tx angle [rad]
@@ -30,7 +29,6 @@ classdef SimpleTxRxSequence < Operation
     
     methods
         function obj = SimpleTxRxSequence(varargin)
-            % assign property to the object
             if mod(nargin, 2) == 1
                 error("Arrus:params", ...
                       "Input should be a list of  'key', value params.");

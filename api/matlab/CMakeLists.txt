@@ -3,7 +3,7 @@
 ################################################################################
 set(SOURCE_FILES
     "arrus/Us4R.m"
-    "arrus/Us4RDisplay.m"
+    "arrus/BModeDisplay.m"
     "arrus/Operation.m"
     "arrus/SimpleTxRxSequence.m"
     "arrus/PWISequence.m"

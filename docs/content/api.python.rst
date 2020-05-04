@@ -1,8 +1,8 @@
 .. _api-main:
 
-===
-API
-===
+=============
+API Reference
+=============
 
 .. caution::
 

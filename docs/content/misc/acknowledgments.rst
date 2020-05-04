@@ -4,8 +4,8 @@ Acknowledgments
 
 This project was developed by us4us and was funded by NCBiR.
 
-.. figure:: us4us.png
-    :scale: 50%
+.. figure:: img/us4us.png
+    :scale: 33%
 
-.. figure:: ncbr.png
+.. figure:: img/ncbr.png
 

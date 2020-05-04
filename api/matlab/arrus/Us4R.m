@@ -4,8 +4,11 @@ classdef Us4R < handle
     % This class provides functions to configure the system and perform
     % data acquisition using the Us4R.
     %
-    % Please note: only one instance of this class can be in use at a time!
-    
+    % :param nArius: number of arius modules available in the us4R system
+    % :param probeName: name of the probe to use, available: 'AL2442', 'SL1543'
+    % :param voltage: a voltage to set, should be in range 0-90 [Vpp]
+    % :param logTime: set to true if you want to display acquisition and reconstruction time (optional)
+
     properties(Access = private)
         sys
         seq
@@ -16,17 +19,6 @@ classdef Us4R < handle
     methods
 
         function obj = Us4R(nArius, probeName, voltage, logTime)
-            % Us4R handle constructor.
-            %
-            % :param nArius: number of arius modules available in the \
-            %  us4R system
-            % :param probeName: probe name to use
-            % :param voltage: a voltage to set, should be in range 0-90 \
-            % [Vpp]
-            % param logTime: set to true if you want to dispaly acquistion\ 
-            % and reconstruction time (optional)
-            % :returns: Us4R instance
-            
             if nargin < 4
                 obj.logTime = false;
             else
@@ -85,7 +77,7 @@ classdef Us4R < handle
             % Uploads operations to the us4R system.
             %
             % Currently, only supports :class:`SimpleTxRxSequence`
-            % and `Reconstruction` implementations.
+            % and :class:`Reconstruction` implementations.
             %
             % :param sequenceOperation: TX/RX sequence to perform on the us4R system
             % :param reconstructOperation: reconstruction to perform with the collected data
@@ -139,10 +131,10 @@ classdef Us4R < handle
         function [rf,img] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
-            % Currently, only supports :class:`SimpleTxRxSequence` and `Reconstruction`
+            % Currently, only supports :class:`SimpleTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
-            % :returns: RF frame and reconstructed image (if `Reconstruction` operation was uploaded)
+            % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
             
             obj.openSequence;
             rf = obj.execSequence;
@@ -159,7 +151,7 @@ classdef Us4R < handle
             % Runs the uploaded operations in a loop.
             % 
             % Currently, only supports :class:`SimpleTxRxSequence` and \
-            % `Reconstruction` implementations.
+            % :class:`Reconstruction` implementations.
             %
             % :param isContinue: should the system continue executing \
             %   the op? Takes no parameters and returns a boolean value.

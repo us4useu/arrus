@@ -6,6 +6,13 @@ import shutil
 SRC_ENVIRON = "ARRUS_SRC_PATH"
 INSTALL_ENVIRON = "ARRUS_INSTALL_PATH"
 
+COLOR_ERROR = '\033[91m'
+COLOR_END = '\033[0m'
+
+def assert_no_error(return_code):
+    if return_code != 0:
+        print(COLOR_ERROR + "Failed building targets." + COLOR_END)
+        exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
@@ -41,7 +48,8 @@ def main():
         "-G", cmake_generator,
     ] + options
     print("Calling: %s" % (" ".join(cmake_cmd)))
-    subprocess.call(cmake_cmd)
+    result = subprocess.call(cmake_cmd)
+    assert_no_error(result)
 
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@ Welcome to ARRUS documentation!
     :maxdepth: 2
     :caption: User Documentation
 
-    content/introduction/index
-    content/examples/index
+    content/introduction
+    content/examples/bmode_imaging
     content/api
 
 .. toctree::

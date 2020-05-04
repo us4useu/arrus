@@ -1,16 +1,19 @@
-=========
-ARRUS API
-=========
+.. _arrus-api-main:
+
+=============
+API Reference
+=============
 
 .. caution::
 
-    ARRUS is currently under development and its API will be modified in the future. Please expect breaking changes.
+    We will do our best to maintain backward compatibility, but please note
+    that ARRUS is under development and its API may be modified
+    in the future.
 
+.. _arrus-Us4R:
 
 Us4R handle
 ===========
-
-.. _arrus.Us4R:
 
 .. mat:autoclass:: arrus.Us4R
     :show-inheritance:
@@ -27,10 +30,12 @@ Each operation derives from the Operation class.
     :show-inheritance:
     :members:
 
-Tx/Rx sequences
-===============
+.. _arrus-api-sequences:
 
-We define Tx/Rx sequence with a common parameters.
+TX/RX sequences
+~~~~~~~~~~~~~~~
+
+All TX/RX sequence derives parameters from :class:`SimpleTxRxSequence` class.
 
 .. _arrus.SimpleTxRxSequence:
 
@@ -38,7 +43,8 @@ We define Tx/Rx sequence with a common parameters.
     :show-inheritance:
     :members:
 
-We have implemented specific Tx/Rx sequences:
+
+Following specific operations are currently available in the system:
 
 .. _arrus.PWISequence:
 
@@ -52,10 +58,22 @@ We have implemented specific Tx/Rx sequences:
     :show-inheritance:
     :members:
 
-.. _arrus.LINSequence:
 
-.. mat:autoclass:: arrus.LINSequence
+.. _arrus.Reconstruction:
+
+B-mode Image Reconstruction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. mat:autoclass:: arrus.Reconstruction
     :show-inheritance:
     :members:
 
+Utilities
+=========
+
+.. _arrus.BModeDisplay:
+
+.. mat:autoclass:: arrus.BModeDisplay
+    :show-inheritance:
+    :members:
 

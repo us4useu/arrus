@@ -5,20 +5,18 @@ set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DOC_FILES
     "index.rst"
-    "content/api.python.rst"
-    "content/api.matlab.rst"
-    "content/introduction/index.rst"
-    "content/introduction/apertures.jpeg"
-    "content/introduction/coordinate_system.jpeg"
-    "content/introduction/delays.jpeg"
-    "content/examples/index.rst"
+    "content/introduction.rst"
     "content/examples/bmode_imaging.matlab.rst"
-    "content/examples/rf_acquisition.matlab.rst"
     "content/examples/single_module.python.rst"
+    "content/examples/img/coordinate_system.jpeg"
+    "content/examples/img/apertures.jpeg"
+    "content/examples/img/delays.jpeg"
     "content/misc/release_notes.rst"
     "content/misc/acknowledgments.rst"
-    "content/misc/ncbr.png"
-    "content/misc/us4us.png"
+    "content/misc/img/ncbr.png"
+    "content/misc/img/us4us.png"
+    "content/api.python.rst"
+    "content/api.matlab.rst"
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 
