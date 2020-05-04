@@ -1,5 +1,5 @@
 classdef Reconstruction < Operation
-    % A reconstruction operation to perform on a device.
+    % A reconstruction operation to perform in the system.
     %
     % :param filterEnable: boolean, enable filtering the input signal
     % :param filterACoeff: 1-D filter denominator coefficient

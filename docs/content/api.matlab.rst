@@ -44,7 +44,7 @@ All TX/RX sequence derives parameters from :class:`SimpleTxRxSequence` class.
     :members:
 
 
-Following specific operations are currently available in the system:
+Following specific sequences are currently available in the system:
 
 .. _arrus.PWISequence:
 
