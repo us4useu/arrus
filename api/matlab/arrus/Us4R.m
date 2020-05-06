@@ -597,10 +597,11 @@ classdef Us4R < handle
         
         function img = execReconstr(obj,rfRaw)
 
-            %% Move data to GPU if possible
+            %% Move data to GPU if possible, convert from int16 to double
             if obj.rec.gpuEnable
-                rfRaw = gpuArray(double(rfRaw));
+                rfRaw = gpuArray(rfRaw);
             end
+            rfRaw = double(rfRaw);
 
             %% Preprocessing
             % Raw rf data filtration
