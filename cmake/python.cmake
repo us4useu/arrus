@@ -51,12 +51,12 @@ function(create_python_venv TARGET_NAME VENV_WORKING_DIR)
     )
 endfunction()
 
-function(install_arius_package TARGET_NAME VENV_TARGET PACKAGE_TARGET)
+function(install_arrus_package TARGET_NAME VENV_TARGET PACKAGE_TARGET)
     get_target_property(INSTALL_VENV_EXECUTABLE ${VENV_TARGET} VENV_EXECUTABLE)
     get_target_property(INSTALL_VENV_DIR ${VENV_TARGET} VENV_DIR)
-    get_target_property(ARIUS_PACKAGE_NAME ${PACKAGE_TARGET} PACKAGE_NAME)
-    get_target_property(ARIUS_PACKAGE_DIR ${PACKAGE_TARGET} PACKAGE_DIR)
-    get_target_property(ARIUS_PACKAGE_STAMP ${PACKAGE_TARGET} PACKAGE_TIMESTAMP)
+    get_target_property(ARRUS_PACKAGE_NAME ${PACKAGE_TARGET} PACKAGE_NAME)
+    get_target_property(ARRUS_PACKAGE_DIR ${PACKAGE_TARGET} PACKAGE_DIR)
+    get_target_property(ARRUS_PACKAGE_STAMP ${PACKAGE_TARGET} PACKAGE_TIMESTAMP)
 
     set(INSTALL_TIMESTAMP ${INSTALL_VENV_DIR}/${TARGET_NAME}_timestamp)
 
@@ -67,17 +67,17 @@ function(install_arius_package TARGET_NAME VENV_TARGET PACKAGE_TARGET)
             ${INSTALL_VENV_EXECUTABLE}
             -m pip install --upgrade --force-reinstall
             #TODO(pjarosik) consider appending timestamp to project version
-            # in order to avoid unecessary reinstallation of arius dependencies
-            --find-links=${ARIUS_PACKAGE_DIR} ${ARIUS_PACKAGE_NAME}
+            # in order to avoid unecessary reinstallation of arrus dependencies
+            --find-links=${ARRUS_PACKAGE_DIR} ${ARRUS_PACKAGE_NAME}
         DEPENDS
-            ${VENV_TARGET} ${PACKAGE_TARGET} ${ARIUS_PACKAGE_STAMP}
+            ${VENV_TARGET} ${PACKAGE_TARGET} ${ARRUS_PACKAGE_STAMP}
         WORKING_DIRECTORY
             ${CURRENT_BINARY_DIR}
     )
     add_custom_target(${TARGET_NAME} ALL DEPENDS ${INSTALL_TIMESTAMP})
     set_target_properties(${TARGET_NAME}
         PROPERTIES
-            INSTALL_TIMESTAMP ${INSTALL_TIMESTAMP}
+            ARRUS_TIMESTAMP ${INSTALL_TIMESTAMP}
     )
 endfunction()
 
@@ -91,8 +91,7 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
             ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
         COMMAND
             ${INSTALL_VENV_EXECUTABLE} -m pip install sphinx sphinx_rtd_theme
-            sphinxcontrib-matlabdomain
-            #TODO(pjarosik) using here BUILD_MATLAB option to avoid unneceassry installation
+            "git+git://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain"
         DEPENDS
             ${VENV_TARGET}
         WORKING_DIRECTORY
@@ -108,7 +107,7 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
 
     set_target_properties(${TARGET_NAME}
         PROPERTIES
-            INSTALL_TIMESTAMP ${INSTALL_TIMESTAMP}
+            ARRUS_TIMESTAMP ${INSTALL_TIMESTAMP}
             SPHINX_EXECUTABLE ${VENV_SPHINX_EXECUTABLE}
     )
 endfunction()

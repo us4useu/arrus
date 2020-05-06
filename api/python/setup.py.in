@@ -4,9 +4,9 @@ setuptools.setup(
     name="${PYTHON_PACKAGE_NAME}",
     version="${PROJECT_VERSION}",
     author="us4us Ltd.",
-    author_email="piotr.jarosik@us4us.eu",
-    description="Arius Software Development Kit",
-    long_description="Arius Software Development Kit",
+    author_email="support@us4us.eu",
+    description="API for Research/Remote Ultrasound",
+    long_description="ARRUS - API for Research/Remote Ultrasound",
     long_description_content_type="text/markdown",
     url="https://us4us.eu",
     packages=setuptools.find_packages(

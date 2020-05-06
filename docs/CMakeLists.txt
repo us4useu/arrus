@@ -5,12 +5,18 @@ set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DOC_FILES
     "index.rst"
+    "content/introduction.rst"
+    "content/examples/bmode_imaging.matlab.rst"
+    "content/examples/single_module.python.rst"
+    "content/examples/img/coordinate_system.jpeg"
+    "content/examples/img/apertures.jpeg"
+    "content/examples/img/delays.jpeg"
+    "content/misc/release_notes.rst"
+    "content/misc/acknowledgments.rst"
+    "content/misc/img/ncbr.png"
+    "content/misc/img/us4us.png"
     "content/api.python.rst"
     "content/api.matlab.rst"
-    "content/release_notes.rst"
-    "content/examples/index.rst"
-    "content/examples/single_module.python.rst"
-    "content/examples/single_module.matlab.rst"
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 
@@ -21,12 +27,12 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
     get_target_property(VENV_PY_EXECUTABLE ${VENV_TARGET} VENV_EXECUTABLE)
     get_target_property(SPHINX_EXECUTABLE ${SPHINX_TARGET} SPHINX_EXECUTABLE)
     if(NOT "${DEPS}" STREQUAL "")
-        get_target_property(ARIUS_INSTALL_STAMP ${DEPS} INSTALL_TIMESTAMP)
+        get_target_property(DEPS_STAMP ${DEPS} ARRUS_TIMESTAMP)
     endif()
     if(FORMAT STREQUAL "pdf")
         set(FORMAT_OUT_DIR "latex")
         set(FORMAT_SPHINX_METHOD "latexpdf")
-        set(FORMAT_TRACKED_FILE "arius-sdk${LANGUAGE}.pdf")
+        set(FORMAT_TRACKED_FILE "arrus${LANGUAGE}.pdf")
     elseif(FORMAT STREQUAL "html")
         set(FORMAT_OUT_DIR "html")
         set(FORMAT_SPHINX_METHOD "html")
@@ -67,7 +73,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
         WORKING_DIRECTORY ${CMAKE_CURRENT_LANG_DIR}
         DEPENDS
             ${DOC_FILES} ${VENV_TARGET} ${SPHINX_TARGET} ${DEPS}
-            ${ARIUS_INSTALL_STAMP}
+            ${DEPS_STAMP}
         MAIN_DEPENDENCY @{SPHINX_LATEX_CONF_FILE_OUT} ${SPHINX_CONF_FILE_IN}
         COMMENT "Generating ${FORMAT} documentation for ${LANGUAGE} with Sphinx"
     )
@@ -78,9 +84,9 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
             FILES
                 ${SPHINX_TRACKED_FILE}
             DESTINATION
-                ${ARIUS_DOCS_INSTALL_DIR}
+                ${ARRUS_DOCS_INSTALL_DIR}
             RENAME
-                "arius-sdk-${LANGUAGE}.pdf"
+                "arrus-${LANGUAGE}.pdf"
             COMPONENT
                 docs_${LANGUAGE}_${FORMAT}
         )
@@ -89,7 +95,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
             DIRECTORY
                 ${SPHINX_TRACKED_DIR}/
             DESTINATION
-                ${ARIUS_DOCS_INSTALL_DIR}/html/${LANGUAGE}
+                ${ARRUS_DOCS_INSTALL_DIR}/html/${LANGUAGE}
             COMPONENT
                 docs_${LANGUAGE}_${FORMAT}
         )
@@ -102,14 +108,17 @@ include(python)
 create_python_venv(docs_venv ${CMAKE_CURRENT_BINARY_DIR})
 install_sphinx_package(sphinx_package docs_venv)
 
-if(ARIUS_BUILD_PY)
-    install_arius_package(arius_package docs_venv python_whl)
-    CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arius_package)
-    CREATE_DOC_TARGET(python html docs_venv sphinx_package arius_package)
+if(ARRUS_BUILD_PY)
+    install_arrus_package(arrus_package docs_venv python_whl)
+    CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arrus_package)
+    CREATE_DOC_TARGET(python html docs_venv sphinx_package arrus_package)
 endif()
 
-if(ARIUS_BUILD_MATLAB)
-    CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package "")
-    CREATE_DOC_TARGET(matlab html docs_venv sphinx_package "")
+if(ARRUS_BUILD_MATLAB)
+    get_target_property(
+            MATLAB_TOOLBOX_DIR
+            matlab_toolbox  MATLAB_TOOLBOX_BIN_DIR)
+    CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package matlab_toolbox)
+    CREATE_DOC_TARGET(matlab html docs_venv sphinx_package matlab_toolbox)
 endif()
 
