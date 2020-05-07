@@ -46,6 +46,7 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     target_include_directories(${wrapper}
         PRIVATE
         ${PYTHON_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(${wrapper}
        PRIVATE
@@ -74,7 +75,7 @@ set(SOURCE_FILES
         "arrus/devices/device.py"
         "arrus/devices/hv256.py"
         "arrus/devices/probe.py"
-        "arius/devices/callbacks.py"
+        "arrus/devices/callbacks.py"
         "arrus/devices/tests/probe_test.py"
         "arrus/utils/__init__.py"
         "arrus/utils/imaging.py"

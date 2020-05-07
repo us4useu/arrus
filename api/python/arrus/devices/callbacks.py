@@ -1,6 +1,6 @@
-import arius.devices.iarius as _iarius
+import arrus.devices.ius4oem as _ius4oem
 
-class ScheduleReceiveCallback(_iarius.ScheduleReceiveCallback):
+class ScheduleReceiveCallback(_ius4oem.ScheduleReceiveCallback):
     def __init__(self, callback_fn):
         super().__init__()
         self.callback_fn = callback_fn

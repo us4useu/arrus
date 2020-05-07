@@ -53,7 +53,8 @@ classdef Us4R < handle
                 Us4MEX(iArius, "SetActiveTermination","EN", "200");
                 Us4MEX(iArius, "SetLNAGain","24dB");
                 Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
-                Us4MEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
+                %Us4MEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
+                Us4MEX(iArius, "TGCSetSamples", 0:0.02:1);
                 Us4MEX(iArius, "TGCEnable");
 
                 try
@@ -543,16 +544,22 @@ classdef Us4R < handle
 
             %% Capture data
             for iArius=0:(nArius-1)
+                tic
                 Us4MEX(iArius, "EnableReceive");
+                toc
             end
+            tic
             Us4MEX(0, "TriggerSync");
+            toc
             pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
 
             %% Transfer to PC
-            rf	= zeros(nChan,nSamp*nEvent,nArius);
-            for iArius=0:(nArius-1)
-                rf(:,:,iArius+1)	= Us4MEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
-            end
+            rf = Us4MEX(0, ...
+                        "TransferAllRXBuffersToHost",  ...
+                        zeros(nArius, 1), ...
+                        repmat(nSamp * nEvent, [nArius 1]), ...
+                        int8(obj.logTime) ...
+            );
 
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nArius]);
@@ -596,7 +603,7 @@ classdef Us4R < handle
 
             %% Move data to GPU if possible
             if obj.rec.gpuEnable
-                rfRaw = gpuArray(rfRaw);
+                rfRaw = gpuArray(double(rfRaw));
             end
 
             %% Preprocessing

@@ -1,7 +1,7 @@
 #ifndef ARIUS_SDK_EVENT_H
 #define ARIUS_SDK_EVENT_H
 
-namespace arius {
+namespace arrus {
     class Event {
     };
 }

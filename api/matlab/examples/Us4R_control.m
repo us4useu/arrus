@@ -3,7 +3,7 @@
 addpath('../arrus');
 
 nUs4OEM     = 2;
-probeName	= 'AL2442';
+probeName	= 'SL1543';
 
 txFrequency = 7e6;
 samplingFrequency = 65e6;
@@ -43,8 +43,8 @@ rec = Reconstruction(   'filterEnable',     true, ...
                         'xGrid',            (-20:0.10:20)*1e-3, ...
                         'zGrid',            (  0:0.10:50)*1e-3);
 
-%us.upload(seqSTA,rec);
-us.upload(seqPWI,rec);
+us.upload(seqSTA,rec);
+%us.upload(seqPWI,rec);
 
 %% Run sequence and reconstruction
 % [rf,img] = us.run;

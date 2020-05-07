@@ -5,7 +5,7 @@
 
 #include "core/api/Event.h"
 
-namespace arius {
+namespace arrus {
     class DataAcquiredEvent : public Event {
     public:
         DataAcquiredEvent(const size_t address, const size_t length) :
