@@ -253,12 +253,19 @@ classdef Us4R < handle
             end
 
             %% Resulting parameters
-            distance = (1:65:obj.seq.nSamp) / 65e6 * obj.seq.c;         % [m]
+            distance = (400:150:obj.seq.nSamp) / 65e6 * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(tgcCurve<14 | tgcCurve>54)
                 warning('TGC values are limited to 14-54dB range');
                 tgcCurve = max(14,min(54,tgcCurve));
             end
+            
+            tgcChar = [14.000, 14.001, 14.002, 14.003, 14.024, 14.168, 14.480, 14.825, 15.234, 15.770, ...
+                       16.508, 17.382, 18.469, 19.796, 20.933, 21.862, 22.891, 24.099, 25.543, 26.596, ...
+                       27.651, 28.837, 30.265, 31.690, 32.843, 34.045, 35.543, 37.184, 38.460, 39.680, ...
+                       41.083, 42.740, 44.269, 45.540, 46.936, 48.474, 49.895, 50.966, 52.083, 53.256, 54];
+            tgcCurve = interp1(tgcChar,14:54,tgcCurve);
+            
             obj.seq.tgcCurve = (tgcCurve-14) / 40;                      % <0,1>
             
             if isempty(obj.seq.txApCent) && ~isempty(obj.seq.txCentElem)
