@@ -31,6 +31,7 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
     :return: rf beamformed image
 
     """
+
     tx_angle = np.array(tx_angle)
     if tx_angle.size != 1:
         tx_angle = np.squeeze(tx_angle)
@@ -118,7 +119,6 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
             # ix_valid = list(np.nonzero(lix_valid))
             tx_distance = xp.tile(z_grid, (1, n_valid))
             tx_apodization = xp.ones((z_size, n_valid))
-            # TODO: Should be better image close to the transducer (apodization)
 
         # synthetic transmit aperture method
         elif tx_mode == 'sta':
@@ -235,6 +235,7 @@ def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
            as bounds of the dynamic range.
     :return:
     """
+
     if isinstance(db_range, int):
         db_range = [db_range, 0]
 
@@ -314,21 +315,27 @@ def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
 
 
 def compute_tx_delays(angles, focus, pitch, c=1490, n_chanels=128):
+    """
+
+    :param angles: Transmission angles [rad].
+                   Can be a number or a list (for multiple angles).
+    :param focus: Focal length [m].
+    :param pitch: Pitch [m]
+    :param c: Speed of sound [m/s]. Default value is 1490.
+    :param n_chanels: Number of channels/transducers. Default value is 128.
+    :return: Ndarray of delays.
+             Its shape is (number of angles, number of channels).
+    """
+
     # transducer indexes
     x_i = np.linspace(0, n_chanels-1, n_chanels)
 
     # transducer coordinates
     x_c = x_i*pitch
 
-    # convert angles to ndarray, angles.shape can not be equal ()
-    angles = np.array([angles])
-    n_angles = angles.size
-
-    # allocating memory for delays
-    delays = np.zeros(shape=(n_angles, n_chanels))
-
     angles = np.array(angles)
-    if angles.size != 0:
+    n_angles = angles.size
+    if n_angles != 0:
         # reducing possible singleton dimensions of 'angles'
         angles = np.squeeze(angles)
         if angles.shape == ():
