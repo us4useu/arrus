@@ -10,6 +10,12 @@ classdef SimpleTxRxSequence < Operation
     % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
     % :param rxNSamples: number of recorded samples per channel [sample]
     % :param txPri: tx pulse repetition interval [s]
+    % :param tgcStart: TGC starting gain [dB]
+    % :param tgcSlope: TGC gain slope [dB/m]
+    % 
+    % TGC gain = tgcStart + tgcSlope * propagation distance
+    % TGC gain is limited to 14-54 dB, any values out of that range
+    % will be set to 54 dB (if > 54 dB) or 14 dB (if <14 dB)
     
     properties
         txCenterElement (1,:)
@@ -25,6 +31,8 @@ classdef SimpleTxRxSequence < Operation
                    mustBePositive,...
                    mustBeDivisible(rxNSamples, 1024)} = 4*1024
         txPri (1,1) double {mustBePositive} = 100e-6
+        tgcStart (1,1)
+        tgcSlope (1,1)
     end
     
     methods
