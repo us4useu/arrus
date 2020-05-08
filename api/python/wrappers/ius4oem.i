@@ -51,7 +51,7 @@ static constexpr size_t NCH = IUs4OEM::NCH;
 // TODO (pjarosik) move this callback to some other place
 class ScheduleReceiveCallback {
 public:
-    virtual void run(const arius::DataAcquiredEvent& event) const = 0;
+    virtual void run(const arrus::DataAcquiredEvent& event) const = 0;
     virtual ~ScheduleReceiveCallback() {};
 };
 
