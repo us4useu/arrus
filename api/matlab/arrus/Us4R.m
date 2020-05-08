@@ -53,7 +53,6 @@ classdef Us4R < handle
                 Us4MEX(iArius, "SetActiveTermination","EN", "200");
                 Us4MEX(iArius, "SetLNAGain","24dB");
                 Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
-                Us4MEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
                 Us4MEX(iArius, "TGCEnable");
 
                 try
@@ -106,7 +105,9 @@ classdef Us4R < handle
                 'txFrequency', sequenceOperation.txFrequency, ...
                 'txNPeriods', sequenceOperation.txNPeriods, ...
                 'rxNSamples', sequenceOperation.rxNSamples, ...
-                'txPri', sequenceOperation.txPri);
+                'txPri', sequenceOperation.txPri, ...
+                'tgcStart', sequenceOperation.tgcStart, ...
+                'tgcSlope', sequenceOperation.tgcSlope);
             
             if nargin==2
                 obj.rec.enable = false;
@@ -224,7 +225,9 @@ classdef Us4R < handle
                                 'txFrequency',      'txFreq'; ...
                                 'txNPeriods',       'txNPer'; ...
                                 'rxNSamples',       'nSamp'; ...
-                                'txPri',            'txPri'};
+                                'txPri',            'txPri'; ...
+                                'tgcStart',         'tgcStart'; ...
+                                'tgcSlope',         'tgcSlope'};
 
             if mod(length(varargin),2) == 1
                 % TODO(piotrkarwat) Throw exception
@@ -250,6 +253,14 @@ classdef Us4R < handle
             end
 
             %% Resulting parameters
+            distance = (1:65:obj.seq.nSamp) / 65e6 * obj.seq.c;         % [m]
+            tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
+            if any(tgcCurve<14 | tgcCurve>54)
+                warning('TGC values are limited to 14-54dB range');
+                tgcCurve = max(14,min(54,tgcCurve));
+            end
+            obj.seq.tgcCurve = (tgcCurve-14) / 40;                      % <0,1>
+            
             if isempty(obj.seq.txApCent) && ~isempty(obj.seq.txCentElem)
                 obj.seq.txApCent        = obj.sys.xElem(floor(obj.seq.txCentElem)).*(1-mod(obj.seq.txCentElem,1)) + ...
                                           obj.sys.xElem( ceil(obj.seq.txCentElem)).*(  mod(obj.seq.txCentElem,1));
@@ -462,6 +473,9 @@ classdef Us4R < handle
 
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
+                
+                Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve);
+                
                 for iTx=1:nTx
 
                     if strcmp(obj.seq.type,'lin') && iArius == 0
@@ -482,6 +496,8 @@ classdef Us4R < handle
 
                         Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
                         Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
+                        
+%                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iEvent);
 
                         if strcmp(obj.seq.type,'lin')
                             if ~obj.sys.adapType
