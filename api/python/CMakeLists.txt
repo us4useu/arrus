@@ -50,6 +50,7 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     )
     target_link_libraries(${wrapper}
        PRIVATE
+       core
        Us4::${component}
         ${PYTHON_LIBRARIES}
     )
