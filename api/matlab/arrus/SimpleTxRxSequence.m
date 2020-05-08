@@ -12,6 +12,10 @@ classdef SimpleTxRxSequence < Operation
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
+    % 
+    % TGC gain = tgcStart + tgcSlope * propagation distance
+    % TGC gain is limited to 14-54 dB, any values out of that range
+    % will be set to 54 dB (if > 54 dB) or 14 dB (if <14 dB)
     
     properties
         txCenterElement (1,:)
