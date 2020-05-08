@@ -97,6 +97,7 @@ class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
     """
     Tests edge cases for computing delays function.
     """
+
 # (angles, focus, pitch, c=1490, n_chanels=128
     def setUp(self):
         # Default parameter values.
@@ -119,8 +120,6 @@ class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
             self.n_chanels
         )
 
-        # Should be:
-        # We expect an array of all zeros (no input signal, no output signal).
         np.testing.assert_equal(
             actual=actual,
             desired=np.zeros((1, 128), dtype=np.int16)
@@ -131,7 +130,7 @@ class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
         focus = 1
         angles = 0
         pitch = 1
-        c = 1,
+        c = 1
         n_chan = 3
 
         actual = compute_tx_delays(
@@ -142,8 +141,6 @@ class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
             n_chan
         )
 
-        # Should be:
-        # We expect an array of all zeros (no input signal, no output signal).
         np.testing.assert_almost_equal(
             actual=actual,
             desired=np.array([[0, np.sqrt(2)-1, 0]]),
@@ -156,7 +153,7 @@ class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
         focus = -1
         angles = 0
         pitch = 1
-        c = 1,
+        c = 1
         n_chan = 3
 
         actual = compute_tx_delays(
@@ -167,8 +164,6 @@ class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
             n_chan
         )
 
-        # Should be:
-        # We expect an array of all zeros (no input signal, no output signal).
         np.testing.assert_almost_equal(
             actual=actual,
             desired=np.array([[np.sqrt(2)-1, 0, np.sqrt(2)-1]]),
@@ -196,8 +191,6 @@ class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
         desired[1, :] = np.zeros((1, nchan))
         desired[2, :] = np.linspace(0, (nchan-1), nchan)*pitch/c*np.sin(angles[2])
 
-        # Should be:
-        # We expect an array of all zeros (no input signal, no output signal).
         np.testing.assert_almost_equal(
             actual=actual,
             desired=desired,
