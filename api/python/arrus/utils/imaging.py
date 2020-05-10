@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.signal as scs
 import matplotlib.pyplot as plt
+from collections.abc import Iterable
 
 def reconstruct_rf_img(rf, x_grid, z_grid,
                        pitch, fs, fc, c,
@@ -236,23 +237,24 @@ def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
     :return:
     """
 
-    if isinstance(db_range, int):
+    if isinstance(db_range, int) or isinstance(db_range, float):
         db_range = [db_range, 0]
+        min_db, max_db = db_range
+        if min_db >= max_db:
+            raise ValueError(
+                "Bad db_range: max_db (now  max_db = {}) "
+                "should be larger than min_db (now min_db = {})"
+                .format(max_db, min_db)
+            )
 
-    elif isinstance(db_range, float):
-        db_range = [db_range, 0]
-
-    elif isinstance(db_range, list):
-        db_range = [min(db_range), max(db_range)]
-
-    elif isinstance(db_range, tuple):
-        db_range = [min(db_range), max(db_range)]
-
-    else:
-        #  default dynamic range
-        print('warning: invalid image dynamic range, '
-              'default dynamic range [-60, 0] is set')
-        db_range = [min(db_range), max(db_range)]
+    if isinstance(db_range, Iterable):
+        min_db, max_db = db_range
+        if min_db >= max_db:
+            raise ValueError(
+                "Bad db_range: max_db (now  max_db = {}) "
+                "should be larger than min_db (now min_db = {})"
+                .format(max_db, min_db)
+            )
 
     # check if 'rf' or 'iq' data on input
     is_iqdata = isinstance(rf_image[1, 1], np.complex)
