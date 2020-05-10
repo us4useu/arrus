@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage("Build dependencies") {
             when {
-                expression {env.BRANCH_NAME != 'master'}
+                expression {env.BRANCH_NAME != 'ref-57'}
             }
             steps {
                 echo 'Building dependencies..'
