@@ -32,18 +32,18 @@ def mock_import(module_name: str, **kwargs):
     return mock_module
 
 mock_import(
-    "arius.devices.iarius",
-    IArius=None
+    "arrus.devices.ius4oem",
+    IUs4OEM=None
 )
 mock_import(
-    "arius.devices.idbarLite",
+    "arrus.devices.idbarLite",
 )
 mock_import(
-    "arius.devices.ihv256",
+    "arrus.devices.ihv256",
 )
 
 # -- Project information -----------------------------------------------------
-project = 'arius-sdk (${LANGUAGE})'
+project = 'ARRUS (${LANGUAGE})'
 copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 
@@ -67,13 +67,14 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+numfig = True
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx_rtd_theme'
 
 # Themes related variables:
 html_show_sourcelink = False

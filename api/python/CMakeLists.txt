@@ -4,10 +4,10 @@
 # - Targets
 ################################################################################
 
-if(ARIUS_BUILD_SWIG)
-
+if(ARRUS_BUILD_SWIG)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
+find_package(PythonInterp REQUIRED)
 find_package(PythonLibs REQUIRED)
 set(Us4Components
     US4OEM
@@ -15,7 +15,7 @@ set(Us4Components
     DBARLite
 )
 set(Us4Wrappers
-    iarius
+    ius4oem
     ihv256
     idbarlite
 )
@@ -33,7 +33,7 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     swig_add_library(${wrapper}
         TYPE SHARED
         LANGUAGE PYTHON
-        OUTPUT_DIR arius/devices
+        OUTPUT_DIR arrus/devices
         OUTFILE_DIR wrappers
         SOURCES wrappers/${wrapper}.i
     )
@@ -41,7 +41,7 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
         PROPERTIES
             SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
             RUNTIME_OUTPUT_DIRECTORY
-            "${CMAKE_CURRENT_BINARY_DIR}/arius/devices/$<$<CONFIG:Debug>:>"
+            "${CMAKE_CURRENT_BINARY_DIR}/arrus/devices/$<$<CONFIG:Debug>:>"
     )
     target_include_directories(${wrapper}
         PRIVATE
@@ -59,30 +59,29 @@ endif()
 # Python packaging
 ################################################################################
 include(python)
-find_package(PythonInterp REQUIRED)
-set(PYTHON_PACKAGE_NAME arius)
+set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
-    "arius/__init__.py"
-    "arius/beam.py"
-    "arius/interface.py"
-    "arius/session.py"
-    "arius/devices/__init__.py"
-    "arius/devices/arius.py"
-    "arius/devices/device.py"
-    "arius/devices/hv256.py"
-    "arius/devices/probe.py"
-    "arius/utils/__init__.py"
-    "arius/utils/imaging.py"
-    "arius/utils/parameters.py"
-    "arius/tests/tools.py"
+    "arrus/__init__.py"
+    "arrus/beam.py"
+    "arrus/interface.py"
+    "arrus/session.py"
+    "arrus/devices/__init__.py"
+    "arrus/devices/arius.py"
+    "arrus/devices/device.py"
+    "arrus/devices/hv256.py"
+    "arrus/devices/probe.py"
+    "arrus/utils/__init__.py"
+    "arrus/utils/imaging.py"
+    "arrus/utils/parameters.py"
+    "arrus/tests/tools.py"
 )
 set(TEST_FILES
-    "arius/tests/beam_test.py"
-    "arius/tests/session_test.py"
-    "arius/devices/tests/probe_test.py"
-    "arius/utils/tests/utils_test.py"
-    "arius/utils/tests/parameters_test.py"
+    "arrus/tests/beam_test.py"
+    "arrus/tests/session_test.py"
+    "arrus/devices/tests/probe_test.py"
+    "arrus/utils/tests/utils_test.py"
+    "arrus/utils/tests/parameters_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -94,7 +93,7 @@ configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
         ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/arius ${CMAKE_CURRENT_BINARY_DIR}/arius
+        ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
@@ -111,19 +110,3 @@ set_target_properties(
         PACKAGE_SETUP_PY_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist
 )
-
-################################################################################
-# Python tests
-################################################################################
-if(ARIUS_RUN_TESTS)
-    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
-    install_arius_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
-    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
-    foreach(TEST_FILE IN LISTS TEST_FILES)
-        add_test(
-            NAME ${TEST_FILE}
-            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
-        )
-    endforeach()
-endif()
-

@@ -1,12 +1,12 @@
 # Option: Us4_ROOT_DIR: a directory, where lib64 and include files are located.
 find_path(Us4_INCLUDE_DIR
-        NAMES iarius.h
+        NAMES ius4oem.h
         PATHS "${Us4_ROOT_DIR}/include"
         PATH_SUFFIXES Us4
 )
 set(Us4_LIBRARY_DIR "${Us4_ROOT_DIR}/lib64")
 find_library(Us4_US4OEM_LIBRARY
-        NAMES Arius
+        NAMES Us4OEM
         PATHS ${Us4_LIBRARY_DIR}
 )
 find_library(Us4_HV256_LIBRARY

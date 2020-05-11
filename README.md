@@ -1,2 +1,3 @@
-# arius-sdk
-ARIUS SDK
+# ARRUS 
+
+API for Remote Research Ultrasound
