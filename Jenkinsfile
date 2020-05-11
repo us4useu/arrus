@@ -14,6 +14,8 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building..'
+                withCredentials() {
+                }
             }
         }
         stage('Test') {
