@@ -18,6 +18,8 @@ def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
     parser.add_argument("--targets", dest="targets",
                         type=str, nargs="+", required=True)
+    parser.add_argument("--run_targets", dest="run_targets",
+                        type=str, nargs="*", required=False)
     parser.add_argument("--source_dir", dest="source_dir",
                         type=str, required=False,
                         default=os.environ.get(SRC_ENVIRON, None))
@@ -26,7 +28,10 @@ def main():
 
     args = parser.parse_args()
     targets = args.targets
+    run_targets = args.run_targets
     options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
+    if run_targets is not None:
+        options = ["-DARRUS_RUN_%s=ON" % t.upper() for t in run_targets]
     src_dir = args.source_dir
     us4r_install_dir = args.us4r_dir
 
