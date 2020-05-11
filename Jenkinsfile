@@ -5,7 +5,7 @@ pipeline {
         stage("Build dependencies") {
             steps {
                 echo 'Building dependencies ...'
-                build 'us4r/${getBranchName()}'
+                build "us4r/${getBranchName()}"
             }
         }
         stage('Build') {
