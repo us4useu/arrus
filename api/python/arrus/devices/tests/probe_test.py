@@ -1,5 +1,7 @@
 import unittest
 
+import numpy as np
+
 from arrus.devices.device import Device
 from arrus.tests.tools import mock_import
 
