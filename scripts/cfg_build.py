@@ -4,7 +4,7 @@ import subprocess
 import shutil
 
 SRC_ENVIRON = "ARRUS_SRC_PATH"
-INSTALL_ENVIRON = "ARRUS_INSTALL_PATH"
+US4R_INSTALL_ENVIRON = "US4R_DIR"
 
 COLOR_ERROR = '\033[91m'
 COLOR_END = '\033[0m'
@@ -21,20 +21,21 @@ def main():
     parser.add_argument("--source_dir", dest="source_dir",
                         type=str, required=False,
                         default=os.environ.get(SRC_ENVIRON, None))
-    parser.add_argument("--install_dir", dest="install_dir",
-                        type=str, required=False,
-                        default=os.environ.get(INSTALL_ENVIRON, None))
+    parser.add_argument("--us4r_dir", dest="us4r_dir",
+                        type=str, default=os.environ.get(US4R_INSTALL_ENVIRON, None))
 
     args = parser.parse_args()
     targets = args.targets
     options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
     src_dir = args.source_dir
-    install_dir = args.install_dir
+    us4r_install_dir = args.us4r_dir
 
-    if src_dir is None or install_dir is None:
-        raise ValueError("%s and %s environment variables should be declared"
-                         % (SRC_ENVIRON, INSTALL_ENVIRON))
-    options += ["-DUs4_ROOT_DIR=" + install_dir]
+    if src_dir is None:
+        raise ValueError("%s and %s environment variables should be declared or "
+                         "provided as a parameters."
+                         %(SRC_ENVIRON, US4R_INSTALL_ENVIRON))
+
+    options += ["-DUs4_ROOT_DIR='%s'" % us4r_install_dir]
 
     build_dir = os.path.join(src_dir, "build")
 
