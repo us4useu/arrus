@@ -62,37 +62,6 @@ class ReconstructRfImgEdgeCaseTest(unittest.TestCase):
         )
 
 
-class ReconstructRfImgSimulatedDataTest(unittest.TestCase):
-
-    def test_pwi_reconstruct(self):
-        # Given:
-        file_path = tools.get_dataset_path("bmode/rfPwi_field_v2.mat")
-        rf, sys_parameters, acq_parameters = \
-            arrus.utils.parameters.load_matlab_file(file_path)
-
-        desired = tools.get_dataset_path("bmode/rfPwi_field_v2_desired.mat")
-        desired = scipy.io.loadmat(desired)['img']
-
-        x_grid = np.linspace(-3*1e-3, 3*1e-3, 16)
-        z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 64)
-
-        actual = reconstruct_rf_img(
-            rf,
-            x_grid=x_grid, z_grid=z_grid,
-            pitch=sys_parameters.pitch,
-            fs=acq_parameters.rx.sampling_frequency,
-            fc=acq_parameters.tx.frequency,
-            c=acq_parameters.speed_of_sound,
-            tx_aperture=acq_parameters.tx.aperture_size,
-            tx_focus=acq_parameters.tx.focus,
-            tx_angle=acq_parameters.tx.angles,
-            n_pulse_periods=acq_parameters.tx.n_periods,
-            tx_mode=acq_parameters.mode)
-
-        # Should be:
-        np.testing.assert_equal(actual=actual, desired=desired)
-
-
 class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
     """
     Tests edge cases for computing delays function.
