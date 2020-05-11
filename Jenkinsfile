@@ -2,30 +2,16 @@ pipeline {
     agent any
 
     stages {
-        stage("Build dependencies (master)") {
-            when {
-                expression {env.BRANCH_NAME == 'master'}
-            }
+        stage("Build dependencies") {
             steps {
-                echo 'Building dependencies (master) ...'
-                build 'us4r/master'
-            }
-        }
-        stage("Build dependencies (develop)") {
-            when {
-                expression {env.BRANCH_NAME != 'master'}
-            }
-            steps {
-                echo 'Building dependencies..'
-                build 'us4r/develop'
+                echo 'Building dependencies ...'
+                build 'us4r/${getBranchName()}'
             }
         }
         stage('Build') {
             steps {
                 echo 'Building ...'
-                sh '''
-                python '${env.BRANCH_NAME}/scripts/'
-                '''
+                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.WORKSPACE}/${getBranchName()}' --targets py matlab docs --run_targets tests"
             }
         }
         stage('Test') {
@@ -38,9 +24,9 @@ pipeline {
                 echo 'Deploying ...'
             }
         }
-        stage('Install') {
-            parallel {
-            }
-        }
     }
+}
+
+def getBranchName() {
+    return env.BRANCH_NAME == "master" ? "master" : "develop";
 }
