@@ -20,13 +20,19 @@ def main():
                         type=str, required=False, default="Release")
     parser.add_argument("--targets", dest="targets",
                         type=str, required=False, nargs="*")
+    parser.add_argument("--source_dir", dest="source_dir",
+                        type=str, required=False,
+                        default=os.environ.get(SRC_ENVIRON, None))
+    parser.add_argument("--install_dir", dest="install_dir",
+                        type=str, required=False,
+                        default=os.environ.get(INSTALL_ENVIRON, None))
 
     args = parser.parse_args()
     targets = args.targets
     configuration = args.config
+    src_dir = args.source_dir
+    install_dir = args.install_dir
 
-    src_dir = os.environ.get(SRC_ENVIRON, None)
-    install_dir = os.environ.get(INSTALL_ENVIRON, None)
     if src_dir is None or install_dir is None:
         raise ValueError("%s and %s environment variables should be declared"
                          % (SRC_ENVIRON, INSTALL_ENVIRON))
@@ -34,9 +40,9 @@ def main():
     build_dir = os.path.join(src_dir, "build")
 
     extra_options = []
-    if args.targets is not None:
+    if targets is not None:
         extra_options = [
-            "--target", " ".join(args.targets)
+            "--target", " ".join(targets)
         ]
 
     cmake_cmd = [

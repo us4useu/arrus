@@ -17,14 +17,20 @@ def assert_no_error(return_code):
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
     parser.add_argument("--targets", dest="targets",
-                        type=str, required=True, nargs="+")
+                        type=str, nargs="+", required=True)
+    parser.add_argument("--source_dir", dest="source_dir",
+                        type=str, required=False,
+                        default=os.environ.get(SRC_ENVIRON, None))
+    parser.add_argument("--install_dir", dest="install_dir",
+                        type=str, required=False,
+                        default=os.environ.get(INSTALL_ENVIRON, None))
 
     args = parser.parse_args()
     targets = args.targets
     options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
+    src_dir = args.source_dir
+    install_dir = args.install_dir
 
-    src_dir = os.environ.get(SRC_ENVIRON, None)
-    install_dir = os.environ.get(INSTALL_ENVIRON, None)
     if src_dir is None or install_dir is None:
         raise ValueError("%s and %s environment variables should be declared"
                          % (SRC_ENVIRON, INSTALL_ENVIRON))
