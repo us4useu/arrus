@@ -2,30 +2,44 @@ pipeline {
     agent any
 
     stages {
-        stage("Build dependencies") {
+        stage("Build dependencies (master)") {
             when {
-                expression {env.BRANCH_NAME != 'ref-57'}
+                expression {env.BRANCH_NAME == 'master'}
+            }
+            steps {
+                echo 'Building dependencies (master) ...'
+                build 'us4r/master'
+            }
+        }
+        stage("Build dependencies (develop)") {
+            when {
+                expression {env.BRANCH_NAME != 'master'}
             }
             steps {
                 echo 'Building dependencies..'
-                build 'us4r/ref-75'
+                build 'us4r/develop'
             }
         }
         stage('Build') {
             steps {
-                echo 'Building..'
-                withCredentials() {
-                }
+                echo 'Building ...'
+                sh '''
+                python '${env.BRANCH_NAME}/scripts/'
+                '''
             }
         }
         stage('Test') {
             steps {
-                echo 'Testing..'
+                echo 'Testing ...'
             }
         }
-        stage('Deploy') {
+        stage('Install') {
             steps {
-                echo 'Deploying....'
+                echo 'Deploying ...'
+            }
+        }
+        stage('Install') {
+            parallel {
             }
         }
     }
