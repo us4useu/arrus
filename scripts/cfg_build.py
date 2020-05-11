@@ -25,13 +25,17 @@ def main():
                         default=os.environ.get(SRC_ENVIRON, None))
     parser.add_argument("--us4r_dir", dest="us4r_dir",
                         type=str, default=os.environ.get(US4R_INSTALL_ENVIRON, None))
+    parser.add_argument("--options", dest="options",
+                        type=str, nargs="*", required=False, default=[])
 
     args = parser.parse_args()
     targets = args.targets
     run_targets = args.run_targets
+    extra_options = args.options
     options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
     if run_targets is not None:
         options += ["-DARRUS_RUN_%s=ON" % t.upper() for t in run_targets]
+    options += ["-D%s" % o.upper() for o in extra_options]
     src_dir = args.source_dir
     us4r_install_dir = args.us4r_dir
 
