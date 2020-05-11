@@ -32,6 +32,9 @@ endif()
 ################################################################################
 # Sub-projects
 ################################################################################
+if(ARRUS_RUN_TESTS)
+    enable_testing()
+endif()
 if(ARRUS_BUILD_PY)
     add_subdirectory(api/python)
 endif()
