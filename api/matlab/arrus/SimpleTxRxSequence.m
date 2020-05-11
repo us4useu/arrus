@@ -8,6 +8,7 @@ classdef SimpleTxRxSequence < Operation
     % :param speedOfSound: speed of sound for [m/s]
     % :param txFrequency: tx frequency [Hz]
     % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
+    % :param rxDepthRange: max depth of echoes acquisition [m]
     % :param rxNSamples: number of recorded samples per channel [sample]
     % :param txPri: tx pulse repetition interval [us] \
     %   **NOTE: in 0.4.0 (after release candidates stage) the value will be in [s]** \
@@ -28,10 +29,10 @@ classdef SimpleTxRxSequence < Operation
         speedOfSound (1,1)
         txFrequency (1,1)
         txNPeriods (1,1)
+        rxDepthRange (1,1)
         rxNSamples (1,1) ...
                    {mustBeInteger,...
-                   mustBePositive,...
-                   mustBeDivisible(rxNSamples, 1024)} = 4*1024
+                   mustBePositive} = 4*1024
         txPri (1,1) double {mustBePositive} = 100e-6
         tgcStart (1,1)
         tgcSlope (1,1)
@@ -43,8 +44,17 @@ classdef SimpleTxRxSequence < Operation
                 error("Arrus:params", ...
                       "Input should be a list of  'key', value params.");
             end
+            
             for i = 1:2:nargin
                 obj.(varargin{i}) = varargin{i+1};
+            end
+            
+            if any(strcmp(varargin(1:2:end),"rxDepthRange"))
+                if any(strcmp(varargin(1:2:end),"rxNSamples"))
+                    warning("rxNSamples is superior to rxDepthRange, rxDepthRange is rejected");
+                else
+                    obj.rxNSamples = ceil(2 * obj.rxDepthRange / obj.speedOfSound * 65e6);
+                end
             end
         end
     end
