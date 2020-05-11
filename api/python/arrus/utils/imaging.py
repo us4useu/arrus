@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.signal as scs
+import scipy.signal as signal
 import matplotlib.pyplot as plt
 from collections.abc import Iterable
 
@@ -266,7 +266,7 @@ def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
     if is_iqdata:
         amplitude_image = np.abs(rf_image)
     else:
-        amplitude_image = np.abs(scs.hilbert(rf_image, axis=0))
+        amplitude_image = np.abs(signal.hilbert(rf_image, axis=0))
 
     # convert do dB
     max_image_value = np.max(amplitude_image)
@@ -397,4 +397,78 @@ def compute_tx_delays(angles, focus, pitch, c=1490, n_chanels=128):
     delays = delays + delays_foc
 
     return delays
+
+
+def calculate_envelope(rf):
+    """
+    The function calculate envelope using hilbert transform
+    :param rf:
+    :return: envelope image
+    """
+    envelope = np.abs(signal.hilbert(rf, axis=0))
+    return envelope
+
+
+def rf2iq(rf, fc, fs, decimation_factor):
+    """
+    Demodulation and decimation from rf signal to iq (quadrature) signal.
+
+    :param rf: array of rf signals
+    :param fc: carrier frequency
+    :param fs: sampling frequency
+    :param decimation_factor: decimation factor
+    :return: array of decimated iq signals
+
+    """
+
+    s = rf.shape
+    n_dim = len(s)
+    n_samples = s[0]
+
+    if n_dim > 1:
+        n_channels = s[1]
+    else:
+        n_channels = 1
+        rf = rf[..., np.newaxis]
+
+    if n_dim > 2:
+        n_transmissions = s[2]
+    else:
+        n_transmissions = 1
+        rf = rf[..., np.newaxis]
+    # creating time array
+    ts = 1/fs
+    t = np.linspace(0, (n_samples-1)*ts, n_samples)
+    t = t[..., np.newaxis, np.newaxis]
+
+
+    # demodulation
+    iq = rf*np.exp(0-1j*2*np.pi*fc*t)
+
+
+    # low-pass filtration (assuming 150% band)
+    f_up_cut = fc*1.5/2
+
+    # ir
+    filter_order = 8
+    b, a = signal.butter(filter_order,
+                         f_up_cut,
+                         btype='low',
+                         analog=False,
+                         output='ba',
+                         fs=fs
+                         )
+
+    # this scaling of amplitude is to make envelopes from iq and rf similar
+    iq = 2*signal.filtfilt(b, a, iq, axis=0)
+
+    # decimation
+    if decimation_factor > 1:
+        iq = signal.decimate(iq, decimation_factor, axis=0)
+    else:
+        print('decimation factor <= 1, no decimation')
+
+    iq = np.squeeze(iq)
+
+    return iq
 
