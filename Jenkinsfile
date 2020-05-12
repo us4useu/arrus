@@ -23,7 +23,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing ...'
-                sh "python '${env.WORKSPACE}/scripts/test.py' --source_dir='${env.WORKSPACE}'"
+                sh "$Env:Path='${env.US4R_INSTALL_DIR}/${getBranchName()}/lib64;$Env:Path'; python '${env.WORKSPACE}/scripts/test.py' --source_dir='${env.WORKSPACE}'"
             }
         }
         stage('Install') {
