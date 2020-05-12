@@ -21,9 +21,12 @@ pipeline {
             }
         }
         stage('Test') {
+            environment {
+                Path = "${env.US4R_INSTALL_DIR}/${getBranchName()}/lib64;${env.Path}"
+            }
             steps {
                 echo 'Testing ...'
-                sh "$Env:Path='${env.US4R_INSTALL_DIR}/${getBranchName()}/lib64;$Env:Path'; python '${env.WORKSPACE}/scripts/test.py' --source_dir='${env.WORKSPACE}'"
+                sh "python '${env.WORKSPACE}/scripts/test.py' --source_dir='${env.WORKSPACE}'"
             }
         }
         stage('Install') {
