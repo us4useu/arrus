@@ -17,7 +17,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building ...'
-                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir' ${env.WORKSPACE}'"
+                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir'${env.WORKSPACE}'"
             }
         }
         stage('Test') {

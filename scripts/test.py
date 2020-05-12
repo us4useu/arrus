@@ -16,8 +16,11 @@ def main():
     parser.add_argument("--source_dir", dest="source_dir",
                         type=str, required=False,
                         default=os.environ.get(SRC_ENVIRON, None))
+    parser.add_argument("--config", dest="config",
+                        type=str, required=False, default="Release")
 
     args = parser.parse_args()
+    config = args.config
     src_dir = args.source_dir
 
     if src_dir is None:
@@ -26,11 +29,10 @@ def main():
                          % (SRC_ENVIRON))
 
     build_dir = os.path.join(src_dir, "build")
+    os.chdir(build_dir)
 
     cmake_cmd = [
-        "cmake",
-        "--build", build_dir,
-        "--target", "test"
+        "ctest", "--config", config
     ]
 
     print("Calling: %s" % (" ".join(cmake_cmd)))
