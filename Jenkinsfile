@@ -12,13 +12,12 @@ pipeline {
             steps {
                 echo 'Configuring build ...'
                 sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/${getBranchName()}' --targets py matlab docs --run_targets tests"
-                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir '${env.WORKSPACE}'"
             }
         }
         stage('Build') {
             steps {
                 echo 'Building ...'
-                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir '${env.WORKSPACE}'"
+                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir' ${env.WORKSPACE}'"
             }
         }
         stage('Test') {
