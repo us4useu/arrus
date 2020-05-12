@@ -1,5 +1,10 @@
 pipeline {
     agent any
+
+    parameters {
+        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Turns on publishing arrus docs on the documentation server.')
+    }
+
     stages {
         stage("Build dependencies") {
             steps {
@@ -31,7 +36,19 @@ pipeline {
         stage('Install') {
             steps {
                 echo 'Installing ...'
-                sh "python '${env.WORKSPACE}/scripts/install.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}'"
+                sh "python '${env.WORKSPACE}/scripts/install.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
+            }
+        }
+        stage('Publish docs') {
+            when{
+                environment name: 'PUBLISH_DOCS', value: 'true'
+                anyOf {
+                    branch 'master'
+                    branch 'ref-57'
+                }
+            }
+            steps {
+                echo "Publish docs: ${params.PUBLISH_DOCS}"
             }
         }
     }
