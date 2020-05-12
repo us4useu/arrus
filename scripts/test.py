@@ -32,7 +32,7 @@ def main():
     os.chdir(build_dir)
 
     cmake_cmd = [
-        "ctest", "--config", config
+        "ctest", "-C", config
     ]
 
     print("Calling: %s" % (" ".join(cmake_cmd)))
