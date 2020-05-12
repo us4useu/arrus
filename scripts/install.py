@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+import shutil
 
 COLOR_ERROR = '\033[91m'
 COLOR_END = '\033[0m'
@@ -34,6 +35,9 @@ def main():
                          % (SRC_ENVIRON, INSTALL_ENVIRON))
 
     build_dir = os.path.join(src_dir, "build")
+
+    print("Cleaning up installation dir.")
+    shutil.rmtree(install_dir, ignore_errors=True)
 
     cmake_install_cmd = [
         "cmake",
