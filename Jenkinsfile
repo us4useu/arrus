@@ -11,11 +11,13 @@ pipeline {
     }
 
     stages {
-        stage('Set environment name as build name') {
+        stage('Prepare build environment') {
             steps {
                 script {
                     currentBuild.displayName = getBuildName(currentBuild)
                 }
+                sh "git config user.email 'support@us4us.eu'"
+                sh "git config user.name 'us4us-support'"
             }
         }
         stage("Build dependencies") {
@@ -75,6 +77,6 @@ def getBranchName() {
 
 def getBuildName(build) {
     wrap([$class: 'BuildUser']) {
-        return "#${build.id} (${env.BUILD_USER})";
+        return "#${build.id} (${env.BUILD_USER_ID})";
     }
 }
