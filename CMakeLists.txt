@@ -31,6 +31,8 @@ if(NOT ARRUS_BUILD_SWIG)
     message(WARNING "BUILDING PACKAGE WITHOUT LOW-LEVEL API WRAPPERS!")
 endif()
 
+
+
 ################################################################################
 # Sub-projects
 ################################################################################
@@ -47,6 +49,14 @@ if(ARRUS_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
 
+################################################################################
+# General docs
+################################################################################
+configure_file(VERSION.rst.in VERSION.rst)
+install(
+        FILES ${CMAKE_CURRENT_BINARY_DIR}/VERSION.rst
+        DESTINATION .
+)
 ################################################################################
 # Embed external dependencies
 ################################################################################
