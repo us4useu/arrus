@@ -5,6 +5,11 @@ pipeline {
         booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Turns on publishing arrus docs on the documentation server.')
     }
 
+    options {
+        timeout(time: 1, unit: 'HOURS')
+        buildDiscarder(logRotator(daysToKeepStr: '14'))
+    }
+
     stages {
         stage("Build dependencies") {
             steps {
@@ -44,11 +49,15 @@ pipeline {
                 environment name: 'PUBLISH_DOCS', value: 'true'
                 anyOf {
                     branch 'master'
-                    branch 'ref-57'
+                    branch 'develop'
                 }
             }
             steps {
-                echo "Publish docs: ${params.PUBLISH_DOCS}"
+                echo "Publishing docs ..."
+                withCredentials([usernamePassword(credentialsId: '00c79f7e-f299-4ec6-959d-9d09785891f5', usernameVariable: 'username', passwordVariable: 'password')]){
+                {
+                    sh("git clone https://$username:$password@github.com/us4useu/arrus-public.git")
+                }
             }
         }
     }
