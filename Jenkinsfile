@@ -14,7 +14,7 @@ pipeline {
         stage('Set environment name as build name') {
             steps {
                 script {
-                    currentBuild.displayName = getBuildName(currentBuild)
+                    currentBuild.displayName = "#${currentBuild.id} (${env.BUILD_USER})"// getBuildName(currentBuild)
                 }
             }
         }
