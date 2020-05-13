@@ -65,11 +65,10 @@ def main():
         publish(build_id, install_dir, repository, repository_name,
                 src_branch_name)
     finally:
-        # os.chdir("..")
+        os.chdir("..")
         print("Cleaning up")
-        print(os.getcwd())
         shutil.rmtree(
-            repository_name)
+            repository_name, ignore_errors=True)
 
 
 def publish(build_id, install_dir, repository, repository_name,
