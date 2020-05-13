@@ -89,6 +89,9 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
 
     if not response.ok:
         resp = response.json()
+        if "errors" not in resp:
+            response.raise_for_status()
+            print(resp)
         if resp["errors"][0]["code"] == "already_exists":
             print("RELEASE EXISTS, OVERWRITING THE RELEASE")
             r = get_release_by_tag(repository_name, release_tag, token)
@@ -99,6 +102,7 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
             r.raise_for_status()
         else:
             response.raise_for_status()
+            print(resp)
     else:
         release_id = response.json()["id"]
 
