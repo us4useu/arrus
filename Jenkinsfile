@@ -14,7 +14,7 @@ pipeline {
         stage('Set environment name as build name') {
             steps {
                 script {
-                    currentBuild.displayName = "#${currentBuild.id} (${env.BUILD_USER})"// getBuildName(currentBuild)
+                    currentBuild.displayName = getBuildName(currentBuild)
                 }
             }
         }
@@ -74,5 +74,7 @@ def getBranchName() {
 }
 
 def getBuildName(build) {
-    return "#${build.id} (${env.BUILD_USER})";
+    wrap([$class: 'BuildUser']) {
+        return "#${build.id} (${env.BUILD_USER})";
+    }
 }
