@@ -47,7 +47,7 @@ install(
 	DIRECTORY
 		${TOOLBOX_OUTPUT_DIR}
     DESTINATION
-        ${ARRUS_MATLAB_INSTALL_DIR}/arrus
+        ${ARRUS_MATLAB_INSTALL_DIR}
 )
 
 install(
