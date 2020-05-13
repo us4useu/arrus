@@ -129,6 +129,7 @@ def get_assets(repository_name, release_id, token):
         }
     )
 
+
 def delete_asset(repository_name, asset_id, token):
     print("Deleting asset")
     return requests.delete(
@@ -137,6 +138,7 @@ def delete_asset(repository_name, asset_id, token):
             'Authorization': "token "+token
         },
     )
+
 
 def upload_asset(repository_name, release_id, asset_name, token, file_to_upload):
     print("Uploading asset")
