@@ -11,6 +11,13 @@ pipeline {
     }
 
     stages {
+        stage('Set environment name as build name') {
+            steps {
+                script {
+                    currentBuild.displayName = getBuildName(currentBuild)
+                }
+            }
+        }
         stage("Build dependencies") {
             steps {
                 echo 'Building dependencies ...'
@@ -55,7 +62,7 @@ pipeline {
             steps {
                 echo "Publishing docs ..."
                 withCredentials([usernamePassword(credentialsId: '00c79f7e-f299-4ec6-959d-9d09785891f5', usernameVariable: 'username', passwordVariable: 'password')]){
-                    sh "python ${env.WORKSPACE}/scripts/publish_docs.py' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}' --repository 'https://$username:$password@github.com/us4useu/x-files.git' --src_branch_name 'develop' --build_id ${env.BUILD_ID}"
+                    sh "python '${env.WORKSPACE}/scripts/publish_docs.py' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}' --repository 'https://$username:$password@github.com/us4useu/x-files.git' --src_branch_name 'develop' --build_id 'getBuildName()'"
                 }
             }
         }
@@ -64,4 +71,8 @@ pipeline {
 
 def getBranchName() {
     return env.BRANCH_NAME == "master" ? "master" : "develop";
+}
+
+def getBuildName(build) {
+    return "#${build.id} (${env.BUILD_USER})";
 }
