@@ -74,5 +74,5 @@ def getBranchName() {
 }
 
 def getBuildName(build) {
-    return "#${build.id} (${BUILD_USER})";
+    return "#${build.id} (${env.BUILD_USER})";
 }
