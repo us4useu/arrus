@@ -21,6 +21,7 @@ def call_cmd(params):
     print("Calling: %s" % (" ".join(params)))
     return subprocess.call(params)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
     parser.add_argument("--install_dir", dest="install_dir",
@@ -45,15 +46,25 @@ def main():
     _, repository_name = os.path.split(repository)
     repository_name, _ = repository_name.split(".")
 
+    try:
+        publish(build_id, install_dir, repository, repository_name,
+                src_branch_name)
+    finally:
+        shutil.rmtree(
+            repository_name,
+            ignore_errors=True)
+        os.chdir("..")
+
+
+def publish(build_id, install_dir, repository, repository_name,
+            src_branch_name):
     # Cleanup if necessary.
     shutil.rmtree(
         repository_name,
         ignore_errors=True)
     result = call_cmd(["git", "clone", repository])
     assert_no_error(result)
-
     # Get version number
-    releases = []
     if src_branch_name == "master":
         # Generate specific version and 'current' releases.
         version_file_path = os.path.join(install_dir, "VERSION.rst")
@@ -62,7 +73,7 @@ def main():
             version = f.readline()
         if version is None:
             raise ValueError(
-                "Invalid version in the version file: %s" % version_file_path
+                "Invalid version in the version file: %s"%version_file_path
             )
         releases = [version, "current"]
         pass
@@ -70,7 +81,6 @@ def main():
         releases = ["develop"]
     else:
         raise ValueError("Docs from branch %s are not allowed to be published!")
-
     for release in releases:
         release_dir = os.path.join(repository_name, "releases", release)
         docs_dir = os.path.join(install_dir, "docs", "html")
@@ -83,28 +93,17 @@ def main():
             dst = os.path.join(docs_dir, d)
             src = os.path.join(release_dir, d)
             shutil.copytree(dst, src)
-
     os.chdir(repository_name)
     result = call_cmd(["git", "add", "-A"])
     assert_no_error(result)
-
     commit_msg = "Updated docs"
     if build_id is not None:
         hostname = platform.node()
-        commit_msg += ", build_id: %s, host: %s" % (build_id, hostname)
-
+        commit_msg += ", build_id: %s, host: %s"%(build_id, hostname)
     result = call_cmd(["git", "commit", "-m", commit_msg])
     assert_no_error(result)
-
     result = call_cmd(["git", "push", repository])
     assert_no_error(result)
 
-    # Cleanup
-    shutil.rmtree(
-        repository_name,
-        ignore_errors=True)
-    os.chdir("..")
-
 if __name__ == "__main__":
-
     main()
