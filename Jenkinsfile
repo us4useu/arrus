@@ -85,17 +85,30 @@ pipeline {
 //         }
     }
     post {
-         always {
+        always {
+            script {
+                if(env.BRANCH_NAME == "ref-57") {
+                    emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                             to:      "${env.ARRUS_DEVELOPER_EMAIL}",
+                             subject: "Build failed in Jenkins: $JOB_NAME")
+                }
+            }
+        }
+        failure {
             emailext(body:    "Check console output at $BUILD_URL to view the results.",
                      to:      "${env.ARRUS_DEVELOPER_EMAIL}",
                      subject: "Build failed in Jenkins: $JOB_NAME")
-         }
-         failure {
-            echo "test"
-         }
-         changed {
-            echo "test"
-         }
+        }
+        unstable {
+            emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                     to:      "${env.ARRUS_DEVELOPER_EMAIL}",
+                     subject: "Unstable build in Jenkins: $JOB_NAME")
+        }
+        changed {
+            emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                     to:      "${env.ARRUS_DEVELOPER_EMAIL}",
+                     subject: "Jenkins build is back to normal: $JOB_NAME")
+        }
     }
 }
 
