@@ -73,7 +73,7 @@ pipeline {
                 environment name: 'PUBLISH_DOCS', value: 'true'
                 anyOf {
                     branch 'master'
-                    branch 'ref-57'
+                    branch 'develop'
                 }
             }
             steps {
