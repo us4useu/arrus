@@ -52,21 +52,6 @@ pipeline {
                 sh "python '${env.WORKSPACE}/scripts/install.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
             }
         }
-        stage('Publish docs') {
-            when{
-                environment name: 'PUBLISH_DOCS', value: 'true'
-                anyOf {
-                    branch 'master'
-                    branch 'ref-57'
-                }
-            }
-            steps {
-                echo "Publishing docs ..."
-                withCredentials([usernamePassword(credentialsId: 'us4us-support-github-credentials', usernameVariable: 'username', passwordVariable: 'password')]){
-                    sh "python '${env.WORKSPACE}/scripts/publish_docs.py' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}' --repository 'https://$username:$password@github.com/us4useu/x-files.git' --src_branch_name 'develop' --build_id '${getBuildName(currentBuild)}'"
-                }
-            }
-        }
         stage('Publish package') {
             when{
                 environment name: 'PUBLISH_PACKAGE', value: 'true'
@@ -79,6 +64,21 @@ pipeline {
                 echo "Publishing release package ..."
                 withCredentials([string(credentialsId: 'us4us-support-github-token', variable: 'token')]){
                     sh "python '${env.WORKSPACE}/scripts/publish_releases.py' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}' --repository 'us4useu/x-files' --src_branch_name master --token $token --build_id '${getBuildName(currentBuild)}'"
+                }
+            }
+        }
+        stage('Publish docs') {
+            when{
+                environment name: 'PUBLISH_DOCS', value: 'true'
+                anyOf {
+                    branch 'master'
+                    branch 'ref-57'
+                }
+            }
+            steps {
+                echo "Publishing docs ..."
+                withCredentials([usernamePassword(credentialsId: 'us4us-support-github-credentials', usernameVariable: 'username', passwordVariable: 'password')]){
+                    sh "python '${env.WORKSPACE}/scripts/publish_docs.py' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}' --repository 'https://$username:$password@github.com/us4useu/x-files.git' --src_branch_name 'develop' --build_id '${getBuildName(currentBuild)}'"
                 }
             }
         }
