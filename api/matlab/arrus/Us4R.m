@@ -436,19 +436,22 @@ classdef Us4R < handle
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nSubTx*nTx;
-            
-            actChanGroupMask = ["1111111111111111"; "0101010101010101"];
 
             if ~obj.sys.adapType
                 % old adapter type (00001111)
                 selectElem = (1:128).' + (0:(nArius-1))*128;
                 rxApSize = nChan;                               % for LIN mode only
                 nChanTot = nChan*4*nArius;
+                
+                actChanGroupMask = (8:8:128)' + (0:(nArius-1))*128 <= obj.sys.nElem;
             else
                 % new adapter type (01010101)
                 selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
                 rxApSize = nChan*nArius;                        % for LIN mode only
                 nChanTot = nChan*4*nArius;
+                
+                actChanGroupMask = reshape((8:8:32)' + (0:3)*32*nArius, [], 1) ...
+                                 + (0:(nArius-1))*nChan <= obj.sys.nElem;
             end
             
             %% Program TX
@@ -459,6 +462,7 @@ classdef Us4R < handle
 
                         txSubApDel	= obj.seq.txDel(selectElem(:,iArius+1),iTx);
                         txSubApMask = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), iTx));
+                        actChGrMask = obj.maskFormat(actChanGroupMask(:,iArius+1));
 
                         Us4MEX(iArius, "SetTxAperture", txSubApMask, iEvent);
                         Us4MEX(iArius, "SetTxDelays", txSubApDel, iEvent);
@@ -467,7 +471,7 @@ classdef Us4R < handle
                         Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
                         Us4MEX(iArius, "SetTxInvert", 0, iEvent);
                         
-                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iEvent);
+                        Us4MEX(iArius, "SetActiveChannelGroup", actChGrMask, iEvent);
                     end
                 end
                 Us4MEX(iArius, "SetNumberOfFirings", nEvent);
@@ -647,6 +651,11 @@ classdef Us4R < handle
         end
 
         function maskString = maskFormat(obj,maskLogical)
+            
+            if length(maskLogical) == 16
+                % active channel group mask: needs reordering
+                maskLogical = reshape(permute(reshape(maskLogical,4,2,2),[3,2,1]),1,[]);
+            end
             
             maskString = join(string(double(maskLogical)),"");
             maskString = reverse(maskString);
