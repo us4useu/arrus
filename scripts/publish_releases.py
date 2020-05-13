@@ -176,7 +176,7 @@ def create_release(repository_name, release, token, body):
             "tag_name": release,
             "target_commitish": "master",
             "name": release,
-            "body": "Release: "+ release + (" (%s)" % body if body is not None else ""),
+            "body": "Release: "+ release + (" (build: %s)" % body if body is not None else ""),
             "draft": False,
             "prerelease": False
         }
@@ -194,7 +194,7 @@ def edit_release(repository_name, release_id, release, token, body):
             "tag_name": release,
             "target_commitish": "master",
             "name": release,
-            "body": "Release: "+release+(" (%s)" % body if body is not None else ""),
+            "body": "Release: "+release+(" (build: %s)" % body if body is not None else ""),
             "draft": False,
             "prerelease": False
         }
