@@ -88,7 +88,7 @@ pipeline {
          always {
             emailext(body:    "Check console output at $BUILD_URL to view the results.",
                      to:      "jarosik.piotr@gmail.com",
-                     subject: "Build failed in Jenkins: - #$BUILD_ID")
+                     subject: "Build failed in Jenkins: $JOB_NAME")
          }
          failure {
             echo "test"
