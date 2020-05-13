@@ -132,7 +132,7 @@ def get_assets(repository_name, release_id, token):
 def delete_asset(repository_name, asset_id, token):
     print("Deleting asset")
     return requests.delete(
-        url=get_api_url(repository_name)+"/assets/"+asset_id,
+        url=get_api_url(repository_name)+"/assets/"+str(asset_id),
         headers={
             'Authorization': "token "+token
         },
