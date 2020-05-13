@@ -21,6 +21,21 @@ def call_cmd(params):
     print("Calling: %s" % (" ".join(params)))
     return subprocess.call(params)
 
+def git_commit(msg):
+    params = ["git", "commit", "-m", "'"+msg+"'"]
+    print("Calling: %s"%(" ".join(params)))
+    try:
+        out = subprocess.check_output(params)
+    except subprocess.CalledProcessError as e:
+        out = str(e.output)
+        print(out)
+        if "nothing to commit" in out:
+            return "ntc"
+        else:
+            return "fail"
+    print("Commit output: %s" % out)
+    return "ok"
+
 
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
@@ -101,8 +116,12 @@ def publish(build_id, install_dir, repository, repository_name,
     if build_id is not None:
         hostname = platform.node()
         commit_msg += ", build_id: %s, host: %s"%(build_id, hostname)
-    result = call_cmd(["git", "commit", "-m", commit_msg])
-    assert_no_error(result)
+    result = git_commit(commit_msg)
+    if result == 'ntc':
+        print("Nothing to commit")
+        return
+    elif result != "ok":
+        raise ValueError("Something wrong when commiting the changes.")
     result = call_cmd(["git", "push", repository])
     assert_no_error(result)
 
