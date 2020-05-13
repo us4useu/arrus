@@ -87,14 +87,11 @@ pipeline {
     post {
          always {
             emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                     to:      "jarosik.piotr@gmail.com",
+                     to:      "${env.ARRUS_DEVELOPER_EMAIL}",
                      subject: "Build failed in Jenkins: $JOB_NAME")
          }
          failure {
             echo "test"
-         }
-         unstable {
-            echo "TEst"
          }
          changed {
             echo "test"
