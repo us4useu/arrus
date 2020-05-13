@@ -51,6 +51,13 @@ pipeline {
                 sh "python '${env.WORKSPACE}/scripts/install.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
             }
         }
+
+        stage("Package") {
+            steps {
+                echo 'Package ...'
+                sh "python '${env.WORKSPACE}/scripts/package.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
+            }
+        }
         stage('Publish docs') {
             when{
                 environment name: 'PUBLISH_DOCS', value: 'true'
