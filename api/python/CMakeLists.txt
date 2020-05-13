@@ -112,6 +112,31 @@ set_target_properties(
 )
 
 ################################################################################
+# Copy .whl package to install directory
+################################################################################
+get_target_property(ARRUS_WHL_DIR python_whl PACKAGE_DIR)
+
+install(
+    FILES
+        "${ARRUS_WHL_DIR}/${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-py3-none-any.whl"
+    DESTINATION
+        ${ARRUS_PYTHON_INSTALL_DIR}
+    RENAME
+        #TODO(pjarosik) make it more general and available for other OSes
+        "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-cp37-cp37m-win_amd64.whl"
+    COMPONENT
+        python_whl
+)
+
+install(
+	DIRECTORY
+        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
+    DESTINATION
+        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
+)
+
+################################################################################
 # Python tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
