@@ -28,7 +28,7 @@ pipeline {
         stage('Configure') {
             steps {
                 echo 'Configuring build ...'
-                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/${getBranchName()}' --targets py matlab docs --run_targets tests"
+                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/${getBranchName()}' --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON"
             }
         }
         stage('Build') {
