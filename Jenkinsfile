@@ -86,24 +86,30 @@ pipeline {
     }
     post {
         failure {
-            if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
-                emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                         to:      "${env.ARRUS_DEVELOPER_EMAIL}",
-                         subject: "Build failed in Jenkins: $JOB_NAME")
+            script {
+                if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
+                    emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                             to:      "${env.ARRUS_DEVELOPER_EMAIL}",
+                             subject: "Build failed in Jenkins: $JOB_NAME")
+                }
             }
         }
         unstable {
-            if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
-                emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                         to:      "${env.ARRUS_DEVELOPER_EMAIL}",
-                         subject: "Unstable build in Jenkins: $JOB_NAME")
+            script {
+                if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
+                    emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                             to:      "${env.ARRUS_DEVELOPER_EMAIL}",
+                             subject: "Unstable build in Jenkins: $JOB_NAME")
+                }
             }
         }
         changed {
-            if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
-                emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                         to:      "${env.ARRUS_DEVELOPER_EMAIL}",
-                         subject: "Jenkins build is back to normal: $JOB_NAME")
+            script {
+                if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
+                    emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                             to:      "${env.ARRUS_DEVELOPER_EMAIL}",
+                             subject: "Jenkins build is back to normal: $JOB_NAME")
+                }
             }
         }
     }
