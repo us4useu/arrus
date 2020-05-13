@@ -439,27 +439,28 @@ classdef Us4R < handle
             
             actChanGroupMask = ["1111111111111111"; "0101010101010101"];
 
+            if ~obj.sys.adapType
+                % old adapter type (00001111)
+                selectElem = (1:128).' + (0:(nArius-1))*128;
+                rxApSize = nChan;                               % for LIN mode only
+                nChanTot = nChan*4*nArius;
+            else
+                % new adapter type (01010101)
+                selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
+                rxApSize = nChan*nArius;                        % for LIN mode only
+                nChanTot = nChan*4*nArius;
+            end
+            
             %% Program TX
             for iArius=0:(nArius-1)
                 for iTx=1:nTx
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
 
-                        if ~obj.sys.adapType
-                            % old adapter type (00001111)
-                            selectElem	= (1:128) + iArius*128;
-                        else
-                            % new adapter type (01010101)
-                            selectElem	= reshape((1:nChan)' + (0:3)*nChan*nArius,1,[]) + iArius*nChan;
-                        end
-                        txSubApDel	= obj.seq.txDel(selectElem,iTx);
-                        txSubApSize	= sum(obj.seq.txApMask(selectElem, iTx));
-                        txSubApOrig	= find(obj.seq.txApMask(selectElem, iTx),1,'first');
-                        if isempty(txSubApOrig)
-                            txSubApOrig = 1;
-                        end
+                        txSubApDel	= obj.seq.txDel(selectElem(:,iArius+1),iTx);
+                        txSubApMask = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), iTx));
 
-                        Us4MEX(iArius, "SetTxAperture", txSubApOrig, txSubApSize, iEvent);
+                        Us4MEX(iArius, "SetTxAperture", txSubApMask, iEvent);
                         Us4MEX(iArius, "SetTxDelays", txSubApDel, iEvent);
 
                         Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
@@ -669,5 +670,12 @@ classdef Us4R < handle
 
         end
 
+        function maskString = maskFormat(obj,maskLogical)
+            
+            maskString = join(string(double(maskLogical)),"");
+            maskString = reverse(maskString);
+            
+        end
+        
     end
 end
