@@ -87,7 +87,7 @@ pipeline {
     post {
         always {
             script {
-                if(env.BRANCH_NAME == "ref-57") {
+                if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
                     emailext(body:    "Check console output at $BUILD_URL to view the results.",
                              to:      "${env.ARRUS_DEVELOPER_EMAIL}",
                              subject: "Build failed in Jenkins: $JOB_NAME")
