@@ -67,9 +67,9 @@ def main():
     finally:
         os.chdir("..")
         print("Cleaning up")
+        print(os.getcwd())
         shutil.rmtree(
-            repository_name,
-            ignore_errors=True)
+            repository_name)
 
 
 def publish(build_id, install_dir, repository, repository_name,
@@ -115,7 +115,7 @@ def publish(build_id, install_dir, repository, repository_name,
     commit_msg = "Updated docs"
     if build_id is not None:
         hostname = platform.node()
-        commit_msg += ", build_id: %s, host: %s"%(build_id, hostname)
+        commit_msg += ", build: %s, host: %s"%(build_id, hostname)
     result = git_commit(commit_msg)
     if result == 'ntc':
         print("Nothing to commit")
