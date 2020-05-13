@@ -16,8 +16,9 @@ pipeline {
                 script {
                     currentBuild.displayName = getBuildName(currentBuild)
                 }
-                sh "git config user.email 'support@us4us.eu'"
-                sh "git config user.name 'us4us-support'"
+                // TODO(pjarosik) Reconsider placing the below configuration here
+                sh "git config --global user.email 'support@us4us.eu'"
+                sh "git config --global user.name 'us4us-support'"
             }
         }
         stage("Build dependencies") {
