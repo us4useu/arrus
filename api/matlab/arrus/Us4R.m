@@ -533,9 +533,9 @@ classdef Us4R < handle
 %             Us4MEX(0, "SetNTriggers", nEvent-1);
             Us4MEX(0, "SetNTriggers", nEvent);
             for iEvent=0:(nEvent-1)
-                Us4MEX(0, "SetTrigger", obj.seq.txPri, 0, 0, iEvent);
+                Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iEvent);
             end
-            Us4MEX(0, "SetTrigger", obj.seq.txPri, 0, 1, nEvent-1);
+            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, nEvent-1);
 
         end
 
@@ -546,7 +546,7 @@ classdef Us4R < handle
 
             %% Start acquisitions (1st sequence exec., no transfer to host)
             Us4MEX(0, "TriggerStart");
-            pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
+            pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
         end
 
         function [] = closeSequence(obj)
@@ -569,7 +569,7 @@ classdef Us4R < handle
                 Us4MEX(iArius, "EnableReceive");
             end
             Us4MEX(0, "TriggerSync");
-            pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
+            pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
 
             %% Transfer to PC
             rf	= zeros(nChan,nSamp*nEvent,nArius);
