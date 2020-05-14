@@ -292,7 +292,8 @@ classdef Us4RUltrasonix < handle
                     obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / obj.sys.nChArius));
                 else
                     % new adapter type (01010101)
-                    obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / (obj.sys.nChArius * obj.sys.nArius)));
+%                     obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / (obj.sys.nChArius * obj.sys.nArius)));
+                    obj.seq.nSubTx      = min(4, ceil(min(128,obj.sys.nElem) / (obj.sys.nChArius * obj.sys.nArius)));
                 end
             end
 
@@ -442,12 +443,21 @@ classdef Us4RUltrasonix < handle
                 selectElem = (1:128).' + (0:(nArius-1))*128;
                 rxApSize = nChan;                               % for LIN mode only
                 nChanTot = nChan*4*nArius;
+                
+                actChan = true(128,nArius);
             else
                 % new adapter type (01010101)
-                selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
+%                 selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
+%                 rxApSize = nChan*nArius;                        % for LIN mode only
+%                 nChanTot = nChan*4*nArius;
+                
+                selectElem = repmat((1:128).',[1 nArius]);
                 rxApSize = nChan*nArius;                        % for LIN mode only
-                nChanTot = nChan*4*nArius;
+                nChanTot = nChan*4;
+                
+                actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
             end
+            actChan = actChan & (selectElem <= obj.sys.nElem);
             
             if strcmp(obj.seq.type,'lin')
                 rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
@@ -465,14 +475,25 @@ classdef Us4RUltrasonix < handle
             rxSubApMask = strings(nArius,nEvent);
             iSubTx = repmat(1:nSubTx,1,nTx);
             for iArius=0:(nArius-1)
-                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
-                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
+%                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
+%                 txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
+%                 
+%                 rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
+%                 rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
                 
-                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
+                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :) .* actChan(:,iArius+1), 128, ones(1,nTx));
+                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1));
+                
+                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1)) / nChan) == iSubTx;
+                rxSubApSelect = rxSubApSelect & actChan(:,iArius+1);
                 rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
             end
             
+%             actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
+%             actChanGroupMask = obj.maskFormat(actChanGroupMask);
+            
             actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
+            actChanGroupMask = actChanGroupMask & actChan(8:8:end,:);
             actChanGroupMask = obj.maskFormat(actChanGroupMask);
             
             %% Program TX
