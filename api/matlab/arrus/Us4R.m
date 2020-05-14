@@ -442,17 +442,38 @@ classdef Us4R < handle
                 selectElem = (1:128).' + (0:(nArius-1))*128;
                 rxApSize = nChan;                               % for LIN mode only
                 nChanTot = nChan*4*nArius;
-                
-                actChanGroupMask = (8:8:128)' + (0:(nArius-1))*128 <= obj.sys.nElem;
             else
                 % new adapter type (01010101)
                 selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
                 rxApSize = nChan*nArius;                        % for LIN mode only
                 nChanTot = nChan*4*nArius;
-                
-                actChanGroupMask = reshape((8:8:32)' + (0:3)*32*nArius, [], 1) ...
-                                 + (0:(nArius-1))*nChan <= obj.sys.nElem;
             end
+            
+            if strcmp(obj.seq.type,'lin')
+                rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
+                
+                obj.seq.rxApOrig = round(rxCentElem - (rxApSize-1)/2);
+                rxApMask =	(1:nChanTot).' >= obj.seq.rxApOrig & ...
+                            (1:nChanTot).' <  obj.seq.rxApOrig + rxApSize & ...
+                            (1:nChanTot).' <= obj.sys.nElem;
+            else
+                rxApMask = (1:nChanTot).' .* ones(1,nEvent) <= obj.sys.nElem;
+            end
+            
+            txSubApDel = cell(nArius,nTx);
+            txSubApMask = strings(nArius,nTx);
+            rxSubApMask = strings(nArius,nEvent);
+            iSubTx = repmat(1:nSubTx,1,nTx);
+            for iArius=0:(nArius-1)
+                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
+                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
+                
+                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
+                rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
+            end
+            
+            actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
+            actChanGroupMask = obj.maskFormat(actChanGroupMask);
             
             %% Program TX
             for iArius=0:(nArius-1)
@@ -460,18 +481,13 @@ classdef Us4R < handle
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
 
-                        txSubApDel	= obj.seq.txDel(selectElem(:,iArius+1),iTx);
-                        txSubApMask = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), iTx));
-                        actChGrMask = obj.maskFormat(actChanGroupMask(:,iArius+1));
-
-                        Us4MEX(iArius, "SetTxAperture", txSubApMask, iEvent);
-                        Us4MEX(iArius, "SetTxDelays", txSubApDel, iEvent);
-
+                        Us4MEX(iArius, "SetTxAperture", txSubApMask(iArius+1,iTx), iEvent);
+                        Us4MEX(iArius, "SetTxDelays", txSubApDel{iArius+1,iTx}, iEvent);
                         Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
                         Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
                         Us4MEX(iArius, "SetTxInvert", 0, iEvent);
                         
-                        Us4MEX(iArius, "SetActiveChannelGroup", actChGrMask, iEvent);
+                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iEvent);
                     end
                 end
                 Us4MEX(iArius, "SetNumberOfFirings", nEvent);
@@ -479,30 +495,14 @@ classdef Us4R < handle
             end
 
             %% Program RX
-            if strcmp(obj.seq.type,'lin')
-                rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
-                
-                obj.seq.rxApOrig = round(rxCentElem - (rxApSize-1)/2);
-                rxApMask = (1:nChanTot).' >= obj.seq.rxApOrig & ...
-                           (1:nChanTot).' <  obj.seq.rxApOrig + rxApSize & ...
-                           (1:nChanTot).' <= obj.sys.nElem;
-            end
-
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTx=1:nTx
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
-
-                        if strcmp(obj.seq.type,'lin')
-                            rxSubApMask = rxApMask(selectElem(:,iArius+1),iTx);
-                        else
-                            rxSubApMask = floor(((1:(4*nChan))-1) / nChan) + 1 == iSubTx;
-                        end
-                        rxSubApMask = obj.maskFormat(rxSubApMask);
                         
                         Us4MEX(iArius, "ScheduleReceive", iEvent*nSamp, nSamp);
-                        Us4MEX(iArius, "SetRxAperture", rxSubApMask, iEvent);
+                        Us4MEX(iArius, "SetRxAperture", rxSubApMask(iArius+1,iEvent+1), iEvent);
                         Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
                         Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iEvent);
@@ -652,12 +652,19 @@ classdef Us4R < handle
 
         function maskString = maskFormat(obj,maskLogical)
             
-            if length(maskLogical) == 16
-                % active channel group mask: needs reordering
-                maskLogical = reshape(permute(reshape(maskLogical,4,2,2),[3,2,1]),1,[]);
+            [maskLength,nMask] = size(maskLogical);
+            
+            if maskLength~=16 && maskLength~=128
+                error("maskFormat: invalid mask length, should be 16 or 128");
             end
             
-            maskString = join(string(double(maskLogical)),"");
+            
+            if maskLength == 16
+                % active channel group mask: needs reordering
+                maskLogical = reshape(permute(reshape(maskLogical,4,2,2,nMask),[3,2,1,4]),16,nMask);
+            end
+            
+            maskString = join(string(double(maskLogical.')),"").';
             maskString = reverse(maskString);
             
         end
