@@ -5,6 +5,7 @@ Version 0.4.0
 -------------
 - Created new version of the Matlab API.
 - Added simplified TGC control through tgcStart and tgcSlope parameters.
+- Added classical linear scanning example.
 
 Version 0.3.0
 -------------
