@@ -8,7 +8,7 @@ classdef PWISequence < SimpleTxRxSequence
     methods
         function obj = PWISequence(varargin)
             obj = obj@SimpleTxRxSequence(varargin{:});
-            
+            obj.txAngle = repmat(obj.txAngle,1,obj.nRepeats);
             nTx = length(obj.txAngle);
             
             % Manage the txFocus size
