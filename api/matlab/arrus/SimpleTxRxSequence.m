@@ -21,6 +21,7 @@ classdef SimpleTxRxSequence < Operation
     
     properties
         txCenterElement (1,:)
+        nRepeats (1,1)
         txApertureCenter (1,:)
         txApertureSize (1,1)
         txFocus (1,:)

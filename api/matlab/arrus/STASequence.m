@@ -7,7 +7,7 @@ classdef STASequence < SimpleTxRxSequence
     methods
         function obj = STASequence(varargin)
             obj = obj@SimpleTxRxSequence(varargin{:});
-            
+            obj.txApertureCenter = repmat(obj.txApertureCenter,1,obj.nRepeats);
             nTx = length(obj.txApertureCenter);
             
             % Manage the txFocus size
