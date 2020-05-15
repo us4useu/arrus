@@ -6,6 +6,11 @@ set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 set(DOC_FILES
     "index.rst"
     "content/introduction.rst"
+    "content/installation/index.rst"
+    "content/installation/img/dev_manager.png"
+    "content/installation/img/paths.png"
+    "content/installation/img/result.png"
+    "content/installation/img/thunderbolt.png"
     "content/examples/bmode_imaging.matlab.rst"
     "content/examples/single_module.python.rst"
     "content/examples/img/coordinate_system.jpeg"

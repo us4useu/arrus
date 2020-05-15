@@ -7,6 +7,7 @@ Welcome to ARRUS documentation!
     :caption: User Documentation
 
     content/introduction
+    content/installation/index
     content/examples/bmode_imaging
     content/api
 
