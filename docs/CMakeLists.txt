@@ -6,6 +6,10 @@ set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 set(DOC_FILES
     "index.rst"
     "content/introduction.rst"
+    "content/installation/index.rst"
+    "content/installation/img/dev_manager.png"
+    "content/installation/img/thunderbolt.png"
+    "content/installation/img/result.png"
     "content/examples/bmode_imaging.matlab.rst"
     "content/examples/single_module.python.rst"
     "content/examples/img/coordinate_system.jpeg"
@@ -32,7 +36,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
     if(FORMAT STREQUAL "pdf")
         set(FORMAT_OUT_DIR "latex")
         set(FORMAT_SPHINX_METHOD "latexpdf")
-        set(FORMAT_TRACKED_FILE "arrus${LANGUAGE}.pdf")
+        set(FORMAT_TRACKED_FILE "us4r${LANGUAGE}.pdf")
     elseif(FORMAT STREQUAL "html")
         set(FORMAT_OUT_DIR "html")
         set(FORMAT_SPHINX_METHOD "html")
@@ -86,7 +90,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
             DESTINATION
                 ${ARRUS_DOCS_INSTALL_DIR}
             RENAME
-                "arrus-${LANGUAGE}.pdf"
+                "us4r-${LANGUAGE}.pdf"
             COMPONENT
                 docs_${LANGUAGE}_${FORMAT}
         )

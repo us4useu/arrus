@@ -6,7 +6,7 @@ Us4MEX API
 
 .. caution::
 
-    This API will be modified in the future. Please expect breaking changes.
+    The API will be modified in the future. Please expect breaking changes.
 
 General formula
 ===============
