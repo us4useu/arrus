@@ -16,7 +16,7 @@ import importlib
 
 
 # -- Project information -----------------------------------------------------
-project = 'ARRUS (${LANGUAGE})'
+project = 'Us4R (${LANGUAGE})'
 copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 
