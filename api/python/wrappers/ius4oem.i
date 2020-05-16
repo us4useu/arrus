@@ -17,6 +17,7 @@
 
 %include "carrays.i"
 %array_functions(unsigned short, uint16Array);
+%array_functions(double, doubleArray);
 
 
 %ignore us4oem::Us4OEMException;
@@ -34,6 +35,7 @@
 #include <thread>
 #include <chrono>
 #include <bitset>
+#include <vector>
 static constexpr size_t NCH = IUs4OEM::NCH;
 %}
 %include afe58jd18Registers.h
@@ -70,7 +72,23 @@ void setTxApertureCustom(IUs4OEM* that, const unsigned short* enabled, const siz
     that->SetTxAperture(aperture, firing);
 }
 
-void setRxApertureCustom(IUs4OEM* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
+void setActiveChannelGroupCustom(
+    IUs4OEM* that,
+    const unsigned short* enabled,
+    const size_t length,
+    const unsigned short firing)
+{
+    std::bitset<NCH/8> mask;
+    for(int i=0; i < length; ++i) {
+        if(enabled[i]) {
+            mask.set(i);
+        }
+    }
+    that->SetActiveChannelGroup(mask, firing);
+}
+
+void setRxApertureCustom(IUs4OEM* that, const unsigned short* enabled, const size_t length, const unsigned short firing)
+{
     std::bitset<NCH> aperture;
     for(int i=0; i < length; ++i) {
         if(enabled[i]) {
@@ -78,5 +96,15 @@ void setRxApertureCustom(IUs4OEM* that, const unsigned short* enabled, const siz
         }
     }
     that->SetRxAperture(aperture, firing);
+}
+
+void setTGCSamplesCustom(IUs4OEM* that, const double* input,
+    const size_t length, const unsigned short firing)
+{
+    std::vector<float> samples(length);
+    for(int i=0; i < length; ++i) {
+        samples[i] = input[i];
+    }
+    that->TGCSetSamples(samples, firing);
 }
 %}

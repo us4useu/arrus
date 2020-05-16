@@ -32,7 +32,7 @@ module.set_lpf_cutoff(10e6)  # [Hz]
 module.set_active_termination(200)
 module.set_lna_gain(24)  # [dB]
 module.set_dtgc(0)  # [dB]
-module.set_tgc_samples([0x9001] + (0x4000 + np.arange(1500, 0, -14)).tolist() + [0x4000 + 3000])
+module.set_tgc_samples(np.arange(0, 1, step=0.2))
 module.enable_tgc()
 
 # Configure TX/RX scheme.
