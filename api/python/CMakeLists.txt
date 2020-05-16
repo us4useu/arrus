@@ -19,7 +19,6 @@ set(Us4Wrappers
     ihv256
     idbarlite
 )
-find_package(Us4 REQUIRED Us4Components)
 
 foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     set_property(SOURCE wrappers/${wrapper}.i PROPERTY CPLUSPLUS ON)

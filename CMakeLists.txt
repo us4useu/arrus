@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.17.0)
 
 project(arrus LANGUAGES CXX)
-set(PROJECT_VERSION 0.4.0rc1)
+set(PROJECT_VERSION 0.4.0)
 string(TIMESTAMP CURRENT_YEAR "%Y")
 set(CMAKE_CXX_STANDARD 17)
 
@@ -31,7 +31,12 @@ if(NOT ARRUS_BUILD_SWIG)
     message(WARNING "BUILDING PACKAGE WITHOUT LOW-LEVEL API WRAPPERS!")
 endif()
 
-
+################################################################################
+# Common dependencies
+################################################################################
+if(ARRUS_BUILD_SWIG)
+    find_package(Us4 0.4.0 EXACT REQUIRED US4OEM HV256 DBARLite)
+endif()
 
 ################################################################################
 # Sub-projects
