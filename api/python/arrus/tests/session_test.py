@@ -57,6 +57,7 @@ mock_import(
 )
 
 # Project imports.
+import arrus.session as session
 
 class InteractiveSessionTest(unittest.TestCase):
 

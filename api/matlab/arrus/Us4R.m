@@ -53,8 +53,6 @@ classdef Us4R < handle
                 Us4MEX(iArius, "SetActiveTermination","EN", "200");
                 Us4MEX(iArius, "SetLNAGain","24dB");
                 Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
-                %Us4MEX(iArius, "TGCSetSamples", uint16([hex2dec('9001'), hex2dec('4000')+(3000:-75:0), hex2dec('4000')+3000]));
-                Us4MEX(iArius, "TGCSetSamples", 0:0.02:1);
                 Us4MEX(iArius, "TGCEnable");
 
                 try
@@ -107,7 +105,9 @@ classdef Us4R < handle
                 'txFrequency', sequenceOperation.txFrequency, ...
                 'txNPeriods', sequenceOperation.txNPeriods, ...
                 'rxNSamples', sequenceOperation.rxNSamples, ...
-                'txPri', sequenceOperation.txPri);
+                'txPri', sequenceOperation.txPri, ...
+                'tgcStart', sequenceOperation.tgcStart, ...
+                'tgcSlope', sequenceOperation.tgcSlope);
             
             if nargin==2
                 obj.rec.enable = false;
@@ -225,7 +225,9 @@ classdef Us4R < handle
                                 'txFrequency',      'txFreq'; ...
                                 'txNPeriods',       'txNPer'; ...
                                 'rxNSamples',       'nSamp'; ...
-                                'txPri',            'txPri'};
+                                'txPri',            'txPri'; ...
+                                'tgcStart',         'tgcStart'; ...
+                                'tgcSlope',         'tgcSlope'};
 
             if mod(length(varargin),2) == 1
                 % TODO(piotrkarwat) Throw exception
@@ -251,6 +253,21 @@ classdef Us4R < handle
             end
 
             %% Resulting parameters
+            distance = (400:150:obj.seq.nSamp) / 65e6 * obj.seq.c;         % [m]
+            tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
+            if any(tgcCurve<14 | tgcCurve>54)
+                warning('TGC values are limited to 14-54dB range');
+                tgcCurve = max(14,min(54,tgcCurve));
+            end
+            
+            tgcChar = [14.000, 14.001, 14.002, 14.003, 14.024, 14.168, 14.480, 14.825, 15.234, 15.770, ...
+                       16.508, 17.382, 18.469, 19.796, 20.933, 21.862, 22.891, 24.099, 25.543, 26.596, ...
+                       27.651, 28.837, 30.265, 31.690, 32.843, 34.045, 35.543, 37.184, 38.460, 39.680, ...
+                       41.083, 42.740, 44.269, 45.540, 46.936, 48.474, 49.895, 50.966, 52.083, 53.256, 54];
+            tgcCurve = interp1(tgcChar,14:54,tgcCurve);
+            
+            obj.seq.tgcCurve = (tgcCurve-14) / 40;                      % <0,1>
+            
             if isempty(obj.seq.txApCent) && ~isempty(obj.seq.txCentElem)
                 obj.seq.txApCent        = obj.sys.xElem(floor(obj.seq.txCentElem)).*(1-mod(obj.seq.txCentElem,1)) + ...
                                           obj.sys.xElem( ceil(obj.seq.txCentElem)).*(  mod(obj.seq.txCentElem,1));
@@ -419,32 +436,53 @@ classdef Us4R < handle
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nEvent	= nSubTx*nTx;
-            
-            actChanGroupMask = ["1111111111111111"; "0101010101010101"];
 
+            if ~obj.sys.adapType
+                % old adapter type (00001111)
+                selectElem = (1:128).' + (0:(nArius-1))*128;
+                rxApSize = nChan;                               % for LIN mode only
+                nChanTot = nChan*4*nArius;
+            else
+                % new adapter type (01010101)
+                selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
+                rxApSize = nChan*nArius;                        % for LIN mode only
+                nChanTot = nChan*4*nArius;
+            end
+            
+            if strcmp(obj.seq.type,'lin')
+                rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
+                
+                obj.seq.rxApOrig = round(rxCentElem - (rxApSize-1)/2);
+                rxApMask =	(1:nChanTot).' >= obj.seq.rxApOrig & ...
+                            (1:nChanTot).' <  obj.seq.rxApOrig + rxApSize & ...
+                            (1:nChanTot).' <= obj.sys.nElem;
+            else
+                rxApMask = (1:nChanTot).' .* ones(1,nEvent) <= obj.sys.nElem;
+            end
+            
+            txSubApDel = cell(nArius,nTx);
+            txSubApMask = strings(nArius,nTx);
+            rxSubApMask = strings(nArius,nEvent);
+            iSubTx = repmat(1:nSubTx,1,nTx);
+            for iArius=0:(nArius-1)
+                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
+                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
+                
+                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
+                rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
+            end
+            
+            actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
+            actChanGroupMask = obj.maskFormat(actChanGroupMask);
+            
             %% Program TX
             for iArius=0:(nArius-1)
                 for iTx=1:nTx
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
 
-                        if ~obj.sys.adapType
-                            % old adapter type (00001111)
-                            selectElem	= (1:128) + iArius*128;
-                        else
-                            % new adapter type (01010101)
-                            selectElem	= reshape((1:nChan)' + (0:3)*nChan*nArius,1,[]) + iArius*nChan;
-                        end
-                        txSubApDel	= obj.seq.txDel(selectElem,iTx);
-                        txSubApSize	= sum(obj.seq.txApMask(selectElem, iTx));
-                        txSubApOrig	= find(obj.seq.txApMask(selectElem, iTx),1,'first');
-                        if isempty(txSubApOrig)
-                            txSubApOrig = 1;
-                        end
-
-                        Us4MEX(iArius, "SetTxAperture", txSubApOrig, txSubApSize, iEvent);
-                        Us4MEX(iArius, "SetTxDelays", txSubApDel, iEvent);
-
+                        Us4MEX(iArius, "SetTxAperture", txSubApMask(iArius+1,iTx), iEvent);
+                        Us4MEX(iArius, "SetTxDelays", txSubApDel{iArius+1,iTx}, iEvent);
                         Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
                         Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
                         Us4MEX(iArius, "SetTxInvert", 0, iEvent);
@@ -457,63 +495,28 @@ classdef Us4R < handle
             end
 
             %% Program RX
-            if strcmp(obj.seq.type,'lin')
-                obj.seq.rxApOrig	= nan(1,nTx);
-            end
-
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTx=1:nTx
-
-                    if strcmp(obj.seq.type,'lin') && iArius == 0
-                        rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent(iTx));
-                        if ~obj.sys.adapType
-                            % old adapter type (00001111)
-                            obj.seq.rxApOrig(iTx)	= round(rxCentElem - (nChan-1)/2);
-                        else
-                            % new adapter type (01010101)
-                            obj.seq.rxApOrig(iTx)	= round(rxCentElem - (nChan*nArius-1)/2);
-                        end
-                    end
-
                     for iSubTx=1:nSubTx
                         iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
-
+                        
                         Us4MEX(iArius, "ScheduleReceive", iEvent*nSamp, nSamp);
-
+                        Us4MEX(iArius, "SetRxAperture", rxSubApMask(iArius+1,iEvent+1), iEvent);
                         Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
                         Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
-
-                        if strcmp(obj.seq.type,'lin')
-                            if ~obj.sys.adapType
-                                % old adapter type (00001111)
-                                rxSubApOrig	= obj.seq.rxApOrig(iTx) - 4*nChan*iArius;
-                            else
-                                % new adapter type (01010101)
-                                rxSubApOrig	= obj.seq.rxApOrig(iTx) - nChan*iArius;
-                                rxSubApOrig	= 1 + min(nChan,mod(rxSubApOrig-1,nChan*nArius)) ...
-                                                + nChan*floor((rxSubApOrig-1)/(nChan*nArius));
-                            end
-
-                            rxSubApSize	= max(0, min([nChan, nChan + rxSubApOrig - 1, 4*nChan - rxSubApOrig + 1]));
-                            rxSubApOrig	= max(1, min(4*nChan,rxSubApOrig));
-                        else
-                            rxSubApOrig	= 1 + (iSubTx-1)*nChan;
-                            rxSubApSize	= nChan;
-                        end
-                        Us4MEX(iArius, "SetRxAperture", rxSubApOrig, rxSubApSize, iEvent);
+                        Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iEvent);
                     end
                 end
                 Us4MEX(iArius, "EnableReceive");
             end
 
             %% Program triggering
-%             Us4MEX(0, "SetNTriggers", nEvent-1);
             Us4MEX(0, "SetNTriggers", nEvent);
             for iEvent=0:(nEvent-1)
-                Us4MEX(0, "SetTrigger", obj.seq.txPri, 0, 0, iEvent);
+                Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iEvent);
             end
-            Us4MEX(0, "SetTrigger", obj.seq.txPri, 0, 1, nEvent-1);
+            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, nEvent-1);
 
         end
 
@@ -524,7 +527,7 @@ classdef Us4R < handle
 
             %% Start acquisitions (1st sequence exec., no transfer to host)
             Us4MEX(0, "TriggerStart");
-            pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
+            pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
         end
 
         function [] = closeSequence(obj)
@@ -544,22 +547,16 @@ classdef Us4R < handle
 
             %% Capture data
             for iArius=0:(nArius-1)
-                tic
                 Us4MEX(iArius, "EnableReceive");
-                toc
             end
-            tic
             Us4MEX(0, "TriggerSync");
-            toc
-            pause(obj.seq.pauseMultip * obj.seq.txPri*1e-6 * nEvent);
+            pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
 
             %% Transfer to PC
-            rf = Us4MEX(0, ...
-                        "TransferAllRXBuffersToHost",  ...
-                        zeros(nArius, 1), ...
-                        repmat(nSamp * nEvent, [nArius 1]), ...
-                        int8(obj.logTime) ...
-            );
+            rf	= zeros(nChan,nSamp*nEvent,nArius);
+            for iArius=0:(nArius-1)
+                rf(:,:,iArius+1)	= Us4MEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
+            end
 
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nArius]);
@@ -603,7 +600,7 @@ classdef Us4R < handle
 
             %% Move data to GPU if possible
             if obj.rec.gpuEnable
-                rfRaw = gpuArray(double(rfRaw));
+                rfRaw = gpuArray(rfRaw);
             end
 
             %% Preprocessing
@@ -653,5 +650,24 @@ classdef Us4R < handle
 
         end
 
+        function maskString = maskFormat(obj,maskLogical)
+            
+            [maskLength,nMask] = size(maskLogical);
+            
+            if maskLength~=16 && maskLength~=128
+                error("maskFormat: invalid mask length, should be 16 or 128");
+            end
+            
+            
+            if maskLength == 16
+                % active channel group mask: needs reordering
+                maskLogical = reshape(permute(reshape(maskLogical,4,2,2,nMask),[3,2,1,4]),16,nMask);
+            end
+            
+            maskString = join(string(double(maskLogical.')),"").';
+            maskString = reverse(maskString);
+            
+        end
+        
     end
 end
