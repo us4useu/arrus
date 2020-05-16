@@ -2,10 +2,11 @@ pipeline {
     agent any
 
     environment {
-        US4R_REQUIRED_TAG = "v" + sh(
+        US4R_REQUIRED_TAG = sh(
                 script: "python '${env.WORKSPACE}/scripts/get_required_version.py' --source_dir'=${env.WORKSPACE} --requirement=Us4",
                 returnStdout: true
         ).trim()
+        US4R_REQUIRED_TAG = 'v' + US4R_REQUIRED_TAG
     }
 
     parameters {
