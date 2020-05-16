@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         US4R_REQUIRED_VERSION = powershell(
-                script: "python '${env.WORKSPACE}/scripts/get_required_version.py' --source_dir'=${env.WORKSPACE} --requirement=Us4",
+                script: "python '${env.WORKSPACE}/scripts/get_required_version.py' --source_dir='${env.WORKSPACE}' --requirement=Us4",
                 returnStdout: true
         ).trim()
         US4R_REQUIRED_TAG = "v$US4R_REQUIRED_VERSION"
