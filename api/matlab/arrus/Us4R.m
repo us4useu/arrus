@@ -553,10 +553,13 @@ classdef Us4R < handle
             pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
 
             %% Transfer to PC
-            rf	= zeros(nChan,nSamp*nEvent,nArius);
-            for iArius=0:(nArius-1)
-                rf(:,:,iArius+1)	= Us4MEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
-            end
+            
+            rf = Us4MEX(0, ...
+                        "TransferAllRXBuffersToHost",  ...
+                        zeros(nArius, 1), ...
+                        repmat(nSamp * nEvent, [nArius 1]), ...
+                        int8(obj.logTime) ...
+            );
 
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nArius]);
@@ -598,10 +601,11 @@ classdef Us4R < handle
         
         function img = execReconstr(obj,rfRaw)
 
-            %% Move data to GPU if possible
+            %% Move data to GPU if possible, convert from int16 to double
             if obj.rec.gpuEnable
                 rfRaw = gpuArray(rfRaw);
             end
+            rfRaw = double(rfRaw);
 
             %% Preprocessing
             % Raw rf data filtration
