@@ -30,8 +30,8 @@ classdef (Abstract) Us4RSystem < handle
             % :returns: RF frame and reconstructed image \ 
 			%   (if :class:`Reconstruction` operation was uploaded), \
 			%   sizes of each dimension of RF frame: \
-			%   [number of samples, number of channels, number of emissions], \
-			%   b-mode image dimensions: [height, width].
+			%   (number of samples, number of channels, number of emissions), \
+			%   b-mode image dimensions: (height, width).
  			
             
             rf = [];
@@ -50,8 +50,8 @@ classdef (Abstract) Us4RSystem < handle
             % :param callback: a function to call after executing the \
             %   operation. Should take one parameter - the output of the \
             %   executed operation, e.g. raw RF data array (dimensions:  \
-			%   [number of samples, number of channels, number of emissions]) \
-			%   or b-mode image ([height, width]).
+			%   (number of samples, number of channels, number of emissions)) \
+			%   or b-mode image (height, width).
         end 
         
     end
