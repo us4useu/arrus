@@ -3,9 +3,13 @@ Release notes
 
 Version 0.4.0
 -------------
-- Created new version of the Matlab API.
-- Added simplified TGC control through tgcStart and tgcSlope parameters.
-- Added classical linear scanning example.
+
+- MATLAB API:
+
+    - Created new version of the Matlab API (with STA and PWI sequences, for Esaote and Ultrasonix probes).
+    - Added simplified TGC control through tgcStart and tgcSlope parameters.
+    - Added classical linear scanning example (check :class:`arrus.LINSequence`).
+    - From now on txPri takes values in seconds (previously was in [us]).
 
 Version 0.3.0
 -------------
