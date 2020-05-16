@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        US4R_REQUIRED_VERSION = sh(
+        US4R_REQUIRED_VERSION = powershell(
                 script: "python '${env.WORKSPACE}/scripts/get_required_version.py' --source_dir'=${env.WORKSPACE} --requirement=Us4",
                 returnStdout: true
         ).trim()
