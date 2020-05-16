@@ -127,13 +127,13 @@ install(
         python_whl
 )
 
-install(
-	DIRECTORY
-        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
-    DESTINATION
-        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
-)
+# install(
+#	FILES
+#        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
+#	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
+#    DESTINATION
+#        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
+#)
 
 ################################################################################
 # Python tests
