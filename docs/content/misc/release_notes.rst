@@ -11,10 +11,17 @@ Version 0.4.0
     - Added classical linear scanning example (check :class:`arrus.LINSequence`).
     - From now on txPri takes values in seconds (previously was in [us]).
 
+- python API:
+
+    - Simplified ``Us4OEM.set_tgc_samples`` - now it takes values from range \
+      range [0, 1], where 0 means maximum gain, 1 means minimum gain
+    - Added ``Us4OEM.set_active_channel_group``, which allows to chose which \
+      groups of channels can be active.
+
 Version 0.3.0
 -------------
 - Added a function to set rx/tx aperture mask - see Us4OEM.SetTxAperture(aperture) and Us4OEM.SetRxAperture(aperture)
-- Renamed the Arius project to ARRUS. Renamed Arius module to Us4OEM.
+- Renamed the Arius project to ARRUS. Renamed ``Arius`` module to ``Us4OEM``.
 
 Version 0.2.0
 -------------
