@@ -27,7 +27,12 @@ classdef (Abstract) Us4RSystem < handle
             % Currently, only supports :class:`SimpleTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
-            % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
+            % :returns: RF frame and reconstructed image \ 
+			%   (if :class:`Reconstruction` operation was uploaded), \
+			%   sizes of each dimension of RF frame: \
+			%   [number of samples, number of channels, number of emissions], \
+			%   b-mode image dimensions: [height, width].
+ 			
             
             rf = [];
             img = [];
@@ -40,10 +45,13 @@ classdef (Abstract) Us4RSystem < handle
             % :class:`Reconstruction` implementations.
             %
             % :param isContinue: should the system continue executing \
-            %   the op? Takes no parameters and returns a boolean value.
+            %   the op? A function that takes no parameters and returns \
+			%   a boolean value.
             % :param callback: a function to call after executing the \
             %   operation. Should take one parameter - the output of the \
-            %   executed operation.
+            %   executed operation, e.g. raw RF data array (dimensions:  \
+			%   [number of samples, number of channels, number of emissions]) \
+			%   or b-mode image ([height, width]).
         end 
         
     end
