@@ -59,8 +59,8 @@ rec = Reconstruction(   'filterEnable',     true, ...
                         'xGrid',            (-20:0.10:20)*1e-3, ...
                         'zGrid',            (  0:0.10:50)*1e-3);
 
-us.upload(seqSTA,rec);
-% us.upload(seqPWI,rec);
+us.upload(seqPWI,rec);
+% us.upload(seqSTA,rec);
 % us.upload(seqLIN,rec);
 
 %% Run sequence and reconstruction
