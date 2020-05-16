@@ -1,6 +1,13 @@
 pipeline {
     agent any
 
+    environment {
+        US4R_REQUIRED_TAG = "v" + sh(
+                script: "python '${env.WORKSPACE}/scripts/get_required_version.py' --source_dir'=${env.WORKSPACE} --requirement=Us4",
+                returnStdout: true
+        ).trim()
+    }
+
     parameters {
         booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Turns on publishing arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
         booleanParam(name: 'PUBLISH_PACKAGE', defaultValue: false, description: 'Turns on publishing arrus package with binary release on the github server. CHECKING THIS ONE WILL UPDATE ARRUS RELEASE')
@@ -23,13 +30,14 @@ pipeline {
         stage("Build dependencies") {
             steps {
                 echo 'Building dependencies ...'
-                build "us4r/${getBranchName()}"
+
+                build "us4r/$US4R_REQUIRED_TAG"
             }
         }
         stage('Configure') {
             steps {
                 echo 'Configuring build ...'
-                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/${getBranchName()}' --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON"
+                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG' --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON"
             }
         }
         stage('Build') {
@@ -40,7 +48,7 @@ pipeline {
         }
         stage('Test') {
             environment {
-                Path = "${env.US4R_INSTALL_DIR}/${getBranchName()}/lib64;${env.Path}"
+                Path = "${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG/lib64;${env.Path}"
             }
             steps {
                 echo 'Testing ...'
