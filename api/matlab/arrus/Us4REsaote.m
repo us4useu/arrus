@@ -1,11 +1,11 @@
-classdef Us4RUltrasonix < handle
+classdef Us4REsaote < handle
     % A handle to the Us4R system. 
     %
     % This class provides functions to configure the system and perform
     % data acquisition using the Us4R.
     %
     % :param nArius: number of arius modules available in the us4R system
-    % :param probeName: name of the probe to use, available: 'L14-5/38'
+    % :param probeName: name of the probe to use, available: 'AL2442', 'SL1543'
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]
     % :param logTime: set to true if you want to display acquisition and reconstruction time (optional)
 
@@ -18,7 +18,7 @@ classdef Us4RUltrasonix < handle
     
     methods
 
-        function obj = Us4RUltrasonix(nArius, probe, voltage, logTime)
+        function obj = Us4REsaote(nArius, probe, voltage, logTime)
             if nargin < 4
                 obj.logTime = false;
             else
@@ -291,8 +291,7 @@ classdef Us4RUltrasonix < handle
                     obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / obj.sys.nChArius));
                 else
                     % new adapter type (01010101)
-%                     obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / (obj.sys.nChArius * obj.sys.nArius)));
-                    obj.seq.nSubTx      = min(4, ceil(min(128,obj.sys.nElem) / (obj.sys.nChArius * obj.sys.nArius)));
+                    obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / (obj.sys.nChArius * obj.sys.nArius)));
                 end
             end
 
@@ -442,21 +441,12 @@ classdef Us4RUltrasonix < handle
                 selectElem = (1:128).' + (0:(nArius-1))*128;
                 rxApSize = nChan;                               % for LIN mode only
                 nChanTot = nChan*4*nArius;
-                
-                actChan = true(128,nArius);
             else
                 % new adapter type (01010101)
-%                 selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
-%                 rxApSize = nChan*nArius;                        % for LIN mode only
-%                 nChanTot = nChan*4*nArius;
-                
-                selectElem = repmat((1:128).',[1 nArius]);
+                selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
                 rxApSize = nChan*nArius;                        % for LIN mode only
-                nChanTot = nChan*4;
-                
-                actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
+                nChanTot = nChan*4*nArius;
             end
-            actChan = actChan & (selectElem <= obj.sys.nElem);
             
             if strcmp(obj.seq.type,'lin')
                 rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
@@ -474,25 +464,14 @@ classdef Us4RUltrasonix < handle
             rxSubApMask = strings(nArius,nEvent);
             iSubTx = repmat(1:nSubTx,1,nTx);
             for iArius=0:(nArius-1)
-%                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
-%                 txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
-%                 
-%                 rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
-%                 rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
+                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
+                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
                 
-                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :) .* actChan(:,iArius+1), 128, ones(1,nTx));
-                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1));
-                
-                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1)) / nChan) == iSubTx;
-                rxSubApSelect = rxSubApSelect & actChan(:,iArius+1);
+                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
                 rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
             end
             
-%             actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
-%             actChanGroupMask = obj.maskFormat(actChanGroupMask);
-            
             actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
-            actChanGroupMask = actChanGroupMask & actChan(8:8:end,:);
             actChanGroupMask = obj.maskFormat(actChanGroupMask);
             
             %% Program TX
@@ -573,10 +552,13 @@ classdef Us4RUltrasonix < handle
             pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
 
             %% Transfer to PC
-            rf	= zeros(nChan,nSamp*nEvent,nArius);
-            for iArius=0:(nArius-1)
-                rf(:,:,iArius+1)	= Us4MEX(iArius, "TransferRXBufferToHost", 0, nSamp * nEvent);
-            end
+            
+            rf = Us4MEX(0, ...
+                        "TransferAllRXBuffersToHost",  ...
+                        zeros(nArius, 1), ...
+                        repmat(nSamp * nEvent, [nArius 1]), ...
+                        int8(obj.logTime) ...
+            );
 
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nArius]);
@@ -618,10 +600,11 @@ classdef Us4RUltrasonix < handle
         
         function img = execReconstr(obj,rfRaw)
 
-            %% Move data to GPU if possible
+            %% Move data to GPU if possible, convert from int16 to double
             if obj.rec.gpuEnable
                 rfRaw = gpuArray(rfRaw);
             end
+            rfRaw = double(rfRaw);
 
             %% Preprocessing
             % Raw rf data filtration

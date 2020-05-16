@@ -23,7 +23,7 @@ switch probeName
         probe.pitch	= 0.3048e-3;
         
     otherwise
-        disp('Invalid probe name');
+        error(['Unhandled probe model ', probeName]);
         probe = [];
         return;
         

@@ -3,6 +3,9 @@
 ################################################################################
 set(SOURCE_FILES
     "arrus/Us4R.m"
+    "arrus/Us4RSystem.m"
+    "arrus/Us4RUltrasonix.m"
+    "arrus/Us4REsaote.m"
     "arrus/BModeDisplay.m"
     "arrus/Operation.m"
     "arrus/SimpleTxRxSequence.m"
