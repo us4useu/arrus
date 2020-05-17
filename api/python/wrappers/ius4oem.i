@@ -68,7 +68,6 @@ void ScheduleReceiveWithCallback(IUs4OEM* that, const size_t address, const size
 		try {
 			callback.run(event);
 		} catch(const std::exception &e) {
-			// TODO(pjarosik) use logger here
 			std::cerr << e.what() << std::endl;
 		}
 		PyGILState_Release(gstate);
