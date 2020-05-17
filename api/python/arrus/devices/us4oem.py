@@ -742,7 +742,7 @@ class Us4OEM(_device.Device):
         self.card_handle.ClearScheduledReceive()
 
     @assert_card_is_powered_up
-    def trigger_start(self):
+    def start_trigger(self):
         """
         Starts generation of the hardware trigger.
         """
@@ -758,7 +758,7 @@ class Us4OEM(_device.Device):
         time.sleep(self.pri_total)
 
     @assert_card_is_powered_up
-    def trigger_stop(self):
+    def stop_trigger(self):
         """
         Stops generation of the hardware trigger.
         """

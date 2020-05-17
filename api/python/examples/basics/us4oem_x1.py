@@ -107,7 +107,7 @@ canvas = plt.imshow(
 )
 fig.show()
 
-module.trigger_start()
+module.start_trigger()
 time.sleep(1*PRI*1e-6*NEVENTS)
 
 while not is_closed:
@@ -133,6 +133,6 @@ while not is_closed:
     fig.canvas.flush_events()
     plt.draw()
 
-module.trigger_stop()
+module.stop_trigger()
 
 
