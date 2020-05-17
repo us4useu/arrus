@@ -213,6 +213,61 @@ class Us4OEM(_device.Device):
             _ius4oem.delete_uint16Array(array)
 
     @assert_card_is_powered_up
+    def set_active_channel_group(self, active_groups_mask, firing: int=0):
+        """
+        Sets active channel groups.
+        Channel is active when it is TX/RX/CLAMP state. Channel is inactive
+        when in HIZ state.
+        Single group has 8 channels (single pulser).
+        | [0]  - channels 0-7
+        | [4]  - channels 8-15
+        | [8]  - channels 16-23
+        | [12] - channels 24-31
+        | [1]  - channels 64-71
+        | [5]  - channels 72-79
+        | [9]  - channels 80-87
+        | [13] - channels 88-95
+        | [2]  - channels 32-39
+        | [6]  - channels 40-47
+        | [10] - channels 48-55
+        | [14] - channels 56-63
+        | [3]  - channels 96-103
+        | [7]  - channels 104-111
+        | [11] - channels 112-119
+        | [15] - channels 120-127
+
+        :param active_groups_mask: list of boolean values, True means \
+            a group of channels at given position should be active
+        :param firing: a firing, in which the parameter value should apply
+        """
+        active_groups_mask = np.array(active_groups_mask).astype(np.bool)
+        if len(active_groups_mask.shape) != 1:
+            raise ValueError("Mask should be a vector.")
+        if active_groups_mask.shape[0] != self.get_n_channels()/8:
+            raise ValueError("Mask should have %d elements."
+                             % (self.get_n_channels()/8))
+        active_groups_mask = active_groups_mask.astype(np.uint16)
+        # Reverse mask to pass data in MSB first order.
+        active_groups_mask = active_groups_mask[::-1]
+        active_groups_mask_list = active_groups_mask.tolist()
+        n = len(active_groups_mask_list)
+        self.log(
+            DEBUG,
+            "Setting active channel group mask: %s, firing: %s" % (
+                active_groups_mask, firing
+            )
+        )
+        array = None
+        try:
+            array = _ius4oem.new_uint16Array(n)
+            for i, sample in enumerate(active_groups_mask_list):
+                _ius4oem.uint16Array_setitem(array, i, sample)
+
+            _ius4oem.setActiveChannelGroupCustom(self.card_handle, array, n, firing)
+        finally:
+            _ius4oem.delete_uint16Array(array)
+
+    @assert_card_is_powered_up
     def set_tx_delays(self, delays, firing: int=0):
         """
         Sets channel's TX delays.
@@ -539,23 +594,28 @@ class Us4OEM(_device.Device):
         """
         Sets TGC samples.
 
-        :param samples: TGC samples to set
+        :param samples: TGC samples to set, values from range [0, 1] are \
+            available, 0 means minimum gain (maximum attenuation), 1 means \
+            maximum gain.
         """
         if isinstance(samples, np.ndarray):
             if len(samples.shape) != 1:
                 raise ValueError("'Samples' should be a vector.")
             samples = samples.tolist()
 
+        if not (0.0 <= max(samples) <= 1.0):
+            raise ValueError("Samples should be in range [0, 1]")
+
         self.log(DEBUG, "Setting TGC samples: %s" % str(samples))
         n = len(samples)
         array = None
         try:
-            array = _ius4oem.new_uint16Array(n)
+            array = _ius4oem.new_doubleArray(n)
             for i, sample in enumerate(samples):
-                _ius4oem.uint16Array_setitem(array, i, sample)
-            self.card_handle.TGCSetSamples(array, n)
+                _ius4oem.doubleArray_setitem(array, i, sample)
+            _ius4oem.setTGCSamplesCustom(self.card_handle, array, n, 0)
         finally:
-            _ius4oem.delete_uint16Array(array)
+            _ius4oem.delete_doubleArray(array)
 
     @assert_card_is_powered_up
     def set_tx_invert(self, is_enable: bool, firing: int=0):

@@ -12,10 +12,12 @@ API Reference
 
 .. _arrus-Us4R:
 
-Us4R handle
-===========
+Handle to Us4R System
+=====================
 
-.. mat:autoclass:: arrus.Us4R
+.. mat:autofunction:: arrus.Us4R
+
+.. mat:autoclass:: arrus.Us4RSystem
     :show-inheritance:
     :members:
 
@@ -55,6 +57,12 @@ Following specific sequences are currently available in the system:
 .. _arrus.STASequence:
 
 .. mat:autoclass:: arrus.STASequence
+    :show-inheritance:
+    :members:
+	
+.. _arrus.LINSequence:
+
+.. mat:autoclass:: arrus.LINSequence
     :show-inheritance:
     :members:
 
