@@ -59,7 +59,6 @@ public:
 
 void ScheduleReceiveWithCallback(IUs4OEM* that, const size_t address, const size_t length,
                                  ScheduleReceiveCallback& callback) {
-	std::cout << address << length << std::endl;
     auto fn = [&callback, address, length] () {
 		// TODO(pjarosik) consider creating event outside the lambda function, to reduce interrupt handling time.
 		const arrus::DataAcquiredEvent& event = arrus::DataAcquiredEvent(address, length);

@@ -1,5 +1,4 @@
 import time
-
 import matplotlib.pyplot as plt
 import numpy as np
 import arrus
@@ -9,12 +8,21 @@ from dataclasses import dataclass
 N_FIRINGS = 2
 
 
-@dataclass(frozen=True)
+@dataclass
 class Display:
     figure: object
     axis: object
     canvas: object
-    close_semaphore: threading.Semaphore
+    lock: threading.Lock
+    open: bool = True
+
+    def is_open(self):
+        with self.lock:
+            return open
+
+    def close(self):
+        with self.lock:
+            self.open = False
 
 
 def main():
@@ -26,7 +34,7 @@ def main():
     hv256.enable_hv()
     hv256.set_hv_voltage(20)
 
-    n_samples = 8192
+    n_samples = 4096
     data_buffer = np.zeros((n_samples, module.get_n_rx_channels()*N_FIRINGS),
                            dtype=np.int16)
 
@@ -34,17 +42,20 @@ def main():
     configure_module(module)
     run_tx_rx_sequence(
         module,
-        n_samples=n_samples, rx_time=200e-6, rx_delay=20e-6,
+        n_samples=n_samples, rx_time=100e-6, rx_delay=20e-6,
         tx_frequency=8.125e6,
-        pri=1000e-6,
+        pri=200e-6,
         n_half_periods=3,
         callback=lambda _:
             display_rf_data(module, data_buffer, n_samples, display))
 
+    print("Going")
     wait_until_open(display)
-    module.stop_trigger()
-
-    time.sleep(3)
+    print("Going")
+    # module.stop_trigger()
+    print("Going")
+    time.sleep(5)
+    print("Going")
 
 
 def configure_module(module):
@@ -120,25 +131,26 @@ def init_display(buffer, window_sizes=(7, 7)):
     ax.set_ylabel("Samples")
     ax.set_aspect("auto")
     fig.canvas.set_window_title("RF data")
-    display_close_semaphore = threading.Semaphore()
-
-    def set_closed(_):
-        display_close_semaphore.release()
-
-    fig.canvas.mpl_connect("close_event", set_closed)
-    # -- create and start canvas
-
     canvas = plt.imshow(
         buffer,
         vmin=np.iinfo(np.int16).min,
         vmax=np.iinfo(np.int16).max
     )
+    display = Display(figure=fig, axis=ax, canvas=canvas,
+                      lock=threading.Lock(), open=True)
+
+    def set_closed(_):
+        # Polling
+        with display.lock:
+            display.open = False
+
+    fig.canvas.mpl_connect("close_event", set_closed)
     fig.show()
-    return Display(fig, ax, canvas, display_close_semaphore)
+    return display
 
 
 def wait_until_open(display: Display):
-    display.close_semaphore.acquire()
+    plt.show()
 
 
 def display_rf_data(module, rf_buffer: np.ndarray,
@@ -146,15 +158,18 @@ def display_rf_data(module, rf_buffer: np.ndarray,
     # Get data from the module.
     buffer = module.transfer_rx_buffer_to_host(0, N_FIRINGS*n_samples)
     # Reorder the data.
-    n_channels = module.get_n_channels()
+    n_channels = module.get_n_rx_channels()
     for firing in range(N_FIRINGS):
         rf_buffer[:, firing*n_channels:(firing+1)*n_channels] = \
             buffer[firing*n_samples:(firing+1)*n_samples, :]
     # Display the data.
-    display.canvas.set_data(rf_buffer)
-    display.ax.set_aspect("auto")
-    display.fig.canvas.flush_events()
-    plt.draw()
+    with display.lock:
+        is_open = display.open
+        if is_open:
+            display.canvas.set_data(rf_buffer)
+            display.axis.set_aspect("auto")
+            display.figure.canvas.flush_events()
+            plt.draw()
 
     # Start the next acquisitions.
     module.enable_receive()

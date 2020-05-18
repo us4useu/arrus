@@ -145,15 +145,12 @@ class Us4OEM(_device.Device):
         :param aperture: a boolean numpy array of get_number_of_channels() channels, 'True' means to activate chanel on a given position.
         :param firing: a firing, in which the delay should apply, **starts from 0**
         """
-        if isinstance(aperture, list):
-            aperture = np.array(aperture).astype(np.bool)
+        aperture = np.array(aperture).astype(np.bool)
         if len(aperture.shape) != 1:
             raise ValueError("Aperture should be a vector.")
         if aperture.shape[0] != self.get_n_channels():
             raise ValueError("Aperture should have %d elements."
                              % aperture.shape[0])
-        if aperture.dtype != np.bool:
-            raise ValueError("Aperture should be a vector of booleans.")
         aperture = aperture.astype(np.uint16)
         aperture_list = aperture.tolist()
         n = len(aperture_list)
@@ -190,15 +187,12 @@ class Us4OEM(_device.Device):
         :param aperture: a boolean numpy array of get_number_of_channels() channels, 'True' means to activate chanel on a given position.
         :param firing: a firing, in which the delay should apply, **starts from 0**
         """
-        if isinstance(aperture, list):
-            aperture = np.array(aperture).astype(np.bool)
+        aperture = np.array(aperture).astype(np.bool)
         if len(aperture.shape) != 1:
             raise ValueError("Aperture should be a vector.")
         if aperture.shape[0] != self.get_n_channels():
             raise ValueError("Aperture should have %d elements."
                              % aperture.shape[0])
-        if aperture.dtype != np.bool:
-            raise ValueError("Aperture should be a vector of booleans.")
         aperture = aperture.astype(np.uint16)
         aperture_list = aperture.tolist()
         n = len(aperture_list)
