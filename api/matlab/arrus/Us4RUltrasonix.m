@@ -553,11 +553,12 @@ classdef Us4RUltrasonix < handle
         function [] = openSequence(obj)
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
-            nEvent	= nTx*nSubTx;
+            nRep	= obj.seq.nRep;
+            nTrig	= nTx*nSubTx*nRep;
 
             %% Start acquisitions (1st sequence exec., no transfer to host)
             Us4MEX(0, "TriggerStart");
-            pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
+            pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
         end
 
         function [] = closeSequence(obj)
@@ -573,20 +574,21 @@ classdef Us4RUltrasonix < handle
             nSamp	= obj.seq.nSamp;
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
-            nEvent	= nTx*nSubTx;
+            nRep	= obj.seq.nRep;
+            nTrig	= nTx*nSubTx*nRep;
 
             %% Capture data
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "EnableReceive");
             end
             Us4MEX(0, "TriggerSync");
-            pause(obj.seq.pauseMultip * obj.seq.txPri * nEvent);
+            pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
 
             %% Transfer to PC
             rf = Us4MEX(0, ...
                         "TransferAllRXBuffersToHost",  ...
                         zeros(nArius, 1), ...
-                        repmat(nSamp * nEvent, [nArius 1]), ...
+                        repmat(nSamp * nTrig, [nArius 1]), ...
                         int8(obj.logTime) ...
             );
 
