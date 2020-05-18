@@ -593,16 +593,16 @@ classdef Us4RUltrasonix < handle
             );
 
             %% Reorganize
-            rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nArius]);
+            rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
             if ~obj.sys.adapType
                 % old adapter type (00001111)
-                rf	= permute(rf,[2 1 3 5 4]);
-                rf	= reshape(rf,nSamp,nChan*nSubTx*nArius,nTx);
+                rf	= permute(rf,[2 1 3 6 4 5]);
+                rf	= reshape(rf,nSamp,nChan*nSubTx*nArius,nTx,nRep);
             else
                 % new adapter type (01010101)
-                rf	= permute(rf,[2 1 5 3 4]);
-                rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx);
+                rf	= permute(rf,[2 1 6 3 4 5]);
+                rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx,nRep);
             end
 
             if strcmp(obj.seq.type,'lin')
@@ -610,22 +610,22 @@ classdef Us4RUltrasonix < handle
                 if ~obj.sys.adapType
                     % old adapter type (00001111)
                     for iTx=1:nTx
-                        rf(:,:,iTx)	= circshift(rf(:,:,iTx),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
+                        rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
                     end
-                    rf	= rf(:,1:nChan,:);
+                    rf	= rf(:,1:nChan,:,:);
                     for iTx=1:nTx
                         if ~(rxApOrig(iTx) > 1+nChan*(4-1) && rxApOrig(iTx) < 1+nChan*4)
-                            rf(:,:,iTx)	= circshift(rf(:,:,iTx),-mod(rxApOrig(iTx)-1,nChan),2);
+                            rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
                         end
                     end
                 else
                     % new adapter type (01010101)
                     for iTx=1:nTx
-                        rf(:,:,iTx)	= circshift(rf(:,:,iTx),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
+                        rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
                     end
                 end
             else
-                rf	= rf(:,1:min(obj.sys.nElem,nChan*nSubTx*nArius),:);
+                rf	= rf(:,1:min(obj.sys.nElem,nChan*nSubTx*nArius),:,:);
             end
 
         end
