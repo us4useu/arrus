@@ -142,7 +142,7 @@ classdef Us4RUltrasonix < handle
             obj.closeSequence;
             
             if obj.rec.enable
-                img = obj.execReconstr(rf);
+                img = obj.execReconstr(rf(:,:,:,1));
             else
                 img = [];
             end
@@ -171,7 +171,7 @@ classdef Us4RUltrasonix < handle
                 
                 if obj.rec.enable
                     tic;
-                    img = obj.execReconstr(rf);
+                    img = obj.execReconstr(rf(:,:,:,1));
                     recTime = toc;
                     callback(img);
                 else
