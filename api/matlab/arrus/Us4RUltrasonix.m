@@ -437,7 +437,9 @@ classdef Us4RUltrasonix < handle
             nChan	= obj.sys.nChArius;
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
-            nEvent	= nSubTx*nTx;
+            nRep	= obj.seq.nRep;
+            nFire	= nSubTx*nTx;
+            nTrig	= nFire*nRep;
 
             if ~obj.sys.adapType
                 % old adapter type (00001111)
@@ -468,12 +470,12 @@ classdef Us4RUltrasonix < handle
                             (1:nChanTot).' <  obj.seq.rxApOrig + rxApSize & ...
                             (1:nChanTot).' <= obj.sys.nElem;
             else
-                rxApMask = (1:nChanTot).' .* ones(1,nEvent) <= obj.sys.nElem;
+                rxApMask = (1:nChanTot).' .* ones(1,nFire) <= obj.sys.nElem;
             end
             
             txSubApDel = cell(nArius,nTx);
             txSubApMask = strings(nArius,nTx);
-            rxSubApMask = strings(nArius,nEvent);
+            rxSubApMask = strings(nArius,nFire);
             iSubTx = repmat(1:nSubTx,1,nTx);
             for iArius=0:(nArius-1)
 %                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
@@ -501,45 +503,51 @@ classdef Us4RUltrasonix < handle
             for iArius=0:(nArius-1)
                 for iTx=1:nTx
                     for iSubTx=1:nSubTx
-                        iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
+                        iFire	= iSubTx-1 + (iTx-1)*nSubTx;
 
-                        Us4MEX(iArius, "SetTxAperture", txSubApMask(iArius+1,iTx), iEvent);
-                        Us4MEX(iArius, "SetTxDelays", txSubApDel{iArius+1,iTx}, iEvent);
-                        Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iEvent);
-                        Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iEvent);
-                        Us4MEX(iArius, "SetTxInvert", 0, iEvent);
+                        Us4MEX(iArius, "SetTxAperture", txSubApMask(iArius+1,iTx), iFire);
+                        Us4MEX(iArius, "SetTxDelays", txSubApDel{iArius+1,iTx}, iFire);
+                        Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
+                        Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
+                        Us4MEX(iArius, "SetTxInvert", 0, iFire);
                         
-                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iEvent);
+                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
                     end
                 end
-                Us4MEX(iArius, "SetNumberOfFirings", nEvent);
+                Us4MEX(iArius, "SetNumberOfFirings", nFire);
                 Us4MEX(iArius, "EnableTransmit");
             end
 
             %% Program RX
             for iArius=0:(nArius-1)
-                Us4MEX(iArius, "ClearScheduledReceive");
                 for iTx=1:nTx
                     for iSubTx=1:nSubTx
-                        iEvent	= iSubTx-1 + (iTx-1)*nSubTx;
+                        iFire	= iSubTx-1 + (iTx-1)*nSubTx;
                         
-                        Us4MEX(iArius, "ScheduleReceive", iEvent*nSamp, nSamp);
-                        Us4MEX(iArius, "SetRxAperture", rxSubApMask(iArius+1,iEvent+1), iEvent);
-                        Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iEvent);
-                        Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iEvent);
-                        Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iEvent);
+                        Us4MEX(iArius, "SetRxAperture", rxSubApMask(iArius+1,iFire+1), iFire);
+                        Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
+                        Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
+                        Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
                     end
                 end
                 Us4MEX(iArius, "EnableReceive");
             end
 
             %% Program triggering
-            Us4MEX(0, "SetNTriggers", nEvent);
-            for iEvent=0:(nEvent-1)
-                Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iEvent);
+            Us4MEX(0, "SetNTriggers", nTrig);
+            for iTrig=0:(nTrig-1)
+                Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iTrig);
             end
-            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, nEvent-1);
+            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, nTrig-1);
 
+            %% Program recording
+            for iArius=0:(nArius-1)
+                Us4MEX(iArius, "ClearScheduledReceive");
+                for iTrig=0:(nTrig-1)
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp);
+                end
+            end
+            
         end
 
         function [] = openSequence(obj)
