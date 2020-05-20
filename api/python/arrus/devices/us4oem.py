@@ -676,7 +676,6 @@ class Us4OEM(_device.Device):
     @assert_card_is_powered_up
     def transfer_rx_buffer_to_host(self, src_addr, length):
         """
-
         Transfers data from the given module's memory address to the host's
         memory, and returns data buffer (numpy.ndarray).
 
@@ -715,6 +714,30 @@ class Us4OEM(_device.Device):
             "... transferred."
         )
         return self.host_buffer
+
+    @assert_card_is_powered_up
+    def transfer_rx_buffer_to_host_buffer(self, src_addr, dst_buffer):
+        """
+        Transfers data from the given module's memory address to the provided
+        host's buffer memory.
+
+        The buffer's address should be aligned to 4096
+
+        :param src_addr: module's memory address, where the RX data was stored.
+        :param length: how much data to transfer from each module's channel.
+        :param dst_buffer: a buffer (numpy.darray) of shape (length, n_rx_channels), data type: np.int16
+        """
+        dst_addr = dst_buffer.ctypes.data
+        length = self.host_buffer.nbytes
+        self.log(DEBUG,
+            "Transferring %d bytes from RX buffer at 0x%08X to host memory at 0x%08X..."%(
+                length, src_addr, dst_addr))
+        _ius4oem.TransferRXBufferToHostLocation(
+            that=self.card_handle,
+            dstAddress=dst_addr,
+            length=length,
+            srcAddress=src_addr)
+        self.log(DEBUG, "... transferred.")
 
     def is_powered_down(self):
         """
