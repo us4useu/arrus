@@ -14,8 +14,7 @@ import arrus.utils as _utils
 import arrus.devices.ius4oem as _ius4oem
 import arrus.operations
 import arrus.kernels
-import arrus.utils.validation as _validation_util
-
+import arrus.validation
 
 _ARRUS_PATH_ENV = "ARRUS_PATH"
 
@@ -111,7 +110,7 @@ class Session(AbstractSession):
         """
         kernel = arrus.kernels.get_kernel(operation, feed_dict)
         device = feed_dict.get("device", None)
-        _validation_util.assert_not_none(device, "device")
+        arrus.validation.assert_not_none(device, "device")
         result = kernel.run()
         if kernel is arrus.kernels.AsyncKernel:
             self._async_kernels[device.get_id()] = kernel

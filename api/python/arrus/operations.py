@@ -4,7 +4,6 @@ from abc import ABC
 import typing
 
 import arrus.params
-import arrus.utils.validation
 
 
 class Operation(ABC):
@@ -21,8 +20,9 @@ class Tx(Operation):
     """
     Single atomic operation of signal transmit.
 
-    :var delays: an array of delays to set, should be a vector of values from \
-        range ``[0, N-1]``, where N is a number of channels of the device.
+    :var delays: an array of delays to set to active elements. Should have the
+        shape (n_a,), where n_a is a number of active elements determined by
+        tx aperture
     :var excitation: an excitation to perform
     :var aperture: a set of TX channels that should be enabled
     :var pri: pulse repetition interval

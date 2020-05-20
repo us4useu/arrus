@@ -84,6 +84,7 @@ set(TEST_FILES
     "arrus/devices/tests/probe_test.py"
     "arrus/utils/tests/utils_test.py"
     "arrus/utils/tests/parameters_test.py"
+    "arrus/utils/tests/us4oem_kernels_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
