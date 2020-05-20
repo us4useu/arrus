@@ -14,6 +14,7 @@ import arrus.utils as _utils
 import arrus.devices.ius4oem as _ius4oem
 import arrus.operations
 import arrus.kernels
+import arrus.utils.validation as _validation_util
 
 
 _ARRUS_PATH_ENV = "ARRUS_PATH"
@@ -99,6 +100,7 @@ class Session(AbstractSession):
         :param cfg: the configuration of the underlying system.
         """
         super().__init__(cfg)
+        self._async_kernels = {}
 
     def run(self, operation: arrus.operations.Operation, feed_dict: dict):
         """
@@ -108,11 +110,24 @@ class Session(AbstractSession):
         :param feed_dict: values to be set in the place of placeholders.
         """
         kernel = arrus.kernels.get_kernel(operation, feed_dict)
-        return kernel.run()
+        device = feed_dict.get("device", None)
+        _validation_util.assert_not_none(device, "device")
+        result = kernel.run()
+        if kernel is arrus.kernels.AsyncKernel:
+            self._async_kernels[device.get_id()] = kernel
+        return result
 
-    def __del__(self):
-        raise RuntimeError("Trigger stop should be called!")
+    def stop(self):
+        for key, kernel in self._async_kernels:
+            _logger.debug(INFO, "Stopping device %s (kernel %s)" %
+                          (key, type(kernel)))
+            kernel.stop()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
 
 class InteractiveSession(AbstractSession):
     """

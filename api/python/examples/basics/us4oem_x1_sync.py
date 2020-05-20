@@ -40,6 +40,7 @@ def main():
         module = sess.get_device("/Us4OEM:0")
         configure_module(module)
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=module))
+        display_acquired_frame(frame)
 
 
 def configure_module(module):
@@ -80,8 +81,8 @@ def display_acquired_frame(buffer, window_sizes=(7, 7)):
         vmin=np.iinfo(np.int16).min,
         vmax=np.iinfo(np.int16).max
     )
-    # Display three times the acquired sequence.
-    for _ in range(3):
+    # Display twice the acquired sequence.
+    for _ in range(2):
         for i in range(buffer.shape[0]):
             fig.canvas.set_data(buffer[i, :, :])
             ax.set_aspect("auto")

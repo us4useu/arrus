@@ -256,6 +256,9 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
 
     def stop(self):
         self.device.stop_trigger()
-        _logger.info("Stopping the module %s..." % self.device.get_card_id())
+        _logger.log(INFO, "Waiting for module to stop %s..." %
+                    self.device.get_id())
         time.sleep(5)
+        _logger.log(INFO, "... module stopped.")
+
 
