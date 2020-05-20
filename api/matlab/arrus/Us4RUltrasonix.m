@@ -297,6 +297,31 @@ classdef Us4RUltrasonix < handle
                     obj.seq.nSubTx      = min(4, ceil(min(128,obj.sys.nElem) / (obj.sys.nChArius * obj.sys.nArius)));
                 end
             end
+            
+            obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
+            obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
+            obj.seq.memReq = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;
+            
+            if obj.seq.nFire > 1024
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
+            end
+            
+            if obj.seq.nTrig > 16384
+                obj.seq.nRep = floor(16384 / obj.seq.nFire);
+                warning(['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384. ' ...
+                         'To ensure this, number of repetitions is reduced to ' num2str(obj.seq.nRep)]);
+                obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
+                obj.seq.memReq = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;
+            end
+            
+            if obj.seq.memReq > 2^32  % 4GB
+                obj.seq.nRep = floor(2^32 / obj.sys.nChArius / obj.seq.nSamp / 2 / obj.seq.nFire);
+                warning(['Required memory per module (' num2str(obj.seq.memReq/2^30) 'GB) cannot exceed 4GB. ' ...
+                         'To ensure this, number of repetitions is reduced to ' num2str(obj.seq.nRep)]);
+                obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
+                obj.seq.memReq = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;
+            end
 
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
