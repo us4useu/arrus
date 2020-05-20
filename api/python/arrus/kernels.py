@@ -6,10 +6,10 @@ from logging import DEBUG, INFO
 import time
 import arrus.operations as _operations
 import arrus.params as _params
-import arrus.utils.validation as _validation_util
 import arrus.devices.us4oem as _us4oem
 import arrus.devices.hv256 as _hv256
 import arrus.utils as _utils
+import arrus.validation as _validation
 
 _logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class LoadableKernel(Kernel):
     def run(self):
         self.validate()
         self.load()
-        self.run_loaded()
+        return self.run_loaded()
 
 
 class AsyncKernel(abc.ABC):
@@ -98,6 +98,8 @@ class TxRxModuleKernel(LoadableKernel):
         self.sync_required = sync_required
         self.callback = callback
         self.firing = firing
+        self._tx_aperture_mask = self._get_aperture_mask(op.tx.aperture, device)
+        self._rx_aperture_mask = self._get_aperture_mask(op.rx.aperture, device)
 
     def load(self):
         self.load_with_sync_option(sync_required=self.sync_required,
@@ -108,7 +110,9 @@ class TxRxModuleKernel(LoadableKernel):
         device = self.device
         firing = self.firing
         # Tx
-        device.set_tx_delays(delays=op.tx.delays, firing=firing)
+        tx_delays = np.zeros(device.get_n_tx_channels())
+        tx_delays[np.where(self._tx_aperture_mask)] = op.tx.delays
+        device.set_tx_delays(delays=tx_delays, firing=firing)
         # Excitation
         wave = op.tx.excitation
         device.set_tx_frequency(frequency=wave.frequency, firing=firing)
@@ -116,12 +120,12 @@ class TxRxModuleKernel(LoadableKernel):
                                    firing=firing)
         device.set_tx_invert(is_enable=wave.inverse, firing=firing)
         # Aperture
-        tx_aperture_mask = self._get_aperture_mask(op.tx.aperture, device)
-        device.set_tx_aperture_mask(aperture=tx_aperture_mask, firing=firing)
+        device.set_tx_aperture_mask(aperture=self._tx_aperture_mask,
+                                    firing=firing)
         # RX
         # Aperture
-        rx_aperture_mask = self._get_aperture_mask(op.rx.aperture, device)
-        device.set_rx_aperture_mask(rx_aperture_mask, firing=firing)
+        device.set_rx_aperture_mask(aperture=self._rx_aperture_mask,
+                                    firing=firing)
         # Samples, rx time, delay
         n_samples = op.rx.n_samples
         device.set_rx_time(time=op.rx.rx_time, firing=firing)
@@ -133,24 +137,75 @@ class TxRxModuleKernel(LoadableKernel):
     @staticmethod
     def _get_aperture_mask(aperture, device: _us4oem.Us4OEM):
         if isinstance(aperture, _params.MaskAperture):
-            return aperture.mask
+            return aperture.mask.astype(bool)
         elif isinstance(aperture, _params.RegionBasedAperture):
-            mask = np.zeros(device.get_n_channels())
+            mask = np.zeros(device.get_n_channels()).astype(bool)
             origin = aperture.origin
             size = aperture.size
-            mask[origin:origin+size] = 1
+            mask[origin:origin+size] = True
             return mask
         elif isinstance(aperture, _params.SingleElementAperture):
-            mask = np.zeros(device.get_n_channels())
-            mask[aperture.element] = 1
+            mask = np.zeros(device.get_n_channels()).astype(bool)
+            _validation.assert_in_range(aperture.element,
+                                        (0, device.get_n_channels()),
+                                        "single element aperture")
+            mask[aperture.element] = True
             return mask
         else:
             raise ValueError("Unsupported aperture type: %s" % type(aperture))
 
     def validate(self):
-        # czy liczba kanalow apertury RX jest 32 - tak jest w tej chwili to realizowane przy transferze danych
-        #aperture mask vs liczba wlaczonych kanalow TX, RX (oraz liczba kanalow generalnie)
-        pass
+        device = self.device
+        # TX
+        tx_aperture = self.op.tx.aperture
+        self._validate_aperture(tx_aperture, device.get_n_channels(), "tx")
+        # Delays:
+        number_of_active_elements = np.sum(self._tx_aperture_mask.astype(bool))
+        _validation.assert_shape(self.op.tx.delays,
+                                 (number_of_active_elements,),
+                                 parameter_name="tx.delays")
+
+        # Excitation:
+        excitation = self.op.tx.excitation
+        _validation.assert_type(excitation, _params.SineWave, "tx.excitation")
+        _validation.assert_in_range(excitation.frequency, (1e6, 10e6),
+                                    "tx.excitation.frequency")
+        _validation.assert_in_range(excitation.n_periods, (1, 20),
+                                    "tx.excitation.n_periods")
+        # Triggers:
+        _validation.assert_in_range(self.op.tx.pri, (100e-6, 2000e-6),
+                                    "tx.pri")
+        # RX
+        rx_aperture = self.op.rx.aperture
+        self._validate_aperture(rx_aperture, device.get_n_channels(), "rx")
+        rx_aperture_mask = self._rx_aperture_mask.astype(bool)
+        _validation.assert_in_range(np.sum(rx_aperture_mask), (0, 32),
+                                    "rx.aperture number of channels")
+        _validation.assert_in_range(self.op.rx.n_samples,
+                                    (0, 65536), "rx.n_samples")
+        _validation.assert_one_of(self.op.rx.sampling_frequency,
+                                  {32.5e6, 65e6}, "rx.sampling_frequency")
+
+    def _validate_aperture(self, aperture, n_channels, aperture_type):
+        # TODO(pjarosik) this validation should be performed before creating
+        #  aperture masks
+        if isinstance(aperture, _params.MaskAperture):
+            expected_shape = (n_channels,)
+            _validation.assert_shape(aperture.mask, expected_shape,
+                                     "%s.aperture" % aperture_type)
+        elif isinstance(aperture, _params.RegionBasedAperture):
+            start = aperture.origin
+            end = aperture.origin + aperture.size
+            _validation.assert_in_range((start, end), (0, n_channels),
+                                        parameter_name="%s.aperture" %
+                                                       aperture_type)
+        elif isinstance(aperture, _params.SingleElementAperture):
+            channel = aperture.element
+            _validation.assert_in_range((channel, channel), (0, n_channels),
+                                        parameter_name="%s.aperture" %
+                                                       aperture_type)
+        else:
+            raise ValueError("Unsupported aperture type: %s" % type(aperture))
 
     def run_loaded(self):
         self.device.start_trigger()
@@ -162,6 +217,7 @@ class TxRxModuleKernel(LoadableKernel):
             alignment=4096
         )
         self.device.transfer_rx_buffer_to_host_buffer(0, result_buffer)
+        self.device.stop_trigger()
         return result_buffer
 
     def get_total_n_samples(self):

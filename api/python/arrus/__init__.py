@@ -25,8 +25,8 @@ if is_ius4oem and is_ihv256 and is_idbarlite:
     import arrus.session as session
     import arrus.interface as interface
     import arrus.beam as beam
+    from arrus.session import Session
 else:
     _logger.warn("Low-level API libraries are currently not available, "
                  "providing minimal version of the package.")
 
-from arrus.session import Session
