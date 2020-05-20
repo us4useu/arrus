@@ -34,6 +34,7 @@ def main():
 
     # Execute the sequence in the session.
     with arrus.Session(cfg=dict()) as sess:
+        # Enable high voltage supplier.
         hv256 = sess.get_device("/HV256")
         sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
 

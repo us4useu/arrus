@@ -31,6 +31,15 @@ class LoadableKernel(Kernel):
     def load(self):
         pass
 
+    @abc.abstractmethod
+    def run_loaded(self):
+        pass
+
+    def run(self):
+        self.validate()
+        self.load()
+        self.run_loaded()
+
 
 class AsyncKernel(abc.ABC):
 
@@ -47,7 +56,7 @@ def get_kernel(operation: _operations.Operation, feed_dict: dict):
     device_type = type(device)
     kernel_registries = {
         _us4oem.Us4OEM: get_us4oem_kernel_registry(),
-        _hv256: get_us4oem_kernel_registry()
+        _hv256: get_hv256_kernel_registry()
     }
     if device_type not in kernel_registries:
         raise ValueError("Unsupported device type: %s" % device_type)
@@ -67,6 +76,13 @@ def get_us4oem_kernel_registry():
         _operations.TxRx: TxRxModuleKernel,
         _operations.Sequence: SequenceModuleKernel,
         _operations.Loop: LoopModuleKernel
+    }
+
+
+def get_hv256_kernel_registry():
+    return {
+        _operations.SetHVVoltage: SetHVVoltageKernel,
+        _operations.DisableHVVoltage: DisableHVVoltageKernel,
     }
 
 
@@ -136,7 +152,7 @@ class TxRxModuleKernel(LoadableKernel):
         #aperture mask vs liczba wlaczonych kanalow TX, RX (oraz liczba kanalow generalnie)
         pass
 
-    def run(self):
+    def run_loaded(self):
         self.device.start_trigger()
         self.device.enable_receive()
         self.device.trigger_sync()
@@ -188,7 +204,7 @@ class SequenceModuleKernel(LoadableKernel):
             kernel.load()
             data_offset += tx_rx.rx.n_samples
 
-    def run(self):
+    def run_loaded(self):
         self.device.start_trigger()
         self.device.enable_receive()
         self.device.trigger_sync()
@@ -247,7 +263,7 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         self.op.load_with_sync_option(sync_required=False,
                                       callback=_callback_wrapper)
 
-    def run(self):
+    def run_loaded(self):
         if self.data_queue is None:
             raise ValueError("Run 'load' function first.")
         self.device.start_trigger()
@@ -261,4 +277,29 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         time.sleep(5)
         _logger.log(INFO, "... module stopped.")
 
+
+class SetHVVoltageKernel(Kernel):
+
+    def __init__(self, op: _operations.SetHVVoltage, device: _hv256.HV256,
+                 feed_dict: dict):
+        self.op = op
+        self.hv256 = device
+        self.feed_dict = feed_dict
+
+    def run(self):
+        # TODO validate
+        self.hv256.enable_hv()
+        self.hv256.set_hv_voltage(self.op.voltage)
+
+
+class DisableHVVoltageKernel(Kernel):
+
+    def __init__(self, op: _operations.DisableHVVoltage, device: _hv256.HV256,
+                 feed_dict: dict):
+        self.op = op
+        self.hv256 = device
+        self.feed_dict = feed_dict
+
+    def run(self):
+        self.hv256.disable_hv()
 
