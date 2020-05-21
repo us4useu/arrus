@@ -1,4 +1,6 @@
 # Option: Us4_ROOT_DIR: a directory, where lib64 and include files are located.
+
+message("Find package!")
 find_path(Us4_INCLUDE_DIR
         NAMES ius4oem.h
         PATHS "${Us4_ROOT_DIR}/include"
@@ -17,7 +19,7 @@ find_library(Us4_DBARLite_LIBRARY
         NAMES DBARLite
         PATHS ${Us4_LIBRARY_DIR}
 )
-set(Us4_VERSION ${PC_Us4_VERSION})
+# set(Us4_VERSION 0.3.0)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
@@ -28,7 +30,7 @@ find_package_handle_standard_args(
         Us4_HV256_LIBRARY
         Us4_DBARLite_LIBRARY
         Us4_INCLUDE_DIR
-        VERSION_VAR Us4_VERSION
+#         VERSION_VAR Us4_VERSION
 )
 
 if(Us4_FOUND AND NOT TARGET Us4::US4OEM)

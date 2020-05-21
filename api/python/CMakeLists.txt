@@ -19,7 +19,6 @@ set(Us4Wrappers
     ihv256
     idbarlite
 )
-find_package(Us4 REQUIRED Us4Components)
 
 foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     set_property(SOURCE wrappers/${wrapper}.i PROPERTY CPLUSPLUS ON)
@@ -128,13 +127,13 @@ install(
         python_whl
 )
 
-install(
-	DIRECTORY
-        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
-    DESTINATION
-        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
-)
+# install(
+#	FILES
+#        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
+#	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
+#    DESTINATION
+#        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
+#)
 
 ################################################################################
 # Python tests
