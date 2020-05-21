@@ -18,7 +18,7 @@ function us4R = Us4R(nModules, probeName, voltage, logTime)
     
     probe = probeParams(probeName);
     if probe.adapType == 0
-        us4R = Us4REsaote(nModules, probe, voltage, logTime);
+        us4R = Us4RUltrasonix(nModules, probe, voltage, logTime);
     elseif probe.adapType == 1
         us4R = Us4RUltrasonix(nModules, probe, voltage, logTime);
     else
