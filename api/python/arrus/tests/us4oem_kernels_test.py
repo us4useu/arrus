@@ -46,9 +46,9 @@ from arrus.params import (
 class Us4OEMDeviceMock:
 
     def __init__(self):
-        N_MAX_FIRINGS = 32
+        self.N_MAX_FIRINGS = 32
         self.delays = None
-        self.tx_frequency = [None]*N_MAX_FIRINGS # just to test sequence
+        self.tx_frequency = [None]*self.N_MAX_FIRINGS # just to test sequence
         self.n_half_periods = None
         self.tx_invert = None
         self.tx_aperture_mask = None
@@ -57,7 +57,8 @@ class Us4OEMDeviceMock:
         self.rx_delay = None
         self.schedule_receive_address = None
         self.schedule_receive_total_length = 0
-        self.schedule_receive_callback = None
+        self.schedule_receive_callback = [None]*self.N_MAX_FIRINGS
+        self.current_trigger = 0
         self.pri = None
         self.state = "stopped"
 
@@ -97,7 +98,8 @@ class Us4OEMDeviceMock:
     def schedule_receive(self, address, n_samples, callback):
         self.schedule_receive_address = address
         self.schedule_receive_total_length += n_samples
-        self.schedule_receive_callback = callback
+        self.schedule_receive_callback[self.current_trigger] = callback
+        self.current_trigger += 1
 
     def set_trigger(self, time_to_next_trigger, time_to_next_tx,
                        is_sync_required, idx):
@@ -165,7 +167,8 @@ class TxRxModuleKernelCorrectOperationTest(unittest.TestCase):
         self.assertEqual(device.rx_delay, rx.rx_delay)
         self.assertEqual(device.schedule_receive_address, 0)
         self.assertEqual(device.schedule_receive_total_length, rx.n_samples)
-        self.assertIsNone(device.schedule_receive_callback)
+        self.assertEqual(device.schedule_receive_callback,
+                         [None]*self.device.N_MAX_FIRINGS)
         self.assertEqual(device.pri, tx.pri)
 
     def test_device_run_correctly(self):
@@ -247,15 +250,6 @@ class TxRxModuleKernelValidationTest(unittest.TestCase):
         with self.assertRaises(_validation.InvalidParameterError):
             TxRxModuleKernel(tx_rx, self.device, {}).run()
 
-    def test_to_large_rx_aperture(self):
-        wrong_aperture = dataclasses.replace(
-            self.rx,
-            aperture=RegionBasedAperture(0, 33)
-        )
-        tx_rx = TxRx(self.tx, wrong_aperture)
-        with self.assertRaises(_validation.InvalidParameterError):
-            TxRxModuleKernel(tx_rx, self.device, {}).run()
-
     def test_rx_aperture_out_of_bounds(self):
         wrong_aperture = dataclasses.replace(
             self.rx,
@@ -280,6 +274,23 @@ class TxRxModuleKernelValidationTest(unittest.TestCase):
             sampling_frequency=100e6
         )
         tx_rx = TxRx(self.tx, wrong_rx)
+        with self.assertRaises(_validation.InvalidParameterError):
+            TxRxModuleKernel(tx_rx, self.device, {}).run()
+
+    def test_accepts_appropriate_n_periods(self):
+        wrong_rx = dataclasses.replace(
+            self.tx,
+            excitation=SineWave(frequency=5e6, n_periods=12.5, inverse=False)
+        )
+        tx_rx = TxRx(wrong_rx, self.rx)
+        TxRxModuleKernel(tx_rx, self.device, {}).run()
+
+    def test_unsupported_n_periods(self):
+        wrong_rx = dataclasses.replace(
+            self.tx,
+            excitation=SineWave(frequency=5e6, n_periods=18.8, inverse=False)
+        )
+        tx_rx = TxRx(wrong_rx, self.rx)
         with self.assertRaises(_validation.InvalidParameterError):
             TxRxModuleKernel(tx_rx, self.device, {}).run()
 
@@ -316,6 +327,15 @@ class SequenceModuleKernelCorrectTest(unittest.TestCase):
         total_n_samples = sum([op.rx.n_samples for op in self.seq.operations])
         self.assertEqual(result.shape,
                          (total_n_samples, self.device.get_n_rx_channels()))
+
+    def test_sets_callbacks_last(self):
+        test_callback = lambda x: print(x)
+        SequenceModuleKernel(self.seq, self.device, {}, callback=test_callback)\
+            .run()
+        expected_callbacks = [None]*self.device.N_MAX_FIRINGS
+        expected_callbacks[3] = test_callback
+        self.assertEqual(expected_callbacks,
+                         self.device.schedule_receive_callback)
 
 
 class SequenceModuleKernelValidationTest(unittest.TestCase):
@@ -385,6 +405,60 @@ class SequenceModuleKernelValidationTest(unittest.TestCase):
             SequenceModuleKernel(seq, device, {}).validate()
 
 
+class LoopModuleKernelTest(unittest.TestCase):
+
+    def setUp(self):
+        self.tx = Tx(
+                    delays=np.linspace(0, 5e-6, 32),
+                    excitation=SineWave(frequency=10e6, n_periods=2,
+                                        inverse=False),
+                    aperture=RegionBasedAperture(64, 32),
+                    pri=200e-6)
+        self.rx = Rx(
+                    sampling_frequency=65e6,
+                    n_samples=4096,
+                    aperture=RegionBasedAperture(32, 32))
+        self.tx_rx = TxRx(tx=self.tx, rx=self.rx)
+
+        self.seq = Sequence([
+            TxRx(
+                tx=Tx(
+                    delays=np.linspace(0, 5e-6, 32),
+                    excitation=SineWave(frequency=(i+1)*1e6, n_periods=2,
+                                        inverse=False),
+                    aperture=RegionBasedAperture(64, 32),
+                    pri=200e-6),
+                rx=Rx(
+                    sampling_frequency=65e6,
+                    n_samples=4096,
+                    aperture=RegionBasedAperture(i*32, 32))
+            )
+            for i in range(4)
+        ])
+        self.device = Us4OEMDeviceMock()
+
+    def test_loop_validates_subop(self):
+        wrong_rx = dataclasses.replace(
+            self.rx,
+            sampling_frequency=100e6
+        )
+        tx_rx = TxRx(self.tx, wrong_rx)
+        feed_dict = {
+            "callback": lambda r: print(r)
+        }
+        with self.assertRaises(_validation.InvalidParameterError):
+            LoopModuleKernel(Loop(tx_rx), self.device, feed_dict).run()
+
+    def test_sets_callback(self):
+        feed_dict = {
+            "callback": lambda r: print(r)
+        }
+        LoopModuleKernel(Loop(self.seq), self.device, feed_dict).run()
+        self.assertIsNotNone(self.device.schedule_receive_callback[3])
+
+    def test_requires_callback(self):
+        with self.assertRaises(_validation.InvalidParameterError):
+            LoopModuleKernel(Loop(self.seq), self.device, {}).run()
 
 
 

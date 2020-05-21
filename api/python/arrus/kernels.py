@@ -172,6 +172,13 @@ class TxRxModuleKernel(LoadableKernel):
                                     "tx.excitation.frequency")
         _validation.assert_in_range(excitation.n_periods, (1, 20),
                                     "tx.excitation.n_periods")
+        n_periods_rem = excitation.n_periods % 1
+        if n_periods_rem not in {0.0, 0.5}:
+            raise _validation.InvalidParameterError(
+                "tx.excitation.n_periods",
+                "currently Us4OEM supports full or half periods only."
+        )
+
         # Triggers:
         _validation.assert_in_range(self.op.tx.pri, (100e-6, 2000e-6),
                                     "tx.pri")
@@ -304,7 +311,7 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         self.feed_dict = feed_dict
         self._data_buffer = self._create_data_buffer(self.op)
         self._callback = self._create_callback(feed_dict, self._data_buffer)
-        self._kernel = self._create_kernel(self.op, self.device,
+        self._kernel = self._create_kernel(self.op.operation, self.device,
                                            self.feed_dict, self._callback)
 
     def validate(self):
