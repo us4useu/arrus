@@ -44,9 +44,11 @@ from arrus.params import (
 
 
 class Us4OEMDeviceMock:
+
     def __init__(self):
+        N_MAX_FIRINGS = 32
         self.delays = None
-        self.tx_frequency = None
+        self.tx_frequency = [None]*N_MAX_FIRINGS # just to test sequence
         self.n_half_periods = None
         self.tx_invert = None
         self.tx_aperture_mask = None
@@ -54,7 +56,7 @@ class Us4OEMDeviceMock:
         self.rx_time = None
         self.rx_delay = None
         self.schedule_receive_address = None
-        self.schedule_receive_length = None
+        self.schedule_receive_total_length = 0
         self.schedule_receive_callback = None
         self.pri = None
         self.state = "stopped"
@@ -72,7 +74,7 @@ class Us4OEMDeviceMock:
         self.delays = delays
 
     def set_tx_frequency(self, frequency, firing):
-        self.tx_frequency = frequency
+        self.tx_frequency[firing] = frequency
 
     def set_tx_half_periods(self, n_half_periods, firing):
         self.n_half_periods = n_half_periods
@@ -94,7 +96,7 @@ class Us4OEMDeviceMock:
 
     def schedule_receive(self, address, n_samples, callback):
         self.schedule_receive_address = address
-        self.schedule_receive_length = n_samples
+        self.schedule_receive_total_length += n_samples
         self.schedule_receive_callback = callback
 
     def set_trigger(self, time_to_next_trigger, time_to_next_tx,
@@ -116,7 +118,7 @@ class Us4OEMDeviceMock:
     def transfer_rx_buffer_to_host_buffer(self, src, dst):
         if self.state != "running":
             raise ValueError("Start trigger before running the device")
-        dst[:, :] = np.zeros((self.schedule_receive_length,
+        dst[:, :] = np.zeros((self.schedule_receive_total_length,
                               self.get_n_rx_channels()))
 
 
@@ -148,7 +150,7 @@ class TxRxModuleKernelCorrectOperationTest(unittest.TestCase):
         expected_delays = np.zeros(128)
         expected_delays[64:96] = tx.delays
         np.testing.assert_equal(device.delays, expected_delays)
-        self.assertEqual(device.tx_frequency, tx.excitation.frequency)
+        self.assertEqual(device.tx_frequency[0], tx.excitation.frequency)
         self.assertEqual(device.n_half_periods, tx.excitation.n_periods*2)
         self.assertEqual(device.tx_invert, tx.excitation.inverse)
 
@@ -162,7 +164,7 @@ class TxRxModuleKernelCorrectOperationTest(unittest.TestCase):
         self.assertEqual(device.rx_time, rx.rx_time)
         self.assertEqual(device.rx_delay, rx.rx_delay)
         self.assertEqual(device.schedule_receive_address, 0)
-        self.assertEqual(device.schedule_receive_length, rx.n_samples)
+        self.assertEqual(device.schedule_receive_total_length, rx.n_samples)
         self.assertIsNone(device.schedule_receive_callback)
         self.assertEqual(device.pri, tx.pri)
 
@@ -280,6 +282,40 @@ class TxRxModuleKernelValidationTest(unittest.TestCase):
         tx_rx = TxRx(self.tx, wrong_rx)
         with self.assertRaises(_validation.InvalidParameterError):
             TxRxModuleKernel(tx_rx, self.device, {}).run()
+
+
+class SequenceModuleKernelCorrectTest(unittest.TestCase):
+
+    def setUp(self):
+        self.seq = Sequence([
+            TxRx(
+                tx=Tx(
+                    delays=np.linspace(0, 5e-6, 32),
+                    excitation=SineWave(frequency=(i+1)*1e6, n_periods=2,
+                                        inverse=False),
+                    aperture=RegionBasedAperture(64, 32),
+                    pri=200e-6
+                ),
+                rx=Rx(
+                    sampling_frequency=65e6,
+                    n_samples=4096,
+                    aperture=RegionBasedAperture(i*32, 32)
+                )
+            )
+            for i in range(4)
+        ])
+        self.device = Us4OEMDeviceMock()
+
+    def test_ops_loaded_correctly(self):
+        SequenceModuleKernel(self.seq, self.device, {}).load()
+        for i in range(4):
+            self.assertEqual(self.device.tx_frequency[i], (i+1)*1e6)
+
+    def test_device_run_correctly(self):
+        result = SequenceModuleKernel(self.seq, self.device, {}).run()
+        total_n_samples = sum([op.rx.n_samples for op in self.seq.operations])
+        self.assertEqual(result.shape,
+                         (total_n_samples, self.device.get_n_rx_channels()))
 
 
 if __name__ == "__main__":

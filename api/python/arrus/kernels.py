@@ -50,7 +50,7 @@ class AsyncKernel(abc.ABC):
 
 def get_kernel(operation: _operations.Operation, feed_dict: dict):
     device = feed_dict.get("device", None)
-    _validation_util.assert_not_none(device, "device")
+    _validation.assert_not_none(device, "device")
 
     # Get kernels dictionary for given device.
     device_type = type(device)
@@ -95,15 +95,15 @@ class TxRxModuleKernel(LoadableKernel):
         self.device = device
         self.feed_dict = feed_dict
         self.data_offset = data_offset
-        self.sync_required = sync_required
-        self.callback = callback
+        self._sync_required = sync_required
+        self._callback = callback
         self.firing = firing
         self._tx_aperture_mask = self._get_aperture_mask(op.tx.aperture, device)
         self._rx_aperture_mask = self._get_aperture_mask(op.rx.aperture, device)
 
     def load(self):
-        self.load_with_sync_option(sync_required=self.sync_required,
-                                   callback=self.callback)
+        self.load_with_sync_option(sync_required=self._sync_required,
+                                   callback=self._callback)
 
     def load_with_sync_option(self, sync_required: bool, callback):
         op = self.op
@@ -234,31 +234,21 @@ class SequenceModuleKernel(LoadableKernel):
         self.total_n_samples = self._compute_total_n_samples()
         self.sync_required = sync_required
         self.callback = callback
+        self._kernels = self._get_txrx_kernels(self.op.operations,
+                                               self.feed_dict,
+                                               self.device, sync_required,
+                                               self.callback)
 
     def validate(self):
-        # TODO
-        # Czy liczba elementow sekwencji <= 1024
-        pass
+        seq = self.op
+        _validation.assert_not_greater_than(len(seq.operations), 1024,
+                                            "number of operations in sequence")
+        for tx_rx in self._kernels:
+            tx_rx.validate()
 
     def load(self):
-        self.load_with_sync_option(sync_required=self.sync_required,
-                                   callback=self.callback)
-
-    def load_with_sync_option(self, sync_required: bool, callback):
-        # Convert TxRx ops to TxRx kernels
-        tx_rx_kernels = []
-        data_offset = 0
-        n_operations = len(self.op.operations)
-        for i, tx_rx in enumerate(self.op.operations):
-            sync_required = i == n_operations-1 and sync_required
-            kernel = TxRxModuleKernel(op=tx_rx, device=self.device,
-                                      feed_dict=self.feed_dict,
-                                      data_offset=data_offset,
-                                      sync_required=sync_required,
-                                      callback=callback, firing=i)
-            tx_rx_kernels.append(kernel)
+        for kernel in self._kernels:
             kernel.load()
-            data_offset += tx_rx.rx.n_samples
 
     def run_loaded(self):
         self.device.start_trigger()
@@ -272,8 +262,8 @@ class SequenceModuleKernel(LoadableKernel):
             dtype=np.int16,
             alignment=4096
         )
-        buffer = self.device.transfer_rx_buffer_to_host_buffer(0, result_buffer)
-        return buffer
+        self.device.transfer_rx_buffer_to_host_buffer(0, result_buffer)
+        return result_buffer
 
     def get_total_n_samples(self):
         return self.total_n_samples
@@ -284,6 +274,26 @@ class SequenceModuleKernel(LoadableKernel):
             total_n_samples += tx_rx.rx.n_samples
         return total_n_samples
 
+    def _get_txrx_kernels(self, operations, feed_dict, device, sync_required,
+                          callback):
+        tx_rx_kernels = []
+        data_offset = 0
+        n_operations = len(operations)
+        for i, tx_rx in enumerate(operations):
+            sync_required = i == n_operations-1 and sync_required
+            if i == n_operations-1:
+                cb = callback
+            else:
+                cb = None
+            kernel = TxRxModuleKernel(op=tx_rx, device=device,
+                                      feed_dict=feed_dict,
+                                      data_offset=data_offset,
+                                      sync_required=sync_required,
+                                      callback=cb, firing=i)
+            tx_rx_kernels.append(kernel)
+            data_offset += tx_rx.rx.n_samples
+        return tx_rx_kernels
+
 
 class LoopModuleKernel(LoadableKernel, AsyncKernel):
 
@@ -292,39 +302,21 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         self.op = op
         self.device = device
         self.feed_dict = feed_dict
-        self.callback = feed_dict.get("callback", None)
-        self.data_buffer = None
+        self._data_buffer = self._create_data_buffer(self.op)
+        self._callback = self._create_callback(feed_dict, self._data_buffer)
+        self._kernel = self._create_kernel(self.op, self.device,
+                                           self.feed_dict, self._callback)
 
     def validate(self):
-        # Make sure, that callback function was provided
-        # Make sure, that operation is Sequence or TxRx
-        pass
+        self._kernel.validate()
 
     def load(self):
-        total_n_samples = self.op.get_total_n_samples()
-
-        self.data_buffer = _utils.create_aligned_array(
-            (total_n_samples, self.device.get_n_rx_channels()),
-            dtype=np.int16,
-            alignment=4096
-        )
-
-        def _callback_wrapper(event):
-            # GIL
-            self.device.transfer_rx_buffer_to_host_buffer(0, self.data_buffer)
-            self.device.enable_receive()
-            self.callback(self.data_buffer)
-            # End GIL
-
-        self.op.load_with_sync_option(sync_required=False,
-                                      callback=_callback_wrapper)
+        self._kernel.load()
 
     def run_loaded(self):
-        if self.data_queue is None:
-            raise ValueError("Run 'load' function first.")
         self.device.start_trigger()
         self.device.enable_receive()
-        return self.data_queue
+        return None
 
     def stop(self):
         self.device.stop_trigger()
@@ -332,6 +324,40 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
                     self.device.get_id())
         time.sleep(5)
         _logger.log(INFO, "... module stopped.")
+
+    def _create_kernel(self, op, device, feed_dict, callback):
+        if isinstance(op, _operations.TxRx):
+            return TxRxModuleKernel(op, device, feed_dict, sync_required=False,
+                                    callback=callback)
+        elif isinstance(op, _operations.Sequence):
+            return SequenceModuleKernel(op, device, feed_dict,
+                                        sync_required=False, callback=callback)
+        else:
+            raise ValueError("Invalid type of operation to perform in loop, "
+                             "should be one of: %s, %s" % (_operations.TxRx,
+                                                           _operations.Sequence)
+                             )
+
+    def _create_data_buffer(self, op):
+        if isinstance(op, _operations.TxRx):
+            return _operations.TxRx.rx.n_samples
+        elif isinstance(op, _operations.Sequence):
+            return sum([txrx.rx.n_samples for txrx in op.operations])
+        else:
+            return None
+
+    def _create_callback(self, feed_dict, data_buffer):
+        cb = feed_dict.get("callback", None)
+        _validation.assert_not_none(cb, "callback")
+
+        def _callback_wrapper(event):
+            # GIL
+            self.device.transfer_rx_buffer_to_host_buffer(0, data_buffer)
+            self.device.enable_receive()
+            cb(data_buffer)
+            # End GIL
+
+        return _callback_wrapper
 
 
 class SetHVVoltageKernel(Kernel):

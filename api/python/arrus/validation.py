@@ -6,14 +6,25 @@ def assert_not_none(value, parameter_name):
         raise InvalidParameterError(parameter_name, "should be not None")
 
 
+def assert_none(value, parameter_name):
+    if value is not None:
+        raise InvalidParameterError(parameter_name, "should not be provided")
+
+
 def assert_shape(array, expected_shape, parameter_name, strict=False):
     if strict:
         shape = array.shape
     else:
         shape = array.flatten().shape
     if shape != expected_shape:
-        raise InvalidParameterError(parameter_name, "expected %s shape: " %
+        raise InvalidParameterError(parameter_name, "expected shape: %s " %
                                     expected_shape)
+
+
+def assert_not_greater_than(value, maximum, parameter_name):
+    if value > maximum:
+        raise InvalidParameterError(parameter_name,
+                                    "should not be greater than %d" % maximum)
 
 
 def assert_in_range(actual, expected, parameter_name):
@@ -23,8 +34,9 @@ def assert_in_range(actual, expected, parameter_name):
         a_start, a_end = actual
     e_start, e_end = expected
     if not(a_start >= e_start and a_end <= e_end):
-        raise InvalidParameterError(parameter_name, "expected in range %s" %
-                                    str(expected))
+        raise InvalidParameterError(parameter_name,
+                                    "%s expected in range %s" %
+                                    (str(actual), str(expected)))
 
 
 def assert_one_of(value, collection, parameter_name):
@@ -38,6 +50,7 @@ def assert_one_of(value, collection, parameter_name):
 def assert_non_negative(value, parameter_name):
     if value < 0:
         raise InvalidParameterError(parameter_name, "should be non-negative")
+
 
 def assert_positive(value, parameter_name):
     if value <= 0:
