@@ -4,10 +4,13 @@ classdef Us4RUltrasonix < handle
     % This class provides functions to configure the system and perform
     % data acquisition using the Us4R.
     %
-    % :param nArius: number of arius modules available in the us4R system
-    % :param probeName: name of the probe to use, available: 'L14-5/38'
+    % :param nArius: number of Us4OEM modules available in the us4R system
+    % :param probeName: name of the probe to use, available: \
+    %    Esaote: 'AL2442', 'SL1543', \
+    %    Ultrasonix: 'L14-5/38'
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]
-    % :param logTime: set to true if you want to display acquisition and reconstruction time (optional)
+    % :param logTime: set to true if you want to display acquisition \
+    %    and reconstruction time (optional)
 
     properties(Access = private)
         sys
@@ -18,7 +21,7 @@ classdef Us4RUltrasonix < handle
     
     methods
 
-        function obj = Us4RUltrasonix(nArius, probe, voltage, logTime)
+        function obj = Us4RUltrasonix(nArius, probeName, voltage, logTime)
             if nargin < 4
                 obj.logTime = false;
             else
@@ -29,6 +32,7 @@ classdef Us4RUltrasonix < handle
             obj.sys.nArius = nArius; % number of Arius modules
             obj.sys.nChArius = 32;
 
+            probe = probeParams(probeName);
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
