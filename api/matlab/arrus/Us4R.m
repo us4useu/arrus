@@ -304,7 +304,7 @@ classdef Us4R < handle
             
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
-            obj.seq.memReq = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;
+            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
             
             if obj.seq.nFire > 1024
                 error("ARRUS:IllegalArgument", ...
@@ -312,19 +312,13 @@ classdef Us4R < handle
             end
             
             if obj.seq.nTrig > 16384
-                obj.seq.nRep = floor(16384 / obj.seq.nFire);
-                warning(['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384. ' ...
-                         'To ensure this, number of repetitions is reduced to ' num2str(obj.seq.nRep)]);
-                obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
-                obj.seq.memReq = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384.']);
             end
             
-            if obj.seq.memReq > 2^32  % 4GB
-                obj.seq.nRep = floor(2^32 / obj.sys.nChArius / obj.seq.nSamp / 2 / obj.seq.nFire);
-                warning(['Required memory per module (' num2str(obj.seq.memReq/2^30) 'GB) cannot exceed 4GB. ' ...
-                         'To ensure this, number of repetitions is reduced to ' num2str(obj.seq.nRep)]);
-                obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
-                obj.seq.memReq = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;
+            if memoryRequired > 2^32  % 4GB
+                error("ARRUS:OutOfMemory", ...
+                        ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
 
             %% Fixed parameters
