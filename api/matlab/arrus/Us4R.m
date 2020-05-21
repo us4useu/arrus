@@ -1,4 +1,4 @@
-classdef Us4RUltrasonix < handle
+classdef Us4R < handle
     % A handle to the Us4R system. 
     %
     % This class provides functions to configure the system and perform
@@ -21,7 +21,7 @@ classdef Us4RUltrasonix < handle
     
     methods
 
-        function obj = Us4RUltrasonix(nArius, probeName, voltage, logTime)
+        function obj = Us4R(nArius, probeName, voltage, logTime)
             if nargin < 4
                 obj.logTime = false;
             else
