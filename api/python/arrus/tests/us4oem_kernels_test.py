@@ -318,5 +318,75 @@ class SequenceModuleKernelCorrectTest(unittest.TestCase):
                          (total_n_samples, self.device.get_n_rx_channels()))
 
 
+class SequenceModuleKernelValidationTest(unittest.TestCase):
+
+    def setUp(self):
+        self.seq = Sequence([
+            TxRx(
+                tx=Tx(
+                    delays=np.linspace(0, 5e-6, 32),
+                    excitation=SineWave(frequency=(i+1)*1e6, n_periods=2,
+                                        inverse=False),
+                    aperture=RegionBasedAperture(64, 32),
+                    pri=200e-6
+                ),
+                rx=Rx(
+                    sampling_frequency=65e6,
+                    n_samples=4096,
+                    aperture=RegionBasedAperture(i*32, 32)
+                )
+            )
+            for i in range(4)
+        ])
+        self.device = Us4OEMDeviceMock()
+
+    def test_subop_validation_performed(self):
+        seq = Sequence([
+            TxRx(
+                tx=Tx(
+                    delays=np.linspace(0, 5e-6, 32),
+                    excitation=SineWave(frequency=5e6, n_periods=2,
+                                        inverse=False),
+                    aperture=RegionBasedAperture(64, 128),
+                    pri=200e-6
+                ),
+                rx=Rx(
+                    sampling_frequency=65e6,
+                    n_samples=4096,
+                    aperture=RegionBasedAperture(i*32, 32)
+                )
+            )
+            for i in range(4)
+        ])
+        device = Us4OEMDeviceMock()
+        with self.assertRaises(_validation.InvalidParameterError):
+            SequenceModuleKernel(seq, device, {}).validate()
+
+    def test_max_number_of_operations(self):
+        seq = Sequence([
+            TxRx(
+                tx=Tx(
+                    delays=np.linspace(0, 5e-6, 32),
+                    excitation=SineWave(frequency=(i+1)*1e6, n_periods=2,
+                                        inverse=False),
+                    aperture=RegionBasedAperture(64, 32),
+                    pri=200e-6
+                ),
+                rx=Rx(
+                    sampling_frequency=65e6,
+                    n_samples=4096,
+                    aperture=RegionBasedAperture(32, 32)
+                )
+            )
+            for i in range(1025)
+        ])
+        device = Us4OEMDeviceMock()
+        with self.assertRaises(_validation.InvalidParameterError):
+            SequenceModuleKernel(seq, device, {}).validate()
+
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
