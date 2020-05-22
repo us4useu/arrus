@@ -12,6 +12,10 @@ API Reference
 Configuration
 =============
 
+Logging
+-------
+.. autofunction:: arrus.set_log_level
+
 Interface
 ---------
 
