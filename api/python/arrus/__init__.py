@@ -1,16 +1,28 @@
 """ARRUS."""
 import logging
+from logging import ERROR, WARNING, INFO, DEBUG
 
 _logger = logging.getLogger(__package__)
-LOGGER_LEVEL = logging.INFO
-_logger.setLevel(LOGGER_LEVEL)
+DEFAULT_LOGGER_LEVEL = logging.INFO
+_logger.setLevel(DEFAULT_LOGGER_LEVEL)
 
-if not _logger.handlers:
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(LOGGER_LEVEL)
-    logger_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    console_handler.setFormatter(logger_formatter)
-    _logger.addHandler(console_handler)
+_console_handler = logging.StreamHandler()
+_console_handler.setLevel(DEFAULT_LOGGER_LEVEL)
+_logger_formatter = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+_console_handler.setFormatter(_logger_formatter)
+_logger.addHandler(_console_handler)
+
+
+def set_log_level(level):
+    """
+    Sets logger level.
+
+    Available levels ERROR, WARNING, INFO, DEBUG
+    """
+    _logger.setLevel(level)
+    _console_handler.setLevel(level)
+
 
 # TODO temporary ommiting importing some of the modules here, when
 # low-level API is not available (for example currently on Unix systems).
