@@ -27,6 +27,7 @@ classdef SimpleTxRxSequence < Operation
         speedOfSound (1,1)
         txFrequency (1,1)
         txNPeriods (1,1)
+        rxDepthRange (1,:) {mustBeCorrect}
         rxNSamples (1,1) ...
                    {mustBeInteger,...
                    mustBePositive,...
@@ -35,6 +36,25 @@ classdef SimpleTxRxSequence < Operation
         txPri (1,1) double {mustBePositive} = 100e-6
         tgcStart (1,1)
         tgcSlope (1,1)
+    end
+    
+    function mustBeCorrect(a)
+        if length(a(:))>2
+            error('Value assigned to rxDepthRange property should be a scalar or two-element vector')
+        end
+        for k = 1:length(a(:))
+            mustBeNonnegative(a(k))
+            mustBeFinite(a(k))
+            mustBeNonempty(a(k))
+            mustBeReal(a(k))
+        end
+        
+        if length(a(:)) == 2
+            if a(2) <= a(1)
+                error('The second element of rxDepthRange property should be bigger than the first element.')
+            end
+        end
+        
     end
     
     methods
