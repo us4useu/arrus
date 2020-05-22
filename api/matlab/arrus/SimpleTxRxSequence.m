@@ -25,7 +25,7 @@ classdef SimpleTxRxSequence < Operation
         txCenterElement (1,:) {mustBeFinite, mustBeReal}
         txApertureCenter (1,:) {mustBeFinite, mustBeReal}
         txApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
-        txFocus (1,:) {mustBeFinite, mustBeReal}
+        txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
         txFrequency (1,1) {mustBeProperNumber}
@@ -58,7 +58,7 @@ end
 function mustBeProperNumber(a)
     mustBeNonnegative(a)
     mustBeFinite(a)
-    mustBeNonempty(a)
+%     mustBeNonempty(a)
     mustBeReal(a)
 end
 
