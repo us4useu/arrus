@@ -159,7 +159,7 @@ class InteractiveSession(AbstractSession):
 
     :param cfg_path: path to the configuration file, can be None
     """
-    def __init__(self, cfg, cfg_path: str = None):
+    def __init__(self, cfg_path: str = None):
         if cfg_path is None:
             cfg_path = os.path.join(os.environ.get(_ARRUS_PATH_ENV, ""), "default.yaml")
 
@@ -167,8 +167,5 @@ class InteractiveSession(AbstractSession):
             cfg = yaml.safe_load(f)
             super().__init__(cfg)
 
-    @abc.abstractmethod
     def run(self, operation: arrus.operations.Operation, feed_dict: dict):
         raise ValueError("This type of session cannot run operations.")
-
-
