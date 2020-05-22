@@ -57,7 +57,10 @@ public:
     virtual ~ScheduleReceiveCallback() {};
 };
 
-void ScheduleReceiveWithCallback(IUs4OEM* that, const size_t address, const size_t length,
+void ScheduleReceiveWithCallback(IUs4OEM* that, const size_t address,
+                                 const size_t length,
+                                 const size_t start,
+                                 const size_t decimation,
                                  ScheduleReceiveCallback& callback) {
     auto fn = [&callback, address, length] () {
 		// TODO(pjarosik) consider creating event outside the lambda function, to reduce interrupt handling time.
@@ -71,11 +74,14 @@ void ScheduleReceiveWithCallback(IUs4OEM* that, const size_t address, const size
 		}
 		PyGILState_Release(gstate);
     };
-    that->ScheduleReceive(address, length, fn);
+    that->ScheduleReceive(address, length, start, decimation, fn);
 }
 
-void ScheduleReceiveWithoutCallback(IUs4OEM* that, const size_t address, const size_t length) {
-    that->ScheduleReceive(address, length);
+void ScheduleReceiveWithoutCallback(IUs4OEM* that, const size_t address,
+                                    const size_t length,
+                                    const size_t start,
+                                    const size_t decimation) {
+    that->ScheduleReceive(address, length, start, decimation);
 }
 
 // TODO(pjarosik) fix below in more elegant way

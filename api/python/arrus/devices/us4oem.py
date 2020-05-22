@@ -196,7 +196,7 @@ class Us4OEM(_device.Device):
         aperture = aperture.astype(np.uint16)
         aperture_list = aperture.tolist()
         n = len(aperture_list)
-        self.log(DEBUG, "Setting TX aperture: %s" % str(aperture_list))
+        self.log(DEBUG, "Setting RX aperture: %s" % str(aperture_list))
         array = None
         try:
             array = _ius4oem.new_uint16Array(n)
@@ -408,7 +408,8 @@ class Us4OEM(_device.Device):
         self.card_handle.EnableTransmit()
 
     @assert_card_is_powered_up
-    def schedule_receive(self, address, length, callback=None):
+    def schedule_receive(self, address, length,
+                         start=0, decimation=0, callback=None):
         """
         Schedules a new data transmission from the probe’s adapter to the module’s internal memory.
         This function queues a new data transmission from all available RX channels to the device’s internal memory.
@@ -421,7 +422,8 @@ class Us4OEM(_device.Device):
         """
         self.log(
             DEBUG,
-            "Scheduling data receive at address=0x%02X, length=%d" % (address, length)
+            "Scheduling data receive at address=0x%02X, length=%d" %
+            (address, length)
         )
 
         address = address*self.dtype.itemsize*self.get_n_rx_channels()
@@ -430,7 +432,9 @@ class Us4OEM(_device.Device):
             _ius4oem.ScheduleReceiveWithoutCallback(
                 self.card_handle,
                 address=address,
-                length=length
+                length=length,
+                start=start,
+                decimation=decimation
             )
         else:
             cbk = _callbacks.ScheduleReceiveCallback(callback)
@@ -439,6 +443,8 @@ class Us4OEM(_device.Device):
                 self.card_handle,
                 address=address,
                 length=length,
+                start=start,
+                decimation=decimation,
                 callback=cbk
             )
 
@@ -728,7 +734,7 @@ class Us4OEM(_device.Device):
         :param dst_buffer: a buffer (numpy.darray) of shape (length, n_rx_channels), data type: np.int16
         """
         dst_addr = dst_buffer.ctypes.data
-        length = self.host_buffer.nbytes
+        length = dst_buffer.nbytes
         self.log(DEBUG,
             "Transferring %d bytes from RX buffer at 0x%08X to host memory at 0x%08X..."%(
                 length, src_addr, dst_addr))
