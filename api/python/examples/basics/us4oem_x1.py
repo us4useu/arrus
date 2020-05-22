@@ -37,17 +37,11 @@ module.enable_tgc()
 
 # Configure TX/RX scheme.
 NEVENTS = 4
-NSAMPLES = 6*1024
+NSAMPLES = 8*1024
 TX_FREQUENCY = 8.125e6
 SAMPLING_FREQUENCY = 65e6
 NCHANELS = module.get_n_rx_channels()
 PRI = 1000e-6 # Pulse Repetition Interval, 1000 [us]
-
-b, a = scipy.signal.butter(
-    2,
-    (0.5*TX_FREQUENCY*2/SAMPLING_FREQUENCY, 1.5*TX_FREQUENCY*2/SAMPLING_FREQUENCY),
-    'bandpass'
-)
 
 delays = np.array([i * 0.000e-6 for i in range(module.get_n_tx_channels())])
 
@@ -108,13 +102,13 @@ canvas = plt.imshow(
 fig.show()
 
 module.start_trigger()
-time.sleep(1*PRI*1e-6*NEVENTS)
+time.sleep(1)
 
 while not is_closed:
     start = time.time()
     module.enable_receive()
     module.trigger_sync()
-    time.sleep(1*PRI*1e-6*NEVENTS)
+    time.sleep(1)
 
     # - transfer data from module's internal memory to the host memory
     buffer = module.transfer_rx_buffer_to_host(0, NEVENTS*NSAMPLES)
@@ -122,8 +116,6 @@ while not is_closed:
     # - reorder acquired data
     for event in range(NEVENTS):
         rf[:, event*NCHANELS:(event+1) * NCHANELS] = buffer[event*NSAMPLES:(event+1) * NSAMPLES, :]
-
-    scipy.signal.filtfilt(b, a, rf, axis=0)
 
     end = time.time()
     print("Acq time: %.3f" % (end - start), end="\r")

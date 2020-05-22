@@ -10,38 +10,61 @@ from arrus.params import SineWave, SingleElementAperture, RegionBasedAperture
 
 def main():
     # Define TX/RX sequence to perform.
-    sine_wave = SineWave(frequency=8.125e6, n_periods=1.5, inverse=False)
+    sine_wave = SineWave(frequency=8.125e6, n_periods=2, inverse=False)
+
+    n_firings_per_frame = 4
+    n_samples = 8*1024
+    arrus.set_log_level(arrus.DEBUG)
 
     def get_full_rx_aperture(element_number):
         return [
             TxRx(
                 tx=Tx(
-                    delays=np.zeros(128),
+                    delays=np.zeros(32),
                     excitation=sine_wave,
-                    aperture=SingleElementAperture(element_number),
+                    aperture=RegionBasedAperture(32, 32), # SingleElementAperture(element_number),
                     pri=200e-6),
                 rx=Rx(
-                    sampling_frequency=65e-6,
-                    n_samples=4096,
-                    aperture=RegionBasedAperture(i*32, (i+1)*32)))
-            for i in range(4)
+                    sampling_frequency=65e6,
+                    n_samples=n_samples,
+                    aperture=RegionBasedAperture(i*32, 32),
+                    rx_time=150e-6,
+                    rx_delay=5e-6))
+            for i in range(n_firings_per_frame)
         ]
 
     tx_rx_sequence = Sequence(list(itertools.chain(*[
-        get_full_rx_aperture(channel)
-        for channel in range(128)
+        get_full_rx_aperture(2)
+        for channel in range(n_firings_per_frame)
     ])))
 
     # Execute the sequence in the session.
-    with arrus.Session(cfg=dict()) as sess:
+    cfg = dict(
+        nModules=2,
+        HV256=True,
+        masterModule=0
+    )
+    with arrus.Session(cfg=cfg) as sess:
         # Enable high voltage supplier.
         hv256 = sess.get_device("/HV256")
         sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
 
         module = sess.get_device("/Us4OEM:0")
+        n_channels = module.get_n_rx_channels()
         configure_module(module)
+        time.sleep(2)
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=module))
-        display_acquired_frame(frame)
+
+        # Copy and reorganize data from the module.
+        rf = np.zeros(
+            (n_samples, module.get_n_rx_channels() * n_firings_per_frame),
+            dtype=np.int16
+        )
+        for firing in range(n_firings_per_frame):
+            rf[:, firing * n_channels:(firing+1) * n_channels] = \
+                frame[firing * n_samples:(firing+1) * n_samples, : ]
+        display_acquired_frame(rf)
+        # display_waveforms(rf)
 
 
 def configure_module(module):
@@ -60,11 +83,12 @@ def configure_module(module):
     # Turn off DTGC
     module.set_dtgc(0)  # [dB]
     # Set TGC range [14-54] dB (PGA+LNA)
+    module.enable_tgc()
     module.set_pga_gain(30)  # [dB]
     module.set_lna_gain(24)  # [dB]
     # Set TGC samples. 'O' (14dB) means minimum gain, '1' means maximum (54 dB)
-    module.set_tgc_samples(np.arange(0.0, 1.0, step=0.2))
-    module.enable_tgc()
+    # module.set_tgc_samples(np.arange(0.0, 1.0, step=0.2))
+    # module.enable_tgc()
     # Set low-pass filter.
     module.set_lpf_cutoff(10e6)  # [Hz]
 
@@ -77,19 +101,22 @@ def display_acquired_frame(buffer, window_sizes=(7, 7)):
     ax.set_ylabel("Samples")
     fig.canvas.set_window_title("RF data")
 
-    canvas = plt.imshow(
-        buffer[0, :, :],
+    plt.imshow(
+        buffer[:, :],
         vmin=np.iinfo(np.int16).min,
         vmax=np.iinfo(np.int16).max
     )
-    # Display twice the acquired sequence.
-    for _ in range(2):
-        for i in range(buffer.shape[0]):
-            fig.canvas.set_data(buffer[i, :, :])
-            ax.set_aspect("auto")
-            fig.canvas.flush_events()
-            time.sleep(0.5)
-            plt.show()
+    ax.set_aspect("auto")
+    plt.show()
+
+
+def display_waveforms(buffer):
+    fig, axes = plt.subplots(buffer.shape[1], 1)
+
+    for channel in range(buffer.shape[1]):
+        axes[channel].plot(buffer[1000:4000, channel])
+
+    plt.show()
 
 
 if __name__ == "__main__":
