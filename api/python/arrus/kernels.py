@@ -56,7 +56,7 @@ def get_kernel(operation: _operations.Operation, feed_dict: dict):
     device_type = type(device)
     kernel_registries = {
         _us4oem.Us4OEM: get_us4oem_kernel_registry(),
-        _hv256: get_hv256_kernel_registry()
+        _hv256.HV256: get_hv256_kernel_registry()
     }
     if device_type not in kernel_registries:
         raise ValueError("Unsupported device type: %s" % device_type)
@@ -86,22 +86,29 @@ def get_hv256_kernel_registry():
     }
 
 
+# TODO(pjarosik) implement this class as a sequence with single txrx
 class TxRxModuleKernel(LoadableKernel):
 
     def __init__(self, op: _operations.TxRx, device: _us4oem.Us4OEM,
                  feed_dict: dict, data_offset=0, sync_required=True,
-                 callback=None, firing=0):
+                 callback=None, set_one_operation=True, firing=0):
         self.op = op
         self.device = device
         self.feed_dict = feed_dict
         self.data_offset = data_offset
         self._sync_required = sync_required
+        self._set_one_operation = set_one_operation
         self._callback = callback
         self.firing = firing
         self._tx_aperture_mask = self._get_aperture_mask(op.tx.aperture, device)
         self._rx_aperture_mask = self._get_aperture_mask(op.rx.aperture, device)
 
     def load(self):
+        if self._set_one_operation:
+            self.device.clear_scheduled_receive()
+            self.device.set_n_triggers(1)
+            self.device.set_number_of_firings(1)
+
         self.load_with_sync_option(sync_required=self._sync_required,
                                    callback=self._callback)
 
@@ -122,15 +129,18 @@ class TxRxModuleKernel(LoadableKernel):
         # Aperture
         device.set_tx_aperture_mask(aperture=self._tx_aperture_mask,
                                     firing=firing)
+        # device.set_tx_aperture(origin=7, size=1, firing=firing)
+        # device.set_active_channel_group([True]*16, firing=firing)
         # RX
         # Aperture
         device.set_rx_aperture_mask(aperture=self._rx_aperture_mask,
                                     firing=firing)
+        # device.set_rx_aperture(origin=0, size=32, firing=firing)
         # Samples, rx time, delay
         n_samples = op.rx.n_samples
         device.set_rx_time(time=op.rx.rx_time, firing=firing)
         device.set_rx_delay(delay=op.rx.rx_delay, firing=firing)
-        device.schedule_receive(self.data_offset, n_samples, callback)
+        device.schedule_receive(self.data_offset, n_samples, callback=callback)
         device.set_trigger(time_to_next_trigger=op.tx.pri, time_to_next_tx=0,
                            is_sync_required=sync_required, idx=firing)
 
@@ -215,9 +225,11 @@ class TxRxModuleKernel(LoadableKernel):
             raise ValueError("Unsupported aperture type: %s" % type(aperture))
 
     def run_loaded(self):
+        self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
         self.device.trigger_sync()
+        time.sleep(1)
         result_buffer = _utils.create_aligned_array(
             (self.op.rx.n_samples, self.device.get_n_rx_channels()),
             dtype=np.int16,
@@ -254,10 +266,14 @@ class SequenceModuleKernel(LoadableKernel):
             tx_rx.validate()
 
     def load(self):
+        self.device.clear_scheduled_receive()
+        self.device.set_n_triggers(len(self.op.operations))
+        self.device.set_number_of_firings(len(self.op.operations))
         for kernel in self._kernels:
             kernel.load()
 
     def run_loaded(self):
+        self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
         self.device.trigger_sync()
@@ -296,6 +312,7 @@ class SequenceModuleKernel(LoadableKernel):
                                       feed_dict=feed_dict,
                                       data_offset=data_offset,
                                       sync_required=sync_required,
+                                      set_one_operation=False,
                                       callback=cb, firing=i)
             tx_rx_kernels.append(kernel)
             data_offset += tx_rx.rx.n_samples
@@ -321,6 +338,7 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         self._kernel.load()
 
     def run_loaded(self):
+        self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
         return None
