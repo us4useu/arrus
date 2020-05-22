@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 
 import arrus.devices.probe as _probe
 import arrus.devices.us4oem as _us4oem
+import arrus.devices.device as _device
 import arrus.interface as _interface
 import arrus.utils as _utils
 import arrus.devices.ius4oem as _ius4oem
@@ -111,15 +112,32 @@ class Session(AbstractSession):
         kernel = arrus.kernels.get_kernel(operation, feed_dict)
         device = feed_dict.get("device", None)
         arrus.validation.assert_not_none(device, "device")
+        current_async_kernel = self._async_kernels.get(device.get_id(), None)
+        if current_async_kernel is not None:
+            device_id = device.get_id()
+            current_op = current_async_kernel.op
+            raise ValueError(f"An operation {current_op} is already running on "
+                             f"the device {device_id}. Stop the device first.")
         result = kernel.run()
         if kernel is arrus.kernels.AsyncKernel:
             self._async_kernels[device.get_id()] = kernel
         return result
 
+    def stop_device(self, device: _device.Device):
+        """
+        Stops operation execution on a specific device.
+        """
+        current_kernel = self._async_kernels.get(device.get_id(), None)
+        if current_kernel is not None:
+            op = current_kernel.op
+            current_kernel.stop()
+            _logger.info(f"Stopped operation {op} running on "
+                         f"device {device.get_id()}")
+
     def stop(self):
         for key, kernel in self._async_kernels:
-            _logger.debug(INFO, "Stopping device %s (kernel %s)" %
-                          (key, type(kernel)))
+            _logger.debug(INFO, "Stopping device %s (operation %s)" %
+                          (key, kernel.op))
             kernel.stop()
 
     def __enter__(self):
@@ -127,6 +145,7 @@ class Session(AbstractSession):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
+
 
 class InteractiveSession(AbstractSession):
     """
