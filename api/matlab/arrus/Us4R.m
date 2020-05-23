@@ -96,7 +96,7 @@ classdef Us4R < handle
                     error("ARRUS:IllegalArgument", ...
                         ['Unrecognized operation type ', class(sequenceOperation)])
             end
-            
+
             obj.setSeqParams(...
                 'sequenceType', sequenceType, ...
                 'txCenterElement', sequenceOperation.txCenterElement, ...
@@ -259,6 +259,45 @@ classdef Us4R < handle
                 eval(['obj.seq.' seqParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
             end
 
+            
+            %% Fixed parameters
+            obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
+            obj.seq.rxTime      = 160e-6;                                % [s] rx time (max 4000us)
+            obj.seq.rxDel       = 5e-6;
+            obj.seq.pauseMultip	= 1.5;
+            
+            %% rxNSamples & rxDepthRange must be coherent
+            
+            % rxDepthRange was given in sequence (rxNSamples is empty)
+            if isempty(obj.seq.nSamp)
+                % expand to two-element vector if necessary
+                if length(obj.seq.dRange) == 1
+                    obj.seq.dRange = [0, obj.seq.dRange];
+                end
+                
+                % convert from [m] to samples
+                sampRange  = round(...
+                    2*obj.seq.rxSampFreq*obj.seq.dRange/obj.seq.c ...
+                    ) + 1;
+                
+                % rxNSamples (nSamp) must be coherent with rxDepthRange
+                nSamp = sampRange(2) - sampRange(1) + 1;
+                
+                % nSamp must be dividible by 1024 (for now)
+                nSamp = 1024*ceil(nSamp/1024);
+                obj.seq.nSamp = nSamp;
+                
+                obj.seq.startSample = sampRange(1);
+            end
+            
+            % rxNSamples was given (rxDepthRange is empty)
+            if isempty(obj.seq.dRange)
+                obj.seq.startSample = 1;
+            end
+% 
+%             obj.seq            
+%             
+            
             %% Resulting parameters
             distance = (400:150:obj.seq.nSamp) / 65e6 * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
@@ -322,12 +361,6 @@ classdef Us4R < handle
                 error("ARRUS:OutOfMemory", ...
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
-
-            %% Fixed parameters
-            obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
-            obj.seq.rxTime      = 160e-6;                                % [s] rx time (max 4000us)
-            obj.seq.rxDel       = 5e-6;
-            obj.seq.pauseMultip	= 1.5;
 
             %% Program hardware
             obj	= obj.programHW;
@@ -465,14 +498,17 @@ classdef Us4R < handle
             nRep	= obj.seq.nRep;
             nFire	= nSubTx*nTx;
             nTrig	= nFire*nRep;
+            startSample = obj.seq.startSample;
             
-            % rxDepthRange in samples
-            sampRange  = round(...
-                obj.seq.dRange*obj.seq.rxSampFreq/obj.seq.c/2 ...
-                );
-            if length(sampRange) == 1
-                sampRange = [0, sampRange];
-            end
+%             % rxDepthRange in samples
+%             sampRange  = round(...
+%                 2*obj.seq.rxSampFreq*obj.seq.dRange/obj.seq.c ...
+%                 );
+%             if length(sampRange) == 1
+%                 sampRange = [0, sampRange];
+%             end
+%             disp(nSamp)
+%             disp(sampRange(2) - sampRange(1))
 
 
             if ~obj.sys.adapType
@@ -578,7 +614,7 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTrig=0:(nTrig-1)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, sampRange(1));
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample);
                 end
             end
             
