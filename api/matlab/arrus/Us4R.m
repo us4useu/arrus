@@ -236,26 +236,13 @@ classdef Us4R < handle
                                 'tgcStart',         'tgcStart'; ...
                                 'tgcSlope',         'tgcSlope'};
 
-            if mod(length(varargin),2) == 1
-                % TODO(piotrkarwat) Throw exception
-            end
-
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
             end
 
             nPar = length(varargin)/2;
             for iPar=1:nPar
-                idPar = find(strcmpi(varargin{iPar*2-1},seqParamMapping(:,1)));
-
-                if isempty(idPar)
-                    % TODO(piotrkarwat) Throw exception
-                end
-
-                if ~isnumeric(varargin{iPar*2})
-                    % TODO(piotrkarwat) Throw exception
-                end
-
+                idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
 
@@ -381,26 +368,13 @@ classdef Us4R < handle
                                 'xGrid',            'xGrid'; ...
                                 'zGrid',            'zGrid'};
 
-            if mod(length(varargin),2) == 1
-                % Throw exception
-            end
-
             for iPar=1:size(recParamMapping,1)
                 obj.rec.(recParamMapping{iPar,2}) = [];
             end
 
             nPar = length(varargin)/2;
             for iPar=1:nPar
-                idPar = find(strcmpi(varargin{iPar*2-1},recParamMapping(:,1)));
-
-                if isempty(idPar)
-                    % Throw exception
-                end
-
-                if ~isnumeric(varargin{iPar*2})
-                    % Throw exception
-                end
-
+                idPar = strcmpi(varargin{iPar*2-1},recParamMapping(:,1));
                 obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
 
