@@ -114,6 +114,9 @@ classdef Us4R < handle
                 'tgcStart', sequenceOperation.tgcStart, ...
                 'tgcSlope', sequenceOperation.tgcSlope);
             
+            % Program hardware
+            obj.programHW;
+            
             if nargin==2
                 obj.rec.enable = false;
                 return;
@@ -348,9 +351,6 @@ classdef Us4R < handle
                 error("ARRUS:OutOfMemory", ...
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
-
-            %% Program hardware
-            obj	= obj.programHW;
 
         end
 
