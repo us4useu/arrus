@@ -248,7 +248,6 @@ classdef Us4R < handle
                 idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
-
             
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
@@ -256,8 +255,7 @@ classdef Us4R < handle
             obj.seq.rxDel       = 5e-6;
             obj.seq.pauseMultip	= 1.5;
             
-            %% rxNSamples & rxDepthRange must be coherent
-            
+            %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
             if isempty(obj.seq.nSamp)
                 % expand to two-element vector if necessary
@@ -284,11 +282,8 @@ classdef Us4R < handle
             if isempty(obj.seq.dRange)
                 obj.seq.startSample = 1;
             end
-% 
-%             obj.seq            
-%             
             
-            %% Resulting parameters
+            %% TGC
             distance = (400:150:obj.seq.nSamp) / 65e6 * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(tgcCurve<14 | tgcCurve>54)
@@ -304,11 +299,13 @@ classdef Us4R < handle
             
             obj.seq.tgcCurve = (tgcCurve-14) / 40;                      % <0,1>
             
+            %% Tx aperture center
             if isempty(obj.seq.txApCent) && ~isempty(obj.seq.txCentElem)
                 obj.seq.txApCent        = obj.sys.xElem(floor(obj.seq.txCentElem)).*(1-mod(obj.seq.txCentElem,1)) + ...
                                           obj.sys.xElem( ceil(obj.seq.txCentElem)).*(  mod(obj.seq.txCentElem,1));
             end
 
+            %% Tx number
             switch obj.seq.type
                 case 'sta'
                     obj.seq.nTx         = length(obj.seq.txApCent);
@@ -318,8 +315,10 @@ classdef Us4R < handle
                     obj.seq.nTx         = length(obj.seq.txApCent);
             end
 
+            %% Tx apertures & delays
             obj = obj.calcTxParams;
 
+            %% Sub Tx number
             if strcmp(obj.seq.type,'lin')
                 obj.seq.nSubTx          = 1;
             else
@@ -333,6 +332,7 @@ classdef Us4R < handle
                 end
             end
             
+            %% Firings/triggers/memory
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
             memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
@@ -472,17 +472,6 @@ classdef Us4R < handle
             nFire	= nSubTx*nTx;
             nTrig	= nFire*nRep;
             startSample = obj.seq.startSample;
-            
-%             % rxDepthRange in samples
-%             sampRange  = round(...
-%                 2*obj.seq.rxSampFreq*obj.seq.dRange/obj.seq.c ...
-%                 );
-%             if length(sampRange) == 1
-%                 sampRange = [0, sampRange];
-%             end
-%             disp(nSamp)
-%             disp(sampRange(2) - sampRange(1))
-
 
             if ~obj.sys.adapType
                 % old adapter type (00001111)
