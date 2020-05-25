@@ -271,10 +271,7 @@ classdef Us4R < handle
                 obj.seq.nSamp = nSamp;
                 
                 obj.seq.startSample = sampRange(1);
-            end
-            
-            % rxNSamples was given (rxDepthRange is empty)
-            if isempty(obj.seq.dRange)
+            else
                 obj.seq.startSample = 1;
             end
             
