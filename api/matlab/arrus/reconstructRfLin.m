@@ -31,7 +31,7 @@ if ~all(acq.txAng == acq.txAng(1))
 end
 txAng       = acq.txAng(1);
 
-fstSampShift = -240;	% [samp] number of the sample that reflects the tx start
+fstSampShift = acq.startSample;	% [samp] number of the sample that reflects the tx start
 fstSampDel	= fstSampShift/acq.rxSampFreq;	% [s] rx delay with respect to start of tx
 
 %% Reconstruction
