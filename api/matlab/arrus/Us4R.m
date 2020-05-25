@@ -241,7 +241,7 @@ classdef Us4R < handle
             end
 
             for iPar=1:size(seqParamMapping,1)
-                eval(['obj.seq.' seqParamMapping{iPar,2} ' = [];']);
+                obj.seq.(seqParamMapping{iPar,2}) = [];
             end
 
             nPar = length(varargin)/2;
@@ -256,7 +256,7 @@ classdef Us4R < handle
                     % TODO(piotrkarwat) Throw exception
                 end
 
-                eval(['obj.seq.' seqParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
+                obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
 
             
@@ -386,8 +386,7 @@ classdef Us4R < handle
             end
 
             for iPar=1:size(recParamMapping,1)
-%                 eval(['obj.seq.' recParamMapping{iPar,2} ' = [];']);
-                eval(['obj.rec.' recParamMapping{iPar,2} ' = [];']);
+                obj.rec.(recParamMapping{iPar,2}) = [];
             end
 
             nPar = length(varargin)/2;
@@ -402,7 +401,7 @@ classdef Us4R < handle
                     % Throw exception
                 end
 
-                eval(['obj.rec.' recParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
+                obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
 
             %% Resulting parameters
@@ -416,13 +415,13 @@ classdef Us4R < handle
         function val = get(obj,paramName)
 
             if isfield(obj.sys,paramName)
-                val = eval(['obj.sys.' paramName]);
+                val = obj.sys.(paramName);
             else
                 if isfield(obj.seq,paramName)
-                    val = eval(['obj.seq.' paramName]);
+                    val = obj.seq.(paramName);
                 else
                     if isfield(obj.rec,paramName)
-                        val = eval(['obj.rec.' paramName]);
+                        val = obj.rec.(paramName);
                     else
                         error('Invalid parameter name');
                     end
