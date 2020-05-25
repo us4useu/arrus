@@ -27,12 +27,12 @@ classdef SimpleTxRxSequence < Operation
         txApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
-        speedOfSound (1,1) {mustBeProperNumber, mustBeScalar}
-        txFrequency (1,1) {mustBeProperNumber, mustBeScalar}
+        speedOfSound (1,1) {mustBeProperNumber}
+        txFrequency (1,1) {mustBeProperNumber}
         txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
         rxDepthRange (1,:) 
         rxNSamples (1,:)
-        nRepetitions (1,1) {mustBeInteger, mustBePositive, mustBeScalar} = 1
+        nRepetitions (1,1) {mustBeInteger, mustBePositive} = 1
         txPri (1,1) double {mustBePositive} = 100e-6
         tgcStart (1,1)
         tgcSlope (1,1)
@@ -54,13 +54,6 @@ classdef SimpleTxRxSequence < Operation
 end
 
 
-
-
-function mustBeScalar(a)
-    if ~isscalar(a)
-        error('Value must be a scalar.')
-    end
-end
 
 function mustBeProperNumber(a)
     mustBeNonnegative(a)
