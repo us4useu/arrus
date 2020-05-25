@@ -30,7 +30,7 @@ classdef SimpleTxRxSequence < Operation
         speedOfSound (1,1) {mustBeProperNumber}
         txFrequency (1,1) {mustBeProperNumber}
         txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
-        rxDepthRange (1,:) 
+        rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         nRepetitions (1,1) {mustBeInteger, mustBePositive} = 1
         txPri (1,1) double {mustBePositive} = 100e-6
@@ -85,7 +85,7 @@ function checkProperties(obj)
                     'should be bigger than the first element.'])
             end
         end
-        mustBeProperNumber(obj.rxDepthRange)
+        
     end
 
 
