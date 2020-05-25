@@ -31,7 +31,7 @@ classdef SimpleTxRxSequence < Operation
         txFrequency (1,1) {mustBeProperNumber}
         txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
         rxDepthRange (1,:) 
-        rxNSamples (1,:)
+        rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         nRepetitions (1,1) {mustBeInteger, mustBePositive} = 1
         txPri (1,1) double {mustBePositive} = 100e-6
         tgcStart (1,1)
@@ -76,13 +76,6 @@ function checkProperties(obj)
         error(['There can be only one of ',...
                'rxDepthRange and rxNSamples properties',...
                'in the sequence, not both.'])
-    end
-    
-    % checking rxNSamples property
-    if isempty(obj.rxDepthRange)
-        mustBeProperNumber(obj.rxNSamples)
-        mustBeInteger(obj.rxNSamples)
-        mustBePositive(obj.rxNSamples)
     end
     
     % checking rxDepthRange property
