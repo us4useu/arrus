@@ -78,12 +78,14 @@ function checkProperties(obj)
                 'should be a scalar or two-element vector'])
         end
         
-        if length(obj.rxDepthRange(:)) == 2
-            if obj.rxDepthRange(2) <= obj.rxDepthRange(1)
-                error("Arrus:params", ...
-                    ['The second element of rxDepthRange property ', ...
-                    'should be bigger than the first element.'])
-            end
+        if isscalar(obj.rxDepthRange)
+            obj.rxDepthRange = [0 obj.rxDepthRange];
+        end
+        
+        if obj.rxDepthRange(2) <= obj.rxDepthRange(1)
+            error("Arrus:params", ...
+                ['The second element of rxDepthRange property ', ...
+                'should be bigger than the first element.'])
         end
         
     end

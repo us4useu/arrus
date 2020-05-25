@@ -258,11 +258,6 @@ classdef Us4R < handle
             %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
             if isempty(obj.seq.nSamp)
-                % expand to two-element vector if necessary
-                if length(obj.seq.dRange) == 1
-                    obj.seq.dRange = [0, obj.seq.dRange];
-                end
-                
                 % convert from [m] to samples
                 sampRange  = round(...
                     2*obj.seq.rxSampFreq*obj.seq.dRange/obj.seq.c ...
