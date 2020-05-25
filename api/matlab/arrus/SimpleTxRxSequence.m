@@ -58,21 +58,14 @@ end
 function mustBeProperNumber(a)
     mustBeNonnegative(a)
     mustBeFinite(a)
-%     mustBeNonempty(a)
     mustBeReal(a)
-
 end
 
 
 function checkProperties(obj)
 
-%     disp([num2str(isprop(obj, 'rxDepthRange')), num2str(isempty(obj.rxDepthRange))])
-%     disp([num2str(isprop(obj, 'rxNSamples')), num2str(isempty(obj.rxNSamples))])
-
     % checking if both properties are given (which is bad)
     if ~xor(isempty(obj.rxDepthRange), isempty(obj.rxNSamples))
-        disp(num2str(obj.rxDepthRange))
-        disp(num2str(obj.rxNSamples))
         error(['There can be only one of ',...
                'rxDepthRange and rxNSamples properties',...
                'in the sequence, not both.'])
