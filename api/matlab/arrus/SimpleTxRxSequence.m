@@ -64,23 +64,6 @@ function mustBeProperNumber(a)
 end
 
 
-
-function mustBeProperDepthRange(a)
-    
-    if length(a(:))>2
-        error(['Value assigned to rxDepthRange property ', ... 
-               'should be a scalar or two-element vector'])
-    end
-
-    if length(a(:)) == 2
-        if a(2) <= a(1)
-            error(['The second element of rxDepthRange property ', ...
-                   'should be bigger than the first element.'])
-        end
-    end
-    mustBeProperNumber(a)
-end
-
 function checkProperties(obj)
 
 %     disp([num2str(isprop(obj, 'rxDepthRange')), num2str(isempty(obj.rxDepthRange))])
@@ -104,7 +87,18 @@ function checkProperties(obj)
     
     % checking rxDepthRange property
     if isempty(obj.rxNSamples)
-        mustBeProperDepthRange(obj.rxDepthRange)
+        if length(obj.rxDepthRange(:))>2
+            error(['Value assigned to rxDepthRange property ', ...
+                'should be a scalar or two-element vector'])
+        end
+        
+        if length(obj.rxDepthRange(:)) == 2
+            if obj.rxDepthRange(2) <= obj.rxDepthRange(1)
+                error(['The second element of rxDepthRange property ', ...
+                    'should be bigger than the first element.'])
+            end
+        end
+        mustBeProperNumber(obj.rxDepthRange)
     end
 
 
