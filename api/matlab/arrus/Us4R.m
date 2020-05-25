@@ -284,7 +284,7 @@ classdef Us4R < handle
                 nSamp = sampRange(2) - sampRange(1) + 1;
                 
                 % nSamp must be dividible by 1024 (for now)
-                nSamp = 1024*ceil(nSamp/1024);
+                nSamp = 64*ceil(nSamp/64);
                 obj.seq.nSamp = nSamp;
                 
                 obj.seq.startSample = sampRange(1);
