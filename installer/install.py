@@ -6,6 +6,9 @@ import os
 import argparse
 import shutil
 import zipfile
+import winreg
+import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -100,10 +103,23 @@ class WelcomeStage(Stage):
         return True
 
     def process(self, context: InstallationContext) -> bool:
-        _logger.log(INFO, f"Starting "
-                    f"{colorama.Fore.YELLOW}ARRUS "
-                    f"{PROJECT_VERSION}{colorama.Style.RESET_ALL} "
-                    f"installer...")
+        _logger.log(INFO, f"Starting ARRUS {PROJECT_VERSION} installer...")
+        # TODO(pjarosik) check if current user is running in administrator mode
+        return True
+
+class CheckSystemStatusStage(Stage):
+
+    def read_context_from_params(self, args, ctx: InstallationContext) -> bool:
+        return True
+
+    def ask_user_for_context(self, ctx: InstallationContext) -> bool:
+        return True
+
+    def process(self, context: InstallationContext) -> bool:
+        _logger.log(DEBUG, "Checking the status of available us4oems")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            pass
+        # TODO(pjarosik) check if current user is running in administrator mode
         return True
 
 
@@ -160,38 +176,30 @@ class UnzipFilesStage(Stage):
         pass
 
     def ask_user_for_context(self, ctx: InstallationContext):
+        path = None
         if ctx.existing_install_dir is not None:
-            msg = f"Found ARRUS in path '{ctx.existing_install_dir}'. " \
-                  f"Would you like to replace it with newer version?\n" \
-                  f"{colorama.Fore.LIGHTRED_EX}" \
-                  f"WARNING: " \
-                  f"The contents of the destination directory will be deleted!"\
-                  f"{colorama.Style.RESET_ALL}"
-            is_override = self.ask_ynq(msg, ctx)
-            if is_override is None and ctx.abort:
+            msg = f"Found ARRUS in path '{ctx.existing_install_dir}'.\n" \
+                  f"Would you like to replace it with newer version?"
+            answer = self.ask_ynq(msg, ctx)
+            if answer is None or ctx.abort:
                 return False
-            if is_override:
-                ctx.install_dir = ctx.existing_install_dir
-                ctx.override_existing = True
-                return True
-        # ARRUS wasn't already installed or the user want to install in some
-        # other place.
-        path = self.ask_for_path(
-            "Please provide destination path",
-            default=UnzipFilesStage.UNZIP_DEFAULT_DIR,
-            ctx=ctx
-        )
+            if answer:
+                path = ctx.existing_install_dir
+        if path is None:
+            path = self.ask_for_path(
+                "Please provide destination path",
+                default=UnzipFilesStage.UNZIP_DEFAULT_DIR,
+                ctx=ctx
+            )
         if os.path.exists(path):
             if os.path.isfile(path):
-                msg = f"WARNING: The FILE '{path}' will be deleted! " \
-                      f"Are you sure you want to continue?"
+                msg = f"WARNING: The FILE '{path}' will be deleted! "
             elif os.path.isdir(path):
-                msg = f"WARNING: The contents of '{path}' will be deleted! " \
-                      f"Are you sure you want to continue?"
+                msg = f"WARNING: The contents of '{path}' will be deleted! "
             else:
                 raise ValueError(f"Unrecognized file system object: {path}")
-            msg = f"{colorama.Fore.LIGHTRED_EX}{msg}{colorama.Style.RESET_ALL}"
-            result = self.ask_yn(msg, ctx)
+            print(f"{colorama.Fore.LIGHTRED_EX}{msg}{colorama.Style.RESET_ALL}")
+            result = self.ask_yn("Are you sure you want to continue?", ctx)
             if not result:
                 ctx.abort = True
                 return False
@@ -224,8 +232,58 @@ class UpdateEnvVariablesStage(Stage):
     def ask_user_for_context(self, ctx: InstallationContext):
         pass
 
-    def process(self, context: InstallationContext):
+    def process(self, ctx: InstallationContext):
+        reg = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+        key = winreg.OpenKey(reg,
+            r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+        current_system_path, d_type = winreg.QueryValueEx(key, "Path")
+
+        install_path = os.path.join(
+            ctx.install_dir,
+            _EXPECTED_LIB_DIR
+        )
+
+        system_paths = current_system_path.split(os.pathsep)
+        UpdateEnvVariablesStage.update_paths_list(system_paths, install_path)
+        subprocess.check_output(["setx", "Path", system_paths, "/M"])
         return True
+
+    @staticmethod
+    def update_paths_list(paths_list, install_path):
+        lib_path = Path(os.path.join(install_path, _EXPECTED_LIB_DIR))
+        us4oem_paths = (os.path.join(p, _EXPECTED_LIBS[0]) for p in paths_list)
+        us4oem_paths = ((i, Path(p)) for i, p in enumerate(us4oem_paths))
+        us4oem_paths = ((i, p) for i, p in us4oem_paths if p.is_file())
+        current_us4oem_path = next(us4oem_paths, None)
+        if current_us4oem_path is not None:
+            index, path = current_us4oem_path
+            if lib_path.resolve() == path.parent.resolve():
+                return
+        else:
+            index = len(paths_list)
+        paths_list.insert(index, lib_path.resolve())
+
+
+class UpdateFirmwareStage(Stage):
+
+    def read_context_from_params(self, args, ctx: InstallationContext) -> bool:
+        raise NotImplementedError
+        pass
+
+    def ask_user_for_context(self, ctx: InstallationContext) -> bool:
+        pass
+
+    def process(self, context: InstallationContext) -> bool:
+        install_dir = context.install_dir
+        # Run an application, which checks current version of the modules
+
+        # Read it using pyaml
+        # If one of the modules have different firmware version
+        # Run that firmware update is necessary
+        # Download firmware from the github
+        # Run us4oemFirmwareUpdate for all modules with the inappropriate version
+        #
+        pass
 
 
 def execute(stages, args, ctx: InstallationContext):
@@ -241,9 +299,9 @@ def execute(stages, args, ctx: InstallationContext):
         if not is_continue and ctx.abort:
             _logger.log(INFO, "Installation aborted.")
             return
-    _logger.log(INFO,
-                f"{colorama.Fore.GREEN}Installation finished successfully!"
-                f"{colorama.Style.RESET_ALL}")
+    _logger.log(DEBUG, "Installation finished successfully!")
+    print(f"{colorama.Fore.GREEN}Installation finished successfully!"
+          f"{colorama.Style.RESET_ALL}")
 
 
 def main():
@@ -269,7 +327,10 @@ def main():
         _logger.log(ERROR, "An exception occurred.")
         _logger.exception(e)
         _logger.log(INFO, "Installation aborted.")
+        input("Press any key to exit.")
         exit(1)
+
+    input("Press any key to exit.")
 
 
 if __name__ == "__main__":
