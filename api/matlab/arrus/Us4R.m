@@ -266,7 +266,7 @@ classdef Us4R < handle
                 % rxNSamples (nSamp) must be coherent with rxDepthRange
                 nSamp = sampRange(2) - sampRange(1) + 1;
                 
-                % nSamp must be dividible by 1024 (for now)
+                % nSamp must be dividible by 64 (for now)
                 nSamp = 64*ceil(nSamp/64);
                 obj.seq.nSamp = nSamp;
                 
