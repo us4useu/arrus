@@ -9,7 +9,10 @@ import zipfile
 import winreg
 import subprocess
 import tempfile
+import yaml
+import ctypes
 from pathlib import Path
+from collections.abc import Iterable
 
 
 PROJECT_VERSION = "${PROJECT_VERSION}"
@@ -43,6 +46,7 @@ class InstallationContext:
     install_dir: str = None
     abort: bool = False
     override_existing: bool = False
+    system_status: dict = None
 
 
 class Stage(abc.ABC):
@@ -104,10 +108,18 @@ class WelcomeStage(Stage):
 
     def process(self, context: InstallationContext) -> bool:
         _logger.log(INFO, f"Starting ARRUS {PROJECT_VERSION} installer...")
-        # TODO(pjarosik) check if current user is running in administrator mode
-        return True
+        # Check if current user is administrator.
+        if ctypes.windll.shell32.IsUserAnAdmin() == 0:
+            _logger.log(ERROR, f"Run this program as an administrator.")
+            return False
+        # Confirm to install software
+        ans = self.ask_yn(f"Software installation and firmware update may take "
+                    f"several hours. Are you sure you want to continue?",
+                    ctx=context)
+        return ans
 
-class CheckSystemStatusStage(Stage):
+
+class CheckDeviceStatusStage(Stage):
 
     def read_context_from_params(self, args, ctx: InstallationContext) -> bool:
         return True
@@ -116,10 +128,23 @@ class CheckSystemStatusStage(Stage):
         return True
 
     def process(self, context: InstallationContext) -> bool:
-        _logger.log(DEBUG, "Checking the status of available us4oems")
+        _logger.log(DEBUG, "Checking the status of available Us4OEMs")
+        status = None
         with tempfile.TemporaryDirectory() as tmp_dir:
-            pass
-        # TODO(pjarosik) check if current user is running in administrator mode
+            # TODO run us4oemStatus, check result value, read output file
+            # write an error when there is no content (no module has been detected)
+            # (log debug std out of the us4oemStatus)
+            with open("test.yaml", "r") as file:
+                status = yaml.safe_load(file)
+        modules_key = 'modules'
+        if status is None \
+            or modules_key not in status \
+            or len(status[modules_key]) == 0:
+
+            _logger.log(ERROR, "No available Us4OEM module has been detected. "
+                        "Make sure that the device is properly connected.")
+            return False
+        context.system_status = status
         return True
 
 
@@ -275,7 +300,10 @@ class UpdateFirmwareStage(Stage):
 
     def process(self, context: InstallationContext) -> bool:
         install_dir = context.install_dir
-        # Run an application, which checks current version of the modules
+        required_firmware =
+        for module in context.system_status['modules']:
+            module_id = module['id']
+            firmware_id = "%s%s" module[]
 
         # Read it using pyaml
         # If one of the modules have different firmware version
@@ -316,8 +344,11 @@ def main():
     colorama.init()
     stages = [
         WelcomeStage(),
+        CheckDeviceStatusStage(),
         FindExistingInstallationStage(),
-        UnzipFilesStage()
+        UnzipFilesStage(),
+        UpdateEnvVariablesStage(),
+        UpdateFirmwareStage()
     ]
 
     ctx = InstallationContext()
