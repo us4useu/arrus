@@ -1,0 +1,7 @@
+modules:
+  - id: 0
+    firmwareVersion: 0xfafafafa
+    txFirmwareVersion: 0x4a4a4a4a
+  - id: 4
+    firmwareVersion: 0x123456
+    txFirmwareVersion: 0x4a4a4a4a
