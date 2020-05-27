@@ -11,7 +11,9 @@ classdef SimpleTxRxSequence < Operation
     % :param rxDepthRange: defines the end (if scalar) or
     %                      the begining and the end (if two-element vector)
     %                      of the acquisition expressed by depth range [m]
-    % :param rxNSamples: number of recorded samples per channel [sample]
+    % :param rxNSamples: number of samples (if scalar) or 
+    %                      starting and ending sample numbers (if 2-element vector) 
+    %                      of recorded signal [sample]
     % :param nRepetitions: number of repetitions of the sequence (positive integer)
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
@@ -50,11 +52,11 @@ classdef SimpleTxRxSequence < Operation
             
             mustBeXor(obj.rxDepthRange,obj.rxNSamples);
             mustBeLimit(obj.rxDepthRange,0);
+            mustBeLimit(obj.rxNSamples,1);
             
         end
     end
 end
-
 
 
 function mustBeProperNumber(a)
