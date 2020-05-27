@@ -107,7 +107,9 @@ class WelcomeStage(Stage):
         return True
 
     def process(self, context: InstallationContext) -> bool:
-        _logger.log(INFO, f"Starting ARRUS {PROJECT_VERSION} installer...")
+        # Read the versions
+
+        print(f"Starting ARRUS installer...")
         # Check if current user is administrator.
         if ctypes.windll.shell32.IsUserAnAdmin() == 0:
             _logger.log(ERROR, f"Run this program as an administrator.")
@@ -300,17 +302,16 @@ class UpdateFirmwareStage(Stage):
 
     def process(self, context: InstallationContext) -> bool:
         install_dir = context.install_dir
-        required_firmware =
+        required_firmware = 0 # read this from file
         for module in context.system_status['modules']:
             module_id = module['id']
-            firmware_id = "%s%s" module[]
+            # firmware_id = "%s%s" module[]
 
         # Read it using pyaml
         # If one of the modules have different firmware version
         # Run that firmware update is necessary
-        # Download firmware from the github
+        # Download firmware from the github if necessary
         # Run us4oemFirmwareUpdate for all modules with the inappropriate version
-        #
         pass
 
 
@@ -324,7 +325,7 @@ def execute(stages, args, ctx: InstallationContext):
                 _logger.log(INFO, "Installation aborted.")
                 return
         is_continue = stage.process(ctx)
-        if not is_continue and ctx.abort:
+        if not is_continue or ctx.abort:
             _logger.log(INFO, "Installation aborted.")
             return
     _logger.log(DEBUG, "Installation finished successfully!")

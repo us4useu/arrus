@@ -71,19 +71,10 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
         raise ValueError(
             "Releases from branch %s are not allowed to be published!")
 
-    install_dir_parent, _ = os.path.split(install_dir)
     package_name = "arrus-" + release_tag
-    dst_path = os.path.join(install_dir_parent, package_name)
+    archive_path = os.path.join(install_dir, f"arrus-{version}.zip")
 
-    try:
-        os.remove(dst_path + ".zip")
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise e
-
-    shutil.make_archive(dst_path, "zip", install_dir)
     package_name += ".zip"
-    dst_path += ".zip"
 
     response = create_release(repository_name, release_tag, token, build_id)
 
@@ -118,7 +109,7 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
         asset_id = current_assets[0]["id"]
         r = delete_asset(repository_name, asset_id, token)
 
-    with open(dst_path, "rb") as f:
+    with open(archive_path, "rb") as f:
         data = f.read()
         r = upload_asset(repository_name, release_id, package_name, token, data)
         r.raise_for_status()
