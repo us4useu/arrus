@@ -111,7 +111,8 @@ classdef Us4R < handle
                 'nRepetitions', sequenceOperation.nRepetitions, ...
                 'txPri', sequenceOperation.txPri, ...
                 'tgcStart', sequenceOperation.tgcStart, ...
-                'tgcSlope', sequenceOperation.tgcSlope);
+                'tgcSlope', sequenceOperation.tgcSlope, ...
+                'fsDivider', sequenceOperation.fsDivider);
             
             if nargin==2
                 obj.rec.enable = false;
@@ -232,7 +233,8 @@ classdef Us4R < handle
                                 'nRepetitions',     'nRep'; ...
                                 'txPri',            'txPri'; ...
                                 'tgcStart',         'tgcStart'; ...
-                                'tgcSlope',         'tgcSlope'};
+                                'tgcSlope',         'tgcSlope'; ...
+                                'fsDivider'         'fsDivider'};
 
             if mod(length(varargin),2) == 1
                 % TODO(piotrkarwat) Throw exception
@@ -256,9 +258,17 @@ classdef Us4R < handle
 
                 eval(['obj.seq.' seqParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
             end
+            
+            
+            %% Fixed parameters
+            disp(obj.seq.fsDivider)
+            obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
+            obj.seq.rxTime      = 160e-6; % [s] rx time (max 4000us)
+            obj.seq.rxDel       = 5e-6;
+            obj.seq.pauseMultip	= 1.5;            
 
             %% Resulting parameters
-            distance = (400:150:obj.seq.nSamp) / 65e6 * obj.seq.c;         % [m]
+            distance = (400:150:obj.seq.nSamp) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(tgcCurve<14 | tgcCurve>54)
                 warning('TGC values are limited to 14-54dB range');
@@ -321,11 +331,7 @@ classdef Us4R < handle
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
 
-            %% Fixed parameters
-            obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
-            obj.seq.rxTime      = 160e-6;                                % [s] rx time (max 4000us)
-            obj.seq.rxDel       = 5e-6;
-            obj.seq.pauseMultip	= 1.5;
+
 
             %% Program hardware
             obj	= obj.programHW;
