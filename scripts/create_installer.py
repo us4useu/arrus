@@ -76,7 +76,7 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Zip the source file and place it in the installer directory
-        install_py_path = os.path.join(src_dir, "installer/install.py")
+        install_py_path = os.path.join(src_dir, "build/installer/install.py")
         dist_path = tmp_dir
         subprocess.call(["pyinstaller", install_py_path, "--distpath",
                          dist_path])
