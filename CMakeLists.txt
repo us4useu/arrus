@@ -53,6 +53,7 @@ endif()
 if(ARRUS_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
+add_subdirectory(installer)
 
 ################################################################################
 # General docs
