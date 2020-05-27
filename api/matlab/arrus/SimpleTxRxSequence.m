@@ -48,7 +48,9 @@ classdef SimpleTxRxSequence < Operation
                 obj.(varargin{i}) = varargin{i+1};
             end
             
-            checkProperties(obj)
+            mustBeXor(obj.rxDepthRange,obj.rxNSamples);
+            mustBeLimit(obj.rxDepthRange,0);
+            
         end
     end
 end
@@ -61,34 +63,54 @@ function mustBeProperNumber(a)
     mustBeReal(a)
 end
 
-
-function checkProperties(obj)
-
-    % checking if both properties are given (which is bad)
-    if ~xor(isempty(obj.rxDepthRange), isempty(obj.rxNSamples))
-        error("Arrus:params", ...
-              "One and only one of ""rxDepthRange"" and ""rxNSamples"" must be defined.")
+function mustBeXor(varargin)
+    
+    % input argument names
+    argNames = strings(1,nargin);
+    for iArg=1:nargin
+        argNames(iArg) = inputname(iArg);
+        if contains(argNames(iArg),'.')
+            argNames(iArg) = extractAfter(argNames(iArg),'.');
+        end
     end
     
-    % checking rxDepthRange property
-    if isempty(obj.rxNSamples)
-        if length(obj.rxDepthRange(:))>2
+    % error if more/less than one argument is non-empty
+    argIsNonEmpty = ~cellfun(@isempty,varargin);
+    if sum(argIsNonEmpty) ~= 1
+        error("Arrus:params", ...
+            ['One and only one of: ' join(argNames,', ') ' must be defined.'])
+    end
+end
+
+function mustBeLimit(arg,defLo)
+    
+    argName = inputname(1);
+    if contains(argName,'.')
+        argName = extractAfter(argName,'.');
+    end
+    
+    if isempty(arg)
+        % do nothing, ignore undefined argument
+    else
+        % check the size
+        if length(arg(:))>2
             error("Arrus:params", ...
-                ['Value assigned to rxDepthRange property ', ...
+                ['Value assigned to ' argName ' property ', ...
                 'should be a scalar or two-element vector'])
         end
         
-        if isscalar(obj.rxDepthRange)
-            obj.rxDepthRange = [0 obj.rxDepthRange];
+        % expand scalar to 2-element vector
+        if isscalar(arg)
+            arg = [defLo arg];
         end
         
-        if obj.rxDepthRange(2) <= obj.rxDepthRange(1)
+        % check the ascending order
+        if arg(2) <= arg(1)
             error("Arrus:params", ...
-                ['The second element of rxDepthRange property ', ...
+                ['The second element of ' argName ' property ', ...
                 'should be bigger than the first element.'])
         end
-        
     end
 
-
 end
+
