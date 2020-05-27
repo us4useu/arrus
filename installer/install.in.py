@@ -12,10 +12,10 @@ import tempfile
 import yaml
 import ctypes
 from pathlib import Path
-from collections.abc import Iterable
-
 
 PROJECT_VERSION = "${PROJECT_VERSION}"
+FIRMWARE_VERSION = "${Us4OEM_FIRMWARE_VERSION}"
+TX_FIRMWARE_VERSION = "${Us4OEM_TX_FIRMWARE_VERSION}"
 
 # Logging
 _logger = logging.getLogger("arrus installer")
@@ -36,17 +36,35 @@ log_file_handler.setFormatter(file_formatter)
 _logger.addHandler(console_handler)
 _logger.addHandler(log_file_handler)
 
+# Constants:
+
 _EXPECTED_LIB_DIR = "lib64"
 _EXPECTED_LIBS = ["Us4OEM.dll"]
 _PKG_ZIP = "arrus.zip"
+_FIRMWARE_ZIP = f"us4oem-firmware-{FIRMWARE_VERSION}{TX_FIRMWARE_VERSION}.zip"
+_FIRMWARE_RPD_FILE = f"us4OEM_rev_{FIRMWARE_VERSION}.rpd"
+# TODO(pjarosik) make sure, that sea and sed files will always be in this format
+_FIRMWARE_SEA_FILE = f"us4OEM_tx_rev_{FIRMWARE_VERSION[0].upper()}.sea"
+_FIRMWARE_SED_FILE = f"us4OEM_tx_rev_{FIRMWARE_VERSION[0].upper()}.sed"
+
+_US4OEM_STATUS_BIN = "bin/us4OEMStatus"
+_US4OEM_FIRMWARE_UPDATE_BIN = "bin/us4OEMFirmwareUpdate"
+
+_STATUS_US4OEM_KEY = "us4oems"
 
 
 class InstallationContext:
+    # tempfile.TemporaryDirectory()
+    workspace_dir: object = None
     existing_install_dir: str = None
     install_dir: str = None
     abort: bool = False
     override_existing: bool = False
     system_status: dict = None
+
+    def cleanup(self):
+        if self.workspace_dir is not None:
+            self.workspace_dir.cleanup()
 
 
 class Stage(abc.ABC):
@@ -97,8 +115,25 @@ class Stage(abc.ABC):
             else:
                 return answer
 
+    def run_subprocess(self, args):
+        try:
+            subprocess.check_output(args)
+        except subprocess.CalledProcessError as e:
+            _logger.log(ERROR, f"Error calling {args}. "
+                               f"Return code: {e.returncode}, "
+                               f"output: {e.output}")
+            raise e
+
 
 class WelcomeStage(Stage):
+    """
+    Welcome stage:
+    - show version of the installed package
+    - check if user runs program as administrator
+    - ask to confirm installation
+    - creates temporary directory for any files that will be used in the system
+      ("workspace")
+    """
 
     def read_context_from_params(self, args, ctx: InstallationContext) -> bool:
         return True
@@ -107,9 +142,7 @@ class WelcomeStage(Stage):
         return True
 
     def process(self, context: InstallationContext) -> bool:
-        # Read the versions
-
-        print(f"Starting ARRUS installer...")
+        print(f"Starting ARRUS {PROJECT_VERSION} installer...")
         # Check if current user is administrator.
         if ctypes.windll.shell32.IsUserAnAdmin() == 0:
             _logger.log(ERROR, f"Run this program as an administrator.")
@@ -118,36 +151,8 @@ class WelcomeStage(Stage):
         ans = self.ask_yn(f"Software installation and firmware update may take "
                     f"several hours. Are you sure you want to continue?",
                     ctx=context)
+        context.workspace_dir = tempfile.TemporaryDirectory()
         return ans
-
-
-class CheckDeviceStatusStage(Stage):
-
-    def read_context_from_params(self, args, ctx: InstallationContext) -> bool:
-        return True
-
-    def ask_user_for_context(self, ctx: InstallationContext) -> bool:
-        return True
-
-    def process(self, context: InstallationContext) -> bool:
-        _logger.log(DEBUG, "Checking the status of available Us4OEMs")
-        status = None
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            # TODO run us4oemStatus, check result value, read output file
-            # write an error when there is no content (no module has been detected)
-            # (log debug std out of the us4oemStatus)
-            with open("test.yaml", "r") as file:
-                status = yaml.safe_load(file)
-        modules_key = 'modules'
-        if status is None \
-            or modules_key not in status \
-            or len(status[modules_key]) == 0:
-
-            _logger.log(ERROR, "No available Us4OEM module has been detected. "
-                        "Make sure that the device is properly connected.")
-            return False
-        context.system_status = status
-        return True
 
 
 class FindExistingInstallationStage(Stage):
@@ -292,27 +297,96 @@ class UpdateEnvVariablesStage(Stage):
 
 
 class UpdateFirmwareStage(Stage):
+    """
+    Checks the status of connected devices.
+    - get all modules available in the system
+    - get theirs firmware version (without Tx firmware version - tx firmware
+      may not be initializable currently!)
+    - if there is no device - exit with error message
+
+    Update main firmware of each module if necessary.
+    """
 
     def read_context_from_params(self, args, ctx: InstallationContext) -> bool:
         raise NotImplementedError
-        pass
 
     def ask_user_for_context(self, ctx: InstallationContext) -> bool:
-        pass
+        return True
 
     def process(self, context: InstallationContext) -> bool:
-        install_dir = context.install_dir
-        required_firmware = 0 # read this from file
-        for module in context.system_status['modules']:
-            module_id = module['id']
-            # firmware_id = "%s%s" module[]
+        # Get status of the available modules.
+        _logger.log(INFO, "Checking the status of available Us4OEMs")
+        modules_key = _STATUS_US4OEM_KEY
+        status = self.get_status_yaml(context)
+        if status is None \
+                or modules_key not in status \
+                or len(status[modules_key]) == 0:
+            _logger.log(ERROR, "No available Us4OEM module has been detected. "
+                               "Make sure that the device is properly connected.")
+            context.abort = True
+            return False
+        context.system_status = status
 
-        # Read it using pyaml
-        # If one of the modules have different firmware version
-        # Run that firmware update is necessary
-        # Download firmware from the github if necessary
-        # Run us4oemFirmwareUpdate for all modules with the inappropriate version
+        # Run main firmware update if necessary.
+        for module in context.system_status["us4oems"]:
+            module_tx_firmware_version = module["firmwareVersion"].strip()
+            if module_tx_firmware_version != FIRMWARE_VERSION.strip():
+                module_index = module['index']
+                self.run_us4oem_firmware_update(context, module_index)
+
+        context.system_status = self.get_status_yaml(context, tx_firmware=True)
+
+        for module in context.system_status["us4oems"]:
+            module_tx_firmware_version = module["txFirmwareVersion"].strip()
+            if module_tx_firmware_version != TX_FIRMWARE_VERSION.strip():
+                module_index = module['index']
+                self.run_us4oem_tx_firmware_update(context, module_index)
+
+    def get_status_yaml(self, context: InstallationContext, tx_firmware=False):
+        # Run us4oemStatus
+        binary = os.path.join(context.install_dir, _US4OEM_STATUS_BIN)
+        output_file = os.path.join(context.workspace_dir.name, "status.yml")
+
+        to_run = [binary, "--output-file", output_file]
+        if tx_firmware:
+            to_run += ["--tx-firmware-version"]
+        self.run_subprocess(to_run)
+        # Read the yaml file
+        with open(output_file, "r") as f:
+            return yaml.safe_load(f)
+
+    def run_us4oem_firmware_update(self, context, module_index):
+        update_bin = os.path.join(context.install_dir,
+                                            _US4OEM_FIRMWARE_UPDATE_BIN)
+        firmware_dir = self.unzip_firmware_if_necessary(context)
+
+        rpd_file_path = os.path.join(firmware_dir.name, _FIRMWARE_RPD_FILE)
+
+        self.run_subprocess([update_bin,
+                             "--rpd-file", rpd_file_path,
+                             "--us4OEM-indices", module_index])
         pass
+
+    def run_us4oem_tx_firmware_update(self, context, module_index):
+        update_bin = os.path.join(context.install_dir,
+                                            _US4OEM_FIRMWARE_UPDATE_BIN)
+        firmware_dir = self.unzip_firmware_if_necessary(context)
+
+        sea_file_path = os.path.join(firmware_dir.name, _FIRMWARE_SEA_FILE)
+        sed_file_path = os.path.join(firmware_dir.name, _FIRMWARE_SED_FILE)
+
+        self.run_subprocess([update_bin,
+                             "--sea-file", sea_file_path,
+                             "--sed-file", sed_file_path,
+                             "--us4OEM-indices", module_index])
+
+    def unzip_firmware_if_necessary(self, context: InstallationContext):
+        firmware_dir = Path(os.path.join(context.workspace_dir.name, "firmware"))
+        if not firmware_dir.is_dir():
+            firmware_dir.mkdir(parents=True)
+            with zipfile.ZipFile("", "r") as zfile:
+                zfile.extractall(firmware_dir.name)
+        return firmware_dir
 
 
 def execute(stages, args, ctx: InstallationContext):
@@ -343,26 +417,27 @@ def main():
     args = parser.parse_args()
 
     colorama.init()
+
     stages = [
         WelcomeStage(),
-        CheckDeviceStatusStage(),
         FindExistingInstallationStage(),
         UnzipFilesStage(),
         UpdateEnvVariablesStage(),
         UpdateFirmwareStage()
     ]
-
     ctx = InstallationContext()
+    return_code = 0
     try:
         execute(stages, args, ctx)
     except Exception as e:
         _logger.log(ERROR, "An exception occurred.")
         _logger.exception(e)
         _logger.log(INFO, "Installation aborted.")
-        input("Press any key to exit.")
-        exit(1)
+        return_code = 1
 
     input("Press any key to exit.")
+    ctx.cleanup()
+    exit(return_code)
 
 
 if __name__ == "__main__":
