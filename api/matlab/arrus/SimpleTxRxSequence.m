@@ -51,8 +51,8 @@ classdef SimpleTxRxSequence < Operation
             end
             
             mustBeXor(obj.rxDepthRange,obj.rxNSamples);
-            mustBeLimit(obj.rxDepthRange,0);
-            mustBeLimit(obj.rxNSamples,1);
+            obj.rxDepthRange = mustBeLimit(obj.rxDepthRange,0);
+            obj.rxNSamples = mustBeLimit(obj.rxNSamples,1);
             
         end
     end
@@ -84,33 +84,34 @@ function mustBeXor(varargin)
     end
 end
 
-function mustBeLimit(arg,defLo)
+function argOut = mustBeLimit(argIn,defLo)
     
     argName = inputname(1);
     if contains(argName,'.')
         argName = extractAfter(argName,'.');
     end
     
-    if isempty(arg)
-        % do nothing, ignore undefined argument
+    if isempty(argIn)
+        argOut = argIn;
     else
         % check the size
-        if length(arg(:))>2
+        if length(argIn(:))>2
             error("Arrus:params", ...
                 ['Value assigned to ' argName ' property ', ...
                 'should be a scalar or two-element vector'])
         end
         
         % expand scalar to 2-element vector
-        if isscalar(arg)
-            arg = [defLo arg];
+        if isscalar(argIn)
+            argOut = [defLo argIn];
+        else
+            argOut = argIn;
         end
         
         % check the ascending order
-        if arg(2) <= arg(1)
+        if argOut(2) <= argOut(1)
             error("Arrus:params", ...
-                ['The second element of ' argName ' property ', ...
-                'should be bigger than the first element.'])
+                ['The ' argName ' property should have ascending order']);
         end
     end
 
