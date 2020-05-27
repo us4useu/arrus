@@ -272,7 +272,8 @@ classdef Us4R < handle
                 
                 obj.seq.startSample = sampRange(1);
             else
-                obj.seq.startSample = 1;
+                obj.seq.startSample = obj.seq.nSamp(1);
+                obj.seq.nSamp = diff(obj.seq.nSamp) + 1;
             end
             
             %% TGC
@@ -337,6 +338,11 @@ classdef Us4R < handle
             if obj.seq.nTrig > 16384
                 error("ARRUS:IllegalArgument", ...
                         ['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384.']);
+            end
+            
+            if mod(obj.seq.nSamp,64) ~= 0
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of samples (' num2str(obj.seq.nSamp) ') must be divisible by 64.']);
             end
             
             if memoryRequired > 2^32  % 4GB
