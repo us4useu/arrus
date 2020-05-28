@@ -7,6 +7,8 @@ set(DOC_FILES
     "index.rst"
     "content/introduction.rst"
     "content/installation/index.rst"
+    "content/installation/api.python.rst"
+    "content/installation/api.matlab.rst"
     "content/installation/img/dev_manager.png"
     "content/installation/img/paths.png"
     "content/installation/img/result.png"

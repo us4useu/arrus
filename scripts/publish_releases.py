@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+import re
 import shutil
 import platform
 import requests
@@ -11,6 +12,8 @@ COLOR_END = '\033[0m'
 
 SRC_ENVIRON = "ARRUS_SRC_PATH"
 INSTALL_ENVIRON = "ARRUS_INSTALL_PATH"
+
+VERSION_TAG_PATTERN = re.compile("^v[0-9\.]+$")
 
 
 def assert_no_error(return_code):
@@ -62,9 +65,9 @@ def main():
 
 def publish(install_dir, token, src_branch_name, repository_name, build_id):
     version = get_version(install_dir)
-    if src_branch_name == "master":
+    if src_branch_name == "master" \
+            or VERSION_TAG_PATTERN.match(src_branch_name):
         release_tag = version
-        pass
     elif src_branch_name == "develop":
         release_tag = version + "-dev"
     else:
