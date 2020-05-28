@@ -63,6 +63,7 @@ class InstallationContext:
     override_existing: bool = False
     system_status: dict = None
     arrus_bin_env_variables: dict = None
+    n_us4oems: int = None
 
     def cleanup(self):
         if self.workspace_dir is not None:
@@ -117,6 +118,33 @@ class Stage(abc.ABC):
             else:
                 return answer
 
+    def ask_options(self, msg: str, options: list, ctx: InstallationContext) -> str:
+        options_str = [f"({i}) {option}" for i, option in enumerate(options)]
+        options_str = ", ".join(options_str)
+        while True:
+            answer = input(f"{msg} [choose number: {options_str}]: ").strip()
+            if not answer.isdigit():
+                print(f"Please provide one of the numbers: {options_str}.")
+            else:
+                answer = int(answer)
+                if answer < 0 or answer >= len(options):
+                    print(f"Please provide one of the numbers: {options_str}.")
+                else:
+                    return options[answer]
+
+    def ask_integer(self, msg: str, max: int, ctx: InstallationContext) -> int:
+        while True:
+            answer = input(f"{msg}: ").strip()
+            if not answer.isdigit():
+                print(f"Please provide positive number.")
+            else:
+                answer = int(answer)
+                if answer < 1 or answer > max:
+                    print(f"Provided number should be positive "
+                          f"and lesser than: {max}.")
+                else:
+                    return answer
+
     def run_subprocess(self, args, context: InstallationContext):
         _logger.log(DEBUG, f"Running: {args} "
                            f"with env: {context.arrus_bin_env_variables}")
@@ -150,12 +178,9 @@ class WelcomeStage(Stage):
         _logger.log(DEBUG, f"ARRUS: {PROJECT_VERSION},"
                            f"firmware version: {FIRMWARE_VERSION},"
                            f"tx firmware version: {TX_FIRMWARE_VERSION}")
-        # Confirm to install software
-        ans = self.ask_yn(f"Software installation and firmware update may take "
-                    f"several hours. Are you sure you want to continue?",
-                    ctx=context)
+
         context.workspace_dir = tempfile.TemporaryDirectory()
-        return ans
+        return True
 
 
 class FindExistingInstallationStage(Stage):
@@ -211,7 +236,7 @@ class FindExistingInstallationStage(Stage):
 class UnzipFilesStage(Stage):
 
     def read_context_from_params(self, args, ctx: InstallationContext):
-        pass
+        return True
 
     def ask_user_for_context(self, ctx: InstallationContext):
         path = None
@@ -267,10 +292,10 @@ class UnzipFilesStage(Stage):
 class UpdateEnvVariablesStage(Stage):
 
     def read_context_from_params(self, args, ctx: InstallationContext):
-        pass
+        return True
 
     def ask_user_for_context(self, ctx: InstallationContext):
-        pass
+        return True
 
     def process(self, ctx: InstallationContext):
         reg = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
@@ -336,100 +361,61 @@ class UpdateFirmwareStage(Stage):
         raise NotImplementedError
 
     def ask_user_for_context(self, ctx: InstallationContext) -> bool:
+        # Confirm to install software
+        ans = self.ask_yn(f"Firmware update may take "
+                          f"several hours. Are you sure you want to continue?",
+                          ctx=ctx)
+        if not ans:
+            _logger.log(INFO, "To update hardware firmware re-run this "
+                              "installator in the future (choose current "
+                              "installation path).")
+            return False
+        # Ask for device type.
+        systems = ["us4oem", "us4rlite"]
+
+        system_type = self.ask_options("Choose device type",
+                                       options=systems,
+                                       ctx=ctx)
+        if system_type == systems[0]:
+            _logger.log(INFO, "Updating us4oems.")
+            ctx.n_us4oems = self.ask_integer("Provide the number of "
+                                                "Us4OEMs to update",
+                                                max=2,
+                                                ctx=ctx)
+        elif system_type == systems[1]:
+            _logger.log(INFO, "Updating us4rlite.")
+            ctx.n_us4oems = 2
+        else:
+            raise ValueError(f"Unrecognized system type: {system_type}")
         return True
 
     def process(self, context: InstallationContext) -> bool:
-        # Get status of the available modules.
-        _logger.log(INFO, "Checking the status of available Us4OEMs")
-        modules_key = _STATUS_US4OEM_KEY
-        status = self.get_status_yaml(context)
-        if status is None \
-                or modules_key not in status \
-                or len(status[modules_key]) == 0:
-            _logger.log(ERROR, "No available Us4OEM module has been detected. "
-                               "Make sure that the device is properly connected.")
-            context.abort = True
-            return False
-        context.system_status = status
-        # Run main firmware update if necessary.
-        for module in context.system_status["us4oems"]:
-            module_firmware_version = str(module["firmwareVersion"]).strip()
-            module_index = module['index']
-            if module_firmware_version != FIRMWARE_VERSION.strip():
-                _logger.log(INFO,
-                            f"Updating Us4OEM:{module_index} firmware "
-                            f"from {module_firmware_version} "
-                            f"to {FIRMWARE_VERSION}")
-                self.run_us4oem_firmware_update(context, module_index)
-                _logger.log(INFO,
-                            f"Firmware update for Us4OEM:{module_index} "
-                            f"finished successfully.")
-            else:
-                _logger.log(INFO,
-                            f"Us4OEM:{module_index} firmware is already "
-                            f"up-to-date ({module_firmware_version}).")
+        self.run_firmware_update_all(context)
+        _logger.log(INFO, "Firmware updated. Restart the device and your "
+                          "computer before using the system.")
+        return True
 
-        _logger.log(INFO, "Checking the status of available Us4OEMs")
-        context.system_status = self.get_status_yaml(context, tx_firmware=True)
-
-        # Run Tx firmware update if necessary.
-        for module in context.system_status["us4oems"]:
-            module_index = module['index']
-            module_tx_firmware_version = \
-                str(module["txFirmwareVersion"]).strip()
-            if module_tx_firmware_version != TX_FIRMWARE_VERSION.strip():
-                _logger.log(INFO, f"Updating Us4OEM:{module_index} TX firmware "
-                                  f"from {module_tx_firmware_version} "
-                                  f"to {TX_FIRMWARE_VERSION}")
-                self.run_us4oem_tx_firmware_update(context, module_index)
-                _logger.log(INFO,
-                            f"TX firmware update for Us4OEM:{module_index} "
-                            f"finished successfully.")
-            else:
-                _logger.log(INFO,
-                            f"Us4OEM:{module_index} TX firmware is already "
-                            f"up-to-date ({module_tx_firmware_version}).")
-
-    def get_status_yaml(self, context: InstallationContext, tx_firmware=False):
-        # Run us4oemStatus
-        binary = os.path.join(context.install_dir, _US4OEM_STATUS_BIN)
-        output_file = os.path.join(context.workspace_dir.name, "status.yml")
-
-        to_run = [binary, "--output-file", output_file]
-        if tx_firmware:
-            to_run += ["--tx-firmware-version"]
-        self.run_subprocess(to_run, context=context)
-        # Read the yaml file
-        with open(_FIRMWARE_ZIP, "r") as f:
-            result = yaml.safe_load(f)
-            time.sleep(5)
-            return result
-
-    def run_us4oem_firmware_update(self, context, module_index):
+    def run_firmware_update_all(self, context):
         update_bin = os.path.join(context.install_dir,
                                             _US4OEM_FIRMWARE_UPDATE_BIN)
         firmware_dir = self.unzip_firmware_if_necessary(context)
+
+        n_us4oems = context.n_us4oems
 
         rpd_file_path = os.path.join(str(firmware_dir), _FIRMWARE_RPD_FILE)
-
-        self.run_subprocess([update_bin,
-                             "--rpd-file", rpd_file_path,
-                             "--us4OEM-indices", str(module_index)],
-                            context)
-        time.sleep(5)
-
-    def run_us4oem_tx_firmware_update(self, context, module_index):
-        update_bin = os.path.join(context.install_dir,
-                                            _US4OEM_FIRMWARE_UPDATE_BIN)
-        firmware_dir = self.unzip_firmware_if_necessary(context)
-
         sea_file_path = os.path.join(str(firmware_dir), _FIRMWARE_SEA_FILE)
         sed_file_path = os.path.join(str(firmware_dir), _FIRMWARE_SED_FILE)
 
+        call = [update_bin, "--rpd-file", rpd_file_path,
+                "--sea-file", sea_file_path,
+                "--sed-file", sed_file_path,
+                "--us4OEM-count", str(n_us4oems)]
+        _logger.log(DEBUG, f"Will run: {call}")
         self.run_subprocess([update_bin,
+                             "--rpd-file", rpd_file_path,
                              "--sea-file", sea_file_path,
                              "--sed-file", sed_file_path,
-                             "--us4OEM-indices", str(module_index)],
+                             "--us4OEM-count", str(n_us4oems)],
                             context)
         time.sleep(5)
 
@@ -448,12 +434,16 @@ def execute(stages, args, ctx: InstallationContext):
             stage.read_context_from_params(args, ctx)
         else:
             is_continue = stage.ask_user_for_context(ctx)
-            if not is_continue and ctx.abort:
+            if ctx.abort:
                 _logger.log(INFO, "Installation aborted.")
                 return
+            if not is_continue:
+                return
         is_continue = stage.process(ctx)
-        if not is_continue or ctx.abort:
+        if ctx.abort:
             _logger.log(INFO, "Installation aborted.")
+            return
+        if not is_continue:
             return
     _logger.log(DEBUG, "Installation finished successfully!")
     print(f"{colorama.Fore.GREEN}Installation finished successfully!"
