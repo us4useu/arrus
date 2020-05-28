@@ -43,7 +43,8 @@ dT          = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with 
               + acq.txDelCent ...                           % [s] tx delay of the tx aperture center
               + acq.txNPer/(2*acq.txFreq);                  % [s] half the pulse length
 
-rVec        = (0:(nSamp-1))'/fs * acq.c/2;       % [mm] (nSamp,1) radial distance from the line origin
+rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
+              + (0:(nSamp-1))'/fs ) * acq.c/2;       % [mm] (nSamp,1) radial distance from the line origin
 xVec        = rVec*sin(txAng);                       % [mm] (nSamp,1) horiz. distance from the line origin
 zVec        = rVec*cos(txAng);                       % [mm] (nSamp,1) vert.  distance from the line origin
 eVec        = (-(nRx-1)/2:(nRx-1)/2)*sys.pitch;             % [mm] (1,nElem) horiz. position of the rx aperture elements

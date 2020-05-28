@@ -4,7 +4,8 @@ function[rfBfrOut] = scanConversion(rfBfrIn,sys,acq,proc)
 [nSamp,nTx]	= size(rfBfrIn);
 
 fs          = acq.rxSampFreq/proc.dec;
-rVec        = (0:(nSamp-1))'/fs * acq.c/2;
+rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
+              + (0:(nSamp-1))'/fs ) * acq.c/2;
 
 if acq.txAng==0
     xGridLin = sys.xElem;
