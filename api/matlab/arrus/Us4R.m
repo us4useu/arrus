@@ -699,7 +699,7 @@ classdef Us4R < handle
 
             % Scan conversion (for 'lin' mode)
             if strcmp(obj.seq.type,'lin')
-                rfBfr = scanConversion(rfBfr,obj.sys,obj.seq,obj.rec);
+                rfBfr = scanConversion(rfBfr,obj.seq,obj.rec);
             end
 
             % Envelope detection
