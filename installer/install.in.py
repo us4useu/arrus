@@ -15,10 +15,8 @@ import time
 from pathlib import Path
 
 PROJECT_VERSION = "${PROJECT_VERSION}"
-FIRMWARE_VERSION = "ccd4f1da"
-TX_FIRMWARE_VERSION = "a0a0a0a0"
-# FIRMWARE_VERSION = "${Us4OEM_FIRMWARE_VERSION}"
-# TX_FIRMWARE_VERSION = "${Us4OEM_TX_FIRMWARE_VERSION}"
+FIRMWARE_VERSION = "${Us4OEM_FIRMWARE_VERSION}"
+TX_FIRMWARE_VERSION = "${Us4OEM_TX_FIRMWARE_VERSION}"
 
 # Logging
 _logger = logging.getLogger("arrus installer")
@@ -148,7 +146,10 @@ class WelcomeStage(Stage):
         return True
 
     def process(self, context: InstallationContext) -> bool:
-        print(f"Starting ARRUS {PROJECT_VERSION} installer...")
+        print(f"Starting {colorama.Fore.GREEN}ARRUS {PROJECT_VERSION}{colorama.Style.RESET_ALL} installer...")
+        _logger.log(DEBUG, f"ARRUS: {PROJECT_VERSION},"
+                           f"firmware version: {FIRMWARE_VERSION},"
+                           f"tx firmware version: {TX_FIRMWARE_VERSION}")
         # Confirm to install software
         ans = self.ask_yn(f"Software installation and firmware update may take "
                     f"several hours. Are you sure you want to continue?",
@@ -392,7 +393,6 @@ class UpdateFirmwareStage(Stage):
     def get_status_yaml(self, context: InstallationContext, tx_firmware=False):
         # Run us4oemStatus
         binary = os.path.join(context.install_dir, _US4OEM_STATUS_BIN)
-        print(binary)
         output_file = os.path.join(context.workspace_dir.name, "status.yml")
 
         to_run = [binary, "--output-file", output_file]
