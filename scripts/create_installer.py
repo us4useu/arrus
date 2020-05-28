@@ -76,13 +76,18 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Zip the source file and place it in the installer directory
+        destination_archive = os.path.join(install_dir, f"arrus-{arrus_version}")
+        try:
+            os.remove(destination_archive + ".zip")
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise e
         install_py_path = os.path.join(src_dir, "build/installer/install.py")
         dist_path = tmp_dir
         subprocess.call(["pyinstaller", install_py_path, "--distpath",
-                         dist_path])
-
+                         dist_path, "--onefile"])
         # The name of destination directory is determined by pyinstaller.
-        destination_path = os.path.join(tmp_dir, "install")
+        destination_path = tmp_dir
         shutil.make_archive(os.path.join(destination_path, "arrus"),
                             "zip", install_dir)
         firmware_url = get_firmware_url_pattern(firmware_version,
@@ -94,15 +99,9 @@ def main():
         print(f"Downloading {output_file}, url: {firmware_url}")
         urllib.request.urlretrieve(firmware_url, output_file_abs_path)
         print("Downloading finished.")
-        destination_archive = os.path.join(install_dir, f"arrus-{arrus_version}")
-        try:
-            os.remove(destination_archive + ".zip")
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise e
+
         shutil.make_archive(destination_archive, "zip", destination_path)
         print(f"Created file {destination_archive}")
-
 
 
 if __name__ == "__main__":
