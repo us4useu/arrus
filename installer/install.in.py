@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import yaml
 import ctypes
+import time
 from pathlib import Path
 
 PROJECT_VERSION = "${PROJECT_VERSION}"
@@ -148,10 +149,6 @@ class WelcomeStage(Stage):
 
     def process(self, context: InstallationContext) -> bool:
         print(f"Starting ARRUS {PROJECT_VERSION} installer...")
-        # Check if current user is administrator.
-        if ctypes.windll.shell32.IsUserAnAdmin() == 0:
-            _logger.log(ERROR, f"Run this program as an administrator.")
-            return False
         # Confirm to install software
         ans = self.ask_yn(f"Software installation and firmware update may take "
                     f"several hours. Are you sure you want to continue?",
@@ -197,17 +194,20 @@ class FindExistingInstallationStage(Stage):
         paths = os.environ["PATH"].split(os.pathsep)
         for path in paths:
             for expected_lib in _EXPECTED_LIBS:
-                full_path = os.path.join(path, expected_lib)
-                lib_file = Path(full_path)
-                if lib_file.is_file():
-                    root_dir, lib_dir = os.path.split(path)
-                    if lib_dir == _EXPECTED_LIB_DIR:
-                        result.append(root_dir)
+                try:
+                    full_path = os.path.join(path, expected_lib)
+                    lib_file = Path(full_path)
+                    if lib_file.is_file():
+                        root_dir, lib_dir = os.path.split(path)
+                        if lib_dir == _EXPECTED_LIB_DIR:
+                            result.append(root_dir)
+                except BaseException as e:
+                    _logger.log(DEBUG, f"Error while checking path dirs: "
+                                       f"{str(e)}")
         return result
 
 
 class UnzipFilesStage(Stage):
-    UNZIP_DEFAULT_DIR = "C:\\local\\arrus"
 
     def read_context_from_params(self, args, ctx: InstallationContext):
         pass
@@ -223,9 +223,10 @@ class UnzipFilesStage(Stage):
             if answer:
                 path = ctx.existing_install_dir
         if path is None:
+            default_path = os.path.join(str(Path.home()), "arrus")
             path = self.ask_for_path(
                 "Please provide destination path",
-                default=UnzipFilesStage.UNZIP_DEFAULT_DIR,
+                default=default_path,
                 ctx=ctx
             )
         if os.path.exists(path):
@@ -271,23 +272,29 @@ class UpdateEnvVariablesStage(Stage):
         pass
 
     def process(self, ctx: InstallationContext):
-        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-        key = winreg.OpenKey(reg,
-            r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
-        current_system_path, d_type = winreg.QueryValueEx(key, "Path")
+        reg = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+        key = winreg.OpenKey(reg,r"Environment")
+        current_user_path, d_type = winreg.QueryValueEx(key, "Path")
 
         path_to_add = os.path.join(
             ctx.install_dir,
             _EXPECTED_LIB_DIR
         )
 
-        system_paths = current_system_path.split(os.pathsep)
+        system_paths = current_user_path.split(os.pathsep)
         UpdateEnvVariablesStage.update_paths_list(system_paths, path_to_add)
-        print(system_paths)
         complete_value = os.pathsep.join(system_paths)
-        print(complete_value)
         _logger.log(DEBUG, f"New path to set in the system: {complete_value}")
-        subprocess.check_output(["setx", "Path", complete_value, "/M"])
+        if len(complete_value) <= 1024:
+            subprocess.check_output(["setx", "Path", complete_value])
+        else:
+            msg = f"{colorama.Fore.LIGHTRED_EX}" \
+                  f"WARNING: Your current 'Path' environment variable is " \
+                  f"longer than 1024 characters. Please add {path_to_add} " \
+                  f"to your 'Path' environment variable manually." \
+                  f"{colorama.Style.RESET_ALL}"
+            print(msg)
+            _logger.log(DEBUG, msg)
 
         # Update and set current path environment variable - for further
         # processing
@@ -382,7 +389,9 @@ class UpdateFirmwareStage(Stage):
         self.run_subprocess(to_run, context=context)
         # Read the yaml file
         with open(output_file, "r") as f:
-            return yaml.safe_load(f)
+            result = yaml.safe_load(f)
+            time.sleep(5)
+            return result
 
     def run_us4oem_firmware_update(self, context, module_index):
         update_bin = os.path.join(context.install_dir,
@@ -395,6 +404,7 @@ class UpdateFirmwareStage(Stage):
                              "--rpd-file", rpd_file_path,
                              "--us4OEM-indices", module_index],
                             context)
+        time.sleep(5)
 
     def run_us4oem_tx_firmware_update(self, context, module_index):
         update_bin = os.path.join(context.install_dir,
@@ -409,6 +419,7 @@ class UpdateFirmwareStage(Stage):
                              "--sed-file", sed_file_path,
                              "--us4OEM-indices", module_index],
                             context)
+        time.sleep(5)
 
     def unzip_firmware_if_necessary(self, context: InstallationContext):
         firmware_dir = Path(os.path.join(context.workspace_dir.name, "firmware"))
