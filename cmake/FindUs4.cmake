@@ -4,19 +4,27 @@ find_path(Us4_INCLUDE_DIR
         NAMES ius4oem.h
         PATHS "${Us4_ROOT_DIR}/include"
         PATH_SUFFIXES Us4
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
 set(Us4_LIBRARY_DIR "${Us4_ROOT_DIR}/lib64")
 find_library(Us4_US4OEM_LIBRARY
         NAMES Us4OEM
         PATHS ${Us4_LIBRARY_DIR}
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
 find_library(Us4_HV256_LIBRARY
         NAMES HV256
         PATHS ${Us4_LIBRARY_DIR}
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
 find_library(Us4_DBARLite_LIBRARY
         NAMES DBARLite
         PATHS ${Us4_LIBRARY_DIR}
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
 
 # Read required version from include/versions.h file
