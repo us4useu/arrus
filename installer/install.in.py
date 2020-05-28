@@ -47,8 +47,8 @@ _PKG_ZIP = "arrus.zip"
 _FIRMWARE_ZIP = f"us4oem-firmware-{FIRMWARE_VERSION}{TX_FIRMWARE_VERSION}.zip"
 _FIRMWARE_RPD_FILE = f"us4OEM_rev_{FIRMWARE_VERSION}.rpd"
 # TODO(pjarosik) make sure, that sea and sed files will always be in this format
-_FIRMWARE_SEA_FILE = f"us4OEM_tx_rev_{FIRMWARE_VERSION[0].upper()}.sea"
-_FIRMWARE_SED_FILE = f"us4OEM_tx_rev_{FIRMWARE_VERSION[0].upper()}.sed"
+_FIRMWARE_SEA_FILE = f"us4OEM_tx_rev_{TX_FIRMWARE_VERSION[0].upper()}.sea"
+_FIRMWARE_SED_FILE = f"us4OEM_tx_rev_{TX_FIRMWARE_VERSION[0].upper()}.sed"
 
 _US4OEM_STATUS_BIN = "bin/us4OEMStatus.exe"
 _US4OEM_FIRMWARE_UPDATE_BIN = "bin/us4OEMFirmwareUpdate"
@@ -352,30 +352,42 @@ class UpdateFirmwareStage(Stage):
         context.system_status = status
         # Run main firmware update if necessary.
         for module in context.system_status["us4oems"]:
-            module_tx_firmware_version = module["firmwareVersion"].strip()
-            if module_tx_firmware_version != FIRMWARE_VERSION.strip():
-                module_index = module['index']
+            module_firmware_version = str(module["firmwareVersion"]).strip()
+            module_index = module['index']
+            if module_firmware_version != FIRMWARE_VERSION.strip():
                 _logger.log(INFO,
-                            f"Starting firmware update "
-                            f"for Us4OEM:{module_index}")
+                            f"Updating Us4OEM:{module_index} firmware "
+                            f"from {module_firmware_version} "
+                            f"to {FIRMWARE_VERSION}")
                 self.run_us4oem_firmware_update(context, module_index)
                 _logger.log(INFO,
-                            f"Firmware update for Us4OEM: {module_index} "
+                            f"Firmware update for Us4OEM:{module_index} "
                             f"finished successfully.")
+            else:
+                _logger.log(INFO,
+                            f"Us4OEM:{module_index} firmware is already "
+                            f"up-to-date ({module_firmware_version}).")
 
         _logger.log(INFO, "Checking the status of available Us4OEMs")
         context.system_status = self.get_status_yaml(context, tx_firmware=True)
 
+        # Run Tx firmware update if necessary.
         for module in context.system_status["us4oems"]:
-            module_tx_firmware_version = module["txFirmwareVersion"].strip()
+            module_index = module['index']
+            module_tx_firmware_version = \
+                str(module["txFirmwareVersion"]).strip()
             if module_tx_firmware_version != TX_FIRMWARE_VERSION.strip():
-                module_index = module['index']
-                _logger.log(INFO, f"Starting TX firmware update "
-                                  f"for Us4OEM:{module_index}")
+                _logger.log(INFO, f"Updating Us4OEM:{module_index} TX firmware "
+                                  f"from {module_tx_firmware_version} "
+                                  f"to {TX_FIRMWARE_VERSION}")
                 self.run_us4oem_tx_firmware_update(context, module_index)
                 _logger.log(INFO,
-                            f"TX firmware update for Us4OEM: {module_index} "
+                            f"TX firmware update for Us4OEM:{module_index} "
                             f"finished successfully.")
+            else:
+                _logger.log(INFO,
+                            f"Us4OEM:{module_index} TX firmware is already "
+                            f"up-to-date ({module_tx_firmware_version}).")
 
     def get_status_yaml(self, context: InstallationContext, tx_firmware=False):
         # Run us4oemStatus
@@ -388,7 +400,7 @@ class UpdateFirmwareStage(Stage):
             to_run += ["--tx-firmware-version"]
         self.run_subprocess(to_run, context=context)
         # Read the yaml file
-        with open(output_file, "r") as f:
+        with open(_FIRMWARE_ZIP, "r") as f:
             result = yaml.safe_load(f)
             time.sleep(5)
             return result
@@ -398,11 +410,11 @@ class UpdateFirmwareStage(Stage):
                                             _US4OEM_FIRMWARE_UPDATE_BIN)
         firmware_dir = self.unzip_firmware_if_necessary(context)
 
-        rpd_file_path = os.path.join(firmware_dir.name, _FIRMWARE_RPD_FILE)
+        rpd_file_path = os.path.join(str(firmware_dir), _FIRMWARE_RPD_FILE)
 
         self.run_subprocess([update_bin,
                              "--rpd-file", rpd_file_path,
-                             "--us4OEM-indices", module_index],
+                             "--us4OEM-indices", str(module_index)],
                             context)
         time.sleep(5)
 
@@ -411,13 +423,13 @@ class UpdateFirmwareStage(Stage):
                                             _US4OEM_FIRMWARE_UPDATE_BIN)
         firmware_dir = self.unzip_firmware_if_necessary(context)
 
-        sea_file_path = os.path.join(firmware_dir.name, _FIRMWARE_SEA_FILE)
-        sed_file_path = os.path.join(firmware_dir.name, _FIRMWARE_SED_FILE)
+        sea_file_path = os.path.join(str(firmware_dir), _FIRMWARE_SEA_FILE)
+        sed_file_path = os.path.join(str(firmware_dir), _FIRMWARE_SED_FILE)
 
         self.run_subprocess([update_bin,
                              "--sea-file", sea_file_path,
                              "--sed-file", sed_file_path,
-                             "--us4OEM-indices", module_index],
+                             "--us4OEM-indices", str(module_index)],
                             context)
         time.sleep(5)
 
@@ -425,8 +437,8 @@ class UpdateFirmwareStage(Stage):
         firmware_dir = Path(os.path.join(context.workspace_dir.name, "firmware"))
         if not firmware_dir.is_dir():
             firmware_dir.mkdir(parents=True)
-            with zipfile.ZipFile("", "r") as zfile:
-                zfile.extractall(firmware_dir.name)
+            with zipfile.ZipFile(_FIRMWARE_ZIP, "r") as zfile:
+                zfile.extractall(str(firmware_dir))
         return firmware_dir
 
 
