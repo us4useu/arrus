@@ -1,7 +1,9 @@
-modules:
-  - id: 0
-    firmwareVersion: 0xfafafafa
-    txFirmwareVersion: 0x4a4a4a4a
-  - id: 4
-    firmwareVersion: 0x123456
-    txFirmwareVersion: 0x4a4a4a4a
+us4oems:
+  - index: 0
+    id: 0
+    firmwareVersion: fafafa
+    txFirmwareVersion: 4a4a4a
+  - index: 1
+    id: 4
+    firmwareVersion: fafafa
+    txFirmwareVersion: 4a4a4a
