@@ -36,7 +36,7 @@ class UpdateEnvVariablesStageTest(unittest.TestCase):
 
         UpdateEnvVariablesStage.update_paths_list(
             paths_list=tmp_dirs,
-            install_path=install_path
+            path_to_add=install_path
         )
         self.assertEqual(tmp_dirs[0], os.path.join(install_path, "lib64"))
 
@@ -50,7 +50,7 @@ class UpdateEnvVariablesStageTest(unittest.TestCase):
 
         UpdateEnvVariablesStage.update_paths_list(
             paths_list=tmp_dirs,
-            install_path=install_path
+            path_to_add=install_path
         )
         self.assertEqual(tmp_dirs[1], os.path.join(install_path, "lib64"))
 
@@ -64,7 +64,7 @@ class UpdateEnvVariablesStageTest(unittest.TestCase):
 
         UpdateEnvVariablesStage.update_paths_list(
             paths_list=tmp_dirs,
-            install_path=install_path
+            path_to_add=install_path
         )
         self.assertEqual(tmp_dirs[-1], os.path.join(install_path, "lib64"))
 
@@ -78,7 +78,7 @@ class UpdateEnvVariablesStageTest(unittest.TestCase):
 
         UpdateEnvVariablesStage.update_paths_list(
             paths_list=tmp_dirs,
-            install_path=install_path
+            path_to_add=install_path
         )
         self.assertEqual(len(tmp_dirs), 5)
         self.assertEqual(tmp_dirs[0], Path(os.path.join(install_path, "lib64")))
@@ -93,7 +93,7 @@ class UpdateEnvVariablesStageTest(unittest.TestCase):
 
         UpdateEnvVariablesStage.update_paths_list(
             paths_list=tmp_dirs,
-            install_path=install_path
+            path_to_add=install_path
         )
         self.assertEqual(len(tmp_dirs), 5)
         self.assertEqual(tmp_dirs[1], Path(os.path.join(install_path, "lib64")))
@@ -108,7 +108,7 @@ class UpdateEnvVariablesStageTest(unittest.TestCase):
 
         UpdateEnvVariablesStage.update_paths_list(
             paths_list=tmp_dirs,
-            install_path=install_path
+            path_to_add=install_path
         )
         self.assertEqual(len(tmp_dirs), 5)
         print(tmp_dirs)
@@ -122,7 +122,7 @@ class UpdateEnvVariablesStageTest(unittest.TestCase):
 
         UpdateEnvVariablesStage.update_paths_list(
             paths_list=tmp_dirs,
-            install_path=install_path
+            path_to_add=install_path
         )
         self.assertEqual(len(tmp_dirs), 4)
         print(tmp_dirs)

@@ -14,8 +14,10 @@ import ctypes
 from pathlib import Path
 
 PROJECT_VERSION = "${PROJECT_VERSION}"
-FIRMWARE_VERSION = "${Us4OEM_FIRMWARE_VERSION}"
-TX_FIRMWARE_VERSION = "${Us4OEM_TX_FIRMWARE_VERSION}"
+FIRMWARE_VERSION = "ccd4f1da"
+TX_FIRMWARE_VERSION = "a0a0a0a0"
+# FIRMWARE_VERSION = "${Us4OEM_FIRMWARE_VERSION}"
+# TX_FIRMWARE_VERSION = "${Us4OEM_TX_FIRMWARE_VERSION}"
 
 # Logging
 _logger = logging.getLogger("arrus installer")
@@ -47,7 +49,7 @@ _FIRMWARE_RPD_FILE = f"us4OEM_rev_{FIRMWARE_VERSION}.rpd"
 _FIRMWARE_SEA_FILE = f"us4OEM_tx_rev_{FIRMWARE_VERSION[0].upper()}.sea"
 _FIRMWARE_SED_FILE = f"us4OEM_tx_rev_{FIRMWARE_VERSION[0].upper()}.sed"
 
-_US4OEM_STATUS_BIN = "bin/us4OEMStatus"
+_US4OEM_STATUS_BIN = "bin/us4OEMStatus.exe"
 _US4OEM_FIRMWARE_UPDATE_BIN = "bin/us4OEMFirmwareUpdate"
 
 _STATUS_US4OEM_KEY = "us4oems"
@@ -61,6 +63,7 @@ class InstallationContext:
     abort: bool = False
     override_existing: bool = False
     system_status: dict = None
+    arrus_bin_env_variables: dict = None
 
     def cleanup(self):
         if self.workspace_dir is not None:
@@ -115,14 +118,16 @@ class Stage(abc.ABC):
             else:
                 return answer
 
-    def run_subprocess(self, args):
-        try:
-            subprocess.check_output(args)
-        except subprocess.CalledProcessError as e:
-            _logger.log(ERROR, f"Error calling {args}. "
-                               f"Return code: {e.returncode}, "
-                               f"output: {e.output}")
-            raise e
+    def run_subprocess(self, args, context: InstallationContext):
+        _logger.log(DEBUG, f"Running: {args} "
+                           f"with env: {context.arrus_bin_env_variables}")
+        process = subprocess.Popen(args, env=context.arrus_bin_env_variables)
+        process.wait()
+        return_code = process.returncode
+        # TODO(pjarosik) consider capturing stderr info and log it into debug
+        if return_code != 0:
+            raise RuntimeError(f"The process {args} exited with code "
+                               f"{return_code}")
 
 
 class WelcomeStage(Stage):
@@ -238,6 +243,7 @@ class UnzipFilesStage(Stage):
             else:
                 ctx.override_existing = True
         ctx.install_dir = path
+        _logger.log(INFO, f"Package installed in {ctx.install_dir}")
         return True
 
     def process(self, ctx: InstallationContext):
@@ -265,24 +271,35 @@ class UpdateEnvVariablesStage(Stage):
         pass
 
     def process(self, ctx: InstallationContext):
-        reg = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
         key = winreg.OpenKey(reg,
             r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
         current_system_path, d_type = winreg.QueryValueEx(key, "Path")
 
-        install_path = os.path.join(
+        path_to_add = os.path.join(
             ctx.install_dir,
             _EXPECTED_LIB_DIR
         )
 
         system_paths = current_system_path.split(os.pathsep)
-        UpdateEnvVariablesStage.update_paths_list(system_paths, install_path)
-        subprocess.check_output(["setx", "Path", system_paths, "/M"])
+        UpdateEnvVariablesStage.update_paths_list(system_paths, path_to_add)
+        print(system_paths)
+        complete_value = os.pathsep.join(system_paths)
+        print(complete_value)
+        _logger.log(DEBUG, f"New path to set in the system: {complete_value}")
+        subprocess.check_output(["setx", "Path", complete_value, "/M"])
+
+        # Update and set current path environment variable - for further
+        # processing
+        new_env = os.environ.copy()
+        new_env["PATH"] = path_to_add + os.pathsep + new_env["PATH"]
+        ctx.arrus_bin_env_variables = new_env
+        _logger.log(INFO, "Updated environment variable 'Path'")
         return True
 
     @staticmethod
-    def update_paths_list(paths_list, install_path):
-        lib_path = Path(os.path.join(install_path, _EXPECTED_LIB_DIR))
+    def update_paths_list(paths_list, path_to_add):
+        lib_path = Path(path_to_add)
         us4oem_paths = (os.path.join(p, _EXPECTED_LIBS[0]) for p in paths_list)
         us4oem_paths = ((i, Path(p)) for i, p in enumerate(us4oem_paths))
         us4oem_paths = ((i, p) for i, p in us4oem_paths if p.is_file())
@@ -293,7 +310,7 @@ class UpdateEnvVariablesStage(Stage):
                 return
         else:
             index = len(paths_list)
-        paths_list.insert(index, lib_path.resolve())
+        paths_list.insert(index, str(lib_path.resolve()))
 
 
 class UpdateFirmwareStage(Stage):
@@ -326,31 +343,43 @@ class UpdateFirmwareStage(Stage):
             context.abort = True
             return False
         context.system_status = status
-
         # Run main firmware update if necessary.
         for module in context.system_status["us4oems"]:
             module_tx_firmware_version = module["firmwareVersion"].strip()
             if module_tx_firmware_version != FIRMWARE_VERSION.strip():
                 module_index = module['index']
+                _logger.log(INFO,
+                            f"Starting firmware update "
+                            f"for Us4OEM:{module_index}")
                 self.run_us4oem_firmware_update(context, module_index)
+                _logger.log(INFO,
+                            f"Firmware update for Us4OEM: {module_index} "
+                            f"finished successfully.")
 
+        _logger.log(INFO, "Checking the status of available Us4OEMs")
         context.system_status = self.get_status_yaml(context, tx_firmware=True)
 
         for module in context.system_status["us4oems"]:
             module_tx_firmware_version = module["txFirmwareVersion"].strip()
             if module_tx_firmware_version != TX_FIRMWARE_VERSION.strip():
                 module_index = module['index']
+                _logger.log(INFO, f"Starting TX firmware update "
+                                  f"for Us4OEM:{module_index}")
                 self.run_us4oem_tx_firmware_update(context, module_index)
+                _logger.log(INFO,
+                            f"TX firmware update for Us4OEM: {module_index} "
+                            f"finished successfully.")
 
     def get_status_yaml(self, context: InstallationContext, tx_firmware=False):
         # Run us4oemStatus
         binary = os.path.join(context.install_dir, _US4OEM_STATUS_BIN)
+        print(binary)
         output_file = os.path.join(context.workspace_dir.name, "status.yml")
 
         to_run = [binary, "--output-file", output_file]
         if tx_firmware:
             to_run += ["--tx-firmware-version"]
-        self.run_subprocess(to_run)
+        self.run_subprocess(to_run, context=context)
         # Read the yaml file
         with open(output_file, "r") as f:
             return yaml.safe_load(f)
@@ -364,8 +393,8 @@ class UpdateFirmwareStage(Stage):
 
         self.run_subprocess([update_bin,
                              "--rpd-file", rpd_file_path,
-                             "--us4OEM-indices", module_index])
-        pass
+                             "--us4OEM-indices", module_index],
+                            context)
 
     def run_us4oem_tx_firmware_update(self, context, module_index):
         update_bin = os.path.join(context.install_dir,
@@ -378,7 +407,8 @@ class UpdateFirmwareStage(Stage):
         self.run_subprocess([update_bin,
                              "--sea-file", sea_file_path,
                              "--sed-file", sed_file_path,
-                             "--us4OEM-indices", module_index])
+                             "--us4OEM-indices", module_index],
+                            context)
 
     def unzip_firmware_if_necessary(self, context: InstallationContext):
         firmware_dir = Path(os.path.join(context.workspace_dir.name, "firmware"))
