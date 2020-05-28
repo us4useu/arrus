@@ -398,26 +398,38 @@ class UpdateFirmwareStage(Stage):
     def run_firmware_update_all(self, context):
         update_bin = os.path.join(context.install_dir,
                                             _US4OEM_FIRMWARE_UPDATE_BIN)
+
         firmware_dir = self.unzip_firmware_if_necessary(context)
+        firmware_dir = str(firmware_dir)
+        # TODO(pjarosik) check why it is required for the update_bin
+        # and .sea and .sed files in the same directory (otherwise the
+        # TX firmware update does not work)
+        shutil.copy2(update_bin, str(firmware_dir))
+        old_wd = os.getcwd()
+        try:
+            os.chdir(firmware_dir)
+            update_bin = _US4OEM_FIRMWARE_UPDATE_BIN
 
-        n_us4oems = context.n_us4oems
+            n_us4oems = context.n_us4oems
 
-        rpd_file_path = os.path.join(str(firmware_dir), _FIRMWARE_RPD_FILE)
-        sea_file_path = os.path.join(str(firmware_dir), _FIRMWARE_SEA_FILE)
-        sed_file_path = os.path.join(str(firmware_dir), _FIRMWARE_SED_FILE)
+            rpd_file_path = _FIRMWARE_RPD_FILE
+            sea_file_path = _FIRMWARE_SEA_FILE
+            sed_file_path = _FIRMWARE_SED_FILE
 
-        call = [update_bin, "--rpd-file", rpd_file_path,
-                "--sea-file", sea_file_path,
-                "--sed-file", sed_file_path,
-                "--us4OEM-count", str(n_us4oems)]
-        _logger.log(DEBUG, f"Will run: {call}")
-        self.run_subprocess([update_bin,
-                             "--rpd-file", rpd_file_path,
-                             "--sea-file", sea_file_path,
-                             "--sed-file", sed_file_path,
-                             "--us4OEM-count", str(n_us4oems)],
-                            context)
-        time.sleep(5)
+            call = [update_bin, "--rpd-file", rpd_file_path,
+                    "--sea-file", sea_file_path,
+                    "--sed-file", sed_file_path,
+                    "--us4OEM-count", str(n_us4oems)]
+            _logger.log(DEBUG, f"Will run: {call}")
+            self.run_subprocess([update_bin,
+                                "--rpd-file", rpd_file_path,
+                                "--sea-file", sea_file_path,
+                                "--sed-file", sed_file_path,
+                                "--us4OEM-count", str(n_us4oems)],
+                                context)
+            time.sleep(5)
+        finally:
+            os.chdir(old_wd)
 
     def unzip_firmware_if_necessary(self, context: InstallationContext):
         firmware_dir = Path(os.path.join(context.workspace_dir.name, "firmware"))
