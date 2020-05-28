@@ -48,6 +48,13 @@ As a result, two ``ARIUS`` nodes should be visible in the Device Manager.
 .. figure:: img/dev_manager.png
     :scale: 100%
 
+ARRUS
+-----
+
+Before proceeding please make sure that your system's
+environment variable ``Path`` does not contain a path to any of the previously
+installed versions of the software.
+
 MATLAB API
 ----------
 
