@@ -24,6 +24,15 @@ def set_log_level(level):
     _console_handler.setLevel(level)
 
 
+def add_log_file(filename, level):
+    log_file_handler = logging.FileHandler(filename)
+    log_file_handler.setLevel(level)
+    file_formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    log_file_handler.setFormatter(file_formatter)
+    _logger.addHandler(log_file_handler)
+
+
 # TODO temporary ommiting importing some of the modules here, when
 # low-level API is not available (for example currently on Unix systems).
 import importlib
