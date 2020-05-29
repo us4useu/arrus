@@ -13,16 +13,16 @@ def main():
     sine_wave = SineWave(frequency=8.125e6, n_periods=2, inverse=False)
 
     n_firings_per_frame = 4
+    n_frames = 128
     n_samples = 8*1024
-    arrus.set_log_level(arrus.DEBUG)
 
     def get_full_rx_aperture(element_number):
         return [
             TxRx(
                 tx=Tx(
-                    delays=np.zeros(32),
+                    delays=np.array([0]),
                     excitation=sine_wave,
-                    aperture=RegionBasedAperture(32, 32), # SingleElementAperture(element_number),
+                    aperture=SingleElementAperture(element_number),
                     pri=200e-6),
                 rx=Rx(
                     sampling_frequency=65e6,
@@ -34,8 +34,8 @@ def main():
         ]
 
     tx_rx_sequence = Sequence(list(itertools.chain(*[
-        get_full_rx_aperture(2)
-        for channel in range(n_firings_per_frame)
+        get_full_rx_aperture(channel)
+        for channel in range(n_frames)
     ])))
 
     # Execute the sequence in the session.
@@ -52,19 +52,25 @@ def main():
         module = sess.get_device("/Us4OEM:0")
         n_channels = module.get_n_rx_channels()
         configure_module(module)
-        time.sleep(2)
+        print("Acquiring data")
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=module))
+        time.sleep(2)
 
         # Copy and reorganize data from the module.
         rf = np.zeros(
-            (n_samples, module.get_n_rx_channels() * n_firings_per_frame),
+            (n_frames,
+             n_samples,
+             module.get_n_rx_channels() * n_firings_per_frame),
             dtype=np.int16
         )
-        for firing in range(n_firings_per_frame):
-            rf[:, firing * n_channels:(firing+1) * n_channels] = \
-                frame[firing * n_samples:(firing+1) * n_samples, : ]
+        print("Restructuring data.")
+        for frame_number in range(n_frames):
+            for firing in range(n_firings_per_frame):
+                actual_firing = frame_number*n_firings_per_frame + firing
+                rf[frame_number, :, firing*n_channels:(firing+1)*n_channels] = \
+                    frame[actual_firing*n_samples:(actual_firing+1)*n_samples, :]
+        print("Displaying data")
         display_acquired_frame(rf)
-        # display_waveforms(rf)
 
 
 def configure_module(module):
@@ -93,7 +99,7 @@ def configure_module(module):
     module.set_lpf_cutoff(10e6)  # [Hz]
 
 
-def display_acquired_frame(buffer, window_sizes=(7, 7)):
+def display_acquired_frame(rf, window_sizes=(7, 7)):
     fig, ax = plt.subplots()
     fig.set_size_inches(window_sizes)
 
@@ -101,22 +107,18 @@ def display_acquired_frame(buffer, window_sizes=(7, 7)):
     ax.set_ylabel("Samples")
     fig.canvas.set_window_title("RF data")
 
-    plt.imshow(
-        buffer[:, :],
-        vmin=np.iinfo(np.int16).min,
-        vmax=np.iinfo(np.int16).max
-    )
-    ax.set_aspect("auto")
-    plt.show()
+    canvas = plt.imshow(rf[64, :, :],
+                        vmin=np.iinfo(np.int16).min,
+                        vmax=np.iinfo(np.int16).max)
+    fig.show()
 
-
-def display_waveforms(buffer):
-    fig, axes = plt.subplots(buffer.shape[1], 1)
-
-    for channel in range(buffer.shape[1]):
-        axes[channel].plot(buffer[1000:4000, channel])
-
-    plt.show()
+    for frame_number in range(rf.shape[0]):
+        canvas.set_data(rf[frame_number, :, :])
+        ax.set_aspect("auto")
+        fig.canvas.flush_events()
+        ax.set_xlabel(f"Channels (tx: {frame_number})")
+        plt.draw()
+        time.sleep(0.1)
 
 
 if __name__ == "__main__":
