@@ -7,6 +7,8 @@
 		$action
 	} catch(const std::exception &e) {
 	    SWIG_exception(SWIG_RuntimeError, e.what());
+	} catch(...) {
+	    std::cout << "Unhandled type of exception! Check logs for more information" << std::endl;
 	}
 }
 
