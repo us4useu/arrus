@@ -91,24 +91,37 @@ class TxRxModuleKernel(LoadableKernel):
 
     def __init__(self, op: _operations.TxRx, device: _us4oem.Us4OEM,
                  feed_dict: dict, data_offset=0, sync_required=True,
-                 callback=None, set_one_operation=True, firing=0):
+                 callback=None, set_one_operation=True, firing=0,
+                 queue: Queue = None):
         self.op = op
         self.device = device
         self.feed_dict = feed_dict
         self.data_offset = data_offset
         self._sync_required = sync_required
         self._set_one_operation = set_one_operation
-        self._callback = callback
+        if set_one_operation:
+            self._callback = self._default_callback
+            self._queue = Queue()
+        else:
+            self._callback = callback
         self.firing = firing
         self._tx_aperture_mask = self._get_aperture_mask(op.tx.aperture, device)
         self._rx_aperture_mask = self._get_aperture_mask(op.rx.aperture, device)
+
+    def _default_callback(self, e):
+        result_buffer = _utils.create_aligned_array(
+            (self.op.rx.n_samples, self.device.get_n_rx_channels()),
+            dtype=np.int16,
+            alignment=4096
+        )
+        self.device.transfer_rx_buffer_to_host_buffer(0, result_buffer)
+        self._queue.put(result_buffer)
 
     def load(self):
         if self._set_one_operation:
             self.device.clear_scheduled_receive()
             self.device.set_n_triggers(1)
             self.device.set_number_of_firings(1)
-
         self.load_with_sync_option(sync_required=self._sync_required,
                                    callback=self._callback)
 
@@ -228,14 +241,7 @@ class TxRxModuleKernel(LoadableKernel):
         self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
-        self.device.trigger_sync()
-        time.sleep(1)
-        result_buffer = _utils.create_aligned_array(
-            (self.op.rx.n_samples, self.device.get_n_rx_channels()),
-            dtype=np.int16,
-            alignment=4096
-        )
-        self.device.transfer_rx_buffer_to_host_buffer(0, result_buffer)
+        result_buffer = self._queue.get()
         self.device.stop_trigger()
         return result_buffer
 
@@ -252,11 +258,24 @@ class SequenceModuleKernel(LoadableKernel):
         self.feed_dict = feed_dict
         self.total_n_samples = self._compute_total_n_samples()
         self.sync_required = sync_required
-        self.callback = callback
+        if callback is None:
+            self.callback = self._default_callback
+            self._queue = Queue()
+        else:
+            self.callback = callback
         self._kernels = self._get_txrx_kernels(self.op.operations,
                                                self.feed_dict,
                                                self.device, sync_required,
                                                self.callback)
+
+    def _default_callback(self, e):
+        result_buffer = _utils.create_aligned_array(
+            (self.total_n_samples, self.device.get_n_rx_channels()),
+            dtype=np.int16,
+            alignment=4096
+        )
+        self.device.transfer_rx_buffer_to_host_buffer(0, result_buffer)
+        self._queue.put(result_buffer)
 
     def validate(self):
         seq = self.op
@@ -276,16 +295,8 @@ class SequenceModuleKernel(LoadableKernel):
         self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
-        self.device.trigger_sync()
-        if self.total_n_samples is None:
-            raise ValueError("Call 'load' function first.")
-
-        result_buffer = _utils.create_aligned_array(
-            (self.total_n_samples, self.device.get_n_rx_channels()),
-            dtype=np.int16,
-            alignment=4096
-        )
-        self.device.transfer_rx_buffer_to_host_buffer(0, result_buffer)
+        result_buffer = self._queue.get()
+        self.device.stop_trigger()
         return result_buffer
 
     def get_total_n_samples(self):
@@ -365,11 +376,16 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
 
     def _create_data_buffer(self, op):
         if isinstance(op, _operations.TxRx):
-            return _operations.TxRx.rx.n_samples
+            n_samples = _operations.TxRx.rx.n_samples
         elif isinstance(op, _operations.Sequence):
-            return sum([txrx.rx.n_samples for txrx in op.operations])
+            n_samples = sum([txrx.rx.n_samples for txrx in op.operations])
         else:
-            return None
+            raise ValueError()
+        return _utils.create_aligned_array(
+            (n_samples, self.device.get_n_rx_channels()),
+            dtype=np.int16,
+            alignment=4096
+        )
 
     def _create_callback(self, feed_dict, data_buffer):
         cb = feed_dict.get("callback", None)
@@ -378,8 +394,8 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         def _callback_wrapper(event):
             # GIL
             self.device.transfer_rx_buffer_to_host_buffer(0, data_buffer)
-            self.device.enable_receive()
             cb(data_buffer)
+            self.device.enable_receive()
             # End GIL
 
         return _callback_wrapper
