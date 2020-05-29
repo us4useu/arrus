@@ -107,12 +107,16 @@ classdef Us4R < handle
                 'speedOfSound', sequenceOperation.speedOfSound, ...
                 'txFrequency', sequenceOperation.txFrequency, ...
                 'txNPeriods', sequenceOperation.txNPeriods, ...
+                'rxDepthRange', sequenceOperation.rxDepthRange, ...
                 'rxNSamples', sequenceOperation.rxNSamples, ...
                 'nRepetitions', sequenceOperation.nRepetitions, ...
                 'txPri', sequenceOperation.txPri, ...
                 'tgcStart', sequenceOperation.tgcStart, ...
                 'tgcSlope', sequenceOperation.tgcSlope, ...
                 'fsDivider', sequenceOperation.fsDivider);
+            
+            % Program hardware
+            obj.programHW;
             
             if nargin==2
                 obj.rec.enable = false;
@@ -229,6 +233,7 @@ classdef Us4R < handle
                                 'speedOfSound',     'c'; ...
                                 'txFrequency',      'txFreq'; ...
                                 'txNPeriods',       'txNPer'; ...
+                                'rxDepthRange',     'dRange'; ...
                                 'rxNSamples',       'nSamp'; ...
                                 'nRepetitions',     'nRep'; ...
                                 'txPri',            'txPri'; ...
@@ -241,34 +246,45 @@ classdef Us4R < handle
             end
 
             for iPar=1:size(seqParamMapping,1)
-                eval(['obj.seq.' seqParamMapping{iPar,2} ' = [];']);
+                obj.seq.(seqParamMapping{iPar,2}) = [];
             end
 
             nPar = length(varargin)/2;
             for iPar=1:nPar
-                idPar = find(strcmpi(varargin{iPar*2-1},seqParamMapping(:,1)));
-
-                if isempty(idPar)
-                    % TODO(piotrkarwat) Throw exception
-                end
-
-                if ~isnumeric(varargin{iPar*2})
-                    % TODO(piotrkarwat) Throw exception
-                end
-
-                eval(['obj.seq.' seqParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
+                idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
+                obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
-            
             
             %% Fixed parameters
 %             disp(obj.seq.fsDivider)
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
             obj.seq.rxTime      = 160e-6; % [s] rx time (max 4000us)
             obj.seq.rxDel       = 5e-6;
-            obj.seq.pauseMultip	= 1.5;            
-            disp(obj.seq.rxSampFreq/1e6)
-            %% Resulting parameters
-            distance = (400:150:obj.seq.nSamp) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
+            obj.seq.pauseMultip	= 1.5;
+            
+            %% rxNSamples & rxDepthRange
+            % rxDepthRange was given in sequence (rxNSamples is empty)
+            if isempty(obj.seq.nSamp)
+                % convert from [m] to samples
+                sampRange  = round(...
+                    2*obj.seq.rxSampFreq*obj.seq.dRange/obj.seq.c ...
+                    ) + 1;
+                
+                % rxNSamples (nSamp) must be coherent with rxDepthRange
+                nSamp = sampRange(2) - sampRange(1) + 1;
+                
+                % nSamp must be dividible by 64 (for now)
+                nSamp = 64*ceil(nSamp/64);
+                obj.seq.nSamp = nSamp;
+                
+                obj.seq.startSample = sampRange(1);
+            else
+                obj.seq.startSample = obj.seq.nSamp(1);
+                obj.seq.nSamp = diff(obj.seq.nSamp) + 1;
+            end
+            
+            %% TGC
+            distance = (400:150:(obj.seq.startSample + obj.seq.nSamp - 1)) / 65e6 * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(tgcCurve<14 | tgcCurve>54)
                 warning('TGC values are limited to 14-54dB range');
@@ -283,11 +299,13 @@ classdef Us4R < handle
             
             obj.seq.tgcCurve = (tgcCurve-14) / 40;                      % <0,1>
             
+            %% Tx aperture center
             if isempty(obj.seq.txApCent) && ~isempty(obj.seq.txCentElem)
                 obj.seq.txApCent        = obj.sys.xElem(floor(obj.seq.txCentElem)).*(1-mod(obj.seq.txCentElem,1)) + ...
                                           obj.sys.xElem( ceil(obj.seq.txCentElem)).*(  mod(obj.seq.txCentElem,1));
             end
 
+            %% Tx number
             switch obj.seq.type
                 case 'sta'
                     obj.seq.nTx         = length(obj.seq.txApCent);
@@ -297,8 +315,10 @@ classdef Us4R < handle
                     obj.seq.nTx         = length(obj.seq.txApCent);
             end
 
+            %% Tx apertures & delays
             obj = obj.calcTxParams;
 
+            %% Sub Tx number
             if strcmp(obj.seq.type,'lin')
                 obj.seq.nSubTx          = 1;
             else
@@ -312,6 +332,7 @@ classdef Us4R < handle
                 end
             end
             
+            %% Firings/triggers/memory
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
             memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
@@ -326,15 +347,17 @@ classdef Us4R < handle
                         ['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384.']);
             end
             
+            if mod(obj.seq.nSamp,64) ~= 0
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of samples (' num2str(obj.seq.nSamp) ') must be divisible by 64.']);
+            end
+            
             if memoryRequired > 2^32  % 4GB
                 error("ARRUS:OutOfMemory", ...
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
 
 
-
-            %% Program hardware
-            obj	= obj.programHW;
 
         end
 
@@ -357,23 +380,13 @@ classdef Us4R < handle
             end
 
             for iPar=1:size(recParamMapping,1)
-%                 eval(['obj.seq.' recParamMapping{iPar,2} ' = [];']);
-                eval(['obj.rec.' recParamMapping{iPar,2} ' = [];']);
+                obj.rec.(recParamMapping{iPar,2}) = [];
             end
 
             nPar = length(varargin)/2;
             for iPar=1:nPar
-                idPar = find(strcmpi(varargin{iPar*2-1},recParamMapping(:,1)));
-
-                if isempty(idPar)
-                    % Throw exception
-                end
-
-                if ~isnumeric(varargin{iPar*2})
-                    % Throw exception
-                end
-
-                eval(['obj.rec.' recParamMapping{idPar,2} ' = reshape(varargin{iPar*2},1,[]);']);
+                idPar = strcmpi(varargin{iPar*2-1},recParamMapping(:,1));
+                obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
 
             %% Resulting parameters
@@ -387,13 +400,13 @@ classdef Us4R < handle
         function val = get(obj,paramName)
 
             if isfield(obj.sys,paramName)
-                val = eval(['obj.sys.' paramName]);
+                val = obj.sys.(paramName);
             else
                 if isfield(obj.seq,paramName)
-                    val = eval(['obj.seq.' paramName]);
+                    val = obj.seq.(paramName);
                 else
                     if isfield(obj.rec,paramName)
-                        val = eval(['obj.rec.' paramName]);
+                        val = obj.rec.(paramName);
                     else
                         error('Invalid parameter name');
                     end
@@ -469,6 +482,7 @@ classdef Us4R < handle
             nRep	= obj.seq.nRep;
             nFire	= nSubTx*nTx;
             nTrig	= nFire*nRep;
+            startSample = obj.seq.startSample;
 
             if ~obj.sys.adapType
                 % old adapter type (00001111)
@@ -573,8 +587,7 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTrig=0:(nTrig-1)
-                    disp(obj.seq.fsDivider)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, 0, obj.seq.fsDivider-1);
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + 240);
                 end
             end
             
@@ -699,7 +712,7 @@ classdef Us4R < handle
 
             % Scan conversion (for 'lin' mode)
             if strcmp(obj.seq.type,'lin')
-                rfBfr = scanConversion(rfBfr,obj.sys,obj.seq,obj.rec);
+                rfBfr = scanConversion(rfBfr,obj.seq,obj.rec);
             end
 
             % Envelope detection

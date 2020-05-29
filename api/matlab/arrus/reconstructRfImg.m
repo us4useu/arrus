@@ -30,7 +30,7 @@ function[rfBfr,rfTx] = reconstructRfImg(rfRaw,sys,acq,proc)
 
 % TODO
 % apodization, STA step/focus/angle
-    fstSampShift = -240;	% [samp] number of the sample that reflects the tx start
+    fstSampShift = acq.startSample;	% [samp] number of the sample that reflects the tx start
 
 [nSamp,nRx,nTx] = size(rfRaw);
 zSize	= length(proc.zGrid);
