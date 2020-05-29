@@ -118,6 +118,7 @@ class Session(AbstractSession):
             current_op = current_async_kernel.op
             raise ValueError(f"An operation {current_op} is already running on "
                              f"the device {device_id}. Stop the device first.")
+
         result = kernel.run()
         if kernel is arrus.kernels.AsyncKernel:
             self._async_kernels[device.get_id()] = kernel

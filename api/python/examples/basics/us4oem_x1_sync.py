@@ -4,8 +4,8 @@ import numpy as np
 import arrus
 import itertools
 
-from arrus.operations import Tx, Rx, TxRx, Sequence, SetHVVoltage
-from arrus.params import SineWave, SingleElementAperture, RegionBasedAperture
+from arrus.ops import Tx, Rx, TxRx, Sequence, SetHVVoltage
+from arrus import SineWave, SingleElementAperture, RegionBasedAperture
 
 
 def main():

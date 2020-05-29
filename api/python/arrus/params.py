@@ -31,7 +31,9 @@ class Aperture(abc.ABC):
 
     This class is abstract and should not be instantiated.
     """
-    pass
+    @abc.abstractmethod
+    def get_size(self):
+        pass
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,9 @@ class RegionBasedAperture(Aperture):
     """
     origin: int
     size: int
+
+    def get_size(self):
+        return self.size
 
 
 @dataclass(frozen=True)
@@ -62,7 +67,11 @@ class MaskAperture(Aperture):
 
     :var mask: a mask to set, one dimensional numpy array
     """
+
     mask: np.ndarray
+
+    def get_size(self):
+        return np.sum(self.mask.astype(bool))
 
 
 @dataclass(frozen=True)
@@ -73,4 +82,9 @@ class SingleElementAperture(Aperture):
     :var mask: an element of the aperture
     """
     element: int
+
+    def get_size(self):
+        return 1
+
+
 
