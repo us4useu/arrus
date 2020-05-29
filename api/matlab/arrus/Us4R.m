@@ -284,7 +284,7 @@ classdef Us4R < handle
             end
             
             %% TGC
-            distance = (400:150:(obj.seq.startSample + obj.seq.nSamp - 1)) / 65e6 * obj.seq.c;         % [m]
+            distance = (400:150:(obj.seq.startSample + obj.seq.nSamp - 1)) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(tgcCurve<14 | tgcCurve>54)
                 warning('TGC values are limited to 14-54dB range');
@@ -587,7 +587,7 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTrig=0:(nTrig-1)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + 240);
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + 240, obj.seq.fsDivider-1);
                 end
             end
             

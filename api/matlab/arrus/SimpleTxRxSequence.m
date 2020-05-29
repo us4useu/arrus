@@ -20,7 +20,7 @@ classdef SimpleTxRxSequence < Operation
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param fsDivider: sampling frequency divider. Should be positive int. 
     %        Default value is equal to 1, which means sampling with 
-    %        the highest possible frequency.
+    %        the highest possible frequency (no decimation).
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -41,7 +41,8 @@ classdef SimpleTxRxSequence < Operation
         txPri (1,1) double {mustBePositive} = 100e-6
         tgcStart (1,1)
         tgcSlope (1,1)
-        fsDivider(1,1) {mustBeInteger, mustBePositive} = 1
+        fsDivider(1,1) {mustBeInteger, mustBePositive, ...
+            mustBeLessThan(fsDivider, 257)} = 1
     end
     
     methods
