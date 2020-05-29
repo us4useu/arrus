@@ -1,6 +1,13 @@
 Release notes
 =============
 
+Version 0.4.1
+-------------
+
+- MATLAB API:
+
+    - ``nRepetitions`` parameter added to control the number of rf-data frames to be recorded.
+
 Version 0.4.0
 -------------
 
