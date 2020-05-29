@@ -71,9 +71,9 @@ us.upload(seqPWI,rec);
 % us.upload(seqLIN,rec);
 
 %% Run sequence and reconstruction
-% [rf,img] = us.run;
+[rf,img] = us.run;
 
-display = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
-us.runLoop(@display.isOpen, @display.updateImg);
+% display = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
+% us.runLoop(@display.isOpen, @display.updateImg);
 
 

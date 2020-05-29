@@ -261,12 +261,12 @@ classdef Us4R < handle
             
             
             %% Fixed parameters
-            disp(obj.seq.fsDivider)
+%             disp(obj.seq.fsDivider)
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
             obj.seq.rxTime      = 160e-6; % [s] rx time (max 4000us)
             obj.seq.rxDel       = 5e-6;
             obj.seq.pauseMultip	= 1.5;            
-
+            disp(obj.seq.rxSampFreq/1e6)
             %% Resulting parameters
             distance = (400:150:obj.seq.nSamp) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
@@ -573,7 +573,8 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTrig=0:(nTrig-1)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp);
+                    disp(obj.seq.fsDivider)
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, 0, obj.seq.fsDivider-1);
                 end
             end
             
