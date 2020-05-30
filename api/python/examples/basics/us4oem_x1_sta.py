@@ -36,7 +36,7 @@ module.enable_tgc()
 
 # Configure TX/RX scheme.
 NEVENTS = 4
-NFRAMES = 128
+NFRAMES = 121
 NSAMPLES = 8*1024
 TX_FREQUENCY = 8.125e6
 SAMPLING_FREQUENCY = 65e6
@@ -54,27 +54,33 @@ for frame in range(NFRAMES):
         firing = frame*NEVENTS + event
         tx_aperture = [0] * 128
         tx_aperture[frame] = 1
+        tx_aperture[frame+1] = 1
+        tx_aperture[frame + 2] = 1
+        # tx_aperture[frame + 3] = 1
+        # tx_aperture[frame + 4] = 1
         module.set_tx_delays(delays=delays, firing=firing)
         module.set_tx_frequency(frequency=TX_FREQUENCY, firing=firing)
         module.set_tx_half_periods(n_half_periods=3, firing=firing)
         module.set_tx_invert(is_enable=False, firing=firing)
         # module.set_tx_aperture(origin=frame, size=1, firing=firing)
-        module.set_tx_aperture_mask(aperture=tx_aperture, firing=event)
+        module.set_tx_aperture_mask(aperture=tx_aperture, firing=firing)
         module.set_active_channel_group([1]*16, firing=firing)
         module.set_rx_time(time=150e-6, firing=firing)
         module.set_rx_delay(delay=5e-6, firing=firing)
         module.set_rx_aperture(origin=event*32, size=32, firing=firing)
         module.schedule_receive(firing*NSAMPLES, NSAMPLES)
+        if firing == NFRAMES*NEVENTS-1:
+            is_sync_required = True
+        else:
+            is_sync_required = False
         module.set_trigger(
             time_to_next_trigger=PRI,
             time_to_next_tx=0,
-            is_sync_required=False,
+            is_sync_required=is_sync_required,
             idx=firing
         )
 
 module.enable_transmit()
-
-module.set_trigger(PRI, 0, True, NFRAMES*NEVENTS-1)
 
 # Run the scheme:
 # - prepare figure to display,
@@ -101,7 +107,6 @@ module.start_trigger()
 time.sleep(1)
 module.enable_receive()
 module.trigger_sync()
-time.sleep(2*PRI*NEVENTS*NFRAMES)
 # - transfer data from module's internal memory to the host memory
 module.stop_trigger()
 print("Transferring data")

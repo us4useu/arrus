@@ -2,7 +2,6 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.signal
 import arrus
 
 # Start new session with the device.
@@ -49,14 +48,18 @@ module.clear_scheduled_receive()
 module.set_n_triggers(NEVENTS)
 module.set_number_of_firings(NEVENTS)
 
+tx_aperture = [0]*128
+tx_aperture[127] = 1
+
 for event in range(NEVENTS):
     module.set_tx_delays(delays=delays, firing=event)
     module.set_tx_frequency(frequency=TX_FREQUENCY, firing=event)
     module.set_tx_half_periods(n_half_periods=3, firing=event)
     module.set_tx_invert(is_enable=False)
-    module.set_tx_aperture(origin=0, size=128, firing=event)
-    module.set_rx_time(time=200e-6, firing=event)
-    module.set_rx_delay(delay=20e-6, firing=event)
+    module.set_tx_aperture_mask(aperture=tx_aperture, firing=event)
+    module.set_active_channel_group([1]*16, firing=event)
+    module.set_rx_time(time=150e-6, firing=event)
+    module.set_rx_delay(delay=5e-6, firing=event)
     module.set_rx_aperture(origin=event*32, size=32, firing=event)
     module.schedule_receive(event*NSAMPLES, NSAMPLES)
     module.set_trigger(
@@ -108,7 +111,7 @@ while not is_closed:
     start = time.time()
     module.enable_receive()
     module.trigger_sync()
-    time.sleep(1)
+    time.sleep(0.005)
 
     # - transfer data from module's internal memory to the host memory
     buffer = module.transfer_rx_buffer_to_host(0, NEVENTS*NSAMPLES)

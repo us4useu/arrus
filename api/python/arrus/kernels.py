@@ -91,8 +91,7 @@ class TxRxModuleKernel(LoadableKernel):
 
     def __init__(self, op: _operations.TxRx, device: _us4oem.Us4OEM,
                  feed_dict: dict, data_offset=0, sync_required=True,
-                 callback=None, set_one_operation=True, firing=0,
-                 queue: Queue = None):
+                 callback=None, set_one_operation=True, firing=0):
         self.op = op
         self.device = device
         self.feed_dict = feed_dict
@@ -142,13 +141,11 @@ class TxRxModuleKernel(LoadableKernel):
         # Aperture
         device.set_tx_aperture_mask(aperture=self._tx_aperture_mask,
                                     firing=firing)
-        # device.set_tx_aperture(origin=7, size=1, firing=firing)
-        # device.set_active_channel_group([True]*16, firing=firing)
+        device.set_active_channel_group([1]*16, firing=firing)
         # RX
         # Aperture
         device.set_rx_aperture_mask(aperture=self._rx_aperture_mask,
                                     firing=firing)
-        # device.set_rx_aperture(origin=0, size=32, firing=firing)
         # Samples, rx time, delay
         n_samples = op.rx.n_samples
         device.set_rx_time(time=op.rx.rx_time, firing=firing)
@@ -160,20 +157,20 @@ class TxRxModuleKernel(LoadableKernel):
     @staticmethod
     def _get_aperture_mask(aperture, device: _us4oem.Us4OEM):
         if isinstance(aperture, _params.MaskAperture):
-            return aperture.mask.astype(bool)
+            return aperture.mask.astype(bool).astype(int)
         elif isinstance(aperture, _params.RegionBasedAperture):
             mask = np.zeros(device.get_n_channels()).astype(bool)
             origin = aperture.origin
             size = aperture.size
             mask[origin:origin+size] = True
-            return mask
+            return mask.astype(int)
         elif isinstance(aperture, _params.SingleElementAperture):
             mask = np.zeros(device.get_n_channels()).astype(bool)
             _validation.assert_in_range(aperture.element,
                                         (0, device.get_n_channels()),
                                         "single element aperture")
             mask[aperture.element] = True
-            return mask
+            return mask.astype(int)
         else:
             raise ValueError("Unsupported aperture type: %s" % type(aperture))
 
@@ -288,13 +285,15 @@ class SequenceModuleKernel(LoadableKernel):
         self.device.clear_scheduled_receive()
         self.device.set_n_triggers(len(self.op.operations))
         self.device.set_number_of_firings(len(self.op.operations))
-        for kernel in self._kernels:
+        for i, kernel in enumerate(self._kernels):
+            _logger.log(DEBUG, f"Loading {i} TxRx.")
             kernel.load()
 
     def run_loaded(self):
         self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
+        self.device.trigger_sync()
         result_buffer = self._queue.get()
         self.device.stop_trigger()
         return result_buffer
@@ -314,7 +313,7 @@ class SequenceModuleKernel(LoadableKernel):
         data_offset = 0
         n_operations = len(operations)
         for i, tx_rx in enumerate(operations):
-            sync_required = i == n_operations-1 and sync_required
+            sync = i == n_operations-1 and sync_required
             if i == n_operations-1:
                 cb = callback
             else:
@@ -322,7 +321,7 @@ class SequenceModuleKernel(LoadableKernel):
             kernel = TxRxModuleKernel(op=tx_rx, device=device,
                                       feed_dict=feed_dict,
                                       data_offset=data_offset,
-                                      sync_required=sync_required,
+                                      sync_required=sync,
                                       set_one_operation=False,
                                       callback=cb, firing=i)
             tx_rx_kernels.append(kernel)

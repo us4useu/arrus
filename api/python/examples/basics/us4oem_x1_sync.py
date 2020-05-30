@@ -10,19 +10,19 @@ from arrus.params import SineWave, SingleElementAperture, RegionBasedAperture
 
 def main():
     # Define TX/RX sequence to perform.
-    sine_wave = SineWave(frequency=8.125e6, n_periods=2, inverse=False)
+    sine_wave = SineWave(frequency=8.125e6, n_periods=1.5, inverse=False)
 
     n_firings_per_frame = 4
-    n_frames = 128
+    n_frames = 120
     n_samples = 8*1024
 
     def get_full_rx_aperture(element_number):
         return [
             TxRx(
                 tx=Tx(
-                    delays=np.array([0]),
+                    delays=np.array([0]*5),
                     excitation=sine_wave,
-                    aperture=SingleElementAperture(element_number),
+                    aperture=RegionBasedAperture(origin=element_number, size=5),
                     pri=200e-6),
                 rx=Rx(
                     sampling_frequency=65e6,
@@ -47,14 +47,14 @@ def main():
     with arrus.Session(cfg=cfg) as sess:
         # Enable high voltage supplier.
         hv256 = sess.get_device("/HV256")
+        module = sess.get_device("/Us4OEM:0")
+        configure_module(module)
+
         sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
 
-        module = sess.get_device("/Us4OEM:0")
         n_channels = module.get_n_rx_channels()
-        configure_module(module)
         print("Acquiring data")
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=module))
-        time.sleep(2)
 
         # Copy and reorganize data from the module.
         rf = np.zeros(
@@ -89,14 +89,15 @@ def configure_module(module):
     # Turn off DTGC
     module.set_dtgc(0)  # [dB]
     # Set TGC range [14-54] dB (PGA+LNA)
-    module.enable_tgc()
     module.set_pga_gain(30)  # [dB]
+    module.set_lpf_cutoff(10e6)  # [Hz]
+    module.set_active_termination(200)
     module.set_lna_gain(24)  # [dB]
     # Set TGC samples. 'O' (14dB) means minimum gain, '1' means maximum (54 dB)
-    # module.set_tgc_samples(np.arange(0.0, 1.0, step=0.2))
+    module.set_tgc_samples(np.arange(0.0, 1.0, step=0.2))
+    module.enable_tgc()
     # module.enable_tgc()
     # Set low-pass filter.
-    module.set_lpf_cutoff(10e6)  # [Hz]
 
 
 def display_acquired_frame(rf, window_sizes=(7, 7)):
@@ -107,7 +108,7 @@ def display_acquired_frame(rf, window_sizes=(7, 7)):
     ax.set_ylabel("Samples")
     fig.canvas.set_window_title("RF data")
 
-    canvas = plt.imshow(rf[64, :, :],
+    canvas = plt.imshow(rf[0, :, :],
                         vmin=np.iinfo(np.int16).min,
                         vmax=np.iinfo(np.int16).max)
     fig.show()

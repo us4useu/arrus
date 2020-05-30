@@ -109,6 +109,8 @@ class Session(AbstractSession):
         :param operation: operation to run
         :param feed_dict: values to be set in the place of placeholders.
         """
+        _logger.log(DEBUG, f"Session run: {str(operation)}")
+
         kernel = arrus.kernels.get_kernel(operation, feed_dict)
         device = feed_dict.get("device", None)
         arrus.validation.assert_not_none(device, "device")
@@ -118,6 +120,7 @@ class Session(AbstractSession):
             current_op = current_async_kernel.op
             raise ValueError(f"An operation {current_op} is already running on "
                              f"the device {device_id}. Stop the device first.")
+
         result = kernel.run()
         if kernel is arrus.kernels.AsyncKernel:
             self._async_kernels[device.get_id()] = kernel
