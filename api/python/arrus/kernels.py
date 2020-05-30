@@ -4,7 +4,7 @@ from queue import Queue
 import logging
 from logging import DEBUG, INFO
 import time
-import arrus.operations as _operations
+import arrus.ops as _operations
 import arrus.params as _params
 import arrus.devices.us4oem as _us4oem
 import arrus.devices.hv256 as _hv256

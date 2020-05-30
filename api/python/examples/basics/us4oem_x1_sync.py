@@ -17,21 +17,20 @@ def main():
     n_samples = 8*1024
 
     def get_full_rx_aperture(element_number):
-        return [
-            TxRx(
-                tx=Tx(
-                    delays=np.array([0]*5),
+        operations = []
+        for i in range(n_firings_per_frame):
+            tx = Tx(delays=np.array([0]*5),
                     excitation=sine_wave,
                     aperture=RegionBasedAperture(origin=element_number, size=5),
-                    pri=200e-6),
-                rx=Rx(
-                    sampling_frequency=65e6,
+                    pri=200e-6)
+            rx = Rx(sampling_frequency=65e6,
                     n_samples=n_samples,
                     aperture=RegionBasedAperture(i*32, 32),
                     rx_time=150e-6,
-                    rx_delay=5e-6))
-            for i in range(n_firings_per_frame)
-        ]
+                    rx_delay=5e-6)
+            txrx = TxRx(tx, rx)
+            operations.append(txrx)
+        return operations
 
     tx_rx_sequence = Sequence(list(itertools.chain(*[
         get_full_rx_aperture(channel)

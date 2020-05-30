@@ -13,7 +13,6 @@ import arrus.devices.device as _device
 import arrus.interface as _interface
 import arrus.utils as _utils
 import arrus.devices.ius4oem as _ius4oem
-import arrus.operations
 import arrus.kernels
 import arrus.validation
 
@@ -48,7 +47,7 @@ class AbstractSession(abc.ABC):
         return self._devices
 
     @abc.abstractmethod
-    def run(self, operation: arrus.operations.Operation, feed_dict: dict):
+    def run(self, operation: arrus.ops.Operation, feed_dict: dict):
         raise ValueError("This type of session cannot run operations.")
 
     @staticmethod
@@ -102,7 +101,7 @@ class Session(AbstractSession):
         super().__init__(cfg)
         self._async_kernels = {}
 
-    def run(self, operation: arrus.operations.Operation, feed_dict: dict):
+    def run(self, operation: arrus.ops.Operation, feed_dict: dict):
         """
         Runs a given operation in the system.
 
@@ -170,5 +169,5 @@ class InteractiveSession(AbstractSession):
             cfg = yaml.safe_load(f)
             super().__init__(cfg)
 
-    def run(self, operation: arrus.operations.Operation, feed_dict: dict):
+    def run(self, operation: arrus.ops.Operation, feed_dict: dict):
         raise ValueError("This type of session cannot run operations.")

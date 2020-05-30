@@ -4,6 +4,8 @@ from abc import ABC
 import typing
 import numpy as np
 
+import arrus.params
+
 import arrus
 
 
@@ -29,8 +31,8 @@ class Tx(Operation):
     :var pri: pulse repetition interval
     """
     delays: np.ndarray
-    excitation: arrus.Excitation
-    aperture: arrus.Aperture
+    excitation: arrus.params.Excitation
+    aperture: arrus.params.Aperture
     pri: float
 
     def __post_init__(self):
@@ -56,7 +58,7 @@ class Rx(Operation):
     """
     sampling_frequency: float
     n_samples: int
-    aperture: arrus.Aperture
+    aperture: arrus.params.Aperture
     rx_time: float = 160e-6
     rx_delay: float = 5e-6
 
