@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from collections.abc import Iterable
 from abc import ABC
 import typing
+import numpy as np
 
-import arrus.params
+import arrus
 
 
 class Operation(ABC):
@@ -27,10 +28,19 @@ class Tx(Operation):
     :var aperture: a set of TX channels that should be enabled
     :var pri: pulse repetition interval
     """
-    delays: Iterable
-    excitation: arrus.params.Excitation
-    aperture: arrus.params.Aperture
+    delays: np.ndarray
+    excitation: arrus.Excitation
+    aperture: arrus.Aperture
     pri: float
+
+    def __post_init__(self):
+        if len(self.delays.shape) != 1:
+            raise ValueError("The array of delays should be a vector of "
+                             "shape (number of active elements,)")
+        if self.delays.shape[0] != self.aperture.get_size():
+            raise ValueError(f"The array of delays should have the size equal "
+                             f"to the number of active elements of aperture "
+                             f"({self.aperture.get_size()})")
 
 
 @dataclass(frozen=True)
@@ -46,7 +56,7 @@ class Rx(Operation):
     """
     sampling_frequency: float
     n_samples: int
-    aperture: arrus.params.Aperture
+    aperture: arrus.Aperture
     rx_time: float = 160e-6
     rx_delay: float = 5e-6
 
