@@ -93,7 +93,6 @@ if(ARRUS_EMBED_DEPS)
         FILES
             # TODO(pjarosik) make it more general (will not work for OS!=win)
             ${Us4_ROOT_DIR}/bin/us4OEMFirmwareUpdate.exe
-            ${Us4_ROOT_DIR}/bin/us4OEMStatus.exe
         DESTINATION
             bin
     )
