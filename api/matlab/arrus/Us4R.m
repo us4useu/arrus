@@ -284,7 +284,9 @@ classdef Us4R < handle
             end
             
             %% TGC
-            distance = (400:150:(obj.seq.startSample + obj.seq.nSamp - 1)) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
+            distance = (round(400/obj.seq.fsDivider) : ...
+                        round(150/obj.seq.fsDivider) : ...
+                        (obj.seq.startSample + obj.seq.nSamp - 1)) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(tgcCurve<14 | tgcCurve>54)
                 warning('TGC values are limited to 14-54dB range');
