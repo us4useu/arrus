@@ -589,7 +589,7 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTrig=0:(nTrig-1)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + 240, obj.seq.fsDivider-1);
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + round(240/obj.seq.fsDivider), obj.seq.fsDivider-1);
                 end
             end
             
