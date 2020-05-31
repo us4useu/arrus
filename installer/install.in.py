@@ -49,7 +49,8 @@ _FIRMWARE_SEA_FILE = f"us4OEM_tx_rev_{TX_FIRMWARE_VERSION[0].upper()}.sea"
 _FIRMWARE_SED_FILE = f"us4OEM_tx_rev_{TX_FIRMWARE_VERSION[0].upper()}.sed"
 
 _US4OEM_STATUS_BIN = "bin/us4OEMStatus.exe"
-_US4OEM_FIRMWARE_UPDATE_BIN = "bin/us4OEMFirmwareUpdate"
+_US4OEM_FIRMWARE_UPDATE_EXE = "us4OEMFirmwareUpdate.exe"
+_US4OEM_FIRMWARE_UPDATE_BIN = f"bin/{_US4OEM_FIRMWARE_UPDATE_EXE}"
 
 _STATUS_US4OEM_KEY = "us4oems"
 
@@ -408,7 +409,7 @@ class UpdateFirmwareStage(Stage):
         old_wd = os.getcwd()
         try:
             os.chdir(firmware_dir)
-            update_bin = _US4OEM_FIRMWARE_UPDATE_BIN
+            update_bin = _US4OEM_FIRMWARE_UPDATE_EXE
 
             n_us4oems = context.n_us4oems
 
