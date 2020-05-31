@@ -130,7 +130,8 @@ class TxRxModuleKernel(LoadableKernel):
         firing = self.firing
         # Tx
         tx_delays = np.zeros(device.get_n_tx_channels())
-        tx_delays[np.where(self._tx_aperture_mask)] = op.tx.delays
+        if op.tx.delays is not None:
+            tx_delays[np.where(self._tx_aperture_mask)] = op.tx.delays
         device.set_tx_delays(delays=tx_delays, firing=firing)
         # Excitation
         wave = op.tx.excitation
@@ -183,9 +184,10 @@ class TxRxModuleKernel(LoadableKernel):
         self._validate_aperture(tx_aperture, device.get_n_channels(), "tx")
         # Delays:
         number_of_active_elements = np.sum(self._tx_aperture_mask.astype(bool))
-        _validation.assert_shape(self.op.tx.delays,
-                                 (number_of_active_elements,),
-                                 parameter_name="tx.delays")
+        if self.op.tx.delays is not None:
+            _validation.assert_shape(self.op.tx.delays,
+                                     (number_of_active_elements,),
+                                     parameter_name="tx.delays")
 
         # Excitation:
         excitation = self.op.tx.excitation

@@ -23,17 +23,17 @@ class Tx(Operation):
     """
     Single atomic operation of signal transmit.
 
-    :var delays: an array of delays to set to active elements. Should have the
-        shape (n_a,), where n_a is a number of active elements determined by
-        tx aperture
+    :var delays: an array of delays to set to active elements. Should have the \
+        shape (n_a,), where n_a is a number of active elements determined by \
+        tx aperture. When None, firings are performed with not delay (delays=0).
     :var excitation: an excitation to perform
     :var aperture: a set of TX channels that should be enabled
     :var pri: pulse repetition interval
     """
-    delays: np.ndarray
     excitation: arrus.params.Excitation
     aperture: arrus.params.Aperture
     pri: float
+    delays: typing.Optional[np.ndarray] = None
 
     def __post_init__(self):
         if len(self.delays.shape) != 1:

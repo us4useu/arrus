@@ -33,8 +33,7 @@ def main():
     def get_full_rx_aperture(element_number):
         operations = []
         for i in range(n_firings_per_frame):
-            tx = Tx(delays=np.array([0]*5),
-                    excitation=SineWave(frequency=8.125e6, n_periods=1.5,
+            tx = Tx(excitation=SineWave(frequency=8.125e6, n_periods=1.5,
                                         inverse=False),
                     aperture=RegionBasedAperture(origin=element_number, size=1),
                     pri=200e-6)
