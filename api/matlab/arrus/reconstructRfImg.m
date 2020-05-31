@@ -30,7 +30,6 @@ function[rfBfr,rfTx] = reconstructRfImg(rfRaw,sys,acq,proc)
 
 % TODO
 % apodization, STA step/focus/angle
-    fstSampShift = acq.startSample;	% [samp] number of the sample that reflects the tx start
 
 [nSamp,nRx,nTx] = size(rfRaw);
 zSize	= length(proc.zGrid);
@@ -44,7 +43,7 @@ fs      = acq.rxSampFreq/proc.dec;
 maxTang	= tan(asin(min(1,(acq.c/acq.txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
 
 %% initial delays
-fstSampDel	= fstSampShift/acq.rxSampFreq;	% [s] rx delay with respect to start of tx
+fstSampDel	= acq.startSample/acq.rxSampFreq;	% [s] rx delay with respect to start of tx
 burstFactor	= acq.txNPer/(2*acq.txFreq);     % [s] burst factor
 initDel     = - fstSampDel + acq.txDelCent + burstFactor;	% [s] total init delay
 
