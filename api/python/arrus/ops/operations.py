@@ -50,18 +50,26 @@ class Rx(Operation):
     """
     Single atomic operation of signal data reception.
 
-    :var sampling_frequency: sampling frequency of data reception
-    :var number_of_samples: number of samples to acquire
+    :var samples: number of samples to acquire
+    :var decimation: degree of decimation to be made during Rx phase. For \
+        example, setting decimation to ``2`` means saving only the half of the \
+        acquired data to the device's memory (e.g. this allows to get sampling \
+        rate of the acquired data equal to 32.5e6 Hz, \
+        assuming that system's sampling rate is equal 65e6 Hz). \
+        Check ``get_actual_n_samples``to get the actual number of acquired \
+        samples.
     :var aperture: a set of RX channels that should be enabled
     :var rx_time: the total acquisition time
     :var rx_delay: initial rx delay
     """
-    sampling_frequency: float
     n_samples: int
     aperture: arrus.params.Aperture
+    decimation: int = 1
     rx_time: float = 160e-6
     rx_delay: float = 5e-6
 
+    def get_actual_n_samples(self):
+        return self.n_samples//self.decimation
 
 @dataclass(frozen=True)
 class TxRx(Operation):
