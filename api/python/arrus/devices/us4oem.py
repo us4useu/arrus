@@ -2,7 +2,9 @@ import math
 import time
 from functools import wraps
 from logging import DEBUG, INFO
-from typing import List
+from typing import List, Union, Optional
+import dataclasses
+
 
 import numpy as np
 
@@ -10,6 +12,8 @@ import arrus.devices.device as _device
 import arrus.devices.ius4oem as _ius4oem
 import arrus.devices.callbacks as _callbacks
 import arrus.utils as _utils
+import arrus.validation as _validation
+import arrus.interface as _interface
 
 
 def assert_card_is_powered_up(f):
@@ -22,6 +26,84 @@ def assert_card_is_powered_up(f):
     return wrapper
 
 
+@dataclasses.dataclass(frozen=True)
+class ChannelMapping:
+    """
+    Tx/Rx channel mapping for Us4OEM module.
+
+    :param tx: a list: tx[output channel number] = input channel number
+    :param rx: a list: rx[output channel number] = input channel number
+    """
+    tx: list
+    rx: list
+
+    def __post_init__(self):
+        _validation.assert_type(self.tx, list, "tx channel mapping")
+        _validation.assert_type(self.rx, list, "rx channel mapping")
+        _validation.assert_equal(len(self.tx), 128, "tx mapping array length")
+        _validation.assert_equal(len(self.rx), 32, "rx mapping array length")
+
+
+@dataclasses.dataclass(frozen=True)
+class Us4OEMCfg(_device.DeviceCfg):
+    """
+    Us4OEM module configuration.
+
+    :param channel_mapping: channel mapping to set. If str, a value of \
+        arrus.interface.get_interface(channel_mapping) will be used
+    :param active_channel_groups: a list of True/False values (or non-zero \
+        and zero values), which indicate which groups of channels should be \
+        active during the whole session with the device.
+    :param dtgc: Digital time gain compensation as values in attenuation. \
+        When is None, DTGC is set to disabled. Available values: 0, 6, 12, \
+        18, 24, 30, 36, 42 [dB]; can be None
+    :param pga_gain: Configures programmable-gain amplifier (PGA). Gain to set,\
+        available values: 24, 30 [dB]
+    :param lna_gain: Configures low-noise amplifier (LNA) gain. Gain to set; \
+        available values: 12, 18, 24 [dB]
+    :param lpf_cutoff: Low-pass filter (LPF) cutoff frequency to set, \
+        available values: 10e6, 15e6, 20e6, 30e6, 35e6, 50e6 [Hz]
+    :param active_termination: Active termination to set, \
+        available values: 50, 100, 200, 400; can be None (disabled)
+    :param tgc_samples: a list of tgc curve samples to set [dB]. The values \
+        should be in range 14-54 dB, maximum number of samples to set: 1022. \
+        TGC curve sampling rate is equal 1MHz. Set to None if want to disable \
+        TGC.
+    """
+    channel_mapping: Union[ChannelMapping, str]
+    active_channel_groups: list
+    dtgc: Optional[float] = None
+    pga_gain: float = 30
+    lna_again: float = 24
+    lpf_cutoff: float = 10e6
+    active_termination: float = None
+    tgc_samples: Union[list, np.ndarray, None] = None
+
+    def __post_init__(self):
+
+        # Validate channel mapping
+        if isinstance(self.channel_mapping, str):
+            available_interfaces = _interface._INTERFACES.keys()
+            _validation.assert_one_of(self.channel_mapping,
+                                      available_interfaces,
+                                      "channel mapping")
+        else:
+            _validation.assert_type(self.channel_mapping, ChannelMapping,
+                                    "channel mapping")
+
+        # Validate active channel groups.
+        _validation.assert_type(self.active_channel_groups, list,
+                                "active channel groups")
+        _validation.assert_equal(len(self.active_channel_groups), 16,
+                                 "active_channel_groups length")
+        # Validate TGC samples.
+        if self.tgc_samples is not None:
+            max_value = np.max(self.tgc_samples)
+            min_value = np.min(self.tgc_samples)
+            _validation.assert_in_range((min_value, max_value), (14, 54),
+                                        "TGC curve values")
+
+
 class Us4OEM(_device.Device):
     """
     A single Us4OEM.
@@ -32,7 +114,10 @@ class Us4OEM(_device.Device):
     def get_card_id(index):
         return _device.Device.get_device_id(Us4OEM._DEVICE_NAME, index)
 
-    def __init__(self, index: int, card_handle: _ius4oem.IUs4OEM):
+    # TODO(pjarosik) make cfg mandatory when InteractiveSession will be not
+    # anymore needed
+    def __init__(self, index: int, card_handle: _ius4oem.IUs4OEM,
+                 cfg: Us4OEMCfg=None):
         super().__init__(Us4OEM._DEVICE_NAME, index)
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
@@ -40,6 +125,8 @@ class Us4OEM(_device.Device):
         self.pri_list = None
         self.pri_total = None
         self.callbacks = []
+        self.cfg = cfg
+        self._default_active_channel_groups = None
 
     def start_if_necessary(self):
         """
@@ -49,10 +136,38 @@ class Us4OEM(_device.Device):
             self.log(
                 INFO,
                 "Was powered down, initializing it and powering up...")
+            if self.cfg is not None:
+                if isinstance(self.cfg.channel_mapping, str):
+                    interf = _interface.get_interface(self.cfg.channel_mapping)
+                    tx_map = interf.get_tx_channel_mapping(self.index)
+                    rx_map = interf.get_rx_channel_mapping(self.index)
+                    mapping = ChannelMapping(tx=tx_map, rx=rx_map)
+                else:
+                    mapping = self.cfg.channel_mapping
 
+                self.set_tx_channel_mapping(mapping.tx)
+                self.set_rx_channel_mapping(mapping.rx)
             self.card_handle.Initialize()
             self.set_tx_channel_mapping(self.tx_channel_mapping)
             self.set_rx_channel_mapping(self.rx_channel_mapping)
+            if self.cfg is not None:
+                self._default_active_channel_groups = \
+                    self.cfg.active_channel_groups
+                self.set_dtgc(attenuation=self.cfg.dtgc)
+                self.set_pga_gain(gain=self.cfg.pga_gain)
+                self.set_lna_gain(gain=self.cfg.lna_again)
+                self.set_lpf_cutoff(cutoff=self.cfg.lpf_cutoff)
+                self.set_active_termination(
+                    active_termination=self.cfg.active_termination)
+                if self.cfg.tgc_samples is None:
+                    self.disable_tgc()
+                else:
+                    tgc_db_values = np.array(self.cfg.tgc_samples)
+                    tgc_db_values = tgc_db_values-14
+                    tgc_db_values = tgc_db_values/40
+                    self.enable_tgc()
+                    self.set_tgc_samples(tgc_db_values)
+
             self.log(INFO, "... successfully powered up.")
 
     def get_n_rx_channels(self):

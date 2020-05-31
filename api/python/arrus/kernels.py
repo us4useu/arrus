@@ -141,7 +141,9 @@ class TxRxModuleKernel(LoadableKernel):
         # Aperture
         device.set_tx_aperture_mask(aperture=self._tx_aperture_mask,
                                     firing=firing)
-        device.set_active_channel_group([1]*16, firing=firing)
+        device.set_active_channel_group(
+            self.device._default_active_channel_groups,
+            firing=firing)
         # RX
         # Aperture
         device.set_rx_aperture_mask(aperture=self._rx_aperture_mask,

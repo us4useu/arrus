@@ -1,6 +1,12 @@
 from collections.abc import Iterable
 
 
+def assert_equal(value, expected, parameter_name):
+    if value != expected:
+        raise InvalidParameterError(parameter_name, f"should be "
+                                                    f"equal {expected}")
+
+
 def assert_not_none(value, parameter_name):
     if value is None:
         raise InvalidParameterError(parameter_name, "should be not None")
