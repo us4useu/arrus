@@ -36,10 +36,11 @@ class Tx(Operation):
     delays: typing.Optional[np.ndarray] = None
 
     def __post_init__(self):
-        if len(self.delays.shape) != 1:
+        if self.delays is not None and len(self.delays.shape) != 1:
             raise ValueError("The array of delays should be a vector of "
                              "shape (number of active elements,)")
-        if self.delays.shape[0] != self.aperture.get_size():
+        if self.delays is not None \
+                and self.delays.shape[0] != self.aperture.get_size():
             raise ValueError(f"The array of delays should have the size equal "
                              f"to the number of active elements of aperture "
                              f"({self.aperture.get_size()})")

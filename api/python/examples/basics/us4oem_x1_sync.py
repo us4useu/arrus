@@ -15,7 +15,8 @@ from arrus.session import SessionCfg
 def main():
     # Prepare system description.
     system_cfg = CustomUs4RCfg(
-        n_us4oems=1
+        n_us4oems=2,
+        # is_hv256=True
     )
     # Prepare Us4OEM initial configuration.
     us4oem_cfg = Us4OEMCfg(
@@ -27,7 +28,7 @@ def main():
 
     # Define TX/RX sequence.
     n_firings_per_frame = 4
-    n_frames = 120
+    n_frames = 128
     n_samples = 8*1024
 
     def get_full_rx_aperture(element_number):
@@ -37,8 +38,7 @@ def main():
                                         inverse=False),
                     aperture=RegionBasedAperture(origin=element_number, size=1),
                     pri=200e-6)
-            rx = Rx(sampling_frequency=65e6,
-                    n_samples=n_samples,
+            rx = Rx(n_samples=n_samples,
                     aperture=RegionBasedAperture(i*32, 32),
                     rx_time=150e-6,
                     rx_delay=5e-6)
@@ -55,15 +55,15 @@ def main():
     session_cfg = SessionCfg(
         system=system_cfg,
         devices={
-            "Us4OEM:0": us4oem_cfg
+            "Us4OEM:0": us4oem_cfg,
         }
     )
     with arrus.Session(cfg=session_cfg) as sess:
         # Enable high voltage supplier.
-        hv256 = sess.get_device("/HV256")
+        # hv256 = sess.get_device("/HV256")
         us4oem = sess.get_device("/Us4OEM:0")
 
-        sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
+        # sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
 
         print("Acquiring data")
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=us4oem))

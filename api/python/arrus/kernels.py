@@ -155,7 +155,7 @@ class TxRxModuleKernel(LoadableKernel):
         device.set_rx_time(time=op.rx.rx_time, firing=firing)
         device.set_rx_delay(delay=op.rx.rx_delay, firing=firing)
         device.schedule_receive(address=self.data_offset,
-                                n_samples=n_samples,
+                                length=n_samples,
                                 decimation=op.rx.decimation-1,
                                 callback=callback)
         device.set_trigger(time_to_next_trigger=op.tx.pri, time_to_next_tx=0,
@@ -218,8 +218,6 @@ class TxRxModuleKernel(LoadableKernel):
                                     "rx.aperture number of channels")
         _validation.assert_in_range(self.op.rx.n_samples,
                                     (0, 65536), "rx.n_samples")
-        _validation.assert_one_of(self.op.rx.sampling_frequency,
-                                  {32.5e6, 65e6}, "rx.sampling_frequency")
         _validation.assert_in_range(self.op.rx.decimation,
                                     (0, 5), "rx decimation")
 

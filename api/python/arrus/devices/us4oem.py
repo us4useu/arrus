@@ -144,9 +144,7 @@ class Us4OEM(_device.Device):
                     mapping = ChannelMapping(tx=tx_map, rx=rx_map)
                 else:
                     mapping = self.cfg.channel_mapping
-
-                self.set_tx_channel_mapping(mapping.tx)
-                self.set_rx_channel_mapping(mapping.rx)
+                self.store_mappings(tx_m=mapping.tx, rx_m=mapping.rx)
             self.card_handle.Initialize()
             self.set_tx_channel_mapping(self.tx_channel_mapping)
             self.set_rx_channel_mapping(self.rx_channel_mapping)
