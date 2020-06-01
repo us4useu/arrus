@@ -71,7 +71,6 @@ def main():
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=us4oem))
         # Reshape frame (128*8192, 32) to (128 frames, 8192 samples, 128 chan.)
         print("Restructuring data.")
-        # Get the actual number of samples acquired by the device.
         frame = frame.reshape((n_frames*n_firings_per_frame,
                                n_samples,
                                us4oem.get_n_rx_channels()))
