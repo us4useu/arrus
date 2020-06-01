@@ -4,16 +4,18 @@
 API Reference
 =============
 
+Configuration
+=============
+
+
+
+Legacy API (deprecated)
+=======================
+
 .. caution::
 
     ARRUS is currently under development and its API will be modified in
     the future. Please expect breaking changes.
-
-Configuration
-=============
-
-Interface
----------
 
 An interface contains all information required to configure probe's adapter
 which is provided with us4OEM module. Use following function to obtain an
