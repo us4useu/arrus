@@ -161,12 +161,11 @@ def get_version(install_dir):
 
 
 def create_release(repository_name, release, token, body):
-    logging.log(logging.INFO, f"Creating release: "
+    print(f"Creating release: "
                               f"repository: {repository_name},"
                               f"release (tag_name): {release}"
                               f"body: {body}"
-                )
-    print("Creating release")
+    )
     return requests.post(
         url=get_api_url(repository_name),
         headers={
