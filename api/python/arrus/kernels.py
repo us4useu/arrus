@@ -151,7 +151,7 @@ class TxRxModuleKernel(LoadableKernel):
         device.set_rx_aperture_mask(aperture=self._rx_aperture_mask,
                                     firing=firing)
         # Samples, rx time, delay
-        n_samples = op.rx.n_samples
+        n_samples = op.rx.get_actual_n_samples()
         device.set_rx_time(time=op.rx.rx_time, firing=firing)
         device.set_rx_delay(delay=op.rx.rx_delay, firing=firing)
         device.schedule_receive(address=self.data_offset,
@@ -247,7 +247,7 @@ class TxRxModuleKernel(LoadableKernel):
         self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
-        result_buffer = self._queue.get()
+        result_buffer = self._queue.get(timeout=20)
         self.device.stop_trigger()
         return result_buffer
 
@@ -275,6 +275,7 @@ class SequenceModuleKernel(LoadableKernel):
                                                self.callback)
 
     def _default_callback(self, e):
+        _logger.log(INFO, "Running default callback")
         result_buffer = _utils.create_aligned_array(
             (self.total_n_samples, self.device.get_n_rx_channels()),
             dtype=np.int16,
@@ -302,8 +303,8 @@ class SequenceModuleKernel(LoadableKernel):
         self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
-        self.device.trigger_sync()
-        result_buffer = self._queue.get()
+        # self.device.trigger_sync()
+        result_buffer = self._queue.get(timeout=20)
         self.device.stop_trigger()
         return result_buffer
 
@@ -322,7 +323,8 @@ class SequenceModuleKernel(LoadableKernel):
         data_offset = 0
         n_operations = len(operations)
         for i, tx_rx in enumerate(operations):
-            sync = i == n_operations-1 and sync_required
+            # sync = i == n_operations-1 and sync_required
+            sync = False
             if i == n_operations-1:
                 cb = callback
             else:
@@ -334,7 +336,7 @@ class SequenceModuleKernel(LoadableKernel):
                                       set_one_operation=False,
                                       callback=cb, firing=i)
             tx_rx_kernels.append(kernel)
-            data_offset += tx_rx.rx.n_samples
+            data_offset += tx_rx.rx.get_actual_n_samples()
         return tx_rx_kernels
 
 

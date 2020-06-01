@@ -13,10 +13,12 @@ from arrus.session import SessionCfg
 
 
 def main():
+    arrus.set_log_level(arrus.DEBUG)
+    arrus.add_log_file("test.log", arrus.DEBUG)
     # Prepare system description.
     system_cfg = CustomUs4RCfg(
         n_us4oems=2,
-        # is_hv256=True
+        is_hv256=True
     )
     # Prepare Us4OEM initial configuration.
     us4oem_cfg = Us4OEMCfg(
@@ -39,8 +41,9 @@ def main():
                     aperture=RegionBasedAperture(origin=element_number, size=1),
                     pri=200e-6)
             rx = Rx(n_samples=n_samples,
+                    decimation=1,
                     aperture=RegionBasedAperture(i*32, 32),
-                    rx_time=150e-6,
+                    rx_time=160e-6,
                     rx_delay=5e-6)
             txrx = TxRx(tx, rx)
             operations.append(txrx)
@@ -60,15 +63,18 @@ def main():
     )
     with arrus.Session(cfg=session_cfg) as sess:
         # Enable high voltage supplier.
-        # hv256 = sess.get_device("/HV256")
+        hv256 = sess.get_device("/HV256")
         us4oem = sess.get_device("/Us4OEM:0")
 
-        # sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
+        sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
 
         print("Acquiring data")
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=us4oem))
         # Reshape frame (128*8192, 32) to (128 frames, 8192 samples, 128 chan.)
         print("Restructuring data.")
+        # Get the actual number of samples acquired by the device.
+        n_samples = tx_rx_sequence.operations[0].rx.get_actual_n_samples()
+
         frame = frame.reshape((n_frames*n_firings_per_frame,
                                n_samples,
                                us4oem.get_n_rx_channels()))

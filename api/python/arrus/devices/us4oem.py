@@ -535,8 +535,9 @@ class Us4OEM(_device.Device):
         """
         self.log(
             DEBUG,
-            "Scheduling data receive at address=0x%02X, length=%d" %
-            (address, length)
+            "Scheduling data receive at address=0x%02X, length=%d,"
+            " decimation=%d, start=%d" %
+            (address, length, decimation, start)
         )
 
         address = address*self.dtype.itemsize*self.get_n_rx_channels()
