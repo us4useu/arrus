@@ -367,7 +367,7 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         self.op = op
         self.device = device
         self.feed_dict = feed_dict
-        self._data_buffer = self._create_data_buffer(self.op)
+        self._data_buffer = self._create_data_buffer(self.op.operation)
         self._callback = self._create_callback(feed_dict, self._data_buffer)
         self._kernel = self._create_kernel(self.op.operation, self.device,
                                            self.feed_dict, self._callback)
@@ -382,6 +382,7 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
+        self.device.trigger_sync()
         return None
 
     def stop(self):
@@ -393,11 +394,11 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
 
     def _create_kernel(self, op, device, feed_dict, callback):
         if isinstance(op, _operations.TxRx):
-            return TxRxModuleKernel(op, device, feed_dict, sync_required=False,
+            return TxRxModuleKernel(op, device, feed_dict, sync_required=True,
                                     callback=callback)
         elif isinstance(op, _operations.Sequence):
             return SequenceModuleKernel(op, device, feed_dict,
-                                        sync_required=False, callback=callback)
+                                        sync_required=True, callback=callback)
         else:
             raise ValueError("Invalid type of operation to perform in loop, "
                              "should be one of: %s, %s" % (_operations.TxRx,
@@ -426,6 +427,7 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
             self.device.transfer_rx_buffer_to_host_buffer(0, data_buffer)
             cb(data_buffer)
             self.device.enable_receive()
+            self.device.trigger_sync()
             # End GIL
 
         return _callback_wrapper
