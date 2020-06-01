@@ -1,25 +1,71 @@
 # Option: Us4_ROOT_DIR: a directory, where lib64 and include files are located.
 
-message("Find package!")
 find_path(Us4_INCLUDE_DIR
         NAMES ius4oem.h
         PATHS "${Us4_ROOT_DIR}/include"
         PATH_SUFFIXES Us4
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
 set(Us4_LIBRARY_DIR "${Us4_ROOT_DIR}/lib64")
 find_library(Us4_US4OEM_LIBRARY
         NAMES Us4OEM
         PATHS ${Us4_LIBRARY_DIR}
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
 find_library(Us4_HV256_LIBRARY
         NAMES HV256
         PATHS ${Us4_LIBRARY_DIR}
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
 find_library(Us4_DBARLite_LIBRARY
         NAMES DBARLite
         PATHS ${Us4_LIBRARY_DIR}
+        NO_CMAKE_ENVIRONMENT_PATH
+        NO_SYSTEM_ENVIRONMENT_PATH
 )
-# set(Us4_VERSION 0.3.0)
+
+# Read required version from include/versions.h file
+file(READ "${Us4_ROOT_DIR}/include/versions.h" Us4OEM_VERSIONS)
+
+# API version
+string(REGEX MATCH "US4R_API_VERSION[ ]+([0-9]\\.[0-9]\\.[0-9])"
+       US4API_VERSION_MATCH
+       ${Us4OEM_VERSIONS}
+)
+if("${US4API_VERSION_MATCH}" STREQUAL "")
+    message(FATAL_ERROR "Couldn't read US4R_API_VERSION from us4r distribution.")
+endif()
+set(Us4_VERSION ${CMAKE_MATCH_1})
+message("Found Us4R version ${Us4_VERSION}")
+
+# Firmware version
+# TODO make below regex more elastic
+# TODO move below sequence of calls to some function
+string(REGEX MATCH "US4OEM_FIRMWARE_VERSION \\(\\(uint32_t\\)0x([0-9a-fA-F]+)"
+       US4OEM_FIRMWARE_VERSION_MATCH
+       ${Us4OEM_VERSIONS}
+)
+if("${US4OEM_FIRMWARE_VERSION_MATCH}" STREQUAL "")
+    message(FATAL_ERROR "Couldn't read US4OEM_FIRMWARE_VERSION from us4r distribution.")
+endif()
+set(Us4OEM_FIRMWARE_VERSION ${CMAKE_MATCH_1})
+message("Required module firmware version: ${Us4OEM_FIRMWARE_VERSION}")
+
+# TX Firmware version
+# TODO make below regex more elastic
+string(REGEX MATCH "US4OEM_TX_FIRMWARE_VERSION \\(\\(uint32_t\\)0x([0-9a-fA-F]+)"
+       US4OEM_TX_FIRMWARE_VERSION_MATCH
+       ${Us4OEM_VERSIONS}
+)
+if("${US4OEM_TX_FIRMWARE_VERSION_MATCH}" STREQUAL "")
+    message(FATAL_ERROR "Couldn't read US4OEM_TX_FIRMWARE_VERSION from us4r distribution.")
+endif()
+set(Us4OEM_TX_FIRMWARE_VERSION ${CMAKE_MATCH_1})
+message("Required module tx firmware version: ${Us4OEM_TX_FIRMWARE_VERSION}")
+
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
@@ -30,7 +76,7 @@ find_package_handle_standard_args(
         Us4_HV256_LIBRARY
         Us4_DBARLite_LIBRARY
         Us4_INCLUDE_DIR
-#         VERSION_VAR Us4_VERSION
+        VERSION_VAR Us4_VERSION
 )
 
 if(Us4_FOUND AND NOT TARGET Us4::US4OEM)
