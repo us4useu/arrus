@@ -109,7 +109,7 @@ class TxRxModuleKernel(LoadableKernel):
 
     def _default_callback(self, e):
         result_buffer = _utils.create_aligned_array(
-            (self.op.rx.get_actual_n_samples(),
+            (self.op.rx.n_samples,
              self.device.get_n_rx_channels()),
             dtype=np.int16,
             alignment=4096
@@ -151,12 +151,12 @@ class TxRxModuleKernel(LoadableKernel):
         device.set_rx_aperture_mask(aperture=self._rx_aperture_mask,
                                     firing=firing)
         # Samples, rx time, delay
-        n_samples = op.rx.get_actual_n_samples()
+        n_samples = op.rx.n_samples
         device.set_rx_time(time=op.rx.rx_time, firing=firing)
         device.set_rx_delay(delay=op.rx.rx_delay, firing=firing)
         device.schedule_receive(address=self.data_offset,
                                 length=n_samples,
-                                decimation=op.rx.decimation-1,
+                                decimation=op.rx.fs_divider-1,
                                 callback=callback)
         device.set_trigger(time_to_next_trigger=op.tx.pri, time_to_next_tx=0,
                            is_sync_required=sync_required, idx=firing)
@@ -221,8 +221,8 @@ class TxRxModuleKernel(LoadableKernel):
                                     "rx.aperture number of channels")
         _validation.assert_in_range(self.op.rx.n_samples,
                                     (0, 65536), "rx.n_samples")
-        _validation.assert_in_range(self.op.rx.decimation,
-                                    (0, 5), "rx decimation")
+        _validation.assert_in_range(self.op.rx.fs_divider,
+                                    (0, 4), "rx decimation")
 
 
     def _validate_aperture(self, aperture, n_channels, aperture_type):
@@ -317,10 +317,13 @@ class SequenceModuleKernel(LoadableKernel):
     def _compute_total_n_samples(self):
         total_n_samples = 0
         for tx_rx in self.op.operations:
-            total_n_samples += tx_rx.rx.get_actual_n_samples()
+            total_n_samples += tx_rx.rx.n_samples
         return total_n_samples
 
-    def _get_txrx_kernels(self, operations, feed_dict, device, sync_required,
+    def _get_txrx_kernels(self, operations: _operations.TxRx,
+                          feed_dict,
+                          device,
+                          sync_required,
                           callback):
         tx_rx_kernels = []
         data_offset = 0
@@ -338,7 +341,7 @@ class SequenceModuleKernel(LoadableKernel):
                                       set_one_operation=False,
                                       callback=cb, firing=i)
             tx_rx_kernels.append(kernel)
-            data_offset += tx_rx.rx.get_actual_n_samples()
+            data_offset += tx_rx.rx.n_samples
         return tx_rx_kernels
 
 
@@ -388,10 +391,9 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
 
     def _create_data_buffer(self, op):
         if isinstance(op, _operations.TxRx):
-            n_samples = _operations.TxRx.rx.get_actual_n_samples()
+            n_samples = _operations.TxRx.rx.n_samples
         elif isinstance(op, _operations.Sequence):
-            n_samples = sum([txrx.rx.get_actual_n_samples()
-                             for txrx in op.operations])
+            n_samples = sum([txrx.rx.n_samples for txrx in op.operations])
         else:
             raise ValueError()
         return _utils.create_aligned_array(
