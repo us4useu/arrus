@@ -12,6 +12,7 @@ set(DOC_FILES
     "content/installation/img/dev_manager.png"
     "content/installation/img/paths.png"
     "content/installation/img/result.png"
+    "content/installation/img/install_result.png"
     "content/installation/img/thunderbolt.png"
     "content/examples/bmode_imaging.matlab.rst"
     "content/examples/single_module.python.rst"

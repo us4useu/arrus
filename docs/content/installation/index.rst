@@ -73,6 +73,10 @@ installed versions of the software.
 1. Download and extract |arrus|_ package.
 2. Run ``install.exe`` file and follow provided instructions.
 
+.. _fig-install_result:
+.. figure:: img/install_result.png
+
+
 .. include:: api.rst
 
 
