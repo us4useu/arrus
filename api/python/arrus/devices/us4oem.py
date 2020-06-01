@@ -69,6 +69,8 @@ class Us4OEMCfg(_device.DeviceCfg):
         should be in range 14-54 dB, maximum number of samples to set: 1022. \
         TGC curve sampling rate is equal 1MHz. Set to None if want to disable \
         TGC.
+    :param log_data_transfer_time: set to True if you want to log data \
+        transfer time (Us4OEM -> PC)
     """
     channel_mapping: Union[ChannelMapping, str]
     active_channel_groups: list
@@ -78,6 +80,7 @@ class Us4OEMCfg(_device.DeviceCfg):
     lpf_cutoff: float = 10e6
     active_termination: float = None
     tgc_samples: Union[list, np.ndarray, None] = None
+    log_transfer_time: bool = False
 
     def __post_init__(self):
 
@@ -167,6 +170,12 @@ class Us4OEM(_device.Device):
                     self.set_tgc_samples(tgc_db_values)
 
             self.log(INFO, "... successfully powered up.")
+
+    def get_sampling_frequency(self):
+        """
+        Returns sampling Us4OEM's sampling frequency.
+        """
+        return 65e6
 
     def get_n_rx_channels(self):
         """
@@ -823,12 +832,25 @@ class Us4OEM(_device.Device):
                 length, src_addr, dst_addr
             )
         )
+
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            start_time = time.time()
         _ius4oem.TransferRXBufferToHostLocation(
             that=self.card_handle,
             dstAddress=dst_addr,
             length=length,
             srcAddress=src_addr # address shift is applied by the low-level layer
         )
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            end_time = time.time()
+            data_bytes = length
+            data_mbytes = data_bytes / 10e6
+            elapsed = end_time - start_time
+            self.log(INFO,
+                  f"Transferred data {self.get_id()} -> PC: amount: "
+                  f"{data_mbytes} MB in {elapsed} s, throughput "
+                  f"{data_mbytes / elapsed} MB/s")
+
         self.log(
             DEBUG,
             "... transferred."
@@ -852,11 +874,26 @@ class Us4OEM(_device.Device):
         self.log(DEBUG,
             "Transferring %d bytes from RX buffer at 0x%08X to host memory at 0x%08X..."%(
                 length, src_addr, dst_addr))
+
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            start_time = time.time()
+
         _ius4oem.TransferRXBufferToHostLocation(
             that=self.card_handle,
             dstAddress=dst_addr,
             length=length,
             srcAddress=src_addr)
+
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            end_time = time.time()
+            data_bytes = length
+            data_mbytes = data_bytes / 10e6
+            elapsed = end_time - start_time
+            self.log(INFO,
+                  f"Transferred data {self.get_id()} -> PC: amount: "
+                  f"{data_mbytes} MB in {elapsed} s, throughput "
+                  f"{data_mbytes / elapsed} MB/s")
+
         self.log(DEBUG, "... transferred.")
 
     def is_powered_down(self):

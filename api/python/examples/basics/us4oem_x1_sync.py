@@ -13,8 +13,6 @@ from arrus.session import SessionCfg
 
 
 def main():
-    arrus.set_log_level(arrus.DEBUG)
-    arrus.add_log_file("test.log", arrus.DEBUG)
     # Prepare system description.
     system_cfg = CustomUs4RCfg(
         n_us4oems=2,
@@ -25,25 +23,26 @@ def main():
         channel_mapping="esaote",
         active_channel_groups=[1]*16,
         dtgc=0,
-        active_termination=200
+        active_termination=200,
+        log_transfer_time=True
     )
 
     # Define TX/RX sequence.
     n_firings_per_frame = 4
-    n_frames = 123
-    n_samples = 8*1024
+    n_frames = 128
+    n_samples = 4*1024
 
     def get_full_rx_aperture(element_number):
         operations = []
         for i in range(n_firings_per_frame):
             tx = Tx(excitation=SineWave(frequency=8.125e6, n_periods=1.5,
                                         inverse=False),
-                    aperture=RegionBasedAperture(origin=element_number, size=5),
-                    pri=200e-6)
+                    aperture=RegionBasedAperture(origin=element_number, size=1),
+                    pri=300e-6)
             rx = Rx(n_samples=n_samples,
-                    decimation=2,
+                    fs_divider=2,
                     aperture=RegionBasedAperture(i*32, 32),
-                    rx_time=160e-6,
+                    rx_time=260e-6,
                     rx_delay=5e-6)
             txrx = TxRx(tx, rx)
             operations.append(txrx)
@@ -73,8 +72,6 @@ def main():
         # Reshape frame (128*8192, 32) to (128 frames, 8192 samples, 128 chan.)
         print("Restructuring data.")
         # Get the actual number of samples acquired by the device.
-        n_samples = tx_rx_sequence.operations[0].rx.get_actual_n_samples()
-
         frame = frame.reshape((n_frames*n_firings_per_frame,
                                n_samples,
                                us4oem.get_n_rx_channels()))

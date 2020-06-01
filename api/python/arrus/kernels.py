@@ -224,6 +224,21 @@ class TxRxModuleKernel(LoadableKernel):
         _validation.assert_in_range(self.op.rx.fs_divider,
                                     (0, 4), "rx decimation")
 
+        expected_rx_time = self.op.rx.n_samples\
+                           * self.op.rx.fs_divider\
+                           / self.device.get_sampling_frequency()\
+                           + 5e-6 # epsilon
+        if self.op.rx.rx_time < expected_rx_time:
+            raise _validation.InvalidParameterError(
+                "rx time", f"should be greater than {expected_rx_time}, "
+                           f"that is, the minimal time to acquire "
+                           f"given number of samples assuming given "
+                           f"sampling frequency.")
+
+        if self.op.rx.rx_time >= self.op.tx.pri:
+            raise _validation.InvalidParameterError(
+                "rx time, pri", f"Rx time {self.op.rx.rx_time} should be "
+                                f"shorter than PRI {self.op.tx.pri}.")
 
     def _validate_aperture(self, aperture, n_channels, aperture_type):
         # TODO(pjarosik) this validation should be performed before creating
