@@ -846,10 +846,13 @@ class Us4OEM(_device.Device):
             data_bytes = length
             data_mbytes = data_bytes / 10e6
             elapsed = end_time - start_time
-            self.log(INFO,
-                  f"Transferred data {self.get_id()} -> PC: amount: "
-                  f"{data_mbytes} MB in {elapsed} s, throughput "
-                  f"{data_mbytes / elapsed} MB/s")
+            throughput = None if elapsed == 0.0 else data_mbytes / elapsed
+
+            msg = f"Transferred data {self.get_id()} -> PC: amount: " \
+                  f"{data_mbytes} MB in {elapsed} s"
+            if throughput is not None:
+                msg = msg + f", throughput: {throughput} MB/s"
+            self.log(INFO, msg)
 
         self.log(
             DEBUG,
@@ -889,10 +892,13 @@ class Us4OEM(_device.Device):
             data_bytes = length
             data_mbytes = data_bytes / 10e6
             elapsed = end_time - start_time
-            self.log(INFO,
-                  f"Transferred data {self.get_id()} -> PC: amount: "
-                  f"{data_mbytes} MB in {elapsed} s, throughput "
-                  f"{data_mbytes / elapsed} MB/s")
+            throughput = None if elapsed == 0.0 else data_mbytes/elapsed
+
+            msg = f"Transferred data {self.get_id()} -> PC: amount: "\
+                  f"{data_mbytes} MB in {elapsed} s"
+            if throughput is not None:
+                msg = msg + f", throughput: {throughput} MB/s"
+            self.log(INFO, msg)
 
         self.log(DEBUG, "... transferred.")
 

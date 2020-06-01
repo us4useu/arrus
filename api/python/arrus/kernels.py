@@ -293,7 +293,7 @@ class SequenceModuleKernel(LoadableKernel):
                                                self.callback)
 
     def _default_callback(self, e):
-        _logger.log(INFO, "Running default callback")
+        _logger.log(DEBUG, "Running default callback")
         result_buffer = _utils.create_aligned_array(
             (self.total_n_samples, self.device.get_n_rx_channels()),
             dtype=np.int16,
