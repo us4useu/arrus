@@ -262,6 +262,18 @@ classdef Us4R < handle
             obj.seq.rxDel       = 5e-6;
             obj.seq.pauseMultip	= 1.5;
             
+            
+            % The number of samples is restricted and here is a check if
+            % it not too big.
+%             (obj.seq.nSamp-1)/(obj.seq.rxSampFreq/obj.seq.fsDivider) < obj.seq.rxTime
+%             nmax = round(obj.seq.rxSampFreq/obj.seq.fsDivider*(obj.seq.rxTime+obj.seq.rxDel)*obj.seq.pauseMultip+1)
+            nmax = 2^13/obj.seq.fsDivider;
+            nSamp = diff(obj.seq.nSamp) + 1;
+            
+            if nSamp > nmax
+                error(['Number of samples (rxNSamples) must be less than ', num2str(nmax)])
+            end 
+            
             %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
             if isempty(obj.seq.nSamp)
