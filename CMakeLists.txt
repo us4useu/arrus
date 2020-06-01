@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.17.0)
 
 project(arrus LANGUAGES CXX)
+# Version
 set(PROJECT_VERSION 0.4.1)
+option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
+if(ARRUS_DEVELOP_VERSION)
+    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}-dev")
+else()
+    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}")
+endif()
+
 string(TIMESTAMP CURRENT_YEAR "%Y")
 set(CMAKE_CXX_STANDARD 17)
 
@@ -35,7 +43,7 @@ endif()
 # Common dependencies
 ################################################################################
 if(ARRUS_BUILD_SWIG)
-    find_package(Us4 0.4.0 EXACT REQUIRED US4OEM HV256 DBARLite)
+    find_package(Us4 0.4.1 EXACT REQUIRED US4OEM HV256 DBARLite)
 endif()
 
 ################################################################################
@@ -53,6 +61,7 @@ endif()
 if(ARRUS_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
+add_subdirectory(installer)
 
 ################################################################################
 # General docs
