@@ -32,9 +32,7 @@ def _search_for_single_pattern(pattern, content):
 def get_required_firmware_version(install_dir):
     with open(os.path.join(install_dir, "Version.rst")) as f:
         content = f.readlines()
-    arrus_version = _search_for_single_pattern(
-        r"^\s*arrus:\s+([0-9\.]+)\s*$",
-        content)
+    arrus_version = content[0].strip()
     # Search for firmware version.
     firmware = _search_for_single_pattern(r"^\s*firmware:\s+([a-fA-F0-9]+)\s*$",
                                           content)
@@ -44,6 +42,7 @@ def get_required_firmware_version(install_dir):
         r"^\s*tx\s+firmware:\s+([a-fA-F0-9]+)\s*$", content)
     print(f"tx firmware: {tx_firmware}")
     return arrus_version, firmware, tx_firmware
+
 
 def assert_no_error(return_code):
     if return_code != 0:
