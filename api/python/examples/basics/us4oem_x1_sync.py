@@ -30,7 +30,7 @@ def main():
 
     # Define TX/RX sequence.
     n_firings_per_frame = 4
-    n_frames = 128
+    n_frames = 123
     n_samples = 8*1024
 
     def get_full_rx_aperture(element_number):
@@ -38,10 +38,10 @@ def main():
         for i in range(n_firings_per_frame):
             tx = Tx(excitation=SineWave(frequency=8.125e6, n_periods=1.5,
                                         inverse=False),
-                    aperture=RegionBasedAperture(origin=element_number, size=1),
+                    aperture=RegionBasedAperture(origin=element_number, size=5),
                     pri=200e-6)
             rx = Rx(n_samples=n_samples,
-                    decimation=1,
+                    decimation=2,
                     aperture=RegionBasedAperture(i*32, 32),
                     rx_time=160e-6,
                     rx_delay=5e-6)

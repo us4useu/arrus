@@ -160,6 +160,9 @@ class TxRxModuleKernel(LoadableKernel):
                                 callback=callback)
         device.set_trigger(time_to_next_trigger=op.tx.pri, time_to_next_tx=0,
                            is_sync_required=sync_required, idx=firing)
+        # Intentionally zeroing pri total - we use only interrupt based
+        # communication.
+        device.pri_total = 0
 
     @staticmethod
     def _get_aperture_mask(aperture, device: _us4oem.Us4OEM):
@@ -303,7 +306,7 @@ class SequenceModuleKernel(LoadableKernel):
         self.device.enable_transmit()
         self.device.start_trigger()
         self.device.enable_receive()
-        # self.device.trigger_sync()
+        self.device.trigger_sync()
         result_buffer = self._queue.get(timeout=20)
         self.device.stop_trigger()
         return result_buffer
@@ -323,8 +326,7 @@ class SequenceModuleKernel(LoadableKernel):
         data_offset = 0
         n_operations = len(operations)
         for i, tx_rx in enumerate(operations):
-            # sync = i == n_operations-1 and sync_required
-            sync = False
+            sync = i == n_operations-1 and sync_required
             if i == n_operations-1:
                 cb = callback
             else:
