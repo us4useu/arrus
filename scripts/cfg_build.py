@@ -2,12 +2,15 @@ import argparse
 import os
 import subprocess
 import shutil
+import re
 
 SRC_ENVIRON = "ARRUS_SRC_PATH"
 US4R_INSTALL_ENVIRON = "US4R_DIR"
 
 COLOR_ERROR = '\033[91m'
 COLOR_END = '\033[0m'
+
+VERSION_TAG_PATTERN = re.compile("^v[0-9\.]+$")
 
 def assert_no_error(return_code):
     if return_code != 0:
@@ -20,6 +23,8 @@ def main():
                         type=str, nargs="+", required=True)
     parser.add_argument("--run_targets", dest="run_targets",
                         type=str, nargs="*", required=False)
+    parser.add_argument("--src_branch_name", dest="src_branch_name", type=str,
+                        required=False, default="develop")
     parser.add_argument("--source_dir", dest="source_dir",
                         type=str, required=False,
                         default=os.environ.get(SRC_ENVIRON, None))
@@ -32,6 +37,7 @@ def main():
     targets = args.targets
     run_targets = args.run_targets
     extra_options = args.options
+    src_branch_name = args.src_branch_name
     options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
     if run_targets is not None:
         options += ["-DARRUS_RUN_%s=ON" % t.upper() for t in run_targets]
@@ -45,6 +51,10 @@ def main():
                          %(SRC_ENVIRON, US4R_INSTALL_ENVIRON))
 
     options += ["-DUs4_ROOT_DIR='%s'" % us4r_install_dir]
+
+    if src_branch_name == "master" \
+            or VERSION_TAG_PATTERN.match(src_branch_name):
+        options += ["-DARRUS_DEVELOP_VERSION=OFF"]
 
     build_dir = os.path.join(src_dir, "build")
 
