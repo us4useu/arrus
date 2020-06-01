@@ -6,6 +6,7 @@ import shutil
 import platform
 import requests
 import errno
+import logging
 
 COLOR_ERROR = '\033[91m'
 COLOR_END = '\033[0m'
@@ -160,7 +161,11 @@ def get_version(install_dir):
 
 
 def create_release(repository_name, release, token, body):
-    print("Creating release")
+    print(f"Creating release: "
+          f"repository: {repository_name}, "
+          f"release (tag_name): {release} "
+          f"body: {body}"
+    )
     return requests.post(
         url=get_api_url(repository_name),
         headers={
