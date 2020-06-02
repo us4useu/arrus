@@ -17,13 +17,8 @@ module.store_mappings(
 # Start the device.
 module.start_if_necessary()
 
-try:
-    hv256.enable_hv()
-    hv256.set_hv_voltage(50)
-except RuntimeError:
-    print("First try with hv256 didn't work, trying again.")
-    hv256.enable_hv()
-    hv256.set_hv_voltage(50)
+hv256.enable_hv()
+hv256.set_hv_voltage(50)
 
 # Configure parameters, that will not change later in the example.
 module.set_pga_gain(30)  # [dB]
@@ -36,7 +31,7 @@ module.enable_tgc()
 
 # Configure TX/RX scheme.
 NEVENTS = 4
-NFRAMES = 121
+NFRAMES = 128
 NSAMPLES = 8*1024
 TX_FREQUENCY = 8.125e6
 SAMPLING_FREQUENCY = 65e6
@@ -52,18 +47,11 @@ module.set_number_of_firings(NFRAMES*NEVENTS)
 for frame in range(NFRAMES):
     for event in range(NEVENTS):
         firing = frame*NEVENTS + event
-        tx_aperture = [0] * 128
-        tx_aperture[frame] = 1
-        tx_aperture[frame+1] = 1
-        tx_aperture[frame + 2] = 1
-        # tx_aperture[frame + 3] = 1
-        # tx_aperture[frame + 4] = 1
         module.set_tx_delays(delays=delays, firing=firing)
         module.set_tx_frequency(frequency=TX_FREQUENCY, firing=firing)
         module.set_tx_half_periods(n_half_periods=3, firing=firing)
         module.set_tx_invert(is_enable=False, firing=firing)
-        # module.set_tx_aperture(origin=frame, size=1, firing=firing)
-        module.set_tx_aperture_mask(aperture=tx_aperture, firing=firing)
+        module.set_tx_aperture(origin=frame, size=1, firing=firing)
         module.set_active_channel_group([1]*16, firing=firing)
         module.set_rx_time(time=150e-6, firing=firing)
         module.set_rx_delay(delay=5e-6, firing=firing)

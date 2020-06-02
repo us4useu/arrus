@@ -66,21 +66,22 @@ set(SOURCE_FILES
     "arrus/__init__.py"
     "arrus/beam.py"
     "arrus/interface.py"
-    "arrus/session.py"
     "arrus/kernels.py"
+    "arrus/session.py"
+    "arrus/params.py"
+    "arrus/system.py"
+    "arrus/validation.py"
     "arrus/ops/__init__.py"
     "arrus/ops/operations.py"
-    "arrus/params.py"
-    "arrus/validation.py"
     "arrus/devices/__init__.py"
-    "arrus/devices/us4oem.py"
+    "arrus/devices/callbacks.py"
     "arrus/devices/device.py"
     "arrus/devices/hv256.py"
     "arrus/devices/probe.py"
+    "arrus/devices/us4oem.py"
     "arrus/utils/__init__.py"
     "arrus/utils/imaging.py"
     "arrus/utils/parameters.py"
-    "arrus/devices/callbacks.py"
     "arrus/tests/tools.py"
 )
 set(TEST_FILES
@@ -89,7 +90,7 @@ set(TEST_FILES
     "arrus/devices/tests/probe_test.py"
     "arrus/utils/tests/utils_test.py"
     "arrus/utils/tests/parameters_test.py"
-    "arrus/utils/tests/us4oem_kernels_test.py"
+    "arrus/tests/us4oem_kernels_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -130,19 +131,21 @@ install(
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}
     RENAME
-        #TODO(pjarosik) make it more general and available for other OSes
         "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-cp37-cp37m-win_amd64.whl"
     COMPONENT
         python_whl
 )
 
-# install(
-#	FILES
-#        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
-#	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
-#    DESTINATION
-#        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
-#)
+install(
+	FILES
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_pwi_single.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_multiple.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/cfg.yaml
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_old_api.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_single.py
+    DESTINATION
+        ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
+)
 
 ################################################################################
 # Python tests

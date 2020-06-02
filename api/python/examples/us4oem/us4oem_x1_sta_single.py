@@ -1,19 +1,38 @@
+"""
+Using single Us4OEM to acquire a single STA sequence.
+
+In this example:
+
+- we configure Us4OEM,
+- we define STA-like sequence of firings using single-element Tx aperture,
+  stride 1,
+- run the sequence and acquire a single RF frame.
+"""
+
 import time
 import matplotlib.pyplot as plt
 import numpy as np
 import arrus
 import itertools
-
-from arrus.ops import Tx, Rx, TxRx, Sequence, SetHVVoltage
-from arrus import SineWave, SingleElementAperture, RegionBasedAperture
-
-from arrus.system import CustomUs4RCfg
-from arrus.devices.us4oem import Us4OEMCfg
-from arrus.session import SessionCfg
+from arrus.ops import (
+    Tx, Rx, TxRx,
+    Sequence, SetHVVoltage
+)
+from arrus import (
+    SineWave,
+    SingleElementAperture,
+    RegionBasedAperture,
+    CustomUs4RCfg,
+    Us4OEMCfg,
+    SessionCfg
+)
 
 
 def main():
+    # -- DEVICE CONFIGURATION.
+
     # Prepare system description.
+    # Customize this configuration for your setup.
     system_cfg = CustomUs4RCfg(
         n_us4oems=2,
         is_hv256=True
@@ -27,12 +46,17 @@ def main():
         log_transfer_time=True
     )
 
-    # Define TX/RX sequence.
+    # -- PROGRAMMING TX/RX SEQUENCE.
     n_firings_per_frame = 4
     n_frames = 128
     n_samples = 4*1024
 
     def get_full_rx_aperture(element_number):
+        """
+        This function creates a sequence of 4 Tx/Rx's with Tx aperture
+        containing a single active element ``element_number``.
+        The sequence allow to acquire a single frame using 128 Rx channels.
+        """
         operations = []
         for i in range(n_firings_per_frame):
             tx = Tx(excitation=SineWave(frequency=8.125e6, n_periods=1.5,
@@ -53,7 +77,9 @@ def main():
         for channel in range(n_frames)
     ])))
 
-    # Execute the sequence in the session.
+    # -- RUNNING TX/RX SEQUENCE
+
+    # Configure and create communication session with the device.
     session_cfg = SessionCfg(
         system=system_cfg,
         devices={
@@ -63,14 +89,20 @@ def main():
     with arrus.Session(cfg=session_cfg) as sess:
         # Enable high voltage supplier.
         hv256 = sess.get_device("/HV256")
+        # Get first available Us4OEM module.
         us4oem = sess.get_device("/Us4OEM:0")
 
+        # Set voltage on HV256.
         sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
 
-        print("Acquiring data")
+        # Acquire a single RF frame of shape
+        # (N_OPERATIONS*N_SAMPLES, N_RX_CHANNELS).
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=us4oem))
-        # Reshape frame (128*8192, 32) to (128 frames, 8192 samples, 128 chan.)
-        print("Restructuring data.")
+
+        # Reshape acquired data:
+        #  - from (N_FRAMES * N_FIRING_PER_FRAME * N_SAMPLES, N_RX_CHANNELS)
+        #    that is: (N_OPERATIONS*N_SAMPLES, N_RX_CHANNELS)
+        #  - to (N_FRAMES, N_SAMPLES, N_FIRING_PER_FRAME * N_RX_CHANNELS)
         frame = frame.reshape((n_frames*n_firings_per_frame,
                                n_samples,
                                us4oem.get_n_rx_channels()))
@@ -79,7 +111,7 @@ def main():
                                n_firings_per_frame*us4oem.get_n_rx_channels(),
                                n_samples))
         frame = frame.transpose((0, 2, 1))
-        print("Displaying data")
+        # Display the data using matplotlib.
         display_acquired_frame(frame)
 
 

@@ -32,7 +32,7 @@ from arrus.kernels import (
     SequenceModuleKernel,
     LoopModuleKernel
 )
-from arrus.operations import (
+from arrus.ops import (
     Tx, Rx, TxRx,
     Sequence,
     Loop
@@ -135,7 +135,6 @@ class TxRxModuleKernelCorrectOperationTest(unittest.TestCase):
             pri=200e-6
         )
         self.rx = Rx(
-            sampling_frequency=65e6,
             n_samples=4096,
             aperture=RegionBasedAperture(32, 32)
         )
@@ -189,7 +188,6 @@ class TxRxModuleKernelValidationTest(unittest.TestCase):
             pri=200e-6
         )
         self.rx = Rx(
-            sampling_frequency=65e6,
             n_samples=4096,
             aperture=RegionBasedAperture(32, 32)
         )
@@ -271,7 +269,6 @@ class TxRxModuleKernelValidationTest(unittest.TestCase):
     def test_unsupported_sampling_frequency(self):
         wrong_rx = dataclasses.replace(
             self.rx,
-            sampling_frequency=100e6
         )
         tx_rx = TxRx(self.tx, wrong_rx)
         with self.assertRaises(_validation.InvalidParameterError):
@@ -308,7 +305,6 @@ class SequenceModuleKernelCorrectTest(unittest.TestCase):
                     pri=200e-6
                 ),
                 rx=Rx(
-                    sampling_frequency=65e6,
                     n_samples=4096,
                     aperture=RegionBasedAperture(i*32, 32)
                 )
@@ -351,7 +347,6 @@ class SequenceModuleKernelValidationTest(unittest.TestCase):
                     pri=200e-6
                 ),
                 rx=Rx(
-                    sampling_frequency=65e6,
                     n_samples=4096,
                     aperture=RegionBasedAperture(i*32, 32)
                 )
@@ -371,7 +366,6 @@ class SequenceModuleKernelValidationTest(unittest.TestCase):
                     pri=200e-6
                 ),
                 rx=Rx(
-                    sampling_frequency=65e6,
                     n_samples=4096,
                     aperture=RegionBasedAperture(i*32, 32)
                 )
@@ -393,7 +387,6 @@ class SequenceModuleKernelValidationTest(unittest.TestCase):
                     pri=200e-6
                 ),
                 rx=Rx(
-                    sampling_frequency=65e6,
                     n_samples=4096,
                     aperture=RegionBasedAperture(32, 32)
                 )
@@ -415,7 +408,6 @@ class LoopModuleKernelTest(unittest.TestCase):
                     aperture=RegionBasedAperture(64, 32),
                     pri=200e-6)
         self.rx = Rx(
-                    sampling_frequency=65e6,
                     n_samples=4096,
                     aperture=RegionBasedAperture(32, 32))
         self.tx_rx = TxRx(tx=self.tx, rx=self.rx)
@@ -429,7 +421,6 @@ class LoopModuleKernelTest(unittest.TestCase):
                     aperture=RegionBasedAperture(64, 32),
                     pri=200e-6),
                 rx=Rx(
-                    sampling_frequency=65e6,
                     n_samples=4096,
                     aperture=RegionBasedAperture(i*32, 32))
             )
@@ -440,7 +431,6 @@ class LoopModuleKernelTest(unittest.TestCase):
     def test_loop_validates_subop(self):
         wrong_rx = dataclasses.replace(
             self.rx,
-            sampling_frequency=100e6
         )
         tx_rx = TxRx(self.tx, wrong_rx)
         feed_dict = {

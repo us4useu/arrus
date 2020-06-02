@@ -1,7 +1,7 @@
 import math
 import time
 from functools import wraps
-from logging import DEBUG, INFO
+from logging import DEBUG, INFO, WARN
 from typing import List, Union, Optional
 import dataclasses
 
@@ -49,12 +49,13 @@ class Us4OEMCfg(_device.DeviceCfg):
     """
     Us4OEM module configuration.
 
-    :param channel_mapping: channel mapping to set. If str, a value of \
-        arrus.interface.get_interface(channel_mapping) will be used
+    :param channel_mapping: channel mapping to set. If str, ``esaote`` or \
+        ``ultrasonix`` should be provided.
     :param active_channel_groups: a list of True/False values (or non-zero \
         and zero values), which indicate which groups of channels should be \
         active during the whole session with the device.
-    :param dtgc: Digital time gain compensation as values in attenuation. \
+    :param dtgc: Digital time gain compensation. Actually this is an attenuation to \
+        apply, e.g. ``0`` gives the highest gain, ``42`` the lowest.  \
         When is None, DTGC is set to disabled. Available values: 0, 6, 12, \
         18, 24, 30, 36, 42 [dB]; can be None
     :param pga_gain: Configures programmable-gain amplifier (PGA). Gain to set,\
@@ -65,12 +66,12 @@ class Us4OEMCfg(_device.DeviceCfg):
         available values: 10e6, 15e6, 20e6, 30e6, 35e6, 50e6 [Hz]
     :param active_termination: Active termination to set, \
         available values: 50, 100, 200, 400; can be None (disabled)
-    :param tgc_samples: a list of tgc curve samples to set [dB]. The values \
+    :param tgc_samples: a list of TGC curve samples to set [dB]. The values \
         should be in range 14-54 dB, maximum number of samples to set: 1022. \
-        TGC curve sampling rate is equal 1MHz. Set to None if want to disable \
-        TGC.
+        TGC curve sampling rate is equal 1MHz. Set to None if you want to \
+        disable TGC.
     :param log_data_transfer_time: set to True if you want to log data \
-        transfer time (Us4OEM -> PC)
+        transfer time (from Us4OEM to the PC)
     """
     channel_mapping: Union[ChannelMapping, str]
     active_channel_groups: list
@@ -130,6 +131,8 @@ class Us4OEM(_device.Device):
         self.callbacks = []
         self.cfg = cfg
         self._default_active_channel_groups = None
+        self.tx_channel_mapping = None
+        self.rx_channel_mapping = None
 
     def start_if_necessary(self):
         """
@@ -149,8 +152,13 @@ class Us4OEM(_device.Device):
                     mapping = self.cfg.channel_mapping
                 self.store_mappings(tx_m=mapping.tx, rx_m=mapping.rx)
             self.card_handle.Initialize()
-            self.set_tx_channel_mapping(self.tx_channel_mapping)
-            self.set_rx_channel_mapping(self.rx_channel_mapping)
+            if self.tx_channel_mapping is not None \
+                    and self.rx_channel_mapping is not None:
+                self.set_tx_channel_mapping(self.tx_channel_mapping)
+                self.set_rx_channel_mapping(self.rx_channel_mapping)
+            else:
+                self.log(WARN, f"Device {self.get_id()} initialized "
+                               f"without setting channel mapping.")
             if self.cfg is not None:
                 self._default_active_channel_groups = \
                     self.cfg.active_channel_groups
@@ -173,7 +181,7 @@ class Us4OEM(_device.Device):
 
     def get_sampling_frequency(self):
         """
-        Returns sampling Us4OEM's sampling frequency.
+        Returns Us4OEM's sampling frequency.
         """
         return 65e6
 
@@ -335,22 +343,23 @@ class Us4OEM(_device.Device):
         Channel is active when it is TX/RX/CLAMP state. Channel is inactive
         when in HIZ state.
         Single group has 8 channels (single pulser).
-        | [0]  - channels 0-7
-        | [4]  - channels 8-15
-        | [8]  - channels 16-23
-        | [12] - channels 24-31
-        | [1]  - channels 64-71
-        | [5]  - channels 72-79
-        | [9]  - channels 80-87
-        | [13] - channels 88-95
-        | [2]  - channels 32-39
-        | [6]  - channels 40-47
-        | [10] - channels 48-55
-        | [14] - channels 56-63
-        | [3]  - channels 96-103
-        | [7]  - channels 104-111
-        | [11] - channels 112-119
-        | [15] - channels 120-127
+
+        - [0]  - channels 0-7
+        - [4]  - channels 8-15
+        - [8]  - channels 16-23
+        - [12] - channels 24-31
+        - [1]  - channels 64-71
+        - [5]  - channels 72-79
+        - [9]  - channels 80-87
+        - [13] - channels 88-95
+        - [2]  - channels 32-39
+        - [6]  - channels 40-47
+        - [10] - channels 48-55
+        - [14] - channels 56-63
+        - [3]  - channels 96-103
+        - [7]  - channels 104-111
+        - [11] - channels 112-119
+        - [15] - channels 120-127
 
         :param active_groups_mask: list of boolean values, True means \
             a group of channels at given position should be active
@@ -539,8 +548,10 @@ class Us4OEM(_device.Device):
 
         :param address: module's internal memory address, counted in number of samples
         :param length: number of samples from each channel to acquire
-        :param: callback: a callback function to call when data become available.
-        The callback function should take one parameter of type DataAcquiredEvent.
+        :param callback: a callback function to call when data become available.
+        :param start: acquisition start sample
+        :param decimation: decimation to apply
+        :param callback: a callback function to apply
         """
         self.log(
             DEBUG,

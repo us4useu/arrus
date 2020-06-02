@@ -10,7 +10,17 @@ Version 0.4.1
     - ``rxDepthRange`` parameter added to control the starting & ending depth of recorded data.
     - ``rxNSamples`` parameter, if it is 2-elements vector, allows for setting starting & ending \
       sample number of the recorded data. 1-element option is still valid.
-        
+
+- python API:
+
+    - Created new API (for a model of ``operations`` executed on available \
+      devices.
+    - Added ``fs_divider`` parameter to ``arrus.ops.Rx`` operation, that allows \
+      to reduce sampling frequency of the module.
+    - Added asynchronous communication with the device using ``arrus.ops.Loop`` \
+      operation.
+    - Added ``arrus.Us4OEMCfg`` parameter that turns on data transfer loggging \
+      time.
 
 Version 0.4.0
 -------------

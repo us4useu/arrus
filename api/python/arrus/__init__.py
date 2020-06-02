@@ -16,15 +16,23 @@ _logger.addHandler(_console_handler)
 
 def set_log_level(level):
     """
-    Sets logger level.
+    Sets logging level.
 
-    Available levels ERROR, WARNING, INFO, DEBUG
+    :param level: logging level to set, available levels ``ERROR``, \
+        ``WARNING``, ``INFO``, ``DEBUG``
     """
     _logger.setLevel(level)
     _console_handler.setLevel(level)
 
 
-def add_log_file(filename, level):
+def add_log_file(filename: str, level):
+    """
+    Add file, where logging information should appear.
+
+    :param filename: a path to the output file
+    :param level: level to set, available levels: ``ERROR``, \
+        ``WARNING``, ``INFO``, ``DEBUG``
+    """
     log_file_handler = logging.FileHandler(filename)
     log_file_handler.setLevel(level)
     file_formatter = logging.Formatter(
@@ -47,6 +55,10 @@ if is_ius4oem and is_ihv256 and is_idbarlite:
     import arrus.interface as interface
     import arrus.beam as beam
     from arrus.session import Session
+    from arrus.session import SessionCfg
+    from arrus.devices.us4oem import Us4OEMCfg
+    from arrus.devices.us4oem import ChannelMapping
+    from arrus.system import CustomUs4RCfg
 else:
     _logger.warn("Low-level API libraries are currently not available, "
                  "providing minimal version of the package.")

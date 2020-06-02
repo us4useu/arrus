@@ -1,186 +1,155 @@
-Single Module
-=============
+Communicating with Us4OEM
+=========================
 
-.. caution::
+Acquiring echo signal data requires three steps:
 
-    ARRUS is currently under development and its API will be modified in the
-    future. Please expect breaking changes.
+1. configure a `session` with Us4OEM device,
+2. define operations (ops) that should be executed by the device,
+3. execute operations within the session.
 
-In the following example we show:
+All these three steps are described below.
 
-1. how to configure TX and RX subsystems in order to generate a plane wave,
-2. how to trigger a pulse generation and acquire a complete RF frame.
+Configuring session
+-------------------
 
-Make sure that you have installed an appropriate ``arrus`` wheel file.
+User communicates with the Us4OEM device in a single `session`.
+Session is an abstract object that represents connection between client's
+programming interface and the device. The session should be configured before
+starting. In particular it is required to provide:
 
-A complete source code is available in a ``python/examples/basics/us4oem_x1.py``.
-To run it in your shell:
+- description of the system to which the user wants to connect to,
+- Us4OEM device initialization parameters.
 
-1. change your current location to a directory: ``python/example/basics``,
-2. execute following command: ``python us4oem_x1.py``.
-
-
-Initialization
---------------
-
-First, an interactive session with a device must be created.
-Assuming you are running the example from the directory, in which the script is originally located, following should work:
+System description should be provided as an instance of
+:class:`arrus.CustomUs4RCfg` class.
 
 .. code-block:: python
 
-    sess = ar.session.InteractiveSession("cfg.yaml")
-
-The configuration file ``python/examples/basics/cfg.yaml`` contains information about
-devices that should be visible in a session. In our example, cfg.yaml states
-that:
-
-- there is only one us4oem module available,
-- no HV256 (power supplier) module will be used.
-
-We also have to obtain a handle to the device with which we want to communicate:
-
-.. code-block:: python
-
-    module = sess.get_device("/Us4OEM:0")
-
-Next, we need to take into account a probe adapter that is currently installed on our board, thus an appropriate
-RX and TX channels mapping must be set:
-
-.. code-block:: python
-
-    interface = ar.interface.get_interface("esaote")
-    module.store_mappings(
-        interface.get_tx_channel_mapping(0),
-        interface.get_rx_channel_mapping(0)
+    # US4R-LITE CONFIGURATION
+    system_cfg = CustomUs4RCfg(
+        n_us4oems=2,
+        is_hv256=True
     )
 
-Then, we start the device:
+Us4OEM initialization parameters should be set using :class:`arrus.Us4OEMCfg`
+class, e.g:
 
 .. code-block:: python
 
-    module.start_if_necessary()
+    us4oem_cfg = Us4OEMCfg(
+        channel_mapping="esaote",
+        active_channel_groups=[1]*16,
+        dtgc=0,
+        active_termination=200,
+        log_transfer_time=True
+    )
 
-In this place we also set all RX parameters that we will not change later in the example:
-
-.. code-block:: python
-
-    module.set_pga_gain(30) # [dB]
-    module.set_lpf_cutoff(10e6) # [Hz]
-    module.set_active_termination(200)
-    module.set_lna_gain(24) #[dB]
-    module.set_dtgc(0) # [dB]
-    module.set_tgc_samples(
-        [0x9001] \
-        + (0x4000 + np.arange(1500, 0, -14)).tolist()
-        + [0x4000 + 3000])
-    module.enable_tgc()
-
-That is:
-
-1. we set amplifier gain,
-2. set low-pass cutoff frequency,
-3. we enable active termination,
-4. we set low-noise amplifier gain,
-5. and enable digital time gain compensation,
-6. turn on TGC and set TGC samples.
-
-Check :ref:`api-main` for more information on each method.
-
-Defining TX/RX acquisitions
----------------------------
-
-In this example we want to transmit and capture a signal using 128 channels.
-In us4OEM module there are 32 receive channels in total, but each receive channel
-is connected to 4 different transducers through the T/R switches.
-This architecture enables handling 128 element probes with low-cost hardware.
-Full 128-channel data capture can be done with a sequence of 4 transmit/receive acquisitions.
-
-.. credits to DC
-
-We want to perform 4 TX/RX acquisition to complete one RF frame;
-in order to do that, we need to define TX/RX parameters first,
-for each firing/acquisition (an *event*) separately.
+Finally, you can prepare a :class:`arrus.SessionCfg`:
 
 .. code-block:: python
 
-    TX_FREQUENCY = 5e6
-
-    NEVENTS = 4
-    NSAMPLES = 8192
-    NCHANELS = module.get_n_rx_channels()
-    delays = np.array([i*0.000e-6 for i in range(module.get_n_tx_channels())])
-
-    # Clear RX tasks queue.
-    module.clear_scheduled_receive()
-    # Set number of triggers to perform for one RF data frame.
-    module.set_n_triggers(NEVENTS)
-    # Set number of firings to perform.
-    module.set_number_of_firings(NEVENTS)
-
-    for i in range(NEVENTS):
-        module.set_tx_delays(delays=delays, firing=i)
-        module.set_tx_frequency(frequency=5e6, firing=i)
-        module.set_tx_half_periods(n_periods=2, firing=i)
-        module.set_tx_invert(is_enable=False)
-        module.set_tx_aperture(origin=0, size=128, firing=i)
-
-        module.set_rx_time(time=200e-6, firing=i)
-        module.set_rx_delay(delay=20e-6, firing=i)
-        module.set_rx_aperture(origin=i*32, size=32, firing=i)
-        module.schedule_receive(i*NSAMPLES, NSAMPLES)
-        module.set_trigger(
-            time_to_next_trigger=PRI,
-            time_to_next_tx=0,
-            is_sync_required=False,
-            idx=i
-        )
-    module.enable_transmit()
-    # In order to stop the device after the last event,
-    # set 'is_sync_required=True'.
-    module.set_trigger(
-            time_to_next_trigger=PRI,
-            time_to_next_tx=0,
-            is_sync_required=True,
-            idx=NEVENTS-1)
+    session_cfg = SessionCfg(
+        system=system_cfg,
+        devices={
+            "Us4OEM:0": us4oem_cfg,
+        }
+    )
 
 
-Acquiring data
---------------
+Defining operations to perform
+------------------------------
 
-To start TX signal generation call ``trigger_start`` function.
+In ARRUS, user defines **operations** that will be executed on a particular
+**device**.
 
-Before starting data capture, we need to enable it with
-``enable_receive`` function. Then ``trigger_sync`` should be called to wait for
-all the data to be collected. After that a complete RF frame should be available
-in the us4OEM module's internal memory.
+Us4OEM modules implements :class:`arrus.ops.TxRx` operation,
+that is, a single transmit and echo signal reception. The result of this
+operation is stored directly in the module's DDR memory, and then is transferred
+to the PC for further processing. A single ``TxRx`` allows to transmit a signal
+impulse using at most 128 channels and to receive echo data using at most 32
+channels.
 
-In order to transfer the data to the host computer's memory you have to use a
-method ``transfer_rx_buffer_to_host``. Note, that this function returns an array
-of shape ``(NEVENTS*NSAMPLES, NCHANNELS)``.
-An additional reordering may be required - see example below.
+A single ``TxRx`` operation is limited by module's maximum number of Rx channels.
+In most cases a :class:`arrus.ops.Sequence` of ``TxRx`` operations will be
+desired. A single ``Sequence`` allows to execute a given collection of
+``TxRx`` operations, store all acquired data in module's DDR memory,
+then transfer it to the computer's memory. For example, a ``Sequence`` of 4
+``TxRx`` operations with a shifted Rx aperture (stride 32) allows to acquire
+data using 128 Rx channels:
 
 .. code-block:: python
 
-    module.trigger_start()
-    # ...
-    module.enable_receive()
-    module.trigger_sync()
+    operations = []
+    for i in range(4):
+        tx = Tx(excitation=SineWave(frequency=8.125e6, n_periods=1.5,
+                                    inverse=False),
+                aperture=RegionBasedAperture(origin=0, size=128),
+                pri=200e-6)
+        rx = Rx(n_samples=8192,
+                aperture=RegionBasedAperture(origin=i*32, size=32))
+        tx_rx = TxRx(tx, rx)
+        operations.append(tx_rx)
+    tx_rx_sequence = Sequence(operations)
 
-    # - transfer data from module's internal memory to the host memory
-    buffer = module.transfer_rx_buffer_to_host(0, NEVENTS*NSAMPLES)
+In real-time imaging user probably would like to execute a given operation
+in a loop, until the system is explicitly stopped. In this case
+:class:`arrus.ops.Loop` is advised to be used. This operations repeats given
+``Sequence`` of ``TxRx`` ops, until the loop is explicitly stopped.
+After each execution of the ``Sequence``, a ``callback`` function is called
+with the rf data provided as an input. If the acquisition should be continued,
+the ``callback`` function should return ``True``, ``False`` otherwise.
 
-    # - reorder acquired data
-    for i in range(NEVENTS):
-        rf[:, i*NCHANELS:(i+1)*NCHANELS] = buffer[i*NSAMPLES:(i+1)*NSAMPLES, :]
+.. code-block:: python
 
-    # ...
-    # Stop the automatic trigger when no more data is necessary.
-    module.trigger_stop()
+    def callback(data):
+        print("New data!")
+        return True
 
-Variable ``rf`` should now contain all the collected samples.
-To stop trigger generation, call ``trigger_stop``.
+    sequence_loop = Loop(tx_rx_sequence)
 
 
+Running operation
+-----------------
+
+Operations can be executed within a :class:`arrus.Session`.
+
+In particular, to run the sequence of 4 ``TxRx`` operations:
+
+.. code-block:: python
+
+    with arrus.Session(cfg=session_cfg) as sess:
+        us4oem = sess.get_device("/Us4OEM:0")
+        data = sess.run(tx_rx_sequence, feed_dict={'device': us4oem})
+
+Please note that ``Session`` is a `python context manager class` with the
+following semantic: when the context (an indented block of code) ends, all
+running devices are stopped and the session is closed.
+
+A parameter ``feed_dict`` allows to fill the executed operation placeholders
+with specific values. An example of such placeholder is a ``device``, on which
+the operation should be executed. ``Loop`` operation requires an additional
+feed value, a ``callback`` function, that should be called when the data
+acquisition is finished.
+
+.. code-block:: python
+
+    with arrus.Session(cfg=session_cfg) as sess:
+        us4oem = sess.get_device("/Us4OEM:0")
+        sess.run(sequence_loop, feed_dict={'device': us4oem,
+                                           'callback': callback}
 
 
+Examples
+--------
+
+Following examples are available in ``python\examples\us4oem`` directory:
+
+- ``us4oem_x1_pwi_single.py``: using Us4OEM to transmit a single plane \
+  wave and acquire echo data.
+- ``us4oem_x1_sta_single.py``: using Us4OEM to perform a single STA sequence \
+- ``us4oem_x1_sta_multiple.py``: using Us4OEM to perform STA sequence multiple\
+  times; saves acquired RF data to ``numpy`` file with given frequency.
+- ``us4oem_x1_sta_old_api.py``: an example using the old, legacy API.
+
+All examples require ``matplotlib`` package to be installed.
 

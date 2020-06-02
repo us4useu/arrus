@@ -22,7 +22,6 @@ import arrus.validation
 _ARRUS_PATH_ENV = "ARRUS_PATH"
 
 
-
 @dataclasses.dataclass(frozen=True)
 class SessionCfg:
     """
@@ -34,7 +33,7 @@ class SessionCfg:
     :param system: description of a system with which the user wants to
         communicate
     :param devices: configuration of the devices with which the user wants
-        communicate
+        communicate; a map: device id → device configuration
     """
     system: _system.SystemCfg
     devices: typing.Mapping[str, _device.DeviceCfg]
@@ -94,10 +93,13 @@ class Session(AbstractSession):
 
     def run(self, operation: arrus.ops.Operation, feed_dict: dict):
         """
-        Runs a given operation in the system.
+        Runs a given operation in the system. Returns the result of operation
+        (if any).
 
         :param operation: operation to run
-        :param feed_dict: values to be set in the place of placeholders.
+        :param feed_dict: values to pass to the operation. All operations
+            requires `device`; check documentation of a particular documentation
+            if it requires any additional session values.
         """
         _logger.log(DEBUG, f"Session run: {str(operation)}")
 
@@ -150,7 +152,14 @@ class Session(AbstractSession):
         n_us4oems = system_cfg.n_us4oems
         arrus.validation.assert_not_none(n_us4oems, "number of us4oems")
 
-        us4oem_handles = (_ius4oem.getUs4OEMPtr(i) for i in range(n_us4oems))
+        us4oem_handles = []
+        for i in range(n_us4oems):
+            us4oem_handle = _ius4oem.getUs4OEMPtr(i)
+            _logger.log(DEBUG,
+                        f"Discovered Us4OEM handle "
+                        f"with id {us4oem_handle.GetID()}")
+            us4oem_handles.append(us4oem_handle)
+
         us4oem_handles = sorted(us4oem_handles, key=lambda a: a.GetID())
 
         for device_id, device_cfg in cfg.devices.items():
@@ -163,6 +172,7 @@ class Session(AbstractSession):
                 # validate and use configuration to create device
                 us4oem = _us4oem.Us4OEM(index,card_handle=us4oem_handles[index],
                                         cfg=device_cfg)
+                us4oem.start_if_necessary()
                 if us4oem.get_id() in result.keys():
                     raise ValueError(f"Found duplicated configuration for "
                                      f"{us4oem.get_id()}")
@@ -171,6 +181,18 @@ class Session(AbstractSession):
             else:
                 raise ValueError(f"This device cannot be configured: "
                                  f"{device_id}")
+
+        # Below is a workaround for the following issue:
+        # - turn off us4r-lite, turn on us4r-lite
+        # - run script, which uses only us4oem:0
+        # - run again - PCIDeviceException
+        # If only one module is initialized after the restart, the second
+        # call will fail.
+        for i in range(n_us4oems):
+            if _us4oem.Us4OEM.get_card_id(i) not in result:
+                unused_device = _us4oem.Us4OEM(i, card_handle=us4oem_handles[i])
+                unused_device.start_if_necessary()
+                result[unused_device.get_id()] = unused_device
 
         if system_cfg.is_hv256:
             module_id = system_cfg.master_us4oem
@@ -192,7 +214,7 @@ class Session(AbstractSession):
 class InteractiveSession(AbstractSession):
     """
     **THIS CLASS IS DEPRECATED AND WILL BE REMOVED IN THE NEAR FUTURE. Please
-    use :class:`arrus.session.Session`**.
+    use** ``arrus.Session``.
 
     An user interactive session with available devices.
 
