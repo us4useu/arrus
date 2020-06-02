@@ -12,14 +12,22 @@ In this example:
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-import arrus
 import itertools
 from threading import Event
-from arrus.ops import Tx, Rx, TxRx, Sequence, SetHVVoltage, Loop
-from arrus import SineWave, RegionBasedAperture
-from arrus.system import CustomUs4RCfg
-from arrus.devices.us4oem import Us4OEMCfg
-from arrus.session import SessionCfg
+import arrus
+from arrus.ops import (
+    Tx, Rx, TxRx,
+    Sequence,
+    SetHVVoltage,
+    Loop
+)
+from arrus import (
+    SineWave,
+    RegionBasedAperture,
+    CustomUs4RCfg,
+    Us4OEMCfg,
+    SessionCfg
+)
 
 # -- CONSTANTS
 # Number of firings per frame.

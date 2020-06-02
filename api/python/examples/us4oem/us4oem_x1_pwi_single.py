@@ -13,13 +13,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import arrus
 
-from arrus.ops import Tx, Rx, TxRx, Sequence, SetHVVoltage
-from arrus import SineWave, RegionBasedAperture
-
-from arrus.system import CustomUs4RCfg
-from arrus.devices.us4oem import Us4OEMCfg
-from arrus.session import SessionCfg
-
+from arrus.ops import (
+    Tx,
+    Rx,
+    TxRx,
+    Sequence,
+    SetHVVoltage
+)
+from arrus import (
+    SineWave,
+    RegionBasedAperture,
+    CustomUs4RCfg,
+    Us4OEMCfg,
+    SessionCfg
+)
 
 def main():
     # -- DEVICE CONFIGURATION.
