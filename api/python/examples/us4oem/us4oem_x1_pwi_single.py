@@ -1,3 +1,14 @@
+"""
+Using single Us4OEM to transmit a Single Plane wave and acquire echo data.
+
+In this example:
+
+- we configure Us4OEM,
+- we define PWI-like sequence of firings using full Tx aperture
+  (all channels active), no tx delay (angle 0),
+- run the sequence and acquire a single RF frame.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import arrus
@@ -11,7 +22,10 @@ from arrus.session import SessionCfg
 
 
 def main():
+    # -- DEVICE CONFIGURATION.
+
     # Prepare system description.
+    # Customize this configuration for your setup.
     system_cfg = CustomUs4RCfg(
         n_us4oems=2,
         is_hv256=True,
@@ -21,11 +35,10 @@ def main():
         channel_mapping="esaote",
         active_channel_groups=[1]*16,
         dtgc=0,
-        active_termination=200,
-        log_transfer_time=True
+        active_termination=200
     )
 
-    # Define TX/RX sequence.
+    # -- PROGRAMMING TX/RX SEQUENCE.
     n_samples = 8*1024
     n_firings = 4
 
@@ -47,7 +60,9 @@ def main():
 
     tx_rx_sequence = Sequence(operations)
 
-    # Execute the sequence in the session.
+    # -- RUNNING TX/RX SEQUENCE
+
+    # Configure and create communication session with the device.
     session_cfg = SessionCfg(
         system=system_cfg,
         devices={
@@ -55,12 +70,16 @@ def main():
         }
     )
     with arrus.Session(cfg=session_cfg) as sess:
-        # Enable high voltage supplier.
+        # Use HV256 high voltage supplier.
         hv256 = sess.get_device("/HV256")
+        # Get first available Us4OEM module.
         us4oem = sess.get_device("/Us4OEM:0")
 
+        # Set voltage on HV256.
         sess.run(SetHVVoltage(50), feed_dict=dict(device=hv256))
 
+        # Acquire a single RF frame of shape
+        # (N_OPERATIONS*N_SAMPLES, N_RX_CHANNELS).
         frame = sess.run(tx_rx_sequence, feed_dict=dict(device=us4oem))
         frame = frame.reshape((n_firings,
                                n_samples,

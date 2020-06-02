@@ -66,9 +66,11 @@ Startup
 ARRUS
 -----
 
-Before proceeding please make sure that your system's
-environment variable ``Path`` does not contain entries for any of the previously
-installed versions of the software.
+Before proceeding please make sure:
+
+- the device is properly connected to the computer,
+- that your **system-wide** environment variable ``Path`` does not contain \
+  entries for any of the previously installed versions of the software.
 
 1. Download and extract |arrus|_ package.
 2. Run ``install.exe`` file and follow provided instructions.
