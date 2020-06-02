@@ -58,7 +58,7 @@ Startup
     cable, you have to follow this extended startup procedure:
 
     1. Turn off the notebook and your device, plug off Thunderbolt-3 cable.
-    2. Turn on the , then connect it to the notebook using the provided
+    2. Turn on the system, then connect it to the notebook using the provided
        Thunderbolt-3 cable.
     3. Turn on the notebook.
     4. After Windows 10 loads, restart the notebook.

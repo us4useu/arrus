@@ -9,7 +9,7 @@ Version 0.4.1
     - ``nRepetitions`` parameter added to control the number of rf-data frames to be recorded.
     - ``rxDepthRange`` parameter added to control the starting & ending depth of recorded data.
     - ``rxNSamples`` parameter, if it is 2-elements vector, allows for setting starting & ending \
-        sample number of the recorded data. 1-element option is still valid.
+      sample number of the recorded data. 1-element option is still valid.
         
 
 Version 0.4.0
