@@ -66,21 +66,22 @@ set(SOURCE_FILES
     "arrus/__init__.py"
     "arrus/beam.py"
     "arrus/interface.py"
-    "arrus/session.py"
     "arrus/kernels.py"
+    "arrus/session.py"
+    "arrus/params.py"
+    "arrus/system.py"
+    "arrus/validation.py"
     "arrus/ops/__init__.py"
     "arrus/ops/operations.py"
-    "arrus/params.py"
-    "arrus/validation.py"
     "arrus/devices/__init__.py"
-    "arrus/devices/us4oem.py"
+    "arrus/devices/callbacks.py"
     "arrus/devices/device.py"
     "arrus/devices/hv256.py"
     "arrus/devices/probe.py"
+    "arrus/devices/us4oem.py"
     "arrus/utils/__init__.py"
     "arrus/utils/imaging.py"
     "arrus/utils/parameters.py"
-    "arrus/devices/callbacks.py"
     "arrus/tests/tools.py"
 )
 set(TEST_FILES
@@ -89,7 +90,7 @@ set(TEST_FILES
     "arrus/devices/tests/probe_test.py"
     "arrus/utils/tests/utils_test.py"
     "arrus/utils/tests/parameters_test.py"
-    "arrus/utils/tests/us4oem_kernels_test.py"
+    "arrus/tests/us4oem_kernels_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")

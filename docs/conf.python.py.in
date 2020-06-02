@@ -38,9 +38,11 @@ mock_import(
 )
 mock_import(
     "arrus.devices.idbarLite",
+    IDbarLite=None
 )
 mock_import(
     "arrus.devices.ihv256",
+    IHV256=None
 )
 
 # -- Project information -----------------------------------------------------

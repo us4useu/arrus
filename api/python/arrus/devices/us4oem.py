@@ -173,7 +173,7 @@ class Us4OEM(_device.Device):
 
     def get_sampling_frequency(self):
         """
-        Returns sampling Us4OEM's sampling frequency.
+        Returns Us4OEM's sampling frequency.
         """
         return 65e6
 
@@ -539,8 +539,10 @@ class Us4OEM(_device.Device):
 
         :param address: module's internal memory address, counted in number of samples
         :param length: number of samples from each channel to acquire
-        :param: callback: a callback function to call when data become available.
-        The callback function should take one parameter of type DataAcquiredEvent.
+        :param callback: a callback function to call when data become available.
+        :param start: acquisition start sample
+        :param decimation: decimation to apply
+        :param callback: a callback function to apply
         """
         self.log(
             DEBUG,

@@ -22,7 +22,6 @@ import arrus.validation
 _ARRUS_PATH_ENV = "ARRUS_PATH"
 
 
-
 @dataclasses.dataclass(frozen=True)
 class SessionCfg:
     """
