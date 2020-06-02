@@ -844,14 +844,13 @@ class Us4OEM(_device.Device):
         if self.cfg is not None and self.cfg.log_transfer_time:
             end_time = time.time()
             data_bytes = length
-            data_mbytes = data_bytes / 10e6
+            data_mbytes = data_bytes / 1e6
             elapsed = end_time - start_time
             throughput = None if elapsed == 0.0 else data_mbytes / elapsed
-
             msg = f"Transferred data {self.get_id()} -> PC: amount: " \
-                  f"{data_mbytes} MB in {elapsed} s"
+                  f"{data_mbytes:.3f} MB in {elapsed:.3f} s"
             if throughput is not None:
-                msg = msg + f", throughput: {throughput} MB/s"
+                msg = msg + f", throughput: {throughput:.3f} MB/s"
             self.log(INFO, msg)
 
         self.log(
@@ -890,14 +889,14 @@ class Us4OEM(_device.Device):
         if self.cfg is not None and self.cfg.log_transfer_time:
             end_time = time.time()
             data_bytes = length
-            data_mbytes = data_bytes / 10e6
+            data_mbytes = data_bytes / 1e6
             elapsed = end_time - start_time
             throughput = None if elapsed == 0.0 else data_mbytes/elapsed
 
             msg = f"Transferred data {self.get_id()} -> PC: amount: "\
-                  f"{data_mbytes} MB in {elapsed} s"
+                  f"{data_mbytes:.3f} MB in {elapsed:.3f} s"
             if throughput is not None:
-                msg = msg + f", throughput: {throughput} MB/s"
+                msg = msg + f", throughput: {throughput:.3f} MB/s"
             self.log(INFO, msg)
 
         self.log(DEBUG, "... transferred.")

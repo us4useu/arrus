@@ -425,9 +425,10 @@ class LoopModuleKernel(LoadableKernel, AsyncKernel):
         def _callback_wrapper(event):
             # GIL
             self.device.transfer_rx_buffer_to_host_buffer(0, data_buffer)
-            cb(data_buffer)
-            self.device.enable_receive()
-            self.device.trigger_sync()
+            callback_result = cb(data_buffer)
+            if callback_result:
+                self.device.enable_receive()
+                self.device.trigger_sync()
             # End GIL
 
         return _callback_wrapper
