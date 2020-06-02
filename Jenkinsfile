@@ -38,13 +38,13 @@ pipeline {
         stage('Configure') {
             steps {
                 echo 'Configuring build ...'
-                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG' --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON"
+                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG' --src_branch_name ${env.BRANCH_NAME} --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON"
             }
         }
         stage('Build') {
             steps {
                 echo 'Building ...'
-                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir'=${env.WORKSPACE}'"
+                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir'=${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG'"
             }
         }
         stage('Test') {
@@ -60,6 +60,12 @@ pipeline {
             steps {
                 echo 'Installing ...'
                 sh "python '${env.WORKSPACE}/scripts/install.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
+            }
+        }
+        stage('Create installer') {
+            steps {
+                echo 'Installing ...'
+                sh "python '${env.WORKSPACE}/scripts/create_installer.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
             }
         }
         stage('Publish package') {

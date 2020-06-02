@@ -1,0 +1,9 @@
+us4oems:
+  - index: 0
+    id: 0
+    firmwareVersion: fafafa
+    txFirmwareVersion: 4a4a4a
+  - index: 1
+    id: 4
+    firmwareVersion: fafafa
+    txFirmwareVersion: 4a4a4a

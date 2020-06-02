@@ -24,6 +24,10 @@ class HV256(_device.Device):
         super().__init__(HV256._DEVICE_NAME, index=None)
         self.hv256_handle = hv256_handle
 
+    def start_if_necessary(self):
+        # Nothing to do here.
+        pass
+
     def enable_hv(self):
         """
         Enables HV power supplier.

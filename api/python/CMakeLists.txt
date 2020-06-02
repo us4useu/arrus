@@ -45,9 +45,11 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     target_include_directories(${wrapper}
         PRIVATE
         ${PYTHON_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(${wrapper}
        PRIVATE
+       core
        Us4::${component}
         ${PYTHON_LIBRARIES}
     )
@@ -64,12 +66,19 @@ set(SOURCE_FILES
     "arrus/__init__.py"
     "arrus/beam.py"
     "arrus/interface.py"
+    "arrus/kernels.py"
     "arrus/session.py"
+    "arrus/params.py"
+    "arrus/system.py"
+    "arrus/validation.py"
+    "arrus/ops/__init__.py"
+    "arrus/ops/operations.py"
     "arrus/devices/__init__.py"
-    "arrus/devices/us4oem.py"
+    "arrus/devices/callbacks.py"
     "arrus/devices/device.py"
     "arrus/devices/hv256.py"
     "arrus/devices/probe.py"
+    "arrus/devices/us4oem.py"
     "arrus/utils/__init__.py"
     "arrus/utils/imaging.py"
     "arrus/utils/parameters.py"
@@ -81,6 +90,7 @@ set(TEST_FILES
     "arrus/devices/tests/probe_test.py"
     "arrus/utils/tests/utils_test.py"
     "arrus/utils/tests/parameters_test.py"
+    "arrus/tests/us4oem_kernels_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -121,32 +131,34 @@ install(
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}
     RENAME
-        #TODO(pjarosik) make it more general and available for other OSes
         "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-cp37-cp37m-win_amd64.whl"
     COMPONENT
         python_whl
 )
 
-# install(
-#	FILES
-#        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
-#	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
-#    DESTINATION
-#        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
-#)
+install(
+	FILES
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_pwi_single.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_multiple.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/cfg.yaml
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_old_api.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_single.py
+    DESTINATION
+        ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
+)
 
 ################################################################################
 # Python tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
-    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
-    install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
-    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
-    foreach(TEST_FILE IN LISTS TEST_FILES)
-        add_test(
-            NAME ${TEST_FILE}
-            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
-        )
-    endforeach()
+    #create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
+    #install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+    #get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
+    #foreach(TEST_FILE IN LISTS TEST_FILES)
+    #    add_test(
+    #        NAME ${TEST_FILE}
+    #        COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
+    #    )
+    #endforeach()
 endif()
 

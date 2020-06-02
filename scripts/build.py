@@ -22,9 +22,14 @@ def main():
                         type=str, required=False,
                         default=os.environ.get(SRC_ENVIRON, None))
 
+    parser.add_argument("--us4r_dir", dest="us4r_dir",
+                        type=str, required=False,
+                        default=None)
+
     args = parser.parse_args()
     configuration = args.config
     src_dir = args.source_dir
+    us4r_dir = args.us4r_dir
 
     if src_dir is None:
         raise ValueError("%s environment variable should be declared "
@@ -40,7 +45,21 @@ def main():
     ]
 
     print("Calling: %s" % (" ".join(cmake_cmd)))
+
+    current_env = os.environ.copy()
+    if us4r_dir is not None:
+        current_env["PATH"] = os.path.join(us4r_dir, "lib64") +os.pathsep + current_env["PATH"]
+
+    print(f"Calling with Path {current_env['PATH']}")
+    process = subprocess.Popen(cmake_cmd, env=current_env)
+    process.wait()
+    return_code = process.returncode
+    # TODO(pjarosik) consider capturing stderr info and log it into debug
+    if return_code != 0:
+        raise RuntimeError(f"The process {args} exited with code "
+                           f"{return_code}")
     result = subprocess.call(cmake_cmd)
+
     assert_no_error(result)
 
 if __name__ == "__main__":
