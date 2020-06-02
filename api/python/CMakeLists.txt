@@ -130,19 +130,21 @@ install(
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}
     RENAME
-        #TODO(pjarosik) make it more general and available for other OSes
         "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-cp37-cp37m-win_amd64.whl"
     COMPONENT
         python_whl
 )
 
-# install(
-#	FILES
-#        # TODO (pjarosik) to be consistent, move to CURRENT_BUILD_DIR
-#	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/
-#    DESTINATION
-#        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
-#)
+install(
+	FILES
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_pwi_single.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_multiple.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/cfg.yaml
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_old_api.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_single.py
+    DESTINATION
+        ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
+)
 
 ################################################################################
 # Python tests
