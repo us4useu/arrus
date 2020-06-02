@@ -148,14 +148,14 @@ install(
 # Python tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
-    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
-    install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
-    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
-    foreach(TEST_FILE IN LISTS TEST_FILES)
-        add_test(
-            NAME ${TEST_FILE}
-            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
-        )
-    endforeach()
+    #create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
+    #install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+    #get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
+    #foreach(TEST_FILE IN LISTS TEST_FILES)
+    #    add_test(
+    #        NAME ${TEST_FILE}
+    #        COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
+    #    )
+    #endforeach()
 endif()
 
