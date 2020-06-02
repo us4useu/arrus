@@ -1,7 +1,7 @@
 import math
 import time
 from functools import wraps
-from logging import DEBUG, INFO
+from logging import DEBUG, INFO, WARN
 from typing import List, Union, Optional
 import dataclasses
 
@@ -131,6 +131,8 @@ class Us4OEM(_device.Device):
         self.callbacks = []
         self.cfg = cfg
         self._default_active_channel_groups = None
+        self.tx_channel_mapping = None
+        self.rx_channel_mapping = None
 
     def start_if_necessary(self):
         """
@@ -150,8 +152,13 @@ class Us4OEM(_device.Device):
                     mapping = self.cfg.channel_mapping
                 self.store_mappings(tx_m=mapping.tx, rx_m=mapping.rx)
             self.card_handle.Initialize()
-            self.set_tx_channel_mapping(self.tx_channel_mapping)
-            self.set_rx_channel_mapping(self.rx_channel_mapping)
+            if self.tx_channel_mapping is not None \
+                    and self.rx_channel_mapping is not None:
+                self.set_tx_channel_mapping(self.tx_channel_mapping)
+                self.set_rx_channel_mapping(self.rx_channel_mapping)
+            else:
+                self.log(WARN, f"Device {self.get_id()} initialized "
+                               f"without setting channel mapping.")
             if self.cfg is not None:
                 self._default_active_channel_groups = \
                     self.cfg.active_channel_groups

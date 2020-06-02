@@ -121,8 +121,6 @@ In particular, if the user would like to run previously defined sequence of
         us4oem = sess.get_device("/Us4OEM:0")
         data = sess.run(tx_rx_sequence, feed_dict={'device': us4oem))
 
-The result ``data`` may look like this:
-
 When the context ends, session is closed and all running devices will stop.
 
 A parameter ``feed_dict`` fills operation placeholders with specific values.

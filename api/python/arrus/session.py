@@ -152,7 +152,14 @@ class Session(AbstractSession):
         n_us4oems = system_cfg.n_us4oems
         arrus.validation.assert_not_none(n_us4oems, "number of us4oems")
 
-        us4oem_handles = (_ius4oem.getUs4OEMPtr(i) for i in range(n_us4oems))
+        us4oem_handles = []
+        for i in range(n_us4oems):
+            us4oem_handle = _ius4oem.getUs4OEMPtr(i)
+            _logger.log(DEBUG,
+                        f"Discovered Us4OEM handle "
+                        f"with id {us4oem_handle.GetID()}")
+            us4oem_handles.append(us4oem_handle)
+
         us4oem_handles = sorted(us4oem_handles, key=lambda a: a.GetID())
 
         for device_id, device_cfg in cfg.devices.items():
@@ -165,6 +172,7 @@ class Session(AbstractSession):
                 # validate and use configuration to create device
                 us4oem = _us4oem.Us4OEM(index,card_handle=us4oem_handles[index],
                                         cfg=device_cfg)
+                us4oem.start_if_necessary()
                 if us4oem.get_id() in result.keys():
                     raise ValueError(f"Found duplicated configuration for "
                                      f"{us4oem.get_id()}")
@@ -173,6 +181,18 @@ class Session(AbstractSession):
             else:
                 raise ValueError(f"This device cannot be configured: "
                                  f"{device_id}")
+
+        # Below is a workaround for the following issue:
+        # - turn off us4r-lite, turn on us4r-lite
+        # - run script, which uses only us4oem:0
+        # - run again - PCIDeviceException
+        # If only one module is initialized after the restart, the second
+        # call will fail.
+        for i in range(n_us4oems):
+            if _us4oem.Us4OEM.get_card_id(i) not in result:
+                unused_device = _us4oem.Us4OEM(i, card_handle=us4oem_handles[i])
+                unused_device.start_if_necessary()
+                result[unused_device.get_id()] = unused_device
 
         if system_cfg.is_hv256:
             module_id = system_cfg.master_us4oem
