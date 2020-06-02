@@ -55,6 +55,10 @@ if is_ius4oem and is_ihv256 and is_idbarlite:
     import arrus.interface as interface
     import arrus.beam as beam
     from arrus.session import Session
+    from arrus.session import SessionCfg
+    from arrus.devices.us4oem import Us4OEMCfg
+    from arrus.devices.us4oem import ChannelMapping
+    from arrus.system import CustomUs4RCfg
 else:
     _logger.warn("Low-level API libraries are currently not available, "
                  "providing minimal version of the package.")

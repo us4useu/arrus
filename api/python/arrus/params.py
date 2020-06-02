@@ -6,7 +6,7 @@ import numpy as np
 
 class Excitation(abc.ABC):
     """
-    An excitation (a signal) to perform.
+    An excitation (a signal pulse) to transmit.
     """
     pass
 
@@ -16,9 +16,9 @@ class SineWave(Excitation):
     """
     Sine wave excitation.
 
-    :var frequency: transmitted carrier/nominal/center frequency [Hz]
-    :var n_periods: number of sine periods in the transmitted burst, can be fractional
-    :var inverse: whether the resulting wave should be inverted
+    :param frequency: transmitted carrier/nominal/center frequency [Hz]
+    :param n_periods: number of sine periods in the transmitted burst, can be fractional
+    :param inverse: whether the resulting wave should be inverted
     """
     frequency: float
     n_periods: float
@@ -42,8 +42,8 @@ class RegionBasedAperture(Aperture):
     A region-based aperture.
 
     The aperture represents a single, contiguous range of channels.
-    :var origin: an origin channel of the aperture
-    :var size: a length of the aperture
+    :param origin: an origin channel of the aperture
+    :param size: a length of the aperture
     """
     origin: int
     size: int
@@ -58,14 +58,9 @@ class MaskAperture(Aperture):
     A mask-based aperture.
 
     This aperture can represent a (possibly non-contiguous) set of channels,
-    for example:
+    for example: ``[1,1,0,0,1,1]`` represents channels 0, 1, 4, 5
 
-    ::
-        [1,1,0,0,1,1]
-
-    represents channels 0, 1, 4, 5
-
-    :var mask: a mask to set, one dimensional numpy array
+    :param mask: a mask to set, one dimensional numpy array
     """
 
     mask: np.ndarray
@@ -79,7 +74,7 @@ class SingleElementAperture(Aperture):
     """
     Represents an aperture consisting of a single element.
 
-    :var mask: an element of the aperture
+    :param mask: an element of the aperture
     """
     element: int
 

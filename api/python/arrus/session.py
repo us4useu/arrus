@@ -33,7 +33,7 @@ class SessionCfg:
     :param system: description of a system with which the user wants to
         communicate
     :param devices: configuration of the devices with which the user wants
-        communicate
+        communicate; a map: device id → device configuration
     """
     system: _system.SystemCfg
     devices: typing.Mapping[str, _device.DeviceCfg]
@@ -93,10 +93,13 @@ class Session(AbstractSession):
 
     def run(self, operation: arrus.ops.Operation, feed_dict: dict):
         """
-        Runs a given operation in the system.
+        Runs a given operation in the system. Returns the result of operation
+        (if any).
 
         :param operation: operation to run
-        :param feed_dict: values to be set in the place of placeholders.
+        :param feed_dict: values to pass to the operation. All operations
+            requires `device`; check documentation of a particular documentation
+            if it requires any additional session values.
         """
         _logger.log(DEBUG, f"Session run: {str(operation)}")
 
@@ -191,7 +194,7 @@ class Session(AbstractSession):
 class InteractiveSession(AbstractSession):
     """
     **THIS CLASS IS DEPRECATED AND WILL BE REMOVED IN THE NEAR FUTURE. Please
-    use :class:`arrus.session.Session`**.
+    use** ``arrus.Session``.
 
     An user interactive session with available devices.
 

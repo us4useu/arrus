@@ -23,12 +23,12 @@ class Tx(Operation):
     """
     Single atomic operation of signal transmit.
 
-    :var delays: an array of delays to set to active elements. Should have the \
+    :param delays: an array of delays to set to active elements. Should have the \
         shape (n_a,), where n_a is a number of active elements determined by \
-        tx aperture. When None, firings are performed with not delay (delays=0).
-    :var excitation: an excitation to perform
-    :var aperture: a set of TX channels that should be enabled
-    :var pri: pulse repetition interval
+        tx aperture. When None, firings are performed with no delay (delays=0) [s].
+    :param excitation: an excitation to perform
+    :param aperture: a set of TX channels that should be enabled
+    :param pri: pulse repetition interval [s]
     """
     excitation: arrus.params.Excitation
     aperture: arrus.params.Aperture
@@ -51,14 +51,14 @@ class Rx(Operation):
     """
     Single atomic operation of signal data reception.
 
-    :var samples: number of samples to acquire
-    :var fs_divider: a sampling frequency divider. For example, if \
+    :param samples: number of samples to acquire
+    :param fs_divider: a sampling frequency divider. For example, if \
         nominal sampling frequency (fs) is equal to 65e6 Hz, ``fs_divider=1``,\
         means to use the nominal fs, ``fs_divider=2`` means to use 32.5e6 Hz, \
         etc.
-    :var aperture: a set of RX channels that should be enabled
-    :var rx_time: the total acquisition time
-    :var rx_delay: initial rx delay
+    :param aperture: a set of RX channels that should be enabled
+    :param rx_time: the total acquisition time [s]
+    :param rx_delay: initial rx delay [s]
     """
     n_samples: int
     aperture: arrus.params.Aperture
@@ -71,10 +71,11 @@ class Rx(Operation):
 class TxRx(Operation):
     """
     Single atomic operation of pulse transmit and signal data reception.
-    Returns a result signal data acquired during the sequence.
+    Returns acquired signal data -- a numpy ``ndarray`` of shape
+    ``(number_of_samples, number_of_rx_channels)``
 
-    :var tx: signal transmit to perform
-    :var rx: signal reception to perform
+    :param tx: signal transmit to perform
+    :param rx: signal reception to perform
     """
     tx: Tx
     rx: Rx
@@ -83,10 +84,11 @@ class TxRx(Operation):
 @dataclass(frozen=True)
 class Sequence(Operation):
     """
-    A sequence of operations to perform. Returns a result signal data acquired
-    during the sequence.
+    A sequence of operations to perform.
+    Returns acquired signal data -- a numpy ``ndarray`` of shape
+    ``(number_of_samples*number_of_operations, number_of_rx_channels)``
 
-    :var operations: sequence of TX/RX operations to perform
+    :param operations: sequence of TX/RX operations to perform
     """
     operations: typing.List[TxRx]
 
@@ -96,12 +98,13 @@ class Loop(Operation):
     """
     Performs given operation in a loop.
 
-    This operation returns:
+    This operation returns no value. Requires ``callback`` function
+    as a session parameter. The callback function should take one parameter
+    ``rf`` that will be filled with acquired signal data. The callback
+    function should return a boolean value: ``True``, if the loop should
+    continue, ``False`` otherwise.
 
-    - no value, when callback function is provided
-    - a data queue, when no callback function is provided
-
-    :var operation: an operation to perform in a loop
+    :param operation: an operation to perform in a loop, accepted: ``Sequence``.
     """
     operation: Operation
 
@@ -111,7 +114,7 @@ class SetHVVoltage(Operation):
     """
     Sets voltage on a given device. Returns no value.
 
-    :var voltage: voltage to set
+    :param voltage: voltage to set [0.5Vpp]
     """
     voltage: float
 
