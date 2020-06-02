@@ -125,7 +125,7 @@ canvas = plt.imshow(
 )
 fig.show()
 
-master_card.trigger_start()
+master_card.start_trigger()
 # time.sleep(0.1)
 time.sleep(1*PRI*1e-6*NEVENTS)
 
@@ -161,6 +161,6 @@ while not is_closed:
     fig.canvas.flush_events()
     plt.draw()
 
-master_card.trigger_stop()
+master_card.stop_trigger()
 
 

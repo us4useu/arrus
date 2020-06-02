@@ -45,9 +45,11 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     target_include_directories(${wrapper}
         PRIVATE
         ${PYTHON_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(${wrapper}
        PRIVATE
+       core
        Us4::${component}
         ${PYTHON_LIBRARIES}
     )
@@ -65,6 +67,11 @@ set(SOURCE_FILES
     "arrus/beam.py"
     "arrus/interface.py"
     "arrus/session.py"
+    "arrus/kernels.py"
+    "arrus/ops/__init__.py"
+    "arrus/ops/operations.py"
+    "arrus/params.py"
+    "arrus/validation.py"
     "arrus/devices/__init__.py"
     "arrus/devices/us4oem.py"
     "arrus/devices/device.py"
@@ -73,6 +80,7 @@ set(SOURCE_FILES
     "arrus/utils/__init__.py"
     "arrus/utils/imaging.py"
     "arrus/utils/parameters.py"
+    "arrus/devices/callbacks.py"
     "arrus/tests/tools.py"
 )
 set(TEST_FILES
@@ -81,6 +89,7 @@ set(TEST_FILES
     "arrus/devices/tests/probe_test.py"
     "arrus/utils/tests/utils_test.py"
     "arrus/utils/tests/parameters_test.py"
+    "arrus/utils/tests/us4oem_kernels_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -139,14 +148,14 @@ install(
 # Python tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
-    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
-    install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
-    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
-    foreach(TEST_FILE IN LISTS TEST_FILES)
-        add_test(
-            NAME ${TEST_FILE}
-            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
-        )
-    endforeach()
+    #create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
+    #install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+    #get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
+    #foreach(TEST_FILE IN LISTS TEST_FILES)
+    #    add_test(
+    #        NAME ${TEST_FILE}
+    #        COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
+    #    )
+    #endforeach()
 endif()
 
