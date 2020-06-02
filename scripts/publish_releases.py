@@ -1,16 +1,20 @@
 import argparse
 import os
 import subprocess
+import re
 import shutil
 import platform
 import requests
 import errno
+import logging
 
 COLOR_ERROR = '\033[91m'
 COLOR_END = '\033[0m'
 
 SRC_ENVIRON = "ARRUS_SRC_PATH"
 INSTALL_ENVIRON = "ARRUS_INSTALL_PATH"
+
+VERSION_TAG_PATTERN = re.compile("^v[0-9\.]+$")
 
 
 def assert_no_error(return_code):
@@ -62,28 +66,19 @@ def main():
 
 def publish(install_dir, token, src_branch_name, repository_name, build_id):
     version = get_version(install_dir)
-    if src_branch_name == "master":
+    if src_branch_name == "master" \
+            or VERSION_TAG_PATTERN.match(src_branch_name):
         release_tag = version
-        pass
     elif src_branch_name == "develop":
         release_tag = version + "-dev"
     else:
         raise ValueError(
             "Releases from branch %s are not allowed to be published!")
 
-    install_dir_parent, _ = os.path.split(install_dir)
     package_name = "arrus-" + release_tag
-    dst_path = os.path.join(install_dir_parent, package_name)
+    archive_path = os.path.join(install_dir, f"arrus-{version}.zip")
 
-    try:
-        os.remove(dst_path + ".zip")
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise e
-
-    shutil.make_archive(dst_path, "zip", install_dir)
     package_name += ".zip"
-    dst_path += ".zip"
 
     response = create_release(repository_name, release_tag, token, build_id)
 
@@ -118,7 +113,7 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
         asset_id = current_assets[0]["id"]
         r = delete_asset(repository_name, asset_id, token)
 
-    with open(dst_path, "rb") as f:
+    with open(archive_path, "rb") as f:
         data = f.read()
         r = upload_asset(repository_name, release_id, package_name, token, data)
         r.raise_for_status()
@@ -166,7 +161,11 @@ def get_version(install_dir):
 
 
 def create_release(repository_name, release, token, body):
-    print("Creating release")
+    print(f"Creating release: "
+          f"repository: {repository_name}, "
+          f"release (tag_name): {release} "
+          f"body: {body}"
+    )
     return requests.post(
         url=get_api_url(repository_name),
         headers={

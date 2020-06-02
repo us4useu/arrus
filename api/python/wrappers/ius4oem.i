@@ -7,10 +7,12 @@
 		$action
 	} catch(const std::exception &e) {
 	    SWIG_exception(SWIG_RuntimeError, e.what());
+	} catch(...) {
+	    std::cout << "Unhandled type of exception! Check logs for more information" << std::endl;
 	}
 }
 
-%module ius4oem
+%module(directors="1") ius4oem
 
 %include <std_shared_ptr.i>
 %shared_ptr(IUs4OEM)
@@ -36,14 +38,54 @@
 #include <chrono>
 #include <bitset>
 #include <vector>
+#include "core/api/DataAcquiredEvent.h"
+
 static constexpr size_t NCH = IUs4OEM::NCH;
 %}
 %include afe58jd18Registers.h
 %include ius4oem.h
 %include iI2CMaster.h
+%include "core/api/Event.h"
+%include "core/api/DataAcquiredEvent.h"
 
+%feature("director") ScheduleReceiveCallback;
 
 %inline %{
+
+// TODO (pjarosik) move this callback to some other place
+class ScheduleReceiveCallback {
+public:
+    virtual void run(const arrus::DataAcquiredEvent& event) const = 0;
+    virtual ~ScheduleReceiveCallback() {};
+};
+
+void ScheduleReceiveWithCallback(IUs4OEM* that, const size_t address,
+                                 const size_t length,
+                                 const size_t start,
+                                 const size_t decimation,
+                                 ScheduleReceiveCallback& callback) {
+    auto fn = [&callback, address, length] () {
+		// TODO(pjarosik) consider creating event outside the lambda function, to reduce interrupt handling time.
+		const arrus::DataAcquiredEvent& event = arrus::DataAcquiredEvent(address, length);
+
+		PyGILState_STATE gstate = PyGILState_Ensure();
+		try {
+			callback.run(event);
+		} catch(const std::exception &e) {
+			std::cerr << e.what() << std::endl;
+		}
+		PyGILState_Release(gstate);
+    };
+    that->ScheduleReceive(address, length, start, decimation, fn);
+}
+
+void ScheduleReceiveWithoutCallback(IUs4OEM* that, const size_t address,
+                                    const size_t length,
+                                    const size_t start,
+                                    const size_t decimation) {
+    that->ScheduleReceive(address, length, start, decimation);
+}
+
 // TODO(pjarosik) fix below in more elegant way
 void TransferRXBufferToHostLocation(IUs4OEM* that, unsigned long long dstAddress, size_t length, size_t srcAddress) {
     that->TransferRXBufferToHost((unsigned char*) dstAddress, length, srcAddress+0x1'0000'0000);

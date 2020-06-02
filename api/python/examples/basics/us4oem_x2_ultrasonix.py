@@ -185,7 +185,7 @@ canvas = plt.imshow(
 )
 fig.show()
 
-master_module.trigger_start()
+master_module.start_trigger()
 
 while not is_closed:
     start = time.time()
@@ -212,4 +212,4 @@ while not is_closed:
     fig.canvas.flush_events()
     plt.draw()
 
-master_module.trigger_stop()
+master_module.stop_trigger()

@@ -15,9 +15,7 @@ API Reference
 Handle to Us4R System
 =====================
 
-.. mat:autofunction:: arrus.Us4R
-
-.. mat:autoclass:: arrus.Us4RSystem
+.. mat:autoclass:: arrus.Us4R
     :show-inheritance:
     :members:
 

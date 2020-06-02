@@ -1,1 +1,5 @@
 ${PROJECT_VERSION}
+us4r: ${Us4_VERSION}
+firmware: ${Us4OEM_FIRMWARE_VERSION}
+tx firmware: ${Us4OEM_TX_FIRMWARE_VERSION}
+

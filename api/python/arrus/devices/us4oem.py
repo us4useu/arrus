@@ -2,13 +2,18 @@ import math
 import time
 from functools import wraps
 from logging import DEBUG, INFO
-from typing import List
+from typing import List, Union, Optional
+import dataclasses
+
 
 import numpy as np
 
 import arrus.devices.device as _device
 import arrus.devices.ius4oem as _ius4oem
+import arrus.devices.callbacks as _callbacks
 import arrus.utils as _utils
+import arrus.validation as _validation
+import arrus.interface as _interface
 
 
 def assert_card_is_powered_up(f):
@@ -21,6 +26,87 @@ def assert_card_is_powered_up(f):
     return wrapper
 
 
+@dataclasses.dataclass(frozen=True)
+class ChannelMapping:
+    """
+    Tx/Rx channel mapping for Us4OEM module.
+
+    :param tx: a list: tx[output channel number] = input channel number
+    :param rx: a list: rx[output channel number] = input channel number
+    """
+    tx: list
+    rx: list
+
+    def __post_init__(self):
+        _validation.assert_type(self.tx, list, "tx channel mapping")
+        _validation.assert_type(self.rx, list, "rx channel mapping")
+        _validation.assert_equal(len(self.tx), 128, "tx mapping array length")
+        _validation.assert_equal(len(self.rx), 32, "rx mapping array length")
+
+
+@dataclasses.dataclass(frozen=True)
+class Us4OEMCfg(_device.DeviceCfg):
+    """
+    Us4OEM module configuration.
+
+    :param channel_mapping: channel mapping to set. If str, a value of \
+        arrus.interface.get_interface(channel_mapping) will be used
+    :param active_channel_groups: a list of True/False values (or non-zero \
+        and zero values), which indicate which groups of channels should be \
+        active during the whole session with the device.
+    :param dtgc: Digital time gain compensation as values in attenuation. \
+        When is None, DTGC is set to disabled. Available values: 0, 6, 12, \
+        18, 24, 30, 36, 42 [dB]; can be None
+    :param pga_gain: Configures programmable-gain amplifier (PGA). Gain to set,\
+        available values: 24, 30 [dB]
+    :param lna_gain: Configures low-noise amplifier (LNA) gain. Gain to set; \
+        available values: 12, 18, 24 [dB]
+    :param lpf_cutoff: Low-pass filter (LPF) cutoff frequency to set, \
+        available values: 10e6, 15e6, 20e6, 30e6, 35e6, 50e6 [Hz]
+    :param active_termination: Active termination to set, \
+        available values: 50, 100, 200, 400; can be None (disabled)
+    :param tgc_samples: a list of tgc curve samples to set [dB]. The values \
+        should be in range 14-54 dB, maximum number of samples to set: 1022. \
+        TGC curve sampling rate is equal 1MHz. Set to None if want to disable \
+        TGC.
+    :param log_data_transfer_time: set to True if you want to log data \
+        transfer time (Us4OEM -> PC)
+    """
+    channel_mapping: Union[ChannelMapping, str]
+    active_channel_groups: list
+    dtgc: Optional[float] = None
+    pga_gain: float = 30
+    lna_again: float = 24
+    lpf_cutoff: float = 10e6
+    active_termination: float = None
+    tgc_samples: Union[list, np.ndarray, None] = None
+    log_transfer_time: bool = False
+
+    def __post_init__(self):
+
+        # Validate channel mapping
+        if isinstance(self.channel_mapping, str):
+            available_interfaces = _interface._INTERFACES.keys()
+            _validation.assert_one_of(self.channel_mapping,
+                                      available_interfaces,
+                                      "channel mapping")
+        else:
+            _validation.assert_type(self.channel_mapping, ChannelMapping,
+                                    "channel mapping")
+
+        # Validate active channel groups.
+        _validation.assert_type(self.active_channel_groups, list,
+                                "active channel groups")
+        _validation.assert_equal(len(self.active_channel_groups), 16,
+                                 "active_channel_groups length")
+        # Validate TGC samples.
+        if self.tgc_samples is not None:
+            max_value = np.max(self.tgc_samples)
+            min_value = np.min(self.tgc_samples)
+            _validation.assert_in_range((min_value, max_value), (14, 54),
+                                        "TGC curve values")
+
+
 class Us4OEM(_device.Device):
     """
     A single Us4OEM.
@@ -31,13 +117,19 @@ class Us4OEM(_device.Device):
     def get_card_id(index):
         return _device.Device.get_device_id(Us4OEM._DEVICE_NAME, index)
 
-    def __init__(self, index: int, card_handle: _ius4oem.IUs4OEM):
+    # TODO(pjarosik) make cfg mandatory when InteractiveSession will be not
+    # anymore needed
+    def __init__(self, index: int, card_handle: _ius4oem.IUs4OEM,
+                 cfg: Us4OEMCfg=None):
         super().__init__(Us4OEM._DEVICE_NAME, index)
         self.card_handle = card_handle
         self.dtype = np.dtype(np.int16)
         self.host_buffer = np.array([])
         self.pri_list = None
         self.pri_total = None
+        self.callbacks = []
+        self.cfg = cfg
+        self._default_active_channel_groups = None
 
     def start_if_necessary(self):
         """
@@ -47,11 +139,43 @@ class Us4OEM(_device.Device):
             self.log(
                 INFO,
                 "Was powered down, initializing it and powering up...")
-
+            if self.cfg is not None:
+                if isinstance(self.cfg.channel_mapping, str):
+                    interf = _interface.get_interface(self.cfg.channel_mapping)
+                    tx_map = interf.get_tx_channel_mapping(self.index)
+                    rx_map = interf.get_rx_channel_mapping(self.index)
+                    mapping = ChannelMapping(tx=tx_map, rx=rx_map)
+                else:
+                    mapping = self.cfg.channel_mapping
+                self.store_mappings(tx_m=mapping.tx, rx_m=mapping.rx)
             self.card_handle.Initialize()
             self.set_tx_channel_mapping(self.tx_channel_mapping)
             self.set_rx_channel_mapping(self.rx_channel_mapping)
+            if self.cfg is not None:
+                self._default_active_channel_groups = \
+                    self.cfg.active_channel_groups
+                self.set_dtgc(attenuation=self.cfg.dtgc)
+                self.set_pga_gain(gain=self.cfg.pga_gain)
+                self.set_lna_gain(gain=self.cfg.lna_again)
+                self.set_lpf_cutoff(cutoff=self.cfg.lpf_cutoff)
+                self.set_active_termination(
+                    active_termination=self.cfg.active_termination)
+                if self.cfg.tgc_samples is None:
+                    self.disable_tgc()
+                else:
+                    tgc_db_values = np.array(self.cfg.tgc_samples)
+                    tgc_db_values = tgc_db_values-14
+                    tgc_db_values = tgc_db_values/40
+                    self.enable_tgc()
+                    self.set_tgc_samples(tgc_db_values)
+
             self.log(INFO, "... successfully powered up.")
+
+    def get_sampling_frequency(self):
+        """
+        Returns sampling Us4OEM's sampling frequency.
+        """
+        return 65e6
 
     def get_n_rx_channels(self):
         """
@@ -143,15 +267,12 @@ class Us4OEM(_device.Device):
         :param aperture: a boolean numpy array of get_number_of_channels() channels, 'True' means to activate chanel on a given position.
         :param firing: a firing, in which the delay should apply, **starts from 0**
         """
-        if isinstance(aperture, list):
-            aperture = np.array(aperture).astype(np.bool)
+        aperture = np.array(aperture).astype(np.bool)
         if len(aperture.shape) != 1:
             raise ValueError("Aperture should be a vector.")
         if aperture.shape[0] != self.get_n_channels():
             raise ValueError("Aperture should have %d elements."
                              % aperture.shape[0])
-        if aperture.dtype != np.bool:
-            raise ValueError("Aperture should be a vector of booleans.")
         aperture = aperture.astype(np.uint16)
         aperture_list = aperture.tolist()
         n = len(aperture_list)
@@ -188,19 +309,16 @@ class Us4OEM(_device.Device):
         :param aperture: a boolean numpy array of get_number_of_channels() channels, 'True' means to activate chanel on a given position.
         :param firing: a firing, in which the delay should apply, **starts from 0**
         """
-        if isinstance(aperture, list):
-            aperture = np.array(aperture).astype(np.bool)
+        aperture = np.array(aperture).astype(np.bool)
         if len(aperture.shape) != 1:
             raise ValueError("Aperture should be a vector.")
         if aperture.shape[0] != self.get_n_channels():
             raise ValueError("Aperture should have %d elements."
                              % aperture.shape[0])
-        if aperture.dtype != np.bool:
-            raise ValueError("Aperture should be a vector of booleans.")
         aperture = aperture.astype(np.uint16)
         aperture_list = aperture.tolist()
         n = len(aperture_list)
-        self.log(DEBUG, "Setting TX aperture: %s" % str(aperture_list))
+        self.log(DEBUG, "Setting RX aperture: %s" % str(aperture_list))
         array = None
         try:
             array = _ius4oem.new_uint16Array(n)
@@ -412,7 +530,8 @@ class Us4OEM(_device.Device):
         self.card_handle.EnableTransmit()
 
     @assert_card_is_powered_up
-    def schedule_receive(self, address, length):
+    def schedule_receive(self, address, length,
+                         start=0, decimation=0, callback=None):
         """
         Schedules a new data transmission from the probe’s adapter to the module’s internal memory.
         This function queues a new data transmission from all available RX channels to the device’s internal memory.
@@ -420,15 +539,37 @@ class Us4OEM(_device.Device):
 
         :param address: module's internal memory address, counted in number of samples
         :param length: number of samples from each channel to acquire
+        :param: callback: a callback function to call when data become available.
+        The callback function should take one parameter of type DataAcquiredEvent.
         """
         self.log(
             DEBUG,
-            "Scheduling data receive at address=0x%02X, length=%d" % (address, length)
+            "Scheduling data receive at address=0x%02X, length=%d,"
+            " decimation=%d, start=%d" %
+            (address, length, decimation, start)
         )
-        self.card_handle.ScheduleReceive(
-            address*self.dtype.itemsize*self.get_n_rx_channels(),
-            self.dtype.itemsize*length*self.get_n_rx_channels()
-        )
+
+        address = address*self.dtype.itemsize*self.get_n_rx_channels()
+        length = self.dtype.itemsize*length*self.get_n_rx_channels()
+        if callback is None:
+            _ius4oem.ScheduleReceiveWithoutCallback(
+                self.card_handle,
+                address=address,
+                length=length,
+                start=start,
+                decimation=decimation
+            )
+        else:
+            cbk = _callbacks.ScheduleReceiveCallback(callback)
+            self.callbacks.append(cbk)
+            _ius4oem.ScheduleReceiveWithCallback(
+                self.card_handle,
+                address=address,
+                length=length,
+                start=start,
+                decimation=decimation,
+                callback=cbk
+            )
 
     @assert_card_is_powered_up
     def set_pga_gain(self, gain):
@@ -664,7 +805,6 @@ class Us4OEM(_device.Device):
     @assert_card_is_powered_up
     def transfer_rx_buffer_to_host(self, src_addr, length):
         """
-
         Transfers data from the given module's memory address to the host's
         memory, and returns data buffer (numpy.ndarray).
 
@@ -692,17 +832,74 @@ class Us4OEM(_device.Device):
                 length, src_addr, dst_addr
             )
         )
+
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            start_time = time.time()
         _ius4oem.TransferRXBufferToHostLocation(
             that=self.card_handle,
             dstAddress=dst_addr,
             length=length,
             srcAddress=src_addr # address shift is applied by the low-level layer
         )
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            end_time = time.time()
+            data_bytes = length
+            data_mbytes = data_bytes / 1e6
+            elapsed = end_time - start_time
+            throughput = None if elapsed == 0.0 else data_mbytes / elapsed
+            msg = f"Transferred data {self.get_id()} -> PC: amount: " \
+                  f"{data_mbytes:.3f} MB in {elapsed:.3f} s"
+            if throughput is not None:
+                msg = msg + f", throughput: {throughput:.3f} MB/s"
+            self.log(INFO, msg)
+
         self.log(
             DEBUG,
             "... transferred."
         )
         return self.host_buffer
+
+    @assert_card_is_powered_up
+    def transfer_rx_buffer_to_host_buffer(self, src_addr, dst_buffer):
+        """
+        Transfers data from the given module's memory address to the provided
+        host's buffer memory.
+
+        The buffer's address should be aligned to 4096
+
+        :param src_addr: module's memory address, where the RX data was stored.
+        :param length: how much data to transfer from each module's channel.
+        :param dst_buffer: a buffer (numpy.darray) of shape (length, n_rx_channels), data type: np.int16
+        """
+        dst_addr = dst_buffer.ctypes.data
+        length = dst_buffer.nbytes
+        self.log(DEBUG,
+            "Transferring %d bytes from RX buffer at 0x%08X to host memory at 0x%08X..."%(
+                length, src_addr, dst_addr))
+
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            start_time = time.time()
+
+        _ius4oem.TransferRXBufferToHostLocation(
+            that=self.card_handle,
+            dstAddress=dst_addr,
+            length=length,
+            srcAddress=src_addr)
+
+        if self.cfg is not None and self.cfg.log_transfer_time:
+            end_time = time.time()
+            data_bytes = length
+            data_mbytes = data_bytes / 1e6
+            elapsed = end_time - start_time
+            throughput = None if elapsed == 0.0 else data_mbytes/elapsed
+
+            msg = f"Transferred data {self.get_id()} -> PC: amount: "\
+                  f"{data_mbytes:.3f} MB in {elapsed:.3f} s"
+            if throughput is not None:
+                msg = msg + f", throughput: {throughput:.3f} MB/s"
+            self.log(INFO, msg)
+
+        self.log(DEBUG, "... transferred.")
 
     def is_powered_down(self):
         """
@@ -724,7 +921,7 @@ class Us4OEM(_device.Device):
         self.card_handle.ClearScheduledReceive()
 
     @assert_card_is_powered_up
-    def trigger_start(self):
+    def start_trigger(self):
         """
         Starts generation of the hardware trigger.
         """
@@ -740,7 +937,7 @@ class Us4OEM(_device.Device):
         time.sleep(self.pri_total)
 
     @assert_card_is_powered_up
-    def trigger_stop(self):
+    def stop_trigger(self):
         """
         Stops generation of the hardware trigger.
         """

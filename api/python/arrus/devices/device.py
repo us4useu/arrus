@@ -1,7 +1,12 @@
 """ ARRUS Devices. """
 import logging
+import abc
 
 _logger = logging.getLogger(__name__)
+
+
+class DeviceCfg(abc.ABC):
+    pass
 
 
 class Device:
