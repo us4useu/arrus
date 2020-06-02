@@ -96,7 +96,7 @@ classdef Us4R < handle
                     error("ARRUS:IllegalArgument", ...
                         ['Unrecognized operation type ', class(sequenceOperation)])
             end
-
+            
             obj.setSeqParams(...
                 'sequenceType', sequenceType, ...
                 'txCenterElement', sequenceOperation.txCenterElement, ...
@@ -112,7 +112,8 @@ classdef Us4R < handle
                 'nRepetitions', sequenceOperation.nRepetitions, ...
                 'txPri', sequenceOperation.txPri, ...
                 'tgcStart', sequenceOperation.tgcStart, ...
-                'tgcSlope', sequenceOperation.tgcSlope);
+                'tgcSlope', sequenceOperation.tgcSlope, ...
+                'fsDivider', sequenceOperation.fsDivider);
             
             % Program hardware
             obj.programHW;
@@ -237,7 +238,12 @@ classdef Us4R < handle
                                 'nRepetitions',     'nRep'; ...
                                 'txPri',            'txPri'; ...
                                 'tgcStart',         'tgcStart'; ...
-                                'tgcSlope',         'tgcSlope'};
+                                'tgcSlope',         'tgcSlope'; ...
+                                'fsDivider'         'fsDivider'};
+
+            if mod(length(varargin),2) == 1
+                % TODO(piotrkarwat) Throw exception
+            end
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -250,10 +256,23 @@ classdef Us4R < handle
             end
             
             %% Fixed parameters
-            obj.seq.rxSampFreq	= 65e6;                                 % [Hz] sampling frequency
-            obj.seq.rxTime      = 160e-6;                                % [s] rx time (max 4000us)
+%             disp(obj.seq.fsDivider)
+            obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
+            obj.seq.rxTime      = 160e-6; % [s] rx time (max 4000us)
             obj.seq.rxDel       = 5e-6;
             obj.seq.pauseMultip	= 1.5;
+            
+            
+            % The number of samples is restricted and here is a check if
+            % it not too big.
+%             (obj.seq.nSamp-1)/(obj.seq.rxSampFreq/obj.seq.fsDivider) < obj.seq.rxTime
+%             nmax = round(obj.seq.rxSampFreq/obj.seq.fsDivider*(obj.seq.rxTime+obj.seq.rxDel)*obj.seq.pauseMultip+1)
+            nmax = 2^13/obj.seq.fsDivider;
+            nSamp = diff(obj.seq.nSamp) + 1;
+            
+            if nSamp > nmax
+                error(['Number of samples (rxNSamples) must be less than ', num2str(nmax)])
+            end 
             
             %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
@@ -277,7 +296,9 @@ classdef Us4R < handle
             end
             
             %% TGC
-            distance = (400:150:(obj.seq.startSample + obj.seq.nSamp - 1)) / 65e6 * obj.seq.c;         % [m]
+            distance = (round(400/obj.seq.fsDivider) : ...
+                        round(150/obj.seq.fsDivider) : ...
+                        (obj.seq.startSample + obj.seq.nSamp - 1)) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
             tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(tgcCurve<14 | tgcCurve>54)
                 warning('TGC values are limited to 14-54dB range');
@@ -350,6 +371,8 @@ classdef Us4R < handle
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
 
+
+
         end
 
         function setRecParams(obj,varargin)
@@ -365,6 +388,10 @@ classdef Us4R < handle
                                 'decimation',       'dec'; ...
                                 'xGrid',            'xGrid'; ...
                                 'zGrid',            'zGrid'};
+
+            if mod(length(varargin),2) == 1
+                % Throw exception
+            end
 
             for iPar=1:size(recParamMapping,1)
                 obj.rec.(recParamMapping{iPar,2}) = [];
@@ -574,7 +601,7 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 for iTrig=0:(nTrig-1)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + 240);
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + 240, obj.seq.fsDivider-1);
                 end
             end
             
