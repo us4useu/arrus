@@ -327,7 +327,7 @@ classdef Us4R < handle
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
 
             %% Tx apertures & delays
-            obj = obj.calcTxParams;
+            obj.calcTxParams;
             
             %% Piece of code moved from programHW
             nArius	= obj.sys.nArius;
@@ -451,7 +451,7 @@ classdef Us4R < handle
 
         end
 
-        function obj = calcTxParams(obj)
+        function calcTxParams(obj)
             % calcTxParams appends the following fields to the in/out obj:
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
             % obj.seq.txDel         - [s] (nArius*128 x nTx) tx delays for each element
@@ -508,7 +508,7 @@ classdef Us4R < handle
 
         end
 
-        function [] = validateSequence(obj)
+        function validateSequence(obj)
             
             %% Validate number of firings
             if obj.seq.nFire > 1024
@@ -542,7 +542,7 @@ classdef Us4R < handle
             
         end
         
-        function obj = programHW(obj)
+        function programHW(obj)
             
             %% Program Tx/Rx sequence
             for iArius=0:(obj.sys.nArius-1)
@@ -586,7 +586,7 @@ classdef Us4R < handle
             
         end
 
-        function [] = openSequence(obj)
+        function openSequence(obj)
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nRep	= obj.seq.nRep;
@@ -597,7 +597,7 @@ classdef Us4R < handle
             pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
         end
 
-        function [] = closeSequence(obj)
+        function closeSequence(obj)
             %% Stop acquisition
             Us4MEX(0, "TriggerStop");
 
