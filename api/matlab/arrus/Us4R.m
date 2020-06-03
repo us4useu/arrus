@@ -254,23 +254,10 @@ classdef Us4R < handle
             end
             
             %% Fixed parameters
-%             disp(obj.seq.fsDivider)
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
             obj.seq.rxTime      = 160e-6; % [s] rx time (max 4000us)
             obj.seq.rxDel       = 5e-6;
             obj.seq.pauseMultip	= 1.5;
-            
-            
-            % The number of samples is restricted and here is a check if
-            % it not too big.
-%             (obj.seq.nSamp-1)/(obj.seq.rxSampFreq/obj.seq.fsDivider) < obj.seq.rxTime
-%             nmax = round(obj.seq.rxSampFreq/obj.seq.fsDivider*(obj.seq.rxTime+obj.seq.rxDel)*obj.seq.pauseMultip+1)
-            nmax = 2^13/obj.seq.fsDivider;
-            nSamp = diff(obj.seq.nSamp) + 1;
-            
-            if nSamp > nmax
-                error(['Number of samples (rxNSamples) must be less than ', num2str(nmax)])
-            end 
             
             %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
@@ -359,6 +346,11 @@ classdef Us4R < handle
                         ['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384.']);
             end
             
+            if obj.seq.nSamp > 2^13/obj.seq.fsDivider
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(2^13/obj.seq.fsDivider) '.'])
+            end
+            
             if mod(obj.seq.nSamp,64) ~= 0
                 error("ARRUS:IllegalArgument", ...
                         ['Number of samples (' num2str(obj.seq.nSamp) ') must be divisible by 64.']);
@@ -368,7 +360,6 @@ classdef Us4R < handle
                 error("ARRUS:OutOfMemory", ...
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
-
 
             %% Piece of code moved from programHW
             nArius	= obj.sys.nArius;
