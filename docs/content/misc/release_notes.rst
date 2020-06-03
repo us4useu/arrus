@@ -13,7 +13,7 @@ Version 0.4.1
 
 - python API:
 
-    - Created new API (for a model of ``operations`` executed on available \
+    - Created new API with a model of ``operations`` executed on available \
       devices.
     - Added ``fs_divider`` parameter to ``arrus.ops.Rx`` operation, that allows \
       to reduce sampling frequency of the module.
