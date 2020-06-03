@@ -69,7 +69,8 @@ class Us4OEMCfg(_device.DeviceCfg):
     :param tgc_samples: a list of TGC curve samples to set [dB]. The values \
         should be in range 14-54 dB, maximum number of samples to set: 1022. \
         TGC curve sampling rate is equal 1MHz. Set to None if you want to \
-        disable TGC.
+        disable TGC. Currently if you want to use this parameter, pga_gain and \
+        lna_gain must be set to 30 and 24 respectively.
     :param log_data_transfer_time: set to True if you want to log data \
         transfer time (from Us4OEM to the PC)
     """
