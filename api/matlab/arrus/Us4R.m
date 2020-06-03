@@ -117,6 +117,9 @@ classdef Us4R < handle
                 'tgcSlope', sequenceOperation.tgcSlope, ...
                 'fsDivider', sequenceOperation.fsDivider);
             
+            % Validate compatibility of the sequence & the hardware
+            obj.validateSequence;
+            
             % Program hardware
             obj.programHW;
             
@@ -322,33 +325,6 @@ classdef Us4R < handle
             
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
-            
-            %% Validations
-            if obj.seq.nFire > 1024
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
-            end
-            
-            if obj.seq.nTrig > 16384
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384.']);
-            end
-            
-            if obj.seq.nSamp > 2^13/obj.seq.fsDivider
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(2^13/obj.seq.fsDivider) '.'])
-            end
-            
-            if mod(obj.seq.nSamp,64) ~= 0
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of samples (' num2str(obj.seq.nSamp) ') must be divisible by 64.']);
-            end
-            
-            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
-            if memoryRequired > 2^32  % 4GB
-                error("ARRUS:OutOfMemory", ...
-                        ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
-            end
 
             %% Tx apertures & delays
             obj = obj.calcTxParams;
@@ -532,6 +508,40 @@ classdef Us4R < handle
 
         end
 
+        function [] = validateSequence(obj)
+            
+            %% Validate number of firings
+            if obj.seq.nFire > 1024
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
+            end
+            
+            %% Validate number of triggers
+            if obj.seq.nTrig > 16384
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384.']);
+            end
+            
+            %% Validate number of samples
+            if obj.seq.nSamp > 2^13/obj.seq.fsDivider
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(2^13/obj.seq.fsDivider) '.'])
+            end
+            
+            if mod(obj.seq.nSamp,64) ~= 0
+                error("ARRUS:IllegalArgument", ...
+                        ['Number of samples (' num2str(obj.seq.nSamp) ') must be divisible by 64.']);
+            end
+            
+            %% Validate memory usage
+            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
+            if memoryRequired > 2^32  % 4GB
+                error("ARRUS:OutOfMemory", ...
+                        ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
+            end
+            
+        end
+        
         function obj = programHW(obj)
             
             %% Program Tx/Rx sequence
@@ -719,7 +729,6 @@ classdef Us4R < handle
             if maskLength~=16 && maskLength~=128
                 error("maskFormat: invalid mask length, should be 16 or 128");
             end
-            
             
             if maskLength == 16
                 % active channel group mask: needs reordering
