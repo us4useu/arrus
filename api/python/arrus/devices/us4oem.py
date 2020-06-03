@@ -171,6 +171,12 @@ class Us4OEM(_device.Device):
                 if self.cfg.tgc_samples is None:
                     self.disable_tgc()
                 else:
+                    if self.cfg.pga_gain != 30 or self.cfg.lna_again != 24:
+                        raise ValueError(f"When setting TGC samples curve "
+                                         f"pga_gain and and lna_gain should "
+                                         f"equal 30 and 24 respectively "
+                                         f"is: {self.cfg.pga_gain} and "
+                                         f"{self.cfg.lna_again}")
                     tgc_db_values = np.array(self.cfg.tgc_samples)
                     tgc_db_values = tgc_db_values-14
                     tgc_db_values = tgc_db_values/40
