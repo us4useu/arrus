@@ -31,6 +31,8 @@ classdef Us4R < handle
             % System parameters
             obj.sys.nArius = nArius; % number of Arius modules
             obj.sys.nChArius = 32;
+            
+            obj.sys.trigTxDel = 240; % [samp] trigger to t0 (tx start) delay
 
             probe = probeParams(probeName);
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
@@ -556,65 +558,44 @@ classdef Us4R < handle
         end
 
         function obj = programHW(obj)
-
-            nArius	= obj.sys.nArius;
-            nSamp	= obj.seq.nSamp;
-            nChan	= obj.sys.nChArius;
-            nSubTx	= obj.seq.nSubTx;
-            nTx     = obj.seq.nTx;
-            nRep	= obj.seq.nRep;
-            nFire	= nSubTx*nTx;
-            nTrig	= nFire*nRep;
-            startSample = obj.seq.startSample;
-
             
-            
-            %% Program TX
-            for iArius=0:(nArius-1)
-                for iTx=1:nTx
-                    for iSubTx=1:nSubTx
-                        iFire	= iSubTx-1 + (iTx-1)*nSubTx;
-
-                        Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
-                        Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
-                        Us4MEX(iArius, "SetTxInvert", 0, iFire);
-                        
-                    end
+            %% Program Tx/Rx sequence
+            for iArius=0:(obj.sys.nArius-1)
+                for iFire=0:(obj.seq.nFire-1)
+                    %% active channel groups
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.seq.actChanGroupMask(iArius+1), iFire);
+                    
+                    %% Tx
+                    iTx     = 1 + floor(iFire/obj.seq.nSubTx);
                     Us4MEX(iArius, "SetTxAperture", obj.seq.txSubApMask(iArius+1,iTx), iFire);
                     Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
+                    Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
+                    Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
+                    Us4MEX(iArius, "SetTxInvert", 0, iFire);
+                    
+                    %% Rx
                     Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
+                    Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
+                    Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
+                    Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
                 end
-                Us4MEX(iArius, "SetNumberOfFirings", nFire);
+                Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
                 Us4MEX(iArius, "EnableTransmit");
-            end
-
-            %% Program RX
-            for iArius=0:(nArius-1)
-                for iTx=1:nTx
-                    for iSubTx=1:nSubTx
-                        iFire	= iSubTx-1 + (iTx-1)*nSubTx;
-                        
-                        Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
-                        Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
-                        Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
-                    end
-                end
                 Us4MEX(iArius, "EnableReceive");
             end
-
+            
             %% Program triggering
-            Us4MEX(0, "SetNTriggers", nTrig);
-            for iTrig=0:(nTrig-1)
+            Us4MEX(0, "SetNTriggers", obj.seq.nTrig);
+            for iTrig=0:(obj.seq.nTrig-1)
                 Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iTrig);
             end
-            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, nTrig-1);
-
+            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, obj.seq.nTrig-1);
+            
             %% Program recording
-            for iArius=0:(nArius-1)
+            for iArius=0:(obj.sys.nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
-                for iTrig=0:(nTrig-1)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*nSamp, nSamp, startSample + 240, obj.seq.fsDivider-1);
+                for iTrig=0:(obj.seq.nTrig-1)
+                    Us4MEX(iArius, "ScheduleReceive", iTrig*obj.seq.nSamp, obj.seq.nSamp, obj.seq.startSample + obj.sys.trigTxDel, obj.seq.fsDivider-1);
                 end
             end
             
