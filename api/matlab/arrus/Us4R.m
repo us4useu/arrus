@@ -304,15 +304,8 @@ classdef Us4R < handle
                                           obj.sys.xElem( ceil(obj.seq.txCentElem)).*(  mod(obj.seq.txCentElem,1));
             end
 
-            %% Tx number
-            switch obj.seq.type
-                case 'sta'
-                    obj.seq.nTx         = length(obj.seq.txApCent);
-                case 'pwi'
-                    obj.seq.nTx         = length(obj.seq.txAng);
-                case 'lin'
-                    obj.seq.nTx         = length(obj.seq.txApCent);
-            end
+            %% Number of: Tx, SubTx, Firings, Triggers
+            obj.seq.nTx	= length(obj.seq.txAng);    % could be also length(obj.seq.txApCent)
 
             %% Tx apertures & delays
             obj = obj.calcTxParams;
