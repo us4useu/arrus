@@ -307,10 +307,6 @@ classdef Us4R < handle
             %% Number of: Tx, SubTx, Firings, Triggers
             obj.seq.nTx	= length(obj.seq.txAng);    % could be also length(obj.seq.txApCent)
 
-            %% Tx apertures & delays
-            obj = obj.calcTxParams;
-
-            %% Sub Tx number
             if strcmp(obj.seq.type,'lin')
                 obj.seq.nSubTx          = 1;
             else
@@ -324,11 +320,10 @@ classdef Us4R < handle
                 end
             end
             
-            %% Firings/triggers/memory
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
-            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
             
+            %% Validations
             if obj.seq.nFire > 1024
                 error("ARRUS:IllegalArgument", ...
                         ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
@@ -349,17 +344,21 @@ classdef Us4R < handle
                         ['Number of samples (' num2str(obj.seq.nSamp) ') must be divisible by 64.']);
             end
             
+            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
             if memoryRequired > 2^32  % 4GB
                 error("ARRUS:OutOfMemory", ...
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
             end
 
+            %% Tx apertures & delays
+            obj = obj.calcTxParams;
+            
             %% Piece of code moved from programHW
             nArius	= obj.sys.nArius;
             nChan	= obj.sys.nChArius;
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
-            nFire	= nSubTx*nTx;
+            nFire	= obj.seq.nFire;
             
             if ~obj.sys.adapType
                 % old adapter type (00001111)
