@@ -243,10 +243,6 @@ classdef Us4R < handle
                                 'tgcSlope',         'tgcSlope'; ...
                                 'fsDivider'         'fsDivider'};
 
-            if mod(length(varargin),2) == 1
-                % TODO(piotrkarwat) Throw exception
-            end
-
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
             end
@@ -459,10 +455,6 @@ classdef Us4R < handle
                                 'decimation',       'dec'; ...
                                 'xGrid',            'xGrid'; ...
                                 'zGrid',            'zGrid'};
-
-            if mod(length(varargin),2) == 1
-                % Throw exception
-            end
 
             for iPar=1:size(recParamMapping,1)
                 obj.rec.(recParamMapping{iPar,2}) = [];
