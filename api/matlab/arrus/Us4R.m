@@ -372,6 +372,75 @@ classdef Us4R < handle
             end
 
 
+            %% Piece of code moved from programHW
+            nArius	= obj.sys.nArius;
+            nChan	= obj.sys.nChArius;
+            nSubTx	= obj.seq.nSubTx;
+            nTx     = obj.seq.nTx;
+            nFire	= nSubTx*nTx;
+            
+            if ~obj.sys.adapType
+                % old adapter type (00001111)
+                selectElem = (1:128).' + (0:(nArius-1))*128;
+                rxApSize = nChan;                               % for LIN mode only
+                nChanTot = nChan*4*nArius;
+                
+                actChan = true(128,nArius);
+            else
+                % new adapter type (01010101)
+%                 selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
+%                 rxApSize = nChan*nArius;                        % for LIN mode only
+%                 nChanTot = nChan*4*nArius;
+                
+                selectElem = repmat((1:128).',[1 nArius]);
+                rxApSize = nChan*nArius;                        % for LIN mode only
+                nChanTot = nChan*4;
+                
+                actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
+            end
+            actChan = actChan & (selectElem <= obj.sys.nElem);
+            
+            if strcmp(obj.seq.type,'lin')
+                rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
+                
+                obj.seq.rxApOrig = round(rxCentElem - (rxApSize-1)/2);
+                rxApMask =	(1:nChanTot).' >= obj.seq.rxApOrig & ...
+                            (1:nChanTot).' <  obj.seq.rxApOrig + rxApSize & ...
+                            (1:nChanTot).' <= obj.sys.nElem;
+            else
+                rxApMask = (1:nChanTot).' .* ones(1,nFire) <= obj.sys.nElem;
+            end
+            
+            txSubApDel = cell(nArius,nTx);
+            txSubApMask = strings(nArius,nTx);
+            rxSubApMask = strings(nArius,nFire);
+            iSubTx = repmat(1:nSubTx,1,nTx);
+            for iArius=0:(nArius-1)
+%                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
+%                 txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
+%                 
+%                 rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
+%                 rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
+                
+                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :) .* actChan(:,iArius+1), 128, ones(1,nTx));
+                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1));
+                
+                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1)) / nChan) == iSubTx;
+                rxSubApSelect = rxSubApSelect & actChan(:,iArius+1);
+                rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
+            end
+            
+%             actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
+%             actChanGroupMask = obj.maskFormat(actChanGroupMask);
+            
+            actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
+            actChanGroupMask = actChanGroupMask & actChan(8:8:end,:);
+            actChanGroupMask = obj.maskFormat(actChanGroupMask);
+            
+            obj.seq.actChanGroupMask = actChanGroupMask;
+            obj.seq.txSubApMask = txSubApMask;
+            obj.seq.txSubApDel = txSubApDel;
+            obj.seq.rxSubApMask = rxSubApMask;
 
         end
 
@@ -498,63 +567,7 @@ classdef Us4R < handle
             nTrig	= nFire*nRep;
             startSample = obj.seq.startSample;
 
-            if ~obj.sys.adapType
-                % old adapter type (00001111)
-                selectElem = (1:128).' + (0:(nArius-1))*128;
-                rxApSize = nChan;                               % for LIN mode only
-                nChanTot = nChan*4*nArius;
-                
-                actChan = true(128,nArius);
-            else
-                % new adapter type (01010101)
-%                 selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
-%                 rxApSize = nChan*nArius;                        % for LIN mode only
-%                 nChanTot = nChan*4*nArius;
-                
-                selectElem = repmat((1:128).',[1 nArius]);
-                rxApSize = nChan*nArius;                        % for LIN mode only
-                nChanTot = nChan*4;
-                
-                actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
-            end
-            actChan = actChan & (selectElem <= obj.sys.nElem);
             
-            if strcmp(obj.seq.type,'lin')
-                rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
-                
-                obj.seq.rxApOrig = round(rxCentElem - (rxApSize-1)/2);
-                rxApMask =	(1:nChanTot).' >= obj.seq.rxApOrig & ...
-                            (1:nChanTot).' <  obj.seq.rxApOrig + rxApSize & ...
-                            (1:nChanTot).' <= obj.sys.nElem;
-            else
-                rxApMask = (1:nChanTot).' .* ones(1,nFire) <= obj.sys.nElem;
-            end
-            
-            txSubApDel = cell(nArius,nTx);
-            txSubApMask = strings(nArius,nTx);
-            rxSubApMask = strings(nArius,nFire);
-            iSubTx = repmat(1:nSubTx,1,nTx);
-            for iArius=0:(nArius-1)
-%                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :), 128, ones(1,nTx));
-%                 txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :));
-%                 
-%                 rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :)) / nChan) == iSubTx;
-%                 rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
-                
-                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(selectElem(:,iArius+1), :) .* actChan(:,iArius+1), 128, ones(1,nTx));
-                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1));
-                
-                rxSubApSelect = ceil(cumsum(rxApMask(selectElem(:,iArius+1), :) & actChan(:,iArius+1)) / nChan) == iSubTx;
-                rxSubApSelect = rxSubApSelect & actChan(:,iArius+1);
-                rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(selectElem(:,iArius+1), :) & rxSubApSelect);
-            end
-            
-%             actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
-%             actChanGroupMask = obj.maskFormat(actChanGroupMask);
-            
-            actChanGroupMask = selectElem(8:8:end,:) <= obj.sys.nElem;
-            actChanGroupMask = actChanGroupMask & actChan(8:8:end,:);
-            actChanGroupMask = obj.maskFormat(actChanGroupMask);
             
             %% Program TX
             for iArius=0:(nArius-1)
@@ -562,14 +575,15 @@ classdef Us4R < handle
                     for iSubTx=1:nSubTx
                         iFire	= iSubTx-1 + (iTx-1)*nSubTx;
 
-                        Us4MEX(iArius, "SetTxAperture", txSubApMask(iArius+1,iTx), iFire);
-                        Us4MEX(iArius, "SetTxDelays", txSubApDel{iArius+1,iTx}, iFire);
                         Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
                         Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
                         Us4MEX(iArius, "SetTxInvert", 0, iFire);
                         
-                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
                     end
+                    Us4MEX(iArius, "SetActiveChannelGroup", obj.seq.actChanGroupMask(iArius+1), iFire);
+                    Us4MEX(iArius, "SetTxAperture", obj.seq.txSubApMask(iArius+1,iTx), iFire);
+                    Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
+                    Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
                 end
                 Us4MEX(iArius, "SetNumberOfFirings", nFire);
                 Us4MEX(iArius, "EnableTransmit");
@@ -581,7 +595,6 @@ classdef Us4R < handle
                     for iSubTx=1:nSubTx
                         iFire	= iSubTx-1 + (iTx-1)*nSubTx;
                         
-                        Us4MEX(iArius, "SetRxAperture", rxSubApMask(iArius+1,iFire+1), iFire);
                         Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                         Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
