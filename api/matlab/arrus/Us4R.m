@@ -575,6 +575,9 @@ classdef Us4R < handle
                 Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iTrig);
             end
             Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, obj.seq.nTrig-1);
+            for iArius=1:(obj.sys.nArius-1)
+                Us4MEX(iArius, "SetTrigger", obj.seq.txPri*1e6, 0, 0, 0);
+            end
             
             %% Program recording
             for iArius=0:(obj.sys.nArius-1)
