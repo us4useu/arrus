@@ -312,8 +312,9 @@ classdef Us4R < handle
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
 
-            %% Tx apertures & delays
-            obj.calcTxParams;
+            %% Aperture masks & delays
+            obj.calcTxApMask;
+            obj.calcTxDelays;
             
             %% Piece of code moved from programHW
             nArius	= obj.sys.nArius;
@@ -330,7 +331,6 @@ classdef Us4R < handle
             else
                 rxApMask = (1:obj.sys.nChTotal).' .* ones(1,nFire) <= obj.sys.nElem;
             end
-            
             
             
             txSubApDel = cell(nArius,nTx);
@@ -415,17 +415,27 @@ classdef Us4R < handle
             end
 
         end
-
-        function calcTxParams(obj)
-            % calcTxParams appends the following fields to the in/out obj:
+        
+        function calcTxApMask(obj)
+            % calcTxApMask appends the following fields to the in/out obj:
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
+            
+            %Rounding!!!
+            
+            txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
+            
+            % Make the mask fit the number of channels
+            txApMask = [txApMask; false(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
+            
+            % Save the mask to the obj
+            obj.seq.txApMask = txApMask;
+        end
+
+        function calcTxDelays(obj)
+            % calcTxDelays appends the following fields to the in/out obj:
             % obj.seq.txDel         - [s] (nArius*128 x nTx) tx delays for each element
             % obj.seq.txDelCent     - [s] (1 x nTx) tx delays for tx aperture centers
-
-            %% CALCULATE APERTURE MASKS
-            %Rounding!!!
-            txApMask	= abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
-
+            
             %% CALCULATE DELAYS
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
@@ -448,8 +458,12 @@ classdef Us4R < handle
                 txDelCent	= txDelCent .* focDefoc;
             end
 
+            %% Postprocess the delays
+            % Make the delays fit the number of channels
+            txDel       = [txDel;	 zeros(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
+            
             % Make delays = nan outside the tx aperture
-            txDel(~txApMask)	= nan;
+            txDel(~obj.seq.txApMask)	= nan;
 
             % Make delays >= 0 in the tx aperture
             txDelShift	= - nanmin(txDel);              % [s] (1 x nTx)
@@ -460,19 +474,15 @@ classdef Us4R < handle
             txDel       = txDel - txDelCent + max(txDelCent);
             txDelCent	= max(txDelCent);
 
-            %% Make the apertures/delays fit the number of channels
-            txDel(~txApMask)	= 0;
+            % Remove nans
+            txDel(~obj.seq.txApMask)	= 0;
 
-            txDel       = [txDel;	 zeros(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
-            txApMask	= [txApMask; false(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
-
-            %% Save the apertures and delays to the obj
-            obj.seq.txApMask	= txApMask;
+            %% Save the delays to the obj
             obj.seq.txDel       = txDel;
             obj.seq.txDelCent	= txDelCent;
 
         end
-
+        
         function validateSequence(obj)
             
             %% Validate number of firings
