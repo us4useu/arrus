@@ -590,14 +590,9 @@ classdef Us4R < handle
         end
 
         function openSequence(obj)
-            nSubTx	= obj.seq.nSubTx;
-            nTx     = obj.seq.nTx;
-            nRep	= obj.seq.nRep;
-            nTrig	= nTx*nSubTx*nRep;
-
             %% Start acquisitions (1st sequence exec., no transfer to host)
             Us4MEX(0, "TriggerStart");
-            pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
+            pause(obj.seq.pauseMultip * obj.seq.txPri * obj.seq.nTrig);
         end
 
         function closeSequence(obj)
