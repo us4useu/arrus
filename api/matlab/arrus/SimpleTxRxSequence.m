@@ -58,11 +58,11 @@ classdef SimpleTxRxSequence < Operation
                 obj.(varargin{i}) = varargin{i+1};
             end
             
-            mustBeXor(obj.txCenterElement,obj.txApertureCenter);
-            mustBeXor(obj.rxCenterElement,obj.rxApertureCenter);
-            mustBeXor(obj.rxDepthRange,obj.rxNSamples);
-            obj.rxDepthRange = mustBeLimit(obj.rxDepthRange,0);
-            obj.rxNSamples = mustBeLimit(obj.rxNSamples,1);
+            mustBeXor(obj,{'txCenterElement','txApertureCenter'});
+            mustBeXor(obj,{'rxCenterElement','rxApertureCenter'});
+            mustBeXor(obj,{'rxDepthRange','rxNSamples'});
+            obj.rxDepthRange = mustBeLimit(obj,'rxDepthRange',0);
+            obj.rxNSamples = mustBeLimit(obj,'rxNSamples',1);
             
             %% Check size compatibility of aperture/focus/angle parameters
             nTx = max([	length(obj.txCenterElement) ...
@@ -90,22 +90,18 @@ function mustBeProperNumber(a)
     mustBeReal(a)
 end
 
-function mustBeXor(varargin)
+function mustBeXor(obj,fieldNames)
     
-    % input argument names
-    argNames = strings(1,nargin);
-    for iArg=1:nargin
-        argNames(iArg) = inputname(iArg);
-        if contains(argNames(iArg),'.')
-            argNames(iArg) = extractAfter(argNames(iArg),'.');
-        end
+    nField = length(fieldNames);
+    
+    fieldIsNonEmpty = false(1,nField);
+    for iField=1:nField
+        fieldIsNonEmpty(iField) = ~isempty(obj.(fieldNames{iField}));
     end
     
-    % error if more/less than one argument is non-empty
-    argIsNonEmpty = ~cellfun(@isempty,varargin);
-    if sum(argIsNonEmpty) ~= 1
+    if sum(fieldIsNonEmpty) ~= 1
         error("Arrus:params", ...
-            ['One and only one of: ' char(join(argNames,', ')) ' must be defined.'])
+            ['One and only one of {' char(join(fieldNames,', ')) '} must be defined.'])
     end
 end
 
@@ -122,20 +118,17 @@ function argOut = mustBeProperLength(argIn,propLength)
     
 end
 
-function argOut = mustBeLimit(argIn,defLo)
+function argOut = mustBeLimit(obj,fieldName,defLo)
     
-    argName = inputname(1);
-    if contains(argName,'.')
-        argName = extractAfter(argName,'.');
-    end
+    argIn = obj.(fieldName);
     
     if isempty(argIn)
         argOut = argIn;
     else
         % check the size
-        if length(argIn(:))>2
+        if numel(argIn)>2
             error("Arrus:params", ...
-                ['Value assigned to ' argName ' property ', ...
+                ['Value assigned to ' fieldName ' property ', ...
                 'should be a scalar or two-element vector'])
         end
         
@@ -149,7 +142,7 @@ function argOut = mustBeLimit(argIn,defLo)
         % check the ascending order
         if argOut(2) <= argOut(1)
             error("Arrus:params", ...
-                ['The ' argName ' property should have ascending order']);
+                ['The ' fieldName ' property should have ascending order']);
         end
     end
 
