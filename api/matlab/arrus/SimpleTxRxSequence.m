@@ -58,9 +58,26 @@ classdef SimpleTxRxSequence < Operation
                 obj.(varargin{i}) = varargin{i+1};
             end
             
+            mustBeXor(obj.txCenterElement,obj.txApertureCenter);
+            mustBeXor(obj.rxCenterElement,obj.rxApertureCenter);
             mustBeXor(obj.rxDepthRange,obj.rxNSamples);
             obj.rxDepthRange = mustBeLimit(obj.rxDepthRange,0);
             obj.rxNSamples = mustBeLimit(obj.rxNSamples,1);
+            
+            %% Check size compatibility of aperture/focus/angle parameters
+            nTx = max([	length(obj.txCenterElement) ...
+                        length(obj.txApertureCenter) ...
+                        length(obj.rxCenterElement) ...
+                        length(obj.rxApertureCenter) ...
+                        length(obj.txFocus) ...
+                        length(obj.txAngle) ]);
+            
+            obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
+            obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
+            obj.rxCenterElement     = mustBeProperLength(obj.rxCenterElement,nTx);
+            obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
+            obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
+            obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             
         end
     end
@@ -90,6 +107,19 @@ function mustBeXor(varargin)
         error("Arrus:params", ...
             ['One and only one of: ' join(argNames,', ') ' must be defined.'])
     end
+end
+
+function argOut = mustBeProperLength(argIn,propLength)
+    
+    if isempty(argIn) || length(argIn)==propLength
+        argOut = argIn;
+    elseif isscalar(argin)
+        argOut = argIn .* ones(1,propLength);
+    else
+        error("ARRUS:IllegalArgument", ...
+                          "Incompatible parameter length");
+    end
+    
 end
 
 function argOut = mustBeLimit(argIn,defLo)
