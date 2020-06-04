@@ -105,7 +105,7 @@ function mustBeXor(varargin)
     argIsNonEmpty = ~cellfun(@isempty,varargin);
     if sum(argIsNonEmpty) ~= 1
         error("Arrus:params", ...
-            ['One and only one of: ' join(argNames,', ') ' must be defined.'])
+            ['One and only one of: ' char(join(argNames,', ')) ' must be defined.'])
     end
 end
 
@@ -113,7 +113,7 @@ function argOut = mustBeProperLength(argIn,propLength)
     
     if isempty(argIn) || length(argIn)==propLength
         argOut = argIn;
-    elseif isscalar(argin)
+    elseif isscalar(argIn)
         argOut = argIn .* ones(1,propLength);
     else
         error("ARRUS:IllegalArgument", ...
