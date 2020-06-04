@@ -34,8 +34,12 @@ classdef Us4R < handle
             
             obj.sys.trigTxDel = 240; % [samp] trigger to t0 (tx start) delay
 
+            obj.sys.voltage = voltage;
+            
             probe = probeParams(probeName);
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
+            obj.sys.txChannelMap = probe.txChannelMap;
+            obj.sys.rxChannelMap = probe.rxChannelMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
             obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
@@ -56,41 +60,6 @@ classdef Us4R < handle
                 obj.sys.actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
             end
             obj.sys.actChan = obj.sys.actChan & (obj.sys.selElem <= obj.sys.nElem);
-            
-            
-            for iArius=0:(nArius-1)
-                % Set Rx channel mapping
-                for ch=1:32
-                    Us4MEX(iArius, "SetRxChannelMapping", probe.rxChannelMap(iArius+1,ch), ch);
-                end
-
-                % Set Tx channel mapping
-                for ch=1:128
-                    Us4MEX(iArius, "SetTxChannelMapping", probe.txChannelMap(iArius+1,ch), ch);
-                end
-
-                % init RX
-                Us4MEX(iArius, "SetPGAGain","30dB");
-                Us4MEX(iArius, "SetLPFCutoff","15MHz");
-                Us4MEX(iArius, "SetActiveTermination","EN", "200");
-                Us4MEX(iArius, "SetLNAGain","24dB");
-                Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
-                Us4MEX(iArius, "TGCEnable");
-
-                try
-                    Us4MEX(0,"EnableHV");
-                catch
-                    warning('1st "EnableHV" failed');
-                    Us4MEX(0,"EnableHV");
-                end
-                
-                try
-                    Us4MEX(0, "SetHVVoltage", voltage);
-                catch
-                    warning('1st "SetHVVoltage" failed');
-                    Us4MEX(0, "SetHVVoltage", voltage);
-                end
-            end
 
         end
 
@@ -539,6 +508,41 @@ classdef Us4R < handle
         end
         
         function programHW(obj)
+            
+            %% Program mappings, gains, and voltage
+            for iArius=0:(obj.sys.nArius-1)
+                % Set Rx channel mapping
+                for ch=1:32
+                    Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,ch), ch);
+                end
+
+                % Set Tx channel mapping
+                for ch=1:128
+                    Us4MEX(iArius, "SetTxChannelMapping", obj.sys.txChannelMap(iArius+1,ch), ch);
+                end
+
+                % init RX
+                Us4MEX(iArius, "SetPGAGain","30dB");
+                Us4MEX(iArius, "SetLPFCutoff","15MHz");
+                Us4MEX(iArius, "SetActiveTermination","EN", "200");
+                Us4MEX(iArius, "SetLNAGain","24dB");
+                Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
+                Us4MEX(iArius, "TGCEnable");
+
+                try
+                    Us4MEX(0,"EnableHV");
+                catch
+                    warning('1st "EnableHV" failed');
+                    Us4MEX(0,"EnableHV");
+                end
+                
+                try
+                    Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+                catch
+                    warning('1st "SetHVVoltage" failed');
+                    Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+                end
+            end
             
             %% Program Tx/Rx sequence
             for iArius=0:(obj.sys.nArius-1)
