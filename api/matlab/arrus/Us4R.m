@@ -41,6 +41,9 @@ classdef Us4R < handle
             obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
                             (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
 
+            obj.sys.nChCont = obj.sys.nChArius * (nArius*obj.sys.adapType + 1*~obj.sys.adapType);
+            obj.sys.nChTotal = obj.sys.nChArius * 4 * (nArius*~obj.sys.adapType + 1*obj.sys.adapType);
+
             if ~obj.sys.adapType
                 % old adapter type (00001111)
                 obj.sys.selElem = (1:128).' + (0:(nArius-1))*128;
@@ -325,27 +328,18 @@ classdef Us4R < handle
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.txCentElem);
             end
-
-            %% Number of: Tx, SubTx, Firings, Triggers
-            obj.seq.nTx	= length(obj.seq.txAng);    % could be also length(obj.seq.txApCent)
-
-            if strcmp(obj.seq.type,'lin')
-                obj.seq.nSubTx          = 1;
             
             if isempty(obj.seq.rxApCent)
                 obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.rxCentElem);
             else
-                if ~obj.sys.adapType
-                    % old adapter type (00001111)
-                    obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / obj.sys.nChArius));
-                else
-                    % new adapter type (01010101)
-%                     obj.seq.nSubTx      = min(4, ceil(obj.sys.nElem / (obj.sys.nChArius * obj.sys.nArius)));
-                    obj.seq.nSubTx      = min(4, ceil(min(128,obj.sys.nElem) / (obj.sys.nChArius * obj.sys.nArius)));
-                end
                 obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.txApCent);
             end
             
+            obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2);
+
+            %% Number of: Tx, SubTx, Firings, Triggers
+            obj.seq.nTx	= length(obj.seq.txAng);    % could be also length(obj.seq.txApCent)
+            obj.seq.nSubTx = min(4, ceil(obj.seq.rxApSize / obj.sys.nChCont));
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
 
@@ -359,37 +353,16 @@ classdef Us4R < handle
             nTx     = obj.seq.nTx;
             nFire	= obj.seq.nFire;
             
-            if ~obj.sys.adapType
-                % old adapter type (00001111)
-                selectElem = (1:128).' + (0:(nArius-1))*128;
-                rxApSize = nChan;                               % for LIN mode only
-                nChanTot = nChan*4*nArius;
-                
-                actChan = true(128,nArius);
-            else
-                % new adapter type (01010101)
-%                 selectElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
-%                 rxApSize = nChan*nArius;                        % for LIN mode only
-%                 nChanTot = nChan*4*nArius;
-                
-                selectElem = repmat((1:128).',[1 nArius]);
-                rxApSize = nChan*nArius;                        % for LIN mode only
-                nChanTot = nChan*4;
-                
-                actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
-            end
-            actChan = actChan & (selectElem <= obj.sys.nElem);
             
             if strcmp(obj.seq.type,'lin')
-                rxCentElem	= interp1(obj.sys.xElem,1:obj.sys.nElem,obj.seq.txApCent);
-                
-                obj.seq.rxApOrig = round(rxCentElem - (rxApSize-1)/2);
-                rxApMask =	(1:nChanTot).' >= obj.seq.rxApOrig & ...
-                            (1:nChanTot).' <  obj.seq.rxApOrig + rxApSize & ...
-                            (1:nChanTot).' <= obj.sys.nElem;
+                rxApMask =	(1:obj.sys.nChTotal).' >= obj.seq.rxApOrig & ...
+                            (1:obj.sys.nChTotal).' <  obj.seq.rxApOrig + obj.sys.nChCont & ...
+                            (1:obj.sys.nChTotal).' <= obj.sys.nElem;
             else
-                rxApMask = (1:nChanTot).' .* ones(1,nFire) <= obj.sys.nElem;
+                rxApMask = (1:obj.sys.nChTotal).' .* ones(1,nFire) <= obj.sys.nElem;
             end
+            
+            
             
             txSubApDel = cell(nArius,nTx);
             txSubApMask = strings(nArius,nTx);

@@ -7,7 +7,7 @@ probeName	= 'SL1543';
 
 txFrequency = 7e6;
 samplingFrequency = 65e6;
-fsDivider = 2;
+fsDivider = 1;
 
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
 
@@ -69,12 +69,12 @@ rec = Reconstruction(   'filterEnable',     true, ...
                         'filterBCoeff',     filtB, ...
                         'iqEnable',         true, ...
                         'cicOrder',         2, ...
-                        'decimation',       1, ...
+                        'decimation',       4, ...
                         'xGrid',            (-20:0.10:20)*1e-3, ...
                         'zGrid',            (  0:0.10:50)*1e-3);
 
-us.upload(seqSTA,rec);
-% us.upload(seqPWI,rec);
+% us.upload(seqSTA,rec);
+us.upload(seqPWI,rec);
 % us.upload(seqLIN,rec);
 
 %% Run sequence and reconstruction
