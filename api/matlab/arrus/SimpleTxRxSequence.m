@@ -30,6 +30,9 @@ classdef SimpleTxRxSequence < Operation
         txCenterElement (1,:) {mustBeFinite, mustBeReal}
         txApertureCenter (1,:) {mustBeFinite, mustBeReal}
         txApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
+        rxCenterElement (1,:) {mustBeFinite, mustBeReal}
+        rxApertureCenter (1,:) {mustBeFinite, mustBeReal}
+        rxApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
