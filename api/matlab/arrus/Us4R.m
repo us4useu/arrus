@@ -710,18 +710,18 @@ classdef Us4R < handle
                 rfBfr = hilbert(rfBfr);
                 rfBfr(nanMask) = nan;
             end
-
-            % Scan conversion (for 'lin' mode)
-            if strcmp(obj.seq.type,'lin')
-                rfBfr = scanConversion(rfBfr,obj.seq,obj.rec);
-            end
-
+            
             % Envelope detection
             envImg = abs(rfBfr);
-
+            
+            % Scan conversion (for 'lin' mode)
+            if strcmp(obj.seq.type,'lin')
+                envImg = scanConversion(envImg,obj.seq,obj.rec);
+            end
+            
             % Compression
             img = 20*log10(envImg);
-
+            
             % Gather data from GPU
             if obj.rec.gpuEnable
                 img = gather(img);
