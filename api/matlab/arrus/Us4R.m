@@ -251,7 +251,7 @@ classdef Us4R < handle
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
             obj.seq.rxTime      = 160e-6; % [s] rx time (max 4000us)
-            obj.seq.rxDel       = 5e-6;
+            obj.seq.rxDel       = 0e-6;
             obj.seq.pauseMultip	= 1.5;
             
             %% rxNSamples & rxDepthRange
