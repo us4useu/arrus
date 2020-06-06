@@ -310,6 +310,13 @@ classdef Us4R < handle
             obj.seq.nTx	= length(obj.seq.txAng);    % could be also length(obj.seq.txApCent)
             obj.seq.nSubTx = min(4, ceil(obj.seq.rxApSize / obj.sys.nChCont));
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
+            
+            if obj.seq.nRep == 0
+                obj.seq.nRep = min(floor([ ...
+                                2^14 / obj.seq.nFire, ...
+                                2^32 / obj.seq.nFire / (obj.sys.nChArius * obj.seq.nSamp * 2)]));
+                disp(['nRepetitions set to ' num2str(obj.seq.nRep) '.']);
+            end
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
 
             %% Aperture masks & delays

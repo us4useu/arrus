@@ -40,7 +40,7 @@ classdef SimpleTxRxSequence < Operation
         txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
-        nRepetitions (1,1) {mustBeInteger, mustBePositive} = 1
+        nRepetitions (1,1) {mustBeInteger, mustBeNonnegative} = 1
         txPri (1,1) double {mustBePositive} = 100e-6
         tgcStart (1,1)
         tgcSlope (1,1)
