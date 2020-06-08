@@ -5,7 +5,7 @@ classdef SimpleTxRxSequence < Operation
     % :param txApertureCenter: vector of tx aperture center positions [m]
     % :param txApertureSize: size of the tx aperture [element]
     % :param rxCenterElement: vector of rx aperture center elements [element]
-    % :param rxApertureCenter: vector of rx aperture center positions [m]
+    % :param rxApertureCenter: vector of rx aperture center positions [m].
     % :param rxApertureSize: size of the rx aperture [element]
     % :param txFocus: tx focal length [m]
     % :param txAngle: tx angle [rad]
@@ -19,15 +19,15 @@ classdef SimpleTxRxSequence < Operation
     %   starting and ending sample numbers (if 2-element vector) \ 
     %   of recorded signal [sample]
     % :param nRepetitions: number of repetitions of the sequence (positive \
-    %   integer). Can be a string "max" --In this case, the maximum number \
+    %   integer). Can be a string "max" -- in this case, the maximum number \
     %   of repetitions that can be performed on the system (taking into \ 
     %   account the size of RAM, etc.) will be used.
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param fsDivider: sampling frequency divider. Should be positive int. \ 
-    %    Default value is equal to 1, which means sampling with \
-    %    the highest possible frequency (no decimation).
+    %   Default value is equal to 1, which means sampling with \
+    %   the highest possible frequency (no decimation).
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -65,8 +65,13 @@ classdef SimpleTxRxSequence < Operation
                 obj.(varargin{i}) = varargin{i+1};
             end
             
+            % Validate.
             mustBeXor(obj,{'txCenterElement','txApertureCenter'});
-            mustBeXor(obj,{'rxCenterElement','rxApertureCenter'});
+            
+            
+            if ~isempty(obj.rxCenterElement) || ~isempty(obj.rxApertureCenter)
+                mustBeXor(obj,{'rxCenterElement','rxApertureCenter'});
+            end
             mustBeXor(obj,{'rxDepthRange','rxNSamples'});
             obj.rxDepthRange = mustBeLimit(obj,'rxDepthRange',0);
             obj.rxNSamples = mustBeLimit(obj,'rxNSamples',1);
@@ -92,8 +97,12 @@ classdef SimpleTxRxSequence < Operation
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
             obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
-            obj.rxCenterElement     = mustBeProperLength(obj.rxCenterElement,nTx);
-            obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
+            if ~isempty(obj.rxCenterElement)
+                obj.rxCenterElement     = mustBeProperLength(obj.rxCenterElement,nTx);
+            end
+            if ~isempty(obj.rxApertureCenter)
+                obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
+            end
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             

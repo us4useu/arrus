@@ -293,11 +293,29 @@ classdef Us4R < handle
             
             obj.seq.tgcCurve = (tgcCurve-14) / 40;                      % <0,1>
             
+            %% Number of Tx
+            obj.seq.nTx	= length(obj.seq.txAng);
+            
             %% Tx/Rx aperture positions
+            
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.txCentElem);
             end
             
+            
+            if isempty(obj.seq.rxCentElem) && isempty(obj.seq.rxApCent) && obj.seq.rxApSize == 0
+                
+                % Use default values
+                if strcmp(obj.seq.type, 'lin')  
+                    obj.seq.rxApCent = obj.seq.txApCent;
+                    obj.seq.rxApSize = obj.seq.txApSize;
+                else
+                    obj.seq.rxApCent = 0.0 .* ones(1, obj.seq.nTx);
+                    obj.seq.rxApSize = obj.sys.nElem;
+                end
+                disp(['Using default Rx aperture of size ', num2str(obj.seq.rxApSize)]);
+            end
+
             if isempty(obj.seq.rxApCent)
                 obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.rxCentElem);
             else
@@ -306,8 +324,7 @@ classdef Us4R < handle
             
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2);
 
-            %% Number of: Tx, SubTx, Firings, Triggers
-            obj.seq.nTx	= length(obj.seq.txAng);    % could be also length(obj.seq.txApCent)
+            %% Number of: SubTx, Firings, Triggers
             obj.seq.nSubTx = min(4, ceil(obj.seq.rxApSize / obj.sys.nChCont));
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             
