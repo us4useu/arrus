@@ -35,8 +35,8 @@ function[rfBfr,rfTx] = reconstructRfImg(rfRaw,sys,acq,proc)
 zSize	= length(proc.zGrid);
 xSize	= length(proc.xGrid);
 
-xElem	= (-(sys.nElem-1)/2:(sys.nElem-1)/2)*sys.pitch;
-xElem	= reshape(xElem,1,1,[]);
+xElem	= reshape(sys.xElem,1,1,[]);
+xElemRx = (acq.rxApOrig - 1 + reshape(1:nRx,1,1,[]) - (sys.nElem-1)/2 - 1) * sys.pitch;
 
 fs      = acq.rxSampFreq/proc.dec;
 
@@ -49,7 +49,8 @@ initDel     = - fstSampDel + acq.txDelCent + burstFactor;	% [s] total init delay
 
 %% GPU memory allocation
 if isa(rfRaw,'gpuArray')
-    xElem           = gpuArray(xElem);
+    xElem       = gpuArray(xElem);
+    xElemRx     = gpuArray(xElemRx);
     proc.zGrid	= gpuArray(proc.zGrid);
     proc.xGrid	= gpuArray(proc.xGrid);
     
@@ -81,6 +82,7 @@ switch acq.type
         
         txDist	= (proc.xGrid - 0).*sin(txAng) + proc.zGrid'.*cos(txAng);
         
+        % xElem: put the actual txAperture edges here
         r1      = (proc.xGrid-xElem(   1)).*cos(txAng) - proc.zGrid'.*sin(txAng);
         r2      = (proc.xGrid-xElem( end)).*cos(txAng) - proc.zGrid'.*sin(txAng);
         txApod	= double(r1 >= 0 & r2 <= 0);
@@ -90,10 +92,10 @@ switch acq.type
 end
 
 %% Precalculate rx delays and apodization
-rxDist	= sqrt((proc.xGrid-xElem).^2 + proc.zGrid'.^2);
-rxTang	=  abs((proc.xGrid-xElem)   ./ proc.zGrid');
-rxApod	= double(rxTang < maxTang);
-% rxApod	= double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
+% rxDist	= sqrt((proc.xGrid-xElem).^2 + proc.zGrid'.^2);
+% rxTang	=  abs((proc.xGrid-xElem)   ./ proc.zGrid');
+% rxApod	= double(rxTang < maxTang);
+% % rxApod	= double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
 
 iRx     = 1:nRx;
 if isa(rfRaw,'gpuArray')
@@ -103,6 +105,10 @@ iRx     = reshape(iRx,1,1,[]);
 
 %% Delay & Sum
 for iTx=1:nTx
+    rxDist	= sqrt((proc.xGrid-xElemRx(1,iTx,:)).^2 + proc.zGrid'.^2);
+    rxTang	=  abs((proc.xGrid-xElemRx(1,iTx,:))   ./ proc.zGrid');
+    rxApod	= double(rxTang < maxTang);
+    
     % calculate total delays
     delTot	= (txDist(:,:,iTx) + rxDist)/acq.c + initDel;	% [s]
     
