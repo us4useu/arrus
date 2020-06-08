@@ -10,7 +10,7 @@ Version 0.4.2
       to control the rx aperture. Use them the same way as parameters for tx aperture control. \
       Now the rx aperture is fully defined by those parameters and sequence type no longer affects it.
     - rx delay is set to zero to allow for shallow region imaging.
-    - ``nRepetitions``: set it to zero to acquire maximum number of repetitions allowable.
+    - ``nRepetitions``: set it to "max" to acquire maximum number of repetitions allowable.
 
 Version 0.4.1
 -------------
