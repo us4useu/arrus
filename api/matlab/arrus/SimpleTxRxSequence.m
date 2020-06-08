@@ -13,18 +13,21 @@ classdef SimpleTxRxSequence < Operation
     % :param txFrequency: tx frequency [Hz]
     % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
     % :param rxDepthRange: defines the end (if scalar) or
-    %                      the begining and the end (if two-element vector)
-    %                      of the acquisition expressed by depth range [m]
+    %   the begining and the end (if two-element vector) \ 
+    %   of the acquisition expressed by depth range [m]
     % :param rxNSamples: number of samples (if scalar) or 
-    %                      starting and ending sample numbers (if 2-element vector) 
-    %                      of recorded signal [sample]
-    % :param nRepetitions: number of repetitions of the sequence (positive integer)
+    %   starting and ending sample numbers (if 2-element vector) \ 
+    %   of recorded signal [sample]
+    % :param nRepetitions: number of repetitions of the sequence (positive \
+    %   integer). Can be a string "max" --In this case, the maximum number \
+    %   of repetitions that can be performed on the system (taking into \ 
+    %   account the size of RAM, etc.) will be used.
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
-    % :param fsDivider: sampling frequency divider. Should be positive int. 
-    %        Default value is equal to 1, which means sampling with 
-    %        the highest possible frequency (no decimation).
+    % :param fsDivider: sampling frequency divider. Should be positive int. \ 
+    %    Default value is equal to 1, which means sampling with \
+    %    the highest possible frequency (no decimation).
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -44,7 +47,7 @@ classdef SimpleTxRxSequence < Operation
         txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
-        nRepetitions (1,1) {mustBeInteger, mustBeNonnegative} = 1
+        nRepetitions (1,1) = 1
         txPri (1,1) double {mustBePositive} = 100e-6
         tgcStart (1,1)
         tgcSlope (1,1)
@@ -67,6 +70,17 @@ classdef SimpleTxRxSequence < Operation
             mustBeXor(obj,{'rxDepthRange','rxNSamples'});
             obj.rxDepthRange = mustBeLimit(obj,'rxDepthRange',0);
             obj.rxNSamples = mustBeLimit(obj,'rxNSamples',1);
+            
+            % Specific validation for nRepetitions
+            if isnumeric(obj.nRepetitions)
+                mustBeInteger(obj.nRepetitions);
+                mustBePositive(obj.nRepetitions);
+            elseif isstring(obj.nRepetitions)
+                mustBeMember(obj.nRepetitions, ["max"]);
+            else
+                error(['Unhandled data type of nRepetitions: ', ...
+                        class(obj.nRepetitions)])
+            end
             
             %% Check size compatibility of aperture/focus/angle parameters
             nTx = max([	length(obj.txCenterElement) ...
