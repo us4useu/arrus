@@ -655,9 +655,7 @@ classdef Us4R < handle
                         rf(:,:,:,iArius+1,iTx,:)	= circshift(rf(:,:,:,iArius+1,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
                     end
                 end
-                rf = reshape(rf,nSamp,nChan*nSubTx,nArius,nTx,nRep);
-                rfAux = permute(rf,[1 2 4 5 3]);
-                rf = zeros(nSamp,obj.seq.rxApSize,nTx,nRep);
+                rf = reshape(rf,nSamp,nChan*nSubTx*nArius,nTx,nRep);
                 for iTx=1:nTx
                     rxApEnd = rxApOrig(iTx) + obj.seq.rxApSize - 1;
                     nZerosL = max(0, min(  0,rxApEnd) -          rxApOrig(iTx)  + 1);
@@ -665,11 +663,12 @@ classdef Us4R < handle
                     nChan0  = max(0, min(128,rxApEnd) - max(  1, rxApOrig(iTx)) + 1);
                     nChan1  = max(0, min(192,rxApEnd) - max(129, rxApOrig(iTx)) + 1);
                     
-                    rf(:,:,iTx,:) = [zeros(nSamp,nZerosL,1,nRep), ...
-                        rfAux(:,1:nChan0,iTx,:,1), ...
-                        rfAux(:,1:nChan1,iTx,:,2), ...
-                        zeros(nSamp,nZerosR,1,nRep)];
+                    rf(:,1:obj.seq.rxApSize,iTx,:) = [  zeros(nSamp,nZerosL,1,nRep), ...
+                                                        rf(:,(1:nChan0) + 0*nChan*nSubTx,iTx,:), ...
+                                                        rf(:,(1:nChan1) + 1*nChan*nSubTx,iTx,:), ...
+                                                        zeros(nSamp,nZerosR,1,nRep) ];
                 end
+                rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
                 
             else
                 % new adapter type (01010101)
