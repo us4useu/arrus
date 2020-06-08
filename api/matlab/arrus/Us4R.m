@@ -333,24 +333,15 @@ classdef Us4R < handle
             txSubApDel = cell(nArius,nTx);
             txSubApMask = strings(nArius,nTx);
             rxSubApMask = strings(nArius,nFire);
-            iSubTx = repmat(1:nSubTx,1,nTx);
+            iSubTx = permute(1:nSubTx,[1 3 2]);
             for iArius=0:(nArius-1)
-%                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :), 128, ones(1,nTx));
-%                 txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :));
-%                 
-%                 rxSubApSelect = ceil(cumsum(rxApMask(obj.sys.selElem(:,iArius+1), :)) / nChan) == iSubTx;
-%                 rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect);
-                
                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
                 txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1));
                 
-                rxSubApSelect = ceil(cumsum(rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
+                rxSubApSelect = ceil(cumsum(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
                 rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
-                rxSubApMask(iArius+1,:) = obj.maskFormat(rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect);
+                rxSubApMask(iArius+1,:) = obj.maskFormat(reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire));
             end
-            
-%             actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
-%             actChanGroupMask = obj.maskFormat(actChanGroupMask);
             
             actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
             actChanGroupMask = actChanGroupMask & obj.sys.actChan(8:8:end,:);
