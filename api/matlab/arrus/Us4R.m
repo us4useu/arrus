@@ -634,37 +634,53 @@ classdef Us4R < handle
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
+            rxApOrig = obj.seq.rxApOrig;
             if ~obj.sys.adapType
-                % old adapter type (00001111)
                 rf	= permute(rf,[2 1 3 6 4 5]);
-                rf	= reshape(rf,nSamp,nChan*nSubTx*nArius,nTx,nRep);
+                
+                % old adapter type (00001111)
+%                 for iTx=1:nTx
+%                     rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
+%                 end
+%                 rf	= rf(:,1:nChan,:,:);
+%                 for iTx=1:nTx
+%                     if ~(rxApOrig(iTx) > 1+nChan*(4-1) && rxApOrig(iTx) < 1+nChan*4)
+%                         rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
+%                     end
+%                 end
+                
+                for iTx=1:nTx
+                    iArius = ceil(rxApOrig(iTx) / (nChan * 4)) - 1;
+                    if iArius >= 0 && iArius < nArius
+                        rf(:,:,:,iArius+1,iTx,:)	= circshift(rf(:,:,:,iArius+1,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
+                    end
+                end
+                rf = reshape(rf,nSamp,nChan*nSubTx,nArius,nTx,nRep);
+                rfAux = permute(rf,[1 2 4 5 3]);
+                rf = zeros(nSamp,obj.seq.rxApSize,nTx,nRep);
+                for iTx=1:nTx
+                    rxApEnd = rxApOrig(iTx) + obj.seq.rxApSize - 1;
+                    nZerosL = max(0, min(  0,rxApEnd) -          rxApOrig(iTx)  + 1);
+                    nZerosR = max(0,         rxApEnd  - max(193, rxApOrig(iTx)) + 1);
+                    nChan0  = max(0, min(128,rxApEnd) - max(  1, rxApOrig(iTx)) + 1);
+                    nChan1  = max(0, min(192,rxApEnd) - max(129, rxApOrig(iTx)) + 1);
+                    
+                    rf(:,:,iTx,:) = [zeros(nSamp,nZerosL,1,nRep), ...
+                        rfAux(:,1:nChan0,iTx,:,1), ...
+                        rfAux(:,1:nChan1,iTx,:,2), ...
+                        zeros(nSamp,nZerosR,1,nRep)];
+                end
+                
             else
                 % new adapter type (01010101)
                 rf	= permute(rf,[2 1 6 3 4 5]);
-                rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx,nRep);
-            end
-
-            if strcmp(obj.seq.type,'lin')
-                rxApOrig	= obj.seq.rxApOrig;
-                if ~obj.sys.adapType
-                    % old adapter type (00001111)
-                    for iTx=1:nTx
-                        rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
-                    end
-                    rf	= rf(:,1:nChan,:,:);
-                    for iTx=1:nTx
-                        if ~(rxApOrig(iTx) > 1+nChan*(4-1) && rxApOrig(iTx) < 1+nChan*4)
-                            rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
-                        end
-                    end
-                else
-                    % new adapter type (01010101)
-                    for iTx=1:nTx
-                        rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
-                    end
+                rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
+                
+                for iTx=1:nTx
+                    rf(:,:,:,iTx,:)	= circshift(rf(:,:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
                 end
-            else
-                rf	= rf(:,1:min(obj.sys.nElem,nChan*nSubTx*nArius),:,:);
+                rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx,nRep);
+                rf	= rf(:,1:obj.seq.rxApSize,:,:);
             end
 
         end
