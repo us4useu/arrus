@@ -1,8 +1,12 @@
 classdef SimpleTxRxSequence < Operation
     % A sequence of Tx/Rx operations to perform on a device.
     %
+    % :param txCenterElement: vector of tx aperture center elements [element]
     % :param txApertureCenter: vector of tx aperture center positions [m]
     % :param txApertureSize: size of the tx aperture [element]
+    % :param rxCenterElement: vector of rx aperture center elements [element]
+    % :param rxApertureCenter: vector of rx aperture center positions [m]
+    % :param rxApertureSize: size of the rx aperture [element]
     % :param txFocus: tx focal length [m]
     % :param txAngle: tx angle [rad]
     % :param speedOfSound: speed of sound for [m/s]
