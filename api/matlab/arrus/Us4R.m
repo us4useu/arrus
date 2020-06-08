@@ -320,7 +320,7 @@ classdef Us4R < handle
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
 
             %% Aperture masks & delays
-            obj.calcTxApMask;
+            obj.calcTxRxApMask;
             obj.calcTxDelays;
             
             %% Piece of code moved from programHW
@@ -329,16 +329,6 @@ classdef Us4R < handle
             nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nFire	= obj.seq.nFire;
-            
-            
-            if strcmp(obj.seq.type,'lin')
-                rxApMask =	(1:obj.sys.nChTotal).' >= obj.seq.rxApOrig & ...
-                            (1:obj.sys.nChTotal).' <  obj.seq.rxApOrig + obj.sys.nChCont & ...
-                            (1:obj.sys.nChTotal).' <= obj.sys.nElem;
-            else
-                rxApMask = (1:obj.sys.nChTotal).' .* ones(1,nFire) <= obj.sys.nElem;
-            end
-            
             
             txSubApDel = cell(nArius,nTx);
             txSubApMask = strings(nArius,nTx);
