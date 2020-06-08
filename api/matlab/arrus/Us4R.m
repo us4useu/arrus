@@ -413,19 +413,26 @@ classdef Us4R < handle
 
         end
         
-        function calcTxApMask(obj)
-            % calcTxApMask appends the following fields to the in/out obj:
+        function calcTxRxApMask(obj)
+            % calcTxRxApMask appends the following fields to the in/out obj:
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
-            
-            %Rounding!!!
+            % obj.seq.rxApMask      - [logical] (nArius*128 x nTx) is element active in rx?
             
             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
+            rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
             
             % Make the mask fit the number of channels
-            txApMask = [txApMask; false(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
+            if obj.sys.nElem >= obj.sys.nChTotal
+                txApMask = txApMask(1:obj.sys.nChTotal,:);
+                rxApMask = rxApMask(1:obj.sys.nChTotal,:);
+            else
+                txApMask = [txApMask; false(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
+                rxApMask = [rxApMask; false(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
+            end
             
             % Save the mask to the obj
             obj.seq.txApMask = txApMask;
+            obj.seq.rxApMask = rxApMask;
         end
 
         function calcTxDelays(obj)
