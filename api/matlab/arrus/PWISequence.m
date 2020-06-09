@@ -15,6 +15,14 @@ classdef PWISequence < SimpleTxRxSequence
         function obj = PWISequence(varargin)
             obj = obj@SimpleTxRxSequence(varargin{:});
             
+            % Default rx aperture
+            if isempty(obj.rxCenterElement) && isempty(obj.rxApertureCenter) && obj.rxApertureSize == 0
+                obj.rxCenterElement = [];
+                obj.rxApertureCenter = 0.0 .* ones(1, length(obj.txAngle));
+                obj.rxApertureSize = obj.txApertureSize;
+                disp(['Using default Rx aperture of size ', num2str(obj.rxApertureSize)]);
+            end
+            
             % Fix the txFocus value
             if any(~isinf(obj.txFocus))
                 obj.txFocus(:) = inf;
