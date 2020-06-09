@@ -81,7 +81,7 @@ classdef SimpleTxRxSequence < Operation
                 mustBeInteger(obj.nRepetitions);
                 mustBePositive(obj.nRepetitions);
             elseif isstring(obj.nRepetitions)
-                mustBeMember(obj.nRepetitions, ["max"]);
+                mustBeMember(obj.nRepetitions, "max");
             else
                 error(['Unhandled data type of nRepetitions: ', ...
                         class(obj.nRepetitions)])
@@ -97,12 +97,8 @@ classdef SimpleTxRxSequence < Operation
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
             obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
-            if ~isempty(obj.rxCenterElement)
-                obj.rxCenterElement     = mustBeProperLength(obj.rxCenterElement,nTx);
-            end
-            if ~isempty(obj.rxApertureCenter)
-                obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
-            end
+            obj.rxCenterElement     = mustBeProperLength(obj.rxCenterElement,nTx);
+            obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             
