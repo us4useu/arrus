@@ -17,8 +17,7 @@ classdef STASequence < SimpleTxRxSequence
             if isempty(obj.rxCenterElement) && isempty(obj.rxApertureCenter) && obj.rxApertureSize == 0
                 obj.rxCenterElement = [];
                 obj.rxApertureCenter = 0.0 .* ones(1, length(obj.txAngle));
-                obj.rxApertureSize = obj.txApertureSize;
-                disp(['Using default Rx aperture of size ', num2str(obj.rxApertureSize)]);
+                obj.rxApertureSize = "nElements";
             end
             
         end

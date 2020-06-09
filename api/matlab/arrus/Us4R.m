@@ -293,7 +293,21 @@ classdef Us4R < handle
             
             obj.seq.tgcCurve = (tgcCurve-14) / 40;                      % <0,1>
             
-            %% Tx/Rx aperture positions
+            %% Tx/Rx aperture string/missing parameters
+            if isstring(obj.seq.txApSize) && obj.seq.txApSize == "nElements"
+                obj.seq.txApSize = min(obj.sys.nChTotal,obj.sys.nElem);
+                disp(['txApertureSize set to ' num2str(obj.seq.txApSize) '.']);
+            end
+            
+            if isstring(obj.seq.rxApSize)
+                if obj.seq.rxApSize == "nChannels"
+                    obj.seq.rxApSize = obj.sys.nChCont;
+                elseif obj.seq.rxApSize == "nElements"
+                    obj.seq.rxApSize = min(obj.sys.nChTotal,obj.sys.nElem);
+                end
+                disp(['rxApertureSize set to ' num2str(obj.seq.rxApSize) '.']);
+            end
+            
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.txCentElem);
             end

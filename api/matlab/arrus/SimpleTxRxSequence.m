@@ -36,10 +36,10 @@ classdef SimpleTxRxSequence < Operation
     properties
         txCenterElement (1,:) {mustBeFinite, mustBeReal}
         txApertureCenter (1,:) {mustBeFinite, mustBeReal}
-        txApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
+        txApertureSize (1,1)
         rxCenterElement (1,:) {mustBeFinite, mustBeReal}
         rxApertureCenter (1,:) {mustBeFinite, mustBeReal}
-        rxApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
+        rxApertureSize (1,1)
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
@@ -67,8 +67,6 @@ classdef SimpleTxRxSequence < Operation
             
             % Validate.
             mustBeXor(obj,{'txCenterElement','txApertureCenter'});
-            
-            
             if ~isempty(obj.rxCenterElement) || ~isempty(obj.rxApertureCenter)
                 mustBeXor(obj,{'rxCenterElement','rxApertureCenter'});
             end
@@ -76,16 +74,10 @@ classdef SimpleTxRxSequence < Operation
             obj.rxDepthRange = mustBeLimit(obj,'rxDepthRange',0);
             obj.rxNSamples = mustBeLimit(obj,'rxNSamples',1);
             
-            % Specific validation for nRepetitions
-            if isnumeric(obj.nRepetitions)
-                mustBeInteger(obj.nRepetitions);
-                mustBePositive(obj.nRepetitions);
-            elseif isstring(obj.nRepetitions)
-                mustBeMember(obj.nRepetitions, "max");
-            else
-                error(['Unhandled data type of nRepetitions: ', ...
-                        class(obj.nRepetitions)])
-            end
+            % Specific validations
+            mustBeIntOrStr(obj,'nRepetitions',1,"max");
+            mustBeIntOrStr(obj,'txApertureSize',0,"nElements");
+            mustBeIntOrStr(obj,'rxApertureSize',0,["nChannels","nElements"]);
             
             %% Check size compatibility of aperture/focus/angle parameters
             nTx = max([	length(obj.txCenterElement) ...
@@ -126,6 +118,28 @@ function mustBeXor(obj,fieldNames)
         error("Arrus:params", ...
             ['One and only one of {' char(join(fieldNames,', ')) '} must be defined.'])
     end
+end
+
+function mustBeIntOrStr(obj,fieldName,intDomain,strDomain)
+    % intDomain: 0-nonnegative integers; 1-positive integers
+    % strDomain: array of accepted string values
+    
+    argIn = obj.(fieldName);
+    
+    if isnumeric(argIn)
+        mustBeInteger(argIn);
+        if intDomain
+            mustBePositive(argIn);
+        else
+            mustBeNonnegative(argIn);
+        end
+    elseif isstring(argIn)
+        mustBeMember(argIn,strDomain);
+    else
+        error(['Unhandled data type of ' fieldName ': ', ...
+            class(argIn)])
+    end
+    
 end
 
 function argOut = mustBeProperLength(argIn,propLength)
