@@ -25,7 +25,7 @@ pipeline {
                 script {
                     currentBuild.displayName = getBuildName(currentBuild)
                 }
-                sh "git clean -fdx"
+                sh "git clean -ffdx"
             }
         }
         stage("Build dependencies") {

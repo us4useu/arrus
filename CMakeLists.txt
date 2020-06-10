@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.17.0)
 
 project(arrus LANGUAGES CXX)
 # Version
-set(PROJECT_VERSION 0.4.1)
+set(PROJECT_VERSION 0.4.2)
 option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
 if(ARRUS_DEVELOP_VERSION)
     set(PROJECT_FULL_VERSION "${PROJECT_VERSION}-dev")

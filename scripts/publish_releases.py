@@ -80,7 +80,8 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
 
     package_name += ".zip"
 
-    response = create_release(repository_name, release_tag, token, build_id)
+    release_description = "build: %s, host: %s" % (build_id, platform.node())
+    response = create_release(repository_name, release_tag, token, release_description)
 
     if not response.ok:
         resp = response.json()
@@ -93,7 +94,7 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
             r.raise_for_status()
             release_id = r.json()["id"]
             r = edit_release(repository_name, release_id, release_tag,
-                             token, build_id)
+                             token, release_description)
             r.raise_for_status()
         else:
             print(resp)
@@ -175,7 +176,7 @@ def create_release(repository_name, release, token, body):
             "tag_name": release,
             "target_commitish": "master",
             "name": release,
-            "body": "Release: "+ release + (" (build: %s)" % body if body is not None else ""),
+            "body": body,
             "draft": False,
             "prerelease": False
         }
@@ -193,7 +194,7 @@ def edit_release(repository_name, release_id, release, token, body):
             "tag_name": release,
             "target_commitish": "master",
             "name": release,
-            "body": "Release: "+release+(" (build: %s)" % body if body is not None else ""),
+            "body": body,
             "draft": False,
             "prerelease": False
         }
