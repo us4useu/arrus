@@ -47,7 +47,7 @@ set_target_properties(
 )
 
 install(
-	DIRECTOR
+	DIRECTORY
 		${TOOLBOX_OUTPUT_DIR}
     DESTINATION
         ${ARRUS_MATLAB_INSTALL_DIR}
