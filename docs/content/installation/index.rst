@@ -54,7 +54,7 @@ Startup
 
 .. caution::
 
-    If you **MSI GS65 notebook** and connect with the device via Thunderbolt-3
+    If you use **MSI GS65 notebook** and connect with the device via Thunderbolt-3
     cable, you have to follow this extended startup procedure:
 
     1. Turn off the notebook and your device, plug off Thunderbolt-3 cable.

@@ -23,7 +23,7 @@ classdef BModeDisplay < handle
             daspect([1 1 1]);
             set(gca, 'XLim', xGrid([1 end])*1e3);
             set(gca, 'YLim', zGrid([1 end])*1e3);
-            set(gca, 'CLim', [-20 80]);
+            set(gca, 'CLim', [20 80]);
             colormap(gray);
             colorbar;    
         end

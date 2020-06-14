@@ -1,6 +1,17 @@
 Release notes
 =============
 
+Version 0.4.2
+-------------
+
+- MATLAB API:
+
+    - ``rxApertureCenter``, ``rxCenterElement``, and ``rxApertureSize`` parameters added \
+      to control the rx aperture. Use them the same way as parameters for tx aperture control. \
+      Now the rx aperture is fully defined by those parameters and sequence type no longer affects it.
+    - rx delay is set to zero to allow for shallow region imaging.
+    - ``nRepetitions``: set it to "max" to acquire maximum number of repetitions allowable.
+
 Version 0.4.1
 -------------
 
@@ -13,7 +24,7 @@ Version 0.4.1
 
 - python API:
 
-    - Created new API (for a model of ``operations`` executed on available \
+    - Created new API with a model of ``operations`` executed on available \
       devices.
     - Added ``fs_divider`` parameter to ``arrus.ops.Rx`` operation, that allows \
       to reduce sampling frequency of the module.

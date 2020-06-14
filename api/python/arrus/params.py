@@ -42,6 +42,7 @@ class RegionBasedAperture(Aperture):
     A region-based aperture.
 
     The aperture represents a single, contiguous range of channels.
+
     :param origin: an origin channel of the aperture
     :param size: a length of the aperture
     """

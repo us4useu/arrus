@@ -97,6 +97,7 @@ def publish(build_id, install_dir, repository, repository_name,
     else:
         raise ValueError("Docs from branch %s are not allowed to be published!")
     for release in releases:
+        release = release.strip()
         release_dir = os.path.join(repository_name, "releases", release)
         docs_dir = os.path.join(install_dir, "docs", "html")
         shutil.rmtree(

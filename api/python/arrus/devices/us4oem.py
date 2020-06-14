@@ -69,7 +69,8 @@ class Us4OEMCfg(_device.DeviceCfg):
     :param tgc_samples: a list of TGC curve samples to set [dB]. The values \
         should be in range 14-54 dB, maximum number of samples to set: 1022. \
         TGC curve sampling rate is equal 1MHz. Set to None if you want to \
-        disable TGC.
+        disable TGC. Currently if you want to use this parameter, pga_gain and \
+        lna_gain must be set to 30 and 24 respectively.
     :param log_data_transfer_time: set to True if you want to log data \
         transfer time (from Us4OEM to the PC)
     """
@@ -77,7 +78,7 @@ class Us4OEMCfg(_device.DeviceCfg):
     active_channel_groups: list
     dtgc: Optional[float] = None
     pga_gain: float = 30
-    lna_again: float = 24
+    lna_gain: float = 24
     lpf_cutoff: float = 10e6
     active_termination: float = None
     tgc_samples: Union[list, np.ndarray, None] = None
@@ -164,13 +165,19 @@ class Us4OEM(_device.Device):
                     self.cfg.active_channel_groups
                 self.set_dtgc(attenuation=self.cfg.dtgc)
                 self.set_pga_gain(gain=self.cfg.pga_gain)
-                self.set_lna_gain(gain=self.cfg.lna_again)
+                self.set_lna_gain(gain=self.cfg.lna_gain)
                 self.set_lpf_cutoff(cutoff=self.cfg.lpf_cutoff)
                 self.set_active_termination(
                     active_termination=self.cfg.active_termination)
                 if self.cfg.tgc_samples is None:
                     self.disable_tgc()
                 else:
+                    if self.cfg.pga_gain != 30 or self.cfg.lna_gain != 24:
+                        raise ValueError(f"When setting TGC samples curve "
+                                         f"pga_gain and and lna_gain should "
+                                         f"equal 30 and 24 respectively "
+                                         f"is: {self.cfg.pga_gain} and "
+                                         f"{self.cfg.lna_gain}")
                     tgc_db_values = np.array(self.cfg.tgc_samples)
                     tgc_db_values = tgc_db_values-14
                     tgc_db_values = tgc_db_values/40
