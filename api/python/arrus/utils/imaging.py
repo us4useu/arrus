@@ -319,7 +319,9 @@ def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
 
 def compute_tx_delays(angles, focus, pitch, c=1490, n_chanels=128):
     """
-
+    Computes Tx delays using given parameters.
+    
+    
     :param angles: Transmission angles [rad].
                    Can be a number or a list (for multiple angles).
     :param focus: Focal length [m].
