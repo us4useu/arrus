@@ -225,7 +225,8 @@ def reconstruct_rf_img(rf, x_grid, z_grid,
 
 def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
     """
-    The function for creating b-mode image
+    The function for creating b-mode image.
+    
     :param rf_image: 2D rf image
     :param x_grid: vector of x coordinates
     :param y_grid: vector of y coordinates
