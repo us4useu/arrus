@@ -51,24 +51,31 @@ function(create_python_venv TARGET_NAME VENV_WORKING_DIR)
     )
 endfunction()
 
-function(install_arrus_package TARGET_NAME VENV_TARGET PACKAGE_TARGET)
+function(install_arrus_package TARGET_NAME VENV_TARGET PACKAGE_TARGET INSTALLATION_TYPE)
     get_target_property(INSTALL_VENV_EXECUTABLE ${VENV_TARGET} VENV_EXECUTABLE)
     get_target_property(INSTALL_VENV_DIR ${VENV_TARGET} VENV_DIR)
     get_target_property(ARRUS_PACKAGE_NAME ${PACKAGE_TARGET} PACKAGE_NAME)
     get_target_property(ARRUS_PACKAGE_DIR ${PACKAGE_TARGET} PACKAGE_DIR)
+    get_target_property(ARRUS_PACKAGE_SETUP_PY_DIR ${PACKAGE_TARGET} PACKAGE_SETUP_PY_DIR)
     get_target_property(ARRUS_PACKAGE_STAMP ${PACKAGE_TARGET} PACKAGE_TIMESTAMP)
 
+    if("${INSTALLATION_TYPE}" STREQUAL "PKG")
+        set(INSTALL_ARRUS_OPTIONS "--upgrade" "--force-reinstall" "--find-links=${ARRUS_PACKAGE_DIR}" "${ARRUS_PACKAGE_NAME}")
+    elseif("${INSTALLATION_TYPE}" STREQUAL "DIR")
+        set(INSTALL_ARRUS_OPTIONS "-e" "${ARRUS_PACKAGE_SETUP_PY_DIR}")
+    endif()
+
+    # install the package
     set(INSTALL_TIMESTAMP ${INSTALL_VENV_DIR}/${TARGET_NAME}_timestamp)
 
     add_custom_command(OUTPUT ${INSTALL_TIMESTAMP}
         COMMAND
             ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
         COMMAND
-            ${INSTALL_VENV_EXECUTABLE}
-            -m pip install --upgrade --force-reinstall
+            ${INSTALL_VENV_EXECUTABLE} -m pip install
             #TODO(pjarosik) consider appending timestamp to project version
-            # in order to avoid unecessary reinstallation of arrus dependencies
-            --find-links=${ARRUS_PACKAGE_DIR} ${ARRUS_PACKAGE_NAME}
+            # in order to avoid unecessary reinstallation of arius dependencies
+            ${INSTALL_ARRUS_OPTIONS}
         DEPENDS
             ${VENV_TARGET} ${PACKAGE_TARGET} ${ARRUS_PACKAGE_STAMP}
         WORKING_DIRECTORY

@@ -18,47 +18,49 @@ def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
     parser.add_argument("--config", dest="config",
                         type=str, required=False, default="Release")
-    parser.add_argument("--targets", dest="targets",
-                        type=str, required=False, nargs="*")
+    parser.add_argument("--source_dir", dest="source_dir",
+                        type=str, required=False,
+                        default=os.environ.get(SRC_ENVIRON, None))
+
+    parser.add_argument("--us4r_dir", dest="us4r_dir",
+                        type=str, required=False,
+                        default=None)
 
     args = parser.parse_args()
-    targets = args.targets
     configuration = args.config
+    src_dir = args.source_dir
+    us4r_dir = args.us4r_dir
 
-    src_dir = os.environ.get(SRC_ENVIRON, None)
-    install_dir = os.environ.get(INSTALL_ENVIRON, None)
-    if src_dir is None or install_dir is None:
-        raise ValueError("%s and %s environment variables should be declared"
-                         % (SRC_ENVIRON, INSTALL_ENVIRON))
+    if src_dir is None:
+        raise ValueError("%s environment variable should be declared "
+                         "or provided as input parameter."
+                         % (SRC_ENVIRON))
 
     build_dir = os.path.join(src_dir, "build")
-
-    extra_options = []
-    if args.targets is not None:
-        extra_options = [
-            "--target", " ".join(args.targets)
-        ]
 
     cmake_cmd = [
         "cmake",
         "--build", build_dir,
         "--config", configuration
-    ] + extra_options
+    ]
 
     print("Calling: %s" % (" ".join(cmake_cmd)))
+
+    current_env = os.environ.copy()
+    if us4r_dir is not None:
+        current_env["PATH"] = os.path.join(us4r_dir, "lib64") +os.pathsep + current_env["PATH"]
+
+    print(f"Calling with Path {current_env['PATH']}")
+    process = subprocess.Popen(cmake_cmd, env=current_env)
+    process.wait()
+    return_code = process.returncode
+    # TODO(pjarosik) consider capturing stderr info and log it into debug
+    if return_code != 0:
+        raise RuntimeError(f"The process {args} exited with code "
+                           f"{return_code}")
     result = subprocess.call(cmake_cmd)
+
     assert_no_error(result)
-
-    cmake_install_cmd = [
-        "cmake",
-        "--install", build_dir,
-        "--prefix", install_dir
-    ]
-    print("Calling: %s"%(" ".join(cmake_install_cmd)))
-    result = subprocess.call(cmake_install_cmd)
-    assert_no_error(result)
-
-
 
 if __name__ == "__main__":
     main()

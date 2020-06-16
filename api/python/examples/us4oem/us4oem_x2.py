@@ -37,7 +37,7 @@ for card in cards:
     card.set_lna_gain(24)  # [dB]
     card.set_dtgc(0)
     # card.disable_tgc()
-    card.set_tgc_samples([0x9001] + (0x4000 + np.arange(1500, 0, -14)).tolist() + [0x4000 + 3000])
+    card.set_tgc_samples(np.arange(0, 1, step=0.2))
     card.enable_tgc()
 
 # Configure TX/RX scheme.
@@ -125,7 +125,7 @@ canvas = plt.imshow(
 )
 fig.show()
 
-master_card.trigger_start()
+master_card.start_trigger()
 # time.sleep(0.1)
 time.sleep(1*PRI*1e-6*NEVENTS)
 
@@ -161,6 +161,6 @@ while not is_closed:
     fig.canvas.flush_events()
     plt.draw()
 
-master_card.trigger_stop()
+master_card.stop_trigger()
 
 

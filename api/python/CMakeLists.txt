@@ -19,7 +19,6 @@ set(Us4Wrappers
     ihv256
     idbarlite
 )
-find_package(Us4 REQUIRED Us4Components)
 
 foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     set_property(SOURCE wrappers/${wrapper}.i PROPERTY CPLUSPLUS ON)
@@ -46,9 +45,11 @@ foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
     target_include_directories(${wrapper}
         PRIVATE
         ${PYTHON_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(${wrapper}
        PRIVATE
+       core
        Us4::${component}
         ${PYTHON_LIBRARIES}
     )
@@ -62,24 +63,34 @@ include(python)
 set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
-        "arrus/__init__.py"
-        "arrus/beam.py"
-        "arrus/interface.py"
-        "arrus/session.py"
-        "arrus/tests/beam_test.py"
-        "arrus/tests/session_test.py"
-        "arrus/tests/tools.py"
-        "arrus/devices/__init__.py"
-        "arrus/devices/us4oem.py"
-        "arrus/devices/device.py"
-        "arrus/devices/hv256.py"
-        "arrus/devices/probe.py"
-        "arrus/devices/tests/probe_test.py"
-        "arrus/utils/__init__.py"
-        "arrus/utils/imaging.py"
-        "arrus/utils/parameters.py"
-        "arrus/utils/tests/utils_test.py"
-        "arrus/utils/tests/parameters_test.py"
+    "arrus/__init__.py"
+    "arrus/beam.py"
+    "arrus/interface.py"
+    "arrus/kernels.py"
+    "arrus/session.py"
+    "arrus/params.py"
+    "arrus/system.py"
+    "arrus/validation.py"
+    "arrus/ops/__init__.py"
+    "arrus/ops/operations.py"
+    "arrus/devices/__init__.py"
+    "arrus/devices/callbacks.py"
+    "arrus/devices/device.py"
+    "arrus/devices/hv256.py"
+    "arrus/devices/probe.py"
+    "arrus/devices/us4oem.py"
+    "arrus/utils/__init__.py"
+    "arrus/utils/imaging.py"
+    "arrus/utils/parameters.py"
+    "arrus/tests/tools.py"
+)
+set(TEST_FILES
+    "arrus/tests/beam_test.py"
+    "arrus/tests/session_test.py"
+    "arrus/devices/tests/probe_test.py"
+    "arrus/utils/tests/utils_test.py"
+    "arrus/utils/tests/parameters_test.py"
+    "arrus/tests/us4oem_kernels_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -96,7 +107,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
         ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
-    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${Us4Wrappers}
+    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} ${Us4Wrappers}
 )
 
 add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})
@@ -105,5 +116,49 @@ set_target_properties(
     PROPERTIES
         PACKAGE_TIMESTAMP ${TIMESTAMP}
         PACKAGE_NAME ${PYTHON_PACKAGE_NAME}
+        PACKAGE_SETUP_PY_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist
 )
+
+################################################################################
+# Copy .whl package to install directory
+################################################################################
+get_target_property(ARRUS_WHL_DIR python_whl PACKAGE_DIR)
+
+install(
+    FILES
+        "${ARRUS_WHL_DIR}/${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-py3-none-any.whl"
+    DESTINATION
+        ${ARRUS_PYTHON_INSTALL_DIR}
+    RENAME
+        "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-cp37-cp37m-win_amd64.whl"
+    COMPONENT
+        python_whl
+)
+
+install(
+	FILES
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_pwi_single.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_multiple.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/cfg.yaml
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_old_api.py
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_single.py
+    DESTINATION
+        ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
+)
+
+################################################################################
+# Python tests
+################################################################################
+if(ARRUS_RUN_TESTS)
+    #create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
+    #install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+    #get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
+    #foreach(TEST_FILE IN LISTS TEST_FILES)
+    #    add_test(
+    #        NAME ${TEST_FILE}
+    #        COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
+    #    )
+    #endforeach()
+endif()
+

@@ -3,6 +3,7 @@
 ################################################################################
 set(SOURCE_FILES
     "arrus/Us4R.m"
+    "arrus/Us4RSystem.m"
     "arrus/BModeDisplay.m"
     "arrus/Operation.m"
     "arrus/SimpleTxRxSequence.m"
@@ -15,6 +16,9 @@ set(SOURCE_FILES
     "arrus/reconstructRfImg.m"
     "arrus/reconstructRfLin.m"
     "arrus/scanConversion.m"
+    "examples/Us4R_control.m"
+    "examples/Us4R_maxSequence.m"
+    "examples/Us4RUltrasonix_control.m"
 )
 
 ################################################################################
@@ -49,4 +53,13 @@ install(
         ${ARRUS_MATLAB_INSTALL_DIR}
 )
 
+install(
+	FILES
+		#TODO(pjarosik) to be consistent, move to CURRENT_BINARY_DIR
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/Us4R_control.m
+	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/Us4R_maxSequence.m
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/Us4RUltrasonix_control.m
+    DESTINATION
+        ${ARRUS_MATLAB_INSTALL_DIR}/examples
+)
 

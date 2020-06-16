@@ -30,16 +30,13 @@ for us4oem in us4oems:
     us4oem.set_active_termination(200)
     us4oem.set_lna_gain(24)  # [dB]
     us4oem.set_dtgc(0)
-    # card.disable_tgc()
-    us4oem.set_tgc_samples([0x9001]
-                           +(0x4000 + np.arange(2500, 0, -50)).tolist()
-                           +[0x4000 + 3000])
+    us4oem.set_tgc_samples(np.arange(0.0, 1.0, step=0.2))
     us4oem.enable_tgc()
 
 # Configure TX/RX scheme.
 NMODULES = 2
 NEVENTS = 2
-NSAMPLES = 8*1024
+NSAMPLES = 2 * 1024
 TX_FREQUENCY = 8.125e6
 PRI = 1000e-6
 
@@ -47,29 +44,31 @@ for us4oem in us4oems:
     us4oem.set_number_of_firings(NEVENTS)
     us4oem.clear_scheduled_receive()
 
+delays = np.linspace(0, 5e-6, num=128)
+
 for i in range(NEVENTS):
     for module_number in range(NMODULES):
         us4oem = us4oems[module_number]
         if module_number == 0:
             us4oem.set_tx_delays(
-                delays=[1e-6]*32
-                     + [0.0]*32
-                     + [1e-6]*32
-                     + [0.0]*32,
-                     firing=i)
+                delays=delays[0:32].tolist()
+                       + [0.0] * 32
+                       + delays[64:96].tolist()
+                       + [0.0] * 32,
+                firing=i)
             us4oem.set_tx_aperture_mask(
                 aperture=np.array(
                     [True] * 32
-                  + [False]* 32
-                  + [True] * 32
-                  + [False]* 32
+                    + [False] * 32
+                    + [True] * 32
+                    + [False] * 32
                 ),
                 firing=i
             )
             if i == 0:
                 us4oem.set_rx_aperture_mask(
                     aperture=np.array(
-                          [True] * 32
+                        [True] * 32
                         + [False] * 32
                         + [False] * 32
                         + [False] * 32
@@ -79,23 +78,23 @@ for i in range(NEVENTS):
             else:
                 us4oem.set_rx_aperture_mask(
                     aperture=np.array(
-                          [False] * 32
+                        [False] * 32
                         + [False] * 32
-                        + [True]  * 32
+                        + [True] * 32
                         + [False] * 32
                     ),
                     firing=i
                 )
         else:
             us4oem.set_tx_delays(
-                delays=  [0.0] * 32
-                       + [1e-6] * 32
+                delays=[0.0] * 32
+                       + delays[32:64].tolist()
                        + [0.0] * 32
-                       + [1e-6] * 32,
+                       + delays[96:128].tolist(),
                 firing=i)
             us4oem.set_tx_aperture_mask(
                 aperture=np.array(
-                      [False] * 32
+                    [False] * 32
                     + [True] * 32
                     + [False] * 32
                     + [True] * 32
@@ -105,8 +104,8 @@ for i in range(NEVENTS):
             if i == 0:
                 us4oem.set_rx_aperture_mask(
                     aperture=np.array(
-                          [False] * 32
-                        + [True]  * 32
+                        [False] * 32
+                        + [True] * 32
                         + [False] * 32
                         + [False] * 32
                     ),
@@ -115,10 +114,10 @@ for i in range(NEVENTS):
             else:
                 us4oem.set_rx_aperture_mask(
                     aperture=np.array(
-                          [False] * 32
+                        [False] * 32
                         + [False] * 32
                         + [False] * 32
-                        + [True]  * 32
+                        + [True] * 32
                     ),
                     firing=i
                 )
@@ -129,19 +128,31 @@ for i in range(NEVENTS):
         us4oem.set_rx_delay(delay=5e-6, firing=i)
         us4oem.enable_transmit()
 
+    # Active channel groups
+    active_channels_mask_0 = [1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0]
+    active_channels_mask_1 = active_channels_mask_0[::-1]
+
+    us4oems[0].set_active_channel_group(
+        active_channels_mask_0,
+        firing=i
+    )
+    us4oems[1].set_active_channel_group(
+        active_channels_mask_1,
+        firing=i
+    )
 
 for us4oem in us4oems:
     us4oem.enable_transmit()
     us4oem.clear_scheduled_receive()
     for i in range(NEVENTS):
-        us4oem.schedule_receive(i*NSAMPLES, NSAMPLES)
+        us4oem.schedule_receive(i * NSAMPLES, NSAMPLES)
     us4oem.enable_receive()
 
 master_module.set_n_triggers(NEVENTS)
 
 for i in range(NEVENTS):
     master_module.set_trigger(PRI, 0, False, i)
-master_module.set_trigger(PRI, 0, True, NEVENTS-1)
+master_module.set_trigger(PRI, 0, True, NEVENTS - 1)
 
 # Run the scheme:
 # - prepare figure to display
@@ -156,6 +167,7 @@ ax.set_aspect("auto")
 fig.canvas.set_window_title("RF data")
 
 is_closed = False
+
 
 def set_closed(_):
     global is_closed
@@ -173,7 +185,7 @@ canvas = plt.imshow(
 )
 fig.show()
 
-master_module.trigger_start()
+master_module.start_trigger()
 
 while not is_closed:
     start = time.time()
@@ -184,13 +196,13 @@ while not is_closed:
     # - transfer data from module's internal memory to the host memory
     buffers = []
     for us4oem in us4oems:
-        buffer = us4oem.transfer_rx_buffer_to_host(0, NEVENTS*NSAMPLES)
+        buffer = us4oem.transfer_rx_buffer_to_host(0, NEVENTS * NSAMPLES)
         buffers.append(buffer)
     # - reorder acquired data
     rf[:, 0:32] = buffers[0][0:NSAMPLES, :]
     rf[:, 32:64] = buffers[1][0:NSAMPLES, :]
-    rf[:, 64:96] = buffers[0][NSAMPLES:2*NSAMPLES, :]
-    rf[:, 96:128] = buffers[1][NSAMPLES:2*NSAMPLES, :]
+    rf[:, 64:96] = buffers[0][NSAMPLES:2 * NSAMPLES, :]
+    rf[:, 96:128] = buffers[1][NSAMPLES:2 * NSAMPLES, :]
 
     end = time.time()
     print("Acq time: %.3f" % (end - start), end="\r")
@@ -200,6 +212,4 @@ while not is_closed:
     fig.canvas.flush_events()
     plt.draw()
 
-master_module.trigger_stop()
-
-
+master_module.stop_trigger()

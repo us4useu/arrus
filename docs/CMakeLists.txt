@@ -6,6 +6,14 @@ set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 set(DOC_FILES
     "index.rst"
     "content/introduction.rst"
+    "content/installation/index.rst"
+    "content/installation/api.python.rst"
+    "content/installation/api.matlab.rst"
+    "content/installation/img/dev_manager.png"
+    "content/installation/img/paths.png"
+    "content/installation/img/result.png"
+    "content/installation/img/install_result.png"
+    "content/installation/img/thunderbolt.png"
     "content/examples/bmode_imaging.matlab.rst"
     "content/examples/single_module.python.rst"
     "content/examples/img/coordinate_system.jpeg"
@@ -109,7 +117,7 @@ create_python_venv(docs_venv ${CMAKE_CURRENT_BINARY_DIR})
 install_sphinx_package(sphinx_package docs_venv)
 
 if(ARRUS_BUILD_PY)
-    install_arrus_package(arrus_package docs_venv python_whl)
+    install_arrus_package(arrus_package docs_venv python_whl "PKG")
     CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arrus_package)
     CREATE_DOC_TARGET(python html docs_venv sphinx_package arrus_package)
 endif()

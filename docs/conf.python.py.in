@@ -33,22 +33,33 @@ def mock_import(module_name: str, **kwargs):
 
 mock_import(
     "arrus.devices.ius4oem",
-    IUs4OEM=None
+    IUs4OEM=None,
+    ScheduleReceiveCallback=object
 )
 mock_import(
     "arrus.devices.idbarLite",
+    IDbarLite=None
 )
 mock_import(
     "arrus.devices.ihv256",
+    IHV256=None
 )
 
 # -- Project information -----------------------------------------------------
+
 project = 'ARRUS (${LANGUAGE})'
 copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 
-release = '${PROJECT_VERSION}'
-rst_epilog = ".. |api_language| replace:: %s" % '${LANGUAGE}'
+# The full version, including alpha/beta/rc tags
+release = '${PROJECT_FULL_VERSION}'
+
+rst_epilog = """
+.. |api_language| replace:: ${LANGUAGE}
+.. |arrus_version| replace:: ${PROJECT_VERSION}
+.. |arrus| replace:: arrus
+.. _arrus: https://github.com/us4useu/arrus-public/releases/download/${PROJECT_FULL_VERSION}/arrus-${PROJECT_FULL_VERSION}.zip
+"""
 
 # -- General configuration ---------------------------------------------------
 
@@ -74,7 +85,7 @@ numfig = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-# html_theme = 'sphinx_rtd_theme'
+html_theme = 'sphinx_rtd_theme'
 
 # Themes related variables:
 html_show_sourcelink = False
