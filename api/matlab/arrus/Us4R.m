@@ -21,8 +21,8 @@ classdef Us4R < handle
     
     methods
 
-        function obj = Us4R(nArius, probeName, voltage, logTime)
-            if nargin < 4
+        function obj = Us4R(nArius, probeName, adapterType, voltage, logTime)
+            if nargin < 5
                 obj.logTime = false;
             else
                 obj.logTime = logTime;
@@ -36,7 +36,7 @@ classdef Us4R < handle
 
             obj.sys.voltage = voltage;
             
-            probe = probeParams(probeName);
+            probe = probeParams(probeName,adapterType);
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
@@ -45,15 +45,23 @@ classdef Us4R < handle
             obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
                             (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
 
-            obj.sys.nChCont = obj.sys.nChArius * (nArius*obj.sys.adapType + 1*~obj.sys.adapType);
-            obj.sys.nChTotal = obj.sys.nChArius * 4 * (nArius*~obj.sys.adapType + 1*obj.sys.adapType);
-
-            if ~obj.sys.adapType
+            if obj.sys.adapType == 0
                 % old adapter type (00001111)
+                obj.sys.nChCont = obj.sys.nChArius;
+                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
+                
                 obj.sys.selElem = (1:128).' + (0:(nArius-1))*128;
                 obj.sys.actChan = true(128,nArius);
-            else
+            elseif obj.sys.adapType == -1
+                % place for new adapter support
+                obj.sys.nChCont = obj.sys.nChArius * nArius;
+                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/abs(obj.sys.adapType);
+                
+            elseif obj.sys.adapType == 2
                 % new adapter type (01010101)
+                obj.sys.nChCont = obj.sys.nChArius * nArius;
+                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/obj.sys.adapType;
+                
 %                 obj.sys.selElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
 %                 nChanTot = nChan*4*nArius;
                 obj.sys.selElem = repmat((1:128).',[1 nArius]);
@@ -649,7 +657,7 @@ classdef Us4R < handle
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
             rxApOrig = obj.seq.rxApOrig;
-            if ~obj.sys.adapType
+            if obj.sys.adapType == 0
                 rf	= permute(rf,[2 1 3 6 4 5]);
                 
                 % old adapter type (00001111)
@@ -684,7 +692,10 @@ classdef Us4R < handle
                 end
                 rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
                 
-            else
+            elseif obj.sys.adapType == -1
+                % place for new adapter support
+                
+            elseif obj.sys.adapType == 2
                 % new adapter type (01010101)
                 rf	= permute(rf,[2 1 6 3 4 5]);
                 rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
