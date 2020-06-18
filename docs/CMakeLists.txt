@@ -14,6 +14,7 @@ set(DOC_FILES
     "content/installation/img/result.png"
     "content/installation/img/install_result.png"
     "content/installation/img/thunderbolt.png"
+    "content/installation/img/uninstall_arius_drv.png"
     "content/examples/bmode_imaging.matlab.rst"
     "content/examples/single_module.python.rst"
     "content/examples/img/coordinate_system.jpeg"
