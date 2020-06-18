@@ -57,6 +57,11 @@ classdef Us4R < handle
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/abs(obj.sys.adapType);
                 
+                obj.sys.selElem = reshape(  (1:obj.sys.nChArius).' ...
+                                          + (0:3)*obj.sys.nChArius*nArius, [], 1) ...
+                                          + (0:(nArius-1))*obj.sys.nChArius;
+                obj.sys.actChan = [true(96,nArius); false(32,nArius)];
+                
             elseif obj.sys.adapType == 2
                 % new adapter type (01010101)
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
@@ -660,7 +665,7 @@ classdef Us4R < handle
             if obj.sys.adapType == 0
                 rf	= permute(rf,[2 1 3 6 4 5]);
                 
-                % old adapter type (00001111)
+                % "old esaote" adapter type
 %                 for iTx=1:nTx
 %                     rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
 %                 end
@@ -692,11 +697,8 @@ classdef Us4R < handle
                 end
                 rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
                 
-            elseif obj.sys.adapType == -1
-                % place for new adapter support
-                
-            elseif obj.sys.adapType == 2
-                % new adapter type (01010101)
+            elseif obj.sys.adapType == 2 || obj.sys.adapType == -1
+                % "ultrasonix" or "new esaote" adapter type
                 rf	= permute(rf,[2 1 6 3 4 5]);
                 rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
                 
