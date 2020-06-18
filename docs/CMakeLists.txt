@@ -26,6 +26,7 @@ set(DOC_FILES
     "content/misc/img/us4us.png"
     "content/api.python.rst"
     "content/api.matlab.rst"
+    "content/low_level_api.matlab.rst"
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 
