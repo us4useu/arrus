@@ -43,7 +43,7 @@ endif()
 # Common dependencies
 ################################################################################
 if(ARRUS_BUILD_SWIG)
-    find_package(Us4 0.4.1 EXACT REQUIRED US4OEM HV256 DBARLite)
+    find_package(Us4 0.4.2 EXACT REQUIRED US4OEM HV256 DBARLite)
 endif()
 
 ################################################################################

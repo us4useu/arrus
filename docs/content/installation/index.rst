@@ -1,3 +1,5 @@
+.. _arrus-installation:
+
 ============
 Installation
 ============
@@ -30,8 +32,8 @@ Uninstall ARIUS drivers (if previously installed)
 If ARIUS drivers are installed on your computer, uninstall them first. ARIUS
 drivers are the legacy drivers that were required before 0.4.3 version.
 
-1. Open Windows Device Manager, uninstall **all** devices available in the
-   "Jungo Connectivity" node (including ``WinDriver1290``). **Check
+1. Open Windows Device Manager, uninstall ``ARIUS`` and ``WinDriver1290``
+   devices available in the "Jungo Connectivity" node. **Check
    "Delete the driver software for this device"**.
 
 .. figure:: img/uninstall_arius_drv.png
@@ -45,10 +47,11 @@ Install Us4OEM drivers
 
 1. Download and extract `us4oem-drivers-1290.zip <https://github.com/us4useu/arrus-public/releases/download/us4oem-drivers-1290/us4oem-drivers-1290.zip>`_
    file.
-3. Run ``install.bat`` with **administrative privileges**. Confirm driver
+2. Run ``install.bat`` with **administrative privileges**. Confirm driver
    installation if necessary.
 
-As a result, ``us4om`` nodes should be visible in the Device Manager.
+As a result, ``us4oem`` and ``us4OEM`` nodes should be visible in the
+Device Manager.
 
 .. figure:: img/dev_manager.png
     :scale: 100%
