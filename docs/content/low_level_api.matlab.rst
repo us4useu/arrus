@@ -4,8 +4,8 @@ Us4MEX API
 
 .. caution::
 
-    The API is deprecated and will be removed in the future. Please use
-    :ref:`arrus-api-main`.
+    The API is deprecated and will be removed in the future. We encourage you
+    to use API described here: :ref:`arrus-api-main`.
 
 General formula
 ===============
