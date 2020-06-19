@@ -590,6 +590,20 @@ classdef Us4R < handle
                     Us4MEX(iArius, "SetTxInvert", 0, iFire);
                     
                     %% Rx
+                    
+                    % corrections for the new esaote adapter
+                    if obj.sys.adapType == -1
+                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,(1:obj.sys.nChArius)+max(1,obj.seq.rxApOrig)-1)-1,obj.sys.nChArius);
+                        for ch=1:32
+                            Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(ch), ch, iFire);
+                        end
+                        rxSubApMask = obj.seq.rxSubApMask(:,iFire+1,iArius+1);
+                        elemIdx = cumsum(rxSubApMask) .* rxSubApMask;
+                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / obj.sys.nChArius) + 1;
+                        rejElem = any(elemIdx == rejElem.', 2);
+                        obj.seq.rxSubApMask(rejElem,iFire+1,iArius+1) = false;
+                    end
+                    
                     Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                     Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
