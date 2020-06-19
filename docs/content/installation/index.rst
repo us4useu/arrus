@@ -1,3 +1,5 @@
+.. _arrus-installation:
+
 ============
 Installation
 ============
@@ -25,26 +27,31 @@ cable and is enabled in your Thunderbolt software, e.g.:
 
 The `Connection status` should be `Connected` (or something similar).
 
-Then perform the following driver installation procedure:
+Uninstall ARIUS drivers (if previously installed)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If ARIUS drivers are installed on your computer, uninstall them first. ARIUS
+drivers are the legacy drivers that were required before 0.4.3 version.
 
-1. Download and extract `arius-drivers-1290.zip <https://github.com/us4useu/arrus-public/releases/download/arius-drivers-1290/arius-drivers-1290.zip>`_ file,
-   for example into ``C:\local\arius-drivers-1290\`` directory.
-2. Disable driver signature enforcement on Windows 10:
+1. Open Windows Device Manager, uninstall ``ARIUS`` and ``WinDriver1290``
+   devices available in the "Jungo Connectivity" node. **Check
+   "Delete the driver software for this device"**.
 
-    1. Click “start menu → Settings → Update and Security → Recovery →
-       Restart now” under Advanced startup
-    2. Press “Troubleshoot → Advanced options → Startup settings →
-       Restart”
-    3. After the computer restart a list of options should be presented.
-       Press F7 to choose “Disable driver signature enforcement”.
+.. figure:: img/uninstall_arius_drv.png
+    :scale: 100%
 
-3. Run ``C:\local\arius-drivers-1290\install.bat`` with **administrative
-   privileges**. Confirm driver installation if necessary.
-4. If your hardware is properly connected to the computer, a new ``PCI device``
-   node should be visible in Windows Device Manager. Install drivers for the
-   ``PCI Device`` using ``C:\local\arius-drivers-1290\drivers\arius.inf`` file.
+2. Restart computer.
 
-As a result, two ``ARIUS`` nodes should be visible in the Device Manager.
+
+Install Us4OEM drivers
+~~~~~~~~~~~~~~~~~~~~~~
+
+1. Download and extract `us4oem-drivers-1290.zip <https://github.com/us4useu/arrus-public/releases/download/us4oem-drivers-1290/us4oem-drivers-1290.zip>`_
+   file.
+2. Run ``install.bat`` with **administrative privileges**. Confirm driver
+   installation if necessary.
+
+As a result, ``us4oem`` and ``us4OEM`` nodes should be visible in the
+Device Manager.
 
 .. figure:: img/dev_manager.png
     :scale: 100%
