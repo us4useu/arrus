@@ -593,13 +593,14 @@ classdef Us4R < handle
                     
                     % corrections for the new esaote adapter
                     if obj.sys.adapType == -1
-                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,(1:obj.sys.nChArius)+max(1,obj.seq.rxApOrig)-1)-1,obj.sys.nChArius);
-                        for ch=1:32
+                        rxSubApMask = obj.seq.rxSubApMask(:,iFire+1,iArius+1);
+                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask)-1,obj.sys.nChArius);
+                        for ch=1:length(rxSubChanMap)
                             Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(ch), ch, iFire);
                         end
-                        rxSubApMask = obj.seq.rxSubApMask(:,iFire+1,iArius+1);
+                        
                         elemIdx = cumsum(rxSubApMask) .* rxSubApMask;
-                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / obj.sys.nChArius) + 1;
+                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
                         rejElem = any(elemIdx == rejElem.', 2);
                         obj.seq.rxSubApMask(rejElem,iFire+1,iArius+1) = false;
                     end
