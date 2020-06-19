@@ -358,21 +358,20 @@ classdef Us4R < handle
             nFire	= obj.seq.nFire;
             
             txSubApDel = cell(nArius,nTx);
-            txSubApMask = strings(nArius,nTx);
-            rxSubApMask = strings(nArius,nFire);
+            txSubApMask = false(128,nTx,nArius);
+            rxSubApMask = false(128,nFire,nArius);
             iSubTx = permute(1:nSubTx,[1 3 2]);
             for iArius=0:(nArius-1)
                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
-                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1));
+                txSubApMask(:,:,iArius+1) = obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
                 
                 rxSubApSelect = ceil(cumsum(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
                 rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
-                rxSubApMask(iArius+1,:) = obj.maskFormat(reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire));
+                rxSubApMask(:,:,iArius+1) = reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire);
             end
             
             actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
             actChanGroupMask = actChanGroupMask & obj.sys.actChan(8:8:end,:);
-            actChanGroupMask = obj.maskFormat(actChanGroupMask);
             
             obj.seq.actChanGroupMask = actChanGroupMask;
             obj.seq.txSubApMask = txSubApMask;
@@ -580,18 +579,18 @@ classdef Us4R < handle
             for iArius=0:(obj.sys.nArius-1)
                 for iFire=0:(obj.seq.nFire-1)
                     %% active channel groups
-                    Us4MEX(iArius, "SetActiveChannelGroup", obj.seq.actChanGroupMask(iArius+1), iFire);
+                    Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
                     %% Tx
                     iTx     = 1 + floor(iFire/obj.seq.nSubTx);
-                    Us4MEX(iArius, "SetTxAperture", obj.seq.txSubApMask(iArius+1,iTx), iFire);
+                    Us4MEX(iArius, "SetTxAperture", obj.maskFormat(obj.seq.txSubApMask(:,iTx,iArius+1)), iFire);
                     Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
                     Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
                     Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
                     Us4MEX(iArius, "SetTxInvert", 0, iFire);
                     
                     %% Rx
-                    Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
+                    Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                     Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
                     Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
