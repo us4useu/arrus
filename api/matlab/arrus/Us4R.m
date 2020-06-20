@@ -375,8 +375,10 @@ classdef Us4R < handle
                         rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
                         elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
                         rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
-                        rejElem = any(elemIdx == rejElem.', 2);
-                        rxSubApMask(rejElem,iFire+1,iArius+1) = false;
+                        if ~isempty(rejElem)
+                            rejElem = any(elemIdx == rejElem.', 2);
+                            rxSubApMask(rejElem,iFire+1,iArius+1) = false;
+                        end
                     end
                 end
             end
