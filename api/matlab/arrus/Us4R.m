@@ -368,6 +368,17 @@ classdef Us4R < handle
                 rxSubApSelect = ceil(cumsum(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
                 rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
                 rxSubApMask(:,:,iArius+1) = reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire);
+                
+                % rxSubApMask correction for the new esaote adapter
+                if obj.sys.adapType == -1
+                    for iFire=0:(nFire-1)
+                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
+                        elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
+                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
+                        rejElem = any(elemIdx == rejElem.', 2);
+                        rxSubApMask(rejElem,iFire+1,iArius+1) = false;
+                    end
+                end
             end
             
             actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
@@ -590,19 +601,12 @@ classdef Us4R < handle
                     Us4MEX(iArius, "SetTxInvert", 0, iFire);
                     
                     %% Rx
-                    
-                    % corrections for the new esaote adapter
+                    % SetRxChannelMapping for the new esaote adapter
                     if obj.sys.adapType == -1
-                        rxSubApMask = obj.seq.rxSubApMask(:,iFire+1,iArius+1);
-                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask)-1,obj.sys.nChArius);
+                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,obj.seq.rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
                         for ch=1:length(rxSubChanMap)
                             Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(ch), ch, iFire);
                         end
-                        
-                        elemIdx = cumsum(rxSubApMask) .* rxSubApMask;
-                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
-                        rejElem = any(elemIdx == rejElem.', 2);
-                        obj.seq.rxSubApMask(rejElem,iFire+1,iArius+1) = false;
                     end
                     
                     Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
