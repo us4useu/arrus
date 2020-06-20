@@ -1,6 +1,9 @@
 classdef TxRx
     % class corresponding to single 'transmit-and-receive' event
-    
+    % 
+    %   properties:
+    %       Tx - Tx object
+    %       Rx - Rx object
     properties
         Tx@Tx = Tx()
         Rx@Rx = Rx()

@@ -1,22 +1,27 @@
 classdef Tx
-    % Class corresponding to single atomic 'transmit' event
+    % Class corresponding to single atomic 'transmit' event.
     % 
-    % The properties of the object are:
-    % txAperture - logical mask where 0 and 1 corresponds to active and
-    %              inactive element respectively,
-    % txDelays - vector of transmit delays in [s], 
-    % txNPeriods - number of transmit periods,
-    % txFrequency - transmit frequency [Hz].
+    %   properties:
+    %       txAperture - logical mask where 0 and 1 corresponds to
+    %           active and inactive element respectively,
+    %       txDelays - vector of transmit delays in [s], 
+    %       txNPeriods - number of transmit periods,
+    %       txFrequency - transmit frequency [Hz].
     %
-    % Tx() creates Tx object with all empty properties.
-    % To pass arguments to the constructor name-value convetion is used.
-    % If txDelays is empty or not given, transmit delays are set to 0.
-    % If txNPeriods is not given, the default value 2 is set.
-    % If txAperture and txDelays are non-empty, they should have the same
-    % size.
-    % If txAperture is nonempty and non-all-zeroes, txFrequency must be
-    % given.
-    
+    %   methods:
+    %       Tx() - constructor.
+    %       Tx() creates Rx object with all empty properties.
+    %       To pass arguments to the constructor name-value convetion is used.
+    %       Example: Tx('txAperture', logical(1:128), 'txFrequency', 5e6)
+    %       If txDelays is empty or not given, transmit delays are set to 0.
+    %       If txNPeriods is not given, the default value 2 is set.
+    %       If txAperture and txDelays are non-empty, they should have the same
+    %           size.
+    %       If txAperture is nonempty and non-all-zeroes, txFrequency must be
+    %           given.
+    %
+    %
+     
     properties
         txAperture
         txDelays 
