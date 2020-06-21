@@ -328,7 +328,7 @@ classdef Us4R < handle
             if isempty(obj.seq.rxApCent)
                 obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.rxCentElem);
             else
-                obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.txApCent);
+                obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
             
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2);
