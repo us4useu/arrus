@@ -323,6 +323,8 @@ classdef Us4R < handle
             
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.txCentElem);
+            else
+                obj.seq.txCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.txApCent);
             end
 
             if isempty(obj.seq.rxApCent)
@@ -448,8 +450,11 @@ classdef Us4R < handle
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
             % obj.seq.rxApMask      - [logical] (nArius*128 x nTx) is element active in rx?
             
-            txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
-            rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
+%             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
+%             rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
+            
+            txApMask = round(abs((1:obj.sys.nElem).' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
+            rxApMask = round(abs((1:obj.sys.nElem).' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
             
             % Make the mask fit the number of channels
             if obj.sys.nElem >= obj.sys.nChTotal
