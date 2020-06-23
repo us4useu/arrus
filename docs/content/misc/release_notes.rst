@@ -1,6 +1,16 @@
 Release notes
 =============
 
+Version 0.4.4
+-------------
+
+- MATLAB API:
+
+    - The Us4R constructor now requires the ``adapterType`` parameter to be \
+      explicitly provided. Please check :ref:`arrus-Us4R` documentation.
+    - A support for new Esaote probes adapter have been added. The new Esaote \
+      adapter is identified by the name ``'esaotev2'``.
+
 Version 0.4.3
 -------------
 

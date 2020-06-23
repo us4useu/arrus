@@ -32,7 +32,7 @@ end
 %% Adapter type & channel mapping
 switch probeName
     case {'AL2442','SL1543','AC2541'}
-        if adapterType==0
+        if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
             probe.rxChannelMap	= [32:-1:1; 1:1:32];
@@ -42,7 +42,7 @@ switch probeName
                                     probe.rxChannelMap + 32, ...
                                     probe.rxChannelMap + 64, ...
                                     probe.rxChannelMap + 96];
-        elseif adapterType==1
+        elseif strcmp(adapterType, "esaotev2")
             probe.adapType      = -1;
             
             probe.rxChannelMap	= [ 26  27  25  23  28  22  20  21  24  18  19  15  17  16  29  13 ...
@@ -61,11 +61,11 @@ switch probeName
             probe.txChannelMap	= probe.rxChannelMap;
              
         else
-            error(['No adapter of type ' num2str(adapterType) ' available for the ' probeName ' probe.']);
+            error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
         end
     
     case 'L14-5/38'
-        if adapterType==2
+        if strcmp(adapterType, "ultrasonix")
             probe.adapType      = 2;
             
             probe.rxChannelMap	= [1:1:32; 32:-1:1];
@@ -75,7 +75,7 @@ switch probeName
                                     probe.rxChannelMap + 64, ...
                                     probe.rxChannelMap + 96];
         else
-            error(['No adapter of type ' num2str(adapterType) ' available for the ' probeName ' probe.']);
+            error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
         end
         
 end

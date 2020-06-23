@@ -3,11 +3,21 @@ classdef Us4R < handle
     %
     % This class provides functions to configure the system and perform
     % data acquisition using the Us4R.
+    % 
+    % Available probe names:
+    % 
+    % - Esaote: 'AL2442', 'SL1543', 'AC2541',
+    % - Ultrasonix: 'L14-5/38'.
+    % 
+    % Available adapter types:
     %
+    % - 'esaote': legacy adapter for esaote probes,
+    % - 'esaotev2': current version of the esaote adapter,
+    % - 'ultrasonix': current version of the ultrasonix probe adapter. 
+    % 
     % :param nArius: number of Us4OEM modules available in the us4R system
-    % :param probeName: name of the probe to use, available: \
-    %    Esaote: 'AL2442', 'SL1543', \
-    %    Ultrasonix: 'L14-5/38'
+    % :param probeName: name of the probe to use
+    % :param adapterType: name of the adapter type to use
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]
     % :param logTime: set to true if you want to display acquisition \
     %    and reconstruction time (optional)

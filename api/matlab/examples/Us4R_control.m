@@ -4,7 +4,7 @@ addpath('../arrus');
 
 nUs4OEM     = 2;
 probeName	= 'SL1543';
-adapterType = 1;
+adapterType = 'esaotev2';
 
 txFrequency = 7e6;
 samplingFrequency = 65e6;
