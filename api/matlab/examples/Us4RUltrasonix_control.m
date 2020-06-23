@@ -4,7 +4,7 @@ addpath('../arrus');
 
 nUs4OEM     = 2;
 probeName	= 'L14-5/38';
-adapterType = 2;
+adapterType = 'ultrasonix';
 
 txFrequency = 7e6;
 samplingFrequency = 65e6;
