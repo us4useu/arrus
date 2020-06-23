@@ -610,9 +610,12 @@ classdef Us4R < handle
                     %% Rx
                     % SetRxChannelMapping for the new esaote adapter
                     if obj.sys.adapType == -1
-                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,obj.seq.rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
-                        for ch=1:length(rxSubChanMap)
-                            Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(ch), ch, iFire);
+                        rxSubChanIdx = find(obj.seq.rxSubApMask(:,iFire+1,iArius+1));
+                        rxSubChanMap = obj.sys.rxChannelMap(iArius+1,rxSubChanIdx);
+                        rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
+                        rxSubChanMap = 1+mod(rxSubChanMap-1,obj.sys.nChArius);
+                        for ch=1:length(rxSubChanIdx)
+                            Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(ch), rxSubChanIdx(ch), iFire);
                         end
                     end
                     
