@@ -561,8 +561,13 @@ classdef Us4R < handle
             %% Program mappings, gains, and voltage
             for iArius=0:(obj.sys.nArius-1)
                 % Set Rx channel mapping
-                for ch=1:32
-                    Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,ch), ch);
+%                 for ch=1:32
+%                     Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,ch), ch);
+%                 end
+                for iFire=0:(obj.seq.nFire-1)
+                    for ch=1:32
+                        Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,ch), ch, iFire);
+                    end
                 end
 
                 % Set Tx channel mapping
