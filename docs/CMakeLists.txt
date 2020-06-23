@@ -14,6 +14,7 @@ set(DOC_FILES
     "content/installation/img/result.png"
     "content/installation/img/install_result.png"
     "content/installation/img/thunderbolt.png"
+    "content/installation/img/uninstall_arius_drv.png"
     "content/examples/bmode_imaging.matlab.rst"
     "content/examples/single_module.python.rst"
     "content/examples/img/coordinate_system.jpeg"
@@ -25,6 +26,7 @@ set(DOC_FILES
     "content/misc/img/us4us.png"
     "content/api.python.rst"
     "content/api.matlab.rst"
+    "content/low_level_api.matlab.rst"
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 

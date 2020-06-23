@@ -1,6 +1,14 @@
 Release notes
 =============
 
+Version 0.4.3
+-------------
+
+- Added signed drivers for Windows, changed driver name from
+  ``ARIUS`` to ``us4OEM``.
+  Check :ref:`arrus-installation` procedure for information how to
+  update drivers.
+
 Version 0.4.2
 -------------
 
