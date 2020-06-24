@@ -742,6 +742,13 @@ classdef Us4R < handle
                 
             elseif obj.sys.adapType == 2 || obj.sys.adapType == -1
                 % "ultrasonix" or "new esaote" adapter type
+                
+                % new esaote probe: clear the unsupported channels
+                if obj.sys.adapType == -1
+                    mask = any(reshape(obj.seq.rxSubApMask,nChan,4,nSubTx,nTx,1,nArius),2);
+                    rf  = rf .* double(mask);
+                end
+                
                 rf	= permute(rf,[2 1 6 3 4 5]);
                 rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
                 
