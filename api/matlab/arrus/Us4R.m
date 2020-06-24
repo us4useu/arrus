@@ -746,7 +746,7 @@ classdef Us4R < handle
                 % new esaote probe: clear the unsupported channels
                 if obj.sys.adapType == -1
                     mask = any(reshape(obj.seq.rxSubApMask,nChan,4,nSubTx,nTx,1,nArius),2);
-                    rf  = rf .* double(mask);
+                    rf  = rf .* int16(mask);
                 end
                 
                 rf	= permute(rf,[2 1 6 3 4 5]);
