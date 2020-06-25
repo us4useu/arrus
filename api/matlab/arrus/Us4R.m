@@ -12,7 +12,7 @@ classdef Us4R < handle
     % Available adapter types:
     %
     % - 'esaote': legacy adapter for esaote probes,
-    % - 'esaotev2': current version of the esaote adapter,
+    % - 'esaote2': current version of the esaote adapter,
     % - 'ultrasonix': current version of the ultrasonix probe adapter. 
     % 
     % :param nArius: number of Us4OEM modules available in the us4R system
