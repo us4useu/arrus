@@ -2,14 +2,23 @@ classdef TxRxKernel
     
     
     properties
-        
-        
+        sequence = TxRxSequence()
+        sys = []
     end
     
     methods
-        function obj = TxRxKernel(sys, TxRxSequence)
-            obj.sys = sys;
-            obj.TxRxSequence = TxRxSequence;
+        function obj = TxRxKernel(varargin)
+            if nargin ~= 0
+                p = inputParser;
+                                
+                % adding parameters to parser
+                addParameter(p, 'sys', [])
+                addParameter(p, 'sequence', TxRxSequence())
+                parse(p, varargin{:})
+                
+                obj.sys = p.Results.sys;
+                obj.sequence= p.Results.sequence;
+            end
             
             
         end
@@ -61,8 +70,8 @@ classdef TxRxKernel
             end
             
             % Program Tx/Rx sequence
-            for iArius=0:(obj.sys.nArius-1)
-                for iFire=0:(obj.seq.nFire-1)
+            for iArius = 0:obj.sys.nArius-1
+                for iFire = 0:obj.seq.nFire-1 
                     % active channel groups
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.seq.actChanGroupMask(iArius+1), iFire);
                     
@@ -110,6 +119,21 @@ classdef TxRxKernel
                 
             end
             
+        end
+        
+        function nFirings = enumNFirings(obj)
+            
+%             maxRxChannels = obj.sys.nChArius;
+            maxRxChannels = 32;
+            nFirings = 0;
+            for iTxRx = 1:length(obj.sequence.TxRxList)
+                thisRxAperture = obj.sequence.TxRxList(1,iTxRx).Rx.rxAperture;
+                apertureLenght = length(thisRxAperture);
+                iTxRxFirings = ceil(apertureLenght./maxRxChannels);
+                nFirings = nFirings + iTxRxFirings;
+
+            end
+            nFirings = 0;
         end
         
         

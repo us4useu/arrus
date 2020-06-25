@@ -18,7 +18,7 @@ classdef TxRx
                 % adding parameters to parser
                 addParameter(p, 'Tx',Tx())
                 addParameter(p, 'Rx',Rx())
-                parse(p,varargin{:})
+                parse(p, varargin{:})
                                 
                 obj.Tx = p.Results.Tx;
                 obj.Rx = p.Results.Rx;
