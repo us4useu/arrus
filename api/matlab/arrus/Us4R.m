@@ -568,6 +568,10 @@ classdef Us4R < handle
         
         function programHW(obj)
             
+            % Unloading Us4MEX should clear the device state.
+            munlock('Us4MEX');
+            clear Us4MEX;
+            
             %% Program mappings, gains, and voltage
             for iArius=0:(obj.sys.nArius-1)
                 % Set Rx channel mapping
@@ -610,8 +614,8 @@ classdef Us4R < handle
             
             %% Program Tx/Rx sequence
             for iArius=0:(obj.sys.nArius-1)
-                for iFire=0:(obj.seq.nFire-1)
-                    %% active channel groups
+                Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
+                for iFire=0:(obj.seq.nFire-1)    
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
                     %% Tx
@@ -633,13 +637,12 @@ classdef Us4R < handle
                             Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(ch), rxSubChanIdx(ch), iFire);
                         end
                     end
-                    
                     Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                     Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
                     Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
                 end
-                Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
+
                 Us4MEX(iArius, "EnableTransmit");
                 Us4MEX(iArius, "EnableReceive");
             end
@@ -661,7 +664,6 @@ classdef Us4R < handle
                     Us4MEX(iArius, "ScheduleReceive", iTrig*obj.seq.nSamp, obj.seq.nSamp, obj.seq.startSample + obj.sys.trigTxDel, obj.seq.fsDivider-1);
                 end
             end
-            
         end
 
         function openSequence(obj)
@@ -692,7 +694,7 @@ classdef Us4R < handle
             end
             Us4MEX(0, "TriggerSync");
             pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
-
+            
             %% Transfer to PC
             rf = Us4MEX(0, ...
                         "TransferAllRXBuffersToHost",  ...
