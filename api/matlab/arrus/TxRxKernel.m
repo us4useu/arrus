@@ -1,9 +1,23 @@
 classdef TxRxKernel
-    
+    % Class for ultrasound system programming when tx-rx sequence 
+    % is defined via object of TxRxSequence class.
+    %
+    %
+    % properties:
+    %   sequence - TxRxsequence class object (or empty array)
+    %   usSystem - sys structure, for now internal structure in Us4R.
+    %
+    % methods:
+    %   TxRxKernel() - class constructor. 
+    %       To pass arguments to the constructor name-value convetion 
+    %           is used,
+    %
+    %   programHW(obj) - program the US system,
+    %   calcNFire(obj) - calculate the number of firings used by sequence.
     
     properties
         sequence = TxRxSequence()
-        sys = []
+        usSystem = []
     end
     
     methods
@@ -12,11 +26,11 @@ classdef TxRxKernel
                 p = inputParser;
                                 
                 % adding parameters to parser
-                addParameter(p, 'sys', [])
+                addParameter(p, 'usSystem', [])
                 addParameter(p, 'sequence', TxRxSequence())
                 parse(p, varargin{:})
                 
-                obj.sys = p.Results.sys;
+                obj.usSystem = p.Results.usSystem;
                 obj.sequence= p.Results.sequence;
             end
             
@@ -25,21 +39,27 @@ classdef TxRxKernel
         
         function programHW(obj)
             
+            nArius = obj.usSystem.nArius; % number of arius modules
+            nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
+            nTxChannels = 128; % max number of tx channels
+            nFire = obj.calcNFire(); % number of firings in the sequence
+            
+            
             % Program mappings, gains, and voltage
-            for iArius = 0:obj.sys.nArius-1
+            for iArius = 0:nArius-1
                 
                 % Set Rx channel mapping
-                for iChannel = 1:32
+                for iChannel = 1:nRxChannels
                     Us4MEX(iArius, "SetRxChannelMapping", ...
-                        obj.sys.rxChannelMap(iArius+1, iChannel), ...
-                        iChannel);
+                           obj.usSystem.rxChannelMap(iArius+1, iChannel), ...
+                           iChannel);
                 end
 
                 % Set Tx channel mapping
-                for iChannel = 1:128
+                for iChannel = 1:nTxChannels
                     Us4MEX(iArius, "SetTxChannelMapping", ...
-                        obj.sys.txChannelMap(iArius+1, iChannel), ...
-                        iChannel);
+                           obj.usSystem.txChannelMap(iArius+1, iChannel), ...
+                           iChannel);
                 end
 
                 % init RX
@@ -60,18 +80,25 @@ classdef TxRxKernel
                 end
                 
                 try
-                    Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+                    Us4MEX(0, "SetHVVoltage", obj.usSystem.voltage);
                     
                 catch
                     warning('1st "SetHVVoltage" failed');
-                    Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+                    Us4MEX(0, "SetHVVoltage", obj.usSystem.voltage);
                     
                 end
             end
             
+            
+            
+            
+            % tutaj zmienic
+            
+            
             % Program Tx/Rx sequence
-            for iArius = 0:obj.sys.nArius-1
-                for iFire = 0:obj.seq.nFire-1 
+            for iArius = 0:nArius-1
+                for iFire = 0:nFire-1
+                    
                     % active channel groups
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.seq.actChanGroupMask(iArius+1), iFire);
                     
@@ -87,16 +114,17 @@ classdef TxRxKernel
                     Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                     Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
-                    Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
+%                     Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
                 end
+                
                 Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
                 Us4MEX(iArius, "EnableTransmit");
                 Us4MEX(iArius, "EnableReceive");
             end
             
             % Program triggering
-            Us4MEX(0, "SetNTriggers", obj.seq.nTrig);
-            for iTrig=0:(obj.seq.nTrig-1)
+            Us4MEX(0, "SetNTriggers", nFire);
+            for iTrig=0:nFire-1
                 Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iTrig);
             end
             Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, obj.seq.nTrig-1);
@@ -121,19 +149,21 @@ classdef TxRxKernel
             
         end
         
-        function nFirings = enumNFirings(obj)
+        
+        function nFire = calcNFire(obj)
+            % The method calculate the number of firings neccessary to
+            % realize the TxRxSequence
             
 %             maxRxChannels = obj.sys.nChArius;
             maxRxChannels = 32;
-            nFirings = 0;
+            nFire = 0;
             for iTxRx = 1:length(obj.sequence.TxRxList)
                 thisRxAperture = obj.sequence.TxRxList(1,iTxRx).Rx.rxAperture;
                 apertureLenght = length(thisRxAperture);
                 iTxRxFirings = ceil(apertureLenght./maxRxChannels);
-                nFirings = nFirings + iTxRxFirings;
+                nFire = nFire + iTxRxFirings;
 
             end
-            nFirings = 0;
         end
         
         

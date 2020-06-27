@@ -1,9 +1,18 @@
 classdef TxRx
-    % class corresponding to single 'transmit-and-receive' event
+    % Class corresponding to single 'transmit-and-receive' event
     % 
     %   properties:
     %       Tx - Tx object
     %       Rx - Rx object
+    %
+    %   methods:
+    %       TxRx() - constructor.
+    %           TxRx() creates Rx object with all empty properties.
+    %           To pass arguments to the constructor name-value convetion is used.
+    %           Example: Rx('rxAperture', logical(1:128))    
+    
+    
+    
     properties
         Tx@Tx = Tx()
         Rx@Rx = Rx()
