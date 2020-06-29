@@ -77,10 +77,10 @@ classdef Us4R < handle
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/obj.sys.adapType;
                 
-%                 obj.sys.selElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
-%                 nChanTot = nChan*4*nArius;
+%                 obj.sys.selElem = reshape((1:obj.sys.nChArius).' + (0:3)*obj.sys.nChArius*nArius,[],1) + (0:(nArius-1))*obj.sys.nChArius;
+%                 nChanTot = obj.sys.nChArius*4*nArius;
                 obj.sys.selElem = repmat((1:128).',[1 nArius]);
-                obj.sys.actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
+                obj.sys.actChan = mod(ceil((1:128)' / obj.sys.nChArius) - 1, nArius) == (0:(nArius-1));
             end
             obj.sys.actChan = obj.sys.actChan & (obj.sys.selElem <= obj.sys.nElem);
 
