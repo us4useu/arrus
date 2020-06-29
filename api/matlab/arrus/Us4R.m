@@ -515,7 +515,7 @@ classdef Us4R < handle
             txDel(~obj.seq.txApMask)	= nan;
 
             % Make delays >= 0 in the tx aperture
-            txDelShift	= - nanmin(txDel);              % [s] (1 x nTx)
+            txDelShift	= - min(txDel,[],'omitnan');	% [s] (1 x nTx)
             txDel       = txDel     + txDelShift;       % [s] (nElem x nTx)
             txDelCent	= txDelCent + txDelShift;       % [s] (1 x nTx)
 
