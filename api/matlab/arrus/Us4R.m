@@ -575,18 +575,18 @@ classdef Us4R < handle
             %% Program mappings, gains, and voltage
             for iArius=0:(obj.sys.nArius-1)
                 % Set Rx channel mapping
-%                 for ch=1:32
-%                     Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,ch), ch);
+%                 for iChan=1:32
+%                     Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,iChan), iChan);
 %                 end
                 for iFire=0:(obj.seq.nFire-1)
-                    for ch=1:32
-                        Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,ch), ch, iFire);
+                    for iChan=1:32
+                        Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,iChan), iChan, iFire);
                     end
                 end
 
                 % Set Tx channel mapping
-                for ch=1:128
-                    Us4MEX(iArius, "SetTxChannelMapping", obj.sys.txChannelMap(iArius+1,ch), ch);
+                for iChan=1:128
+                    Us4MEX(iArius, "SetTxChannelMapping", obj.sys.txChannelMap(iArius+1,iChan), iChan);
                 end
 
                 % init RX
@@ -633,8 +633,8 @@ classdef Us4R < handle
                         rxSubChanMap = obj.sys.rxChannelMap(iArius+1,rxSubChanIdx);
                         rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
                         rxSubChanMap = 1+mod(rxSubChanMap-1,obj.sys.nChArius);
-                        for ch=1:length(rxSubChanIdx)
-                            Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(ch), rxSubChanIdx(ch), iFire);
+                        for iChan=1:length(rxSubChanIdx)
+                            Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(iChan), rxSubChanIdx(iChan), iFire);
                         end
                     end
                     Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
