@@ -37,14 +37,65 @@ classdef TxRxKernel
             
         end
         
+        
         function programHW(obj)
             
-            nArius = obj.usSystem.nArius; % number of arius modules
-            nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
+%             nArius = obj.usSystem.nArius; % number of arius modules
+%             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
             nTxChannels = 128; % max number of tx channels
             nFire = obj.calcNFire(); % number of firings in the sequence
+            nTxRx = length(obj.sequence.TxRxList);
+            
+            actChanGroupMask = obj.usSystem.selElem(8:8:end,:) <= obj.usSystem.nElem;
+            actChanGroupMask = actChanGroupMask & obj.usSystem.actChan(8:8:end,:);
+            actChanGroupMask = obj.maskFormat(actChanGroupMask);
+            
+
+            iFire = 0;
+            for i = 1:nTxRx
+                thisTxRx = obj.sequence.TxRxList(i);
+                txAp = thisTxRx.Tx.aperture;
+                rxAp = thisTxRx.Rx.aperture;
+                txDel = thisTxRx.Tx.delay;
+                rxDel = thisTxRx.Rx.delay;
+                
+                [moduleApertures, moduleDelays] = txAperture2modChanMask(txAp, txDel);
+                
+                for iArius = 0:nArius-1
+                    % active channel groups
+                    Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
+                    
+                    
+                    % Tx
+%                     iTx     = 1 + floor(iFire/nSubTx);
+                    Us4MEX(iArius, "SetTxAperture", moduleApertures(iArius+1,:), iFire);
+                    Us4MEX(iArius, "SetTxDelays", moduleDelays(iArius+1,:), iFire);
+                    
+                    % cdn
+                    Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
+                    Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
+                    Us4MEX(iArius, "SetTxInvert", 0, iFire);
+                    
+                    % Rx
+                    Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
+                    Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
+                    Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
+                   
+                end
+                
+
+
+
+
+
+
+                
+            end
             
             
+            
+            
+            %{
             % Program mappings, gains, and voltage
             for iArius = 0:nArius-1
                 
@@ -93,6 +144,8 @@ classdef TxRxKernel
             
             
             % tutaj zmienic
+            
+            
             
             
             % Program Tx/Rx sequence
@@ -147,6 +200,8 @@ classdef TxRxKernel
                 
             end
             
+            %}
+            
         end
         
         
@@ -158,14 +213,70 @@ classdef TxRxKernel
             maxRxChannels = 32;
             nFire = 0;
             for iTxRx = 1:length(obj.sequence.TxRxList)
-                thisRxAperture = obj.sequence.TxRxList(1,iTxRx).Rx.rxAperture;
+                thisRxAperture = obj.sequence.TxRxList(1,iTxRx).Rx.aperture;
                 apertureLenght = length(thisRxAperture);
                 iTxRxFirings = ceil(apertureLenght./maxRxChannels);
                 nFire = nFire + iTxRxFirings;
 
             end
+        end % of calcNFire()
+        
+
+        
+        
+        function maskString = maskFormat(maskLogical)
+            
+            [maskLength,nMask] = size(maskLogical);
+            
+            if maskLength~=16 && maskLength~=128
+                error("maskFormat: invalid mask length, should be 16 or 128");
+            end
+            
+            if maskLength == 16
+                % active channel group mask: needs reordering
+                maskLogical = reshape(permute(reshape(maskLogical,4,2,2,nMask),[3,2,1,4]),16,nMask);
+            end
+            
+            maskString = join(string(double(maskLogical.')),"").';
+            maskString = reverse(maskString);
+            
         end
         
+        
+        
+        
+        function [moduleApertures, moduleDelays] = txAperture2modChanMask(txAp, txDel)
+        % The method maps logical transmit aperture and delaysinto two rows array mask
+        % (first row for module 0, second form module 1)
+
+            module0_channel2element = zeros(1,128);
+            module0_channel2element(1:96) = ...
+                [0+(1:32), 64+(1:32),  128+(1:32)];
+
+            module1_channel2element = zeros(1,128);
+            module1_channel2element(1:96) = ...
+                [32+(1:32), 96+(1:32), 160+(1:32)];
+
+            moduleApertures = false(2, 128);
+            moduleDelays = zeros(2, 128);
+            
+            for iChannel = 1:length(txAp)
+
+                if txAp(iChannel)==1 && ismember(iChannel, module0_channel2element) 
+                    moduleApertures(1, iChannel) = true;
+                    moduleDelays(1, iChannel) = txDel(iChannel);
+                    
+                elseif txAp(iChannel)==1 && ismember(iChannel, module1_channel2element) 
+                    moduleApertures(2, iChannel) = true;
+                    moduleDelays(2, iChannel) = txDel(iChannel);
+                    
+                end
+                
+            end
+            
+        end % of txAperture2modChanMask()
+        
+
         
     end
    
