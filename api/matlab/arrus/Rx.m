@@ -3,10 +3,10 @@ classdef Rx
     %
     % 
     %   properties:
-    %       rxAperture - logical mask where 0 and 1 corresponds to 
+    %       aperture - logical mask where 0 and 1 corresponds to 
     %          active and inactive element respectively,
-    %       rxDelay - receive delay in [s],
-    %       rxTime - time gate length [s], i.e. how much time the acqusition 
+    %       delay - receive delay in [s],
+    %       time - time gate length [s], i.e. how much time the acqusition 
     %           will take,
     %       fsDivider - sampling frequency divider, default value 1,
     %       tgc - tgc object for time gain control.
@@ -15,14 +15,14 @@ classdef Rx
     %       Rx() - constructor.
     %           Rx() creates Rx object with all empty properties.
     %           To pass arguments to the constructor name-value convetion is used.
-    %           Example: Rx('rxAperture', logical(1:128))
+    %           Example: Rx('aperture', logical(1:128))
     %
     %
     
     properties
-        rxAperture
-        rxDelay % rxDelay - value of receive delays in [s].
-        rxTime
+        aperture
+        delay % rxDelay - value of receive delays in [s].
+        time
         fsDivider
         tgc
     end
@@ -48,17 +48,17 @@ classdef Rx
                 tgcVld = @(x) isa(x,'Tgc');
                 
                 % adding parameters to parser
-                addParameter(p, 'rxAperture', [], rxApertureVld)
-                addParameter(p, 'rxDelay', [], rxDelayVld)
-                addParameter(p, 'rxTime', [], rxTimeVld)                
+                addParameter(p, 'aperture', [], rxApertureVld)
+                addParameter(p, 'delay', [], rxDelayVld)
+                addParameter(p, 'time', [], rxTimeVld)                
                 addParameter(p, 'fsDivider', 1, fsDividerVld)                
                 addParameter(p, 'tgc', [], tgcVld)                
                 
                 parse(p,varargin{:})
                                 
-                obj.rxAperture = p.Results.rxAperture;
-                obj.rxDelay = p.Results.rxDelay;
-                obj.rxTime = p.Results.rxTime;
+                obj.aperture = p.Results.aperture;
+                obj.delay = p.Results.delay;
+                obj.time = p.Results.time;
                 obj.fsDivider = p.Results.fsDivider;
                 obj.tgc = p.Results.tgc;
             end

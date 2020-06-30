@@ -2,10 +2,10 @@ classdef Tx
     % Class corresponding to single atomic 'transmit' event.
     % 
     %   properties:
-    %       txAperture - logical mask where 0 and 1 corresponds to
+    %       aperture - logical mask where 0 and 1 corresponds to
     %           active and inactive element respectively,
-    %       txDelays - vector of transmit delays in [s], 
-    %       txPulse - txPulse object
+    %       delay - vector of transmit delays in [s], 
+    %       pulse - txPulse object
     %
     %   methods:
     %       Tx() - constructor.
@@ -13,20 +13,20 @@ classdef Tx
     %           To pass arguments to the constructor name-value convetion 
     %               is used.
     %           Example: 
-    %               tx = Tx('txAperture', logical(1:128), 'txFrequency', 5e6)
+    %               tx = Tx('aerture', logical(1:128))
     %
-    %           If txDelays is empty or not given, transmit delays are set to 0.
-    %           If txAperture and txDelays are non-empty, they should have the same
+    %           If delay is empty or not given, transmit delays are set to 0.
+    %           If aperture and delay are non-empty, they should have the same
     %           size.
-    %           If txAperture is nonempty and non-all-zeroes, txFrequency must be
+    %           If aperture is nonempty and non-all-zeroes, pulse.frequency must be
     %           given.
     %
     %
      
     properties
-        txAperture
-        txDelays 
-        txPulse 
+        aperture
+        delay 
+        pulse 
     end
     
     
@@ -42,23 +42,23 @@ classdef Tx
                 txPulseVld = @(x) isa(x,'TxPulse') || isempty(x);
                 
                 % adding parameters to parser
-                addParameter(p, 'txAperture',[], txApertureVld)
-                addParameter(p, 'txDelays',[], txDelaysVld)
+                addParameter(p, 'aperture',[], txApertureVld)
+                addParameter(p, 'delay',[], txDelaysVld)
                 
-                addParameter(p, 'txPulse', [], txPulseVld)
+                addParameter(p, 'pulse', [], txPulseVld)
                 parse(p,varargin{:})
 
                 
-                if ~isempty(p.Results.txAperture) && ...
-                   ~isempty(p.Results.txDelays) && ...
-                   ~isequal(size(p.Results.txAperture), size(p.Results.txDelays))
+                if ~isempty(p.Results.aperture) && ...
+                   ~isempty(p.Results.delay) && ...
+                   ~isequal(size(p.Results.aperture), size(p.Results.delay))
                     
                     error('If txAperture and txDelays are non-empty, they must have the same size.')
                 end
                                 
-                obj.txAperture = p.Results.txAperture;
-                obj.txDelays = p.Results.txDelays;
-                obj.txPulse = p.Results.txPulse;
+                obj.aperture = p.Results.aperture;
+                obj.delay = p.Results.delay;
+                obj.pulse = p.Results.pulse;
             end
         end
     end

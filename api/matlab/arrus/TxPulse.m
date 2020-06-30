@@ -15,12 +15,12 @@ classdef TxPulse
     %
     
     properties
-        txFrequency {mustBeNumeric, ...
+        frequency {mustBeNumeric, ...
                      mustBeFinite, ...
                      mustBeNonnegative, ...
                      mustBeReal ...
                      }
-        txNPeriods {mustBeInteger, ...
+        nPeriods {mustBeInteger, ...
                     mustBeNonnegative ...
                     }
         
@@ -37,12 +37,12 @@ classdef TxPulse
                 p = inputParser;
                 
                 % adding parameters to parser
-                addParameter(p, 'txFrequency', [] ,@isscalar)
-                addParameter(p, 'txNPeriods',[] ,@isscalar)
+                addParameter(p, 'frequency', [] ,@isscalar)
+                addParameter(p, 'nPeriods',[] ,@isscalar)
                 parse(p,varargin{:})
                                 
-                obj.txFrequency = p.Results.txFrequency;
-                obj.txNPeriods = p.Results.txNPeriods;
+                obj.frequency = p.Results.frequency;
+                obj.nPeriods = p.Results.nPeriods;
             end
         end
     end
