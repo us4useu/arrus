@@ -509,7 +509,7 @@ classdef Us4R < handle
 
             %% Postprocess the delays
             % Make the delays fit the number of channels
-            txDel       = [txDel;	 zeros(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
+            txDel       = [txDel;	 zeros(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
             
             % Make delays = nan outside the tx aperture
             txDel(~obj.seq.txApMask)	= nan;
