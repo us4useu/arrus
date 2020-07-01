@@ -43,59 +43,17 @@ classdef TxRxKernel
 %             nArius = obj.usSystem.nArius; % number of arius modules
 %             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
             nTxChannels = 128; % max number of tx channels
-            nFire = obj.calcNFire(); % number of firings in the sequence
+
             nTxRx = length(obj.sequence.TxRxList);
             
             actChanGroupMask = obj.usSystem.selElem(8:8:end,:) <= obj.usSystem.nElem;
             actChanGroupMask = actChanGroupMask & obj.usSystem.actChan(8:8:end,:);
             actChanGroupMask = obj.maskFormat(actChanGroupMask);
-            
 
-            iFire = 0;
-            for i = 1:nTxRx
-                thisTxRx = obj.sequence.TxRxList(i);
-                txAp = thisTxRx.Tx.aperture;
-                rxAp = thisTxRx.Rx.aperture;
-                txDel = thisTxRx.Tx.delay;
-                rxDel = thisTxRx.Rx.delay;
-                
-                [moduleApertures, moduleDelays] = txAperture2modChanMask(txAp, txDel);
-                
-                for iArius = 0:nArius-1
-                    % active channel groups
-                    Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
-                    
-                    
-                    % Tx
-%                     iTx     = 1 + floor(iFire/nSubTx);
-                    Us4MEX(iArius, "SetTxAperture", moduleApertures(iArius+1,:), iFire);
-                    Us4MEX(iArius, "SetTxDelays", moduleDelays(iArius+1,:), iFire);
-                    
-                    % cdn
-                    Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
-                    Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
-                    Us4MEX(iArius, "SetTxInvert", 0, iFire);
-                    
-                    % Rx
-                    Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
-                    Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
-                    Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
-                   
-                end
-                
-
-
-
-
-
-
-                
-            end
+          
             
             
             
-            
-            %{
             % Program mappings, gains, and voltage
             for iArius = 0:nArius-1
                 
@@ -142,51 +100,67 @@ classdef TxRxKernel
             
             
             
-            
-            % tutaj zmienic
-            
-            
-            
-            
             % Program Tx/Rx sequence
-            for iArius = 0:nArius-1
+            for i = 1:nTxRx
+                thisTxRx = obj.sequence.TxRxList(i);
+                txAp = thisTxRx.Tx.aperture;
+                rxAp = thisTxRx.Rx.aperture;
+                txDel = thisTxRx.Tx.delay;
+                rxDel = thisTxRx.Rx.delay;
+                rxTime = thisTxRx.Rx.time;
+                
+                [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(txAp, txDel, rxAp);
+                nFire = size(moduleRxApertures,3); 
+                
+                
                 for iFire = 0:nFire-1
-                    
-                    % active channel groups
-                    Us4MEX(iArius, "SetActiveChannelGroup", obj.seq.actChanGroupMask(iArius+1), iFire);
-                    
-                    % Tx
-                    iTx     = 1 + floor(iFire/obj.seq.nSubTx);
-                    Us4MEX(iArius, "SetTxAperture", obj.seq.txSubApMask(iArius+1,iTx), iFire);
-                    Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
-                    Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
-                    Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
-                    Us4MEX(iArius, "SetTxInvert", 0, iFire);
-                    
-                    % Rx
-                    Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
-                    Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
-                    Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
-%                     Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
+                    for iArius = 0:nArius-1
+                        % active channel groups
+                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
+
+
+                        % Tx
+    %                     iTx     = 1 + floor(iFire/nSubTx);
+                        Us4MEX(iArius, "SetTxAperture", moduleTxApertures(iArius+1,:), iFire);
+                        Us4MEX(iArius, "SetTxDelays", moduleTxDelays(iArius+1,:), iFire);
+
+
+                        Us4MEX(iArius, "SetTxFrequency", thisTxRx.Tx.pulse.frequency, iFire);
+                        Us4MEX(iArius, "SetTxHalfPeriods", thisTxRx.Tx.pulse.nPeriods, iFire);
+                        Us4MEX(iArius, "SetTxInvert", 0, iFire);
+
+                        % Rx
+                        Us4MEX(iArius, "SetRxAperture", moduleRxApertures(iArius, :, iFire), iFire);
+                        Us4MEX(iArius, "SetRxTime", rxTime, iFire);
+                        Us4MEX(iArius, "SetRxDelay", rxDel, iFire);
+
+                    end
+
                 end
                 
-                Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
-                Us4MEX(iArius, "EnableTransmit");
-                Us4MEX(iArius, "EnableReceive");
+                for iArius = 0:nArius-1
+                    Us4MEX(iArius, "SetNumberOfFirings", nFire);
+                    Us4MEX(iArius, "EnableTransmit");
+                    Us4MEX(iArius, "EnableReceive");
+                end
+
+                
             end
             
+  
+     % TUTAJ TRIGERY ZROBIC DOBRZE!!!
             % Program triggering
             Us4MEX(0, "SetNTriggers", nFire);
-            for iTrig=0:nFire-1
-                Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iTrig);
+            for iTrig = 0:nFire-1
+                Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 0, iTrig);
             end
-            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, obj.seq.nTrig-1);
-            for iArius=1:(obj.sys.nArius-1)
-                Us4MEX(iArius, "SetTrigger", obj.seq.txPri*1e6, 0, 0, 0);
+            Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 1, obj.seq.nTrig-1);
+            for iArius = 1:obj.usSystem.nArius-1
+                Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 0, 0, 0);
             end
             
             % Program recording
-            for iArius=0:(obj.sys.nArius-1)
+            for iArius=0:(obj.usSystem.nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 
                 for iTrig=0:(obj.seq.nTrig-1)
@@ -245,36 +219,87 @@ classdef TxRxKernel
         
         
         
-        function [moduleApertures, moduleDelays] = txAperture2modChanMask(txAp, txDel)
-        % The method maps logical transmit aperture and delaysinto two rows array mask
-        % (first row for module 0, second form module 1)
-
-            module0_channel2element = zeros(1,128);
-            module0_channel2element(1:96) = ...
-                [0+(1:32), 64+(1:32),  128+(1:32)];
-
-            module1_channel2element = zeros(1,128);
-            module1_channel2element(1:96) = ...
-                [32+(1:32), 96+(1:32), 160+(1:32)];
-
-            moduleApertures = false(2, 128);
-            moduleDelays = zeros(2, 128);
+        function [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(txAp, txDel, rxAp)
             
-            for iChannel = 1:length(txAp)
-
-                if txAp(iChannel)==1 && ismember(iChannel, module0_channel2element) 
-                    moduleApertures(1, iChannel) = true;
-                    moduleDelays(1, iChannel) = txDel(iChannel);
-                    
-                elseif txAp(iChannel)==1 && ismember(iChannel, module1_channel2element) 
-                    moduleApertures(2, iChannel) = true;
-                    moduleDelays(2, iChannel) = txDel(iChannel);
-                    
-                end
-                
+        % The method maps logical transmit aperture, transmit delays 
+        %   and receive aperture into mask array
+        % 
+        % It returns 3 arrays:
+        %   moduleTxApertures, moduleTxDelays are of size [nModules, nModuleChannels]
+        %   moduleRxApertures, is of size [nModules, nModuleChannels, nFire]
+        %   where nFire is the number of firings necessary to acquire
+        %   rxAperture.
+        
+        
+            nModules = 2; % number of modules 
+            nModuleChannels = 128; % number of channels in module
+            nRxChannels = 32; % number of available rx channels in single module
+            nRxChanGroups = 3; % number of rx channel groups
+            
+            % some validation - not sure if it is necessary (should be
+            % checked later)
+            if length(txAp) > nModules*nModuleChannels
+               error('Transmit aperture length is bigger than number of available channels.') 
             end
             
-        end % of txAperture2modChanMask()
+            
+            % moduleChannel-to-apertureElement mapping
+            module2elementArray = zeros(nModules,nRxChannels,nRxChanGroups);
+            module2elementArray(1, 1:32, 1) = 0+(1:32);
+            module2elementArray(1, 1:32, 2) = 64+(1:32);
+            module2elementArray(1, 1:32, 3) = 128+(1:32);
+            module2elementArray(2, 1:32, 1) = 32+(1:32);
+            module2elementArray(2, 1:32, 2) = 96+(1:32);
+            module2elementArray(2, 1:32, 3) = 160+(1:32);
+            
+            % TX PART
+            
+            % allocation of tx output arrays
+            moduleTxApertures = false(nModules, nModuleChannels);
+            moduleTxDelays = zeros(nModules, nModuleChannels);
+            
+            % mapping tx arrays
+            for iChannel = 1:length(txAp)
+                for iModule = 1:nModules
+                    if txAp(iChannel)==1 && ismember(iChannel, module2elementArray(iModule,:,:)) 
+                        moduleTxApertures(iModule, iChannel) = true;
+                        moduleTxDelays(iModule, iChannel) = txDel(iChannel);
+                    end
+                end
+            end
+            
+            % RX PART            
+
+            % allocation of rx output arrays            
+            moduleRxApertures = false(nModules,nModuleChannels,nRxChanGroups);
+            
+            % mapping rx array
+            for iChannel = 1:length(rxAp)
+                for iModule = 1:nModules
+                    for iRxChanGroup = 1:nRxChanGroups
+%                         iRxChannel = mod(iChannel,nRxChannels+1)+(floor(iChannel/(nRxChannels+1)));
+                        if rxAp(iChannel)==1 && ismember(iChannel, module2elementArray(iModule,:,iRxChanGroup)) 
+                            moduleRxApertures(...
+                                iModule, ...
+                                iChannel, ...
+                                iRxChanGroup ...
+                                ) = true;
+                        end
+                    end
+                end
+            end
+
+            % clear empty channel groups (i.e. size(moduleRxApertures,3)
+            % will be equal to nFire
+            emptyGroups = [];
+            for iRxChanGroup = 1:nRxChanGroups
+               if isempty(find(moduleRxApertures(:,:,iRxChanGroup), 1))
+                   emptyGroups = [emptyGroups,iRxChanGroup];
+               end               
+            end
+            moduleRxApertures(:,:,emptyGroups) = [];
+            
+        end % of apertures2modules()     
         
 
         
