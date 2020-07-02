@@ -3,11 +3,21 @@ classdef Us4R < handle
     %
     % This class provides functions to configure the system and perform
     % data acquisition using the Us4R.
+    % 
+    % Available probe names:
+    % 
+    % - Esaote: 'AL2442', 'SL1543', 'AC2541',
+    % - Ultrasonix: 'L14-5/38'.
+    % 
+    % Available adapter types:
     %
+    % - 'esaote': legacy adapter for esaote probes,
+    % - 'esaote2': current version of the esaote adapter,
+    % - 'ultrasonix': current version of the ultrasonix probe adapter. 
+    % 
     % :param nArius: number of Us4OEM modules available in the us4R system
-    % :param probeName: name of the probe to use, available: \
-    %    Esaote: 'AL2442', 'SL1543', \
-    %    Ultrasonix: 'L14-5/38'
+    % :param probeName: name of the probe to use
+    % :param adapterType: name of the adapter type to use
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]
     % :param logTime: set to true if you want to display acquisition \
     %    and reconstruction time (optional)
@@ -21,8 +31,8 @@ classdef Us4R < handle
     
     methods
 
-        function obj = Us4R(nArius, probeName, voltage, logTime)
-            if nargin < 4
+        function obj = Us4R(nArius, probeName, adapterType, voltage, logTime)
+            if nargin < 5
                 obj.logTime = false;
             else
                 obj.logTime = logTime;
@@ -36,7 +46,7 @@ classdef Us4R < handle
 
             obj.sys.voltage = voltage;
             
-            probe = probeParams(probeName);
+            probe = probeParams(probeName,adapterType);
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
@@ -45,19 +55,32 @@ classdef Us4R < handle
             obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
                             (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
 
-            obj.sys.nChCont = obj.sys.nChArius * (nArius*obj.sys.adapType + 1*~obj.sys.adapType);
-            obj.sys.nChTotal = obj.sys.nChArius * 4 * (nArius*~obj.sys.adapType + 1*obj.sys.adapType);
-
-            if ~obj.sys.adapType
+            if obj.sys.adapType == 0
                 % old adapter type (00001111)
+                obj.sys.nChCont = obj.sys.nChArius;
+                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
+                
                 obj.sys.selElem = (1:128).' + (0:(nArius-1))*128;
                 obj.sys.actChan = true(128,nArius);
-            else
+            elseif obj.sys.adapType == -1
+                % place for new adapter support
+                obj.sys.nChCont = obj.sys.nChArius * nArius;
+                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/abs(obj.sys.adapType);
+                
+                obj.sys.selElem = reshape(  (1:obj.sys.nChArius).' ...
+                                          + (0:3)*obj.sys.nChArius*nArius, [], 1) ...
+                                          + (0:(nArius-1))*obj.sys.nChArius;
+                obj.sys.actChan = [true(96,nArius); false(32,nArius)];
+                
+            elseif obj.sys.adapType == 2
                 % new adapter type (01010101)
-%                 obj.sys.selElem = reshape((1:nChan).' + (0:3)*nChan*nArius,[],1) + (0:(nArius-1))*nChan;
-%                 nChanTot = nChan*4*nArius;
+                obj.sys.nChCont = obj.sys.nChArius * nArius;
+                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/obj.sys.adapType;
+                
+%                 obj.sys.selElem = reshape((1:obj.sys.nChArius).' + (0:3)*obj.sys.nChArius*nArius,[],1) + (0:(nArius-1))*obj.sys.nChArius;
+%                 nChanTot = obj.sys.nChArius*4*nArius;
                 obj.sys.selElem = repmat((1:128).',[1 nArius]);
-                obj.sys.actChan = mod(ceil((1:128)' / nChan) - 1, nArius) == (0:(nArius-1));
+                obj.sys.actChan = mod(ceil((1:128)' / obj.sys.nChArius) - 1, nArius) == (0:(nArius-1));
             end
             obj.sys.actChan = obj.sys.actChan & (obj.sys.selElem <= obj.sys.nElem);
 
@@ -310,12 +333,14 @@ classdef Us4R < handle
             
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.txCentElem);
+            else
+                obj.seq.txCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.txApCent);
             end
 
             if isempty(obj.seq.rxApCent)
                 obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.rxCentElem);
             else
-                obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.txApCent);
+                obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
             
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2);
@@ -345,21 +370,33 @@ classdef Us4R < handle
             nFire	= obj.seq.nFire;
             
             txSubApDel = cell(nArius,nTx);
-            txSubApMask = strings(nArius,nTx);
-            rxSubApMask = strings(nArius,nFire);
+            txSubApMask = false(128,nTx,nArius);
+            rxSubApMask = false(128,nFire,nArius);
             iSubTx = permute(1:nSubTx,[1 3 2]);
             for iArius=0:(nArius-1)
                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
-                txSubApMask(iArius+1,:) = obj.maskFormat(obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1));
+                txSubApMask(:,:,iArius+1) = obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
                 
                 rxSubApSelect = ceil(cumsum(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
                 rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
-                rxSubApMask(iArius+1,:) = obj.maskFormat(reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire));
+                rxSubApMask(:,:,iArius+1) = reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire);
+                
+                % rxSubApMask correction for the new esaote adapter
+                if obj.sys.adapType == -1
+                    for iFire=0:(nFire-1)
+                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
+                        elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
+                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
+                        if ~isempty(rejElem)
+                            rejElem = any(elemIdx == rejElem.', 2);
+                            rxSubApMask(rejElem,iFire+1,iArius+1) = false;
+                        end
+                    end
+                end
             end
             
             actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
             actChanGroupMask = actChanGroupMask & obj.sys.actChan(8:8:end,:);
-            actChanGroupMask = obj.maskFormat(actChanGroupMask);
             
             obj.seq.actChanGroupMask = actChanGroupMask;
             obj.seq.txSubApMask = txSubApMask;
@@ -423,8 +460,11 @@ classdef Us4R < handle
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
             % obj.seq.rxApMask      - [logical] (nArius*128 x nTx) is element active in rx?
             
-            txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
-            rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
+%             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
+%             rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
+            
+            txApMask = round(abs((1:obj.sys.nElem).' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
+            rxApMask = round(abs((1:obj.sys.nElem).' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
             
             % Make the mask fit the number of channels
             if obj.sys.nElem >= obj.sys.nChTotal
@@ -469,13 +509,13 @@ classdef Us4R < handle
 
             %% Postprocess the delays
             % Make the delays fit the number of channels
-            txDel       = [txDel;	 zeros(obj.sys.nArius*128-obj.sys.nElem, obj.seq.nTx)];
+            txDel       = [txDel;	 zeros(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
             
             % Make delays = nan outside the tx aperture
             txDel(~obj.seq.txApMask)	= nan;
 
             % Make delays >= 0 in the tx aperture
-            txDelShift	= - nanmin(txDel);              % [s] (1 x nTx)
+            txDelShift	= - min(txDel,[],'omitnan');	% [s] (1 x nTx)
             txDel       = txDel     + txDelShift;       % [s] (nElem x nTx)
             txDelCent	= txDelCent + txDelShift;       % [s] (1 x nTx)
 
@@ -528,16 +568,25 @@ classdef Us4R < handle
         
         function programHW(obj)
             
+            % Unloading Us4MEX should clear the device state.
+            munlock('Us4MEX');
+            clear Us4MEX;
+            
             %% Program mappings, gains, and voltage
             for iArius=0:(obj.sys.nArius-1)
                 % Set Rx channel mapping
-                for ch=1:32
-                    Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,ch), ch);
+%                 for iChan=1:32
+%                     Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,iChan), iChan);
+%                 end
+                for iFire=0:(obj.seq.nFire-1)
+                    for iChan=1:32
+                        Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,iChan), iChan, iFire);
+                    end
                 end
 
                 % Set Tx channel mapping
-                for ch=1:128
-                    Us4MEX(iArius, "SetTxChannelMapping", obj.sys.txChannelMap(iArius+1,ch), ch);
+                for iChan=1:128
+                    Us4MEX(iArius, "SetTxChannelMapping", obj.sys.txChannelMap(iArius+1,iChan), iChan);
                 end
 
                 % init RX
@@ -565,25 +614,35 @@ classdef Us4R < handle
             
             %% Program Tx/Rx sequence
             for iArius=0:(obj.sys.nArius-1)
-                for iFire=0:(obj.seq.nFire-1)
-                    %% active channel groups
-                    Us4MEX(iArius, "SetActiveChannelGroup", obj.seq.actChanGroupMask(iArius+1), iFire);
+                Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
+                for iFire=0:(obj.seq.nFire-1)    
+                    Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
                     %% Tx
                     iTx     = 1 + floor(iFire/obj.seq.nSubTx);
-                    Us4MEX(iArius, "SetTxAperture", obj.seq.txSubApMask(iArius+1,iTx), iFire);
+                    Us4MEX(iArius, "SetTxAperture", obj.maskFormat(obj.seq.txSubApMask(:,iTx,iArius+1)), iFire);
                     Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
                     Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
                     Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
                     Us4MEX(iArius, "SetTxInvert", 0, iFire);
                     
                     %% Rx
-                    Us4MEX(iArius, "SetRxAperture", obj.seq.rxSubApMask(iArius+1,iFire+1), iFire);
+                    % SetRxChannelMapping for the new esaote adapter
+                    if obj.sys.adapType == -1
+                        rxSubChanIdx = find(obj.seq.rxSubApMask(:,iFire+1,iArius+1));
+                        rxSubChanMap = obj.sys.rxChannelMap(iArius+1,rxSubChanIdx);
+                        rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
+                        rxSubChanMap = 1+mod(rxSubChanMap-1,obj.sys.nChArius);
+                        for iChan=1:length(rxSubChanIdx)
+                            Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(iChan), rxSubChanIdx(iChan), iFire);
+                        end
+                    end
+                    Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                     Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
                     Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
                 end
-                Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
+
                 Us4MEX(iArius, "EnableTransmit");
                 Us4MEX(iArius, "EnableReceive");
             end
@@ -605,7 +664,6 @@ classdef Us4R < handle
                     Us4MEX(iArius, "ScheduleReceive", iTrig*obj.seq.nSamp, obj.seq.nSamp, obj.seq.startSample + obj.sys.trigTxDel, obj.seq.fsDivider-1);
                 end
             end
-            
         end
 
         function openSequence(obj)
@@ -636,7 +694,7 @@ classdef Us4R < handle
             end
             Us4MEX(0, "TriggerSync");
             pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
-
+            
             %% Transfer to PC
             rf = Us4MEX(0, ...
                         "TransferAllRXBuffersToHost",  ...
@@ -649,10 +707,10 @@ classdef Us4R < handle
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
             rxApOrig = obj.seq.rxApOrig;
-            if ~obj.sys.adapType
+            if obj.sys.adapType == 0
                 rf	= permute(rf,[2 1 3 6 4 5]);
                 
-                % old adapter type (00001111)
+                % "old esaote" adapter type
 %                 for iTx=1:nTx
 %                     rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
 %                 end
@@ -684,8 +742,15 @@ classdef Us4R < handle
                 end
                 rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
                 
-            else
-                % new adapter type (01010101)
+            elseif obj.sys.adapType == 2 || obj.sys.adapType == -1
+                % "ultrasonix" or "new esaote" adapter type
+                
+                % new esaote probe: clear the unsupported channels
+                if obj.sys.adapType == -1
+                    mask = any(reshape(obj.seq.rxSubApMask,nChan,4,nSubTx,nTx,1,nArius),2);
+                    rf  = rf .* int16(mask);
+                end
+                
                 rf	= permute(rf,[2 1 6 3 4 5]);
                 rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
                 

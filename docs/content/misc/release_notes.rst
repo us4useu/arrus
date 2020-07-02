@@ -1,6 +1,22 @@
 Release notes
 =============
 
+Version 0.4.4
+-------------
+
+- MATLAB API:
+
+    - The Us4R constructor now requires the ``adapterType`` parameter to be \
+      explicitly provided. Please check :ref:`arrus-Us4R` documentation.
+    - A support for new Esaote probes adapter have been added. The new Esaote \
+      adapter is identified by the name ``'esaote2'``. The new adapter design \
+      allows for using wider rx aperture: 64 elements in a single tx/rx. \
+      However, due to the adapter design, it may happen that a single rx channel \
+      is connected to two probe's elements being in the rx aperture. \
+      In such cases the second of the elements is switched off in the receive. \
+      In the worst case this workaround switches off 4 of 64 rx elements. \
+      The size of the acquired rf data is unaffected by this workaround.
+
 Version 0.4.3
 -------------
 

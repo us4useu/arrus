@@ -4,6 +4,7 @@ addpath('../arrus');
 
 nUs4OEM     = 2;
 probeName	= 'L14-5/38';
+adapterType = 'ultrasonix';
 
 txFrequency = 7e6;
 samplingFrequency = 65e6;
@@ -11,7 +12,7 @@ samplingFrequency = 65e6;
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/2),'bandpass');
 
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM, probeName, 50);
+us	= Us4R(nUs4OEM, probeName, adapterType, 20);
 
 seqSTA = STASequence(	'txApertureCenter', (-15:3:15)*1e-3, ...
                         'txApertureSize',   32, ...
