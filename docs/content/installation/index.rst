@@ -16,6 +16,20 @@ Make sure that you have installed following dependencies:
 Installation
 ============
 
+Startup
+-------
+
+.. caution::
+
+    If you use **MSI GS65 notebook** and connect with the device via Thunderbolt-3
+    cable, you have to follow this extended startup procedure:
+
+    1. Turn off the notebook and your device, plug off Thunderbolt-3 cable.
+    2. Turn on the system, then connect it to the notebook using the provided
+       Thunderbolt-3 cable.
+    3. Turn on the notebook.
+    4. After Windows 10 loads, restart the notebook.
+
 Drivers
 -------
 
@@ -32,7 +46,7 @@ Uninstall ARIUS drivers (if previously installed)
 If ARIUS drivers are installed on your computer, uninstall them first. ARIUS
 drivers are the legacy drivers that were required before 0.4.3 version.
 
-1. Open Windows Device Manager, uninstall ``ARIUS`` and ``WinDriver1290``
+1. Open Windows Device Manager, uninstall all ``ARIUS`` and ``WinDriver1290``
    devices available in the "Jungo Connectivity" node. **Check
    "Delete the driver software for this device"**.
 
@@ -56,28 +70,11 @@ Device Manager.
 .. figure:: img/dev_manager.png
     :scale: 100%
 
-Startup
--------
-
-.. caution::
-
-    If you use **MSI GS65 notebook** and connect with the device via Thunderbolt-3
-    cable, you have to follow this extended startup procedure:
-
-    1. Turn off the notebook and your device, plug off Thunderbolt-3 cable.
-    2. Turn on the system, then connect it to the notebook using the provided
-       Thunderbolt-3 cable.
-    3. Turn on the notebook.
-    4. After Windows 10 loads, restart the notebook.
 
 ARRUS
 -----
 
-Before proceeding please make sure:
-
-- the device is properly connected to the computer,
-- that your **system-wide** environment variable ``Path`` does not contain \
-  entries for any of the previously installed versions of the software.
+Before proceeding please make sure the device is properly connected to the computer.
 
 1. Download and extract |arrus|_ package.
 2. Run ``install.exe`` file and follow provided instructions.
