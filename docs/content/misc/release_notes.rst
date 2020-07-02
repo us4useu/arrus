@@ -9,7 +9,7 @@ Version 0.4.4
     - The Us4R constructor now requires the ``adapterType`` parameter to be \
       explicitly provided. Please check :ref:`arrus-Us4R` documentation.
     - A support for new Esaote probes adapter have been added. The new Esaote \
-      adapter is identified by the name ``'esaotev2'``. The new adapter design \
+      adapter is identified by the name ``'esaote2'``. The new adapter design \
       allows for using wider rx aperture: 64 elements in a single tx/rx. \
       However, due to the adapter design, it may happen that a single rx channel \
       is connected to two probe's elements being in the rx aperture. \
