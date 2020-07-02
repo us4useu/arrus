@@ -13,7 +13,7 @@ classdef BModeDisplay < handle
         showTimes
     end
     
-    methods
+    methods 
         function obj = BModeDisplay(xGrid, zGrid)
             % Create figure.
             obj.hFig = figure();
@@ -40,8 +40,23 @@ classdef BModeDisplay < handle
             % Updates currently displayed image.
             %
             % :param img: an image to display
-            set(obj.hImg, 'CData', img);
-            drawnow;
+            try
+                set(obj.hImg, 'CData', img);
+                % TODO removed below pause
+                % Applied the pause to make the figure window more
+                % responsive. Removing this pause may introduce some
+                % issues when closing the figure - e.g. a long delay
+                % between pressing the window close button and the 
+                % reaction to that close.
+                % That was an issue on MATLAB 2018b, testenv2.
+                pause(0.01);
+            catch ME
+                if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
+                    disp('Display was closed.');
+                else
+                    rethrow(ME);
+                end
+            end
         end
     end    
 end
