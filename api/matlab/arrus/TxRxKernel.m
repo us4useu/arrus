@@ -42,8 +42,8 @@ classdef TxRxKernel
             
 %             nArius = obj.usSystem.nArius; % number of arius modules
 %             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
+            samplingFrequency = 64e6;
             nTxChannels = 128; % max number of tx channels
-
             nTxRx = length(obj.sequence.TxRxList);
             
             actChanGroupMask = obj.usSystem.selElem(8:8:end,:) <= obj.usSystem.nElem;
@@ -101,30 +101,40 @@ classdef TxRxKernel
             
             
             % Program Tx/Rx sequence
-            for i = 1:nTxRx
+            iFire = 0;
+
+            nSamp = []; % consider some preallocation here, for speed
+            startSamp = [];
+            fsDivider = [];
+            
+            for i = 1:nTxRx 
                 thisTxRx = obj.sequence.TxRxList(i);
                 txAp = thisTxRx.Tx.aperture;
                 rxAp = thisTxRx.Rx.aperture;
                 txDel = thisTxRx.Tx.delay;
                 rxDel = thisTxRx.Rx.delay;
                 rxTime = thisTxRx.Rx.time;
+                rxFsDivider = thisTxRx.Rx.fsDivider;
+                fs = samplingFrequency./rxFsDivider;
                 
                 [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(txAp, txDel, rxAp);
-                nFire = size(moduleRxApertures,3); 
+                nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
+%                 nFire = nFire + nTxRxFire;
                 
-                
-                for iFire = 0:nFire-1
+                for iTxRxFire = 0:nTxRxFire-1
+                    iFire = iFire+1;
+                    nSamp(iFire) = floor(rxTime/fs);
+                    startSamp(iFire) = floor(rxDel/fs);
+                    fsDivider(iFire) = rxFsDivider;
+                    
                     for iArius = 0:nArius-1
                         % active channel groups
                         Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
 
 
                         % Tx
-    %                     iTx     = 1 + floor(iFire/nSubTx);
                         Us4MEX(iArius, "SetTxAperture", moduleTxApertures(iArius+1,:), iFire);
                         Us4MEX(iArius, "SetTxDelays", moduleTxDelays(iArius+1,:), iFire);
-
-
                         Us4MEX(iArius, "SetTxFrequency", thisTxRx.Tx.pulse.frequency, iFire);
                         Us4MEX(iArius, "SetTxHalfPeriods", thisTxRx.Tx.pulse.nPeriods, iFire);
                         Us4MEX(iArius, "SetTxInvert", 0, iFire);
@@ -138,23 +148,26 @@ classdef TxRxKernel
 
                 end
                 
-                for iArius = 0:nArius-1
-                    Us4MEX(iArius, "SetNumberOfFirings", nFire);
-                    Us4MEX(iArius, "EnableTransmit");
-                    Us4MEX(iArius, "EnableReceive");
-                end
+            end
+            % note: after loop over n TxRx events the 'iFire' represents
+            % total number of firings
+            
 
-                
+            
+            for iArius = 0:nArius-1
+                Us4MEX(iArius, "SetNumberOfFirings", iFire);
+                Us4MEX(iArius, "EnableTransmit");
+                Us4MEX(iArius, "EnableReceive");
             end
             
   
-     % TUTAJ TRIGERY ZROBIC DOBRZE!!!
+     
             % Program triggering
-            Us4MEX(0, "SetNTriggers", nFire);
-            for iTrig = 0:nFire-1
+            Us4MEX(0, "SetNTriggers", iFire);
+            for iTrig = 0:iFire-1
                 Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 0, iTrig);
             end
-            Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 1, obj.seq.nTrig-1);
+            Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 1, iFire-1);
             for iArius = 1:obj.usSystem.nArius-1
                 Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 0, 0, 0);
             end
@@ -163,12 +176,12 @@ classdef TxRxKernel
             for iArius=0:(obj.usSystem.nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 
-                for iTrig=0:(obj.seq.nTrig-1)
+                for iTrig=0:(iFire-1)
                     Us4MEX(iArius, "ScheduleReceive", ...
-                        iTrig*obj.seq.nSamp, ...
-                        obj.seq.nSamp, ...
-                        obj.seq.startSample + obj.sys.trigTxDel, ...
-                        obj.seq.fsDivider-1 ...
+                        iTrig*nSamp(iTrig), ...
+                        nSamp(iTrig), ...
+                        startSamp(iTrig) + obj.usSystem.trigTxDel, ...
+                        fsDivider(iTrig)-1 ...  
                     );
                 end
                 
