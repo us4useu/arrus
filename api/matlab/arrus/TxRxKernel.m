@@ -143,6 +143,8 @@ classdef TxRxKernel
                         Us4MEX(iArius, "SetRxAperture", moduleRxApertures(iArius, :, iFire), iFire);
                         Us4MEX(iArius, "SetRxTime", rxTime, iFire);
                         Us4MEX(iArius, "SetRxDelay", rxDel, iFire);
+                        % do zrobienia tgc
+%                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
 
                     end
 
