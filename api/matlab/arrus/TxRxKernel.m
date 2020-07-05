@@ -156,7 +156,8 @@ classdef TxRxKernel
                 
                 
                 
-                [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(txAp, txDel, rxAp);
+                [moduleTxApertures, moduleTxDelays, moduleRxApertures] = ...
+                    apertures2modules(obj.usSystem, txAp, txDel, rxAp);
                 nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
 %                 nFire = nFire + nTxRxFire;
                 
@@ -273,7 +274,7 @@ classdef TxRxKernel
         
         
         
-        function [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(txAp, txDel, rxAp)
+        function [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(usSystem, txAp, txDel, rxAp)
             
         % The method maps logical transmit aperture, transmit delays 
         %   and receive aperture into mask array
@@ -284,11 +285,20 @@ classdef TxRxKernel
         %   where nFire is the number of firings necessary to acquire
         %   rxAperture.
         
-        
-            nModules = 2; % number of modules 
-            nModuleChannels = 128; % number of channels in module
-            nRxChannels = 32; % number of available rx channels in single module
-            nRxChanGroups = 3; % number of rx channel groups
+        % number of modules 
+%             nModules = 2; 
+            nModules = usSystem.nArius;
+            
+            % number of channels in module
+%             nModuleChannels = 128; 
+            nModuleChannels = usSystem.nChTotal./usSystem.nArius; 
+            
+            % number of available rx channels in single module            
+%             nRxChannels = 32; 
+            nRxChannels = usSystem.nChArius;
+            
+            % number of rx channel groups
+            nRxChanGroups = 3; 
             
             % some validation - not sure if it is necessary (should be
             % checked later)
