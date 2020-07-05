@@ -109,13 +109,52 @@ classdef TxRxKernel
             
             for i = 1:nTxRx 
                 thisTxRx = obj.sequence.TxRxList(i);
+                
+                % interpretation of empty properties in TxRx objects
                 txAp = thisTxRx.Tx.aperture;
+                if isempty(txAp)
+                    txAp = false(1,obj.usSystem.nElem);
+                end
+                
                 rxAp = thisTxRx.Rx.aperture;
+                if isempty(rxAp)
+                    rxAp = false(1,obj.usSystem.nElem);
+                end  
+                
                 txDel = thisTxRx.Tx.delay;
+                if isempty(txDel)
+                    txDel = zeros(1,obj.usSystem.nElem);
+                end
+                
                 rxDel = thisTxRx.Rx.delay;
+                if isempty(rxDel)
+                    rxDel = 0;
+                end
+                
+                
+                
                 rxTime = thisTxRx.Rx.time;
+                if isempty(rxTime)
+                    rxTime = 0;
+                end
+                
+                
                 rxFsDivider = thisTxRx.Rx.fsDivider;
+                if isempty(rxFsDivider)
+                    rxFsDivider = 1;
+                end
+                
+                if isempty(thisTxRx.Tx.pulse)
+                    pulseFrequency = 0;
+                    pulseNPeriods = 0;
+                else
+                    pulseFrequency = thisTxRx.Tx.pulse.frequency;
+                    pulseNPeriods = thisTxRx.Tx.pulse.nPeriods;
+                end
+                
                 fs = samplingFrequency./rxFsDivider;
+                
+                
                 
                 [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(txAp, txDel, rxAp);
                 nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
@@ -135,8 +174,8 @@ classdef TxRxKernel
                         % Tx
                         Us4MEX(iArius, "SetTxAperture", moduleTxApertures(iArius+1,:), iFire);
                         Us4MEX(iArius, "SetTxDelays", moduleTxDelays(iArius+1,:), iFire);
-                        Us4MEX(iArius, "SetTxFrequency", thisTxRx.Tx.pulse.frequency, iFire);
-                        Us4MEX(iArius, "SetTxHalfPeriods", thisTxRx.Tx.pulse.nPeriods, iFire);
+                        Us4MEX(iArius, "SetTxFrequency", pulseFrequency, iFire);
+                        Us4MEX(iArius, "SetTxHalfPeriods", pulseNPeriods, iFire);
                         Us4MEX(iArius, "SetTxInvert", 0, iFire);
 
                         % Rx
