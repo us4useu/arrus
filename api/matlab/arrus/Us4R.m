@@ -334,15 +334,18 @@ classdef Us4R < handle
             end
             
             if isempty(obj.seq.txApCent)
-                obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.txCentElem);
+                obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.txCentElem);
             else
-                obj.seq.txCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.txApCent);
+                obj.seq.txCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.txApCent);
             end
+            obj.seq.txApCentAng	= interp1(1:obj.sys.nElem, obj.sys.angElem, obj.seq.txCentElem);
+            obj.seq.txApCentZ	= interp1(1:obj.sys.nElem, obj.sys.zElem,   obj.seq.txCentElem);
+            obj.seq.txApCentX	= interp1(1:obj.sys.nElem, obj.sys.xElem,   obj.seq.txCentElem);
 
             if isempty(obj.seq.rxApCent)
-                obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.rxCentElem);
+                obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.rxCentElem);
             else
-                obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.rxApCent);
+                obj.seq.rxCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
             
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2);
