@@ -491,19 +491,25 @@ classdef Us4R < handle
             % obj.seq.txDelCent     - [s] (1 x nTx) tx delays for tx aperture centers
             
             %% CALCULATE DELAYS
+            txAngCart	= obj.seq.txApCentAng + obj.seq.txAng;
+            
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
-                txDel       = (obj.sys.xElem.'  .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
-                txDelCent	= (obj.seq.txApCent .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
-
+                txDel       = (obj.sys.xElem.'   .* sin(txAngCart) + ...
+                               obj.sys.zElem.'   .* cos(txAngCart)) / obj.seq.c;    % [s] (nElem x nTx) delays for tx elements
+                txDelCent	= (obj.seq.txApCentX .* sin(txAngCart) + ...
+                               obj.seq.txApCentZ .* cos(txAngCart)) / obj.seq.c;    % [s] (1 x nTx) delays for tx aperture center
             else
                 % Focal point positions
-                xFoc        = obj.seq.txFoc .* sin(obj.seq.txAng) + obj.seq.txApCent;	% [m] (1 x nTx) x-position of the focal point
-                zFoc        = obj.seq.txFoc .* cos(obj.seq.txAng);                      % [m] (1 x nTx) z-position of the focal point
-
+                xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(txAngCart);	% [m] (1 x nTx) x-position of the focal point
+                zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(txAngCart);	% [m] (1 x nTx) z-position of the focal point
+                
+                
                 % Delays due to the element - focal point distances
-                txDel       = sqrt((xFoc - obj.sys.xElem.' ).^2 + zFoc.^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
-                txDelCent	= sqrt((xFoc - obj.seq.txApCent).^2 + zFoc.^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
+                txDel       = sqrt((xFoc - obj.sys.xElem.'  ).^2 + ...
+                                   (zFoc - obj.sys.zElem.'  ).^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
+                txDelCent	= sqrt((xFoc - obj.seq.txApCentX).^2 + ...
+                                   (zFoc - obj.seq.txApCentZ).^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
 
                 % Inverse the delays for the 'focusing' option (zFoc>0)
                 % For 'defocusing' the delays remain unchanged
