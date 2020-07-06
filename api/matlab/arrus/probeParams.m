@@ -29,6 +29,19 @@ switch probeName
         
 end
 
+% position (pos,x,z) and orientation (ang) of each probe element
+probe.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch;
+if ~isfield(probe,'curv')
+    probe.angElem = zeros(1,probe.nElem);
+    probe.xElem = probe.posElem;
+    probe.zElem = zeros(1,probe.nElem);
+else
+    probe.angElem = probe.posElem / abs(probe.curv);
+    probe.xElem = abs(probe.curv) * sin(probe.angElem);
+    probe.zElem = abs(probe.curv) * cos(probe.angElem);
+    probe.zElem = probe.zElem - min(probe.zElem);
+end
+
 %% Adapter type & channel mapping
 switch probeName
     case {'AL2442','SL1543','AC2541'}

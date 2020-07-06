@@ -52,8 +52,10 @@ classdef Us4R < handle
             obj.sys.rxChannelMap = probe.rxChannelMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
-            obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
-                            (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
+            obj.sys.posElem = probe.posElem;% [m] (1 x nElem) position of probe elements along the probes surface
+            obj.sys.angElem = probe.angElem;% [rad] (1 x nElem) orientation of probe elements
+            obj.sys.zElem = probe.zElem;	% [m] (1 x nElem) z-position of probe elements
+            obj.sys.xElem = probe.xElem;	% [m] (1 x nElem) x-position of probe elements
 
             if obj.sys.adapType == 0
                 % old adapter type (00001111)
