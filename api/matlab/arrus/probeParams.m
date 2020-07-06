@@ -36,9 +36,9 @@ if ~isfield(probe,'curv')
     probe.xElem = probe.posElem;
     probe.zElem = zeros(1,probe.nElem);
 else
-    probe.angElem = probe.posElem / abs(probe.curv);
-    probe.xElem = abs(probe.curv) * sin(probe.angElem);
-    probe.zElem = abs(probe.curv) * cos(probe.angElem);
+    probe.angElem = probe.posElem / -probe.curv;
+    probe.xElem = -probe.curv * sin(probe.angElem);
+    probe.zElem = -probe.curv * cos(probe.angElem);
     probe.zElem = probe.zElem - min(probe.zElem);
 end
 
