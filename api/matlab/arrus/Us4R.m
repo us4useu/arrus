@@ -464,10 +464,7 @@ classdef Us4R < handle
             % calcTxRxApMask appends the following fields to the in/out obj:
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
             % obj.seq.rxApMask      - [logical] (nArius*128 x nTx) is element active in rx?
-            
-%             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
-%             rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
-            
+                        
             txApMask = round(abs((1:obj.sys.nElem).' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
             rxApMask = round(abs((1:obj.sys.nElem).' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
             
@@ -511,9 +508,10 @@ classdef Us4R < handle
                 txDelCent	= sqrt((xFoc - obj.seq.txApCentX).^2 + ...
                                    (zFoc - obj.seq.txApCentZ).^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
 
-                % Inverse the delays for the 'focusing' option (zFoc>0)
+                
+                % Inverse the delays for the 'focusing' option (txFoc>0)
                 % For 'defocusing' the delays remain unchanged
-                focDefoc	= 1 - 2*max(0,sign(zFoc));
+                focDefoc	= 1 - 2 * double(obj.seq.txFoc>0);
                 txDel       = txDel     .* focDefoc;
                 txDelCent	= txDelCent .* focDefoc;
             end
@@ -530,7 +528,7 @@ classdef Us4R < handle
             txDel       = txDel     + txDelShift;       % [s] (nElem x nTx)
             txDelCent	= txDelCent + txDelShift;       % [s] (1 x nTx)
 
-            % Equalize the txCentDel
+            % Equalize the txDelCent
             txDel       = txDel - txDelCent + max(txDelCent);
             txDelCent	= max(txDelCent);
 
