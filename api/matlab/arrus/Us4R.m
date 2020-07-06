@@ -96,6 +96,14 @@ classdef Us4R < handle
             % :param reconstructOperation: reconstruction to perform with the collected data
             % :returns: updated Us4R object
             
+        if isa(sequenceOperation,'TxRxSequence')
+            kernel = TxRxKernel('sequence', sequenceOperation, ...
+                                'usSystem', obj.sys) ...
+                                ;
+            kernel.programHW();
+            obj.rec.enable = false;
+        else
+            
             switch(class(sequenceOperation))
                 case 'PWISequence'
                     sequenceType = "pwi";
@@ -152,7 +160,7 @@ classdef Us4R < handle
                 'zGrid', reconstructOperation.zGrid);
             
             obj.rec.enable = true;
-            
+        end 
         end
         
         function [rf,img] = run(obj)
