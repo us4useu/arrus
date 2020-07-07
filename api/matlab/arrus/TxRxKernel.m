@@ -20,6 +20,12 @@ classdef TxRxKernel
         usSystem = []
     end
     
+    properties (Access = private)
+        nFire = 0
+
+    end
+    
+    
     methods
         function obj = TxRxKernel(varargin)
             if nargin ~= 0
@@ -105,6 +111,7 @@ classdef TxRxKernel
 
             nSamp = []; % consider some preallocation here, for speed
             startSamp = [];
+            nSubFire = [];
             fsDivider = [];
             
             for i = 1:nTxRx 
@@ -159,6 +166,7 @@ classdef TxRxKernel
                 [moduleTxApertures, moduleTxDelays, moduleRxApertures] = ...
                     obj.apertures2modules(txAp, txDel, rxAp);
                 nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
+                nSubFire = [nSubFire,nTxRxFire]; % number of subFirings will be used later in run() method
 %                 nFire = nFire + nTxRxFire;
                 
                 for iTxRxFire = 0:nTxRxFire-1
@@ -231,6 +239,10 @@ classdef TxRxKernel
             
             %}
             
+            
+            obj.nFire = iFire;
+            obj.nSamp = nSamp;
+            obj.nSubFire = nSubFire;
         end
         
         
@@ -271,6 +283,7 @@ classdef TxRxKernel
             
         end
         
+
         
         
  
@@ -398,7 +411,94 @@ classdef TxRxKernel
             
         end % of apertures2modules()  
         
+        
+        function obj = run(obj)
+            pauseMultip = 1.5;
+          
+            % Start acquisitions (1st sequence exec., no transfer to host)
+            Us4MEX(0, "TriggerStart");
+            pause(pauseMultip * obj.sequence.pri * obj.nFire);
+            
+            
+            % execSequence
 
+            nArius	= obj.usSystem.nArius;
+            nChan	= obj.usSystem.nChArius;
+            
+            nSubTx	= obj.nSubFire(1);% nSamp should be a vector of subFires in each iFire (for now only first element is used).
+            nTrig	= obj.nFire;
+            nSamp	= obj.nSamp(1); % nSamp should be a vector of number of Samples in each iFire.
+            nRep = 1;
+            nTx = nTrig;
+
+            %% Capture data
+            for iArius=0:(nArius-1)
+                Us4MEX(iArius, "EnableReceive");
+            end
+            Us4MEX(0, "TriggerSync");
+            pause(pauseMultip * obj.sequence.pri * obj.nFire);
+            
+            %% Transfer to PC
+            rf = Us4MEX(0, ...
+                        "TransferAllRXBuffersToHost",  ...
+                        zeros(nArius, 1), ...
+                        repmat(nSamp * nTrig, [nArius 1]), ...
+                        true ...
+            );
+
+            %% Reorganize
+            rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
+
+%             rxApOrig = obj.seq.rxApOrig;
+%             if obj.sys.adapType == 0
+%                 rf	= permute(rf,[2 1 3 6 4 5]);
+%                 
+%                 for iTx=1:nTx
+%                     iArius = ceil(rxApOrig(iTx) / (nChan * 4)) - 1;
+%                     if iArius >= 0 && iArius < nArius
+%                         rf(:,:,:,iArius+1,iTx,:)	= circshift(rf(:,:,:,iArius+1,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
+%                     end
+%                 end
+%                 rf = reshape(rf,nSamp,nChan*nSubTx*nArius,nTx,nRep);
+%                 for iTx=1:nTx
+%                     rxApEnd = rxApOrig(iTx) + obj.seq.rxApSize - 1;
+%                     nZerosL = max(0, min(  0,rxApEnd) -          rxApOrig(iTx)  + 1);
+%                     nZerosR = max(0,         rxApEnd  - max(193, rxApOrig(iTx)) + 1);
+%                     nChan0  = max(0, min(128,rxApEnd) - max(  1, rxApOrig(iTx)) + 1);
+%                     nChan1  = max(0, min(192,rxApEnd) - max(129, rxApOrig(iTx)) + 1);
+%                     
+%                     rf(:,1:obj.seq.rxApSize,iTx,:) = [  zeros(nSamp,nZerosL,1,nRep), ...
+%                                                         rf(:,(1:nChan0) + 0*nChan*nSubTx,iTx,:), ...
+%                                                         rf(:,(1:nChan1) + 1*nChan*nSubTx,iTx,:), ...
+%                                                         zeros(nSamp,nZerosR,1,nRep) ];
+%                 end
+%                 rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
+%                 
+%             elseif obj.sys.adapType == 2 || obj.sys.adapType == -1
+%                 % "ultrasonix" or "new esaote" adapter type
+%                 
+%                 % new esaote probe: clear the unsupported channels
+%                 if obj.sys.adapType == -1
+%                     mask = any(reshape(obj.seq.rxSubApMask,nChan,4,nSubTx,nTx,1,nArius),2);
+%                     rf  = rf .* int16(mask);
+%                 end
+%                 
+%                 rf	= permute(rf,[2 1 6 3 4 5]);
+%                 rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
+%                 
+%                 for iTx=1:nTx
+%                     rf(:,:,:,iTx,:)	= circshift(rf(:,:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
+%                 end
+%                 rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx,nRep);
+%                 rf	= rf(:,1:obj.seq.rxApSize,:,:);
+%             end            
+%             
+            
+            % Stop acquisition
+            Us4MEX(0, "TriggerStop");
+
+        end
+        
         
     end
    
