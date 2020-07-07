@@ -1,4 +1,4 @@
-classdef TxRxKernel
+classdef TxRxKernel < handle
     % Class for ultrasound system programming when tx-rx sequence 
     % is defined via object of TxRxSequence class.
     %
@@ -22,6 +22,8 @@ classdef TxRxKernel
     
     properties (Access = private)
         nFire = 0
+        nSamp = 0
+        nSubFire = 0
 
     end
     
@@ -171,7 +173,7 @@ classdef TxRxKernel
                 
                 for iTxRxFire = 0:nTxRxFire-1
                     iFire = iFire+1;
-                    nSamp(iFire) = floor(rxTime/fs);
+                    nSamp(iFire) = floor(rxTime.*fs);
                     startSamp(iFire) = floor(rxDel/fs);
                     fsDivider(iFire) = rxFsDivider;
                     
@@ -238,11 +240,12 @@ classdef TxRxKernel
             end
             
             %}
-            
-            
+%             
+%             iFire
             obj.nFire = iFire;
             obj.nSamp = nSamp;
             obj.nSubFire = nSubFire;
+            
         end
         
         
@@ -412,7 +415,7 @@ classdef TxRxKernel
         end % of apertures2modules()  
         
         
-        function obj = run(obj)
+        function rf = run(obj)
             pauseMultip = 1.5;
           
             % Start acquisitions (1st sequence exec., no transfer to host)
@@ -424,7 +427,7 @@ classdef TxRxKernel
 
             nArius	= obj.usSystem.nArius;
             nChan	= obj.usSystem.nChArius;
-            
+
             nSubTx	= obj.nSubFire(1);% nSamp should be a vector of subFires in each iFire (for now only first element is used).
             nTrig	= obj.nFire;
             nSamp	= obj.nSamp(1); % nSamp should be a vector of number of Samples in each iFire.
@@ -439,15 +442,19 @@ classdef TxRxKernel
             pause(pauseMultip * obj.sequence.pri * obj.nFire);
             
             %% Transfer to PC
+%             nArius
+%             nSamp
+%             nTrig
             rf = Us4MEX(0, ...
                         "TransferAllRXBuffersToHost",  ...
                         zeros(nArius, 1), ...
                         repmat(nSamp * nTrig, [nArius 1]), ...
-                        true ...
+                        int8(1) ...
             );
-
+%             size(rf)
+%             size([nArius 1])
             %% Reorganize
-            rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
+%             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
 %             rxApOrig = obj.seq.rxApOrig;
 %             if obj.sys.adapType == 0

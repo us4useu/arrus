@@ -27,6 +27,7 @@ classdef Us4R < handle
         seq
         rec
         logTime
+        kernel = []
     end
     
     methods
@@ -102,6 +103,8 @@ classdef Us4R < handle
                                 ;
             kernel.programHW();
             obj.rec.enable = false;
+            obj.kernel = kernel;
+            
         else
             
             switch(class(sequenceOperation))
@@ -170,15 +173,21 @@ classdef Us4R < handle
             % implementations.
             %
             % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
+
             
-            obj.openSequence;
-            rf = obj.execSequence;
-            obj.closeSequence;
-            
-            if obj.rec.enable
-                img = obj.execReconstr(rf(:,:,:,1));
+            if ~isempty(obj.kernel)
+                rf = obj.kernel.run();
             else
-                img = [];
+                
+                obj.openSequence;
+                rf = obj.execSequence;
+                obj.closeSequence;
+
+                if obj.rec.enable
+                    img = obj.execReconstr(rf(:,:,:,1));
+                else
+                    img = [];
+                end
             end
         end
         
