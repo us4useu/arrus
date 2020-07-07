@@ -40,8 +40,8 @@ classdef TxRxKernel
         
         function programHW(obj)
             
-%             nArius = obj.usSystem.nArius; % number of arius modules
-%             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
+            nArius = obj.usSystem.nArius; % number of arius modules
+            nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
             samplingFrequency = 64e6;
             nTxChannels = 128; % max number of tx channels
             nTxRx = length(obj.sequence.TxRxList);
@@ -157,7 +157,7 @@ classdef TxRxKernel
                 
                 
                 [moduleTxApertures, moduleTxDelays, moduleRxApertures] = ...
-                    apertures2modules(obj.usSystem, txAp, txDel, rxAp);
+                    obj.apertures2modules(txAp, txDel, rxAp);
                 nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
 %                 nFire = nFire + nTxRxFire;
                 
@@ -171,16 +171,16 @@ classdef TxRxKernel
                         % active channel groups
                         Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
 
-
                         % Tx
-                        Us4MEX(iArius, "SetTxAperture", moduleTxApertures(iArius+1,:), iFire);
+                        Us4MEX(iArius, "SetTxAperture", obj.maskFormat(moduleTxApertures(iArius+1,:).'), iFire);
                         Us4MEX(iArius, "SetTxDelays", moduleTxDelays(iArius+1,:), iFire);
                         Us4MEX(iArius, "SetTxFrequency", pulseFrequency, iFire);
                         Us4MEX(iArius, "SetTxHalfPeriods", pulseNPeriods, iFire);
                         Us4MEX(iArius, "SetTxInvert", 0, iFire);
 
+                        
                         % Rx
-                        Us4MEX(iArius, "SetRxAperture", moduleRxApertures(iArius, :, iFire), iFire);
+                        Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iFire).'), iFire);
                         Us4MEX(iArius, "SetRxTime", rxTime, iFire);
                         Us4MEX(iArius, "SetRxDelay", rxDel, iFire);
                         % do zrobienia tgc
@@ -218,7 +218,7 @@ classdef TxRxKernel
             for iArius=0:(obj.usSystem.nArius-1)
                 Us4MEX(iArius, "ClearScheduledReceive");
                 
-                for iTrig=0:(iFire-1)
+                for iTrig = 1:(iFire)
                     Us4MEX(iArius, "ScheduleReceive", ...
                         iTrig*nSamp(iTrig), ...
                         nSamp(iTrig), ...
