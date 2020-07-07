@@ -253,7 +253,7 @@ classdef TxRxKernel
 
         
         
-        function maskString = maskFormat(maskLogical)
+        function maskString = maskFormat(obj, maskLogical)
             
             [maskLength,nMask] = size(maskLogical);
             
@@ -273,11 +273,12 @@ classdef TxRxKernel
         
         
         
-        
-        function [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(usSystem, txAp, txDel, rxAp)
+ 
+        function [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(obj, txAp, txDel, rxAp)
             
         % The method maps logical transmit aperture, transmit delays 
-        %   and receive aperture into mask array
+        %   and receive aperture into mask corresponding to module
+        %   channels.
         % 
         % It returns 3 arrays:
         %   moduleTxApertures, moduleTxDelays are of size [nModules, nModuleChannels]
@@ -286,16 +287,16 @@ classdef TxRxKernel
         %   rxAperture.
         
         % number of modules 
-%             nModules = 2; 
-            nModules = usSystem.nArius;
+            nModules = 2; 
+%             nModules = obj.usSystem.nArius;
             
             % number of channels in module
-%             nModuleChannels = 128; 
-            nModuleChannels = usSystem.nChTotal./usSystem.nArius; 
+            nModuleChannels = 128; 
+%             nModuleChannels = obj.usSystem.nChTotal./usSystem.nArius; 
             
             % number of available rx channels in single module            
-%             nRxChannels = 32; 
-            nRxChannels = usSystem.nChArius;
+            nRxChannels = 32; 
+%             nRxChannels = obj.usSystem.nChArius;
             
             % number of rx channel groups
             nRxChanGroups = 3; 
@@ -306,48 +307,79 @@ classdef TxRxKernel
                error('Transmit aperture length is bigger than number of available channels.') 
             end
             
+            % Creating array which maps module channels into probe elements:
+            %   array indexes corresponds to iModule, iRxChannel and
+            %   iRxGhanGroup while values corresponds to element numbers
             
-            % moduleChannel-to-apertureElement mapping
+            % allocation
             module2elementArray = zeros(nModules,nRxChannels,nRxChanGroups);
-            module2elementArray(1, 1:32, 1) = 0+(1:32);
-            module2elementArray(1, 1:32, 2) = 64+(1:32);
-            module2elementArray(1, 1:32, 3) = 128+(1:32);
-            module2elementArray(2, 1:32, 1) = 32+(1:32);
-            module2elementArray(2, 1:32, 2) = 96+(1:32);
-            module2elementArray(2, 1:32, 3) = 160+(1:32);
+            elements0 = zeros(nModules, nRxChanGroups);
             
+            % first-1 elements of groups operates by module 1
+            elements0(1,:) = [0,64,128];
+           
+            % first-1 elements of groups operates by module 2
+            elements0(2,:) = [32,96,160];
+            
+            for iModule = 1:nModules
+                for iGroup = 1:nRxChanGroups
+                    iElement0 = elements0(iModule, iGroup);
+                    module2elementArray(iModule, 1:nRxChannels, iGroup) = ...
+                        (1:nRxChannels)+iElement0;
+                end
+            end
+
+            
+            
+            
+            
+
             % TX PART
             
-            % allocation of tx output arrays
+            % allocation of tx output arrays i.e. aperture masks and delays
+            % for modules (used by Us4MEX())
             moduleTxApertures = false(nModules, nModuleChannels);
             moduleTxDelays = zeros(nModules, nModuleChannels);
-            
-            % mapping tx arrays
-            for iChannel = 1:length(txAp)
+
+            % mapping tx module apertures
+            for iElement = 1:length(txAp)
                 for iModule = 1:nModules
-                    if txAp(iChannel)==1 && ismember(iChannel, module2elementArray(iModule,:,:)) 
-                        moduleTxApertures(iModule, iChannel) = true;
-                        moduleTxDelays(iModule, iChannel) = txDel(iChannel);
+                    if txAp(iElement)==1 
+                        [iRxChannel, iRxChanGroup] = ...
+                            find(squeeze(module2elementArray(iModule,:,:)) == iElement);
+                        if ~isempty(iRxChannel)
+                            iModuleChannel = iRxChannel+(iRxChanGroup-1)*nRxChannels;
+                            moduleTxApertures(iModule, iModuleChannel) = true;
+                            moduleTxDelays(iModule, iModuleChannel) = txDel(iElement);
+                        end
                     end
                 end
             end
+%             moduleTxApertures
             
+
+
+
             % RX PART            
 
             % allocation of rx output arrays            
             moduleRxApertures = false(nModules,nModuleChannels,nRxChanGroups);
-            
             % mapping rx array
-            for iChannel = 1:length(rxAp)
+            for iElement = 1:length(rxAp)
                 for iModule = 1:nModules
                     for iRxChanGroup = 1:nRxChanGroups
 %                         iRxChannel = mod(iChannel,nRxChannels+1)+(floor(iChannel/(nRxChannels+1)));
-                        if rxAp(iChannel)==1 && ismember(iChannel, module2elementArray(iModule,:,iRxChanGroup)) 
-                            moduleRxApertures(...
-                                iModule, ...
-                                iChannel, ...
-                                iRxChanGroup ...
-                                ) = true;
+                        if rxAp(iElement)==1 %&& ismember(iElement, module2elementArray(iModule,:,iRxChanGroup)) 
+                            iRxChannel = ...
+                                find(squeeze(module2elementArray(iModule,:,iRxChanGroup)) == iElement);
+                            if ~isempty(iRxChannel)
+                                iModuleChannel = iRxChannel+(iRxChanGroup-1)*nRxChannels;
+                                moduleRxApertures(...
+                                    iModule, ...
+                                    iModuleChannel, ...
+                                    iRxChanGroup ...
+                                    ) = true;
+                            end
                         end
                     end
                 end
@@ -362,8 +394,9 @@ classdef TxRxKernel
                end               
             end
             moduleRxApertures(:,:,emptyGroups) = [];
+
             
-        end % of apertures2modules()     
+        end % of apertures2modules()  
         
 
         
