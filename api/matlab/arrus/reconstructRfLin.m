@@ -47,11 +47,13 @@ rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * acq.c/2;       % [mm] (nSamp,1) radial distance from the line origin
 xVec        = rVec*sin(txAng);                       % [mm] (nSamp,1) horiz. distance from the line origin
 zVec        = rVec*cos(txAng);                       % [mm] (nSamp,1) vert.  distance from the line origin
-eVec        = (-(nRx-1)/2:(nRx-1)/2)*sys.pitch;             % [mm] (1,nElem) horiz. position of the rx aperture elements
+xElem       = (-(nRx-1)/2:(nRx-1)/2)*sys.pitch;             % [mm] (1,nElem) horiz. position of the rx aperture elements
+zElem       = zeros(1,nRx);
+angElem     = zeros(1,nRx);
 % warning - different aperture position in rf simulation and reconstruction
 
 txDist      = rVec;                                         % [mm] (nSamp,1) tx distance (from the line origin)
-rxDist      = sqrt((xVec-eVec).^2 + zVec.^2);               % [mm] (nSamp,nRx) rx distance (to each rx element)
+rxDist      = sqrt((xVec-xElem).^2 + (zVec-zElem).^2);      % [mm] (nSamp,nRx) rx distance (to each rx element)
 
 t           = (txDist + rxDist)/acq.c + dT;      % [s] (nSamp,nRx) total tx-rx time delays
 if isa(rfRaw,'gpuArray')
@@ -62,7 +64,8 @@ iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx)
 iSamp(iSamp<1 | iSamp>nSamp)	= inf;
 iSamp       = reshape(iSamp + (0:(nRx-1))*nSamp,[],1);      % [samp] (nSamp*nRx,1)
 
-rxTang      = abs(xVec-eVec)./zVec;
+% rxTang      = abs(xVec-xElem)./zVec;
+rxTang      = tan(atan2(xVec-xElem,zVec-zElem) - angElem);
 rxApod      = double(rxTang < maxTang);
 % rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
 rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx) normalized rx apodization vector
