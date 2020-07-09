@@ -333,6 +333,7 @@ classdef Us4R < handle
                 disp(['rxApertureSize set to ' num2str(obj.seq.rxApSize) '.']);
             end
             
+            % delete: txApCent & rxApCent
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.txCentElem);
             else
