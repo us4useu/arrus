@@ -50,6 +50,7 @@ classdef Us4R < handle
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
+            obj.sys.curv = probe.curv;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
             obj.sys.posElem = probe.posElem;% [m] (1 x nElem) position of probe elements along the probes surface
@@ -815,7 +816,7 @@ classdef Us4R < handle
             
             % Scan conversion (for 'lin' mode)
             if strcmp(obj.seq.type,'lin')
-                envImg = scanConversion(envImg,obj.seq,obj.rec);
+                envImg = scanConversion(envImg,obj.sys,obj.seq,obj.rec);
             end
             
             % Compression
