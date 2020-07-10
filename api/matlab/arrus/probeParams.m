@@ -17,6 +17,7 @@ switch probeName
     case 'AC2541'
         probe.nElem	= 192;
         probe.pitch	= 0.30e-3;
+        probe.curv = -50e-3;
         
     case 'L14-5/38'
         probe.nElem	= 128;
