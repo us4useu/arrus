@@ -5,14 +5,17 @@ switch probeName
     case 'AL2442'
         probe.nElem	= 192;
         probe.pitch	= 0.21e-3;
+        probe.curv = 0e-3;
         
     case 'SL1543'
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
+        probe.curv = 0e-3;
         
 %     case 'SP2430'
 %         probe.nElem	= 96;
 %         probe.pitch	= 0.22e-3;
+%         probe.curv = 0e-3;
         
     case 'AC2541'
         probe.nElem	= 192;
@@ -22,6 +25,7 @@ switch probeName
     case 'L14-5/38'
         probe.nElem	= 128;
         probe.pitch	= 0.3048e-3;
+        probe.curv = 0e-3;
         
     otherwise
         error(['Unhandled probe model ', probeName]);
@@ -32,7 +36,7 @@ end
 
 % position (pos,x,z) and orientation (ang) of each probe element
 probe.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch;
-if ~isfield(probe,'curv')
+if probe.curv == 0
     probe.angElem = zeros(1,probe.nElem);
     probe.xElem = probe.posElem;
     probe.zElem = zeros(1,probe.nElem);
