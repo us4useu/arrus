@@ -166,8 +166,6 @@ classdef TxRxKernel < handle
             obj.nFire = iFire;
             obj.nSamp = nSamp;
             obj.nSubFire = nSubFire;
-%             obj.moduleRxApertures = moduleRxApertures;
-            obj.module2RxMaps = module2RxMaps;        
             
             
             
@@ -446,7 +444,7 @@ classdef TxRxKernel < handle
             );
         
         
-%             rf = obj.reshapeMexRf(rf);
+            rf = obj.reshapeMexRf(rf);
             
             % Stop acquisition
             Us4MEX(0, "TriggerStop");
@@ -465,8 +463,8 @@ classdef TxRxKernel < handle
             
             rfRshpd = zeros(max(nSamp), nElement, nTxRx);
             
-            maps = obj.module2RxMaps;
-
+            maps = obj.module2RxMaps
+            size(maps)
             sample0 = 0;
             for iModule = 1:nModule
                 iFire = 0;
