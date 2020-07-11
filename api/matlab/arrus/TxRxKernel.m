@@ -463,8 +463,7 @@ classdef TxRxKernel < handle
             
             rfRshpd = zeros(max(nSamp), nElement, nTxRx);
             
-            maps = obj.module2RxMaps
-            size(maps)
+            maps = obj.module2RxMaps;
             sample0 = 0;
             for iModule = 1:nModule
                 iFire = 0;
