@@ -19,9 +19,9 @@ us	= Us4R(nUs4OEM, probeName, adapterType, 10, true);
 
 pulse = TxPulse('nPeriods',[2], 'frequency', [5e6]);
 t1 = Tx('pulse', pulse, 'aperture', true(1,192));
-r1 = Rx('aperture', true(1,128), 'time', 50e-6);
+r1 = Rx('aperture', true(1,192), 'time', 50e-6);
 txrx1 = TxRx('Tx',t1,'Rx', r1);
-sequence = TxRxSequence([txrx1]);
+sequence = TxRxSequence([txrx1,txrx1]);
 %%
 us.upload(sequence);
 % 

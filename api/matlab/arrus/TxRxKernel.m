@@ -56,7 +56,7 @@ classdef TxRxKernel < handle
             
             nArius = obj.usSystem.nArius; % number of arius modules
             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
-            samplingFrequency = 64e6;
+            samplingFrequency = 65e6;
             nTxChannels = 128; % max number of tx channels
             nTxRx = length(obj.sequence.TxRxList);
             
@@ -130,7 +130,7 @@ classdef TxRxKernel < handle
                 nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
                 nSubFire = [nSubFire,nTxRxFire]; % number of subFirings will be used later in run() method
 %                 nFire = nFire + nTxRxFire;
-                
+               
                 for iTxRxFire = 0:nTxRxFire-1
                     iFire = iFire+1;
                     nSamp(iFire) = floor(rxTime.*fs);
@@ -148,9 +148,8 @@ classdef TxRxKernel < handle
                         Us4MEX(iArius, "SetTxHalfPeriods", pulseNPeriods, iFire);
                         Us4MEX(iArius, "SetTxInvert", 0, iFire);
 
-                        
                         % Rx
-                        Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iFire).'), iFire);
+                        Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iTxRxFire+1).'), iFire);
                         Us4MEX(iArius, "SetRxTime", rxTime, iFire);
                         Us4MEX(iArius, "SetRxDelay", rxDel, iFire);
                         % do zrobienia tgc
