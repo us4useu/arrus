@@ -247,7 +247,7 @@ classdef TxRxKernel < handle
                 end
                 
                 if isempty(obj.sequence.TxRxList(i).Tx.pulse)
-                    pulse = TxPulse;
+                    pulse = Pulse;
                     pulse.frequency = 0;
                     pulse.nPeriods = 0;
                     obj.sequence.TxRxList(i).Tx.pulse = pulse;

@@ -1,4 +1,4 @@
-classdef TxPulse
+classdef Pulse
     % Class corresponding to transmit pulse.
     %
     % 
@@ -32,7 +32,7 @@ classdef TxPulse
     
     methods
         
-        function obj = TxPulse(varargin)
+        function obj = Pulse(varargin)
             if nargin ~= 0
                 p = inputParser;
                 

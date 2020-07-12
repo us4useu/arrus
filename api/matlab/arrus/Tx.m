@@ -39,7 +39,7 @@ classdef Tx
                 % validation functions
                 txApertureVld = @(x) islogical(x); 
                 txDelaysVld =  @(x) isreal(x);                
-                txPulseVld = @(x) isa(x,'TxPulse') || isempty(x);
+                txPulseVld = @(x) isa(x,'Pulse') || isempty(x);
                 
                 % adding parameters to parser
                 addParameter(p, 'aperture',[], txApertureVld)
