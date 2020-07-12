@@ -21,11 +21,17 @@ classdef TxRxKernel < handle
     end
     
     properties (Access = private)
-        nFire = 0
-        nSamp = 0
-        nSubFire = 0
-%         moduleRxApertures = []
-        module2RxMaps = {}
+        
+        nFire = 0 % number of all firings
+        nSamp = 0 % vector with sample numbers for all firings
+        startSamp = 0 % vector with first sample numbers for all firings
+        nSubTxRx = 0 % vector with number of firings in each TxRx event. sum(nSubTxRx) == nFire
+        
+        % Arrays describing relation between module channel 
+        % and probe element in each TxRx, used in programHW
+        module2RxMaps = {} 
+        module2TxMaps = {}
+        module2TxDelaysMaps = {}
 
     end
     
@@ -49,10 +55,8 @@ classdef TxRxKernel < handle
         
         
         function programHW(obj)
-            % Unloading Us4MEX should clear the device state.
-            munlock('Us4MEX');
-            clear Us4MEX;
                         
+            obj.propertiesPreprocessing()
             
             nArius = obj.usSystem.nArius; % number of arius modules
             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
@@ -64,108 +68,9 @@ classdef TxRxKernel < handle
             actChanGroupMask = actChanGroupMask & obj.usSystem.actChan(8:8:end,:);
             actChanGroupMask = obj.maskFormat(actChanGroupMask);
 
-            
-            
-            % Program Tx/Rx sequence
-            iFire = 0;
-
-            nSamp = []; % consider some preallocation here, for speed
-            startSamp = [];
-            nSubFire = [];
-            fsDivider = [];
-            module2RxMaps = cell(1,nTxRx);
-            
-            for i = 1:nTxRx 
-                thisTxRx = obj.sequence.TxRxList(i);
-                
-                % interpretation of empty properties in TxRx objects
-                txAp = thisTxRx.Tx.aperture;
-                if isempty(txAp)
-                    txAp = false(1,obj.usSystem.nElem);
-                end
-                
-                rxAp = thisTxRx.Rx.aperture;
-                if isempty(rxAp)
-                    rxAp = false(1,obj.usSystem.nElem);
-                end  
-                
-                txDel = thisTxRx.Tx.delay;
-                if isempty(txDel)
-                    txDel = zeros(1,obj.usSystem.nElem);
-                end
-                
-                rxDel = thisTxRx.Rx.delay;
-                if isempty(rxDel)
-                    rxDel = 0;
-                end
-                
-                
-                
-                rxTime = thisTxRx.Rx.time;
-                if isempty(rxTime)
-                    rxTime = 0;
-                end
-                
-                
-                rxFsDivider = thisTxRx.Rx.fsDivider;
-                if isempty(rxFsDivider)
-                    rxFsDivider = 1;
-                end
-                
-                if isempty(thisTxRx.Tx.pulse)
-                    pulseFrequency = 0;
-                    pulseNPeriods = 0;
-                else
-                    pulseFrequency = thisTxRx.Tx.pulse.frequency;
-                    pulseNPeriods = thisTxRx.Tx.pulse.nPeriods;
-                end
-                
-                fs = samplingFrequency./rxFsDivider;
-                
-                
-                
-                [moduleTxApertures, moduleTxDelays, moduleRxApertures] = ...
-                    obj.apertures2modules(txAp, txDel, rxAp);
-                obj.module2RxMaps{i} = moduleRxApertures;
-                nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
-                nSubFire = [nSubFire,nTxRxFire]; % number of subFirings will be used later in run() method
-%                 nFire = nFire + nTxRxFire;
-               
-                for iTxRxFire = 0:nTxRxFire-1
-                    iFire = iFire+1;
-                    nSamp(iFire) = floor(rxTime.*fs);
-                    startSamp(iFire) = floor(rxDel/fs);
-                    fsDivider(iFire) = rxFsDivider;
-                    
-                    for iArius = 0:nArius-1
-                        % active channel groups
-                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
-
-                        % Tx
-                        Us4MEX(iArius, "SetTxAperture", obj.maskFormat(moduleTxApertures(iArius+1,:).'), iFire);
-                        Us4MEX(iArius, "SetTxDelays", moduleTxDelays(iArius+1,:), iFire);
-                        Us4MEX(iArius, "SetTxFrequency", pulseFrequency, iFire);
-                        Us4MEX(iArius, "SetTxHalfPeriods", pulseNPeriods, iFire);
-                        Us4MEX(iArius, "SetTxInvert", 0, iFire);
-
-                        % Rx
-                        Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iTxRxFire+1).'), iFire);
-                        Us4MEX(iArius, "SetRxTime", rxTime, iFire);
-                        Us4MEX(iArius, "SetRxDelay", rxDel, iFire);
-                        % do zrobienia tgc
-%                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
-
-                    end
-
-                end
-                
-            end
-            % note: after loop over n TxRx events the 'iFire' represents
-            % total number of firings
-            obj.nFire = iFire;
-            obj.nSamp = nSamp;
-            obj.nSubFire = nSubFire;
-            
+            % Unloading Us4MEX should clear the device state.
+            munlock('Us4MEX');
+            clear Us4MEX;            
             
             
             % Program mappings, gains, and voltage
@@ -195,7 +100,7 @@ classdef TxRxKernel < handle
                 Us4MEX(iArius, "SetActiveTermination","EN", "200");
                 Us4MEX(iArius, "SetLNAGain","24dB");
                 Us4MEX(iArius, "SetDTGC","DIS", "0dB");
-                Us4MEX(iArius, "TGCEnable");
+                Us4MEX(iArius, "TGCDisable");
 
                 try
                     Us4MEX(0,"EnableHV");
@@ -214,12 +119,55 @@ classdef TxRxKernel < handle
                     Us4MEX(0, "SetHVVoltage", obj.usSystem.voltage);
                     
                 end
-            end
+            end            
             
-  
+            % Program Tx/Rx sequence
+
+            iFire = 0;
+            nSamp = NaN(1,obj.nFire);
+            startSamp = NaN(1,obj.nFire);
+            for iTxRx = 1:nTxRx 
+                fs = samplingFrequency./obj.sequence.TxRxList(iTxRx).Rx.fsDivider;
+                moduleTxApertures = obj.module2TxMaps{iTxRx};
+                moduleTxDelays = obj.module2TxDelaysMaps{iTxRx};
+                moduleRxApertures = obj.module2RxMaps{iTxRx};                
+                for iTxRxFire = 0:obj.nSubTxRx(iTxRx)-1
+                    iFire = iFire+1;
+                    nSamp(iFire) = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
+                    startSamp(iFire) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay./fs);
+
+                    for iArius = 0:nArius-1
+                        
+                        % active channel groups
+                        Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
+
+                        % Tx
+                        Us4MEX(iArius, "SetTxAperture", obj.maskFormat(moduleTxApertures(iArius+1,:).'), iFire);
+                        Us4MEX(iArius, "SetTxDelays", moduleTxDelays(iArius+1,:), iFire);
+                        Us4MEX(iArius, "SetTxFrequency", obj.sequence.TxRxList(iTxRx).Tx.pulse.frequency, iFire);
+                        Us4MEX(iArius, "SetTxHalfPeriods", obj.sequence.TxRxList(iTxRx).Tx.pulse.nPeriods, iFire);
+                        Us4MEX(iArius, "SetTxInvert", 0, iFire);
+
+                        % Rx
+                        Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iTxRxFire+1).'), iFire);
+                        Us4MEX(iArius, "SetRxTime", obj.sequence.TxRxList(iTxRx).Rx.time, iFire);
+                        Us4MEX(iArius, "SetRxDelay", obj.sequence.TxRxList(iTxRx).Rx.delay, iFire);
+                        % do zrobienia tgc
+%                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
+
+                    end
+
+                end
+                
+            end
+            % note: after loop over n TxRx events the 'iFire' represents
+            % total number of firings
+            obj.nSamp = nSamp;
+            obj.startSamp = startSamp;
+
             
             for iArius = 0:nArius-1
-                Us4MEX(iArius, "SetNumberOfFirings", iFire);
+                Us4MEX(iArius, "SetNumberOfFirings", obj.nFire);
                 Us4MEX(iArius, "EnableTransmit");
                 Us4MEX(iArius, "EnableReceive");
             end
@@ -236,23 +184,95 @@ classdef TxRxKernel < handle
                 Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 0, 0, 0);
             end
             
+
             % Program recording
             for iArius = 0:obj.usSystem.nArius-1
                 Us4MEX(iArius, "ClearScheduledReceive");
                 
-                for iTrig = 1:obj.nFire
-                    Us4MEX(iArius, "ScheduleReceive", ...
-                        iTrig*nSamp(iTrig), ...
-                        nSamp(iTrig), ...
-                        startSamp(iTrig) + obj.usSystem.trigTxDel, ...
-                        fsDivider(iTrig)-1 ...  
-                    );
+                iTrig = 0;
+                for iTxRx = 1:length(obj.sequence.TxRxList)
+                    for iSubTxRx = 1:obj.nSubTxRx(iTxRx)
+                        iTrig = iTrig+1;
+                        Us4MEX(iArius, "ScheduleReceive", ...
+                            (iTrig-1)*obj.nSamp(iTrig), ...
+                            obj.nSamp(iTrig), ...
+                            obj.startSamp(iTrig) + obj.usSystem.trigTxDel, ...
+                            obj.sequence.TxRxList(iTxRx).Rx.fsDivider - 1 ...  
+                        );
+                        
+                    end
+                    
                 end
                 
-            end
-            
+
+            end            
 
         end
+        
+        
+        function propertiesPreprocessing(obj)
+            nTxRx = length(obj.sequence.TxRxList);
+            nSubTxRx = NaN(1,nTxRx);
+            for i = 1:nTxRx 
+                thisTxRx = obj.sequence.TxRxList(i);
+                
+                %% interpretation of empty properties in TxRx objects
+
+                if isempty(obj.sequence.TxRxList(i).Tx.aperture)
+                    obj.sequence.TxRxList(i).Tx.aperture = ...
+                        false(1,obj.usSystem.nElem);
+                end
+                
+                if isempty(obj.sequence.TxRxList(i).Rx.aperture)
+                    obj.sequence.TxRxList(i).Rx.aperture = ...
+                        false(1,obj.usSystem.nElem);
+                end  
+                
+                if isempty(obj.sequence.TxRxList(i).Tx.delay)
+                    obj.sequence.TxRxList(i).Tx.delay = ...
+                        zeros(1,obj.usSystem.nElem);
+                end
+                
+                if isempty(obj.sequence.TxRxList(i).Rx.delay)
+                    obj.sequence.TxRxList(i).Rx.delay = 0;
+                end
+                
+                
+                if isempty(obj.sequence.TxRxList(i).Rx.time)
+                    obj.sequence.TxRxList(i).Rx.time = 0;
+                end
+                
+                if isempty(obj.sequence.TxRxList(i).Rx.fsDivider)
+                    obj.sequence.TxRxList(i).Rx.fsDivider = 1;
+                end
+                
+                if isempty(obj.sequence.TxRxList(i).Tx.pulse)
+                    pulse = TxPulse;
+                    pulse.frequency = 0;
+                    pulse.nPeriods = 0;
+                    obj.sequence.TxRxList(i).Tx.pulse = pulse;
+                end
+                
+                [moduleTxApertures, moduleTxDelays, moduleRxApertures] = ...
+                    obj.apertures2modules( ...
+                        obj.sequence.TxRxList(i).Tx.aperture, ...
+                        obj.sequence.TxRxList(i).Tx.delay, ...
+                        obj.sequence.TxRxList(i).Rx.aperture ...
+                        );
+                    
+
+                obj.module2RxMaps{i} = moduleRxApertures;
+                obj.module2TxMaps{i} = moduleTxApertures;
+                obj.module2TxDelaysMaps{i} = moduleTxDelays;
+                nTxRxFire = size(moduleRxApertures,3); % number of fires for this single TxRx 
+                nSubTxRx(i) = nTxRxFire; % number of subFirings will be used later in run() method
+               
+            end
+            obj.nSubTxRx = nSubTxRx;
+            obj.nFire = sum(nSubTxRx);
+            
+        end
+        
         
         
         function nFire = calcNFire(obj)
@@ -419,7 +439,7 @@ classdef TxRxKernel < handle
         
         
         function rf = run(obj)
-            pauseMultip = 1.5;
+            pauseMultip = 2;
           
             % Start acquisitions (1st sequence exec., no transfer to host)
             Us4MEX(0, "TriggerStart");
@@ -438,7 +458,7 @@ classdef TxRxKernel < handle
             rf = Us4MEX(0, ...
                         "TransferAllRXBuffersToHost",  ...
                         zeros(obj.usSystem.nArius, 1), ...
-                        repmat(nAllSamp, [obj.usSystem.nArius 1]), ...
+                        repmat(nAllSamp, [obj.usSystem.nArius, 1]), ...
                         int8(1) ...
             );
         
