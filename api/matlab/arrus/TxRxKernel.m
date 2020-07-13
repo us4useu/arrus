@@ -72,12 +72,12 @@ classdef TxRxKernel < handle
             munlock('Us4MEX');
             clear Us4MEX;            
             
-            
             % Program mappings, gains, and voltage
             for iArius = 0:nArius-1
                 
                 % Set Rx channel mapping
-                for iFire = 1:obj.nFire
+                for iFire = 0:obj.nFire-1
+
                     for iChannel = 1:nRxChannels
                         Us4MEX(iArius, "SetRxChannelMapping", ...
                                obj.usSystem.rxChannelMap(iArius+1, iChannel), ...
@@ -89,6 +89,7 @@ classdef TxRxKernel < handle
 
                 % Set Tx channel mapping
                 for iChannel = 1:nTxChannels
+%                     disp(obj.usSystem.txChannelMap(iArius+1, iChannel))
                     Us4MEX(iArius, "SetTxChannelMapping", ...
                            obj.usSystem.txChannelMap(iArius+1, iChannel), ...
                            iChannel);
@@ -132,15 +133,18 @@ classdef TxRxKernel < handle
                 moduleTxDelays = obj.module2TxDelaysMaps{iTxRx};
                 moduleRxApertures = obj.module2RxMaps{iTxRx};                
                 for iTxRxFire = 0:obj.nSubTxRx(iTxRx)-1
-                    iFire = iFire+1;
-                    nSamp(iFire) = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
-                    startSamp(iFire) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay./fs);
+
+                    nSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
+                    startSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay./fs);
 
                     for iArius = 0:nArius-1
                         
                         % active channel groups
                         Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
-
+                        
+%                         disp(['module ',num2str(iArius),', txaperture'])
+%                         disp(['subfire no. ',num2str(iTxRxFire)])
+%                         disp(obj.maskFormat(moduleTxApertures(iArius+1,:).'))
                         % Tx
                         Us4MEX(iArius, "SetTxAperture", obj.maskFormat(moduleTxApertures(iArius+1,:).'), iFire);
                         Us4MEX(iArius, "SetTxDelays", moduleTxDelays(iArius+1,:), iFire);
@@ -148,6 +152,9 @@ classdef TxRxKernel < handle
                         Us4MEX(iArius, "SetTxHalfPeriods", obj.sequence.TxRxList(iTxRx).Tx.pulse.nPeriods, iFire);
                         Us4MEX(iArius, "SetTxInvert", 0, iFire);
 
+%                         disp(['module ',num2str(iArius),', rxaperture'])
+%                         disp(['subfire no. ',num2str(iTxRxFire)])
+%                         disp(obj.maskFormat(moduleRxApertures(iArius+1, :, iTxRxFire+1).'))
                         % Rx
                         Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iTxRxFire+1).'), iFire);
                         Us4MEX(iArius, "SetRxTime", obj.sequence.TxRxList(iTxRx).Rx.time, iFire);
@@ -156,7 +163,7 @@ classdef TxRxKernel < handle
 %                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
 
                     end
-
+                    iFire = iFire+1;
                 end
                 
             end
