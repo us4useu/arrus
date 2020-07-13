@@ -1,0 +1,5 @@
+[requires]
+protobuf/3.11.4
+
+[generators]
+cmake_find_package

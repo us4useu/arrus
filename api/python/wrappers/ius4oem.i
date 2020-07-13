@@ -45,8 +45,8 @@ static constexpr size_t NCH = IUs4OEM::NCH;
 %include afe58jd18Registers.h
 %include ius4oem.h
 %include iI2CMaster.h
-%include "core/api/Event.h"
-%include "core/api/DataAcquiredEvent.h"
+%include "core/callbacks/Event.h"
+%include "core/callbacks/DataAcquiredEvent.h"
 
 %feature("director") ScheduleReceiveCallback;
 
