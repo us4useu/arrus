@@ -8,12 +8,14 @@ classdef Us4R < handle
     % 
     % - Esaote: 'AL2442', 'SL1543', 'AC2541',
     % - Ultrasonix: 'L14-5/38'.
+    % - ATL: 'L7-4'
     % 
     % Available adapter types:
     %
     % - 'esaote': legacy adapter for esaote probes,
     % - 'esaote2': current version of the esaote adapter,
     % - 'ultrasonix': current version of the ultrasonix probe adapter. 
+    % - 'atl/philips': current version of the ATL/PHILIPS probe adapter.
     % 
     % :param nArius: number of Us4OEM modules available in the us4R system
     % :param probeName: name of the probe to use
