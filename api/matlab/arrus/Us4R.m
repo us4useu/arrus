@@ -581,9 +581,7 @@ classdef Us4R < handle
 %                     Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,iChan), iChan);
 %                 end
                 for iFire=0:(obj.seq.nFire-1)
-                    for iChan=1:32
-                        Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,iChan), iChan, iFire);
-                    end
+                    Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,1:32), iFire);
                 end
 
                 % Set Tx channel mapping
@@ -617,6 +615,7 @@ classdef Us4R < handle
             %% Program Tx/Rx sequence
             for iArius=0:(obj.sys.nArius-1)
                 Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
+                Us4MEX(iArius, "ClearScheduledReceive");
                 for iFire=0:(obj.seq.nFire-1)    
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
@@ -631,39 +630,49 @@ classdef Us4R < handle
                     %% Rx
                     % SetRxChannelMapping for the new esaote adapter
                     if obj.sys.adapType == -1
+                        % czy duzym problemem jest to, ze ten sam kanal
+                        % odbiorczy jest ustawiony dla tego samego 
                         rxSubChanIdx = find(obj.seq.rxSubApMask(:,iFire+1,iArius+1));
                         rxSubChanMap = obj.sys.rxChannelMap(iArius+1,rxSubChanIdx);
                         rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
                         rxSubChanMap = 1+mod(rxSubChanMap-1,obj.sys.nChArius);
+                        rxMapping = ones(1, 32);
+                        % Intentionally settings inactive channels (due to
+                        % channel mapping issue with esaote2) to ones.
                         for iChan=1:length(rxSubChanIdx)
-                            Us4MEX(iArius, "SetRxChannelMapping", rxSubChanMap(iChan), rxSubChanIdx(iChan), iFire);
+                            rxMapping(rxSubChanIdx(iChan)) = rxSubChanMap(iChan);
+                            
                         end
+                        Us4MEX(iArius, "SetRxChannelMapping", rxMapping, iFire);
+                        
                     end
                     Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                     Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
                     Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
+                    Us4MEX(iArius, "ScheduleReceive", iFire, iFire*obj.seq.nSamp, ...
+                                    obj.seq.nSamp, ... 
+                                    obj.seq.startSample + obj.sys.trigTxDel, ...
+                                    obj.seq.fsDivider-1, iFire);
                 end
 
                 Us4MEX(iArius, "EnableTransmit");
-                Us4MEX(iArius, "EnableReceive");
             end
             
             %% Program triggering
             Us4MEX(0, "SetNTriggers", obj.seq.nTrig);
             for iTrig=0:(obj.seq.nTrig-1)
-                Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 0, iTrig);
+                Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, iTrig);
             end
-            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 0, 1, obj.seq.nTrig-1);
-            for iArius=1:(obj.sys.nArius-1)
-                Us4MEX(iArius, "SetTrigger", obj.seq.txPri*1e6, 0, 0, 0);
-            end
+            Us4MEX(0, "SetTrigger", obj.seq.txPri*1e6, 1, obj.seq.nTrig-1);
+            
+            Us4MEX(ar, "EnableSequencer");
             
             %% Program recording
             for iArius=0:(obj.sys.nArius-1)
-                Us4MEX(iArius, "ClearScheduledReceive");
+                
                 for iTrig=0:(obj.seq.nTrig-1)
-                    Us4MEX(iArius, "ScheduleReceive", iTrig*obj.seq.nSamp, obj.seq.nSamp, obj.seq.startSample + obj.sys.trigTxDel, obj.seq.fsDivider-1);
+                    
                 end
             end
         end
@@ -691,9 +700,6 @@ classdef Us4R < handle
             nTrig	= nTx*nSubTx*nRep;
 
             %% Capture data
-            for iArius=0:(nArius-1)
-                Us4MEX(iArius, "EnableReceive");
-            end
             Us4MEX(0, "TriggerSync");
             pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
             
