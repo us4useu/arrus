@@ -9,6 +9,11 @@
 
 namespace arrus {
 
+/**
+ * Us4OEM settings.
+ *
+ * Contains all raw parameters used to configure module.
+ */
 class Us4OEMSettings {
 public:
     Us4OEMSettings(
@@ -27,7 +32,7 @@ public:
         tgcSamples(tgcSamples)
         {}
 
-    const std::vector<chnanelIdx> &getChannelMapping() const {
+    const std::vector<ChannelIdx> &getChannelMapping() const {
         return channelMapping;
     }
 
@@ -56,7 +61,7 @@ public:
     }
 
     const std::optional<TGCCurve> &getTGCSamples() const {
-        return tgcSamples
+        return tgcSamples;
     }
 
 private:

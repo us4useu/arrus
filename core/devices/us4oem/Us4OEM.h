@@ -6,7 +6,7 @@
 namespace arrus {
 
 /**
- * Us4OEM handle.
+ * Us4OEM device.
  */
 class Us4OEM : public Device {
 

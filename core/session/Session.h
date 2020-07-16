@@ -2,21 +2,34 @@
 #define ARRUS_CORE_SESSION_SESSION_H
 
 #include <memory>
+#include <unordered_map>
+
+#include "core/devices/common.h"
+#include "core/devices/Device.h"
+#include "core/session/SessionSettings.h"
 
 namespace arrus {
+
 	class Session {
 	public:
 
-	    using DeviceHandle = std::shared_ptr<Device>;
+	    /**
+	     * Creates a new session with the provided configuration.
+	     *
+	     * @param sessionSettings session settings to set.
+	     */
+		Session(const SessionSettings& sessionSettings);
 
-		Session();
+		/**
+		 * Releases all allocated resources and devices.
+		 */
+		~Session();
 
-		DeviceHandle getDevice();
-
-
+		DeviceHandle getDevice(const std::string& deviceId);
+		DeviceHandle getDevice(const DeviceId& deviceId);
 
 	private:
-
+//	    std::unordered_map<DeviceId, DeviceHandle> devices;
 	};
 }
 

@@ -4,14 +4,14 @@
 #include <vector>
 
 #include "core/devices/common.h"
-#include "core/devices/Us4OEMSettings.h"
+#include "core/devices/us4oem/Us4OEMSettings.h"
 
 namespace arrus {
 
 /**
  * Session settings.
  *
- * This class is meant to be used by ARRUS API.
+ * This class is meant to be a part of ARRUS API.
  */
 class SessionSettings {
 public:

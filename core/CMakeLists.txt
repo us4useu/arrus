@@ -3,7 +3,8 @@ set(TARGET_NAME arrus-core)
 set(SOURCE_FILES
         "types.h"
         "devices/common.h"
-        "devices/Us4OEMSettings.h"
+        "devices/Device.h"
+        "devices/us4oem/Us4OEMSettings.h"
         "session/SessionSettings.h"
         "session/Session.h"
         "session/Session.cpp"

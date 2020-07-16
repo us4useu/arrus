@@ -8,7 +8,6 @@ namespace arrus {
     // Data types
 	using uint32 = unsigned int;
 
-
 	using ChannelIdx = unsigned short;
 	using BitMask = std::vector<bool>;
 }
