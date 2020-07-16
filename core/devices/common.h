@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Device.h"
+#include "core/utils/common.h"
 
 namespace arrus {
 
@@ -24,27 +25,37 @@ using Ordinal = unsigned short;
  * Device identifier.
  */
 class DeviceId {
+public:
     DeviceId(const DeviceType dt,
              const Ordinal ordinal)
-            : deviceType(dt), ordinal(ordinal)
-    {}
+            : deviceType(dt), ordinal(ordinal) {}
 
-    DeviceType getDeviceType() const {
+    [[nodiscard]] DeviceType getDeviceType() const {
         return deviceType;
     }
 
-    Ordinal getOrdinal() const {
+    [[nodiscard]] Ordinal getOrdinal() const {
         return ordinal;
+    }
+
+    bool operator==(const DeviceId &rhs) const {
+        return deviceType == rhs.deviceType
+               && ordinal == rhs.ordinal;
+    }
+
+    bool operator!=(const DeviceId &rhs) const {
+        return !(rhs == *this);
     }
 
 private:
     DeviceType deviceType;
     Ordinal ordinal;
 };
+MAKE_HASHER(DeviceId, t.getDeviceType(), t.getOrdinal())
+
 
 using DeviceHandle = std::shared_ptr<Device>;
 using TGCCurve = std::vector<float>;
 
 }
-
 #endif //ARRUS_CORE_DEVICES_TYPES_H

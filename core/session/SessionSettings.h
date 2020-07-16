@@ -1,32 +1,24 @@
 #ifndef ARRUS_CORE_SESSION_SESSIONSETTINGS_H
 #define ARRUS_CORE_SESSION_SESSIONSETTINGS_H
 
-#include <vector>
+#include <utility>
 
-#include "core/devices/common.h"
-#include "core/devices/us4oem/Us4OEMSettings.h"
+#include "core/session/SystemSettings.h"
 
 namespace arrus {
-
-/**
- * Session settings.
- *
- * This class is meant to be a part of ARRUS API.
- */
 class SessionSettings {
 public:
-	SessionSettings(const std::vector<Us4OEMSettings>& us4oemSettings)
-		: us4oemSettings(us4oemSettings)
-	{}
+    SessionSettings(SystemSettings systemSettings) :
+            systemSettings(std::move(systemSettings)) {}
 
-	const Us4OEMSettings &getUs4OEMSettings(const Ordinal ordinal) const {
-		return this->us4oemSettings[ordinal];
-	}
+    const SystemSettings &getSystemSettings() const {
+        return systemSettings;
+    }
 
 private:
-	std::vector<Us4OEMSettings> us4oemSettings;
+    SystemSettings systemSettings;
+    // TODO log level, output logging, etc.
 };
-
 }
 
 #endif //ARRUS_CORE_SESSION_SESSIONSETTINGS_H

@@ -1,22 +1,22 @@
 #include "Session.h"
 
-
 namespace arrus {
 
 Session::Session(const SessionSettings &sessionSettings) {
-    // TODO
-}
-
-Session::~Session() {
-
+    devices = configureDevices(sessionSettings.getSystemSettings());
 }
 
 DeviceHandle Session::getDevice(const std::string &deviceId) {
-    // TODO
+    // TODO parse deviceId string
+    // cal getDevice(DeviceId)
 }
 
 DeviceHandle Session::getDevice(const DeviceId &deviceId) {
-    // TODO
+    // TODO devices[deviceId]
+}
+
+Session::DeviceMap Session::configureDevices(const SystemSettings &settings) {
+    DeviceMap deviceMap;
 }
 
 }

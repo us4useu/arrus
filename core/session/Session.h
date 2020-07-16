@@ -10,27 +10,51 @@
 
 namespace arrus {
 
-	class Session {
-	public:
+class Session {
+public:
+    /**
+     * Creates a new session with the provided configuration.
+     *
+     * @param sessionSettings session settings to set.
+     */
+    explicit Session(const SessionSettings &sessionSettings);
 
-	    /**
-	     * Creates a new session with the provided configuration.
-	     *
-	     * @param sessionSettings session settings to set.
-	     */
-		Session(const SessionSettings& sessionSettings);
+    /**
+     * Releases all allocated resources and devices.
+     */
+    ~Session() = default;
 
-		/**
-		 * Releases all allocated resources and devices.
-		 */
-		~Session();
+    Session(const Session &) = delete;
 
-		DeviceHandle getDevice(const std::string& deviceId);
-		DeviceHandle getDevice(const DeviceId& deviceId);
+    Session(const Session &&) = delete;
 
-	private:
-//	    std::unordered_map<DeviceId, DeviceHandle> devices;
-	};
+    Session &operator=(const Session &) = delete;
+
+    Session &operator=(const Session &&) = delete;
+
+    /**
+     * Returns a handle to device with given Id.
+     *
+     * @param deviceId device identifier
+     * @return a device handle
+     */
+    DeviceHandle getDevice(const std::string &deviceId);
+
+    /**
+     * Returns a handle to device with given Id.
+     *
+     * @param deviceId device identifier
+     * @return a device handle
+     */
+    DeviceHandle getDevice(const DeviceId &deviceId);
+
+private:
+    using DeviceMap = std::unordered_map<DeviceId, DeviceHandle,
+            GET_HASHER_NAME(DeviceId)>;
+
+    DeviceMap configureDevices(const SystemSettings &settings);
+    DeviceMap devices;
+};
 }
 
 
