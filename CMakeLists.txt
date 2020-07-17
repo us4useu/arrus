@@ -56,10 +56,12 @@ set(Boost_USE_STATIC_LIBS ON)
 ################################################################################
 # Sub-projects
 ################################################################################
-add_subdirectory(core)
 if(ARRUS_RUN_TESTS)
     enable_testing()
 endif()
+
+add_subdirectory(core)
+
 if(ARRUS_BUILD_PY)
     add_subdirectory(api/python)
 endif()

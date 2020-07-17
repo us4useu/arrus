@@ -1,6 +1,7 @@
 [requires]
 boost/1.70.0#4fc6b458f2dbbe748a3f7ca8742b997e
 protobuf/3.11.4
+gtest/1.10.0
 
 [generators]
 cmake_find_package

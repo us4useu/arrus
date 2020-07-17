@@ -44,4 +44,16 @@ target_link_libraries(${TARGET_NAME}
     Boost::Boost
 )
 
-
+################################################################################
+# Tests
+################################################################################
+if(ARRUS_RUN_TESTS)
+    find_package(GTest REQUIRED)
+#    add_executable(session_tests_Simple session/tests/SessionTest.cpp)
+#    target_link_libraries(session_tests_Simple GTest::GTest Boost::Boost)
+#    target_include_directories(session_tests_Simple
+#        PRIVATE
+#        ${CMAKE_CURRENT_SOURCE_DIR}/..
+#    )
+#    add_test(NAME test-session-tests-Simple COMMAND session_tests_Simple)
+endif()

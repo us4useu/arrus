@@ -20,14 +20,15 @@ template<typename T, typename... Rest>
 inline std::size_t hash_combine(const T &v, Rest... rest) {
     std::size_t seed = 0;
     hash_combine_seed(seed, v, rest...);
-    return seed;}
+    return seed;
+}
 
 #define GET_HASHER_NAME(type) type##Hasher
 
 #define MAKE_HASHER(type, ...) \
     struct GET_HASHER_NAME(type) { \
         std::size_t operator()(const type &t) const { \
-            return arrus::hash_combine(t, __VA_ARGS__); \
+            return arrus::hash_combine(__VA_ARGS__); \
         } \
     };
 
