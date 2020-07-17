@@ -630,21 +630,17 @@ classdef Us4R < handle
                     %% Rx
                     % SetRxChannelMapping for the new esaote adapter
                     if obj.sys.adapType == -1
-                        % czy duzym problemem jest to, ze ten sam kanal
-                        % odbiorczy jest ustawiony dla tego samego 
                         rxSubChanIdx = find(obj.seq.rxSubApMask(:,iFire+1,iArius+1));
                         rxSubChanMap = obj.sys.rxChannelMap(iArius+1,rxSubChanIdx);
                         rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
                         rxSubChanMap = 1+mod(rxSubChanMap-1,obj.sys.nChArius);
-                        rxMapping = ones(1, 32);
-                        % Intentionally settings inactive channels (due to
-                        % channel mapping issue with esaote2) to ones.
-                        for iChan=1:length(rxSubChanIdx)
-                            rxMapping(rxSubChanIdx(iChan)) = rxSubChanMap(iChan);
-                            
-                        end
-                        Us4MEX(iArius, "SetRxChannelMapping", rxMapping, iFire);
+                        rxMapping = nan(1, 32);
+                        rxMapping(rxSubChanIdx) = rxSubChanMap;
+                        % Mapping inactive elements to inactive channels
+                        % They are ommited in execSequence anyway
+                        rxMapping(isnan(rxMapping)) = find(~any((1:obj.sys.nChArius).' == rxSubChanMap, 2));
                         
+                        Us4MEX(iArius, "SetRxChannelMapping", rxMapping, iFire);
                     end
                     Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
