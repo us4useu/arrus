@@ -667,12 +667,14 @@ classdef Us4R < handle
             end
             
             %% Program recording
-            for iArius=0:(obj.sys.nArius-1)
-                
-                for iTrig=0:(obj.seq.nTrig-1)
-                    
-                end
-            end
+            % ScheduleReceive should be done for every iTrig (not iFire)
+            % This loop will be probably used in the future
+%             for iArius=0:(obj.sys.nArius-1)
+%                 
+%                 for iTrig=0:(obj.seq.nTrig-1)
+%                     
+%                 end
+%             end
         end
 
         function openSequence(obj)
