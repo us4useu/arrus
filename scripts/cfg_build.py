@@ -20,7 +20,7 @@ def assert_no_error(return_code):
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
     parser.add_argument("--targets", dest="targets",
-                        type=str, nargs="+", required=True)
+                        type=str, nargs="*", required=False)
     parser.add_argument("--run_targets", dest="run_targets",
                         type=str, nargs="*", required=False)
     parser.add_argument("--src_branch_name", dest="src_branch_name", type=str,
@@ -38,7 +38,9 @@ def main():
     run_targets = args.run_targets
     extra_options = args.options
     src_branch_name = args.src_branch_name
-    options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
+    options = []
+    if targets is not None:
+        options += ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
     if run_targets is not None:
         options += ["-DARRUS_RUN_%s=ON" % t.upper() for t in run_targets]
     options += ["-D%s" % o.upper() for o in extra_options]
@@ -61,11 +63,18 @@ def main():
     shutil.rmtree(build_dir, ignore_errors=True)
     os.makedirs(build_dir)
 
-    cmake_generator = ""
+    # Conan install.
+    cmd = ["conan", "install",  src_dir, "-if", build_dir]
+    result = subprocess.call(cmd)
+    assert_no_error(result)
+
+    # Cmake cfg generator.
     if os.name == "nt":
         cmake_generator = "Visual Studio 15 2017 Win64"
+        venv_activate = f"{os.path.join(build_dir, 'activate.ps1')}"
     else:
         cmake_generator = "Unix Makefiles"
+        shell_source(f"{os.path.join(build_dir, 'activate.sh')}")
 
     cmake_cmd = [
         "cmake",
@@ -76,6 +85,14 @@ def main():
     print("Calling: %s" % (" ".join(cmake_cmd)))
     result = subprocess.call(cmake_cmd)
     assert_no_error(result)
+
+def shell_source(script):
+    # Credits:
+    # https://stackoverflow.com/questions/7040592/calling-the-source-command-from-subprocess-popen#answer-12708396
+    pipe = subprocess.Popen(". %s; env" % script, stdout=subprocess.PIPE, shell=True)
+    output = pipe.communicate()[0]
+    env = dict((line.split("=", 1) for line in str(output).splitlines()))
+    os.environ.update(env)
 
 
 if __name__ == "__main__":

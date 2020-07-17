@@ -5,3 +5,4 @@ gtest/1.10.0
 
 [generators]
 cmake_find_package
+virtualenv
