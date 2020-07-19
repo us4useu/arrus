@@ -468,7 +468,7 @@ classdef Us4R < handle
             if length(iElem) >= obj.sys.nChTotal
                 iElem = iElem(1:obj.sys.nChTotal);
             else
-                iElem = [iElem, nan(obj.sys.nChTotal-length(iElem), 1)];
+                iElem = [iElem, nan(1, obj.sys.nChTotal-length(iElem))];
             end
             
             obj.seq.txApMask = round(abs(iElem.' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
