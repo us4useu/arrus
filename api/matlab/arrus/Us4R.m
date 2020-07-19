@@ -466,7 +466,8 @@ classdef Us4R < handle
 %             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
 %             rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
             
-            iElem = obj.sys.probeMap;
+            iElem = nan(1,max(obj.sys.probeMap));
+            iElem(obj.sys.probeMap) = 1:obj.sys.nElem;
             if length(iElem) >= obj.sys.nChTotal
                 iElem = iElem(1:obj.sys.nChTotal);
             else

@@ -13,7 +13,7 @@ switch probeName
     case 'SP2430'
         probe.nElem	= 96;
         probe.pitch	= 0.22e-3;
-        probe.probeMap = [1:48, nan(1,96), 49:96];
+        probe.probeMap = [1:48, 145:192];
         
     case 'AC2541'
         probe.nElem	= 192;
