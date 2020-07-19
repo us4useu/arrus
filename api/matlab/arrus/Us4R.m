@@ -496,11 +496,19 @@ classdef Us4R < handle
             % obj.seq.txDel         - [s] (nArius*128 x nTx) tx delays for each element
             % obj.seq.txDelCent     - [s] (1 x nTx) tx delays for tx aperture centers
             
+            xElem = nan(1,max(obj.sys.probeMap));
+            xElem(obj.sys.probeMap) = obj.sys.xElem;
+            if length(xElem) >= obj.sys.nChTotal
+                xElem = xElem(1:obj.sys.nChTotal);
+            else
+                xElem = [xElem, nan(1, obj.sys.nChTotal-length(xElem))];
+            end
+            
             %% CALCULATE DELAYS
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
-                txDel       = (obj.sys.xElem.'  .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
-                txDelCent	= (obj.seq.txApCent .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
+                txDel       = (xElem.'          .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
+                txDelCent   = (obj.seq.txApCent .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
 
             else
                 % Focal point positions
@@ -508,8 +516,8 @@ classdef Us4R < handle
                 zFoc        = obj.seq.txFoc .* cos(obj.seq.txAng);                      % [m] (1 x nTx) z-position of the focal point
 
                 % Delays due to the element - focal point distances
-                txDel       = sqrt((xFoc - obj.sys.xElem.' ).^2 + zFoc.^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
-                txDelCent	= sqrt((xFoc - obj.seq.txApCent).^2 + zFoc.^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
+                txDel       = sqrt((xFoc -          xElem.').^2 + zFoc.^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
+                txDelCent   = sqrt((xFoc - obj.seq.txApCent).^2 + zFoc.^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
 
                 % Inverse the delays for the 'focusing' option (zFoc>0)
                 % For 'defocusing' the delays remain unchanged
