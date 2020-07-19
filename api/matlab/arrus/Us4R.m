@@ -463,9 +463,6 @@ classdef Us4R < handle
             % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
             % obj.seq.rxApMask      - [logical] (nArius*128 x nTx) is element active in rx?
             
-%             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
-%             rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
-            
             iElem = nan(1,max(obj.sys.probeMap));
             iElem(obj.sys.probeMap) = 1:obj.sys.nElem;
             if length(iElem) >= obj.sys.nChTotal
@@ -474,13 +471,9 @@ classdef Us4R < handle
                 iElem = [iElem, nan(obj.sys.nChTotal-length(iElem), 1)];
             end
             
-            txApMask = round(abs(iElem.' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
-            rxApMask = round(abs(iElem.' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
+            obj.seq.txApMask = round(abs(iElem.' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
+            obj.seq.rxApMask = round(abs(iElem.' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
             
-            
-            % Save the mask to the obj
-            obj.seq.txApMask = txApMask;
-            obj.seq.rxApMask = rxApMask;
         end
 
         function calcTxDelays(obj)
