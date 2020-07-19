@@ -52,6 +52,7 @@ classdef Us4R < handle
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
+            obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
             obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
@@ -465,8 +466,15 @@ classdef Us4R < handle
 %             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
 %             rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
             
-            txApMask = round(abs((1:obj.sys.nElem).' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
-            rxApMask = round(abs((1:obj.sys.nElem).' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
+            iElem = obj.sys.probeMap;
+            if length(iElem) >= obj.sys.nChTotal
+                iElem = iElem(1:obj.sys.nChTotal);
+            else
+                iElem = [iElem, nan(obj.sys.nChTotal-length(iElem), 1)];
+            end
+            
+            txApMask = round(abs(iElem.' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
+            rxApMask = round(abs(iElem.' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
             
             % Make the mask fit the number of channels
             if obj.sys.nElem >= obj.sys.nChTotal
