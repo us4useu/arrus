@@ -477,14 +477,6 @@ classdef Us4R < handle
             txApMask = round(abs(iElem.' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
             rxApMask = round(abs(iElem.' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
             
-            % Make the mask fit the number of channels
-            if obj.sys.nElem >= obj.sys.nChTotal
-                txApMask = txApMask(1:obj.sys.nChTotal,:);
-                rxApMask = rxApMask(1:obj.sys.nChTotal,:);
-            else
-                txApMask = [txApMask; false(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
-                rxApMask = [rxApMask; false(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
-            end
             
             % Save the mask to the obj
             obj.seq.txApMask = txApMask;
@@ -527,9 +519,6 @@ classdef Us4R < handle
             end
 
             %% Postprocess the delays
-            % Make the delays fit the number of channels
-            txDel       = [txDel;	 zeros(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
-            
             % Make delays = nan outside the tx aperture
             txDel(~obj.seq.txApMask)	= nan;
 
