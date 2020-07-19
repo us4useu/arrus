@@ -10,9 +10,10 @@ switch probeName
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
         
-%     case 'SP2430'
-%         probe.nElem	= 96;
-%         probe.pitch	= 0.22e-3;
+    case 'SP2430'
+        probe.nElem	= 96;
+        probe.pitch	= 0.22e-3;
+        probe.probeMap = [1:48, nan(1,96), 49:96];
         
     case 'AC2541'
         probe.nElem	= 192;
@@ -32,6 +33,11 @@ switch probeName
         return;
         
 end
+
+if ~isfield(probe,'probeMap')
+    probe.probeMap = 1:probe.nElem;
+end
+
 
 %% Adapter type & channel mapping
 switch probeName
