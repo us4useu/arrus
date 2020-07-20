@@ -376,9 +376,11 @@ classdef Us4R < handle
             for iArius=0:(nArius-1)
                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
                 txSubApMask(:,:,iArius+1) = obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
-                
+
+                % ponizsze linie sa do rozbicia Rx maski > 32 na kilka strzałów
                 rxSubApSelect = ceil(cumsum(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
                 rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
+                % rxSubaApSelect ma wymiar (liczba kanalow, nTx, nSubTx) i zawiera maske, ktora nalezy zastosowac w danym Tx i subTx
                 rxSubApMask(:,:,iArius+1) = reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire);
                 
                 % rxSubApMask correction for the new esaote adapter

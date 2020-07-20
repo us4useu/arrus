@@ -44,6 +44,16 @@ if(NOT ARRUS_BUILD_SWIG)
     message(WARNING "BUILDING PACKAGE WITHOUT LOW-LEVEL API WRAPPERS!")
 endif()
 
+# Determining host platform.
+if(MSVC)
+    set(ARRUS_BUILD_PLATFORM windows)
+elseif(UNIX AND NOT APPLE)
+    set(ARRUS_BUILD_PLATFORM linux)
+else()
+    message(FATAL_ERROR "Unsupported platform.")
+endif()
+
+
 ################################################################################
 # Common dependencies
 ################################################################################
@@ -53,6 +63,8 @@ endif()
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
+# Use project root to search for .proto files.
+set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 
 ################################################################################
 # Sub-projects
