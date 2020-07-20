@@ -21,15 +21,18 @@ def main():
     parser.add_argument("--source_dir", dest="source_dir",
                         type=str, required=False,
                         default=os.environ.get(SRC_ENVIRON, None))
-
     parser.add_argument("--us4r_dir", dest="us4r_dir",
                         type=str, required=False,
                         default=None)
+    parser.add_argument("--verbose", dest="verbose",
+                        required=False, default=False,
+                        action="store_true")
 
     args = parser.parse_args()
     configuration = args.config
     src_dir = args.source_dir
     us4r_dir = args.us4r_dir
+    verbose = args.verbose
 
     if src_dir is None:
         raise ValueError("%s environment variable should be declared "
@@ -48,6 +51,9 @@ def main():
         "--build", build_dir,
         "--config", configuration
     ]
+
+    if verbose:
+        cmake_cmd += ["--verbose"]
 
     print("Calling: %s" % (" ".join(cmake_cmd)))
 
@@ -72,7 +78,8 @@ def shell_source(script):
     # https://stackoverflow.com/questions/7040592/calling-the-source-command-from-subprocess-popen#answer-12708396
     pipe = subprocess.Popen(". %s; env" % script, stdout=subprocess.PIPE, shell=True)
     output = pipe.communicate()[0]
-    env = dict((line.split("=", 1) for line in str(output).splitlines()))
+    env = (line.decode("utf-8") for line in output.splitlines())
+    env = dict(line.split("=", 1) for line in env)
     os.environ.update(env)
 
 if __name__ == "__main__":
