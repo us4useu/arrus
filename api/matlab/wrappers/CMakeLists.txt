@@ -11,7 +11,7 @@ set(SOURCE_FILES
 ################################################################################
 # Target and dependencies
 ################################################################################
-find_package(Matlab 9.6 EXACT REQUIRED) # TODO downgrade to 9.5 (2018b)
+find_package(Matlab REQUIRED) # TODO require exact 9.5 version
 
 if (NOT Matlab_FOUND)
     message(WARNING "Matlab not found, Us4MEX target not available.")
