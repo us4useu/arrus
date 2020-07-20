@@ -59,7 +59,8 @@ classdef TxRxKernel < handle
             obj.propertiesPreprocessing()
             
             nArius = obj.usSystem.nArius; % number of arius modules
-            nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
+%             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
+            nRxChannels = obj.usSystem.nChArius*3; % max number of rx channels 
             samplingFrequency = 65e6;
             nTxChannels = 128; % max number of tx channels
             nTxRx = length(obj.sequence.TxRxList);
@@ -75,21 +76,34 @@ classdef TxRxKernel < handle
             % Program mappings, gains, and voltage
             for iArius = 0:nArius-1
                 
-                % Set Rx channel mapping
+%                 % Set Rx channel mapping (old firmware)
                 for iFire = 0:obj.nFire-1
 
-                    for iChannel = 1:nRxChannels
-                        Us4MEX(iArius, "SetRxChannelMapping", ...
-                               obj.usSystem.rxChannelMap(iArius+1, iChannel), ...
-                               iChannel, ...
-                               iFire...
-                               );
-                    end
+%                     for iChannel = 1:nRxChannels
+%                         Us4MEX(iArius, "SetRxChannelMapping", ...
+%                                obj.usSystem.rxChannelMap(iArius+1, iChannel), ...
+%                                iChannel, ...
+%                                iFire...
+%                                );
+%                     end
+                    % new firmware
+                    Us4MEX(iArius, "SetRxChannelMapping", ...
+                        obj.usSystem.rxChannelMap(iArius+1,1:32), iFire ...
+                        );
                 end
 
+                % Set Rx channel mapping (new firmware)Us4MEX(ar-1, "SetTxChannelMapping", esaote_mapping(ch,ar)+1, ch);
+%                                            obj.usSystem.rxChannelMap(:, :)
+%                 for iChannel = 1:nRxChannels
+%                     Us4MEX(iArius, "SetRxChannelMapping", ...
+%                            obj.usSystem.rxChannelMap(iArius+1, iChannel), ...
+%                            iChannel ...
+%                            );
+%                 end
+
+                
                 % Set Tx channel mapping
                 for iChannel = 1:nTxChannels
-%                     disp(obj.usSystem.txChannelMap(iArius+1, iChannel))
                     Us4MEX(iArius, "SetTxChannelMapping", ...
                            obj.usSystem.txChannelMap(iArius+1, iChannel), ...
                            iChannel);
@@ -138,7 +152,7 @@ classdef TxRxKernel < handle
                     startSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay./fs);
 
                     for iArius = 0:nArius-1
-                        
+                        Us4MEX(iArius, "ClearScheduledReceive"); % new firmware
                         % active channel groups
                         Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
                         
@@ -176,7 +190,7 @@ classdef TxRxKernel < handle
             for iArius = 0:nArius-1
                 Us4MEX(iArius, "SetNumberOfFirings", obj.nFire);
                 Us4MEX(iArius, "EnableTransmit");
-                Us4MEX(iArius, "EnableReceive");
+%                 Us4MEX(iArius, "EnableReceive");
             end
             
   
@@ -200,12 +214,23 @@ classdef TxRxKernel < handle
                 for iTxRx = 1:length(obj.sequence.TxRxList)
                     for iSubTxRx = 1:obj.nSubTxRx(iTxRx)
                         iTrig = iTrig+1;
-                        Us4MEX(iArius, "ScheduleReceive", ...
+%                         % old firmware
+%                         Us4MEX(iArius, "ScheduleReceive", ...
+%                             (iTrig-1)*obj.nSamp(iTrig), ...
+%                             obj.nSamp(iTrig), ...
+%                             obj.startSamp(iTrig) + obj.usSystem.trigTxDel, ...
+%                             obj.sequence.TxRxList(iTxRx).Rx.fsDivider - 1 ...  
+%                         );
+                        % new firmware
+                        Us4MEX(...
+                            iArius, "ScheduleReceive", ...
+                            (iTrig-1), ...
                             (iTrig-1)*obj.nSamp(iTrig), ...
-                            obj.nSamp(iTrig), ...
+                            obj.nSamp(iTrig), ... 
                             obj.startSamp(iTrig) + obj.usSystem.trigTxDel, ...
-                            obj.sequence.TxRxList(iTxRx).Rx.fsDivider - 1 ...  
-                        );
+                            obj.sequence.TxRxList(iTxRx).Rx.fsDivider - 1, ...  
+                            (iTrig-1) ...
+                            );
                         
                     end
                     
@@ -453,9 +478,9 @@ classdef TxRxKernel < handle
             pause(pauseMultip * obj.sequence.pri * obj.nFire);
 
             %% Capture data
-            for iArius=0:(obj.usSystem.nArius-1)
-                Us4MEX(iArius, "EnableReceive");
-            end
+%             for iArius=0:(obj.usSystem.nArius-1)
+%                 Us4MEX(iArius, "EnableReceive");
+%             end
             Us4MEX(0, "TriggerSync");
             pause(pauseMultip * obj.sequence.pri * obj.nFire);
             
@@ -470,7 +495,7 @@ classdef TxRxKernel < handle
             );
         
         
-            rf = obj.reshapeMexRf(rf);
+%             rf = obj.reshapeMexRf(rf);
             
             % Stop acquisition
             Us4MEX(0, "TriggerStop");

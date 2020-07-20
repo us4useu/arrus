@@ -1,5 +1,5 @@
 
-% path to the MATLAB API files
+% path to the MATLAB API filesqui
 addpath('../arrus');
 
 nUs4OEM     = 2;
@@ -13,21 +13,31 @@ fsDivider = 1;
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
 
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM, probeName, adapterType, 10, true);
+us	= Us4R(nUs4OEM, probeName, adapterType, 20, true);
 
 %%
+% 
+% txap = false(1,192);
+% txap(96) = true;
 
-pulse = TxPulse('nPeriods',[2], 'frequency', [5e6]);
-t1 = Tx('pulse', pulse, 'aperture', true(1,192));
-r1 = Rx('aperture', true(1,192), 'time', 50e-6);
+txap = true(1,192);
+
+
+pulse = Pulse('nPeriods',[2], 'frequency', [5e6]);
+t1 = Tx('pulse', pulse, 'aperture', txap);
+r1 = Rx('aperture', true(1,192), 'time', 100e-6);
 txrx1 = TxRx('Tx',t1,'Rx', r1);
-sequence = TxRxSequence([txrx1,txrx1]);
+sequence = TxRxSequence([txrx1]);
 %%
+tic
 us.upload(sequence);
 % 
 
 %% Run sequence (no reconstruction)
 [rf] = us.run;
 
+toc
 
-
+%%
+figure, imagesc(rf(:,:,1))
+% set(gca, 'ylim', [4980, 5100])
