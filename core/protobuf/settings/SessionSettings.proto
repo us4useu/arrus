@@ -17,7 +17,7 @@ message SessionSettings {
 
   LoggingLevel logging_level = 1;
   string dictionary_file = 2;
-  map<string, Us4OEMSettings> us4oems = 3;
+  map<uint32, Us4OEMSettings> us4oems = 3;
   Us4RLiteSettings us4rlite = 4;
 }
 

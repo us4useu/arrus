@@ -4,7 +4,7 @@ package arrus.proto;
 
 import "model/ProbeModel.proto";
 import "model/AdapterModel.proto";
-import "model/ProbeAdapterConnection.proto";
+import "model/ProbeToAdapterConnection.proto";
 import "settings/GainSettings.proto";
 
 message Us4RLiteSettings {
@@ -20,5 +20,5 @@ message Us4RLiteSettings {
   double lpf_cutoff = 6;
   double active_termination = 7;
 
-  ProbeToAdapterConection probe_to_adapter_connection = 8;
+  ProbeToAdapterConnection probe_to_adapter_connection = 8;
 }
