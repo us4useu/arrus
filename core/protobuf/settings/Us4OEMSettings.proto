@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package arrus.proto;
 
-import "settings/GainSettings.proto";
+import "core/protobuf/settings/GainSettings.proto";
 
 message Us4OEMSettings {
   repeated uint32 channel_mapping = 1;

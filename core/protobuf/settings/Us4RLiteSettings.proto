@@ -2,10 +2,10 @@ syntax  = "proto3";
 
 package arrus.proto;
 
-import "model/ProbeModel.proto";
-import "model/AdapterModel.proto";
-import "model/ProbeToAdapterConnection.proto";
-import "settings/GainSettings.proto";
+import "core/protobuf/model/ProbeModel.proto";
+import "core/protobuf/model/AdapterModel.proto";
+import "core/protobuf/model/ProbeToAdapterConnection.proto";
+import "core/protobuf/settings/GainSettings.proto";
 
 message Us4RLiteSettings {
   oneof one_of_probe_representation {

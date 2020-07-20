@@ -6,6 +6,7 @@ set(TARGET_NAME arrus-core)
 set(SOURCE_FILES
     "types.h"
     "utils/common.h"
+    "utils/compiler.h"
     "devices/common.h"
     "devices/Device.h"
     "devices/us4oem/Us4OEMSettings.h"
@@ -15,10 +16,10 @@ set(SOURCE_FILES
     "session/Session.cpp"
 )
 
-# Protobuf source files
-protobuf_generate_cpp(PROTO_SRC PROTO_HDRS protobuf/SessionSettings.proto)
-message("GENERATED PROTO: ${PROTO_SRC} ${PROTO_HDRS}")
 
+# Protobuf source files
+#protobuf_generate_cpp(PROTO_SRC PROTO_HDRS protobuf/settings/SessionSettings.proto)
+#message("GENERATED PROTO: ${PROTO_SRC} ${PROTO_HDRS}")
 ################################################################################
 # Target
 ################################################################################
@@ -54,15 +55,15 @@ target_link_libraries(${TARGET_NAME}
 # Tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
-    find_package(GTest REQUIRED)
-    add_executable(ttt session/tests/test.cpp ${PROTO_SRC} ${PROTO_HDRS})
-    target_link_libraries(ttt GTest::GTest Boost::Boost Protobuf::Protobuf)
-    target_include_directories(
-        ttt
-        PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/..
-            ${CMAKE_CURRENT_BINARY_DIR}/..
-            ${CMAKE_CURRENT_BINARY_DIR} # Required for pb.h files.
-    )
-    add_test(NAME test1 COMMAND ttt)
+#    find_package(GTest REQUIRED)
+#    add_executable(ttt session/tests/test.cpp ${PROTO_SRC} ${PROTO_HDRS})
+#    target_link_libraries(ttt GTest::GTest Boost::Boost Protobuf::Protobuf)
+#    target_include_directories(
+#        ttt
+#        PRIVATE
+#            ${CMAKE_CURRENT_SOURCE_DIR}/..
+#            ${CMAKE_CURRENT_BINARY_DIR}/..
+#            ${CMAKE_CURRENT_BINARY_DIR} # Required for pb.h files.
+#    )
+#    add_test(NAME test1 COMMAND ttt)
 endif()

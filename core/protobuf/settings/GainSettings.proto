@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package arrus.proto;
 
-import "model/LinearFunction.proto";
+import "core/protobuf/model/LinearFunction.proto";
 
 message GainSettings {
   double pga_gain = 1;

@@ -1,8 +1,9 @@
 syntax = "proto3";
 
 package arrus.proto;
-import "settings/Us4OEMSettings.proto";
-import "settings/Us4RLiteSettings.proto";
+
+import "core/protobuf/settings/Us4OEMSettings.proto";
+import "core/protobuf/settings/Us4RLiteSettings.proto";
 
 message SessionSettings {
 
