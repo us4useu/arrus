@@ -79,7 +79,9 @@ def shell_source(script):
     pipe = subprocess.Popen(". %s; env" % script, stdout=subprocess.PIPE, shell=True)
     output = pipe.communicate()[0]
     env = (line.decode("utf-8") for line in output.splitlines())
-    env = dict(line.split("=", 1) for line in env)
+    env = (line.split("=", 1) for line in env)
+    env = (var for var in env if len(var) == 2) # // leave correct pairs only
+    env = dict(env)
     os.environ.update(env)
 
 if __name__ == "__main__":
