@@ -15,6 +15,7 @@ us4rlite: {
         manufacturer: "us4us"
     }
 
+    # Default initial values.
     gain_settings: {
         lna_gain: 12e6
         pga_gain: 24e6

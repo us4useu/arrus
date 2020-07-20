@@ -21,6 +21,6 @@ message AdapterModel {
 
   Id id = 1;
   uint32 n_channels = 2;
-  repeated ChannelMappingRegion us4oem_channel_mapping_region = 3;
-  ChannelMappingMask us4oem_channel_mapping_mask = 4;
+  repeated ChannelMappingRegion us4oem_channels_regions = 3;
+  ChannelMappingMask us4oem_channels_mapping = 4;
 }

@@ -8,17 +8,17 @@ import "model/ProbeAdapterConnection.proto";
 import "settings/GainSettings.proto";
 
 message Us4RLiteSettings {
-  oneof one_of_probe {
-    ProbeModel.Id probe_model_id = 1;
-    ProbeModel probe_model = 2;
+  oneof one_of_probe_representation {
+    ProbeModel.Id probe_id = 1;
+    ProbeModel probe = 2;
   }
-  oneof one_of_adapter {
-    AdapterModel.Id adapter_model_id = 3;
-    AdapterModel adapter_model = 4;
+  oneof one_of_adapter_representation {
+    AdapterModel.Id adapter_id = 3;
+    AdapterModel adapter = 4;
   }
   GainSettings gain_settings = 5;
   double lpf_cutoff = 6;
   double active_termination = 7;
 
- ProbeAdapterConnection probe_adapter_connection = 8;
+  ProbeToAdapterConection probe_to_adapter_connection = 8;
 }

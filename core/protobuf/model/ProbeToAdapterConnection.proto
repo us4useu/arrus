@@ -6,9 +6,9 @@ import "model/ProbeModel.proto";
 import "model/AdapterModel.proto";
 import "model/Range.proto";
 
-message ProbeAdapterConnection {
+message ProbeToAdapterConnection {
   ProbeModel.Id probe_model_id = 1;
-  AdapterModel.Id adapter_model_id = 2;
+  repeated AdapterModel.Id adapter_model_id = 2;
 
   // Channel mapping - one of:
   repeated uint32 adapter_channels = 3;
