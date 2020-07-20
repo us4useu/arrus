@@ -1,0 +1,14 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+message ProbeModel {
+  message Id {
+    string name = 1;
+    string manufacturer = 2;
+  }
+  Id id = 1;
+  // Dimensions
+  repeated uint32 n_channels = 2;
+  repeated double pitch = 3;
+}

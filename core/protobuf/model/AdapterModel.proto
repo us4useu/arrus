@@ -1,0 +1,26 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+message AdapterModel {
+
+  message Id {
+    string name = 1;
+    string manufacturer = 2;
+  }
+
+  message ChannelMappingRegion {
+    uint32 us4oem = 1;
+    repeated uint32 channels = 2;
+  }
+
+  message ChannelMappingMask {
+    repeated uint32 us4oems = 1;
+    repeated uint32 channels = 2;
+  }
+
+  Id id = 1;
+  uint32 n_channels = 2;
+  repeated ChannelMappingRegion us4oem_channel_mapping_region = 3;
+  ChannelMappingMask us4oem_channel_mapping_mask = 4;
+}

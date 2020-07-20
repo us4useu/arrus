@@ -1,0 +1,31 @@
+logging_level: TRACE
+
+# It will be searched for in the current directory, then in the directory
+# pointed to by ARRUS_PATH env variable.
+dictionary_file: "default.dict"
+
+us4rlite: {
+    probe_model_id: {
+        name: "sl1543"
+        manufacturer: "esaote"
+    }
+
+    adapter_model_id: {
+        name: "esaote2"
+        manufacturer: "us4us"
+    }
+
+    gain_settings: {
+        lna_gain: 12e6
+        pga_gain: 24e6
+        tgc_curve_linear: {
+            intercept: 14
+            slope: 2e2
+        }
+    }
+
+    lpf_cutoff: 10e6
+    active_termination: 200
+}
+
+

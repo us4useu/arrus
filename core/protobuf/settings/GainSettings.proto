@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "model/LinearFunction.proto";
+
+message GainSettings {
+  double pga_gain = 1;
+  double lna_gain = 2;
+  LinearFunction tgc_curve_linear = 3;
+  repeated double tgc_samples = 4;
+}

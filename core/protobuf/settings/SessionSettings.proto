@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package arrus.proto;
+import "settings/Us4OEMSettings.proto";
+import "settings/Us4RLiteSettings.proto";
+
+message SessionSettings {
+
+  enum LoggingLevel {
+    INFO = 0; // default
+    DEBUG = 1;
+    TRACE = 2;
+    WARNING = 3;
+    ERROR = 4;
+    FATAL = 5;
+  }
+
+  LoggingLevel logging_level = 1;
+  string dictionary_file = 2;
+  map<string, Us4OEMSettings> us4oems = 3;
+  Us4RLiteSettings us4rlite = 4;
+}
+

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "settings/GainSettings.proto";
+
+message Us4OEMSettings {
+  repeated uint32 channel_mapping = 1;
+  repeated bool active_channel_groups = 2;
+  GainSettings gain_settings = 3;
+  double lpf_cutoff = 4;
+  double active_termination = 5;
+}
