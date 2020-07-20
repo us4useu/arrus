@@ -56,10 +56,18 @@ classdef TxRxKernel < handle
         
         function programHW(obj)
                         
+            % The method below enumerated following properties:
+            %   nFire - number of all firings
+            %   nSubTxRx -  vector with number of firings in each TxRx event. 
+            %        sum(nSubTxRx) == nFire
+            %   module2RxMaps, module2TxMaps, module2TxDelaysMaps
+            %       - Arrays describing relation between module channel 
+            %         and probe element in each TxRx
             obj.propertiesPreprocessing()
             
             nArius = obj.usSystem.nArius; % number of arius modules
-%             nRxChannels = obj.usSystem.nChArius; % max number of rx channels 
+%             nRxChannels = obj.usSystem.nChArius; % max number of rx channels
+            % new firmware
             nRxChannels = obj.usSystem.nChArius*3; % max number of rx channels 
             samplingFrequency = 65e6;
             nTxChannels = 128; % max number of tx channels
@@ -87,6 +95,7 @@ classdef TxRxKernel < handle
 %                                );
 %                     end
                     % new firmware
+%                     disp(obj.usSystem.rxChannelMap(iArius+1,1:32))
                     Us4MEX(iArius, "SetRxChannelMapping", ...
                         obj.usSystem.rxChannelMap(iArius+1,1:32), iFire ...
                         );
@@ -138,6 +147,12 @@ classdef TxRxKernel < handle
             
             % Program Tx/Rx sequence
 
+            % new firmware
+            for iArius = 0:nArius-1
+                Us4MEX(iArius, "SetNumberOfFirings", obj.nFire);
+                Us4MEX(iArius, "ClearScheduledReceive"); 
+            end
+
             iFire = 0;
             nSamp = NaN(1,obj.nFire);
             startSamp = NaN(1,obj.nFire);
@@ -146,14 +161,15 @@ classdef TxRxKernel < handle
                 moduleTxApertures = obj.module2TxMaps{iTxRx};
                 moduleTxDelays = obj.module2TxDelaysMaps{iTxRx};
                 moduleRxApertures = obj.module2RxMaps{iTxRx};                
-                for iTxRxFire = 0:obj.nSubTxRx(iTxRx)-1
+                for iSubTxRx = 0:obj.nSubTxRx(iTxRx)-1
 
                     nSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
                     startSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay./fs);
 
                     for iArius = 0:nArius-1
-                        Us4MEX(iArius, "ClearScheduledReceive"); % new firmware
+%                         Us4MEX(iArius, "ClearScheduledReceive"); % new firmware
                         % active channel groups
+%                         disp(actChanGroupMask(iArius+1))
                         Us4MEX(iArius, "SetActiveChannelGroup", actChanGroupMask(iArius+1), iFire);
                         
 %                         disp(['module ',num2str(iArius),', txaperture'])
@@ -170,7 +186,7 @@ classdef TxRxKernel < handle
 %                         disp(['subfire no. ',num2str(iTxRxFire)])
 %                         disp(obj.maskFormat(moduleRxApertures(iArius+1, :, iTxRxFire+1).'))
                         % Rx
-                        Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iTxRxFire+1).'), iFire);
+                        Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iSubTxRx+1).'), iFire);
                         Us4MEX(iArius, "SetRxTime", obj.sequence.TxRxList(iTxRx).Rx.time, iFire);
                         Us4MEX(iArius, "SetRxDelay", obj.sequence.TxRxList(iTxRx).Rx.delay, iFire);
                         % do zrobienia tgc
@@ -188,7 +204,7 @@ classdef TxRxKernel < handle
 
             
             for iArius = 0:nArius-1
-                Us4MEX(iArius, "SetNumberOfFirings", obj.nFire);
+%                 Us4MEX(iArius, "SetNumberOfFirings", obj.nFire);
                 Us4MEX(iArius, "EnableTransmit");
 %                 Us4MEX(iArius, "EnableReceive");
             end
@@ -197,18 +213,19 @@ classdef TxRxKernel < handle
      
             % Program triggering
             Us4MEX(0, "SetNTriggers", obj.nFire);
-            for iTrig = 0:obj.nFire-1
-                Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 0, iTrig);
+            for iTrig = 0:obj.nFire-1% -2?
+%                 Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 0, iTrig);
+                Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6,  0, iTrig);
             end
-            Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 0, 1, obj.nFire-1);
+            Us4MEX(0, "SetTrigger", obj.sequence.pri*1e6, 1, obj.nFire-1);
             for iArius = 1:obj.usSystem.nArius-1
-                Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 0, 0, 0);
+                Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 0, 0);
             end
             
 
             % Program recording
             for iArius = 0:obj.usSystem.nArius-1
-                Us4MEX(iArius, "ClearScheduledReceive");
+                Us4MEX(iArius, "ClearScheduledReceive"); % po co to, skro bylo wczesniej (przed definiowaniem txrx?
                 
                 iTrig = 0;
                 for iTxRx = 1:length(obj.sequence.TxRxList)

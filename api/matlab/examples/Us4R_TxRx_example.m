@@ -21,13 +21,13 @@ us	= Us4R(nUs4OEM, probeName, adapterType, 20, true);
 % txap(96) = true;
 
 txap = true(1,192);
-
+rxap = true(1,192);
 
 pulse = Pulse('nPeriods',[2], 'frequency', [5e6]);
 t1 = Tx('pulse', pulse, 'aperture', txap);
-r1 = Rx('aperture', true(1,192), 'time', 100e-6);
+r1 = Rx('aperture', rxap, 'time', 100e-6);
 txrx1 = TxRx('Tx',t1,'Rx', r1);
-sequence = TxRxSequence([txrx1]);
+sequence = TxRxSequence([txrx1,txrx1]);
 %%
 tic
 us.upload(sequence);
