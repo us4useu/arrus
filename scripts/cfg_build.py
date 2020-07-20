@@ -71,10 +71,8 @@ def main():
     # Cmake cfg generator.
     if os.name == "nt":
         cmake_generator = "Visual Studio 15 2017 Win64"
-        venv_activate = f"{os.path.join(build_dir, 'activate.ps1')}"
     else:
         cmake_generator = "Unix Makefiles"
-        shell_source(f"{os.path.join(build_dir, 'activate.sh')}")
 
     cmake_cmd = [
         "cmake",
@@ -85,14 +83,6 @@ def main():
     print("Calling: %s" % (" ".join(cmake_cmd)))
     result = subprocess.call(cmake_cmd)
     assert_no_error(result)
-
-def shell_source(script):
-    # Credits:
-    # https://stackoverflow.com/questions/7040592/calling-the-source-command-from-subprocess-popen#answer-12708396
-    pipe = subprocess.Popen(". %s; env" % script, stdout=subprocess.PIPE, shell=True)
-    output = pipe.communicate()[0]
-    env = dict((line.split("=", 1) for line in str(output).splitlines()))
-    os.environ.update(env)
 
 
 if __name__ == "__main__":
