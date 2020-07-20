@@ -1,0 +1,46 @@
+logging_level: TRACE
+
+us4oems: [
+{
+    key: 0
+    value: {
+        channel_mapping: [0,  1,  2,  3,  4,  5,  6,  7,
+                          8,  9,  10, 11, 12, 13, 14, 15,
+                          16, 17, 18, 19, 20, 21, 22, 23,
+                          24, 25, 26, 27, 28, 29, 30, 31]
+        active_channel_groups: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+
+        gain_settings: {
+            lna_gain: 12e6
+            pga_gain: 24e6
+            tgc_curve_linear: {
+                intercept: 14
+                slope: 2e2
+            }
+        }
+        lpf_cutoff: 10e6
+        active_termination: 200
+    }
+},
+{
+    key: 1
+    value: {
+        channel_mapping: [0,  1,  2,  3,  4,  5,  6,  7,
+                          8,  9,  10, 11, 12, 13, 14, 15,
+                          16, 17, 18, 19, 20, 21, 22, 23,
+                          24, 25, 26, 27, 28, 29, 30, 31]
+        active_channel_groups: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+
+        gain_settings: {
+            lna_gain: 12e6
+            pga_gain: 24e6
+            tgc_curve_linear: {
+                intercept: 14
+                slope: 2e2
+            }
+        }
+        lpf_cutoff: 10e6
+        active_termination: 200
+    }
+}
+]
