@@ -15,10 +15,14 @@ set(SOURCE_FILES
     "session/Session.cpp"
 )
 
+# Protobuf source files
+protobuf_generate_cpp(PROTO_SRC PROTO_HDRS protobuf/SessionSettings.proto)
+message("GENERATED PROTO: ${PROTO_SRC} ${PROTO_HDRS}")
+
 ################################################################################
 # Target
 ################################################################################
-add_library(${TARGET_NAME} SHARED ${SOURCE_FILES})
+add_library(${TARGET_NAME} SHARED ${SOURCE_FILES} ${PROTO_SRC} ${PROTO_HDRS})
 
 ################################################################################
 # Compile definitions
@@ -34,6 +38,7 @@ target_compile_definitions(${TARGET_NAME}
 target_include_directories(${TARGET_NAME}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 ################################################################################
@@ -42,6 +47,7 @@ target_include_directories(${TARGET_NAME}
 target_link_libraries(${TARGET_NAME}
     PRIVATE
     Boost::Boost
+    Protobuf::Protobuf
 )
 
 ################################################################################
@@ -49,11 +55,14 @@ target_link_libraries(${TARGET_NAME}
 ################################################################################
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
-#    add_executable(session_tests_Simple session/tests/SessionTest.cpp)
-#    target_link_libraries(session_tests_Simple GTest::GTest Boost::Boost)
-#    target_include_directories(session_tests_Simple
-#        PRIVATE
-#        ${CMAKE_CURRENT_SOURCE_DIR}/..
-#    )
-#    add_test(NAME test-session-tests-Simple COMMAND session_tests_Simple)
+    add_executable(ttt session/tests/test.cpp ${PROTO_SRC} ${PROTO_HDRS})
+    target_link_libraries(ttt GTest::GTest Boost::Boost Protobuf::Protobuf)
+    target_include_directories(
+        ttt
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/..
+            ${CMAKE_CURRENT_BINARY_DIR}/..
+            ${CMAKE_CURRENT_BINARY_DIR} # Required for pb.h files.
+    )
+    add_test(NAME test1 COMMAND ttt)
 endif()
