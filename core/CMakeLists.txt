@@ -5,7 +5,7 @@ set(TARGET_NAME arrus-core)
 ################################################################################
 set(SOURCE_FILES
     "types.h"
-    "utils/common.h"
+    "utils/hash.h"
     "utils/compiler.h"
     "devices/common.h"
     "devices/Device.h"

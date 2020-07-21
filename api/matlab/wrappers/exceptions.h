@@ -1,0 +1,10 @@
+#ifndef ARRUS_API_MATLAB_WRAPPERS_EXCEPTIONS_H
+#define ARRUS_API_MATLAB_WRAPPERS_EXCEPTIONS_H
+
+namespace arrus {
+namespace matlab {
+
+}
+}
+
+#endif //ARRUS_API_MATLAB_WRAPPERS_EXCEPTIONS_H

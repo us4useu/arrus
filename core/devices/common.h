@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "Device.h"
-#include "core/utils/common.h"
+#include "core/utils/hash.h"
 
 namespace arrus {
 
