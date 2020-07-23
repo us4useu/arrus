@@ -85,7 +85,7 @@ classdef Us4R < handle
                 obj.sys.selElem = repmat((1:128).',[1 nArius]);
                 obj.sys.actChan = mod(ceil((1:128)' / obj.sys.nChArius) - 1, nArius) == (0:(nArius-1));
             end
-            obj.sys.actChan = obj.sys.actChan & (obj.sys.selElem <= obj.sys.nElem);
+            obj.sys.actChan = obj.sys.actChan & any(obj.sys.selElem == reshape(obj.sys.probeMap,1,1,[]),3);
 
         end
 
