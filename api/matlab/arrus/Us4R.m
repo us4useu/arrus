@@ -345,8 +345,6 @@ classdef Us4R < handle
             else
                 obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
-            
-            obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2);
 
             %% Number of: Tx, SubTx, Firings, Triggers
             obj.seq.nTx	= length(obj.seq.txAng);
@@ -460,8 +458,11 @@ classdef Us4R < handle
         
         function calcTxRxApMask(obj)
             % calcTxRxApMask appends the following fields to the in/out obj:
-            % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
-            % obj.seq.rxApMask      - [logical] (nArius*128 x nTx) is element active in rx?
+            % obj.seq.txApOrig      - [element] (1 x nTx) number of probe element being the first in the tx aperture
+            % obj.seq.rxApOrig      - [element] (1 x nTx) number of probe element being the first in the rx aperture
+            % obj.seq.txApMask      - [logical] (nChTotal x nTx) tx aperture mask
+            % obj.seq.rxApMask      - [logical] (nChTotal x nTx) rx aperture mask
+            % obj.seq.rxElemId      - [element] (nChTotal x nTx) element numbering in the rx aperture
             
             iElem = nan(1,max(obj.sys.probeMap));
             iElem(obj.sys.probeMap) = 1:obj.sys.nElem;
@@ -471,8 +472,14 @@ classdef Us4R < handle
                 iElem = [iElem, nan(1, obj.sys.nChTotal-length(iElem))];
             end
             
-            obj.seq.txApMask = round(abs(iElem.' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
-            obj.seq.rxApMask = round(abs(iElem.' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
+            obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
+            obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
+            
+            obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
+            obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
+            
+            obj.seq.rxElemId = (iElem.' - obj.seq.rxApOrig + 1) .* obj.seq.rxApMask;
+            obj.seq.rxElemId(isnan(obj.seq.rxElemId)) = 0;
             
         end
 
