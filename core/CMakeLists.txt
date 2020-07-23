@@ -5,8 +5,11 @@ set(TARGET_NAME arrus-core)
 ################################################################################
 set(SOURCE_FILES
     "types.h"
-    "utils/hash.h"
-    "utils/compiler.h"
+    "common/hash.h"
+    "common/compiler.h"
+    "common/exceptions.h"
+    "common/asserts.h"
+    "common/format.h"
     "devices/common.h"
     "devices/Device.h"
     "devices/us4oem/Us4OEMSettings.h"
@@ -16,14 +19,13 @@ set(SOURCE_FILES
     "session/Session.cpp"
 )
 
-
 # Protobuf source files
 #protobuf_generate_cpp(PROTO_SRC PROTO_HDRS protobuf/settings/SessionSettings.proto)
 #message("GENERATED PROTO: ${PROTO_SRC} ${PROTO_HDRS}")
 ################################################################################
 # Target
 ################################################################################
-add_library(${TARGET_NAME} SHARED ${SOURCE_FILES} ${PROTO_SRC} ${PROTO_HDRS})
+add_library(${TARGET_NAME} SHARED ${SOURCE_FILES})
 
 ################################################################################
 # Compile definitions
@@ -49,6 +51,7 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
     Boost::Boost
     Protobuf::Protobuf
+    fmt::fmt
 )
 
 ################################################################################

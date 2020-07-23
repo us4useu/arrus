@@ -43,7 +43,7 @@ def main():
         options += ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
     if run_targets is not None:
         options += ["-DARRUS_RUN_%s=ON" % t.upper() for t in run_targets]
-    options += ["-D%s" % o.upper() for o in extra_options]
+    options += ["-D%s" % o for o in extra_options]
     src_dir = args.source_dir
     us4r_install_dir = args.us4r_dir
 

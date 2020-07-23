@@ -1,5 +1,7 @@
 #include "Session.h"
 
+#include "core/common/format.h"
+
 namespace arrus {
 
 Session::Session(const SessionSettings &sessionSettings) {

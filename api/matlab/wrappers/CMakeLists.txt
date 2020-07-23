@@ -4,8 +4,14 @@ set(TARGET_NAME mex_object_wrapper)
 # Source files
 ################################################################################
 set(SOURCE_FILES
-    "MexObjectFunction.h"
-    "MexObjectFunction.cpp"
+    "common.h"
+    "DefaultMexObjectManager.h"
+    "MexContext.h"
+    "MexFunction.cpp"
+    "MexFunction.h"
+    "MexObjectManager.h"
+    "MexObjectWrapper.h"
+    "arrus/SessionWrapper.h"
 )
 
 ################################################################################
@@ -24,6 +30,9 @@ matlab_add_mex(
     SHARED
     SRC
         ${SOURCE_FILES}
+    LINK_TO
+        Boost::Boost
+        fmt::fmt
 )
 ################################################################################
 # Include directories
