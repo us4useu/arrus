@@ -758,21 +758,18 @@ classdef Us4R < handle
                 
             elseif obj.sys.adapType == 2 || obj.sys.adapType == -1
                 % "ultrasonix" or "new esaote" adapter type
+                rf0	= permute(rf,[2 1 3 4 6 5]);
+                rf0	= reshape(rf0,nSamp,nChan*nSubTx*nTx*nArius,nRep);
+                rf	= zeros(nSamp,obj.seq.rxApSize*nTx,nRep,'int16');
                 
-                % new esaote probe: clear the unsupported channels
-                if obj.sys.adapType == -1
-                    mask = any(reshape(obj.seq.rxSubApMask,nChan,4,nSubTx,nTx,1,nArius),2);
-                    rf  = rf .* int16(mask);
-                end
+                addressFrom = reshape(any(reshape(obj.seq.rxSubApMask,nChan,4,[]),2),[],1);
+                addressTo   = reshape(sum(reshape(obj.seq.rxSubElemId,nChan,4,[]),2),[],1);
+                addressTo   = addressTo + reshape((0:(nTx-1)).*ones(nChan*nSubTx,1,nArius),[],1)*obj.seq.rxApSize;
+                addressTo   = addressTo(addressFrom);
                 
-                rf	= permute(rf,[2 1 6 3 4 5]);
-                rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
+                rf(:,addressTo,:) = rf0(:,addressFrom,:);
+                rf	= reshape(rf,nSamp,obj.seq.rxApSize,nTx,nRep);
                 
-                for iTx=1:nTx
-                    rf(:,:,:,iTx,:)	= circshift(rf(:,:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
-                end
-                rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx,nRep);
-                rf	= rf(:,1:obj.seq.rxApSize,:,:);
             end
 
         end
