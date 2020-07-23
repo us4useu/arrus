@@ -373,36 +373,42 @@ classdef Us4R < handle
             txSubApDel = cell(nArius,nTx);
             txSubApMask = false(128,nTx,nArius);
             rxSubApMask = false(128,nFire,nArius);
-            iSubTx = permute(1:nSubTx,[1 3 2]);
+            rxSubElemId = zeros(128,nFire,nArius);
             for iArius=0:(nArius-1)
                 txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
                 txSubApMask(:,:,iArius+1) = obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
                 
-                rxSubApSelect = ceil(cumsum(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
-                rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
-                rxSubApMask(:,:,iArius+1) = reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire);
+                rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
+                rxApMaskSelect = reshape(rxApMaskSelect,nChan,4,nTx);
+                iSubTx = cumsum(rxApMaskSelect,2) .* rxApMaskSelect;
+                iSubTx = reshape(iSubTx,[],1,nTx);
+                rxSubApMask(:,:,iArius+1) = reshape(iSubTx == (1:nSubTx),[],nFire);
                 
                 % rxSubApMask correction for the new esaote adapter
                 if obj.sys.adapType == -1
                     for iFire=0:(nFire-1)
                         rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
-                        elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
                         rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
                         if ~isempty(rejElem)
+                            elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
                             rejElem = any(elemIdx == rejElem.', 2);
                             rxSubApMask(rejElem,iFire+1,iArius+1) = false;
                         end
                     end
                 end
+                
+                rxElemIdSelect = obj.seq.rxElemId(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1);
+                rxSubElemId(:,:,iArius+1) = reshape(reshape(rxElemIdSelect,[],1,nTx) .* ...
+                                                    reshape(rxSubApMask(:,:,iArius+1),[],nSubTx,nTx), [],nFire);
             end
             
-            actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
-            actChanGroupMask = actChanGroupMask & obj.sys.actChan(8:8:end,:);
+            actChanGroupMask = reshape(any(reshape(obj.sys.actChan, 8, 16, [])), 16, []);
             
             obj.seq.actChanGroupMask = actChanGroupMask;
             obj.seq.txSubApMask = txSubApMask;
             obj.seq.txSubApDel = txSubApDel;
             obj.seq.rxSubApMask = rxSubApMask;
+            obj.seq.rxSubElemId = rxSubElemId;
 
         end
 
