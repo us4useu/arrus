@@ -346,9 +346,20 @@ classdef Us4R < handle
                 obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
 
+            %% Aperture masks & delays
+            obj.calcTxRxApMask;
+            obj.calcTxDelays;
+            
             %% Number of: Tx, SubTx, Firings, Triggers
             obj.seq.nTx	= length(obj.seq.txAng);
-            obj.seq.nSubTx = min(4, ceil(obj.seq.rxApSize / obj.sys.nChCont));
+            
+            nSubTx = zeros(1,obj.sys.nArius);
+            for iArius=0:(obj.sys.nArius-1)
+                rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
+                iSubTx = cumsum(reshape(rxApMaskSelect,obj.sys.nChArius,4,obj.seq.nTx),2);
+                nSubTx(iArius+1) = max(iSubTx(:));
+            end
+            obj.seq.nSubTx = max(nSubTx);
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             
             if isstring(obj.seq.nRep) && obj.seq.nRep == "max"
@@ -358,10 +369,6 @@ classdef Us4R < handle
                 disp(['nRepetitions set to ' num2str(obj.seq.nRep) '.']);
             end
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
-
-            %% Aperture masks & delays
-            obj.calcTxRxApMask;
-            obj.calcTxDelays;
             
             %% Piece of code moved from programHW
             nArius	= obj.sys.nArius;
