@@ -26,13 +26,18 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 % proc.iqEnable     - [logical] 
 % proc.rxApod       - [] number of sigmas in the gaussian window used in rx apodization (0 -> rect. window)
 
-if ~all(diff(acq.txAng)                       == 0), error('Tx angle must be constant'); end
-if ~all(diff(acq.txFoc)                       == 0), error('Tx focus must be constant'); end
-if ~all(diff(mod(acq.txCentElem,1))           == 0), error('Tx aperture step must be integer'); end
-if ~all(diff(mod(acq.rxCentElem,1))           == 0), error('Rx aperture step must be integer'); end
-if ~all(diff(acq.rxCentElem - acq.txCentElem) == 0), error('Tx & Rx aperture offset must be constant'); end
+quickRecEnable	= diff([acq.txAng; ...
+                        acq.txFoc; ...
+                        mod(acq.txCentElem,1); ...
+                        mod(acq.rxCentElem,1); ...
+                        acq.rxCentElem - acq.txCentElem],[],2) == 0;
+quickRecEnable	= all(quickRecEnable(:));
 
-txAng       = acq.txAng(1);
+if quickRecEnable
+    txAng	= acq.txAng(1);
+else
+    txAng	= reshape(acq.txAng,1,1,[]);
+end
 
 %% Reconstruction
 [nSamp,nRx,nTx]	= size(rfRaw);
@@ -47,31 +52,35 @@ dT          = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with 
               + acq.txNPer/(2*acq.txFreq);                  % [s] half the pulse length
 
 rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
-              + (0:(nSamp-1))'/fs ) * acq.c/2;       % [mm] (nSamp,1) radial distance from the line origin
-xVec        = rVec*sin(txAng);                       % [mm] (nSamp,1) horiz. distance from the line origin
-zVec        = rVec*cos(txAng);                       % [mm] (nSamp,1) vert.  distance from the line origin
-eVec        = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;  % [mm] (1,nElem) horiz. position of the rx aperture elements
+              + (0:(nSamp-1))'/fs ) * acq.c/2;              % [mm] (nSamp,1) radial distance from the line origin
+xVec        = rVec.*sin(txAng);                             % [mm] (nSamp,1,1 or nTx) horiz. distance from the line origin
+zVec        = rVec.*cos(txAng);                             % [mm] (nSamp,1,1 or nTx) vert.  distance from the line origin
+eVec        = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;  % [mm] (1,nRx) horiz. position of the rx aperture elements
 
 txDist      = rVec;                                         % [mm] (nSamp,1) tx distance (from the line origin)
-rxDist      = sqrt((xVec-eVec).^2 + zVec.^2);               % [mm] (nSamp,nRx) rx distance (to each rx element)
+rxDist      = sqrt((xVec-eVec).^2 + zVec.^2);               % [mm] (nSamp,nRx,1 or nTx) rx distance (to each rx element)
 
-t           = (txDist + rxDist)/acq.c + dT;      % [s] (nSamp,nRx) total tx-rx time delays
+t           = (txDist + rxDist)/acq.c + dT;                 % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
 if isa(rfRaw,'gpuArray')
     t       = gpuArray(t);
 end
 
-iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx) sample numbers
+iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx,1 or nTx) sample numbers
 iSamp(iSamp<1 | iSamp>nSamp)	= inf;
-iSamp       = reshape(iSamp + (0:(nRx-1))*nSamp,[],1);      % [samp] (nSamp*nRx,1)
+iSamp       = reshape(iSamp + (0:(nRx-1))*nSamp,nSamp*nRx,[]);	% [samp] (nSamp*nRx,1 or nTx)
 
-rxTang      = abs(xVec-eVec)./zVec;
-rxApod      = double(rxTang < maxTang);
+rxTang      = abs(xVec-eVec)./zVec;                         % [] (nSamp,nRx,1 or nTx)
+rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
 % rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
-rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx) normalized rx apodization vector
+rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or nTx) normalized rx apodization vector
 % warning - does the apodization takes into account for the clipped aperture?
 
 % Delay & Sum
-rfBfr	= interp1(1:(nSamp*nRx),rfRaw,iSamp,'linear',0);      % WARNING -> see the comment at the end of the script
+if quickRecEnable
+    rfBfr	= interp1(1:(nSamp*nRx),rfRaw,iSamp,'linear',0);	% WARNING -> see the comment at the end of the script
+else
+    rfBfr	= interp2(1:nTx,(1:(nSamp*nRx)).',rfRaw,(1:nTx).*ones(nSamp*nRx,1),iSamp,'linear',0);
+end
 rfBfr	= reshape(rfBfr,[nSamp,nRx,nTx]);
 
 % modulate if iq signal is used
