@@ -50,8 +50,7 @@ rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * acq.c/2;       % [mm] (nSamp,1) radial distance from the line origin
 xVec        = rVec*sin(txAng);                       % [mm] (nSamp,1) horiz. distance from the line origin
 zVec        = rVec*cos(txAng);                       % [mm] (nSamp,1) vert.  distance from the line origin
-eVec        = (-(nRx-1)/2:(nRx-1)/2)*sys.pitch;             % [mm] (1,nElem) horiz. position of the rx aperture elements
-% warning - different aperture position in rf simulation and reconstruction
+eVec        = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;  % [mm] (1,nElem) horiz. position of the rx aperture elements
 
 txDist      = rVec;                                         % [mm] (nSamp,1) tx distance (from the line origin)
 rxDist      = sqrt((xVec-eVec).^2 + zVec.^2);               % [mm] (nSamp,nRx) rx distance (to each rx element)
