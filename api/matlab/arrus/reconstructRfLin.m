@@ -26,9 +26,12 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 % proc.iqEnable     - [logical] 
 % proc.rxApod       - [] number of sigmas in the gaussian window used in rx apodization (0 -> rect. window)
 
-if ~all(acq.txAng == acq.txAng(1))
-    error('Tx angle must be const.');
-end
+if ~all(diff(acq.txAng)                       == 0), error('Tx angle must be constant'); end
+if ~all(diff(acq.txFoc)                       == 0), error('Tx focus must be constant'); end
+if ~all(diff(mod(acq.txCentElem,1))           == 0), error('Tx aperture step must be integer'); end
+if ~all(diff(mod(acq.rxCentElem,1))           == 0), error('Rx aperture step must be integer'); end
+if ~all(diff(acq.rxCentElem - acq.txCentElem) == 0), error('Tx & Rx aperture offset must be constant'); end
+
 txAng       = acq.txAng(1);
 
 %% Reconstruction
