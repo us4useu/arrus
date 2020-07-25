@@ -409,7 +409,14 @@ classdef Us4R < handle
                                                     reshape(rxSubApMask(:,:,iArius+1),[],nSubTx,nTx), [],nFire);
             end
             
-            actChanGroupMask = reshape(any(reshape(obj.sys.actChan, 8, 16, [])), 16, []);
+            if obj.sys.adapType == -1
+                [~,I] = sort(obj.sys.rxChannelMap.');
+                actChanGroupMask = reshape(any(reshape(obj.sys.actChan(I + (0:(nArius-1))*128), 8, 16, [])), 16, []);
+                % for future: some other adapters (esaote, atl/philips)
+                % can have a similar problem as esaote2 but on a much smaller scale
+            else
+                actChanGroupMask = reshape(any(reshape(obj.sys.actChan, 8, 16, [])), 16, []);
+            end
             
             obj.seq.actChanGroupMask = actChanGroupMask;
             obj.seq.txSubApMask = txSubApMask;
