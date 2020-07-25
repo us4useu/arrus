@@ -448,7 +448,7 @@ classdef Us4R < handle
             obj.rec.xSize	= length(obj.rec.xGrid);
 
             %% Fixed parameters
-            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp'));
+            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
         end
         
         function val = get(obj,paramName)
