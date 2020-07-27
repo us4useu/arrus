@@ -6,7 +6,7 @@ classdef Us4R < handle
     % 
     % Available probe names:
     % 
-    % - Esaote: 'AL2442', 'SL1543', 'AC2541',
+    % - Esaote: 'AL2442', 'SL1543', 'AC2541', 'SP2430'
     % - Ultrasonix: 'L14-5/38'.
     % - ATL: 'L7-4'
     % 
