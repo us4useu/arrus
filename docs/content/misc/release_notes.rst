@@ -1,6 +1,13 @@
 Release notes
 =============
 
+Version 0.4.5
+-------------
+
+- MATLAB API:
+
+    - A support for Esaote SP2430 have been added. The new probe is identified by ``SP2430``. 
+
 Version 0.4.4
 -------------
 
