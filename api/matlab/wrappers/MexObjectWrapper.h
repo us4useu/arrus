@@ -15,11 +15,24 @@ public:
     explicit MexObjectWrapper(std::shared_ptr<MexContext> ctx)
             : ctx(std::move(ctx)) {}
 
-    virtual void call(const MexObjectMethodId &, const MexMethodArgs &inputs,
-         const MexMethodArgs &outputs) = 0;
+    virtual ~MexObjectWrapper() = default;
+
+    virtual MexMethodReturnType
+    call(const MexObjectMethodId &methodId, const MexMethodArgs &inputs) {
+        return methods.at(methodId)(inputs);
+    }
 
 protected:
+    using MexObjectMethod = std::function<MexMethodReturnType(
+            const MexMethodArgs &)>;
+
+    void
+    addMethod(const MexObjectClassId &methodId, const MexObjectMethod &method) {
+        methods.emplace(methodId, method);
+    }
+
     std::shared_ptr<MexContext> ctx;
+    std::unordered_map<MexObjectClassId, MexObjectMethod> methods;
 };
 }
 

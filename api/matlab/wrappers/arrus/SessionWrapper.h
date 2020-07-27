@@ -18,17 +18,25 @@ public:
             const MexMethodArgs &args)
             : MexObjectWrapper(std::move(ctx)) {
         this->ctx->logInfo("Constructor");
+        this->addMethod("test1", std::bind(&SessionWrapper::test1,
+                this, std::placeholders::_1));
+        this->addMethod("test2", std::bind(&SessionWrapper::test2,
+                this, std::placeholders::_1));
     }
 
-    ~SessionWrapper() {
+    ~SessionWrapper() override {
         ctx->logInfo("Destructor");
     }
 
-    void call(const MexObjectMethodId &id, const MexMethodArgs &inputs,
-              const MexMethodArgs &outputs) override {
-        ctx->logInfo(arrus::format("Calling method: {}", id));
+    MexMethodReturnType test1(const MexMethodArgs &inputs) {
+        return ctx->getArrayFactory().createCellArray({0});
     }
 
+    MexMethodReturnType test2(const MexMethodArgs &inputs) {
+        return ctx->getArrayFactory().createCellArray({1, 2},
+                "abc",
+                ctx->getArrayFactory().createArray<double>({2, 2}, {1., 2., 3., 4.}));
+    }
 };
 
 class SessionWrapperManager : public DefaultMexObjectManager<SessionWrapper> {

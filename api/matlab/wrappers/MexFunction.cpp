@@ -37,7 +37,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                                   inputs.size() - 3);
 
                 auto& object = manager->getObject(handle);
-                object->call(methodId, args, outputs);
+                outputs[0] = object->call(methodId, args);
             }
         }
     }

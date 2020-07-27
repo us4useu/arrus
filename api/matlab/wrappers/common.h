@@ -17,7 +17,8 @@ namespace arrus::matlab_wrappers {
     using MexObjectMethodId = std::string;
     using MexObjectClassId = std::string;
 
-    using MexMethodArgs = ::matlab::mex::ArgumentList;
+    using MexMethodArgs = matlab::mex::ArgumentList;
+    using MexMethodReturnType = matlab::data::TypedArray<matlab::data::Array>;
 }
 
 #endif //ARRUS_API_MATLAB_WRAPPERS_COMMON_H
