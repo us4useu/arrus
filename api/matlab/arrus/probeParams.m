@@ -10,9 +10,10 @@ switch probeName
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
         
-%     case 'SP2430'
-%         probe.nElem	= 96;
-%         probe.pitch	= 0.22e-3;
+    case 'SP2430'
+        probe.nElem	= 96;
+        probe.pitch	= 0.22e-3;
+        probe.probeMap = [1:48, 145:192];
         
     case 'AC2541'
         probe.nElem	= 192;
@@ -33,9 +34,14 @@ switch probeName
         
 end
 
+if ~isfield(probe,'probeMap')
+    probe.probeMap = 1:probe.nElem;
+end
+
+
 %% Adapter type & channel mapping
 switch probeName
-    case {'AL2442','SL1543','AC2541'}
+    case {'AL2442','SL1543','SP2430','AC2541'}
         if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
