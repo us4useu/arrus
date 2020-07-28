@@ -22,6 +22,8 @@ public:
                 this, std::placeholders::_1));
         this->addMethod("test2", std::bind(&SessionWrapper::test2,
                 this, std::placeholders::_1));
+        this->addMethod("test3", std::bind(&SessionWrapper::test3,
+                                           this, std::placeholders::_1));
     }
 
     ~SessionWrapper() override {
@@ -36,6 +38,21 @@ public:
         return ctx->getArrayFactory().createCellArray({1, 2},
                 "abc",
                 ctx->getArrayFactory().createArray<double>({2, 2}, {1., 2., 3., 4.}));
+    }
+
+    MexMethodReturnType test3(const MexMethodArgs &inputs) {
+        ctx->logInfo("Starting async");
+        auto res = std::async(std::launch::async, &SessionWrapper::asyncTest, this);
+        ctx->logInfo("Starting async: done");
+        return ctx->getArrayFactory().createCellArray({0});
+    }
+
+    void asyncTest() {
+//        while(true) {
+            ctx->logInfoAsync("Running1...");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            ctx->logInfoAsync("Running2...");
+//        }
     }
 };
 

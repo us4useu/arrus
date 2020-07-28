@@ -31,6 +31,12 @@ public:
                             std::vector<matlab::data::Array>({factory.createScalar(msg)}));
     }
 
+    void logInfoAsync(const std::string &msg) {
+        matlabEngine->fevalAsync(u"disp", 0,
+                            std::vector<matlab::data::Array>({factory.createScalar(msg)}));
+    }
+
+
     void logError(const std::string &msg) {
         // TODO(pjarosik) add exception name as defined in common dropbox paper
         matlabEngine->feval(u"error", 0,

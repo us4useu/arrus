@@ -13,5 +13,10 @@ classdef Session < MexObject
             s = res{1};
             a = res{2};
         end
+        
+        function test3(obj)
+            obj.callMethod("test3");
+            disp("Started...");
+        end
     end
 end
