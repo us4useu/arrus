@@ -71,6 +71,7 @@ find_package(fmt REQUIRED)
 # Sub-projects
 ################################################################################
 if(ARRUS_RUN_TESTS)
+    include(tests)
     enable_testing()
 endif()
 

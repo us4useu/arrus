@@ -6,7 +6,9 @@
 
 #include "core/devices/common.h"
 #include "core/devices/Device.h"
+#include "core/devices/DeviceId.h"
 #include "core/session/SessionSettings.h"
+#include "core/common/exceptions.h"
 
 namespace arrus {
 
@@ -38,7 +40,7 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    DeviceHandle getDevice(const std::string &deviceId);
+    DeviceHandle& getDevice(const std::string &deviceId);
 
     /**
      * Returns a handle to device with given Id.
@@ -46,13 +48,14 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    DeviceHandle getDevice(const DeviceId &deviceId);
+    DeviceHandle& getDevice(const DeviceId &deviceId);
 
 private:
     using DeviceMap = std::unordered_map<DeviceId, DeviceHandle,
             GET_HASHER_NAME(DeviceId)>;
 
     DeviceMap configureDevices(const SystemSettings &settings);
+
     DeviceMap devices;
 };
 }

@@ -11,6 +11,8 @@ set(SOURCE_FILES
     "common/asserts.h"
     "common/format.h"
     "devices/common.h"
+    "devices/DeviceId.h"
+    "devices/DeviceId.cpp"
     "devices/Device.h"
     "devices/us4oem/Us4OEMSettings.h"
     "session/SystemSettings.h"
@@ -58,15 +60,6 @@ target_link_libraries(${TARGET_NAME}
 # Tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
-#    find_package(GTest REQUIRED)
-#    add_executable(ttt session/tests/test.cpp ${PROTO_SRC} ${PROTO_HDRS})
-#    target_link_libraries(ttt GTest::GTest Boost::Boost Protobuf::Protobuf)
-#    target_include_directories(
-#        ttt
-#        PRIVATE
-#            ${CMAKE_CURRENT_SOURCE_DIR}/..
-#            ${CMAKE_CURRENT_BINARY_DIR}/..
-#            ${CMAKE_CURRENT_BINARY_DIR} # Required for pb.h files.
-#    )
-#    add_test(NAME test1 COMMAND ttt)
+    find_package(GTest REQUIRED)
+    create_gtest(devices/DeviceIdTest.cpp)
 endif()

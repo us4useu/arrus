@@ -7,6 +7,9 @@
 #include "api/matlab/wrappers/DefaultMexObjectManager.h"
 #include "core/session/Session.h"
 
+#include <csignal>
+#include <fstream>
+
 namespace arrus::matlab_wrappers {
 
 
@@ -42,19 +45,27 @@ public:
 
     MexMethodReturnType test3(const MexMethodArgs &inputs) {
         ctx->logInfo("Starting async");
-        auto res = std::async(std::launch::async, &SessionWrapper::asyncTest, this);
-        ctx->logInfo("Starting async: done");
+//        auto res = std::async(std::launch::async, &SessionWrapper::asyncTest, this);
+        ctx->logInfo("Started");
+        signal(SIGALRM, &SessionWrapper::handleAlarm);
+        alarm(10);
         return ctx->getArrayFactory().createCellArray({0});
+    }
+
+    static void handleAlarm(int) {
+        std::ofstream("hello_world.txt");
     }
 
     void asyncTest() {
 //        while(true) {
-            ctx->logInfoAsync("Running1...");
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            ctx->logInfoAsync("Running2...");
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+//            ctx->logInfoAsync("Running1...");
+//            ctx->logInfoAsync("Running2...");
 //        }
     }
 };
+
+
 
 class SessionWrapperManager : public DefaultMexObjectManager<SessionWrapper> {
     using DefaultMexObjectManager::DefaultMexObjectManager;

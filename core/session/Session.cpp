@@ -1,6 +1,7 @@
 #include "Session.h"
 
 #include "core/common/format.h"
+#include "boost/algorithm/string.hpp"
 
 namespace arrus {
 
@@ -8,17 +9,20 @@ Session::Session(const SessionSettings &sessionSettings) {
     devices = configureDevices(sessionSettings.getSystemSettings());
 }
 
-DeviceHandle Session::getDevice(const std::string &deviceId) {
-    // TODO parse deviceId string
-    // cal getDevice(DeviceId)
+DeviceHandle &Session::getDevice(const std::string &deviceId) {
 }
 
-DeviceHandle Session::getDevice(const DeviceId &deviceId) {
-    // TODO devices[deviceId]
+DeviceHandle &Session::getDevice(const DeviceId &deviceId) {
+    try {
+        return devices.at(deviceId);
+    } catch (const std::out_of_range &e) {
+        throw IllegalArgumentException(
+                arrus::format("Unrecognized device: {}", to_string(deviceId)));
+    }
 }
 
 Session::DeviceMap Session::configureDevices(const SystemSettings &settings) {
-    DeviceMap deviceMap;
+    DeviceMap result;
 }
 
 }
