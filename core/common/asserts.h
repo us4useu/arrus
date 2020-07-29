@@ -10,6 +10,22 @@ do {                                        \
     }                                       \
 } while(0)
 
+#define ARRUS_REQUIRES_TRUE_FOR_ARGUMENT(CONDITION, MSG) \
+do {                                                     \
+    if (!(CONDITION)) {                                  \
+        throw arrus::IllegalArgumentException((MSG));    \
+    }                                                    \
+} while(0)
+
+#define ARRUS_REQUIRES_NO_THROW(EXPR, IN_EXCEPTION_TYPE, OUT_EXCEPTION) \
+do {                                                                    \
+    try {                                                               \
+        EXPR;                                                           \
+    } catch(const IN_EXCEPTION_TYPE &e) {                               \
+        throw (OUT_EXCEPTION);                                          \
+    }                                                                   \
+} while(0)
+
 /**
  * Check if A >= B, otherwise throws arrus::IllegalArgumentException.
  */

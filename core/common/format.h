@@ -5,6 +5,7 @@
 // Currently wraps fmt library calls.
 #include <fmt/format.h>
 #include <stdexcept>
+#include <cctype>
 
 namespace arrus {
 
@@ -13,13 +14,15 @@ auto format(Args&&... args) {
     return fmt::format(std::forward<Args>(args)...);
 }
 
-inline unsigned int stoui(const std::string& str) {
-    unsigned long ul = std::stoul(str);
-    unsigned int ui = (unsigned int) ul;
-    if (ui != ul) {
-        throw std::out_of_range("Value out of uint32 range: " + str);
-    }
-    return ui;
+/**
+ * Returns true if the given string contains numeric characters only.
+ *
+ * @param num string to verify
+ * @return true if the given string contains numeric characters only,
+ *         false otherwise.
+ */
+inline bool isDigitsOnly(const std::string& num) {
+    return std::all_of(num.begin(), num.end(), isdigit);
 }
 
 }

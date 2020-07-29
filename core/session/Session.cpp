@@ -17,7 +17,7 @@ DeviceHandle &Session::getDevice(const DeviceId &deviceId) {
         return devices.at(deviceId);
     } catch (const std::out_of_range &e) {
         throw IllegalArgumentException(
-                arrus::format("Unrecognized device: {}", to_string(deviceId)));
+                arrus::format("Unrecognized device: {}", deviceId.toString()));
     }
 }
 

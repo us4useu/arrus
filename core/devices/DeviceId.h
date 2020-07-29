@@ -2,6 +2,8 @@
 #define ARRUS_CORE_DEVICES_DEVICEID_H
 
 #include <sstream>
+#include <unordered_map>
+
 #include "core/common/hash.h"
 
 namespace arrus {
@@ -15,8 +17,16 @@ typedef enum DeviceTypeEnum {
     Probe,
     GPU,
     CPU
-    // Remember to update DeviceTypeEnumStringRepr.
 } DeviceType;
+
+static const std::unordered_map<DeviceTypeEnum, std::string>
+        DEVICE_TYPE_ENUM_STRINGS = {
+        {Us4OEM,              "Us4OEM"},
+        {UltrasoundInterface, "UltrasoundInterface"},
+        {Probe,               "Probe"},
+        {GPU,                 "GPU"},
+        {CPU,                 "CPU"},
+};
 
 /**
  * Converts string to DeviceTypeEnum.
@@ -24,7 +34,7 @@ typedef enum DeviceTypeEnum {
  * @param deviceTypeStr string representation of device type enum.
  * @return device type enum
  */
-DeviceTypeEnum parseToDeviceTypeEnum(const std::string& deviceTypeStr);
+DeviceTypeEnum parseToDeviceTypeEnum(const std::string &deviceTypeStr);
 
 /**
  * Converts DeviceTypeEnum to string.
@@ -34,7 +44,9 @@ DeviceTypeEnum parseToDeviceTypeEnum(const std::string& deviceTypeStr);
  */
 std::string toString(DeviceTypeEnum deviceTypeEnum);
 
-
+/**
+ * Device ordinal number, e.g. GPU 0, GPU 1, Us4OEM 0, Us4OEM 1 etc.
+ */
 using Ordinal = unsigned short;
 
 /**
@@ -63,14 +75,11 @@ public:
         return !(rhs == *this);
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const DeviceId &id) {
-        os << "Device " << id.deviceType << ":" << id.ordinal;
-        return os;
-    }
+    friend std::ostream &operator<<(std::ostream &os, const DeviceId &id);
 
-    friend std::string to_string(const DeviceId& id) {
+    [[nodiscard]] std::string toString() const {
         std::ostringstream ss;
-        ss << id;
+        ss << *this;
         return ss.str();
     }
 

@@ -61,5 +61,5 @@ target_link_libraries(${TARGET_NAME}
 ################################################################################
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
-    create_gtest(devices/DeviceIdTest.cpp)
+    create_core_test(devices/DeviceIdTest.cpp)
 endif()

@@ -1,4 +1,4 @@
-function(create_gtest test_src)
+function(create_core_test test_src)
     # Optional arguments.
     if(${ARGC} GREATER 1)
         set(other_srcs ${ARGV1})
@@ -13,7 +13,7 @@ function(create_gtest test_src)
     string(REPLACE "/" "_" target_name "${target_name_dir}/${target_name_file}")
 
     add_executable(${target_name} ${test_src} ${other_srcs})
-    target_link_libraries(${target_name} GTest::GTest Boost::Boost ${other_deps})
+    target_link_libraries(${target_name} arrus-core GTest::GTest Boost::Boost ${other_deps})
     target_include_directories(
         ${target_name}
         PRIVATE
