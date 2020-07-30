@@ -4,7 +4,6 @@
 #include <utility>
 #include <map>
 
-#include "core/devices/common.h"
 #include "core/devices/us4oem/Us4OEMSettings.h"
 
 namespace arrus {

@@ -4,17 +4,28 @@ set(TARGET_NAME arrus-core)
 # Source files
 ################################################################################
 set(SOURCE_FILES
-    "types.h"
     "common/hash.h"
     "common/compiler.h"
     "common/exceptions.h"
     "common/asserts.h"
     "common/format.h"
-    "devices/common.h"
+    "common/validation.h"
+    "common/types.h"
+
     "devices/DeviceId.h"
     "devices/DeviceId.cpp"
     "devices/Device.h"
+
+    "devices/us4oem/Us4OEMFactory.h"
+    "devices/us4oem/Us4OEM.h"
     "devices/us4oem/Us4OEMSettings.h"
+    "devices/us4oem/impl/Us4OEMFactoryImpl.h"
+    "devices/us4oem/impl/Us4OEMImpl.h"
+    "devices/us4oem/impl/Us4OEMImpl.cpp"
+    "devices/us4oem/impl/Us4OEMSettingsValidator.h"
+    "devices/us4oem/impl/ius4oem/IUs4OEMFactory.h"
+    "devices/us4oem/impl/ius4oem/IUs4OEMFactoryImpl.h"
+
     "session/SystemSettings.h"
     "session/SessionSettings.h"
     "session/Session.h"
@@ -51,6 +62,9 @@ target_include_directories(${TARGET_NAME}
 ################################################################################
 target_link_libraries(${TARGET_NAME}
     PRIVATE
+    Us4::US4OEM
+    Us4::HV256
+    Us4::DBARLite
     Boost::Boost
     Protobuf::Protobuf
     fmt::fmt
@@ -62,4 +76,5 @@ target_link_libraries(${TARGET_NAME}
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
     create_core_test(devices/DeviceIdTest.cpp)
+    create_core_test(devices/us4oem/impl/Us4OEMFactoryImplTest.cpp)
 endif()

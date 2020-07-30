@@ -1,11 +1,12 @@
 #ifndef ARRUS_CORE_DEVICES_US4OEMSETTINGS_H
 #define ARRUS_CORE_DEVICES_US4OEMSETTINGS_H
 
+#include <utility>
 #include <vector>
 #include <bitset>
 #include <optional>
 
-#include "core/types.h"
+#include "core/common/types.h"
 
 namespace arrus {
 
@@ -16,51 +17,63 @@ namespace arrus {
  */
 class Us4OEMSettings {
 public:
+    /**
+     * Creates new Us4OEM configuration.
+     *
+     * @param channelMapping
+     * @param activeChannelGroups
+     * @param dtgc
+     * @param pgaGain
+     * @param lnaGain
+     * @param lpfCutoff
+     * @param activeTermination
+     * @param tgcSamples
+     */
     Us4OEMSettings(
-            const std::vector<ChannelIdx> &channelMapping,
-            const BitMask activeChannelGroups,
+            std::vector<ChannelIdx> channelMapping,
+            BitMask activeChannelGroups,
             const std::optional<double> dtgc,
             const double pgaGain,
             const double lnaGain,
             const double lpfCutoff,
             const double activeTermination,
-            const std::optional<TGCCurve> &tgcSamples
-    ) : channelMapping(channelMapping),
-        activeChannelGroups(activeChannelGroups),
+            std::optional<TGCCurve> tgcSamples
+    ) : channelMapping(std::move(channelMapping)),
+        activeChannelGroups(std::move(activeChannelGroups)),
         dtgc(dtgc), pgaGain(pgaGain), lnaGain(lnaGain),
         lpfCutoff(lpfCutoff), activeTermination(activeTermination),
-        tgcSamples(tgcSamples)
+        tgcSamples(std::move(tgcSamples))
         {}
 
-    const std::vector<ChannelIdx> &getChannelMapping() const {
+    [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
         return channelMapping;
     }
 
-    const BitMask &getActiveChannelGroups() const {
+    [[nodiscard]] const BitMask &getActiveChannelGroups() const {
         return activeChannelGroups;
     }
 
-    std::optional<double> getDTGC() const {
+    [[nodiscard]] std::optional<double> getDTGC() const {
         return dtgc;
     }
 
-    double getPGAGain() const {
+    [[nodiscard]] double getPGAGain() const {
         return pgaGain;
     }
 
-    double getLNAGain() const {
+    [[nodiscard]] double getLNAGain() const {
         return lnaGain;
     }
 
-    double getLPFCutoff() const {
+    [[nodiscard]] double getLPFCutoff() const {
         return lpfCutoff;
     }
 
-    double getActiveTermination() const {
+    [[nodiscard]] double getActiveTermination() const {
         return activeTermination;
     }
 
-    const std::optional<TGCCurve> &getTGCSamples() const {
+    [[nodiscard]] const std::optional<TGCCurve> &getTGCSamples() const {
         return tgcSamples;
     }
 

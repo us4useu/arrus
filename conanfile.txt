@@ -4,6 +4,9 @@ protobuf/3.11.4
 gtest/1.10.0
 fmt/7.0.1
 
+[options]
+boost:shared=True
+
 [generators]
 cmake_find_package
 virtualenv

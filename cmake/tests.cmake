@@ -20,6 +20,7 @@ function(create_core_test test_src)
         ${CMAKE_CURRENT_SOURCE_DIR}/..
         ${CMAKE_CURRENT_BINARY_DIR}/..
         ${CMAKE_CURRENT_BINARY_DIR} # Required for pb.h files (protobuf).
+        ${Us4_INCLUDE_DIR} # Required to mock us4 devices. TODO(pjarosik) do not depend tests on external libraries
     )
     add_test(NAME ${test_src} COMMAND ${target_name})
 endfunction()

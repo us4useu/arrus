@@ -4,7 +4,6 @@
 #include <memory>
 #include <unordered_map>
 
-#include "core/devices/common.h"
 #include "core/devices/Device.h"
 #include "core/devices/DeviceId.h"
 #include "core/session/SessionSettings.h"
@@ -40,7 +39,7 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    DeviceHandle& getDevice(const std::string &deviceId);
+    Device::Handle& getDevice(const std::string &deviceId);
 
     /**
      * Returns a handle to device with given Id.
@@ -48,10 +47,10 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    DeviceHandle& getDevice(const DeviceId &deviceId);
+    Device::Handle& getDevice(const DeviceId &deviceId);
 
 private:
-    using DeviceMap = std::unordered_map<DeviceId, DeviceHandle,
+    using DeviceMap = std::unordered_map<DeviceId, Device::Handle,
             GET_HASHER_NAME(DeviceId)>;
 
     DeviceMap configureDevices(const SystemSettings &settings);
