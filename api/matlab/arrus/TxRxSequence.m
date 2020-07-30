@@ -13,7 +13,7 @@ classdef TxRxSequence
     
     properties
         TxRxList {mustBeTxRx}
-        pri (1,1) {mustBeReal, mustBePositive} = 200*1e-6
+        pri (1,1) {mustBeReal, mustBePositive} = 2000*1e-6
         
     end
     
