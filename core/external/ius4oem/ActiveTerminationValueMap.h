@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4OEM_IMPL_IUS4OEM_ACTIVETERMINATIONVALUEMAP_H
 
 #include <unordered_map>
+#include <set>
 #include <ius4oem.h>
 
 #include "core/common/types.h"
@@ -11,13 +12,29 @@ namespace arrus {
 class ActiveTerminationValueMap {
 
 public:
+    using ActiveTerminationValueType = uint16;
+
     static ActiveTerminationValueMap &getInstance() {
         static ActiveTerminationValueMap instance;
         return instance;
     }
 
-    us4oem::afe58jd18::GBL_ACTIVE_TERM getEnumValue(const uint16 value) {
+    us4oem::afe58jd18::GBL_ACTIVE_TERM
+    getEnumValue(const ActiveTerminationValueType value) {
         return valueMap.at(value);
+    }
+
+    /**
+     * Returns a sorted set of available values.
+     */
+    std::set<ActiveTerminationValueType> getAvailableValues() const {
+        std::set<ActiveTerminationValueType> values;
+        std::transform(std::begin(valueMap), std::end(valueMap),
+                       std::back_inserter(values),
+                       [](auto &val) {
+                           val.first;
+                       });
+        return values;
     }
 
     ActiveTerminationValueMap(ActiveTerminationValueMap const &) = delete;
@@ -29,7 +46,7 @@ public:
     void operator=(ActiveTerminationValueMap const &&) = delete;
 
 private:
-    std::unordered_map<uint16, us4oem::afe58jd18::GBL_ACTIVE_TERM> valueMap;
+    std::unordered_map<ActiveTerminationValueType, us4oem::afe58jd18::GBL_ACTIVE_TERM> valueMap;
 
     ActiveTerminationValueMap() {
         valueMap.emplace(50,

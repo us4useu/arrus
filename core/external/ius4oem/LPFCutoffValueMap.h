@@ -2,6 +2,8 @@
 #define ARRUS_CORE_DEVICES_US4OEM_IMPL_IUS4OEM_LPFCUTOFFVALUEMAP_H
 
 #include <unordered_map>
+#include <set>
+
 #include <ius4oem.h>
 
 #include "core/common/types.h"
@@ -11,13 +13,28 @@ namespace arrus {
 class LPFCutoffValueMap {
 
 public:
+    using LPFCutoffValueType = uint32;
+
     static LPFCutoffValueMap &getInstance() {
         static LPFCutoffValueMap instance;
         return instance;
     }
 
-    us4oem::afe58jd18::LPF_PROG getEnumValue(const uint32 value) {
+    us4oem::afe58jd18::LPF_PROG getEnumValue(const LPFCutoffValueType value) {
         return valueMap.at(value);
+    }
+
+    /**
+     * Returns a sorted set of available values.
+     */
+    std::set<LPFCutoffValueType> getAvailableValues() const {
+        std::set<LPFCutoffValueType> values;
+        std::transform(std::begin(valueMap), std::end(valueMap),
+                       std::back_inserter(values),
+                       [](auto &val) {
+                           val.first;
+                       });
+        return values;
     }
 
     LPFCutoffValueMap(LPFCutoffValueMap const &) = delete;
@@ -29,7 +46,7 @@ public:
     void operator=(LPFCutoffValueMap const &&) = delete;
 
 private:
-    std::unordered_map<uint32, us4oem::afe58jd18::LPF_PROG> valueMap;
+    std::unordered_map<LPFCutoffValueType, us4oem::afe58jd18::LPF_PROG> valueMap;
 
     LPFCutoffValueMap() {
         valueMap.emplace(10e6,
