@@ -71,6 +71,8 @@ classdef TxRxKernel < handle
             % new firmware
 %             nRxChannels = obj.usSystem.nChArius*3; % max number of rx channels 
             samplingFrequency = 65e6;
+            % time need for switch from transmit to receive or vice-versa
+            trSwitchTime = 240./samplingFrequency; 
             nTxChannels = 128; % max number of tx channels
             nTxRx = length(obj.sequence.TxRxList);
             
@@ -139,6 +141,10 @@ classdef TxRxKernel < handle
             nSamp = NaN(1,obj.nFire);
             startSamp = NaN(1,obj.nFire);
             for iTxRx = 1:nTxRx 
+                rxTime = obj.sequence.TxRxList(iTxRx).Rx.delay  ...
+                    + obj.sequence.TxRxList(iTxRx).Rx.time ...
+                    + trSwitchTime ...
+                    ;                
                 fs = samplingFrequency./obj.sequence.TxRxList(iTxRx).Rx.fsDivider;
                 moduleTxApertures = obj.module2TxMaps{iTxRx};
                 moduleTxDelays = obj.module2TxDelaysMaps{iTxRx};
@@ -147,6 +153,7 @@ classdef TxRxKernel < handle
 
                     nSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
                     startSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay.*fs);
+
 %                     disp(obj.sequence.TxRxList(iTxRx).Rx.delay)
 %                     disp(startSamp)
                     
@@ -164,8 +171,13 @@ classdef TxRxKernel < handle
                         % Rx
 %                         disp(obj.maskFormat(moduleRxApertures(iArius+1, :, iSubTxRx).'))
 %                         disp(obj.sequence.TxRxList(iTxRx).Rx.delay)
+
+%                         Us4MEX(iArius, "SetRxChannelMapping", ...
+%                             obj.usSystem.rxChannelMap(iArius+1,1:32), ...
+%                             iFire ...
+%                             );
                         Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iSubTxRx).'), iFire);
-                        Us4MEX(iArius, "SetRxTime", obj.sequence.TxRxList(iTxRx).Rx.time, iFire);
+                        Us4MEX(iArius, "SetRxTime", rxTime, iFire); 
                         Us4MEX(iArius, "SetRxDelay", obj.sequence.TxRxList(iTxRx).Rx.delay, iFire);
                         % do zrobienia tgc
 %                         Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
@@ -178,7 +190,7 @@ classdef TxRxKernel < handle
                             obj.sequence.TxRxList(iTxRx).Rx.fsDivider-1,...
                             iFire ...
                             );
-
+                        disp(obj.usSystem.trigTxDel)
                     end
                     iFire = iFire+1;
                 end

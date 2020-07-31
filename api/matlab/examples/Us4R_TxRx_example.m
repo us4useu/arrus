@@ -16,13 +16,14 @@ fsDivider = 1;
 
 
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM, probeName, adapterType, 50, true);
+us	= Us4R(nUs4OEM, probeName, adapterType, 20, true);
 
 %%
 % 
 % txap = false(1,192);
 % txap(96) = true;
 % TODO: pri powinno si? dostosowywa? do liczby sampli i delay. 
+%   dorobi Rx.nSamp i Rx.startSamp
 txap = true(1,192);
 % rxap = true(1,32);% poprawic w kernelu rfRshp, zeby to dzialalo
 rxap = true(1,192);
@@ -44,7 +45,7 @@ us.upload(sequence);
 toc
 
 %%
-figure, imagesc(log(double(rf(:,:,1)).^2+1))
+figure, imagesc(log(double(rf(:,:,2)).^2+1))
 % figure, plot(rf(1,:))
 % set(gca, 'ylim', [4980, 5100])
 % figure, imagesc(rf()
