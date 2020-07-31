@@ -5,13 +5,12 @@
 #include "core/common/format.h"
 
 // Construction components.
-#include "core/devices/us4oem/impl/Us4OEMFactoryImpl.h"
-#include "core/devices/us4oem/impl/ius4oem/IUs4OEMFactoryImpl.h"
+#include "core/devices/us4r/Us4RFactory.h"
 
 namespace arrus {
 
 Session::Session(const SessionSettings &sessionSettings) {
-    devices = configureDevices(sessionSettings.getSystemSettings());
+    devices = configureDevices(sessionSettings);
 }
 
 Device::Handle &Session::getDevice(const std::string &path) {
@@ -40,16 +39,23 @@ Device::Handle &Session::getDevice(const DeviceId &deviceId) {
     }
 }
 
-Session::DeviceMap Session::configureDevices(const SystemSettings &settings) {
+Session::DeviceMap
+Session::configureDevices(const SessionSettings &sessionSettings) {
     DeviceMap result;
 
-    // Us4OEMs.
-    Us4OEMFactoryImpl us4oemFactory(IUs4OEMFactoryImpl::getInstance());
+    // Configuring Us4R.
+    const Us4RSettings& us4RSettings = sessionSettings.getUs4RSettings();
 
-    for (auto &[ordinal, cfg] : settings.getUs4oemSettings()) {
-        Us4OEM::Handle handle = us4oemFactory.getUs4OEM(ordinal, cfg);
-        result.emplace(handle->getDeviceId(), std::move(handle));
-    }
+    // Us4RFactory - initialize
+
+    // Get all component devices
+
+//    Us4OEMFactoryImpl us4oemFactory(IUs4OEMFactoryImpl::getInstance());
+//
+//    for (auto &[ordinal, cfg] : settings.getUs4oemSettings()) {
+//        Us4OEM::Handle handle = us4oemFactory.getUs4OEM(ordinal, cfg);
+//        result.emplace(handle->getDeviceId(), std::move(handle));
+//    }
 
     // Adapters
 

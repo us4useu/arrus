@@ -23,18 +23,26 @@ set(SOURCE_FILES
     "devices/us4oem/impl/Us4OEMImpl.h"
     "devices/us4oem/impl/Us4OEMImpl.cpp"
     "devices/us4oem/impl/Us4OEMSettingsValidator.h"
-    "devices/us4oem/impl/ius4oem/IUs4OEMFactory.h"
-    "devices/us4oem/impl/ius4oem/IUs4OEMFactoryImpl.h"
-    "devices/us4oem/impl/ius4oem/LNAGainValueMap.h"
-    "devices/us4oem/impl/ius4oem/PGAGainValueMap.h"
-    "devices/us4oem/impl/ius4oem/ActiveTerminationValueMap.h"
-    "devices/us4oem/impl/ius4oem/LPFCutoffValueMap.h"
-    "devices/us4oem/impl/ius4oem/DTGCAttenuationValueMap.h"
 
+    "devices/us4r/Us4R.cpp"
     "devices/us4r/Us4RSettings.h"
+    "devices/us4r/Us4RFactory.h"
+    "devices/us4r/Us4R.h"
+    "devices/us4r/impl/Us4RFactoryImpl.h"
+    "devices/us4r/impl/Us4RImpl.h"
+    "devices/us4r/impl/Us4RImpl.cpp"
 
     "session/Session.h"
     "session/Session.cpp"
+
+    "external/ius4oem/IUs4OEMFactory.h"
+    "external/ius4oem/IUs4OEMFactoryImpl.h"
+    "external/ius4oem/LNAGainValueMap.h"
+    "external/ius4oem/PGAGainValueMap.h"
+    "external/ius4oem/ActiveTerminationValueMap.h"
+    "external/ius4oem/LPFCutoffValueMap.h"
+    "external/ius4oem/DTGCAttenuationValueMap.h"
+
 )
 
 # Protobuf source files

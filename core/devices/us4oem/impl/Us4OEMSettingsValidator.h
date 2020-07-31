@@ -7,9 +7,11 @@
 namespace arrus {
 
 class Us4OEMSettingsValidator: public Validator<Us4OEMSettings> {
-
 public:
+    using Validator<Us4OEMSettings>::Validator;
+
     void validate(const Us4OEMSettings &obj) override {
+        // obj.getTGCSamples(); powinny byc wartosci [LNA+PGA-40, LNA+PGA]
     }
 
 };

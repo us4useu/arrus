@@ -3,7 +3,8 @@
 
 #include "core/devices/us4oem/Us4OEMFactory.h"
 #include "core/devices/us4oem/impl/Us4OEMImpl.h"
-#include "core/devices/us4oem/impl/ius4oem/IUs4OEMFactory.h"
+#include "core/devices/us4oem/impl/Us4OEMSettingsValidator.h"
+#include "core/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {
 class Us4OEMFactoryImpl : public Us4OEMFactory {
@@ -12,16 +13,18 @@ public:
             : ius4oemFactory(ius4oemFactory) {}
 
     Us4OEM::Handle
-    getUs4OEM(Ordinal ordinal, const Us4OEMSettings &settings) override {
-        IUs4OEMHandle ius4oem = ius4oemFactory.getIUs4OEM(ordinal);
+    getUs4OEM(Ordinal ordinal, const IUs4OEMHandle &ius4oem,
+              const Us4OEMSettings &settings) override {
 
-        // Validate settings (whether they can be used to configure the device
-        // Initialize the device
-        // Set appropriate values
+        // Validate settings.
+        Us4OEMSettingsValidator validator(settings);
+        validator.throwOnErrors();
 
+        // Us4OEM Initial configuration.
         // Initialize the device
         // Set according to the settings
         // Initialize Us4OEMImpl structures (e.g. the actual ActiveChannelGroups)
+
 
         return Us4OEM::Handle(
                 new Us4OEMImpl(DeviceId(DeviceType::Us4OEM, ordinal),

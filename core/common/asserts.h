@@ -10,6 +10,13 @@ do {                                        \
     }                                       \
 } while(0)
 
+#define ARRUS_REQUIRES_EQUAL(A, B, EXCEPTION)             \
+do {                                                      \
+    if (!((A) == (B))) {                                  \
+        throw EXCEPTION;                                  \
+    }                                                     \
+} while(0)
+
 #define ARRUS_REQUIRES_TRUE_FOR_ARGUMENT(CONDITION, MSG) \
 do {                                                     \
     if (!(CONDITION)) {                                  \

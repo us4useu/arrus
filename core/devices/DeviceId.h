@@ -12,6 +12,7 @@ namespace arrus {
  * Device types available in the system.
  */
 typedef enum DeviceTypeEnum {
+    Us4R,
     Us4OEM,
     UltrasoundInterface,
     Probe,
@@ -21,6 +22,7 @@ typedef enum DeviceTypeEnum {
 
 static const std::unordered_map<DeviceTypeEnum, std::string>
         DEVICE_TYPE_ENUM_STRINGS = {
+        {Us4R,                "Us4R"},
         {Us4OEM,              "Us4OEM"},
         {UltrasoundInterface, "UltrasoundInterface"},
         {Probe,               "Probe"},

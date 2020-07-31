@@ -11,17 +11,22 @@ namespace arrus {
 
 class Us4RSettings {
 public:
-    using Us4OEMSettingsMap = std::map<Ordinal, Us4OEMSettings>;
 
-    explicit Us4RSettings(const Us4OEMSettingsMap us4oemSettingsMap)
-    : us4oemSettingsMap(std::move(us4oemSettingsMap)) {}
+    /**
+     * The position of the us4OEM settings in the vector is the Us4OEM
+     * device ordinal.
+     */
+    using Us4OEMSettingsCollection = std::vector<Us4OEMSettings>;
 
-    [[nodiscard]] const Us4OEMSettingsMap& getUs4oemSettings() const {
-        return this->us4oemSettingsMap;
+    explicit Us4RSettings(Us4OEMSettingsCollection us4oemSettings)
+    : us4oemSettings(std::move(us4oemSettings)) {}
+
+    [[nodiscard]] const Us4OEMSettingsCollection& getUs4oemSettings() const {
+        return this->us4oemSettings;
     }
 
 private:
-    Us4OEMSettingsMap us4oemSettingsMap;
+    Us4OEMSettingsCollection us4oemSettings;
 };
 
 }
