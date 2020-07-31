@@ -22,7 +22,7 @@ public:
      *
      * @param channelMapping
      * @param activeChannelGroups
-     * @param dtgc
+     * @param dtgcAttenuation
      * @param pgaGain
      * @param lnaGain
      * @param lpfCutoff
@@ -32,15 +32,15 @@ public:
     Us4OEMSettings(
             std::vector<ChannelIdx> channelMapping,
             BitMask activeChannelGroups,
-            const std::optional<double> dtgc,
-            const double pgaGain,
-            const double lnaGain,
-            const double lpfCutoff,
-            const double activeTermination,
+            const std::optional<uint8> dtgcAttenuation,
+            const uint8 pgaGain,
+            const uint8 lnaGain,
+            const uint32 lpfCutoff,
+            const std::optional<uint16> activeTermination,
             std::optional<TGCCurve> tgcSamples
     ) : channelMapping(std::move(channelMapping)),
         activeChannelGroups(std::move(activeChannelGroups)),
-        dtgc(dtgc), pgaGain(pgaGain), lnaGain(lnaGain),
+        dtgcAttenuation(dtgcAttenuation), pgaGain(pgaGain), lnaGain(lnaGain),
         lpfCutoff(lpfCutoff), activeTermination(activeTermination),
         tgcSamples(std::move(tgcSamples))
         {}
@@ -53,23 +53,23 @@ public:
         return activeChannelGroups;
     }
 
-    [[nodiscard]] std::optional<double> getDTGC() const {
-        return dtgc;
+    [[nodiscard]] std::optional<uint8> getDTGCAttenuation() const {
+        return dtgcAttenuation;
     }
 
-    [[nodiscard]] double getPGAGain() const {
+    [[nodiscard]] uint8 getPGAGain() const {
         return pgaGain;
     }
 
-    [[nodiscard]] double getLNAGain() const {
+    [[nodiscard]] uint8 getLNAGain() const {
         return lnaGain;
     }
 
-    [[nodiscard]] double getLPFCutoff() const {
+    [[nodiscard]] uint32 getLPFCutoff() const {
         return lpfCutoff;
     }
 
-    [[nodiscard]] double getActiveTermination() const {
+    [[nodiscard]] std::optional<uint16> getActiveTermination() const {
         return activeTermination;
     }
 
@@ -80,11 +80,13 @@ public:
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
-    std::optional<double> dtgc;
-    double pgaGain;
-    double lnaGain;
-    double lpfCutoff;
-    double activeTermination;
+
+    std::optional<uint8> dtgcAttenuation;
+    uint8 pgaGain;
+    uint8 lnaGain;
+
+    uint32 lpfCutoff;
+    std::optional<uint16> activeTermination;
 
     std::optional<TGCCurve> tgcSamples;
 };

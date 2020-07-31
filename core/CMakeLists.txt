@@ -25,7 +25,11 @@ set(SOURCE_FILES
     "devices/us4oem/impl/Us4OEMSettingsValidator.h"
     "devices/us4oem/impl/ius4oem/IUs4OEMFactory.h"
     "devices/us4oem/impl/ius4oem/IUs4OEMFactoryImpl.h"
-
+    "devices/us4oem/impl/ius4oem/LNAGainValueMap.h"
+    "devices/us4oem/impl/ius4oem/PGAGainValueMap.h"
+    "devices/us4oem/impl/ius4oem/ActiveTerminationValueMap.h"
+    "devices/us4oem/impl/ius4oem/LPFCutoffValueMap.h"
+    "devices/us4oem/impl/ius4oem/DTGCAttenuationValueMap.h"
     "session/SystemSettings.h"
     "session/SessionSettings.h"
     "session/Session.h"
