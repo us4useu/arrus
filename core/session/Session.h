@@ -8,6 +8,7 @@
 #include "core/devices/DeviceId.h"
 #include "core/session/SessionSettings.h"
 #include "core/common/exceptions.h"
+#include "core/devices/us4r/Us4RSettings.h"
 
 namespace arrus {
 
@@ -53,7 +54,7 @@ private:
     using DeviceMap = std::unordered_map<DeviceId, Device::Handle,
             GET_HASHER_NAME(DeviceId)>;
 
-    DeviceMap configureDevices(const SystemSettings &settings);
+    DeviceMap configureDevices(const SessionSettings &sessionSettings);
 
     DeviceMap devices;
 };

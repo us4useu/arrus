@@ -3,20 +3,20 @@
 
 #include <utility>
 
-#include "core/session/SystemSettings.h"
+#include "core/devices/us4r/Us4RSettings.h"
 
 namespace arrus {
 class SessionSettings {
 public:
-    SessionSettings(SystemSettings systemSettings) :
-            systemSettings(std::move(systemSettings)) {}
+    SessionSettings(Us4RSettings us4RSettings) :
+            us4RSettings(std::move(us4RSettings)) {}
 
-    const SystemSettings &getSystemSettings() const {
-        return systemSettings;
+    const Us4RSettings &getUs4RSettings() const {
+        return us4RSettings;
     }
 
 private:
-    SystemSettings systemSettings;
+    Us4RSettings us4RSettings;
     // TODO log level, output logging, etc.
 };
 }

@@ -3,7 +3,7 @@ syntax = "proto3";
 package arrus.proto;
 
 import "core/protobuf/settings/Us4OEMSettings.proto";
-import "core/protobuf/settings/Us4RLiteSettings.proto";
+import "core/protobuf/settings/Us4RSettings.proto";
 
 message SessionSettings {
 
@@ -18,7 +18,6 @@ message SessionSettings {
 
   LoggingLevel logging_level = 1;
   string dictionary_file = 2;
-  map<uint32, Us4OEMSettings> us4oems = 3;
-  Us4RLiteSettings us4rlite = 4;
+  Us4RSettings us4rlite = 3;
 }
 

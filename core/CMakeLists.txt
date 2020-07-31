@@ -30,8 +30,9 @@ set(SOURCE_FILES
     "devices/us4oem/impl/ius4oem/ActiveTerminationValueMap.h"
     "devices/us4oem/impl/ius4oem/LPFCutoffValueMap.h"
     "devices/us4oem/impl/ius4oem/DTGCAttenuationValueMap.h"
-    "session/SystemSettings.h"
-    "session/SessionSettings.h"
+
+    "devices/us4r/Us4RSettings.h"
+
     "session/Session.h"
     "session/Session.cpp"
 )
