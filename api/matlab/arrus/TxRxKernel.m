@@ -65,6 +65,7 @@ classdef TxRxKernel < handle
             %       - Arrays describing relation between module channel 
             %         and probe element in each TxRx
             obj.propertiesPreprocessing()
+
             
             nArius = obj.usSystem.nArius; % number of arius modules
             nRxChannels = obj.usSystem.nChArius; % max number of rx channels
@@ -176,6 +177,7 @@ classdef TxRxKernel < handle
 %                             obj.usSystem.rxChannelMap(iArius+1,1:32), ...
 %                             iFire ...
 %                             );
+
                         Us4MEX(iArius, "SetRxAperture", obj.maskFormat(moduleRxApertures(iArius+1, :, iSubTxRx).'), iFire);
                         Us4MEX(iArius, "SetRxTime", rxTime, iFire); 
                         Us4MEX(iArius, "SetRxDelay", obj.sequence.TxRxList(iTxRx).Rx.delay, iFire);
@@ -190,7 +192,7 @@ classdef TxRxKernel < handle
                             obj.sequence.TxRxList(iTxRx).Rx.fsDivider-1,...
                             iFire ...
                             );
-                        disp(obj.usSystem.trigTxDel)
+
                     end
                     iFire = iFire+1;
                 end
@@ -200,8 +202,8 @@ classdef TxRxKernel < handle
             % total number of firings
             obj.nSamp = nSamp;
             obj.startSamp = startSamp;
-            disp(['nSamp: ',num2str(nSamp)])
-            disp(['startSamp: ',num2str(startSamp)])
+%             disp(['nSamp: ',num2str(nSamp)])
+%             disp(['startSamp: ',num2str(startSamp)])
 
             
             for iArius = 0:nArius-1
@@ -281,8 +283,17 @@ classdef TxRxKernel < handle
                 nSubTxRx(i) = nTxRxFire; % number of subFirings will be used later in run() method
                
             end
-            obj.nSubTxRx = nSubTxRx;
-            obj.nFire = sum(nSubTxRx);
+            
+            % if Rx.aperture is all false, then nSumTxRx is 0, but should
+            % be 1 for Us4MEX, because must be nFire <=1
+            if isequal(nSubTxRx,0)
+                obj.nSubTxRx = 1;
+            else
+                obj.nSubTxRx = nSubTxRx;
+            end
+            
+            obj.nFire = sum(obj.nSubTxRx);
+
             
         end % of propertiesPreprocessing()
                 
@@ -433,7 +444,8 @@ classdef TxRxKernel < handle
                     end
                 end
             end
-
+            
+            %{
             % clear empty channel groups (i.e. size(moduleRxApertures,3)
             % will be equal to nFire
             emptyGroups = [];
@@ -443,7 +455,7 @@ classdef TxRxKernel < handle
                end               
             end
             moduleRxApertures(:,:,emptyGroups) = [];
-
+            %}
             
         end % of apertures2modules()  
         
@@ -484,7 +496,7 @@ classdef TxRxKernel < handle
         function rfRshpd = reshapeMexRf(obj, rf)
             rf = rf.';
             nElement = obj.usSystem.nElem;
-            [nAllSampn, Channels ] = size(rf);
+            [nAllSampn, nChannels] = size(rf);
             nSamp = obj.nSamp;
             nFire = obj.nFire;
             nTxRx = length(obj.sequence.TxRxList);
@@ -509,10 +521,12 @@ classdef TxRxKernel < handle
 
                       elements = map(iModule, :, iSubTxRx);
                       elements(elements==0)=[];
+
 %                       disp(['elements: ',num2str(elements)])
 %                       disp(['iTxRx: ',num2str(iTxRx)])
-
-                      rfRshpd(:,elements, iTxRx) = rf(samples,:);
+                      if ~isempty(elements)
+                          rfRshpd(:,elements, iTxRx) = rf(samples,:);
+                      end
                        
                    end
                 end

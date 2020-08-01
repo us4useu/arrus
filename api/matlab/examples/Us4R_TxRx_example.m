@@ -24,9 +24,14 @@ us	= Us4R(nUs4OEM, probeName, adapterType, 20, true);
 % txap(96) = true;
 % TODO: pri powinno si? dostosowywa? do liczby sampli i delay. 
 %   dorobi Rx.nSamp i Rx.startSamp
+%   rxap = true(1,32);% poprawic w kernelu rfRshp, zeby to dzialalo <-to
+%   obsluga sytuacji w ktorej nFire=0
+
+
 txap = true(1,192);
-% rxap = true(1,32);% poprawic w kernelu rfRshp, zeby to dzialalo
-rxap = true(1,192);
+
+rxap = false(1,192);
+% rxap(20:70) = true;
 
 pulse = Pulse('nPeriods',[2], 'frequency', [5e6]);
 t1 = Tx('pulse', pulse, 'aperture', txap);
@@ -45,7 +50,7 @@ us.upload(sequence);
 toc
 
 %%
-figure, imagesc(log(double(rf(:,:,2)).^2+1))
+figure, imagesc(log(double(rf(:,:,1)).^2+1))
 % figure, plot(rf(1,:))
 % set(gca, 'ylim', [4980, 5100])
 % figure, imagesc(rf()
