@@ -24,13 +24,20 @@ set(SOURCE_FILES
     "devices/us4oem/impl/Us4OEMImpl.cpp"
     "devices/us4oem/impl/Us4OEMSettingsValidator.h"
 
-    "devices/us4r/Us4R.cpp"
     "devices/us4r/Us4RSettings.h"
     "devices/us4r/Us4RFactory.h"
     "devices/us4r/Us4R.h"
     "devices/us4r/impl/Us4RFactoryImpl.h"
     "devices/us4r/impl/Us4RImpl.h"
     "devices/us4r/impl/Us4RImpl.cpp"
+
+    "devices/adapter/Adapter.h"
+    "devices/adapter/AdapterFactory.h"
+    "devices/adapter/AdapterSettings.h"
+
+    "devices/probe/Probe.h"
+    "devices/probe/ProbeFactory.h"
+    "devices/probe/ProbeSettings.h"
 
     "session/Session.h"
     "session/Session.cpp"
@@ -89,5 +96,6 @@ target_link_libraries(${TARGET_NAME}
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
     create_core_test(devices/DeviceIdTest.cpp)
+    create_core_test(devices/us4oem/impl/Us4OEMSettingsValidatorTest.cpp)
     create_core_test(devices/us4oem/impl/Us4OEMFactoryImplTest.cpp)
 endif()
