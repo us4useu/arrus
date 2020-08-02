@@ -3,6 +3,7 @@
 
 #include <memory>
 #include "core/devices/Device.h"
+#include "core/common/types.h"
 
 namespace arrus {
 

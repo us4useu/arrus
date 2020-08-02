@@ -13,7 +13,7 @@ function(create_core_test test_src)
     string(REPLACE "/" "_" target_name "${target_name_dir}/${target_name_file}")
 
     add_executable(${target_name} ${test_src} ${other_srcs})
-    target_link_libraries(${target_name} arrus-core GTest::GTest Boost::Boost ${other_deps})
+    target_link_libraries(${target_name} arrus-core GTest::GTest Boost::Boost fmt::fmt ${other_deps})
     target_include_directories(
         ${target_name}
         PRIVATE

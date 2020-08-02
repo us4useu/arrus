@@ -11,10 +11,17 @@ set(SOURCE_FILES
     "common/format.h"
     "common/validation.h"
     "common/types.h"
+    "common/logging/LogSettings.h"
+    "common/logging/LogSettings.cpp"
+    "common/logging/Logger.h"
+    "common/logging/LogSeverity.h"
+    "common/logging/LogSeverity.cpp"
 
     "devices/DeviceId.h"
     "devices/DeviceId.cpp"
     "devices/Device.h"
+
+    "devices/UltrasoundDevice.h"
 
     "devices/us4oem/Us4OEMFactory.h"
     "devices/us4oem/Us4OEM.h"
@@ -97,5 +104,5 @@ if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
     create_core_test(devices/DeviceIdTest.cpp)
     create_core_test(devices/us4oem/impl/Us4OEMSettingsValidatorTest.cpp)
-    create_core_test(devices/us4oem/impl/Us4OEMFactoryImplTest.cpp)
+#    create_core_test(devices/us4oem/impl/Us4OEMFactoryImplTest.cpp)
 endif()
