@@ -55,6 +55,7 @@ classdef TxRxKernel < handle
         
         
         function programHW(obj)
+            % The method programHW() is for hardware programming.
                         
             % The method propertiesPreprocessing() below 
             %   enumerates following properties:
@@ -68,10 +69,11 @@ classdef TxRxKernel < handle
 
             
             nArius = obj.usSystem.nArius; % number of arius modules
-            nRxChannels = obj.usSystem.nChArius; % max number of rx channels
+%             nRxChannels = obj.usSystem.nChArius; % max number of rx channels
             % new firmware
 %             nRxChannels = obj.usSystem.nChArius*3; % max number of rx channels 
             samplingFrequency = 65e6;
+            
             % time need for switch from transmit to receive or vice-versa
             trSwitchTime = 240./samplingFrequency; 
             nTxChannels = 128; % max number of tx channels
@@ -229,9 +231,9 @@ classdef TxRxKernel < handle
             nTxRx = length(obj.sequence.TxRxList);
             nSubTxRx = NaN(1,nTxRx);
             for i = 1:nTxRx 
-                thisTxRx = obj.sequence.TxRxList(i);
+
                 
-                %% interpretation of empty properties in TxRx objects
+                % interpretation of empty properties in TxRx objects
 
                 if isempty(obj.sequence.TxRxList(i).Tx.aperture)
                     obj.sequence.TxRxList(i).Tx.aperture = ...
@@ -335,8 +337,7 @@ classdef TxRxKernel < handle
         
  
         function [moduleTxApertures, moduleTxDelays, moduleRxApertures] = apertures2modules(obj, txAp, txDel, rxAp)
-            
-        % The method maps logical transmit aperture, transmit delays 
+         % The method maps logical transmit aperture, transmit delays 
         %   and receive aperture into mask corresponding to module
         %   channels.
         % 
@@ -347,25 +348,20 @@ classdef TxRxKernel < handle
         %   rxAperture.
         
         % number of modules 
-            nModules = 2; 
-%             nModules = obj.usSystem.nArius;
+%             nModules = 2; 
+            nModules = obj.usSystem.nArius;
             
             % number of channels in module
-            nModuleChannels = 128; 
-%             nModuleChannels = obj.usSystem.nChTotal./usSystem.nArius; 
+%             nModuleChannels = 128; 
+            nModuleChannels = obj.usSystem.nChTotal./obj.usSystem.nArius; 
             
             % number of available rx channels in single module            
-            nRxChannels = 32; 
-%             nRxChannels = obj.usSystem.nChArius;
+%             nRxChannerls = 32; 
+            nRxChannels = obj.usSystem.nChArius;
             
             % number of rx channel groups
             nRxChanGroups = 3; 
             
-            % some validation - not sure if it is necessary (should be
-            % checked later)
-            if length(txAp) > nModules*nModuleChannels
-               error('Transmit aperture length is bigger than number of available channels.') 
-            end
             
             % Creating array which maps module channels into probe elements:
             %   array indexes corresponds to iModule, iRxChannel and
@@ -389,11 +385,6 @@ classdef TxRxKernel < handle
                 end
             end
 
-            
-            
-            
-            
-
             % TX PART
             
             % allocation of tx output arrays i.e. aperture masks and delays
@@ -415,9 +406,6 @@ classdef TxRxKernel < handle
                     end
                 end
             end
-%             moduleTxApertures
-            
-
 
 
             % RX PART            
@@ -494,38 +482,39 @@ classdef TxRxKernel < handle
     
         
         function rfRshpd = reshapeMexRf(obj, rf)
-            rf = rf.';
+            % The method reshapes rf array 
+            % from UsRMEX(iModule, "TransferAllRXBuffersToHost", ...
+            % (size nChannels x nAllSamp, where nChannels is a number 
+            % of available rx channels in a single module)
+            % to final rf array (size nSamp x nElements)
+
+            [nChannels, nAllSampn] = size(rf);
             nElement = obj.usSystem.nElem;
-            [nAllSampn, nChannels] = size(rf);
-            nSamp = obj.nSamp;
-            nFire = obj.nFire;
             nTxRx = length(obj.sequence.TxRxList);
             nModule = obj.usSystem.nArius;
 
-%             disp(nSamp)
-%             disp(nElement)
-%             disp(nTxRx)
-            rfRshpd = zeros(max(nSamp), nElement, nTxRx);
-            
+            rfRshpd = zeros(max(obj.nSamp), nElement, nTxRx);
+
             maps = obj.module2RxMaps;
             sample0 = 0;
             for iModule = 1:nModule
                 iFire = 0;
                 for iTxRx = 1:nTxRx
                    map = maps{iTxRx};
-                   [~,~,nSubTxRx] = size(map);
-                   for iSubTxRx = 1:nSubTxRx
+                   
+                   for iSubTxRx = 1:obj.nSubTxRx(nTxRx)
                       iFire = iFire+1;
-                      samples = (1:nSamp(iFire))+sample0;
-                      sample0 = sample0+nSamp(iFire);
+                      samples = (1:obj.nSamp(iFire))+sample0;
+                      sample0 = sample0+obj.nSamp(iFire);
+                      
+                      % indexes of probe elements corresponding to
+                      % subaperture of Rx.aperture
+                      activeElements = map(iModule, :, iSubTxRx); 
+                      activeElements(activeElements==0)=[];
+                      activeChannels = mod(activeElements-1,nChannels)+1;
 
-                      elements = map(iModule, :, iSubTxRx);
-                      elements(elements==0)=[];
-
-%                       disp(['elements: ',num2str(elements)])
-%                       disp(['iTxRx: ',num2str(iTxRx)])
-                      if ~isempty(elements)
-                          rfRshpd(:,elements, iTxRx) = rf(samples,:);
+                      if ~isempty(activeElements)
+                          rfRshpd(:,activeElements, iTxRx) = rf(activeChannels, samples).';
                       end
                        
                    end

@@ -23,22 +23,22 @@ us	= Us4R(nUs4OEM, probeName, adapterType, 20, true);
 % txap = false(1,192);
 % txap(96) = true;
 % TODO: pri powinno si? dostosowywa? do liczby sampli i delay. 
-%   dorobi Rx.nSamp i Rx.startSamp
-%   rxap = true(1,32);% poprawic w kernelu rfRshp, zeby to dzialalo <-to
-%   obsluga sytuacji w ktorej nFire=0
+%   dorobic Rx.nSamp i Rx.startSamp
+%   Tx('pulse') -> Tx('excitation')?
 
 
-txap = true(1,192);
 
-rxap = false(1,192);
-% rxap(20:70) = true;
+txap = true(1,192*2);
+
+rxap = true(1,192);
+rxap = false(1,192); rxap(50:70) = true; %rxap(129) = true;
 
 pulse = Pulse('nPeriods',[2], 'frequency', [5e6]);
 t1 = Tx('pulse', pulse, 'aperture', txap);
 % r1 = Rx('aperture', rxap, 'time', 7e-6,'delay',15e-6);
 r1 = Rx('aperture', rxap, 'time', 50e-6, 'delay', 10e-6);
 txrx1 = TxRx('Tx',t1,'Rx', r1);
-sequence = TxRxSequence([txrx1]);
+sequence = TxRxSequence([txrx1, txrx1]);
 %%
 tic
 us.upload(sequence);
@@ -49,8 +49,11 @@ us.upload(sequence);
 
 toc
 
-%%
+% %% images
+% for i = 1:size(rf,3)
+%     figure, imagesc(log(double(rf(:,:,i)).^2+1))
+% end
+
 figure, imagesc(log(double(rf(:,:,1)).^2+1))
-% figure, plot(rf(1,:))
-% set(gca, 'ylim', [4980, 5100])
-% figure, imagesc(rf()
+set(gca,'xlim',[45,75])
+set(gca,'ylim',[1300,1900])

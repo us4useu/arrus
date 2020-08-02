@@ -400,18 +400,18 @@ classdef Us4R < handle
                 rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
                 rxSubApMask(:,:,iArius+1) = reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire);
                 
-                % rxSubApMask correction for the new esaote adapter
-                if obj.sys.adapType == -1
-                    for iFire=0:(nFire-1)
-                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
-                        elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
-                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
-                        if ~isempty(rejElem)
-                            rejElem = any(elemIdx == rejElem.', 2);
-                            rxSubApMask(rejElem,iFire+1,iArius+1) = false;
-                        end
-                    end
-                end
+%                 % rxSubApMask correction for the new esaote adapter
+%                 if obj.sys.adapType == -1
+%                     for iFire=0:(nFire-1)
+%                         rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
+%                         elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
+%                         rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
+%                         if ~isempty(rejElem)
+%                             rejElem = any(elemIdx == rejElem.', 2);
+%                             rxSubApMask(rejElem,iFire+1,iArius+1) = false;
+%                         end
+%                     end
+%                 end
             end
             
             actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
