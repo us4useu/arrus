@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_MAPPERS_LNAGAINVALUEMAPPER_H
-#define ARRUS_CORE_DEVICES_US4OEM_IMPL_MAPPERS_LNAGAINVALUEMAPPER_H
+#ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_MAPPERS_PGAGAINVALUEMAPPER_H
+#define ARRUS_CORE_DEVICES_US4OEM_IMPL_MAPPERS_PGAGAINVALUEMAPPER_H
 
 #include <unordered_map>
 #include <set>
@@ -30,9 +30,9 @@ public:
     std::set<PGAGainValueType> getAvailableValues() const {
         std::set<PGAGainValueType> values;
         std::transform(std::begin(valueMap), std::end(valueMap),
-                       std::back_inserter(values),
+                       std::inserter(values, std::end(values)),
                        [](auto &val) {
-                           val.first;
+                           return val.first;
                        });
         return values;
     }
@@ -57,4 +57,4 @@ private:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_US4OEM_IMPL_MAPPERS_LNAGAINVALUEMAPPER_H
+#endif //ARRUS_CORE_DEVICES_US4OEM_IMPL_MAPPERS_PGAGAINVALUEMAPPER_H

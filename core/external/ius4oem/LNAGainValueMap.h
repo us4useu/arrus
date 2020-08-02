@@ -29,9 +29,9 @@ public:
     std::set<LNAGainValueType> getAvailableValues() const {
         std::set<LNAGainValueType> values;
         std::transform(std::begin(valueMap), std::end(valueMap),
-                       std::back_inserter(values),
+                       std::inserter(values, std::end(values)),
                        [](auto &val) {
-                           val.first;
+                           return val.first;
                        });
         return values;
     }
