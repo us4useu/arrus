@@ -64,7 +64,7 @@ classdef Us4R < handle
                 
                 obj.sys.selElem = (1:128).' + (0:(nArius-1))*128;
                 obj.sys.actChan = true(128,nArius);
-            elseif obj.sys.adapType == -1
+            elseif obj.sys.adapType == 1 || obj.sys.adapType == -1
                 % place for new adapter support
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/abs(obj.sys.adapType);
@@ -750,7 +750,7 @@ classdef Us4R < handle
                 end
                 rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
                 
-            elseif obj.sys.adapType == 2 || obj.sys.adapType == -1
+            elseif obj.sys.adapType == 2 || obj.sys.adapType == 1 || obj.sys.adapType == -1
                 % "ultrasonix" or "new esaote" adapter type
                 
                 % new esaote probe: clear the unsupported channels
