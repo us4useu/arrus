@@ -69,7 +69,16 @@ switch probeName
                                     80  82  81  83  85  84  87  86  88  92  89  94  90  91  95  93] + 1;
             probe.rxChannelMap	= [probe.rxChannelMap, 128*ones(2,32)]; % channel map length must be = 128
             probe.txChannelMap	= probe.rxChannelMap;
-             
+            
+        elseif strcmp(adapterType, "esaote3")
+            probe.adapType      = 1;
+            
+            probe.rxChannelMap	= [1:1:32; 1:1:32];
+            probe.txChannelMap	= [ probe.rxChannelMap +  0, ...
+                                    probe.rxChannelMap + 32, ...
+                                    probe.rxChannelMap + 64, ...
+                                    probe.rxChannelMap + 96];
+            
         else
             error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
         end
