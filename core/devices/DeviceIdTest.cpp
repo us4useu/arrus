@@ -39,7 +39,7 @@ INSTANTIATE_TEST_CASE_P
  testing::Values(
          ParseCorrectParams{"Us4OEM:0", DeviceId(DeviceType::Us4OEM, 0)},
          ParseCorrectParams{"Us4OEM:1", DeviceId(DeviceType::Us4OEM, 1)},
-         ParseCorrectParams{"UltrasoundInterface:0",
+         ParseCorrectParams{"ProbeAdapter:0",
                             DeviceId(DeviceType::ProbeAdapter, 0)},
          ParseCorrectParams{"Probe:3", DeviceId(DeviceType::Probe, 3)},
          ParseCorrectParams{"CPU:4", DeviceId(DeviceType::CPU, 4)},

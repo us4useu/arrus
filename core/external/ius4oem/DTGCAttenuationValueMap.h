@@ -46,7 +46,7 @@ public:
     void operator=(DTGCAttenuationValueMap const &&) = delete;
 
 private:
-    std::unordered_map<DTGCAttenuationValueType, us4oem::afe58jd18::DIG_TGC_ATTENUATION> valueMap;
+    std::unordered_map<DTGCAttenuationValueType, us4r::afe58jd18::DIG_TGC_ATTENUATION> valueMap;
 
     DTGCAttenuationValueMap() {
         valueMap.emplace(0,

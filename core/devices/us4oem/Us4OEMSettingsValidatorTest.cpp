@@ -3,10 +3,10 @@
 #include "Us4OEMSettingsValidator.h"
 
 TEST(LogTest, LogTest) {
-    arrus::Logger logger(arrus::DeviceId(arrus::DeviceType::Us4OEM, 0));
-    logger.log(arrus::LogSeverity::INFO, "Hello world");
-
-    arrus::Logger::get().log(arrus::LogSeverity::INFO, "Hello world2");
+//    arrus::Logger logger(arrus::DeviceId(arrus::DeviceType::Us4OEM, 0));
+//    logger.log(arrus::LogSeverity::INFO, "Hello world");
+//
+//    arrus::Logger::get().log(arrus::LogSeverity::INFO, "Hello world2");
 }
 
 int main() {
@@ -15,5 +15,5 @@ int main() {
     // jezeli uzytkownik nie zarejestruje LoggerFactory - przy pierwszej probie utworzenia logger utworzony zostanie domyslny
     // Register logger factory.
 
-    arrus::Logger::get()
+//    arrus::Logger::get()
 }

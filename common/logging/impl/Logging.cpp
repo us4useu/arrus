@@ -7,6 +7,7 @@
 #include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/support/date_time.hpp>
 
 #include "arrus/common/logging/LogSeverity.h"
 #include "arrus/common/logging/impl/Logging.h"
