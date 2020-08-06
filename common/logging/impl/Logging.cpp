@@ -64,5 +64,14 @@ void Logging::addClog(LogSeverity severity) {
     addTextSinkBoostPtr(stream, severity);
 }
 
+Logger::Handle Logging::getLogger() {
+    return std::make_unique<LoggerImpl>();
+}
+
+Logger::Handle
+Logging::getLogger(const std::vector<arrus::Logger::Attribute> &attributes) {
+    return std::make_unique<LoggerImpl>(attributes);
+}
+
 
 }

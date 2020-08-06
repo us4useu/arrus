@@ -6,24 +6,16 @@
 
 #include "arrus/common/logging/LogSeverity.h"
 #include "arrus/common/logging/LoggerFactory.h"
+#include "arrus/common/logging/impl/LoggerImpl.h"
 
 namespace arrus {
 
 /**
  * Log settings used in the arrus package.
  */
-class Logging {
+class Logging: public LoggerFactory {
 public:
-    /**
-     * Returns a singleton instance of the log settings container.
-     *
-     * @return an instance of Log Settings.
-     */
-    static Logging &getInstance() {
-        static Logging instance;
-        return instance;
-    }
-
+    Logging();
     /**
      * Adds a given given filename
      *
@@ -40,13 +32,17 @@ public:
      */
     void addClog(LogSeverity severity);
 
+    Logger::Handle getLogger() override;
+
+    Logger::Handle
+    getLogger(const std::vector<arrus::Logger::Attribute> &attributes) override;
+
 
     Logging(Logging const &) = delete;
     void operator=(Logging const &) = delete;
     Logging(Logging const &&) = delete;
     void operator=(Logging const &&) = delete;
 private:
-    Logging();
 };
 }
 

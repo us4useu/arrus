@@ -1,6 +1,7 @@
 #ifndef ARRUS_COMMON_LOGGING_LOGGER_H
 #define ARRUS_COMMON_LOGGING_LOGGER_H
 
+#include <memory>
 #include "arrus/common/logging/LogSeverity.h"
 
 namespace arrus {
@@ -16,6 +17,7 @@ class Logger {
 public:
     using Handle = std::unique_ptr<Logger>;
     using SharedHandle = std::shared_ptr<Logger>;
+
     using Attribute = std::pair<std::string, std::string>;
 
     /**

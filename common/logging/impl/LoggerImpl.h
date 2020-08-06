@@ -20,6 +20,9 @@ namespace arrus {
  */
 class LoggerImpl : public Logger {
 public:
+
+    LoggerImpl() = default;
+
     /**
      * Creates a logger with DeviceId attribute set.
      *

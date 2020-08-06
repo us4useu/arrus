@@ -2,7 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMSETTINGSVALIDATOR_H
 
 #include "arrus/core/common/validation.h"
-#include "arrus/common/logging/Logger.h"
+#include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
 
 #include "arrus/core/external/ius4oem/PGAGainValueMap.h"
@@ -15,6 +15,10 @@ namespace arrus {
 
 class Us4OEMSettingsValidator : public Validator<Us4OEMSettings> {
 public:
+    Us4OEMSettingsValidator() {
+        ARRUS_LOG_DEFAULT(LogSeverity::INFO, "Hello world");
+    }
+
     using Validator<Us4OEMSettings>::Validator;
 
     void validate(const Us4OEMSettings &obj) override {
