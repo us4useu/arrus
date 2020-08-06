@@ -1,4 +1,4 @@
-#include "arrus/core/common/logging/LogSeverity.h"
+#include "arrus/common/logging/LogSeverity.h"
 
 namespace arrus {
 

@@ -1,25 +1,26 @@
-#ifndef ARRUS_CORE_COMMON_LOGGING_LOGSETTINGS_H
-#define ARRUS_CORE_COMMON_LOGGING_LOGSETTINGS_H
+#ifndef ARRUS_COMMON_LOGGING_IMPL_LOGGING_H
+#define ARRUS_COMMON_LOGGING_IMPL_LOGGING_H
 
 #include <memory>
 #include <string>
 
-#include "arrus/core/common/logging/LogSeverity.h"
+#include "arrus/common/logging/LogSeverity.h"
+#include "arrus/common/logging/LoggerFactory.h"
 
 namespace arrus {
 
 /**
  * Log settings used in the arrus package.
  */
-class LogSettings {
+class Logging {
 public:
     /**
      * Returns a singleton instance of the log settings container.
      *
      * @return an instance of Log Settings.
      */
-    static LogSettings &getInstance() {
-        static LogSettings instance;
+    static Logging &getInstance() {
+        static Logging instance;
         return instance;
     }
 
@@ -30,22 +31,23 @@ public:
      * @param severity severity level of the records that will be stored in the
      * given output file
      */
-    void addLogFile(const std::string &filename, LogSeverity severity);
+    void addTextSink(std::shared_ptr<std::ostream> &ostream, LogSeverity severity);
 
     /**
      * Sets a minimum severity level for messages printed to the standard output.
      *
      * @param severity severity level to apply
      */
-    void setConsoleLogLevel(LogSeverity severity);
+    void addClog(LogSeverity severity);
 
-    LogSettings(LogSettings const &) = delete;
-    void operator=(LogSettings const &) = delete;
-    LogSettings(LogSettings const &&) = delete;
-    void operator=(LogSettings const &&) = delete;
+
+    Logging(Logging const &) = delete;
+    void operator=(Logging const &) = delete;
+    Logging(Logging const &&) = delete;
+    void operator=(Logging const &&) = delete;
 private:
-    LogSettings();
+    Logging();
 };
 }
 
-#endif //ARRUS_CORE_COMMON_LOGGING_LOGSETTINGS_H
+#endif //ARRUS_COMMON_LOGGING_IMPL_LOGGING_H

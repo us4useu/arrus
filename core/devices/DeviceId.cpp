@@ -4,13 +4,21 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "arrus/core/common/exceptions.h"
+#include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/common/format.h"
 #include "arrus/core/common/asserts.h"
 
 namespace arrus {
 
-// DeviceType.
+static const std::unordered_map<DeviceType, std::string>
+        DEVICE_TYPE_ENUM_STRINGS = {
+        {DeviceType::Us4R,        "Us4R"},
+        {DeviceType::Us4OEM,      "Us4OEM"},
+        {DeviceType::ProbeAdapter,"ProbeAdapter"},
+        {DeviceType::Probe,       "Probe"},
+        {DeviceType::GPU,         "GPU"},
+        {DeviceType::CPU,         "CPU"}
+};
 
 /**
  * String representation of Device Type Enum.
@@ -28,11 +36,11 @@ public:
         return instance;
     }
 
-    std::string toString(const DeviceTypeEnum deviceTypeEnum) {
+    std::string toString(const DeviceType deviceTypeEnum) {
         return reprs.right.at(deviceTypeEnum);
     }
 
-    DeviceTypeEnum parse(const std::string &deviceTypeStr) {
+    DeviceType parse(const std::string &deviceTypeStr) {
         return reprs.left.at(deviceTypeStr);
     }
 
@@ -47,16 +55,16 @@ public:
 
 private:
     DeviceTypeEnumStringRepr() {
-        typedef boost::bimap<std::string, DeviceTypeEnum>::value_type val;
+        typedef boost::bimap<std::string, DeviceType>::value_type val;
         for (const auto& [e, str] : DEVICE_TYPE_ENUM_STRINGS) {
             reprs.insert({str, e});
         }
     }
 
-    boost::bimap<std::string, DeviceTypeEnum> reprs;
+    boost::bimap<std::string, DeviceType> reprs;
 };
 
-DeviceTypeEnum parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
+DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
     try {
         return DeviceTypeEnumStringRepr::getInstance().parse(deviceTypeStr);
     }
@@ -73,7 +81,7 @@ DeviceTypeEnum parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
     }
 }
 
-std::string toString(const DeviceTypeEnum deviceTypeEnum) {
+std::string toString(const DeviceType deviceTypeEnum) {
     return DeviceTypeEnumStringRepr::getInstance().toString(deviceTypeEnum);
 }
 
@@ -95,7 +103,7 @@ DeviceId DeviceId::parse(const std::string &deviceId) {
     boost::trim(deviceTypeStr);
     boost::trim(ordinalStr);
     // Device Type.
-    DeviceTypeEnum deviceTypeEnum = parseToDeviceTypeEnum(deviceTypeStr);
+    DeviceType deviceTypeEnum = parseToDeviceTypeEnum(deviceTypeStr);
 
     // Device Ordinal.
     ARRUS_REQUIRES_TRUE_FOR_ARGUMENT(isDigitsOnly(ordinalStr),

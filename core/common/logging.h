@@ -1,0 +1,8 @@
+#ifndef ARRUS_CORE_COMMON_LOGGING_H
+#define ARRUS_CORE_COMMON_LOGGING_H
+
+namespace arrus {
+
+}
+
+#endif //ARRUS_CORE_COMMON_LOGGING_H

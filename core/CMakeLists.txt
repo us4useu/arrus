@@ -4,47 +4,52 @@ set(TARGET_NAME arrus-core)
 # Source files
 ################################################################################
 set(SOURCE_FILES
-    "common/hash.h"
-    "common/compiler.h"
-    "common/exceptions.h"
-    "common/asserts.h"
-    "common/format.h"
-    "common/validation.h"
-    "common/types.h"
-    "common/logging/LogSettings.h"
-    "common/logging/impl/LogSettings.cpp"
-    "common/logging/Logger.h"
-    "common/logging/LogSeverity.h"
-    "common/logging/impl/LogSeverity.cpp"
+    # API
+    api/common/exceptions.h
+    api/common/logging.h
+    api/common/types.h
+    api/devices/Device.h
+    api/devices/UltrasoundDevice.h
+    api/devices/DeviceId.h
+    api/devices/probe/Probe.h
+    api/devices/probe/ProbeSettings.h
+    api/devices/probeadapter/ProbeAdapter.h
+    api/devices/probeadapter/ProbeAdapterSettings.h
+    api/devices/us4oem/Us4OEM.h
+    api/devices/us4oem/Us4OEMSettings.h
+    api/devices/us4r/Us4R.h
+    api/devices/us4r/Us4RSettings.h
 
-    "devices/DeviceId.h"
+    common/hash.h
+    common/compiler.h
+    common/asserts.h
+    common/format.h
+    common/validation.h
+    common/logging.h
+    common/logging.cpp
+
+    ../common/logging/Logger.h
+    ../common/logging/LogSeverity.h
+    ../common/logging/LoggerFactory.h
+
     "devices/DeviceId.cpp"
-    "devices/Device.h"
+    "devices/DeviceIdHasher.h"
 
-    "devices/UltrasoundDevice.h"
 
     "devices/us4oem/Us4OEMFactory.h"
-    "devices/us4oem/Us4OEM.h"
-    "devices/us4oem/Us4OEMSettings.h"
-    "devices/us4oem/impl/Us4OEMFactoryImpl.h"
-    "devices/us4oem/impl/Us4OEMImpl.h"
-    "devices/us4oem/impl/Us4OEMImpl.cpp"
-    "devices/us4oem/impl/Us4OEMSettingsValidator.h"
+    "devices/us4oem/Us4OEMFactoryImpl.h"
+    "devices/us4oem/Us4OEMImpl.h"
+    "devices/us4oem/Us4OEMImpl.cpp"
+    "devices/us4oem/Us4OEMSettingsValidator.h"
 
-    "devices/us4r/Us4RSettings.h"
     "devices/us4r/Us4RFactory.h"
-    "devices/us4r/Us4R.h"
-    "devices/us4r/impl/Us4RFactoryImpl.h"
-    "devices/us4r/impl/Us4RImpl.h"
-    "devices/us4r/impl/Us4RImpl.cpp"
+    "devices/us4r/Us4RFactoryImpl.h"
+    "devices/us4r/Us4RImpl.h"
+    "devices/us4r/Us4RImpl.cpp"
 
-    "devices/adapter/Adapter.h"
-    "devices/adapter/AdapterFactory.h"
-    "devices/adapter/AdapterSettings.h"
+    "devices/probeadapter/ProbeAdapterFactory.h"
 
-    "devices/probe/Probe.h"
     "devices/probe/ProbeFactory.h"
-    "devices/probe/ProbeSettings.h"
 
     "session/Session.h"
     "session/Session.cpp"
@@ -103,6 +108,6 @@ target_link_libraries(${TARGET_NAME}
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
     create_core_test(devices/DeviceIdTest.cpp)
-    create_core_test(devices/us4oem/impl/Us4OEMSettingsValidatorTest.cpp)
+    create_core_test(devices/us4oem/Us4OEMSettingsValidatorTest.cpp)
 #    create_core_test(devices/us4oem/impl/Us4OEMFactoryImplTest.cpp)
 endif()

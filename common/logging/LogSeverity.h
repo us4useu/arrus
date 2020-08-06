@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_COMMON_LOGGING_LOGSEVERITY_H
-#define ARRUS_CORE_COMMON_LOGGING_LOGSEVERITY_H
+#ifndef ARRUS_COMMON_LOGGING_LOGSEVERITY_H
+#define ARRUS_COMMON_LOGGING_LOGSEVERITY_H
 
 #include <iostream>
 
@@ -17,4 +17,4 @@ std::ostream &operator<<(std::ostream &stream, arrus::LogSeverity level);
 
 }
 
-#endif //ARRUS_CORE_COMMON_LOGGING_LOGSEVERITY_H
+#endif //ARRUS_COMMON_LOGGING_LOGSEVERITY_H

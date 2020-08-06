@@ -2,7 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMSETTINGSVALIDATOR_H
 
 #include "arrus/core/common/validation.h"
-#include "arrus/core/common/logging/Logger.h"
+#include "arrus/common/logging/Logger.h"
 #include "arrus/core/devices/us4oem/Us4OEMSettings.h"
 
 #include "arrus/core/external/ius4oem/PGAGainValueMap.h"

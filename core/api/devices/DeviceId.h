@@ -1,50 +1,38 @@
-#ifndef ARRUS_CORE_DEVICES_DEVICEID_H
-#define ARRUS_CORE_DEVICES_DEVICEID_H
+#ifndef ARRUS_CORE_API_DEVICES_DEVICEID_H
+#define ARRUS_CORE_API_DEVICES_DEVICEID_H
 
 #include <sstream>
-#include <unordered_map>
-
-#include "arrus/core/common/hash.h"
+#include <string>
 
 namespace arrus {
 
 /**
  * Device types available in the system.
  */
-typedef enum DeviceTypeEnum {
+enum class DeviceType {
     Us4R,
     Us4OEM,
-    UltrasoundInterface,
+    ProbeAdapter,
     Probe,
     GPU,
     CPU
-} DeviceType;
-
-static const std::unordered_map<DeviceTypeEnum, std::string>
-        DEVICE_TYPE_ENUM_STRINGS = {
-        {Us4R,                "Us4R"},
-        {Us4OEM,              "Us4OEM"},
-        {UltrasoundInterface, "UltrasoundInterface"},
-        {Probe,               "Probe"},
-        {GPU,                 "GPU"},
-        {CPU,                 "CPU"},
 };
 
 /**
- * Converts string to DeviceTypeEnum.
- *
- * @param deviceTypeStr string representation of device type enum.
- * @return device type enum
- */
-DeviceTypeEnum parseToDeviceTypeEnum(const std::string &deviceTypeStr);
+    * Converts string to DeviceType.
+    *
+    * @param deviceTypeStr string representation of device type enum.
+    * @return device type enum
+    */
+DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr);
 
 /**
- * Converts DeviceTypeEnum to string.
+ * Converts DeviceType to string.
  *
- * @param deviceTypeEnum device type enum to convert
+ * @param deviceType device type enum to convert
  * @return string representation of device type
  */
-std::string toString(DeviceTypeEnum deviceTypeEnum);
+std::string toString(DeviceType deviceTypeEnum);
 
 /**
  * Device ordinal number, e.g. GPU 0, GPU 1, Us4OEM 0, Us4OEM 1 etc.
@@ -92,7 +80,6 @@ private:
     Ordinal ordinal;
 };
 
-MAKE_HASHER(DeviceId, t.getDeviceType(), t.getOrdinal())
 }
 
-#endif //ARRUS_CORE_DEVICES_DEVICEID_H
+#endif //ARRUS_CORE_API_DEVICES_DEVICEID_H
