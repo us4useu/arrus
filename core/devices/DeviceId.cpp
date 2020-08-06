@@ -4,9 +4,9 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "core/common/exceptions.h"
-#include "core/common/format.h"
-#include "core/common/asserts.h"
+#include "arrus/core/common/exceptions.h"
+#include "arrus/core/common/format.h"
+#include "arrus/core/common/asserts.h"
 
 namespace arrus {
 

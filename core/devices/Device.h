@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_FRAMEWORK_DEVICE_H
 #define ARRUS_CORE_FRAMEWORK_DEVICE_H
 
-#include "core/devices/DeviceId.h"
+#include "arrus/core/devices/DeviceId.h"
 
 #include <memory>
 

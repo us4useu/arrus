@@ -2,10 +2,10 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "core/common/format.h"
+#include "arrus/core/common/format.h"
 
 // Construction components.
-#include "core/devices/us4r/Us4RFactory.h"
+#include "arrus/core/devices/us4r/Us4RFactory.h"
 
 namespace arrus {
 

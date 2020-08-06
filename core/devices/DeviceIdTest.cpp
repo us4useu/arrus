@@ -1,8 +1,8 @@
 // Device Id class test.
 #include <gtest/gtest.h>
 #include <ostream>
-#include "core/devices/DeviceId.h"
-#include "core/common/exceptions.h"
+#include "arrus/core/devices/DeviceId.h"
+#include "arrus/core/common/exceptions.h"
 
 namespace {
 

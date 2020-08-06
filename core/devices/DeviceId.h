@@ -4,7 +4,7 @@
 #include <sstream>
 #include <unordered_map>
 
-#include "core/common/hash.h"
+#include "arrus/core/common/hash.h"
 
 namespace arrus {
 

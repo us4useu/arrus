@@ -1,15 +1,15 @@
 #ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMSETTINGSVALIDATOR_H
 #define ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMSETTINGSVALIDATOR_H
 
-#include "core/common/validation.h"
-#include "core/common/logging/Logger.h"
-#include "core/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/common/validation.h"
+#include "arrus/core/common/logging/Logger.h"
+#include "arrus/core/devices/us4oem/Us4OEMSettings.h"
 
-#include "core/external/ius4oem/PGAGainValueMap.h"
-#include "core/external/ius4oem/LNAGainValueMap.h"
-#include "core/external/ius4oem/LPFCutoffValueMap.h"
-#include "core/external/ius4oem/DTGCAttenuationValueMap.h"
-#include "core/external/ius4oem/ActiveTerminationValueMap.h"
+#include "arrus/core/external/ius4oem/PGAGainValueMap.h"
+#include "arrus/core/external/ius4oem/LNAGainValueMap.h"
+#include "arrus/core/external/ius4oem/LPFCutoffValueMap.h"
+#include "arrus/core/external/ius4oem/DTGCAttenuationValueMap.h"
+#include "arrus/core/external/ius4oem/ActiveTerminationValueMap.h"
 
 namespace arrus {
 

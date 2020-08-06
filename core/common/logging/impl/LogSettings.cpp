@@ -1,14 +1,10 @@
 /**
  * This source file initializes boost logger default configuration and attributes.
  */
-#include "LogSettings.h"
 
 #include <ostream>
 #include <iostream>
 #include <stdexcept>
-
-#include "core/devices/DeviceId.h"
-#include "core/common/logging/LogSeverity.h"
 
 
 #include <boost/core/null_deleter.hpp>
@@ -19,6 +15,11 @@
 #include <boost/log/attributes.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/support/date_time.hpp>
+
+
+#include "arrus/core/devices/DeviceId.h"
+#include "arrus/core/common/logging/LogSeverity.h"
+#include "arrus/core/common/logging/LogSettings.h"
 
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", arrus::LogSeverity);

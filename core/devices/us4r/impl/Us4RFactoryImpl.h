@@ -4,13 +4,13 @@
 #include <numeric>
 #include <boost/range/combine.hpp>
 
-#include "core/common/asserts.h"
+#include "arrus/core/common/asserts.h"
 
-#include "core/devices/us4r/Us4RFactory.h"
-#include "core/devices/us4r/impl/Us4RImpl.h"
-#include "core/devices/us4oem/Us4OEMFactory.h"
+#include "arrus/core/devices/us4r/Us4RFactory.h"
+#include "arrus/core/devices/us4r/impl/Us4RImpl.h"
+#include "arrus/core/devices/us4oem/Us4OEMFactory.h"
 
-#include "core/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {
 

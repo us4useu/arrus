@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "core/devices/us4r/Us4RSettings.h"
+#include "arrus/core/devices/us4r/Us4RSettings.h"
 
 namespace arrus {
 class SessionSettings {

@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_UTILS_ASSERTS_H
 #define ARRUS_CORE_UTILS_ASSERTS_H
 
-#include "core/common/exceptions.h"
+#include "arrus/core/common/exceptions.h"
 
 #define ARRUS_REQUIRES_TRUE(CONDITION, MSG) \
 do {                                        \

@@ -6,7 +6,7 @@
 #include <bitset>
 #include <optional>
 
-#include "core/common/types.h"
+#include "arrus/core/common/types.h"
 
 namespace arrus {
 

@@ -1,11 +1,11 @@
 #ifndef ARRUS_CORE_DEVICES_US4OEM_US4OEMFACTORY_H
 #define ARRUS_CORE_DEVICES_US4OEM_US4OEMFACTORY_H
 
-#include "core/devices/DeviceId.h"
-#include "core/devices/us4oem/Us4OEM.h"
-#include "core/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/devices/DeviceId.h"
+#include "arrus/core/devices/us4oem/Us4OEM.h"
+#include "arrus/core/devices/us4oem/Us4OEMSettings.h"
 
-#include "core/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {
 

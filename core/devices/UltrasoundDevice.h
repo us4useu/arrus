@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_ULTRASOUNDDEVICE_H
 #define ARRUS_CORE_DEVICES_ULTRASOUNDDEVICE_H
 
-#include "core/devices/Device.h"
+#include "arrus/core/devices/Device.h"
 
 namespace arrus {
 
@@ -13,9 +13,7 @@ namespace arrus {
  */
 class UltrasoundDevice : Device {
 
-    void setTxRxSequence() {
-
-    }
+    virtual void setTxRxSequence() = 0;
 };
 
 }

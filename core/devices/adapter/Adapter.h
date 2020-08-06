@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_ADAPTER_ADAPTER_H
 #define ARRUS_CORE_DEVICES_ADAPTER_ADAPTER_H
 
-#include "core/devices/Device.h"
+#include "arrus/core/devices/Device.h"
 
 namespace arrus {
 

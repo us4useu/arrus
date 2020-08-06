@@ -2,11 +2,11 @@ syntax  = "proto3";
 
 package arrus.proto;
 
-import "core/protobuf/model/ProbeModel.proto";
-import "core/protobuf/model/AdapterModel.proto";
-import "core/protobuf/model/ProbeToAdapterConnection.proto";
-import "core/protobuf/settings/GainSettings.proto";
-import "core/protobuf/settings/Us4OEMSettings.proto";
+import "arrus/core/protobuf/model/ProbeModel.proto";
+import "arrus/core/protobuf/model/AdapterModel.proto";
+import "arrus/core/protobuf/model/ProbeToAdapterConnection.proto";
+import "arrus/core/protobuf/settings/GainSettings.proto";
+import "arrus/core/protobuf/settings/Us4OEMSettings.proto";
 
 message Us4RSettings {
 

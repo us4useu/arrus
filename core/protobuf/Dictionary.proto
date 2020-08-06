@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package arrus.proto;
 
-import "core/protobuf/model/ProbeModel.proto";
-import "core/protobuf/model/AdapterModel.proto";
-import "core/protobuf/model/ProbeToAdapterConnection.proto";
+import "arrus/core/protobuf/model/ProbeModel.proto";
+import "arrus/core/protobuf/model/AdapterModel.proto";
+import "arrus/core/protobuf/model/ProbeToAdapterConnection.proto";
 
 message Dictionary {
   repeated ProbeModel probe_models = 1;

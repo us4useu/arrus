@@ -2,8 +2,8 @@
 #define ARRUS_CORE_DEVICES_US4OEM_H
 
 #include <memory>
-#include "core/devices/Device.h"
-#include "core/common/types.h"
+#include "arrus/core/devices/Device.h"
+#include "arrus/core/common/types.h"
 
 namespace arrus {
 

@@ -1,8 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4RFACTORY_H
 #define ARRUS_CORE_DEVICES_US4R_US4RFACTORY_H
 
-#include "core/devices/us4r/Us4R.h"
-#include "core/devices/us4r/Us4RSettings.h"
+#include "arrus/core/devices/us4r/Us4R.h"
+#include "arrus/core/devices/us4r/Us4RSettings.h"
 
 namespace arrus {
 

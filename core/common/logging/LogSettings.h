@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-#include "LogSeverity.h"
+#include "arrus/core/common/logging/LogSeverity.h"
 
 namespace arrus {
 

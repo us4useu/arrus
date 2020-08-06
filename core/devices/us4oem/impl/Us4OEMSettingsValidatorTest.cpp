@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "Us4OEMSettingsValidator.h"
-#include "core/common/logging/Logger.h"
+#include "arrus/core/common/logging/Logger.h"
 
 TEST(LogTest, LogTest) {
     arrus::Logger logger(arrus::DeviceId(arrus::DeviceType::Us4OEM, 0));

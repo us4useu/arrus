@@ -7,11 +7,11 @@
 #include <boost/log/core.hpp>
 #include <boost/log/attributes.hpp>
 
-#include "LogSeverity.h"
-#include "LogSettings.h"
-#include "core/common/format.h"
+#include "arrus/core/common/logging/LogSeverity.h"
+#include "arrus/core/common/logging/LogSettings.h"
+#include "arrus/core/common/format.h"
 
-#include "core/devices/DeviceId.h"
+#include "arrus/core/devices/DeviceId.h"
 
 namespace arrus {
 

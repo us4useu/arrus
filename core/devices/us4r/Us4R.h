@@ -3,10 +3,10 @@
 
 #include <memory>
 
-#include "core/devices/Device.h"
-#include "core/devices/us4oem/Us4OEM.h"
-#include "core/devices/adapter/Adapter.h"
-#include "core/devices/probe/Probe.h"
+#include "arrus/core/devices/Device.h"
+#include "arrus/core/devices/us4oem/Us4OEM.h"
+#include "arrus/core/devices/adapter/Adapter.h"
+#include "arrus/core/devices/probe/Probe.h"
 
 
 namespace arrus {

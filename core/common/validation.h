@@ -8,8 +8,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/join.hpp>
 
-#include "core/common/exceptions.h"
-#include "core/common/format.h"
+#include "arrus/core/common/exceptions.h"
+#include "arrus/core/common/format.h"
 
 namespace arrus {
 
