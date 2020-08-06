@@ -1,7 +1,8 @@
-#ifndef ARRUS_CORE_DEVICES_ADAPTER_ADAPTER_H
-#define ARRUS_CORE_DEVICES_ADAPTER_ADAPTER_H
+#ifndef ARRUS_CORE_API_DEVICES_ADAPTER_ADAPTER_H
+#define ARRUS_CORE_API_DEVICES_ADAPTER_ADAPTER_H
 
-#include "arrus/core/devices/Device.h"
+#include <memory>
+#include "arrus/core/api/devices/Device.h"
 
 namespace arrus {
 
@@ -21,4 +22,4 @@ public:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_ADAPTER_ADAPTER_H
+#endif //ARRUS_CORE_API_DEVICES_ADAPTER_ADAPTER_H

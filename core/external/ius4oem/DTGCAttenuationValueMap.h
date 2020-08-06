@@ -5,7 +5,7 @@
 #include <set>
 #include <ius4oem.h>
 
-#include "arrus/core/common/types.h"
+#include "arrus/core/api/common/types.h"
 
 namespace arrus {
 
@@ -19,7 +19,7 @@ public:
         return instance;
     }
 
-    us4oem::afe58jd18::DIG_TGC_ATTENUATION
+    us4r::afe58jd18::DIG_TGC_ATTENUATION
     getEnumValue(const DTGCAttenuationValueType value) {
         return valueMap.at(value);
     }
@@ -50,21 +50,21 @@ private:
 
     DTGCAttenuationValueMap() {
         valueMap.emplace(0,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_0dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_0dB);
         valueMap.emplace(6,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_6dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_6dB);
         valueMap.emplace(12,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_12dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_12dB);
         valueMap.emplace(18,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_18dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_18dB);
         valueMap.emplace(24,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_24dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_24dB);
         valueMap.emplace(30,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_30dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_30dB);
         valueMap.emplace(36,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_36dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_36dB);
         valueMap.emplace(42,
-                         us4oem::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
+                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
     }
 
 

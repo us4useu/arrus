@@ -1,9 +1,9 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEM_H
-#define ARRUS_CORE_DEVICES_US4OEM_H
+#ifndef ARRUS_CORE_API_DEVICES_US4OEM_H
+#define ARRUS_CORE_API_DEVICES_US4OEM_H
 
 #include <memory>
-#include "arrus/core/devices/Device.h"
-#include "arrus/core/common/types.h"
+#include "arrus/core/api/devices/Device.h"
+#include "arrus/core/api/common/types.h"
 
 namespace arrus {
 

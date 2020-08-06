@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "arrus/core/devices/us4r/Us4R.h"
+#include "arrus/core/api/devices/us4r/Us4R.h"
 
 namespace arrus {
 

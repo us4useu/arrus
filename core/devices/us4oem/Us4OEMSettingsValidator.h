@@ -3,7 +3,7 @@
 
 #include "arrus/core/common/validation.h"
 #include "arrus/common/logging/Logger.h"
-#include "arrus/core/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
 
 #include "arrus/core/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/external/ius4oem/LNAGainValueMap.h"

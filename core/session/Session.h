@@ -4,11 +4,13 @@
 #include <memory>
 #include <unordered_map>
 
-#include "arrus/core/devices/Device.h"
-#include "arrus/core/devices/DeviceId.h"
+#include "arrus/core/api/devices/Device.h"
+#include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/common/exceptions.h"
+#include "arrus/core/api/devices/us4r/Us4RSettings.h"
 #include "arrus/core/session/SessionSettings.h"
-#include "arrus/core/common/exceptions.h"
-#include "arrus/core/devices/us4r/Us4RSettings.h"
+#include "arrus/core/common/hash.h"
+#include "arrus/core/devices/DeviceIdHasher.h"
 
 namespace arrus {
 

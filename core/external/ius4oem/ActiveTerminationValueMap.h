@@ -5,7 +5,7 @@
 #include <set>
 #include <ius4oem.h>
 
-#include "arrus/core/common/types.h"
+#include "arrus/core/api/common/types.h"
 
 namespace arrus {
 
@@ -19,7 +19,7 @@ public:
         return instance;
     }
 
-    us4oem::afe58jd18::GBL_ACTIVE_TERM
+    us4r::afe58jd18::GBL_ACTIVE_TERM
     getEnumValue(const ActiveTerminationValueType value) {
         return valueMap.at(value);
     }
@@ -46,18 +46,18 @@ public:
     void operator=(ActiveTerminationValueMap const &&) = delete;
 
 private:
-    std::unordered_map<ActiveTerminationValueType, us4oem::afe58jd18::GBL_ACTIVE_TERM> valueMap;
+    std::unordered_map<ActiveTerminationValueType, us4r::afe58jd18::GBL_ACTIVE_TERM> valueMap;
 
     ActiveTerminationValueMap() {
         valueMap.emplace(50,
-                         us4oem::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
+                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
         valueMap.emplace(100,
-                         us4oem::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_100);
+                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_100);
 
         valueMap.emplace(200,
-                         us4oem::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200);
+                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200);
         valueMap.emplace(400,
-                         us4oem::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_400);
+                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_400);
     }
 
 };

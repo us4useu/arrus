@@ -3,10 +3,10 @@
 
 #include <memory>
 
-#include "arrus/core/devices/Device.h"
-#include "arrus/core/devices/us4oem/Us4OEM.h"
-#include "arrus/core/devices/adapter/Adapter.h"
-#include "arrus/core/devices/probe/Probe.h"
+#include "arrus/core/api/devices/Device.h"
+#include "arrus/core/api/devices/us4oem/Us4OEM.h"
+#include "arrus/core/api/devices/probeadapter/ProbeAdapter.h"
+#include "arrus/core/api/devices/probe/Probe.h"
 
 
 namespace arrus {
@@ -36,7 +36,7 @@ public:
      * @param ordinal ordinal number of the adapter to get
      * @return a handle to the adapter device
      */
-    virtual Adapter::Handle &getAdapter(Ordinal ordinal) = 0;
+    virtual ProbeAdapter::Handle &getProbeAdapter(Ordinal ordinal) = 0;
 
     /**
      * Returns a handle to a probe identified by given ordinal number.

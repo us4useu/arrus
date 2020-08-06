@@ -6,7 +6,7 @@
 
 #include <ius4oem.h>
 
-#include "arrus/core/common/types.h"
+#include "arrus/core/api/common/types.h"
 
 namespace arrus {
 
@@ -20,7 +20,7 @@ public:
         return instance;
     }
 
-    us4oem::afe58jd18::LPF_PROG getEnumValue(const LPFCutoffValueType value) {
+    us4r::afe58jd18::LPF_PROG getEnumValue(const LPFCutoffValueType value) {
         return valueMap.at(value);
     }
 
@@ -46,21 +46,21 @@ public:
     void operator=(LPFCutoffValueMap const &&) = delete;
 
 private:
-    std::unordered_map<LPFCutoffValueType, us4oem::afe58jd18::LPF_PROG> valueMap;
+    std::unordered_map<LPFCutoffValueType, us4r::afe58jd18::LPF_PROG> valueMap;
 
     LPFCutoffValueMap() {
         valueMap.emplace(10e6,
-                         us4oem::afe58jd18::LPF_PROG::LPF_PROG_10MHz);
+                         us4r::afe58jd18::LPF_PROG::LPF_PROG_10MHz);
         valueMap.emplace(15e6,
-                         us4oem::afe58jd18::LPF_PROG::LPF_PROG_15MHz);
+                         us4r::afe58jd18::LPF_PROG::LPF_PROG_15MHz);
         valueMap.emplace(20e6,
-                         us4oem::afe58jd18::LPF_PROG::LPF_PROG_20MHz);
+                         us4r::afe58jd18::LPF_PROG::LPF_PROG_20MHz);
         valueMap.emplace(30e6,
-                         us4oem::afe58jd18::LPF_PROG::LPF_PROG_30MHz);
+                         us4r::afe58jd18::LPF_PROG::LPF_PROG_30MHz);
         valueMap.emplace(35e6,
-                         us4oem::afe58jd18::LPF_PROG::LPF_PROG_35MHz);
+                         us4r::afe58jd18::LPF_PROG::LPF_PROG_35MHz);
         valueMap.emplace(50e6,
-                         us4oem::afe58jd18::LPF_PROG::LPF_PROG_50MHz);
+                         us4r::afe58jd18::LPF_PROG::LPF_PROG_50MHz);
     }
 
 };

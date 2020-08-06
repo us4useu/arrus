@@ -8,7 +8,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/join.hpp>
 
-#include "arrus/core/common/exceptions.h"
+#include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/common/format.h"
 
 namespace arrus {
@@ -20,7 +20,7 @@ public:
 
     void throwOnErrors() {
         if (!errors.empty()) {
-            throw IllegalArgumentException();
+            throw IllegalArgumentException("");
         }
     }
 

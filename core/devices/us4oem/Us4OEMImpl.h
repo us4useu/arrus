@@ -1,8 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4OEM_US4OEMIMPL_H
 #define ARRUS_CORE_DEVICES_US4OEM_US4OEMIMPL_H
 
-#include "arrus/core/devices/us4oem/Us4OEM.h"
-#include "arrus/core/devices/us4oem/Us4OEM.h"
+#include "arrus/core/api/devices/us4oem/Us4OEM.h"
 #include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {

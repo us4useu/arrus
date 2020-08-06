@@ -1,9 +1,8 @@
-#include "DeviceId.h"
-
 #include <boost/bimap.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/common/format.h"
 #include "arrus/core/common/asserts.h"

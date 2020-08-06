@@ -6,7 +6,7 @@
 
 #include <ius4oem.h>
 
-#include "arrus/core/common/types.h"
+#include "arrus/core/api/common/types.h"
 
 namespace arrus {
 
@@ -20,7 +20,7 @@ public:
         return instance;
     }
 
-    us4oem::afe58jd18::PGA_GAIN getEnumValue(const PGAGainValueType value) {
+    us4r::afe58jd18::PGA_GAIN getEnumValue(const PGAGainValueType value) {
         return valueMap.at(value);
     }
 
@@ -46,11 +46,11 @@ public:
     void operator=(PGAGainValueMap const &&) = delete;
 
 private:
-    std::unordered_map<PGAGainValueType, us4oem::afe58jd18::PGA_GAIN> valueMap;
+    std::unordered_map<PGAGainValueType, us4r::afe58jd18::PGA_GAIN> valueMap;
 
     PGAGainValueMap() {
-        valueMap.emplace(24, us4oem::afe58jd18::PGA_GAIN::PGA_GAIN_24dB);
-        valueMap.emplace(30, us4oem::afe58jd18::PGA_GAIN::PGA_GAIN_30dB);
+        valueMap.emplace(24, us4r::afe58jd18::PGA_GAIN::PGA_GAIN_24dB);
+        valueMap.emplace(30, us4r::afe58jd18::PGA_GAIN::PGA_GAIN_30dB);
     }
 
 };

@@ -3,7 +3,7 @@
 
 #include <ius4oem.h>
 
-#include "arrus/core/devices/us4oem/impl/Us4OEMFactoryImpl.h"
+#include "arrus/core/devices/us4oem/Us4OEMFactoryImpl.h"
 
 namespace {
 

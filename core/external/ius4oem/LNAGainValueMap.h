@@ -5,7 +5,7 @@
 #include <set>
 #include <ius4oem.h>
 
-#include "arrus/core/common/types.h"
+#include "arrus/core/api/common/types.h"
 
 namespace arrus {
 
@@ -19,7 +19,7 @@ public:
         return instance;
     }
 
-    us4oem::afe58jd18::LNA_GAIN_GBL getEnumValue(const LNAGainValueType value) {
+    us4r::afe58jd18::LNA_GAIN_GBL getEnumValue(const LNAGainValueType value) {
         return valueMap.at(value);
     }
 
@@ -45,15 +45,15 @@ public:
     void operator=(LNAGainValueMap const &&) = delete;
 
 private:
-    std::unordered_map<LNAGainValueType, us4oem::afe58jd18::LNA_GAIN_GBL> valueMap;
+    std::unordered_map<LNAGainValueType, us4r::afe58jd18::LNA_GAIN_GBL> valueMap;
 
     LNAGainValueMap() {
         valueMap.emplace(12,
-                         us4oem::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_12dB);
+                         us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_12dB);
         valueMap.emplace(18,
-                         us4oem::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_18dB);
+                         us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_18dB);
         valueMap.emplace(24,
-                         us4oem::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_24dB);
+                         us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_24dB);
     }
 
 };

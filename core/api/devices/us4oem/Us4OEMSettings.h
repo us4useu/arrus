@@ -1,12 +1,12 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEMSETTINGS_H
-#define ARRUS_CORE_DEVICES_US4OEMSETTINGS_H
+#ifndef ARRUS_CORE_API_DEVICES_US4OEMSETTINGS_H
+#define ARRUS_CORE_API_DEVICES_US4OEMSETTINGS_H
 
 #include <utility>
 #include <vector>
 #include <bitset>
 #include <optional>
 
-#include "arrus/core/common/types.h"
+#include "arrus/core/api/common/types.h"
 
 namespace arrus {
 
@@ -106,4 +106,4 @@ private:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_US4OEMSETTINGS_H
+#endif //ARRUS_CORE_API_DEVICES_US4OEMSETTINGS_H

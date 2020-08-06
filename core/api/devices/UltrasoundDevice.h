@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_API_DEVICES_ULTRASOUNDDEVICE_H
 #define ARRUS_CORE_API_DEVICES_ULTRASOUNDDEVICE_H
 
-#include "arrus/core/devices/Device.h"
+#include "arrus/core/api/devices/Device.h"
 
 namespace arrus {
 

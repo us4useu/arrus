@@ -1,11 +1,11 @@
-#ifndef ARRUS_CORE_DEVICES_US4R_US4RSETTINGS_H
-#define ARRUS_CORE_DEVICES_US4R_US4RSETTINGS_H
+#ifndef ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
+#define ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
 
 #include <utility>
 #include <map>
 
-#include "arrus/core/devices/us4oem/Us4OEMSettings.h"
-#include "arrus/core/devices/DeviceId.h"
+#include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/api/devices/DeviceId.h"
 
 namespace arrus {
 
@@ -31,4 +31,4 @@ private:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_US4R_US4RSETTINGS_H
+#endif //ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H

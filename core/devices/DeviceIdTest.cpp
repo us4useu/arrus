@@ -1,8 +1,8 @@
 // Device Id class test.
 #include <gtest/gtest.h>
 #include <ostream>
-#include "arrus/core/devices/DeviceId.h"
-#include "arrus/core/common/exceptions.h"
+#include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/common/exceptions.h"
 
 namespace {
 
@@ -37,14 +37,14 @@ INSTANTIATE_TEST_CASE_P
 
 (SimpleCases, DeviceIdCorrectParseTest,
  testing::Values(
-         ParseCorrectParams{"Us4OEM:0", DeviceId(DeviceTypeEnum::Us4OEM, 0)},
-         ParseCorrectParams{"Us4OEM:1", DeviceId(DeviceTypeEnum::Us4OEM, 1)},
+         ParseCorrectParams{"Us4OEM:0", DeviceId(DeviceType::Us4OEM, 0)},
+         ParseCorrectParams{"Us4OEM:1", DeviceId(DeviceType::Us4OEM, 1)},
          ParseCorrectParams{"UltrasoundInterface:0",
-                            DeviceId(DeviceTypeEnum::UltrasoundInterface, 0)},
-         ParseCorrectParams{"Probe:3", DeviceId(DeviceTypeEnum::Probe, 3)},
-         ParseCorrectParams{"CPU:4", DeviceId(DeviceTypeEnum::CPU, 4)},
-         ParseCorrectParams{"GPU:0", DeviceId(DeviceTypeEnum::GPU, 0)},
-         ParseCorrectParams{"GPU:3", DeviceId(DeviceTypeEnum::GPU, 3)}
+                            DeviceId(DeviceType::ProbeAdapter, 0)},
+         ParseCorrectParams{"Probe:3", DeviceId(DeviceType::Probe, 3)},
+         ParseCorrectParams{"CPU:4", DeviceId(DeviceType::CPU, 4)},
+         ParseCorrectParams{"GPU:0", DeviceId(DeviceType::GPU, 0)},
+         ParseCorrectParams{"GPU:3", DeviceId(DeviceType::GPU, 3)}
  ));
 
 INSTANTIATE_TEST_CASE_P
@@ -53,10 +53,10 @@ INSTANTIATE_TEST_CASE_P
  testing::Values(
          // Make sure that id components are trimmed before creating the id.
          // Any number of leading/trailing whitespaces is accepted.
-         ParseCorrectParams{"Us4OEM : 0", DeviceId(DeviceTypeEnum::Us4OEM, 0)},
+         ParseCorrectParams{"Us4OEM : 0", DeviceId(DeviceType::Us4OEM, 0)},
          ParseCorrectParams{" Us4OEM :  1 ",
-                            DeviceId(DeviceTypeEnum::Us4OEM, 1)},
-         ParseCorrectParams{" GPU:2   ", DeviceId(DeviceTypeEnum::GPU, 2)}
+                            DeviceId(DeviceType::Us4OEM, 1)},
+         ParseCorrectParams{" GPU:2   ", DeviceId(DeviceType::GPU, 2)}
  ));
 
 struct ParseIncorrectParams {
@@ -157,8 +157,8 @@ INSTANTIATE_TEST_CASE_P
 
 (SimpleCases, DeviceIdToStringCorrectTest,
  testing::Values(
-         ToStringCorrectParams{DeviceId(DeviceTypeEnum::Us4OEM, 0), "Us4OEM:0"},
-         ToStringCorrectParams{DeviceId(DeviceTypeEnum::GPU, 1), "GPU:1"}
+         ToStringCorrectParams{DeviceId(DeviceType::Us4OEM, 0), "Us4OEM:0"},
+         ToStringCorrectParams{DeviceId(DeviceType::GPU, 1), "GPU:1"}
  ));
 
 }
