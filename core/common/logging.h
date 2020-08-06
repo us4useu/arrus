@@ -12,6 +12,10 @@ std::shared_ptr<LoggerFactory> getLoggerFactory();
 
 Logger::SharedHandle getDefaultLogger();
 
+#define CREATE_ARRUS_DEVICE_LOGGER(devId) \
+    getLoggerFactory()->getLogger({{"DeviceId", devId}})
+
+
 #define ARRUS_LOG(logger, severity, msg) \
     (logger)->log(severity, msg)
 

@@ -16,7 +16,6 @@ namespace arrus {
 class Us4OEMSettingsValidator : public Validator<Us4OEMSettings> {
 public:
     Us4OEMSettingsValidator() {
-        ARRUS_LOG_DEFAULT(LogSeverity::INFO, "Hello world");
     }
 
     using Validator<Us4OEMSettings>::Validator;

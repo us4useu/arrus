@@ -14,7 +14,6 @@ public:
 
 private:
     IUs4OEMHandle ius4oem;
-
 };
 }
 
