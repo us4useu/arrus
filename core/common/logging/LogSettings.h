@@ -13,8 +13,6 @@ namespace arrus {
  */
 class LogSettings {
 public:
-    static const LogSeverity DEFAULT = LogSeverity::INFO;
-
     /**
      * Returns a singleton instance of the log settings container.
      *
@@ -29,8 +27,8 @@ public:
      * Adds a given given filename
      *
      * @param filename a path to the output log file
-     * @param severity severity level of the records that will be stored in the given
-     *  output file
+     * @param severity severity level of the records that will be stored in the
+     * given output file
      */
     void addLogFile(const std::string &filename, LogSeverity severity);
 

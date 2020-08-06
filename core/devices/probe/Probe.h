@@ -6,6 +6,8 @@
 namespace arrus {
 
 class Probe : Device {
+public:
+
     using Handle = std::unique_ptr<Probe>;
 
     explicit Probe(const DeviceId &id): Device(id) {}

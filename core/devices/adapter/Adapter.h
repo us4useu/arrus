@@ -6,6 +6,8 @@
 namespace arrus {
 
 class Adapter : Device {
+public:
+
     using Handle = std::unique_ptr<Adapter>;
 
     explicit Adapter(const DeviceId &id): Device(id) {}

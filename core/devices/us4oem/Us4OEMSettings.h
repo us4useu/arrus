@@ -18,16 +18,29 @@ namespace arrus {
 class Us4OEMSettings {
 public:
     /**
-     * Creates new Us4OEM configuration.
+     * Us4OEM Settings constructor.
      *
-     * @param channelMapping
-     * @param activeChannelGroups
+     * Channel mapping: value[i] = j, where the i is the channel seen by the user, j is the physical channel
+     * logiczny (index) -> fizyczny (wartosc)
+     * Nie wszystkie kanaly musza byc przypisane: np. dla ultrasonix tylko kanaly 0-32 oraz 64-96 sa mapowane, dla pozostalych sa niekoreslne
+     *
+     *
+     * @param activeChannelGroups determines which groups of channels should be
+     *        'active'. When the 'channel is active', Us4OEM can transmit/receive
+     *        a signal through this channel.
+     *        If the size of the group is equal `n`, and the number of module's
+     *        channels is `m`, `activeChannelGroups[0]` turns on/off channels
+     *        `0,1,..,(n-1)`, `activeChannelGroups[1]` turns on/off channels
+     *        `n,(n+1),..,(2n-1)`, and so on. The value `m' is always divisible
+     *        by `n`. The array `activeChannelGroups` should have exactly
+     *        `m/n` elements.
+     * @param channelMapping channel mapping to apply on a given Us4OEM.
      * @param dtgcAttenuation
      * @param pgaGain
      * @param lnaGain
+     * @param tgcSamples
      * @param lpfCutoff
      * @param activeTermination
-     * @param tgcSamples
      */
     Us4OEMSettings(
             std::vector<ChannelIdx> channelMapping,

@@ -3,7 +3,7 @@
 
 #include "core/devices/us4oem/Us4OEM.h"
 #include "core/devices/us4oem/Us4OEM.h"
-#include "core/devices/us4oem/impl/ius4oem/IUs4OEMFactory.h"
+#include "core/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {
 class Us4OEMImpl : public Us4OEM {

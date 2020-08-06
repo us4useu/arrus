@@ -17,8 +17,8 @@ us4rlite: {
 
     # Default initial values.
     gain_settings: {
-        lna_gain: 12e6
-        pga_gain: 24e6
+        lna_gain: 12
+        pga_gain: 24
         tgc_curve_linear: {
             intercept: 14
             slope: 2e2

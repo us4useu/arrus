@@ -24,6 +24,8 @@ namespace arrus {
  */
 class Logger {
 public:
+    using Handle = std::unique_ptr<Logger>;
+    using SharedHandle = std::shared_ptr<Logger>;
 
     /**
      * Returns a default instance of the logger.

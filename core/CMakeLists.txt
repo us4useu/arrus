@@ -12,10 +12,10 @@ set(SOURCE_FILES
     "common/validation.h"
     "common/types.h"
     "common/logging/LogSettings.h"
-    "common/logging/LogSettings.cpp"
+    "common/logging/impl/LogSettings.cpp"
     "common/logging/Logger.h"
     "common/logging/LogSeverity.h"
-    "common/logging/LogSeverity.cpp"
+    "common/logging/impl/LogSeverity.cpp"
 
     "devices/DeviceId.h"
     "devices/DeviceId.cpp"
@@ -80,7 +80,7 @@ target_compile_definitions(${TARGET_NAME}
 ################################################################################
 target_include_directories(${TARGET_NAME}
     PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${ARRUS_ROOT_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 

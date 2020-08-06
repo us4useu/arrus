@@ -74,7 +74,6 @@ private:
      * Creates IUs4OEM handles and initializes them according to
      */
     std::vector<IUs4OEMHandle> initializeModules(const Ordinal nModules) {
-        // TODO log initialization procedure.
         std::vector<IUs4OEMHandle> us4oems;
 
         std::vector<Ordinal> ordinals(nModules);
