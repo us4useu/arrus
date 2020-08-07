@@ -10,6 +10,7 @@ set(SOURCE_FILES
     api/common/types.h
     api/devices/Device.h
     api/devices/UltrasoundDevice.h
+    api/devices/TriggerGenerator.h
     api/devices/DeviceId.h
     api/devices/probe/Probe.h
     api/devices/probe/ProbeSettings.h

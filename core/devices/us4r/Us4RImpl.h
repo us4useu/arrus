@@ -10,6 +10,7 @@ namespace arrus {
 
 class Us4RImpl : public Us4R {
 public:
+
     using Us4OEMs = std::vector<Us4OEM::Handle>;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems)
@@ -18,6 +19,10 @@ public:
     Us4OEM::Handle &getUs4OEM(Ordinal ordinal) override {
         return us4oems.at(ordinal);
     }
+
+    ProbeAdapter::Handle &getProbeAdapter(Ordinal ordinal) override;
+
+    Probe::Handle &getProbe(Ordinal ordinal) override;
 
 private:
     Us4OEMs us4oems;

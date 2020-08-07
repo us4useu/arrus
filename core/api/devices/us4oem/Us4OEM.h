@@ -4,10 +4,11 @@
 #include <memory>
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/devices/TriggerGenerator.h"
 
 namespace arrus {
 
-class Us4OEM : public Device {
+class Us4OEM : public Device, public TriggerGenerator {
 public:
     using Handle = std::unique_ptr<Us4OEM>;
 

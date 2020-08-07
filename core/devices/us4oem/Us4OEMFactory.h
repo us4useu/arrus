@@ -17,7 +17,7 @@ namespace arrus {
 class Us4OEMFactory {
 public:
     virtual Us4OEM::Handle
-    getUs4OEM(Ordinal ordinal, const IUs4OEMHandle &handle,
+    getUs4OEM(Ordinal ordinal, IUs4OEMHandle &handle,
               const Us4OEMSettings &settings) = 0;
 };
 

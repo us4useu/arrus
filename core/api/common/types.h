@@ -10,7 +10,7 @@ namespace arrus {
 	using uint16 = unsigned short;
     using uint8 = unsigned char;
 
-	using ChannelIdx = uint16;
+	using ChannelIdx = uint8;
 	using BitMask = std::vector<bool>;
 	using TGCSampleValue = float;
     using TGCCurve = std::vector<TGCSampleValue>;

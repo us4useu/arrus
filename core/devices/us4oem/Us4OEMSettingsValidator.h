@@ -6,6 +6,7 @@
 #include "arrus/core/common/validation.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/devices/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/DeviceSettingsValidator.h"
 
 #include "arrus/core/external/ius4oem/PGAGainValueMap.h"
@@ -25,9 +26,14 @@ public:
             DeviceId(DeviceType::Us4OEM, moduleOrdinal)) {}
 
     void validate(const Us4OEMSettings &obj) override {
+        constexpr ChannelIdx RX_SIZE = Us4OEMImpl::N_RX_CHANNELS;
+        constexpr ChannelIdx N_TX_CHANNELS = Us4OEMImpl::N_TX_CHANNELS;
+        constexpr ChannelIdx N_RX_GROUPS = N_TX_CHANNELS/RX_SIZE;
+
         // Active channel groups
         expectEqual<unsigned>("active channel groups",
-                              obj.getActiveChannelGroups().size(), 16,
+                              obj.getActiveChannelGroups().size(),
+                              Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS,
                               "(size)");
 
         // Channel mapping:
@@ -35,20 +41,23 @@ public:
         // Us4OEM mapping should include all channels, we don't want
         // the situation, where some o channels are
         expectEqual<unsigned>("channel mapping",
-                              obj.getChannelMapping().size(), 128,
+                              obj.getChannelMapping().size(),
+                              N_TX_CHANNELS,
                               "(size)");
-        if(obj.getChannelMapping().size() == 128) {
+
+        if(obj.getChannelMapping().size() == N_TX_CHANNELS) {
             auto &channelMapping = obj.getChannelMapping();
+
             // Check if contains (possibly permuted) groups:
             // 0-31, 32-63, 64-95, 96-127
-            for(unsigned char group = 0; group < 4; ++group) {
+            for(unsigned char group = 0; group < N_RX_GROUPS; ++group) {
                 std::unordered_set<ChannelIdx> groupValues{
-                        std::begin(channelMapping) + group * 32,
-                        std::begin(channelMapping) + (group + 1) * 32};
+                        std::begin(channelMapping) + group * RX_SIZE,
+                        std::begin(channelMapping) + (group + 1) * RX_SIZE};
 
                 std::vector<ChannelIdx> missingValues;
-                for(ChannelIdx j = group * 32;
-                    j < (ChannelIdx) (group + 1) * 32; ++j) {
+                for(ChannelIdx j = group * RX_SIZE;
+                    j < (ChannelIdx) (group + 1) * RX_SIZE; ++j) {
                     if(groupValues.find(j) == groupValues.end()) {
                         missingValues.push_back(j);
                     }
@@ -60,7 +69,7 @@ public:
                                 "Some of Us4OEM channels: '{}' "
                                 "are missing in the group of channels [{}, {}]",
                                 toString(missingValues),
-                                group * 32, (group + 1) * 32
+                                group * RX_SIZE, (group + 1) * RX_SIZE
                         )
                 );
             }
@@ -87,13 +96,13 @@ public:
             expectInRange<unsigned>(
                     "tgc samples",
                     obj.getTGCSamples().size(),
-                    1, 1022,
+                    1, Us4OEMImpl::N_TGC_SAMPLES,
                     "(size)"
             );
 
             // Maximum/minimum value of a TGC sample.
             auto tgcMax = float(obj.getPGAGain() + obj.getLNAGain());
-            auto tgcMin = std::max(0.0f, float(tgcMax - 40));
+            auto tgcMin = std::max(0.0f, float(tgcMax - Us4OEMImpl::TGC_RANGE));
             expectAllInRange("tgc samples", obj.getTGCSamples(), tgcMin,
                              tgcMax);
         }

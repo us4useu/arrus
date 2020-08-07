@@ -26,6 +26,8 @@ public:
 
         // -- Probes:
 
+        // -- ProbeAdapters:
+
         // -- Us4OEMs:
         Us4RSettings::Us4OEMSettingsCollection us4oemCfgs = getUs4OEMSettings(
                 settings);
@@ -36,7 +38,7 @@ public:
         // Initialize Us4OEMs.
         // We need to initialize Us4OEMs on a Us4R system level.
         // This is because Us4OEM initialization procedure needs to consider
-        // existence of the master module (by default it's the 'Us4OEM:0').
+        // existence of some master module (by default it's the 'Us4OEM:0').
         // Check the initializeModules function to see why.
         std::vector<IUs4OEMHandle> ius4oems = initializeModules(nUs4oems);
 
@@ -49,8 +51,7 @@ public:
 
         Ordinal currentOrdinal = 0;
 
-        for (const auto &[cfg, ius4oem] :
-                boost::combine(us4oemCfgs, ius4oems)) {
+        for(const auto &[cfg, ius4oem] : boost::combine(us4oemCfgs, ius4oems)) {
             us4oems.push_back(
                     us4oemFactory.getUs4OEM(currentOrdinal, ius4oem, settings)
             );
@@ -87,7 +88,7 @@ private:
         // first one, with the highest id - the last one).
         // TODO(pjarosik) make the below sorting exception safe
         // (currently will std::terminate on an exception).
-        std::sort(std::begin(us4oems), std::end(us4oems), [] (auto &x, auto &y) {
+        std::sort(std::begin(us4oems), std::end(us4oems), [](auto &x, auto &y) {
             x->GetID() < y->GetID();
         });
 

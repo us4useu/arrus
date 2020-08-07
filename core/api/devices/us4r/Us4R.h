@@ -12,7 +12,7 @@
 namespace arrus {
 
 /**
- * Us4R device system.
+ * Us4R system: a group of Us4OEM modules and related components.
  */
 class Us4R : public Device {
 public:

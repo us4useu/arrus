@@ -35,6 +35,8 @@ public:
      *        by `n`. The array `activeChannelGroups` should have exactly
      *        `m/n` elements.
      * @param channelMapping channel permutation to apply on a given Us4OEM.
+     *  channelMapping[i] = j, where `i` is the virtual(logical) channel number,
+     *  `j` is the physical channel number.
      * @param dtgcAttenuation
      * @param pgaGain
      * @param lnaGain
@@ -95,9 +97,9 @@ private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
 
-    std::optional<uint8> dtgcAttenuation;
-    uint8 pgaGain;
-    uint8 lnaGain;
+    std::optional<uint16> dtgcAttenuation;
+    uint16 pgaGain;
+    uint16 lnaGain;
 
     TGCCurve tgcSamples;
 
