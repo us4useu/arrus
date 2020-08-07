@@ -10,7 +10,7 @@ template<typename D>
 class DeviceSettingsValidator : public Validator<D> {
 public:
     explicit DeviceSettingsValidator(const DeviceId &id)
-    : Validator<D>(id.toString()) {}
+    : Validator<D>(id.toString() + " settings") {}
 };
 
 }

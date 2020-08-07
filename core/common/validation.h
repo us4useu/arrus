@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
+#include <sstream>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -18,17 +20,47 @@ template<typename T>
 class Validator {
 public:
     explicit Validator(std::string componentName)
-    :componentName(std::move(componentName)) {}
+            : componentName(std::move(componentName)) {}
 
     virtual void validate(const T &obj) = 0;
 
+    std::vector<std::string> getErrors(const std::string &parameter) {
+        std::vector<std::string> result;
+        auto range = errors.equal_range(parameter);
+        for(auto i = range.first; i != range.second; ++i) {
+            result.push_back(i->second);
+        }
+        return result;
+    }
+
     void throwOnErrors() {
         if(!errors.empty()) {
+            // Generate message with errors.
+            std::stringstream ss;
+            decltype(errors.equal_range("")) r;
+            int c = 0;
+            for(auto i = std::begin(errors);
+                i != std::end(errors); i = r.second) {
+                if(c > 0) {
+                    ss << ", ";
+                }
+                ss << "parameter '" << i->first << "': ";
+                r = errors.equal_range(i->first);
+                int cc = 0;
+                for(auto j = r.first; j != r.second; ++j) {
+                    if(cc > 0) {
+                        ss << ", ";
+                    }
+                    ss << j->second;
+                    cc++;
+                }
+                c++;
+            }
             std::string message = arrus::format(
-                        "One or more problems have been found "
-                        "with {}: {}",
-                        componentName,
-                        boost::algorithm::join(errors, ", "));
+                    "One or more problems have been found "
+                    "with {}: {}",
+                    componentName, ss.str());
+
             throw IllegalArgumentException(message);
         }
     }
@@ -40,17 +72,46 @@ protected:
      */
     template<typename U>
     void
-    expectEqual(const U &value, const U &expected,
-                const std::string &valueName) {
+    expectEqual(const std::string &parameter, const U &value, const U &expected,
+                const std::string &msg = "") {
         if(value != expected) {
-            errors.push_back(
-                    arrus::format(
-                            "Value '{}' should be equal '{}' "
-                            "(found: '{}')",
-                            valueName,
-                            expected,
-                            value
-                    ));
+            errors.emplace(parameter,
+                           arrus::format(
+                                   "Value '{}{}' should be equal '{}' "
+                                   "(found: '{}')",
+                                   parameter,
+                                   msg,
+                                   expected,
+                                   value
+                           ));
+        }
+    }
+
+    /**
+     * Checks if all given values are in range [min, max].
+     */
+    template<typename U>
+    void
+    expectAllInRange(const std::string &parameter, const std::vector<U> &values,
+                     const U &min, const U &max, const std::string &msg = "") {
+
+        std::set<U> invalidValues;
+
+        for(auto value : values) {
+            if(!(value >= min && value <= max)) {
+                invalidValues.insert(value);
+            }
+        }
+
+        if(!invalidValues.empty()) {
+            errors.emplace(
+                    parameter,
+                    arrus::format("Value(s) '{}{}' should be in range [{}, {}] "
+                                  "(found: '{}')",
+                                  parameter, msg,
+                                  min, max, toString(invalidValues)
+                    )
+            );
         }
     }
 
@@ -59,49 +120,56 @@ protected:
      */
     template<typename U>
     void
-    expectInRange(const U &value, const U &min, const U &max,
-                  const std::string &valueName) {
+    expectInRange(const std::string &parameter, const U &value, const U &min,
+                  const U &max, const std::string &msg = "") {
         if(!(value >= min && value <= max)) {
-            errors.push_back(
-                    arrus::format(
-                            "Value '{}' should be in range [{}, {}] "
-                            "(found: '{}')",
-                            valueName,
-                            min, max,
-                            value
-                    ));
+            errors.emplace(parameter,
+                           arrus::format(
+                                   "Value '{}{}' should be in range [{}, {}] "
+                                   "(found: '{}')",
+                                   parameter,
+                                   msg,
+                                   min, max,
+                                   value
+                           ));
         }
     }
 
     template<typename U, typename Container>
     void
-    expectOneOf(U value, Container dictionary, const std::string &valueName) {
+    expectOneOf(const std::string &parameter, U value, Container dictionary,
+                const std::string &msg = "") {
         if(dictionary.find(value) == dictionary.end()) {
             // Concatenate and sort dictionary values.
             std::vector<std::string> stringRepresentation;
             std::transform(std::begin(dictionary), std::end(dictionary),
                            std::back_inserter(stringRepresentation),
                            [](auto &val) {
-                               return boost::lexical_cast<std::string>((U)val);
+                               return boost::lexical_cast<std::string>((U) val);
                            });
-            errors.push_back(arrus::format(
-                    "Value '{}' should be one of: '{}' (found: '{}')",
-                    valueName,
+            errors.emplace(parameter, arrus::format(
+                    "Value '{}{}' should be one of: '{}' (found: '{}')",
+                    parameter,
+                    msg,
                     boost::algorithm::join(stringRepresentation, ", "),
                     value
             ));
         }
     }
 
-    void expectTrue(bool condition, const std::string &errorMsg) {
+    void expectTrue(const std::string &parameter,
+                    bool condition, const std::string &msg) {
         if(!condition) {
-            errors.push_back(errorMsg);
+            errors.emplace(parameter, arrus::format(
+                    "Value '{}': {}",
+                    parameter, msg));
         }
     }
 
 
 private:
-    std::vector<std::string> errors;
+    // parameter name -> messages
+    std::multimap<std::string, std::string> errors;
     std::string componentName;
 };
 }

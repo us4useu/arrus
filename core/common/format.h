@@ -37,6 +37,14 @@ inline std::string toString(const std::vector<T> values) {
 }
 
 template<typename T>
+inline std::string toString(const std::set<T> values) {
+    std::vector<std::string> vStr(values.size());
+    std::transform(std::begin(values), std::end(values), std::begin(vStr),
+                   [](auto v) {return std::to_string(v);});
+    return boost::algorithm::join(vStr, ", ");
+}
+
+template<typename T>
 inline std::string toString(const std::optional<T> value) {
     if(value.has_value()) {
         return std::to_string(value.value());

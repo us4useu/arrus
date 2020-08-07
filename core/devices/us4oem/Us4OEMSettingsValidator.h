@@ -21,20 +21,22 @@ class Us4OEMSettingsValidator : public DeviceSettingsValidator<Us4OEMSettings> {
 public:
 
     explicit Us4OEMSettingsValidator(Ordinal moduleOrdinal)
-    :DeviceSettingsValidator<Us4OEMSettings>(
-            DeviceId(DeviceType::Us4OEM, moduleOrdinal)){}
+            : DeviceSettingsValidator<Us4OEMSettings>(
+            DeviceId(DeviceType::Us4OEM, moduleOrdinal)) {}
 
     void validate(const Us4OEMSettings &obj) override {
         // Active channel groups
-        expectEqual<unsigned>(obj.getActiveChannelGroups().size(), 16,
-                              "Number of active channel groups");
+        expectEqual<unsigned>("active channel groups",
+                              obj.getActiveChannelGroups().size(), 16,
+                              "(size)");
 
         // Channel mapping:
         // The size of the mapping:
         // Us4OEM mapping should include all channels, we don't want
         // the situation, where some o channels are
-        expectEqual<unsigned>(obj.getChannelMapping().size(), 128,
-                              "Size of channel mapping array");
+        expectEqual<unsigned>("channel mapping",
+                              obj.getChannelMapping().size(), 128,
+                              "(size)");
         if(obj.getChannelMapping().size() == 128) {
             auto &channelMapping = obj.getChannelMapping();
             // Check if contains (possibly permuted) groups:
@@ -52,6 +54,7 @@ public:
                     }
                 }
                 expectTrue(
+                        "channel mapping",
                         missingValues.empty(),
                         arrus::format(
                                 "Some of Us4OEM channels: '{}' "
@@ -62,46 +65,54 @@ public:
                 );
             }
         }
-        // TGC values
+        // TGC samples
         if(obj.getDTGCAttenuation().has_value()) {
-            expectOneOf(obj.getDTGCAttenuation().value(),
-                        DTGCAttenuationValueMap::getInstance().getAvailableValues(),
-                        "dtgc attenuation"
+            expectOneOf(
+                    "dtgc attenuation",
+                    obj.getDTGCAttenuation().value(),
+                    DTGCAttenuationValueMap::getInstance().getAvailableValues()
             );
         }
-        expectOneOf(obj.getPGAGain(),
-                    PGAGainValueMap::getInstance().getAvailableValues(),
-                    "pga gain");
-        expectOneOf(obj.getLNAGain(),
-                    LNAGainValueMap::getInstance().getAvailableValues(),
-                    "lna gain");
+        expectOneOf(
+                "pga gain",
+                obj.getPGAGain(),
+                PGAGainValueMap::getInstance().getAvailableValues());
+        expectOneOf(
+                "lna gain",
+                obj.getLNAGain(),
+                LNAGainValueMap::getInstance().getAvailableValues());
 
         if(!obj.getTGCSamples().empty()) {
             // Maximum/minimum number of samples.
             expectInRange<unsigned>(
+                    "tgc samples",
                     obj.getTGCSamples().size(),
                     1, 1022,
-                    "number of TGC samples");
+                    "(size)"
+            );
 
             // Maximum/minimum value of a TGC sample.
             auto tgcMax = float(obj.getPGAGain() + obj.getLNAGain());
-            auto tgcMin = float(tgcMax - 40);
-            for(auto value : obj.getTGCSamples()) {
-                expectInRange(value, tgcMin, tgcMax, "tgc sample");
-            }
+            auto tgcMin = std::max(0.0f, float(tgcMax - 40));
+            expectAllInRange("tgc samples", obj.getTGCSamples(), tgcMin,
+                             tgcMax);
         }
 
         // Active termination.
         if(obj.getActiveTermination().has_value()) {
-            expectOneOf(obj.getActiveTermination().value(),
-                ActiveTerminationValueMap::getInstance().getAvailableValues(),
-                "active termination");
+            expectOneOf(
+                    "active termination",
+                    obj.getActiveTermination().value(),
+                    ActiveTerminationValueMap::getInstance().getAvailableValues()
+            );
         }
 
         // LPF cutoff.
-        expectOneOf(obj.getLPFCutoff(),
-                    LPFCutoffValueMap::getInstance().getAvailableValues(),
-                    "lpf cutoff");
+        expectOneOf(
+                "lpf cutoff",
+                obj.getLPFCutoff(),
+                LPFCutoffValueMap::getInstance().getAvailableValues()
+        );
     }
 
 };
