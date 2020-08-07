@@ -45,9 +45,9 @@ public:
     Us4OEMSettings(
             std::vector<ChannelIdx> channelMapping,
             BitMask activeChannelGroups,
-            const std::optional<uint8> dtgcAttenuation,
-            const uint8 pgaGain,
-            const uint8 lnaGain,
+            const std::optional<uint16> dtgcAttenuation,
+            const uint16 pgaGain,
+            const uint16 lnaGain,
             const uint32 lpfCutoff,
             const std::optional<uint16> activeTermination,
             std::optional<TGCCurve> tgcSamples
@@ -66,15 +66,15 @@ public:
         return activeChannelGroups;
     }
 
-    [[nodiscard]] std::optional<uint8> getDTGCAttenuation() const {
+    [[nodiscard]] std::optional<uint16> getDTGCAttenuation() const {
         return dtgcAttenuation;
     }
 
-    [[nodiscard]] uint8 getPGAGain() const {
+    [[nodiscard]] uint16 getPGAGain() const {
         return pgaGain;
     }
 
-    [[nodiscard]] uint8 getLNAGain() const {
+    [[nodiscard]] uint16 getLNAGain() const {
         return lnaGain;
     }
 

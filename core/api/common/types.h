@@ -12,7 +12,8 @@ namespace arrus {
 
 	using ChannelIdx = uint16;
 	using BitMask = std::vector<bool>;
-    using TGCCurve = std::vector<float>;
+	using TGCSampleValue = float;
+    using TGCCurve = std::vector<TGCSampleValue>;
 }
 
 #endif //ARRUS_CORE_TYPES_H

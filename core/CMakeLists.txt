@@ -22,6 +22,7 @@ set(SOURCE_FILES
 
     common/hash.h
     common/compiler.h
+    common/collections.h
     common/asserts.h
     common/format.h
     common/validation.h
@@ -32,35 +33,36 @@ set(SOURCE_FILES
     ../common/logging/LogSeverity.h
     ../common/logging/LoggerFactory.h
 
-    "devices/DeviceId.cpp"
-    "devices/DeviceIdHasher.h"
+    devices/DeviceId.cpp
+    devices/DeviceIdHasher.h
+    devices/DeviceSettingsValidator.h
 
 
-    "devices/us4oem/Us4OEMFactory.h"
-    "devices/us4oem/Us4OEMFactoryImpl.h"
-    "devices/us4oem/Us4OEMImpl.h"
-    "devices/us4oem/Us4OEMImpl.cpp"
-    "devices/us4oem/Us4OEMSettingsValidator.h"
+    devices/us4oem/Us4OEMFactory.h
+    devices/us4oem/Us4OEMFactoryImpl.h
+    devices/us4oem/Us4OEMImpl.h
+    devices/us4oem/Us4OEMImpl.cpp
+    devices/us4oem/Us4OEMSettingsValidator.h
 
-    "devices/us4r/Us4RFactory.h"
-    "devices/us4r/Us4RFactoryImpl.h"
-    "devices/us4r/Us4RImpl.h"
-    "devices/us4r/Us4RImpl.cpp"
+    devices/us4r/Us4RFactory.h
+    devices/us4r/Us4RFactoryImpl.h
+    devices/us4r/Us4RImpl.h
+    devices/us4r/Us4RImpl.cpp
 
-    "devices/probeadapter/ProbeAdapterFactory.h"
+    devices/probeadapter/ProbeAdapterFactory.h
 
-    "devices/probe/ProbeFactory.h"
+    devices/probe/ProbeFactory.h
 
-    "session/Session.h"
-    "session/Session.cpp"
+    session/Session.h
+    session/Session.cpp
 
-    "external/ius4oem/IUs4OEMFactory.h"
-    "external/ius4oem/IUs4OEMFactoryImpl.h"
-    "external/ius4oem/LNAGainValueMap.h"
-    "external/ius4oem/PGAGainValueMap.h"
-    "external/ius4oem/ActiveTerminationValueMap.h"
-    "external/ius4oem/LPFCutoffValueMap.h"
-    "external/ius4oem/DTGCAttenuationValueMap.h"
+    external/ius4oem/IUs4OEMFactory.h
+    external/ius4oem/IUs4OEMFactoryImpl.h
+    external/ius4oem/LNAGainValueMap.h
+    external/ius4oem/PGAGainValueMap.h
+    external/ius4oem/ActiveTerminationValueMap.h
+    external/ius4oem/LPFCutoffValueMap.h
+    external/ius4oem/DTGCAttenuationValueMap.h
 
 )
 

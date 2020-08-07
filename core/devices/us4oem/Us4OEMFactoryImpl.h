@@ -17,7 +17,7 @@ public:
               const Us4OEMSettings &settings) override {
 
         // Validate settings.
-        Us4OEMSettingsValidator validator(settings);
+        Us4OEMSettingsValidator validator();
         validator.throwOnErrors();
 
         // Us4OEM Initial configuration.

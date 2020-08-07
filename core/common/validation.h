@@ -2,6 +2,7 @@
 #define ARRUS_CORE_COMMON_VALIDATION_H
 
 #include <string>
+#include <utility>
 #include <vector>
 #include <unordered_set>
 
@@ -16,15 +17,42 @@ namespace arrus {
 template<typename T>
 class Validator {
 public:
+    explicit Validator(std::string componentName)
+    :componentName(std::move(componentName)) {}
+
     virtual void validate(const T &obj) = 0;
 
     void throwOnErrors() {
-        if (!errors.empty()) {
-            throw IllegalArgumentException("");
+        if(!errors.empty()) {
+            std::string message = arrus::format(
+                        "One or more problems have been found "
+                        "with {}: {}",
+                        componentName,
+                        boost::algorithm::join(errors, ", "));
+            throw IllegalArgumentException(message);
         }
     }
 
 protected:
+
+    /**
+     * Checks is given value us equal to 'expected'.
+     */
+    template<typename U>
+    void
+    expectEqual(const U &value, const U &expected,
+                const std::string &valueName) {
+        if(value != expected) {
+            errors.push_back(
+                    arrus::format(
+                            "Value '{}' should be equal '{}' "
+                            "(found: '{}')",
+                            valueName,
+                            expected,
+                            value
+                    ));
+        }
+    }
 
     /**
      * Checks if given value is in range [min, max].
@@ -33,7 +61,7 @@ protected:
     void
     expectInRange(const U &value, const U &min, const U &max,
                   const std::string &valueName) {
-        if (!(value >= min && value <= max)) {
+        if(!(value >= min && value <= max)) {
             errors.push_back(
                     arrus::format(
                             "Value '{}' should be in range [{}, {}] "
@@ -48,13 +76,13 @@ protected:
     template<typename U, typename Container>
     void
     expectOneOf(U value, Container dictionary, const std::string &valueName) {
-        if (dictionary.find(value) == dictionary.end()) {
+        if(dictionary.find(value) == dictionary.end()) {
             // Concatenate and sort dictionary values.
             std::vector<std::string> stringRepresentation;
             std::transform(std::begin(dictionary), std::end(dictionary),
                            std::back_inserter(stringRepresentation),
                            [](auto &val) {
-                               return boost::lexical_cast<std::string>(val);
+                               return boost::lexical_cast<std::string>((U)val);
                            });
             errors.push_back(arrus::format(
                     "Value '{}' should be one of: '{}' (found: '{}')",
@@ -66,7 +94,7 @@ protected:
     }
 
     void expectTrue(bool condition, const std::string &errorMsg) {
-        if (!condition) {
+        if(!condition) {
             errors.push_back(errorMsg);
         }
     }
@@ -74,6 +102,7 @@ protected:
 
 private:
     std::vector<std::string> errors;
+    std::string componentName;
 };
 }
 

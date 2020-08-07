@@ -12,7 +12,7 @@ namespace arrus {
 class DTGCAttenuationValueMap {
 
 public:
-    using DTGCAttenuationValueType = uint8;
+    using DTGCAttenuationValueType = uint16;
 
     static DTGCAttenuationValueMap &getInstance() {
         static DTGCAttenuationValueMap instance;

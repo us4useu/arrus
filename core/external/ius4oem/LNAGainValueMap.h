@@ -12,7 +12,7 @@ namespace arrus {
 class LNAGainValueMap {
 
 public:
-    using LNAGainValueType = uint8;
+    using LNAGainValueType = uint16;
 
     static LNAGainValueMap &getInstance() {
         static LNAGainValueMap instance;
