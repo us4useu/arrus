@@ -76,17 +76,17 @@ public:
                     LNAGainValueMap::getInstance().getAvailableValues(),
                     "lna gain");
 
-        if(obj.getTGCSamples().has_value()) {
+        if(!obj.getTGCSamples().empty()) {
             // Maximum/minimum number of samples.
             expectInRange<unsigned>(
-                    obj.getTGCSamples()->size(),
+                    obj.getTGCSamples().size(),
                     1, 1022,
                     "number of TGC samples");
 
             // Maximum/minimum value of a TGC sample.
             auto tgcMax = float(obj.getPGAGain() + obj.getLNAGain());
             auto tgcMin = float(tgcMax - 40);
-            for(auto value : obj.getTGCSamples().value()) {
+            for(auto value : obj.getTGCSamples()) {
                 expectInRange(value, tgcMin, tgcMax, "tgc sample");
             }
         }

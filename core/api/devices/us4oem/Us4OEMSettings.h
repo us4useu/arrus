@@ -34,13 +34,14 @@ public:
      *        `n,(n+1),..,(2n-1)`, and so on. The value `m' is always divisible
      *        by `n`. The array `activeChannelGroups` should have exactly
      *        `m/n` elements.
-     * @param channelMapping channel mapping to apply on a given Us4OEM.
+     * @param channelMapping channel permutation to apply on a given Us4OEM.
      * @param dtgcAttenuation
      * @param pgaGain
      * @param lnaGain
      * @param tgcSamples
      * @param lpfCutoff
      * @param activeTermination
+     * @param tgcSamples tgc curve to apply, empty list means to turn off TGC
      */
     Us4OEMSettings(
             std::vector<ChannelIdx> channelMapping,
@@ -50,12 +51,12 @@ public:
             const uint16 lnaGain,
             const uint32 lpfCutoff,
             const std::optional<uint16> activeTermination,
-            std::optional<TGCCurve> tgcSamples
+            TGCCurve tgcSamples
     ) : channelMapping(std::move(channelMapping)),
         activeChannelGroups(std::move(activeChannelGroups)),
         dtgcAttenuation(dtgcAttenuation), pgaGain(pgaGain), lnaGain(lnaGain),
-        lpfCutoff(lpfCutoff), activeTermination(activeTermination),
-        tgcSamples(std::move(tgcSamples))
+        tgcSamples(std::move(tgcSamples)),
+        lpfCutoff(lpfCutoff), activeTermination(activeTermination)
         {}
 
     [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
@@ -86,7 +87,7 @@ public:
         return activeTermination;
     }
 
-    [[nodiscard]] const std::optional<TGCCurve> &getTGCSamples() const {
+    [[nodiscard]] const TGCCurve &getTGCSamples() const {
         return tgcSamples;
     }
 
@@ -98,10 +99,10 @@ private:
     uint8 pgaGain;
     uint8 lnaGain;
 
+    TGCCurve tgcSamples;
+
     uint32 lpfCutoff;
     std::optional<uint16> activeTermination;
-
-    std::optional<TGCCurve> tgcSamples;
 };
 
 }
