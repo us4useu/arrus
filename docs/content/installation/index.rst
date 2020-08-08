@@ -59,8 +59,7 @@ drivers are the legacy drivers that were required before 0.4.3 version.
 Install Us4OEM drivers
 ~~~~~~~~~~~~~~~~~~~~~~
 
-1. Download and extract `us4oem-drivers-1290.zip <https://github.com/us4useu/arrus-public/releases/download/us4oem-drivers-1290/us4oem-drivers-1290.zip>`_
-   file.
+1. Download and extract ``us4oem-drivers-1290.zip`` (ask us4us support to get the newest version).
 2. Run ``install.bat`` with **administrative privileges**. Confirm driver
    installation if necessary.
 

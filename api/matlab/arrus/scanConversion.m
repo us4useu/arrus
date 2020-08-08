@@ -2,20 +2,10 @@
 function[rfBfrOut] = scanConversion(rfBfrIn,sys,acq,proc)
 
 nSamp       = size(rfBfrIn,1);
-
 fs          = acq.rxSampFreq/proc.dec;
 
-% rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
-%               + (0:(nSamp-1))'/fs ) * acq.c/2;
-% 
-% xGridLin = acq.txApCentX + rVec.*sin(acq.txApCentAng + acq.txAng);
-% zGridLin = acq.txApCentZ + rVec.*cos(acq.txApCentAng + acq.txAng);
-% 
-% rfBfrOut = interp2(xGridLin,zGridLin,rfBfrIn,proc.xGrid,proc.zGrid','linear',0);
-
-
-radGridIn = ( (acq.startSample - 1)/acq.rxSampFreq ...
-          + (0:(nSamp-1))'/fs ) * acq.c/2;
+radGridIn	= ( (acq.startSample - 1)/acq.rxSampFreq ...
+              + (0:(nSamp-1))'/fs ) * acq.c/2;
 
 if sys.curv == 0 && ...                  % linear/phased array
    all(diff(acq.txAng) == 0) && ...      % txAng = const
@@ -53,3 +43,12 @@ end
 rfBfrOut = interp2(azimGridIn,radGridIn,rfBfrIn,azimGridOut,radGridOut,'linear',0);
 
 end
+
+
+
+
+
+
+
+
+
