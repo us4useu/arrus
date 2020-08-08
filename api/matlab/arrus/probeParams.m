@@ -5,18 +5,15 @@ switch probeName
     case 'AL2442'
         probe.nElem	= 192;
         probe.pitch	= 0.21e-3;
-        probe.curv = 0e-3;
         
     case 'SL1543'
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
-        probe.curv = 0e-3;
         
     case 'SP2430'
         probe.nElem	= 96;
         probe.pitch	= 0.22e-3;
         probe.probeMap = [1:48, 145:192];
-        probe.curv = 0e-3;
         
     case 'AC2541'
         probe.nElem	= 192;
@@ -26,7 +23,6 @@ switch probeName
     case 'L14-5/38'
         probe.nElem	= 128;
         probe.pitch	= 0.3048e-3;
-        probe.curv = 0e-3;
         
     case 'L7-4'
         probe.nElem	= 128;
@@ -41,6 +37,10 @@ end
 
 if ~isfield(probe,'probeMap')
     probe.probeMap = 1:probe.nElem;
+end
+
+if ~isfield(probe,'curv')
+    probe.curv = 0;
 end
 
 % position (pos,x,z) and orientation (ang) of each probe element
