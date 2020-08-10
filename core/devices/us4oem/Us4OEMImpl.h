@@ -26,9 +26,13 @@ public:
     static constexpr size_t N_TGC_SAMPLES = 1022;
 
 
-    void startTrigger() override;
+    void startTrigger() override {
 
-    void stopTrigger() override;
+    }
+
+    void stopTrigger() override {
+
+    }
 
 private:
     IUs4OEMHandle ius4oem;

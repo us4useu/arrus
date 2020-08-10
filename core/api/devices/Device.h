@@ -15,6 +15,8 @@ public:
         return id;
     }
 
+    virtual ~Device() = default;
+
 protected:
     explicit Device(const DeviceId &id): id(id) {}
 

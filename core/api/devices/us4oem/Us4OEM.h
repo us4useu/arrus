@@ -12,7 +12,9 @@ class Us4OEM : public Device, public TriggerGenerator {
 public:
     using Handle = std::unique_ptr<Us4OEM>;
 
-    Us4OEM(const DeviceId &id): Device(id) {}
+    explicit Us4OEM(const DeviceId &id): Device(id) {}
+
+    ~Us4OEM() override = default;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

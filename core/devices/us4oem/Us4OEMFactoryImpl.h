@@ -11,8 +11,7 @@
 namespace arrus {
 class Us4OEMFactoryImpl : public Us4OEMFactory {
 public:
-    explicit Us4OEMFactoryImpl(IUs4OEMFactory &ius4oemFactory)
-            : ius4oemFactory(ius4oemFactory) {}
+    Us4OEMFactoryImpl() = default;
 
 
     Us4OEM::Handle
@@ -118,11 +117,10 @@ public:
         } else {
             rxChannelMapping = {};
         }
-        return Us4OEM::Handle(
-                new Us4OEMImpl(
-                        DeviceId(DeviceType::Us4OEM, ordinal),
-                        std::move(ius4oem), cfg.getActiveChannelGroups(),
-                        rxChannelMapping));
+        return std::make_unique<Us4OEMImpl>(
+                DeviceId(DeviceType::Us4OEM, ordinal),
+                std::move(ius4oem), cfg.getActiveChannelGroups(),
+                rxChannelMapping);
     }
 
 private:
@@ -130,7 +128,7 @@ private:
     static TGCCurve getNormalizedTGCSamples(const TGCCurve &samples,
                                             const TGCSampleValue min,
                                             const TGCSampleValue max) {
-        TGCCurve result(samples.size());
+        TGCCurve result;
         auto range = max - min;
         std::transform(std::begin(samples), std::end(samples),
                        std::back_inserter(result),
@@ -151,8 +149,6 @@ private:
         }
         return true;
     }
-
-    IUs4OEMFactory &ius4oemFactory;
 };
 }
 
