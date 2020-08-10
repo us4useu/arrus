@@ -47,6 +47,12 @@ public:
         BOOST_LOG_SEV(logger, severity) << msg;
     }
 
+    void
+    setAttribute(const std::string &key, const std::string &value) override {
+        logger.add_attribute(key, boost::log::attributes::constant<std::string>(
+                value));
+    }
+
 private:
     boost::log::sources::severity_logger_mt<LogSeverity> logger;
 };

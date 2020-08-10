@@ -1,8 +1,13 @@
 #ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_IUS4OEM_IUS4OEMFACTORYIMPL_H
 #define ARRUS_CORE_DEVICES_US4OEM_IMPL_IUS4OEM_IUS4OEMFACTORYIMPL_H
 
-#include <ius4oem.h>
 #include "IUs4OEMFactory.h"
+
+#include <ius4oem.h>
+
+#include "arrus/core/common/logging.h"
+#include "arrus/core/external/ius4oem/Us4RLoggerWrapper.h"
+
 
 namespace arrus {
 
@@ -17,13 +22,19 @@ public:
     }
 
     IUs4OEMHandle getIUs4OEM(unsigned index) override {
-       return IUs4OEMHandle(GetUs4OEM(index));
+        us4r::Logger::SharedHandle logger =
+                std::make_shared<Us4RLoggerWrapper>(getDefaultLogger());
+        return IUs4OEMHandle(GetUs4OEM(index, logger));
     }
 
-    IUs4OEMFactoryImpl(IUs4OEMFactoryImpl const&) = delete;
-    void operator=(IUs4OEMFactoryImpl const&) = delete;
-    IUs4OEMFactoryImpl(IUs4OEMFactoryImpl const&&) = delete;
-    void operator=(IUs4OEMFactoryImpl const&&) = delete;
+    IUs4OEMFactoryImpl(IUs4OEMFactoryImpl const &) = delete;
+
+    void operator=(IUs4OEMFactoryImpl const &) = delete;
+
+    IUs4OEMFactoryImpl(IUs4OEMFactoryImpl const &&) = delete;
+
+    void operator=(IUs4OEMFactoryImpl const &&) = delete;
+
 private:
     IUs4OEMFactoryImpl() = default;
 };

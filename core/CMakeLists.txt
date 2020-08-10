@@ -64,7 +64,7 @@ set(SOURCE_FILES
     external/ius4oem/ActiveTerminationValueMap.h
     external/ius4oem/LPFCutoffValueMap.h
     external/ius4oem/DTGCAttenuationValueMap.h
-
+    external/ius4oem/Us4RLoggerWrapper.h
 )
 
 # Protobuf source files

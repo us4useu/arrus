@@ -27,6 +27,15 @@ public:
      * @param msg message to log
      */
     virtual void log(const LogSeverity severity, const std::string &msg) = 0;
+
+    /**
+     * Logs a given string message with given severity level.
+     *
+     * @param severity severity attached to the message
+     * @param msg message to log
+     */
+    virtual void
+    setAttribute(const std::string &key, const std::string &value) = 0;
 };
 
 }
