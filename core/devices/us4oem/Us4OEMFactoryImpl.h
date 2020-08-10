@@ -38,7 +38,7 @@ public:
         for(ChannelIdx physicalIdx : cfg.getChannelMapping()) {
             // src - physical channel
             // dst - virtual channel
-            ius4oem->SetTxChannelMapping(virtualIdx, physicalIdx);
+            ius4oem->SetTxChannelMapping(virtualIdx++, physicalIdx);
         }
         // Rx channel mapping
         // Check if the the permutation in channel mapping is the same
@@ -46,16 +46,26 @@ public:
         // to set mapping.
         // Otherwise store rxChannelMapping in Us4OEM handle for further usage.
 
-        const bool isStoreRxMapping = hasConsistentPermutations(
+        const bool isSinglePermutation = hasConsistentPermutations(
                 cfg.getChannelMapping(), chGroupSize, nChannelGroups);
 
-        if(!isStoreRxMapping) {
+        // Prepare mapping to store in the Us4OEM intance.
+        std::vector<ChannelIdx> rxChannelMapping;
+
+        if(isSinglePermutation) {
             ius4oem->SetRxChannelMapping(
                     std::vector<ChannelIdx>(
                             std::begin(cfg.getChannelMapping()),
                             std::begin(cfg.getChannelMapping()) + chGroupSize),
                     0);
+            // Rx channel mapping already set, we dont need it anymore.
+            rxChannelMapping = {};
+        } else {
+            // Rx channel mapping not set, store the complete mapping to be
+            // used during runtime.
+            rxChannelMapping = cfg.getChannelMapping();
         }
+
         // otherwise store the complete channel mapping array in Us4OEM handle
         // (check the value returned by current method).
 
@@ -110,13 +120,7 @@ public:
                     us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
         }
 
-        // Prepare mapping to store in the Us4OEM intance.
-        std::vector<ChannelIdx> rxChannelMapping;
-        if(isStoreRxMapping) {
-            rxChannelMapping = cfg.getChannelMapping();
-        } else {
-            rxChannelMapping = {};
-        }
+
         return std::make_unique<Us4OEMImpl>(
                 DeviceId(DeviceType::Us4OEM, ordinal),
                 std::move(ius4oem), cfg.getActiveChannelGroups(),
