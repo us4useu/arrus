@@ -20,9 +20,11 @@ struct TestUs4OEMSettings {
 
     Us4OEMSettings getUs4OEMSettings() const {
         return Us4OEMSettings(channelMapping, activeChannelGroups,
-                              dtgcAttenuation, pgaGain,
-                              lnaGain, lpfCutoff, activeTermination,
-                              tgcSamples);
+                              TGCSettings(
+                                      dtgcAttenuation, pgaGain,
+                                      lnaGain, tgcSamples),
+                              lpfCutoff,
+                              activeTermination);
     }
 
     friend std::ostream &
@@ -36,7 +38,7 @@ struct TestUs4OEMSettings {
            << " activeTermination: " << toString(settings.activeTermination)
            << " tgcSamples: " << toString(settings.tgcSamples);
 
-        for(const auto& invalidParameter : settings.invalidParameters) {
+        for(const auto &invalidParameter : settings.invalidParameters) {
             os << " invalidParameter: " << invalidParameter;
         }
         return os;

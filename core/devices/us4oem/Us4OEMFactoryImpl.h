@@ -71,20 +71,20 @@ public:
 
         // Other parameters
         // TGC
-        const auto pgaGain = cfg.getPGAGain();
-        const auto lnaGain = cfg.getLNAGain();
+        const auto pgaGain = cfg.getTGCSettings().getPGAGain();
+        const auto lnaGain = cfg.getTGCSettings().getLNAGain();
         ius4oem->SetPGAGain(
                 PGAGainValueMap::getInstance().getEnumValue(pgaGain));
         ius4oem->SetLNAGain(
                 LNAGainValueMap::getInstance().getEnumValue(lnaGain));
         // Convert TGC values to [0, 1] range
-        if(cfg.getTGCSamples().empty()) {
+        if(cfg.getTGCSettings().getTGCSamples().empty()) {
             ius4oem->TGCDisable();
         } else {
             const auto maxGain = pgaGain + lnaGain;
             // TODO(pjarosik) extract a common function to compute normalized tgc samples
             const TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
-                    cfg.getTGCSamples(), maxGain - Us4OEMImpl::TGC_RANGE,
+                    cfg.getTGCSettings().getTGCSamples(), maxGain - Us4OEMImpl::TGC_RANGE,
                     maxGain);
 
             ius4oem->TGCEnable();
@@ -93,10 +93,10 @@ public:
         }
 
         // DTGC
-        if(cfg.getDTGCAttenuation().has_value()) {
+        if(cfg.getTGCSettings().getDTGCAttenuation().has_value()) {
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
                              DTGCAttenuationValueMap::getInstance().getEnumValue(
-                                     cfg.getDTGCAttenuation().value()));
+                                     cfg.getTGCSettings().getDTGCAttenuation().value()));
         } else {
             // DTGC value does not matter
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,

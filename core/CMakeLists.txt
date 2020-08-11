@@ -8,6 +8,7 @@ set(SOURCE_FILES
     api/common/exceptions.h
     api/common/logging.h
     api/common/types.h
+    api/common/tgc.h
     api/devices/Device.h
     api/devices/UltrasoundDevice.h
     api/devices/TriggerGenerator.h

@@ -28,7 +28,7 @@ public:
     void validate(const Us4OEMSettings &obj) override {
         constexpr ChannelIdx RX_SIZE = Us4OEMImpl::N_RX_CHANNELS;
         constexpr ChannelIdx N_TX_CHANNELS = Us4OEMImpl::N_TX_CHANNELS;
-        constexpr ChannelIdx N_RX_GROUPS = N_TX_CHANNELS/RX_SIZE;
+        constexpr ChannelIdx N_RX_GROUPS = N_TX_CHANNELS / RX_SIZE;
 
         // Active channel groups
         expectEqual<unsigned>("active channel groups",
@@ -39,7 +39,7 @@ public:
         // Channel mapping:
         // The size of the mapping:
         // Us4OEM mapping should include all channels, we don't want
-        // the situation, where some o channels are
+        // the situation, where some o channels are not defined.
         expectEqual<unsigned>("channel mapping",
                               obj.getChannelMapping().size(),
                               N_TX_CHANNELS,
@@ -75,35 +75,37 @@ public:
             }
         }
         // TGC samples
-        if(obj.getDTGCAttenuation().has_value()) {
+        if(obj.getTGCSettings().getDTGCAttenuation().has_value()) {
             expectOneOf(
                     "dtgc attenuation",
-                    obj.getDTGCAttenuation().value(),
+                    obj.getTGCSettings().getDTGCAttenuation().value(),
                     DTGCAttenuationValueMap::getInstance().getAvailableValues()
             );
         }
         expectOneOf(
                 "pga gain",
-                obj.getPGAGain(),
+                obj.getTGCSettings().getPGAGain(),
                 PGAGainValueMap::getInstance().getAvailableValues());
         expectOneOf(
                 "lna gain",
-                obj.getLNAGain(),
+                obj.getTGCSettings().getLNAGain(),
                 LNAGainValueMap::getInstance().getAvailableValues());
 
-        if(!obj.getTGCSamples().empty()) {
+        if(!obj.getTGCSettings().getTGCSamples().empty()) {
             // Maximum/minimum number of samples.
             expectInRange<unsigned>(
                     "tgc samples",
-                    obj.getTGCSamples().size(),
+                    obj.getTGCSettings().getTGCSamples().size(),
                     1, Us4OEMImpl::N_TGC_SAMPLES,
                     "(size)"
             );
 
             // Maximum/minimum value of a TGC sample.
-            auto tgcMax = float(obj.getPGAGain() + obj.getLNAGain());
+            auto tgcMax = float(obj.getTGCSettings().getPGAGain()
+                                + obj.getTGCSettings().getLNAGain());
             auto tgcMin = std::max(0.0f, float(tgcMax - Us4OEMImpl::TGC_RANGE));
-            expectAllInRange("tgc samples", obj.getTGCSamples(), tgcMin,
+            expectAllInRange("tgc samples",
+                             obj.getTGCSettings().getTGCSamples(), tgcMin,
                              tgcMax);
         }
 

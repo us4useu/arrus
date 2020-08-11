@@ -23,6 +23,8 @@ public:
     Us4R::Handle
     getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
         // TODO(pjarosik) validate Us4RSettings
+        // validate us4rsettings:
+        // if probe
 
         // -- Probes:
 

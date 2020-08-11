@@ -237,7 +237,7 @@ class Us4OEMFactoryTGCSamplesTest
 TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
-    TGCCurve tgcCurve = GetParam().first.getUs4OEMSettings().getTGCSamples();
+    TGCCurve tgcCurve = GetParam().first.getUs4OEMSettings().getTGCSettings().getTGCSamples();
 
     if(tgcCurve.empty()) {
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), TGCDisable());

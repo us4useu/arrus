@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/common/tgc.h"
 
 namespace arrus {
 
@@ -20,11 +21,6 @@ public:
     /**
      * Us4OEM Settings constructor.
      *
-     * Channel mapping: value[i] = j, where the i is the channel seen by the user, j is the physical channel
-     * logiczny (index) -> fizyczny (wartosc)
-     * Nie wszystkie kanaly musza byc przypisane: np. dla ultrasonix tylko kanaly 0-32 oraz 64-96 sa mapowane, dla pozostalych sa niekoreslne
-     *
-     *
      * @param activeChannelGroups determines which groups of channels should be
      *        'active'. When the 'channel is active', Us4OEM can transmit/receive
      *        a signal through this channel.
@@ -37,29 +33,19 @@ public:
      * @param channelMapping channel permutation to apply on a given Us4OEM.
      *  channelMapping[i] = j, where `i` is the virtual(logical) channel number,
      *  `j` is the physical channel number.
-     * @param dtgcAttenuation
-     * @param pgaGain
-     * @param lnaGain
-     * @param tgcSamples
+     * @param tgcSettings
      * @param lpfCutoff
      * @param activeTermination
      * @param tgcSamples tgc curve to apply, empty list means to turn off TGC
      */
-    Us4OEMSettings(
-            std::vector<ChannelIdx> channelMapping,
-            BitMask activeChannelGroups,
-            const std::optional<uint16> dtgcAttenuation,
-            const uint16 pgaGain,
-            const uint16 lnaGain,
-            const uint32 lpfCutoff,
-            const std::optional<uint16> activeTermination,
-            TGCCurve tgcSamples
-    ) : channelMapping(std::move(channelMapping)),
-        activeChannelGroups(std::move(activeChannelGroups)),
-        dtgcAttenuation(dtgcAttenuation), pgaGain(pgaGain), lnaGain(lnaGain),
-        tgcSamples(std::move(tgcSamples)),
-        lpfCutoff(lpfCutoff), activeTermination(activeTermination)
-        {}
+    Us4OEMSettings(std::vector<ChannelIdx> channelMapping,
+                   BitMask activeChannelGroups,
+                   TGCSettings tgcSettings, uint32 lpfCutoff,
+                   const std::optional<uint16> &activeTermination)
+            : channelMapping(std::move(channelMapping)),
+              activeChannelGroups(std::move(activeChannelGroups)),
+              tgcSettings(std::move(tgcSettings)), lpfCutoff(lpfCutoff),
+              activeTermination(activeTermination) {}
 
     [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
         return channelMapping;
@@ -69,40 +55,24 @@ public:
         return activeChannelGroups;
     }
 
-    [[nodiscard]] std::optional<uint16> getDTGCAttenuation() const {
-        return dtgcAttenuation;
-    }
-
-    [[nodiscard]] uint16 getPGAGain() const {
-        return pgaGain;
-    }
-
-    [[nodiscard]] uint16 getLNAGain() const {
-        return lnaGain;
+    [[nodiscard]] const TGCSettings &getTGCSettings() const {
+        return tgcSettings;
     }
 
     [[nodiscard]] uint32 getLPFCutoff() const {
         return lpfCutoff;
     }
 
-    [[nodiscard]] std::optional<uint16> getActiveTermination() const {
+    [[nodiscard]] const std::optional<uint16> &getActiveTermination() const {
         return activeTermination;
     }
 
-    [[nodiscard]] const TGCCurve &getTGCSamples() const {
-        return tgcSamples;
-    }
 
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
 
-    std::optional<uint16> dtgcAttenuation;
-    uint16 pgaGain;
-    uint16 lnaGain;
-
-    TGCCurve tgcSamples;
-
+    TGCSettings tgcSettings;
     uint32 lpfCutoff;
     std::optional<uint16> activeTermination;
 };
