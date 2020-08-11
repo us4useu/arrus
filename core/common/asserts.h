@@ -43,5 +43,15 @@ do {                                                      \
     }                                                     \
 } while(0)
 
+/**
+ * Check if A >= B, otherwise throws arrus::IllegalArgumentException.
+ */
+#define ARRUS_REQUIRES_AT_MOST(A, B, MSG)                \
+do {                                                      \
+    if (!((A) <= (B))) {                                  \
+        throw arrus::IllegalArgumentException((MSG));     \
+    }                                                     \
+} while(0)
+
 
 #endif //ARRUS_CORE_UTILS_ASSERTS_H

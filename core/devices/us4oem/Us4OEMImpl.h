@@ -12,10 +12,10 @@ class Us4OEMImpl : public Us4OEM {
 public:
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                BitMask activeChannelGroups,
-               std::vector<ChannelIdx> rxChannelMapping)
+               std::vector<uint8_t> channelMapping)
             : Us4OEM(id), ius4oem(std::move(ius4oem)),
               activeChannelGroups(std::move(activeChannelGroups)),
-              rxChannelMapping(std::move(rxChannelMapping)) {}
+              channelMapping(std::move(channelMapping)) {}
 
     static constexpr float TGC_RANGE = 40.0f;
     static constexpr ChannelIdx N_TX_CHANNELS = 128;
@@ -37,7 +37,7 @@ public:
 private:
     IUs4OEMHandle ius4oem;
     BitMask activeChannelGroups;
-    std::vector<ChannelIdx> rxChannelMapping;
+    std::vector<uint8_t> channelMapping;
 };
 
 }

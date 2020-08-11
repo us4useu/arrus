@@ -34,8 +34,22 @@ public:
         ChannelIdx nChannelGroups = IUs4OEM::NCH / chGroupSize;
 
         // Tx channel mapping
-        ChannelIdx virtualIdx = 0;
-        for(ChannelIdx physicalIdx : cfg.getChannelMapping()) {
+        // Convert to uint8_t
+        std::vector<uint8_t> channelMapping;
+        ARRUS_REQUIRES_AT_MOST(
+                cfg.getChannelMapping().size(),
+                UINT8_MAX,
+                arrus::format("Maximum number of channels: {}", UINT8_MAX));
+
+        for(auto value : cfg.getChannelMapping()) {
+            ARRUS_REQUIRES_AT_MOST(value, UINT8_MAX, arrus::format(
+                            "Us4OEM channel index cannot exceed {}",
+                            UINT8_MAX));
+            channelMapping.push_back(value);
+        }
+
+        uint8_t virtualIdx = 0;
+        for(uint8_t physicalIdx : channelMapping) {
             // src - physical channel
             // dst - virtual channel
             ius4oem->SetTxChannelMapping(virtualIdx++, physicalIdx);
@@ -49,23 +63,13 @@ public:
         const bool isSinglePermutation = hasConsistentPermutations(
                 cfg.getChannelMapping(), chGroupSize, nChannelGroups);
 
-        // Prepare mapping to store in the Us4OEM intance.
-        std::vector<ChannelIdx> rxChannelMapping;
-
         if(isSinglePermutation) {
             ius4oem->SetRxChannelMapping(
-                    std::vector<ChannelIdx>(
-                            std::begin(cfg.getChannelMapping()),
-                            std::begin(cfg.getChannelMapping()) + chGroupSize),
+                    std::vector<uint8_t>(
+                            std::begin(channelMapping),
+                            std::begin(channelMapping) + chGroupSize),
                     0);
-            // Rx channel mapping already set, we dont need it anymore.
-            rxChannelMapping = {};
-        } else {
-            // Rx channel mapping not set, store the complete mapping to be
-            // used during runtime.
-            rxChannelMapping = cfg.getChannelMapping();
         }
-
         // otherwise store the complete channel mapping array in Us4OEM handle
         // (check the value returned by current method).
 
@@ -84,7 +88,8 @@ public:
             const auto maxGain = pgaGain + lnaGain;
             // TODO(pjarosik) extract a common function to compute normalized tgc samples
             const TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
-                    cfg.getTGCSettings().getTGCSamples(), maxGain - Us4OEMImpl::TGC_RANGE,
+                    cfg.getTGCSettings().getTGCSamples(),
+                    maxGain - Us4OEMImpl::TGC_RANGE,
                     maxGain);
 
             ius4oem->TGCEnable();
@@ -124,7 +129,7 @@ public:
         return std::make_unique<Us4OEMImpl>(
                 DeviceId(DeviceType::Us4OEM, ordinal),
                 std::move(ius4oem), cfg.getActiveChannelGroups(),
-                rxChannelMapping);
+                channelMapping);
     }
 
 private:

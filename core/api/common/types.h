@@ -10,7 +10,7 @@ namespace arrus {
 	using uint16 = unsigned short;
     using uint8 = unsigned char;
 
-	using ChannelIdx = uint8;
+	using ChannelIdx = uint16;
 	using BitMask = std::vector<bool>;
 
 }

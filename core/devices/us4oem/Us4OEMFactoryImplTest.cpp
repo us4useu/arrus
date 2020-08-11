@@ -283,19 +283,20 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
 
     // Mapping includes groups of 32 channel, each has the same permutation
-    std::vector<ChannelIdx> channelMapping = getRange<ChannelIdx>(0, 128, 1);
+    std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
 
     for(int i = 0; i < 4; ++i) {
         std::swap(channelMapping[i * 32], channelMapping[(i + 1) * 32 - 1]);
     }
 
-    TestUs4OEMSettings cfg{.channelMapping=channelMapping};
+    TestUs4OEMSettings cfg{.channelMapping=std::vector<ChannelIdx>(
+            std::begin(channelMapping), std::end(channelMapping))};
     Us4OEMFactoryImpl factory;
     // Expect
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
     EXPECT_CALL(GET_MOCK_PTR(ius4oem),
                 SetRxChannelMapping(
-                        std::vector<ChannelIdx>(
+                        std::vector<uint8_t>(
                                 std::begin(channelMapping),
                                 std::begin(channelMapping) + 32), 0))
             .Times(1);
@@ -308,7 +309,7 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
 
     // Mapping includes groups of 32 channel, each has the same permutation
-    std::vector<ChannelIdx> channelMapping = getRange<ChannelIdx>(0, 128, 1);
+    std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
 
     for(int i = 0; i < 2; ++i) {
         std::swap(channelMapping[i * 32], channelMapping[(i + 1) * 32 - 1]);
@@ -318,7 +319,8 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
         std::swap(channelMapping[i * 32 + 1], channelMapping[(i + 1) * 32 - 2]);
     }
 
-    TestUs4OEMSettings cfg{.channelMapping=channelMapping};
+    TestUs4OEMSettings cfg{.channelMapping=std::vector<ChannelIdx>(
+            std::begin(channelMapping), std::end(channelMapping))};
     Us4OEMFactoryImpl factory;
     // Expect
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
