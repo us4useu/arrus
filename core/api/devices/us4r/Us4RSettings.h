@@ -5,6 +5,8 @@
 #include <map>
 
 #include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/api/devices/probe/ProbeSettings.h"
+#include "arrus/core/api/devices/probeadapter/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 
 namespace arrus {
@@ -18,7 +20,9 @@ public:
      */
     using Us4OEMSettingsCollection = std::vector<Us4OEMSettings>;
 
-    explicit Us4RSettings(Us4OEMSettingsCollection us4oemSettings)
+    explicit Us4RSettings(ProbeSettings probeSettings,
+        ProbeAdapterSettings probeAdapterSettings,
+        Us4OEMSettingsCollection us4oemSettings)
     : us4oemSettings(std::move(us4oemSettings)) {}
 
     [[nodiscard]] const Us4OEMSettingsCollection& getUs4oemSettings() const {
