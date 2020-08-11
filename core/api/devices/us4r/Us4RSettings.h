@@ -13,24 +13,40 @@ namespace arrus {
 
 class Us4RSettings {
 public:
+    explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings)
+            : us4oemSettings(std::move(us4OemSettings)) {}
 
-    /**
-     * The position of the us4OEM settings in the vector is the Us4OEM
-     * device ordinal.
-     */
-    using Us4OEMSettingsCollection = std::vector<Us4OEMSettings>;
+    Us4RSettings(
+            ProbeAdapterSettings probeAdapterSettings,
+            ProbeSettings probeSettings)
+            : probeAdapterSettings(std::move(probeAdapterSettings)),
+              probeSettings(std::move(probeSettings)) {}
 
-    explicit Us4RSettings(ProbeSettings probeSettings,
-        ProbeAdapterSettings probeAdapterSettings,
-        Us4OEMSettingsCollection us4oemSettings)
-    : us4oemSettings(std::move(us4oemSettings)) {}
-
-    [[nodiscard]] const Us4OEMSettingsCollection& getUs4oemSettings() const {
-        return this->us4oemSettings;
+    [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OemSettings() const {
+        return us4oemSettings;
     }
 
+    [[nodiscard]] const std::optional<ProbeAdapterSettings> &
+    getProbeAdapterSettings() const {
+        return probeAdapterSettings;
+    }
+
+    [[nodiscard]] const std::optional<ProbeSettings> &getProbeSettings() const {
+        return probeSettings;
+    }
+
+
 private:
-    Us4OEMSettingsCollection us4oemSettings;
+    /* A list of settings for Us4OEMs.
+     * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
+    std::vector<Us4OEMSettings> us4oemSettings{};
+    /** Probe adapter settings. Optional - when not set, at least one
+     *  Us4OEMSettings must be set. When is set, the list of Us4OEM
+     *  settings should be empty. */
+    std::optional<ProbeAdapterSettings> probeAdapterSettings{};
+    /** ProbeSettings to set. Optional - when is set, ProbeAdapterSettings also
+     * must be available.*/
+    std::optional<ProbeSettings> probeSettings{};
 };
 
 }

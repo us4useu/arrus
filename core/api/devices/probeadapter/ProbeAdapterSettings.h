@@ -3,8 +3,10 @@
 
 namespace arrus {
 class ProbeAdapterSettings {
-private:
+    using ProbeAdapterMapping = std::vector<std::pair<Ordinal, ChannelIdx>>;
 
+private:
+    ProbeAdapterMapping mapping;
 };
 }
 

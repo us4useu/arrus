@@ -5,6 +5,9 @@ namespace arrus {
 class ProbeSettings {
     // TODO ProbeModel
     // TODO ProbeToAdapterConnection
+private:
+    /** Probe channel -> Adapte channel mapping. */
+    std::vector<ChannelIdx> mapping;
 };
 }
 
