@@ -28,10 +28,6 @@ public:
         validator.validate(settings);
         validator.throwOnErrors();
 
-        // -- Probes:
-
-        // -- ProbeAdapters:
-
         // -- Us4OEMs:
         std::vector<Us4OEMSettings> us4oemCfgs = getUs4OEMSettings(
                 settings);
@@ -53,23 +49,22 @@ public:
                                      "Values are not equal: ius4oem size, "
                                      "us4oem settings size"));
 
-        Ordinal currentOrdinal = 0;
-
-        for(const auto &[cfg, ius4oem] : boost::combine(us4oemCfgs, ius4oems)) {
+        for(unsigned i = 0; i < us4oems.size(); ++i) {
             us4oems.push_back(
-                    us4oemFactory.getUs4OEM(currentOrdinal, ius4oem, settings)
+                    us4oemFactory.getUs4OEM(i, ius4oems[i], us4oemCfgs[i])
             );
-            currentOrdinal++;
         }
-        // Probe Adapter
+        ius4oems.clear();
+        // Ius4OEM handles are no longer available here.
 
+        // Probe Adapter
 
 
         // Probe
 
         // -- Us4R:
         DeviceId id(DeviceType::Us4R, ordinal);
-        return Us4R::Handle(new Us4RImpl(id, us4oems));
+        return Us4R::Handle(new Us4RImpl(id, std::move(us4oems)));
     }
 
 private:
@@ -100,9 +95,10 @@ private:
         // first one, with the highest id - the last one).
         // TODO(pjarosik) make the below sorting exception safe
         // (currently will std::terminate on an exception).
-        std::sort(std::begin(us4oems), std::end(us4oems), [](auto &x, auto &y) {
-            x->GetID() < y->GetID();
-        });
+        std::sort(std::begin(us4oems), std::end(us4oems),
+                  [](const IUs4OEMHandle &x, const IUs4OEMHandle &y) {
+                      return x->GetID() < y->GetID();
+                  });
 
         for(auto &u : us4oems) {
             u->Initialize(1);

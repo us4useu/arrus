@@ -1,0 +1,14 @@
+#ifndef ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERFACTORYIMPL_H
+#define ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERFACTORYIMPL_H
+
+#include "arrus/core/api/devices/probe/Probe.h"
+
+namespace arrus {
+
+class ProbeAdapterFactoryImpl : public Probe {
+
+};
+
+}
+
+#endif //ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERFACTORYIMPL_H

@@ -14,7 +14,6 @@ class Us4OEMFactoryImpl : public Us4OEMFactory {
 public:
     Us4OEMFactoryImpl() = default;
 
-
     Us4OEM::Handle
     getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem,
               const Us4OEMSettings &cfg) override {

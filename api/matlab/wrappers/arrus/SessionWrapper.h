@@ -5,7 +5,7 @@
 
 #include "api/matlab/wrappers/MexObjectWrapper.h"
 #include "api/matlab/wrappers/DefaultMexObjectManager.h"
-#include "core/session/Session.h"
+#include "core/api/session/SessionImpl.h"
 
 #include <csignal>
 #include <fstream>

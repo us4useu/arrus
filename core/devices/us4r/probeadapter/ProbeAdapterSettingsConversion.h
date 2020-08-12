@@ -10,7 +10,6 @@ class ProbeAdapterSettingsConversion final {
 
     static std::vector<Us4OEMSettings> toUs4OEMSettings(
             const ProbeAdapterSettings probeAdapterSettings) {
-        //convert
     }
 
 private:

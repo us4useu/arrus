@@ -20,6 +20,8 @@ set(SOURCE_FILES
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
     api/devices/us4r/RxSettings.h
+    api/session/Session.h
+    api/session/SessionSettings.h
 
     common/hash.h
     common/compiler.h
@@ -51,12 +53,12 @@ set(SOURCE_FILES
     devices/us4r/Us4RSettingsValidator.h
 
     devices/us4r/probeadapter/ProbeAdapterFactory.h
+    devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h
     devices/us4r/probeadapter/ProbeAdapterSettingsConversion.h
 
     devices/probe/ProbeFactory.h
 
-    session/Session.h
-    session/Session.cpp
+    session/SessionImpl.cpp
 
     devices/us4r/external/ius4oem/IUs4OEMFactory.h
     devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h
@@ -66,6 +68,9 @@ set(SOURCE_FILES
     devices/us4r/external/ius4oem/LPFCutoffValueMap.h
     devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h
     devices/us4r/external/ius4oem/Us4RLoggerWrapper.h
+
+    session/SessionImpl.h
+    session/SessionImpl.cpp
 )
 
 # Protobuf source files

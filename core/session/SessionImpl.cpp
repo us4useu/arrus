@@ -1,4 +1,4 @@
-#include "Session.h"
+#include "arrus/core/session/SessionImpl.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -6,15 +6,15 @@
 #include "arrus/core/common/format.h"
 
 // Construction components.
-#include "arrus/core/devices/us4r/Us4RFactory.h"
+#include "arrus/core/devices/us4r/Us4RFactoryImpl.h"
 
 namespace arrus {
 
-Session::Session(const SessionSettings &sessionSettings) {
+SessionImpl::SessionImpl(const SessionSettings &sessionSettings) {
     devices = configureDevices(sessionSettings);
 }
 
-Device::Handle &Session::getDevice(const std::string &path) {
+Device::Handle &SessionImpl::getDevice(const std::string &path) {
     // parse path
     // accept only the top-level devices
     std::vector<std::string> pathComponents;
@@ -31,7 +31,7 @@ Device::Handle &Session::getDevice(const std::string &path) {
     return getDevice(deviceId);
 }
 
-Device::Handle &Session::getDevice(const DeviceId &deviceId) {
+Device::Handle &SessionImpl::getDevice(const DeviceId &deviceId) {
     try {
         return devices.at(deviceId);
     } catch (const std::out_of_range &e) {
@@ -40,12 +40,13 @@ Device::Handle &Session::getDevice(const DeviceId &deviceId) {
     }
 }
 
-Session::DeviceMap
-Session::configureDevices(const SessionSettings &sessionSettings) {
+SessionImpl::DeviceMap
+SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     DeviceMap result;
 
     // Configuring Us4R.
     const Us4RSettings& us4RSettings = sessionSettings.getUs4RSettings();
+
 
     // Us4RFactory - initialize
 
@@ -64,6 +65,5 @@ Session::configureDevices(const SessionSettings &sessionSettings) {
 
     return result;
 }
-
 
 }
