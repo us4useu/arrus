@@ -8,7 +8,6 @@ set(SOURCE_FILES
     api/common/exceptions.h
     api/common/logging.h
     api/common/types.h
-    api/common/tgc.h
     api/devices/Device.h
     api/devices/UltrasoundDevice.h
     api/devices/TriggerGenerator.h
@@ -21,6 +20,7 @@ set(SOURCE_FILES
     api/devices/us4oem/Us4OEMSettings.h
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
+    api/devices/us4r/RxSettings.h
 
     common/hash.h
     common/compiler.h
@@ -52,6 +52,7 @@ set(SOURCE_FILES
     devices/us4r/Us4RSettingsValidator.h
 
     devices/probeadapter/ProbeAdapterFactory.h
+    devices/probeadapter/ProbeAdapterSettingsConversion.h
 
     devices/probe/ProbeFactory.h
 

@@ -7,7 +7,7 @@
 #include <optional>
 
 #include "arrus/core/api/common/types.h"
-#include "arrus/core/api/common/tgc.h"
+#include "arrus/core/api/devices/us4r/Us4RSettings.h"
 
 namespace arrus {
 
@@ -33,19 +33,16 @@ public:
      * @param channelMapping channel permutation to apply on a given Us4OEM.
      *  channelMapping[i] = j, where `i` is the virtual(logical) channel number,
      *  `j` is the physical channel number.
-     * @param tgcSettings
-     * @param lpfCutoff
-     * @param activeTermination
+     * @param rxSettings
      * @param tgcSamples tgc curve to apply, empty list means to turn off TGC
      */
     Us4OEMSettings(std::vector<ChannelIdx> channelMapping,
                    BitMask activeChannelGroups,
-                   TGCSettings tgcSettings, uint32 lpfCutoff,
-                   const std::optional<uint16> &activeTermination)
+                   RxSettings rxSettings)
             : channelMapping(std::move(channelMapping)),
               activeChannelGroups(std::move(activeChannelGroups)),
-              tgcSettings(std::move(tgcSettings)), lpfCutoff(lpfCutoff),
-              activeTermination(activeTermination) {}
+              rxSettings(std::move(rxSettings)) {}
+
 
     [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
         return channelMapping;
@@ -55,26 +52,14 @@ public:
         return activeChannelGroups;
     }
 
-    [[nodiscard]] const TGCSettings &getTGCSettings() const {
-        return tgcSettings;
+    [[nodiscard]] const RxSettings &getRxSettings() const {
+        return rxSettings;
     }
-
-    [[nodiscard]] uint32 getLPFCutoff() const {
-        return lpfCutoff;
-    }
-
-    [[nodiscard]] const std::optional<uint16> &getActiveTermination() const {
-        return activeTermination;
-    }
-
 
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
-
-    TGCSettings tgcSettings;
-    uint32 lpfCutoff;
-    std::optional<uint16> activeTermination;
+    RxSettings rxSettings;
 };
 
 }

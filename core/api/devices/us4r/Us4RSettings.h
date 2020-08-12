@@ -7,7 +7,7 @@
 #include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/probeadapter/ProbeAdapterSettings.h"
-#include "arrus/core/api/common/tgc.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 
 namespace arrus {
@@ -21,7 +21,7 @@ public:
     Us4RSettings(
             ProbeAdapterSettings probeAdapterSettings,
             ProbeSettings probeSettings,
-            TGCSettings tgcSettings)
+            RxSettings tgcSettings)
             : probeAdapterSettings(std::move(probeAdapterSettings)),
               probeSettings(std::move(probeSettings)),
               tgcSettings(std::move(tgcSettings)){}
@@ -56,7 +56,7 @@ private:
      * must be available.*/
     std::optional<ProbeSettings> probeSettings{};
     /** Required when no Us4OEM settings are set. */
-    std::optional<TGCSettings> tgcSettings;
+    std::optional<RxSettings> tgcSettings;
 };
 
 }

@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMFACTORYIMPL_H
 #define ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMFACTORYIMPL_H
 
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/common/asserts.h"
 #include "arrus/core/devices/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4oem/Us4OEMFactory.h"
@@ -75,20 +76,20 @@ public:
 
         // Other parameters
         // TGC
-        const auto pgaGain = cfg.getTGCSettings().getPGAGain();
-        const auto lnaGain = cfg.getTGCSettings().getLNAGain();
+        const auto pgaGain = cfg.getRxSettings().getPGAGain();
+        const auto lnaGain = cfg.getRxSettings().getLNAGain();
         ius4oem->SetPGAGain(
                 PGAGainValueMap::getInstance().getEnumValue(pgaGain));
         ius4oem->SetLNAGain(
                 LNAGainValueMap::getInstance().getEnumValue(lnaGain));
         // Convert TGC values to [0, 1] range
-        if(cfg.getTGCSettings().getTGCSamples().empty()) {
+        if(cfg.getRxSettings().getTGCSamples().empty()) {
             ius4oem->TGCDisable();
         } else {
             const auto maxGain = pgaGain + lnaGain;
             // TODO(pjarosik) extract a common function to compute normalized tgc samples
             const TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
-                    cfg.getTGCSettings().getTGCSamples(),
+                    cfg.getRxSettings().getTGCSamples(),
                     maxGain - Us4OEMImpl::TGC_RANGE,
                     maxGain);
 
@@ -98,10 +99,10 @@ public:
         }
 
         // DTGC
-        if(cfg.getTGCSettings().getDTGCAttenuation().has_value()) {
+        if(cfg.getRxSettings().getDTGCAttenuation().has_value()) {
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
                              DTGCAttenuationValueMap::getInstance().getEnumValue(
-                                     cfg.getTGCSettings().getDTGCAttenuation().value()));
+                                     cfg.getRxSettings().getDTGCAttenuation().value()));
         } else {
             // DTGC value does not matter
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
@@ -111,14 +112,14 @@ public:
 
         // Filtering
         ius4oem->SetLPFCutoff(LPFCutoffValueMap::getInstance().getEnumValue(
-                cfg.getLPFCutoff()));
+                cfg.getRxSettings().getLPFCutoff()));
 
         // Active termination
-        if(cfg.getActiveTermination().has_value()) {
+        if(cfg.getRxSettings().getActiveTermination().has_value()) {
             ius4oem->SetActiveTermination(
                     us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
                     ActiveTerminationValueMap::getInstance().getEnumValue(
-                            cfg.getActiveTermination().value()));
+                            cfg.getRxSettings().getActiveTermination().value()));
         } else {
             ius4oem->SetActiveTermination(
                     us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
