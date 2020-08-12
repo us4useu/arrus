@@ -9,7 +9,7 @@
 #include "arrus/core/devices/us4r/Us4RFactory.h"
 #include "arrus/core/devices/us4r/Us4RImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsValidator.h"
-#include "arrus/core/devices/us4oem/Us4OEMFactory.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 
 #include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
 
@@ -61,6 +61,11 @@ public:
             );
             currentOrdinal++;
         }
+        // Probe Adapter
+
+
+
+        // Probe
 
         // -- Us4R:
         DeviceId id(DeviceType::Us4R, ordinal);
@@ -71,6 +76,9 @@ private:
 
     std::vector<Us4OEMSettings>
     getUs4OEMSettings(const Us4RSettings &us4rSettings) {
+        // If probe adapter settings are set - convert them and TGC Settings to Us4OEMSettings
+        // -
+        // Otherwise return Us4OEMSettings
         // TODO(pjarosik) generate Us4OEMSettings based on the Probe and Adapter configurations
         return us4rSettings.getUs4OEMSettings();
     }
@@ -100,7 +108,7 @@ private:
             u->Initialize(1);
         }
         // Perform successive initialization levels.
-        for(unsigned int level = 2; level <= 4; level++) {
+        for(int level = 2; level <= 4; level++) {
             us4oems[0]->Synchronize();
             for(auto &u : us4oems) {
                 u->Initialize(level);

@@ -32,7 +32,7 @@ public:
                     "Probe settings should not be set "
                     "(at least one custom Us4OEM setting was detected).");
         }
-        // TGC settings should be verified by the underling Us4OEMs.
+        // The exact TGC settings should be verified by the underlying Us4OEMs.
     }
 
 };

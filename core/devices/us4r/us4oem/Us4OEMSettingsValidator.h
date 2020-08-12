@@ -75,7 +75,7 @@ public:
             }
         }
         // TGC samples
-        if(obj.getRxSettings().getTGCSettings().getDTGCAttenuation().has_value()) {
+        if(obj.getRxSettings().getDTGCAttenuation().has_value()) {
             expectOneOf(
                     "dtgc attenuation",
                     obj.getRxSettings().getDTGCAttenuation().value(),

@@ -2,7 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4OEM_TESTS_COMMONS_H
 
 #include "arrus/core/common/collections.h"
-#include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 
 using namespace arrus;
 

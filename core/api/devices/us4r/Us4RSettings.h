@@ -21,10 +21,10 @@ public:
     Us4RSettings(
             ProbeAdapterSettings probeAdapterSettings,
             ProbeSettings probeSettings,
-            RxSettings tgcSettings)
+            RxSettings rxSettings)
             : probeAdapterSettings(std::move(probeAdapterSettings)),
               probeSettings(std::move(probeSettings)),
-              tgcSettings(std::move(tgcSettings)){}
+              rxSettings(std::move(rxSettings)){}
 
     [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
@@ -39,8 +39,8 @@ public:
         return probeSettings;
     }
 
-    [[nodiscard]] const std::optional<TGCSettings> &getTGCSettings() const {
-        return tgcSettings;
+    [[nodiscard]] const std::optional<RxSettings> &getTGCSettings() const {
+        return rxSettings;
     }
 
 
@@ -56,7 +56,7 @@ private:
      * must be available.*/
     std::optional<ProbeSettings> probeSettings{};
     /** Required when no Us4OEM settings are set. */
-    std::optional<RxSettings> tgcSettings;
+    std::optional<RxSettings> rxSettings;
 };
 
 }

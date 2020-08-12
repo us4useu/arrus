@@ -39,11 +39,11 @@ set(SOURCE_FILES
     devices/DeviceIdHasher.h
     devices/DeviceSettingsValidator.h
 
-    devices/us4oem/Us4OEMFactory.h
-    devices/us4oem/Us4OEMFactoryImpl.h
-    devices/us4oem/Us4OEMImpl.h
-    devices/us4oem/Us4OEMImpl.cpp
-    devices/us4oem/Us4OEMSettingsValidator.h
+    devices/us4r/us4oem/Us4OEMFactory.h
+    devices/us4r/us4oem/Us4OEMFactoryImpl.h
+    devices/us4r/us4oem/Us4OEMImpl.h
+    devices/us4r/us4oem/Us4OEMImpl.cpp
+    devices/us4r/us4oem/Us4OEMSettingsValidator.h
 
     devices/us4r/Us4RFactory.h
     devices/us4r/Us4RFactoryImpl.h
@@ -51,8 +51,8 @@ set(SOURCE_FILES
     devices/us4r/Us4RImpl.cpp
     devices/us4r/Us4RSettingsValidator.h
 
-    devices/probeadapter/ProbeAdapterFactory.h
-    devices/probeadapter/ProbeAdapterSettingsConversion.h
+    devices/us4r/probeadapter/ProbeAdapterFactory.h
+    devices/us4r/probeadapter/ProbeAdapterSettingsConversion.h
 
     devices/probe/ProbeFactory.h
 
@@ -113,6 +113,6 @@ target_link_libraries(${TARGET_NAME}
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
     create_core_test(devices/DeviceIdTest.cpp)
-    create_core_test(devices/us4oem/Us4OEMSettingsValidatorTest.cpp)
-    create_core_test(devices/us4oem/Us4OEMFactoryImplTest.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp)
 endif()
