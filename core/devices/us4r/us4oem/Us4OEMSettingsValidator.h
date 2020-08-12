@@ -5,8 +5,8 @@
 
 #include "arrus/core/common/validation.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
-#include "arrus/core/devices/us4oem/Us4OEMImpl.h"
+#include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/DeviceSettingsValidator.h"
 
 #include "arrus/core/external/ius4oem/PGAGainValueMap.h"

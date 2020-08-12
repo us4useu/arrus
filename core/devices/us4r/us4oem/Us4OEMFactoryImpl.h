@@ -3,9 +3,9 @@
 
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/common/asserts.h"
-#include "arrus/core/devices/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/us4oem/Us4OEMFactory.h"
-#include "arrus/core/devices/us4oem/Us4OEMSettingsValidator.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"
 #include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/external/ius4oem/PGAGainValueMap.h"
 

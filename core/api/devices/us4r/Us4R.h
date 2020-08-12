@@ -4,8 +4,8 @@
 #include <memory>
 
 #include "arrus/core/api/devices/Device.h"
-#include "arrus/core/api/devices/us4oem/Us4OEM.h"
-#include "arrus/core/api/devices/probeadapter/ProbeAdapter.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 
 

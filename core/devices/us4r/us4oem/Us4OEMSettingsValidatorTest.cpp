@@ -8,7 +8,7 @@
 namespace {
 using namespace arrus;
 
-#include "arrus/core/devices/us4oem/tests/CommonSettings.h"
+#include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 
 
 class CorrectUs4OEMSettingsTest

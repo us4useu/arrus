@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "arrus/core/api/devices/us4oem/Us4OEM.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {

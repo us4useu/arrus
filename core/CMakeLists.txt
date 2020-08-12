@@ -14,10 +14,10 @@ set(SOURCE_FILES
     api/devices/DeviceId.h
     api/devices/probe/Probe.h
     api/devices/probe/ProbeSettings.h
-    api/devices/probeadapter/ProbeAdapter.h
-    api/devices/probeadapter/ProbeAdapterSettings.h
-    api/devices/us4oem/Us4OEM.h
-    api/devices/us4oem/Us4OEMSettings.h
+    api/devices/us4r/ProbeAdapter.h
+    api/devices/us4r/ProbeAdapterSettings.h
+    api/devices/us4r/Us4OEM.h
+    api/devices/us4r/Us4OEMSettings.h
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
     api/devices/us4r/RxSettings.h

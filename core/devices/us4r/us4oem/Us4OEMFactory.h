@@ -2,8 +2,8 @@
 #define ARRUS_CORE_DEVICES_US4OEM_US4OEMFACTORY_H
 
 #include "arrus/core/api/devices/DeviceId.h"
-#include "arrus/core/api/devices/us4oem/Us4OEM.h"
-#include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 
 #include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
 

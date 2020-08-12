@@ -3,9 +3,9 @@
 
 #include <ius4oem.h>
 
-#include "arrus/core/devices/us4oem/Us4OEMFactoryImpl.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h"
 
-#include "arrus/core/devices/us4oem/tests/CommonSettings.h"
+#include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 
 namespace {
 

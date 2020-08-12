@@ -12,7 +12,7 @@ public:
 
     explicit ProbeAdapter(const DeviceId &id): Device(id) {}
 
-    virtual ~ProbeAdapter() = default;
+    ~ProbeAdapter() override = default;
 
     ProbeAdapter(ProbeAdapter const&) = delete;
     ProbeAdapter(ProbeAdapter const&&) = delete;

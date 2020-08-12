@@ -4,10 +4,10 @@
 #include <utility>
 #include <map>
 
-#include "arrus/core/api/devices/us4oem/Us4OEMSettings.h"
-#include "arrus/core/api/devices/probe/ProbeSettings.h"
-#include "arrus/core/api/devices/probeadapter/ProbeAdapterSettings.h"
+#include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+#include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 
 namespace arrus {
