@@ -22,7 +22,7 @@ public:
             : probeAdapterSettings(std::move(probeAdapterSettings)),
               probeSettings(std::move(probeSettings)) {}
 
-    [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OemSettings() const {
+    [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
     }
 

@@ -39,7 +39,6 @@ set(SOURCE_FILES
     devices/DeviceIdHasher.h
     devices/DeviceSettingsValidator.h
 
-
     devices/us4oem/Us4OEMFactory.h
     devices/us4oem/Us4OEMFactoryImpl.h
     devices/us4oem/Us4OEMImpl.h
@@ -50,6 +49,7 @@ set(SOURCE_FILES
     devices/us4r/Us4RFactoryImpl.h
     devices/us4r/Us4RImpl.h
     devices/us4r/Us4RImpl.cpp
+    devices/us4r/Us4RSettingsValidator.h
 
     devices/probeadapter/ProbeAdapterFactory.h
 

@@ -8,6 +8,7 @@
 
 #include "arrus/core/devices/us4r/Us4RFactory.h"
 #include "arrus/core/devices/us4r/Us4RImpl.h"
+#include "arrus/core/devices/us4r/Us4RSettingsValidator.h"
 #include "arrus/core/devices/us4oem/Us4OEMFactory.h"
 
 #include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
@@ -22,16 +23,17 @@ public:
 
     Us4R::Handle
     getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
-        // TODO(pjarosik) validate Us4RSettings
-        // validate us4rsettings:
-        // if probe
+        // Validate us4r settings (general).
+        Us4RSettingsValidator validator(ordinal);
+        validator.validate(settings);
+        validator.throwOnErrors();
 
         // -- Probes:
 
         // -- ProbeAdapters:
 
         // -- Us4OEMs:
-        Us4RSettings::Us4OEMSettingsCollection us4oemCfgs = getUs4OEMSettings(
+        std::vector<Us4OEMSettings> us4oemCfgs = getUs4OEMSettings(
                 settings);
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");
@@ -67,10 +69,10 @@ public:
 
 private:
 
-    Us4RSettings::Us4OEMSettingsCollection
+    std::vector<Us4OEMSettings>
     getUs4OEMSettings(const Us4RSettings &us4rSettings) {
         // TODO(pjarosik) generate Us4OEMSettings based on the Probe and Adapter configurations
-        return us4rSettings.getUs4oemSettings();
+        return us4rSettings.getUs4OEMSettings();
     }
 
     /**

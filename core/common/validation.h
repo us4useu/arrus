@@ -166,6 +166,15 @@ protected:
         }
     }
 
+    void expectFalse(const std::string &parameter,
+                    bool condition, const std::string &msg) {
+        if(condition) {
+            errors.emplace(parameter, arrus::format(
+                    "Value '{}': {}",
+                    parameter, msg));
+        }
+    }
+
 
 private:
     // parameter name -> messages
