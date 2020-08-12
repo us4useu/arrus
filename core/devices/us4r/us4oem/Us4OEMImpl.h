@@ -1,10 +1,10 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEM_US4OEMIMPL_H
-#define ARRUS_CORE_DEVICES_US4OEM_US4OEMIMPL_H
+#ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H
+#define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H
 
 #include <utility>
 
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
-#include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {
 
@@ -42,4 +42,4 @@ private:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_US4OEM_US4OEMIMPL_H
+#endif //ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H

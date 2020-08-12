@@ -9,7 +9,6 @@ set(SOURCE_FILES
     api/common/logging.h
     api/common/types.h
     api/devices/Device.h
-    api/devices/UltrasoundDevice.h
     api/devices/TriggerGenerator.h
     api/devices/DeviceId.h
     api/devices/probe/Probe.h
@@ -59,14 +58,14 @@ set(SOURCE_FILES
     session/Session.h
     session/Session.cpp
 
-    external/ius4oem/IUs4OEMFactory.h
-    external/ius4oem/IUs4OEMFactoryImpl.h
-    external/ius4oem/LNAGainValueMap.h
-    external/ius4oem/PGAGainValueMap.h
-    external/ius4oem/ActiveTerminationValueMap.h
-    external/ius4oem/LPFCutoffValueMap.h
-    external/ius4oem/DTGCAttenuationValueMap.h
-    external/ius4oem/Us4RLoggerWrapper.h
+    devices/us4r/external/ius4oem/IUs4OEMFactory.h
+    devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h
+    devices/us4r/external/ius4oem/LNAGainValueMap.h
+    devices/us4r/external/ius4oem/PGAGainValueMap.h
+    devices/us4r/external/ius4oem/ActiveTerminationValueMap.h
+    devices/us4r/external/ius4oem/LPFCutoffValueMap.h
+    devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h
+    devices/us4r/external/ius4oem/Us4RLoggerWrapper.h
 )
 
 # Protobuf source files

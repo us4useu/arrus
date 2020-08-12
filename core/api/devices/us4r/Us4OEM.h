@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_API_DEVICES_US4OEM_H
-#define ARRUS_CORE_API_DEVICES_US4OEM_H
+#ifndef ARRUS_CORE_API_DEVICES_US4R_US4OEM_H
+#define ARRUS_CORE_API_DEVICES_US4R_US4OEM_H
 
 #include <memory>
 #include "arrus/core/api/devices/Device.h"
@@ -25,4 +25,4 @@ public:
 
 }
 
-#endif
+#endif // ARRUS_CORE_API_DEVICES_US4R_US4OEM_H

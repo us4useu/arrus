@@ -1,12 +1,12 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_IUS4OEM_IUS4OEMFACTORYIMPL_H
-#define ARRUS_CORE_DEVICES_US4OEM_IMPL_IUS4OEM_IUS4OEMFACTORYIMPL_H
+#ifndef ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMFACTORYIMPL_H
+#define ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMFACTORYIMPL_H
 
 #include "IUs4OEMFactory.h"
 
 #include <ius4oem.h>
 
 #include "arrus/core/common/logging.h"
-#include "arrus/core/external/ius4oem/Us4RLoggerWrapper.h"
+#include "arrus/core/devices/us4r/external/ius4oem/Us4RLoggerWrapper.h"
 
 
 namespace arrus {
@@ -41,4 +41,4 @@ private:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_US4OEM_IMPL_IUS4OEM_IUS4OEMFACTORYIMPL_H
+#endif //ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMFACTORYIMPL_H

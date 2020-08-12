@@ -1,13 +1,13 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMFACTORYIMPL_H
-#define ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMFACTORYIMPL_H
+#ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H
+#define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H
 
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/common/asserts.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"
-#include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
-#include "arrus/core/external/ius4oem/PGAGainValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 
 namespace arrus {
 class Us4OEMFactoryImpl : public Us4OEMFactory {
@@ -162,4 +162,4 @@ private:
 };
 }
 
-#endif //ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMFACTORYIMPL_H
+#endif //ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H

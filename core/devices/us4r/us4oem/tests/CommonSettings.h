@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEM_TESTS_COMMONS_H
-#define ARRUS_CORE_DEVICES_US4OEM_TESTS_COMMONS_H
+#ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H
+#define ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H
 
 #include "arrus/core/common/collections.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
@@ -45,4 +45,4 @@ struct TestUs4OEMSettings {
 };
 
 
-#endif //ARRUS_CORE_DEVICES_US4OEM_TESTS_COMMONS_H
+#endif //ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H

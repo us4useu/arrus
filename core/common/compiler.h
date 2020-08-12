@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_UTILS_COMPILER_H
-#define ARRUS_CORE_UTILS_COMPILER_H
+#ifndef ARRUS_CORE_COMMON_COMPILER_H
+#define ARRUS_CORE_COMMON_COMPILER_H
 
 #define IGNORE_UNUSED(x) do {(void)(x);} while(0)
 
@@ -13,4 +13,4 @@
 #define COMPILER_IGNORE_UNUSED  _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")  _Pragma("GCC diagnostic ignored \"-Wunused-variable\"")
 #endif
 
-#endif //ARRUS_CORE_UTILS_COMPILER_H
+#endif //ARRUS_CORE_COMMON_COMPILER_H

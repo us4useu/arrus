@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_UTILS_H
-#define ARRUS_CORE_UTILS_H
+#ifndef ARRUS_CORE_COMMON_HASH_H
+#define ARRUS_CORE_COMMON_HASH_H
 
 #include <cstddef>
 
@@ -34,4 +34,4 @@ inline std::size_t hash_combine(const T &v, Rest... rest) {
 
 }
 
-#endif //ARRUS_CORE_UTILS_H
+#endif //ARRUS_CORE_COMMON_HASH_H

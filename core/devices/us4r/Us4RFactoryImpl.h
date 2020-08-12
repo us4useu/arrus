@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_DEVICES_US4R_IMPL_US4RFACTORYIMPL_H
-#define ARRUS_CORE_DEVICES_US4R_IMPL_US4RFACTORYIMPL_H
+#ifndef ARRUS_CORE_DEVICES_US4R_US4RFACTORYIMPL_H
+#define ARRUS_CORE_DEVICES_US4R_US4RFACTORYIMPL_H
 
 #include <numeric>
 #include <boost/range/combine.hpp>
@@ -11,7 +11,7 @@
 #include "arrus/core/devices/us4r/Us4RSettingsValidator.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 
-#include "arrus/core/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus {
 
@@ -125,4 +125,4 @@ private:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_US4R_IMPL_US4RFACTORYIMPL_H
+#endif //ARRUS_CORE_DEVICES_US4R_US4RFACTORYIMPL_H

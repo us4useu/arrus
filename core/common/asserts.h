@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_UTILS_ASSERTS_H
-#define ARRUS_CORE_UTILS_ASSERTS_H
+#ifndef ARRUS_CORE_COMMON_ASSERTS_H
+#define ARRUS_CORE_COMMON_ASSERTS_H
 
 #include "arrus/core/api/common/exceptions.h"
 
@@ -54,4 +54,4 @@ do {                                                      \
 } while(0)
 
 
-#endif //ARRUS_CORE_UTILS_ASSERTS_H
+#endif //ARRUS_CORE_COMMON_ASSERTS_H

@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_API_DEVICE_H
-#define ARRUS_CORE_API_DEVICE_H
+#ifndef ARRUS_CORE_API_DEVICES_DEVICE_H
+#define ARRUS_CORE_API_DEVICES_DEVICE_H
 
 #include "arrus/core/api/devices/DeviceId.h"
 
@@ -28,4 +28,4 @@ protected:
 
 
 
-#endif //ARRUS_CORE_API_DEVICE_H
+#endif //ARRUS_CORE_API_DEVICES_DEVICE_H

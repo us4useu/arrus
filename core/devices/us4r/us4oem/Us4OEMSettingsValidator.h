@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMSETTINGSVALIDATOR_H
-#define ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMSETTINGSVALIDATOR_H
+#ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMSETTINGSVALIDATOR_H
+#define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMSETTINGSVALIDATOR_H
 
 #include <unordered_set>
 
@@ -9,11 +9,11 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/DeviceSettingsValidator.h"
 
-#include "arrus/core/external/ius4oem/PGAGainValueMap.h"
-#include "arrus/core/external/ius4oem/LNAGainValueMap.h"
-#include "arrus/core/external/ius4oem/LPFCutoffValueMap.h"
-#include "arrus/core/external/ius4oem/DTGCAttenuationValueMap.h"
-#include "arrus/core/external/ius4oem/ActiveTerminationValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
 
 namespace arrus {
 
@@ -130,4 +130,4 @@ public:
 
 }
 
-#endif //ARRUS_CORE_DEVICES_US4OEM_IMPL_US4OEMSETTINGSVALIDATOR_H
+#endif //ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMSETTINGSVALIDATOR_H

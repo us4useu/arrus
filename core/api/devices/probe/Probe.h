@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_API_DEVICES_PROBE_PROBE_H
 #define ARRUS_CORE_API_DEVICES_PROBE_PROBE_H
 
-#include "arrus/core/api/devices/Device.h"
+#include "../Device.h"
 
 namespace arrus {
 
