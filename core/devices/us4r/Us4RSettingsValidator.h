@@ -16,8 +16,9 @@ public:
             expectTrue("probe adapter settings",
                        obj.getProbeAdapterSettings().has_value(),
                        "At least probe adapter settings is required.");
+            // TODO wymagaj tez podpietej glowicy
             expectTrue("tgc settings",
-                       obj.getTGCSettings().has_value(),
+                       obj.getRxSettings().has_value(),
                        "Us4R TGC settings must be provided.");
         } else {
             expectFalse(

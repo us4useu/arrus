@@ -1,13 +1,19 @@
 #ifndef ARRUS_CORE_API_DEVICES_PROBE_PROBESETTINGS_H
 #define ARRUS_CORE_API_DEVICES_PROBE_PROBESETTINGS_H
 
+
+#include "arrus/core/api/common/types.h"
+
 namespace arrus {
 class ProbeSettings {
-    // TODO ProbeModel
-    // TODO ProbeToAdapterConnection
+public:
+    [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
+        return channelMapping;
+    }
+
 private:
-    /** Probe channel -> Adapte channel mapping. */
-    std::vector<ChannelIdx> mapping;
+    /** Probe channel -> Adapter channel mapping. */
+    std::vector<ChannelIdx> channelMapping;
 };
 }
 

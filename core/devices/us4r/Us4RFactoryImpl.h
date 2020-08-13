@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_US4RFACTORYIMPL_H
 
 #include <numeric>
+#include <stdexcept>
 #include <boost/range/combine.hpp>
 
 #include "arrus/core/common/asserts.h"
@@ -9,6 +10,7 @@
 #include "arrus/core/devices/us4r/Us4RFactory.h"
 #include "arrus/core/devices/us4r/Us4RImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsValidator.h"
+#include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
@@ -23,14 +25,45 @@ public:
 
     Us4R::Handle
     getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
+        DeviceId id(DeviceType::Us4R, ordinal);
+
         // Validate us4r settings (general).
         Us4RSettingsValidator validator(ordinal);
         validator.validate(settings);
         validator.throwOnErrors();
 
-        // -- Us4OEMs:
-        std::vector<Us4OEMSettings> us4oemCfgs = getUs4OEMSettings(
-                settings);
+        if(settings.getProbeAdapterSettings().has_value()) {
+            // Probe Adapter
+            auto &probeAdapterSettings =
+                    settings.getProbeAdapterSettings().value();
+            auto &rxSettings =
+                    settings.getRxSettings().value();
+
+            std::vector<Us4OEMSettings> us4OEMSettings =
+                    Us4RSettingsConverter::convertToUs4OEMSettings(
+                            probeAdapterSettings, rxSettings);
+            std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(
+                    us4OEMSettings);
+
+            // Probe
+            if(settings.getProbeSettings().has_value()) {
+                // TODO(pjarosik) implement probe settings
+                throw std::runtime_error("NYI");
+            } else {
+
+            }
+        } else {
+            // Custom Us4OEMs only
+            std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(
+                    settings.getUs4OEMSettings());
+            return Us4R::Handle(new Us4RImpl(id, std::move(us4oems)));
+        }
+    }
+
+private:
+
+    std::vector<Us4OEM::Handle>
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");
         Ordinal nUs4oems = us4oemCfgs.size();
@@ -54,28 +87,7 @@ public:
                     us4oemFactory.getUs4OEM(i, ius4oems[i], us4oemCfgs[i])
             );
         }
-        ius4oems.clear();
-        // Ius4OEM handles are no longer available here.
-
-        // Probe Adapter
-
-
-        // Probe
-
-        // -- Us4R:
-        DeviceId id(DeviceType::Us4R, ordinal);
-        return Us4R::Handle(new Us4RImpl(id, std::move(us4oems)));
-    }
-
-private:
-
-    std::vector<Us4OEMSettings>
-    getUs4OEMSettings(const Us4RSettings &us4rSettings) {
-        // If probe adapter settings are set - convert them and TGC Settings to Us4OEMSettings
-        // -
-        // Otherwise return Us4OEMSettings
-        // TODO(pjarosik) generate Us4OEMSettings based on the Probe and Adapter configurations
-        return us4rSettings.getUs4OEMSettings();
+        return us4oems;
     }
 
     /**

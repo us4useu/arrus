@@ -18,6 +18,8 @@ namespace arrus {
  */
 class Us4OEMSettings {
 public:
+    using ChannelMapping = std::vector<ChannelIdx>;
+
     /**
      * Us4OEM Settings constructor.
      *
@@ -36,7 +38,7 @@ public:
      * @param rxSettings
      * @param tgcSamples tgc curve to apply, empty list means to turn off TGC
      */
-    Us4OEMSettings(std::vector<ChannelIdx> channelMapping,
+    Us4OEMSettings(ChannelMapping channelMapping,
                    BitMask activeChannelGroups,
                    RxSettings rxSettings)
             : channelMapping(std::move(channelMapping)),

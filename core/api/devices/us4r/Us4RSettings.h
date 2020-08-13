@@ -39,7 +39,7 @@ public:
         return probeSettings;
     }
 
-    [[nodiscard]] const std::optional<RxSettings> &getTGCSettings() const {
+    [[nodiscard]] const std::optional<RxSettings> &getRxSettings() const {
         return rxSettings;
     }
 

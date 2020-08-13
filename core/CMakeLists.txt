@@ -22,6 +22,9 @@ set(SOURCE_FILES
     api/devices/us4r/RxSettings.h
     api/session/Session.h
     api/session/SessionSettings.h
+    api/ops/Tx.h
+    api/ops/Rx.h
+    api/ops/TxRx.h
 
     common/hash.h
     common/compiler.h
@@ -51,10 +54,11 @@ set(SOURCE_FILES
     devices/us4r/Us4RImpl.h
     devices/us4r/Us4RImpl.cpp
     devices/us4r/Us4RSettingsValidator.h
+    devices/us4r/Us4RSettingsConverter.h
 
     devices/us4r/probeadapter/ProbeAdapterFactory.h
     devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h
-    devices/us4r/probeadapter/ProbeAdapterSettingsConversion.h
+    devices/us4r/probeadapter/ProbeAdapterImpl.h
 
     devices/probe/ProbeFactory.h
 
@@ -71,6 +75,7 @@ set(SOURCE_FILES
 
     session/SessionImpl.h
     session/SessionImpl.cpp
+
 )
 
 # Protobuf source files
