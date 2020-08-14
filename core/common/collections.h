@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <numeric>
+#include <unordered_set>
 
 namespace arrus {
 
@@ -29,6 +30,11 @@ inline std::vector<T> getNTimes(const T value, size_t n) {
         values.push_back(value);
     }
     return values;
+}
+
+template<typename T>
+inline size_t countUnique(const std::vector<T> values) {
+    return std::unordered_set<T>(std::begin(values), std::end(values)).size();
 }
 
 }

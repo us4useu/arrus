@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4RSETTINGSCONVERTER_H
 #define ARRUS_CORE_DEVICES_US4R_US4RSETTINGSCONVERTER_H
 
+#include <limits>
+
 #include "arrus/core/common/asserts.h"
 
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
@@ -12,6 +14,8 @@ namespace arrus {
 
 class Us4RSettingsConverter {
 public:
+
+
     static std::vector<Us4OEMSettings>
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
                             const ProbeSettings &probeSettings,
@@ -19,22 +23,24 @@ public:
         // Assumption:
         // for each module there is N_RX_CHANNELS*k elements in mapping
         // each group of N_RX_CHANNELS contains elements grouped to a single bucket (i*32, (i+1)*32)
+        const auto &adapterSettingsMapping =
+                probeAdapterSettings.getChannelMapping();
+        const auto &probeSettingsMapping = probeSettings.getChannelMapping();
 
         // get number of us4oems from the probe adapter mapping
-        // TODO(pjarosik) implement
-        Ordinal nUs4OEMs = 2;
+        // Determined based on ADAPTER MAPPINGS
+        Ordinal nUs4OEMs = getNumberOfModules(adapterSettingsMapping);
         // Convert to list of us4oem mappings and active channel groups
 
         auto const nRx = Us4OEMImpl::N_RX_CHANNELS;
         auto const nTx = Us4OEMImpl::N_TX_CHANNELS;
         auto const actChSize = Us4OEMImpl::ACTIVE_CHANNEL_GROUP_SIZE;
 
+        std::vector<Us4OEMSettings> result(nUs4OEMs);
         std::vector<Ordinal> currentRxGroup(nUs4OEMs);
         std::vector<Ordinal> currentRxGroupElement(nUs4OEMs);
 
-        const auto &adapterSettingsMapping =
-                probeAdapterSettings.getChannelMapping();
-        const auto &probeSettingsMapping = probeSettings.getChannelMapping();
+
 
         // physical mapping for us4oems
         std::vector<Us4OEMSettings::ChannelMapping> us4oemChannelMapping;
@@ -51,8 +57,7 @@ public:
         }
         // Map settings to:
         // - internal us4oem mapping,
-        // - adapter channel mapping,
-        // - active channel groups mask
+        // - adapter channel mapping
         for(auto[module, channel] : probeAdapterSettings.getChannelMapping()) {
             // Channel mapping
             const auto group = channel / nRx;
@@ -82,8 +87,35 @@ public:
         std::vector<BitMask> activeChannelGroups;
         for(const auto adapterChannel : probeSettingsMapping) {
             auto[module, us4oemChannel] = adapterChannelMapping[adapterChannel];
+            // When at least one channel in group has mapping, the whole
+            // group of channels has to be active
             activeChannelGroups[module][us4oemChannel / actChSize] = true;
         }
+
+        for(int i = 0; i < nUs4OEMs; ++i) {
+            result[i] = {
+                    us4oemChannelMapping[i],
+                    activeChannelGroups[i],
+                    rxSettings
+            };
+        }
+        return result;
+    }
+
+private:
+    static Ordinal
+    getNumberOfModules(
+            const ProbeAdapterSettings::ChannelMapping &adapterMapping) {
+        std::vector<bool> mask(
+                std::numeric_limits<Ordinal>::max());
+        Ordinal count = 0;
+        for(auto[module, channel] : adapterMapping) {
+            if(!mask[module]) {
+                count++;
+                mask[module] = true;
+            }
+        }
+        return count;
     }
 };
 
