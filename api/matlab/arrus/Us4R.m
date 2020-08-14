@@ -108,7 +108,7 @@ classdef Us4R < handle
                 case 'STASequence'
                     sequenceType = "sta";
                 case "LINSequence"
-                    sequenceType = 'lin';
+                    sequenceType = "lin";
                 otherwise
                     error("ARRUS:IllegalArgument", ...
                         ['Unrecognized operation type ', class(sequenceOperation)])
@@ -275,6 +275,11 @@ classdef Us4R < handle
             for iPar=1:nPar
                 idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
+            end
+            
+            %% Warning: Convex & PWI/STA
+            if obj.sys.curv ~= 0 && ~strcmp(obj.seq.type,"lin")
+                warning('In this API version only LIN sequence is valid for convex arrays.');
             end
             
             %% Fixed parameters
