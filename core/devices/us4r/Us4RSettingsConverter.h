@@ -15,7 +15,6 @@ namespace arrus {
 class Us4RSettingsConverter {
 public:
 
-
     static std::vector<Us4OEMSettings>
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
                             const ProbeSettings &probeSettings,

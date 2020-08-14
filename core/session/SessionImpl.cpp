@@ -28,6 +28,9 @@ Device::Handle &SessionImpl::getDevice(const std::string &path) {
         ));
     }
     auto deviceId = DeviceId::parse(pathComponents[0]);
+    // If the top-level device is CompositeDevice, cast to it and call its getDevice
+    // Consider handling it in more general way
+
     return getDevice(deviceId);
 }
 

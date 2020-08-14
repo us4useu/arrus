@@ -36,22 +36,19 @@ public:
             // Probe Adapter
             auto &probeAdapterSettings =
                     settings.getProbeAdapterSettings().value();
+            auto &probeSettings =
+                    settings.getProbeSettings().value();
             auto &rxSettings =
                     settings.getRxSettings().value();
 
             std::vector<Us4OEMSettings> us4OEMSettings =
                     Us4RSettingsConverter::convertToUs4OEMSettings(
-                            probeAdapterSettings, rxSettings);
+                            probeAdapterSettings, probeSettings, rxSettings);
             std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(
                     us4OEMSettings);
 
-            // Probe
-            if(settings.getProbeSettings().has_value()) {
-                // TODO(pjarosik) implement probe settings
-                throw std::runtime_error("NYI");
-            } else {
 
-            }
+
         } else {
             // Custom Us4OEMs only
             std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(

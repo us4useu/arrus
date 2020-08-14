@@ -6,7 +6,7 @@
 
 namespace arrus {
 
-class ProbeAdapter : Device {
+class ProbeAdapter : public Device {
 public:
     using Handle = std::unique_ptr<ProbeAdapter>;
 

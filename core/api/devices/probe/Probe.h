@@ -5,7 +5,7 @@
 
 namespace arrus {
 
-class Probe : Device {
+class Probe : public Device {
 public:
 
     using Handle = std::unique_ptr<Probe>;

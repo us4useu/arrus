@@ -13,6 +13,7 @@ namespace arrus {
 	using ChannelIdx = uint16;
 	using BitMask = std::vector<bool>;
 
+	template<typename T> using RawHandle = T*;
 }
 
 #endif //ARRUS_CORE_TYPES_H
