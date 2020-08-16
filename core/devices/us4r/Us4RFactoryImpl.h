@@ -23,6 +23,7 @@ public:
                     IUs4OEMFactory &ius4oemFactory)
             : us4oemFactory(us4oemFactory), ius4oemFactory(ius4oemFactory) {}
 
+
     Us4R::Handle
     getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
         DeviceId id(DeviceType::Us4R, ordinal);
@@ -33,31 +34,40 @@ public:
         validator.throwOnErrors();
 
         if(settings.getProbeAdapterSettings().has_value()) {
-            // Probe Adapter
+            // Probe, Adapter -> Us4OEM settings.
             auto &probeAdapterSettings =
                     settings.getProbeAdapterSettings().value();
             auto &probeSettings =
                     settings.getProbeSettings().value();
             auto &rxSettings =
                     settings.getRxSettings().value();
-
             std::vector<Us4OEMSettings> us4OEMSettings =
                     Us4RSettingsConverter::convertToUs4OEMSettings(
                             probeAdapterSettings, probeSettings, rxSettings);
-            std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(
-                    us4OEMSettings);
-
-
-
+            std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(us4OEMSettings);
+            ProbeAdapter::Handle adapter = getAdapter(probeAdapterSettings);
+            Probe::Handle probe = getProbe(probeSettings);
+            return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe);
         } else {
             // Custom Us4OEMs only
             std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(
                     settings.getUs4OEMSettings());
-            return Us4R::Handle(new Us4RImpl(id, std::move(us4oems)));
+            return std::make_unique<Us4RImpl>(id, us4oems);
         }
     }
 
 private:
+
+    static Probe::Handle getProbe(const ProbeSettings &settings) {
+        // TODO(pjarosik) implement
+        return arrus::Probe::Handle();
+    }
+
+    static ProbeAdapter::Handle
+    getAdapter(const ProbeAdapterSettings &settings) {
+        // TODO implement (use AdapterFactoryImpl)
+        return arrus::ProbeAdapter::Handle();
+    }
 
     std::vector<Us4OEM::Handle>
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {

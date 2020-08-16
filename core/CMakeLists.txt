@@ -8,10 +8,13 @@ set(SOURCE_FILES
     api/common/exceptions.h
     api/common/logging.h
     api/common/types.h
+    api/common/Tuple.h
+    api/common/Interval.h
     api/devices/Device.h
     api/devices/TriggerGenerator.h
     api/devices/DeviceId.h
     api/devices/probe/Probe.h
+    api/devices/probe/ProbeModel.h
     api/devices/probe/ProbeSettings.h
     api/devices/us4r/ProbeAdapter.h
     api/devices/us4r/ProbeAdapterSettings.h
@@ -124,4 +127,5 @@ if(ARRUS_RUN_TESTS)
     create_core_test(devices/DeviceIdTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp)
+    create_core_test(devices/us4r/Us4RSettingsConverterTest.cpp)
 endif()

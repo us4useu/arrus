@@ -9,12 +9,6 @@ namespace arrus {
 
 class ProbeAdapterImpl : public ProbeAdapter {
 
-    void setTxRxSequence(const std::vector<TxRx) {
-
-        // Convert a list of tx/rx sequence to multiple tx/rxsequences
-        // for available us4oems
-
-    }
 
 private:
     using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
