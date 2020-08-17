@@ -1,5 +1,11 @@
 #include <fstream>
 #include <cstdint>
+#include <iostream>
+#include <cuda_runtime.h>
+#include <chrono>
+#include <stdio.h>
+
+// TODO replace int64_t with size_t
 
 // Computes position of given component, relative to the first component of
 // given entity.
@@ -10,6 +16,18 @@ float get_relative_position(const int componentNo,
     return (float) componentNo / (float) (componentsCount - 1) * entityWidth;
 }
 
+static __device__ __forceinline__ float sq(const float x) {
+    return x * x;
+}
+
+static __device__ __forceinline__
+float euclidean_distance(const float x1,
+                         const float y1,
+                         const float x2,
+                         const float y2) {
+    return sqrtf(sq(x1 - x2) + sq(y1 - y2));
+}
+
 static __device__ __forceinline__
 float time_lapse(const float distance,
                  const float speedOfSound) {
@@ -18,7 +36,7 @@ float time_lapse(const float distance,
 
 template<class T>
 static __device__ __forceinline__
-T
+float
 interpolate_1d(const T *input, const float approxSampleNo) {
     int sampleNoFloor = floorf(approxSampleNo);
     float ratio = approxSampleNo - sampleNoFloor;
@@ -27,11 +45,11 @@ interpolate_1d(const T *input, const float approxSampleNo) {
 }
 
 template<typename T>
-__forceinline__ __device__ T
+__forceinline__ __device__ float
 delay_and_sum_and_interpolate(
         const T *input,
-        const int64 receiversCount,
-        const int64 samplesCount,
+        const int64_t receiversCount,
+        const int64_t samplesCount,
         const float speedOfSound,
         const float receiverWidth,
         const float samplingFrequency,
@@ -40,7 +58,7 @@ delay_and_sum_and_interpolate(
         const float outputX,
         const float outputY
 ) {
-    T result = T(0);
+    float result = float(0);
     for(int r = 0; r < receiversCount; ++r) {
         float receiverX = get_relative_position(r, receiversCount,
                                                 receiverWidth);
@@ -52,10 +70,10 @@ delay_and_sum_and_interpolate(
                 time_lapse(totalDistance - startDepth, speedOfSound)
                 * samplingFrequency;
 
-        T recvImpact = T(0);
+        float recvImpact = float(0);
         auto sampleNo = (int) approxSampleNo;
         if((sampleNo < samplesCount) && (sampleNo >= 0)) {
-            const int64 inputOffset = samplesCount * r;
+            const int64_t inputOffset = samplesCount * r;
             recvImpact = interpolate_1d(input + inputOffset, approxSampleNo);
         }
         result += recvImpact;
@@ -72,8 +90,8 @@ delay_and_sum_and_interpolate(
 template<typename T>
 __global__ void sta_with_focusing_gpu(
         const T *input,
-        const int64 receiversCount,
-        const int64 samplesCount,
+        const int64_t receiversCount,
+        const int64_t samplesCount,
         const float speedOfSound,
         // rx subaperture size [m]
         const float receiverWidth,
@@ -81,10 +99,12 @@ __global__ void sta_with_focusing_gpu(
         const float areaHeight,
         const float startDepth,
         // rozmiar wyjsciowy w liczbie pikseli/probek
-        const int64 outputHeight,
-        const int64 outputWidth,
-        T *output) {
+        const int64_t outputHeight,
+        const int64_t outputWidth,
+        float *output) {
     // Here is computed one pixel output[y][x].
+    // printf("Calling\n");
+    
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -96,9 +116,9 @@ __global__ void sta_with_focusing_gpu(
     float transmitDistance = posY;
     // below implies, that x < eventsCount
     // event to get based on x
-    const int64 inputOffset = receiversCount * samplesCount * x;
+    const int64_t inputOffset = receiversCount * samplesCount * x;
 
-    T result = delay_and_sum_and_interpolate(
+    float result = delay_and_sum_and_interpolate(
             input + inputOffset,
             receiversCount,
             samplesCount,
@@ -114,52 +134,70 @@ __global__ void sta_with_focusing_gpu(
 }
 
 int main() {
-
-    const size_t N_SAMPLES = 4096;
+    const size_t N_SAMPLES = 8192;
     const size_t N_RX_CHANNELS = 64;
     const size_t N_EVENTS = 192;
 
-    const size_t DATA_SIZE = N_EVENTS*N_RX_CHANNELS*N_SAMPLES;
-    int16_t buffer = new int16_t[DATA_SIZE];
-    std::ifstream ifile("/home/pjarosik/data/data_rf.bin", std::ios::binary);
-    ifile.read((char*) buffer, DATA_SIZE*sizeof(int16_t));
-
     // parameters:
-    const int64 outputWidth = N_EVENTS;
-    const int64 outputHeight = N_SAMPLES;
+    const int64_t outputWidth = N_EVENTS;
+    const int64_t outputHeight = N_SAMPLES;
     const float speedOfSound = 1490;
     const float pitch = 0.30e-3;
     const float receiverWidth = N_RX_CHANNELS * pitch;
     const float samplingFrequency = 65e6;
     const float areaHeight = N_SAMPLES/samplingFrequency*speedOfSound/2;
-    const float startDepth =
+    const float startDepth = 5e-3; // TODO precompute
+
+
+    const size_t DATA_SIZE = N_EVENTS*N_RX_CHANNELS*N_SAMPLES;
+    int16_t* inBuffer = new int16_t[DATA_SIZE];
+    int16_t* gpuInBuffer;
+    cudaMalloc(&gpuInBuffer, DATA_SIZE*sizeof(int16_t));
+
+    float* outputBuffer = new float[N_EVENTS*N_SAMPLES];
+    float* gpuOutputBuffer;
+    cudaMalloc(&gpuOutputBuffer, N_EVENTS*N_SAMPLES*sizeof(float));
+
+    std::ifstream ifile("/home/pjarosik/data/rf2.bin", std::ios::binary);
+    ifile.read((char*) inBuffer, DATA_SIZE*sizeof(int16_t));
+
+    cudaMemcpy(inBuffer, gpuInBuffer, DATA_SIZE*sizeof(int16_t),
+               cudaMemcpyHostToDevice);
 
     // TODO use CUDA runtime heuristic
-    dim3 blockDim(std::min<int64>(8, outputWidth),
-                  std::min<int64>(32, outputHeight));
+    dim3 blockDim(std::min<int64_t>(8, outputWidth),
+                  std::min<int64_t>(32, outputHeight));
     dim3 gridDim(outputWidth / blockDim.x, outputHeight / blockDim.y);
 
-    sta_with_focusing_gpu<T> <<< gridDim, blockDim, 0>>> (
-            input, N_RX_CHANNELS, N_SAMPLES, speedOfSound, receiverWidth,
-                    samplingFrequency, areaHeight, startDepth, outputHeight,
-                    outputWidth, output
-    );
+    std::cout << "Running kernel" << std::endl;
+
+    float totalTime = 0;
+
+    size_t nIt = 1;
+
+    for(int i = 0; i < nIt; ++i) {
+
+        auto start = std::chrono::steady_clock::now();
+
+        sta_with_focusing_gpu<int16_t> <<<gridDim, blockDim>>> (
+           gpuInBuffer, N_RX_CHANNELS, N_SAMPLES, speedOfSound, receiverWidth,
+           samplingFrequency, areaHeight, startDepth, outputHeight,
+           outputWidth, gpuOutputBuffer);
+        cudaDeviceSynchronize();
+        cudaMemcpy(gpuOutputBuffer, outputBuffer, N_EVENTS*N_SAMPLES*sizeof(float),
+                   cudaMemcpyDeviceToHost);
+        auto end = std::chrono::steady_clock::now();
+        totalTime += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    }
+
+    std::cout << "Total time: " << totalTime << std::endl;
+    std::cout << "Average time: " << totalTime/(float)nIt << std::endl;
+
+    std::cout << "Done running the kernel" << std::endl;
+
+    cudaMemcpy(gpuOutputBuffer, outputBuffer, N_EVENTS*N_SAMPLES*sizeof(int16_t),
+               cudaMemcpyDeviceToHost);
 
 }
 
-template<typename T>
-void STA<GPUDevice, T>::operator()(const GPUDevice &d,
-                                   const T *input,
-                                   const int64 receiversCount,
-                                   const int64 samplesCount,
-                                   const float speedOfSound,
-                                   const float receiverWidth,
-                                   const float samplingFrequency,
-                                   const float startDepth,
-                                   const float areaHeight,
-                                   const int64 outputHeight,
-                                   const int64 outputWidth,
-                                   T *output) {
-
-}
 
