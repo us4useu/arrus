@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_DEVICES_US4R_PROBEADAPTERSETTINGS_H
 
 #include <utility>
+#include <unordered_set>
 
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/common/types.h"

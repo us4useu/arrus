@@ -10,14 +10,15 @@ class ProbeAdapter : public Device {
 public:
     using Handle = std::unique_ptr<ProbeAdapter>;
 
-    explicit ProbeAdapter(const DeviceId &id): Device(id) {}
-
     ~ProbeAdapter() override = default;
 
     ProbeAdapter(ProbeAdapter const&) = delete;
     ProbeAdapter(ProbeAdapter const&&) = delete;
     void operator=(ProbeAdapter const&) = delete;
     void operator=(ProbeAdapter const&&) = delete;
+
+protected:
+    explicit ProbeAdapter(const DeviceId &id): Device(id) {}
 };
 
 }

@@ -3,6 +3,8 @@
 
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "ProbeAdapterFactory.h"
+#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h"
+#include "ProbeAdapterImpl.h"
 
 namespace arrus {
 
@@ -11,10 +13,33 @@ public:
     ProbeAdapter::Handle
     getProbeAdapter(const ProbeAdapterSettings &settings,
                     std::vector<Us4OEM::RawHandle> us4oems) override {
-        // Validate
-        // Make sure, that the number of us4oems is equal to
-        // the number of us4oem mapping configurations available in the
-        // provided mapping
+        const DeviceId id(DeviceType::ProbeAdapter, 0);
+        ProbeAdapterSettingsValidator validator(id.getOrdinal());
+        validator.validate(settings);
+        validator.throwOnErrors();
+
+        assertCorrectNumberOfUs4OEMs(settings, us4oems);
+
+        return ProbeAdapter::Handle(new ProbeAdapterImpl(
+                id,
+                settings.getModelId(),
+                us4oems,
+                settings.getChannelMapping()));
+    }
+
+private:
+    static void assertCorrectNumberOfUs4OEMs(
+            const ProbeAdapterSettings &settings,
+            const std::vector<Us4OEM::RawHandle> &us4oems) {
+        std::unordered_set<Ordinal> ordinals;
+        std::transform(std::begin(settings.getChannelMapping()),
+                       std::end(settings.getChannelMapping()),
+                       std::begin(ordinals),
+                       [](auto v) { return v.first; });
+        ARRUS_REQUIRES_TRUE(ordinals.size() == us4oems.size(),
+                            arrus::format("Incorrect number of us4oems "
+                                          "(provided {}, from settings {})",
+                                          us4oems.size(), ordinals.size()));
     }
 };
 
