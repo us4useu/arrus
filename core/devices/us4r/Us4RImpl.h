@@ -13,12 +13,13 @@ class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEM::Handle>;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems)
+    Us4RImpl(const DeviceId &id, Us4OEMs &us4oems)
             : Us4R(id), us4oems(std::move(us4oems)) {}
 
     Us4RImpl(const DeviceId &id, Us4OEMs &us4oems,
              ProbeAdapter::Handle &probeAdapter, Probe::Handle &probe)
-            : Us4R(id), us4oems(us4oems), probeAdapter(std::move(probeAdapter)),
+            : Us4R(id), us4oems(std::move(us4oems)),
+              probeAdapter(std::move(probeAdapter)),
               probe(std::move(probe)) {}
 
 

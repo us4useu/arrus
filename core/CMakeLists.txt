@@ -1,10 +1,13 @@
 set(TARGET_NAME arrus-core)
 
+# Protobuf source files
+#protobuf_generate_cpp(PROTO_SRC PROTO_HDRS protobuf/settings/SessionSettings.proto)
+#message("GENERATED PROTO: ${PROTO_SRC} ${PROTO_HDRS}")
 ################################################################################
-# Source files
+# Target
 ################################################################################
-set(SOURCE_FILES
-    # API
+add_library(${TARGET_NAME} SHARED
+
     api/common/exceptions.h
     api/common/logging.h
     api/common/types.h
@@ -15,8 +18,10 @@ set(SOURCE_FILES
     api/devices/DeviceId.h
     api/devices/probe/Probe.h
     api/devices/probe/ProbeModel.h
+    api/devices/probe/ProbeModelId.h
     api/devices/probe/ProbeSettings.h
     api/devices/us4r/ProbeAdapter.h
+    api/devices/us4r/ProbeAdapterModelId.h
     api/devices/us4r/ProbeAdapterSettings.h
     api/devices/us4r/Us4OEM.h
     api/devices/us4r/Us4OEMSettings.h
@@ -25,9 +30,6 @@ set(SOURCE_FILES
     api/devices/us4r/RxSettings.h
     api/session/Session.h
     api/session/SessionSettings.h
-    api/ops/Tx.h
-    api/ops/Rx.h
-    api/ops/TxRx.h
 
     common/hash.h
     common/compiler.h
@@ -49,19 +51,19 @@ set(SOURCE_FILES
     devices/us4r/us4oem/Us4OEMFactory.h
     devices/us4r/us4oem/Us4OEMFactoryImpl.h
     devices/us4r/us4oem/Us4OEMImpl.h
-    devices/us4r/us4oem/Us4OEMImpl.cpp
     devices/us4r/us4oem/Us4OEMSettingsValidator.h
 
     devices/us4r/Us4RFactory.h
     devices/us4r/Us4RFactoryImpl.h
     devices/us4r/Us4RImpl.h
-    devices/us4r/Us4RImpl.cpp
     devices/us4r/Us4RSettingsValidator.h
     devices/us4r/Us4RSettingsConverter.h
+    devices/us4r/Us4RSettingsConverterImpl.h
 
     devices/us4r/probeadapter/ProbeAdapterFactory.h
     devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h
     devices/us4r/probeadapter/ProbeAdapterImpl.h
+    devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
 
     devices/probe/ProbeFactory.h
 
@@ -75,19 +77,12 @@ set(SOURCE_FILES
     devices/us4r/external/ius4oem/LPFCutoffValueMap.h
     devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h
     devices/us4r/external/ius4oem/Us4RLoggerWrapper.h
+    devices/us4r/external/ius4oem/IUs4OEMInitializer.h
+    devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
 
     session/SessionImpl.h
     session/SessionImpl.cpp
-
 )
-
-# Protobuf source files
-#protobuf_generate_cpp(PROTO_SRC PROTO_HDRS protobuf/settings/SessionSettings.proto)
-#message("GENERATED PROTO: ${PROTO_SRC} ${PROTO_HDRS}")
-################################################################################
-# Target
-################################################################################
-add_library(${TARGET_NAME} SHARED ${SOURCE_FILES})
 
 ################################################################################
 # Compile definitions
@@ -117,6 +112,7 @@ target_link_libraries(${TARGET_NAME}
     Boost::Boost
     Protobuf::Protobuf
     fmt::fmt
+    range-v3::range-v3
 )
 
 ################################################################################
@@ -126,6 +122,9 @@ if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
     create_core_test(devices/DeviceIdTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp)
+    create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp)
-    create_core_test(devices/us4r/Us4RSettingsConverterTest.cpp)
+    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp)
+    create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp)
+    create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
 endif()

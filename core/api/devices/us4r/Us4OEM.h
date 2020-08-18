@@ -11,6 +11,7 @@ namespace arrus {
 class Us4OEM : public Device, public TriggerGenerator {
 public:
     using Handle = std::unique_ptr<Us4OEM>;
+    using RawHandle = PtrHandle<Us4OEM>;
 
     explicit Us4OEM(const DeviceId &id): Device(id) {}
 

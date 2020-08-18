@@ -5,23 +5,35 @@
 #include <stdexcept>
 #include <boost/range/combine.hpp>
 
-#include "arrus/core/common/asserts.h"
 
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializer.h"
+#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactory.h"
+#include "arrus/core/devices/probe/ProbeFactory.h"
+#include "arrus/core/common/asserts.h"
 #include "arrus/core/devices/us4r/Us4RFactory.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/Us4RImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsValidator.h"
-#include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
+#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 
 namespace arrus {
 
 class Us4RFactoryImpl : public Us4RFactory {
 public:
     Us4RFactoryImpl(Us4OEMFactory &us4oemFactory,
-                    IUs4OEMFactory &ius4oemFactory)
-            : us4oemFactory(us4oemFactory), ius4oemFactory(ius4oemFactory) {}
+                    ProbeAdapterFactory &adapterFactory,
+                    ProbeFactory &probeFactory,
+                    IUs4OEMFactory &ius4oemFactory,
+                    IUs4OEMInitializer &ius4oemInitializer,
+                    Us4RSettingsConverter &us4RSettingsConverter)
+            : us4oemFactory(us4oemFactory), ius4oemFactory(ius4oemFactory),
+              probeAdapterFactory(adapterFactory), probeFactory(probeFactory),
+              ius4oemInitializer(ius4oemInitializer),
+              us4RSettingsConverter(us4RSettingsConverter) {}
 
 
     Us4R::Handle
@@ -35,18 +47,39 @@ public:
 
         if(settings.getProbeAdapterSettings().has_value()) {
             // Probe, Adapter -> Us4OEM settings.
+            // Adapter
             auto &probeAdapterSettings =
                     settings.getProbeAdapterSettings().value();
+            ProbeAdapterSettingsValidator adapterValidator(0);
+            adapterValidator.validate(probeAdapterSettings);
+            adapterValidator.throwOnErrors();
+            // Probe
             auto &probeSettings =
                     settings.getProbeSettings().value();
+            // TODO validate probe settings
             auto &rxSettings =
                     settings.getRxSettings().value();
-            std::vector<Us4OEMSettings> us4OEMSettings =
-                    Us4RSettingsConverter::convertToUs4OEMSettings(
-                            probeAdapterSettings, probeSettings, rxSettings);
+            // Rx settings will be validated by a specific device
+            // (Us4OEMs validator)
+
+            // Convert to Us4OEM settings
+            auto[us4OEMSettings, adapterSettings] =
+                    us4RSettingsConverter.convertToUs4OEMSettings(
+                    probeAdapterSettings, probeSettings, rxSettings);
+
             std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(us4OEMSettings);
-            ProbeAdapter::Handle adapter = getAdapter(probeAdapterSettings);
-            Probe::Handle probe = getProbe(probeSettings);
+            std::vector<Us4OEM::RawHandle> us4oemPtrs(us4oems.size());
+            std::transform(
+                    std::begin(us4oems), std::end(us4oems),
+                    std::begin(us4oemPtrs),
+                    [](const Us4OEM::Handle &ptr) { return ptr.get(); });
+            // Create adapter.
+            ProbeAdapter::Handle adapter =
+                    probeAdapterFactory.getProbeAdapter(adapterSettings,
+                                                        us4oemPtrs);
+            // Create probe.
+            Probe::Handle probe = probeFactory.getProbe(probeSettings,
+                                                        adapter.get());
             return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe);
         } else {
             // Custom Us4OEMs only
@@ -57,18 +90,6 @@ public:
     }
 
 private:
-
-    static Probe::Handle getProbe(const ProbeSettings &settings) {
-        // TODO(pjarosik) implement
-        return arrus::Probe::Handle();
-    }
-
-    static ProbeAdapter::Handle
-    getAdapter(const ProbeAdapterSettings &settings) {
-        // TODO implement (use AdapterFactoryImpl)
-        return arrus::ProbeAdapter::Handle();
-    }
-
     std::vector<Us4OEM::Handle>
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
@@ -80,7 +101,10 @@ private:
         // This is because Us4OEM initialization procedure needs to consider
         // existence of some master module (by default it's the 'Us4OEM:0').
         // Check the initializeModules function to see why.
-        std::vector<IUs4OEMHandle> ius4oems = initializeModules(nUs4oems);
+        std::vector<IUs4OEMHandle> ius4oems =
+                ius4oemFactory.getModules(nUs4oems);
+
+        ius4oemInitializer.initModules(ius4oems);
 
         // Create Us4OEMs.
         Us4RImpl::Us4OEMs us4oems;
@@ -97,45 +121,12 @@ private:
         return us4oems;
     }
 
-    /**
-     * Creates IUs4OEM handles and initializes them according to
-     */
-    std::vector<IUs4OEMHandle> initializeModules(const Ordinal nModules) {
-        std::vector<IUs4OEMHandle> us4oems;
-
-        std::vector<Ordinal> ordinals(nModules);
-        std::iota(std::begin(ordinals), std::end(ordinals), 0);
-
-        // Create Us4OEM handles.
-        for(auto ordinal : ordinals) {
-            us4oems.push_back(ius4oemFactory.getIUs4OEM(ordinal));
-        }
-        // Reorder us4oems according to ids (us4oem with the lowest id is the
-        // first one, with the highest id - the last one).
-        // TODO(pjarosik) make the below sorting exception safe
-        // (currently will std::terminate on an exception).
-        std::sort(std::begin(us4oems), std::end(us4oems),
-                  [](const IUs4OEMHandle &x, const IUs4OEMHandle &y) {
-                      return x->GetID() < y->GetID();
-                  });
-
-        for(auto &u : us4oems) {
-            u->Initialize(1);
-        }
-        // Perform successive initialization levels.
-        for(int level = 2; level <= 4; level++) {
-            us4oems[0]->Synchronize();
-            for(auto &u : us4oems) {
-                u->Initialize(level);
-            }
-        }
-        // Us4OEMs are initialized here.
-        return us4oems;
-    }
-
-
-    Us4OEMFactory &us4oemFactory;
     IUs4OEMFactory &ius4oemFactory;
+    IUs4OEMInitializer &ius4oemInitializer;
+    Us4RSettingsConverter &us4RSettingsConverter;
+    Us4OEMFactory &us4oemFactory;
+    ProbeAdapterFactory &probeAdapterFactory;
+    ProbeFactory &probeFactory;
 };
 
 }

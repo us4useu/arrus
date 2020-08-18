@@ -29,7 +29,8 @@ inline bool isDigitsOnly(const std::string &num) {
 }
 
 template<typename T>
-inline std::string toString(const std::vector<T> values) {
+inline std::string toString(
+        const std::vector<T> &values) {
     std::vector<std::string> vStr(values.size());
     std::transform(std::begin(values), std::end(values), std::begin(vStr),
                    [](auto v) {return std::to_string(v);});
@@ -37,7 +38,17 @@ inline std::string toString(const std::vector<T> values) {
 }
 
 template<typename T>
-inline std::string toString(const std::set<T> values) {
+inline std::string toStringTransform(
+        const std::vector<T> &values,
+        const std::function<std::string(T)> &func) {
+    std::vector<std::string> vStr(values.size());
+    std::transform(std::begin(values), std::end(values), std::begin(vStr),
+                   [&func](T v) {return func(v);});
+    return boost::algorithm::join(vStr, ", ");
+}
+
+template<typename T>
+inline std::string toString(const std::set<T> &values) {
     std::vector<std::string> vStr(values.size());
     std::transform(std::begin(values), std::end(values), std::begin(vStr),
                    [](auto v) {return std::to_string(v);});

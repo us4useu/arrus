@@ -11,7 +11,7 @@ namespace arrus {
 class Device {
 public:
     using Handle = std::unique_ptr<Device>;
-    using RawHandle = RawHandle<Device>;
+    using RawHandle = PtrHandle<Device>;
 
     [[nodiscard]] DeviceId getDeviceId() const {
         return id;

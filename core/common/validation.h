@@ -33,6 +33,10 @@ public:
         return result;
     }
 
+    bool hasErrors() {
+        return !errors.empty();
+    }
+
     void throwOnErrors() {
         if(!errors.empty()) {
             // Generate message with errors.
@@ -42,14 +46,14 @@ public:
             for(auto i = std::begin(errors);
                 i != std::end(errors); i = r.second) {
                 if(c > 0) {
-                    ss << ", ";
+                    ss << ". ";
                 }
                 ss << "parameter '" << i->first << "': ";
                 r = errors.equal_range(i->first);
                 int cc = 0;
                 for(auto j = r.first; j != r.second; ++j) {
                     if(cc > 0) {
-                        ss << ", ";
+                        ss << ". ";
                     }
                     ss << j->second;
                     cc++;
@@ -68,7 +72,7 @@ public:
 protected:
 
     /**
-     * Checks is given value us equal to 'expected'.
+     * Checks is given value is equal to 'expected'.
      */
     template<typename U>
     void
@@ -82,6 +86,27 @@ protected:
                                    parameter,
                                    msg,
                                    expected,
+                                   value
+                           ));
+        }
+    }
+
+    /**
+     * Checks is given value is divisible by divider.
+     */
+    template<typename U>
+    void
+    expectDivisible(
+            const std::string &parameter, const U &value, const U &divider,
+            const std::string &msg = "") {
+        if(value % divider != 0) {
+            errors.emplace(parameter,
+                           arrus::format(
+                                   "Value '{}{}' should be divisible by '{}' "
+                                   "(actually is: '{}')",
+                                   parameter,
+                                   msg,
+                                   divider,
                                    value
                            ));
         }

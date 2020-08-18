@@ -4,6 +4,7 @@
 #include <memory>
 #include <ius4oem.h>
 
+#include "arrus/core/api/devices/DeviceId.h"
 
 namespace arrus {
 
@@ -16,6 +17,7 @@ using IUs4OEMHandle = std::unique_ptr<IUs4OEM>;
 class IUs4OEMFactory {
 public:
     virtual IUs4OEMHandle getIUs4OEM(unsigned index) = 0;
+    virtual std::vector<IUs4OEMHandle> getModules(Ordinal nModules) = 0;
 };
 
 

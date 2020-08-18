@@ -18,9 +18,7 @@
 namespace arrus {
 
 class Us4OEMSettingsValidator : public DeviceSettingsValidator<Us4OEMSettings> {
-
 public:
-
     explicit Us4OEMSettingsValidator(Ordinal moduleOrdinal)
             : DeviceSettingsValidator<Us4OEMSettings>(
             DeviceId(DeviceType::Us4OEM, moduleOrdinal)) {}

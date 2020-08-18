@@ -6,6 +6,10 @@
 #include <numeric>
 #include <unordered_set>
 
+#include <range/v3/view/zip.hpp>
+#include <range/v3/view/iota.hpp>
+#include <range/v3/view/repeat_n.hpp>
+
 namespace arrus {
 
 /**
@@ -37,6 +41,29 @@ inline size_t countUnique(const std::vector<T> values) {
     return std::unordered_set<T>(std::begin(values), std::end(values)).size();
 }
 
+template<typename T>
+inline bool
+setContains(const std::unordered_set<T> set, const T &value) {
+    return set.find(value) != set.end();
+}
+
+template<typename T, typename U>
+inline std::vector<std::pair<T, U>>
+// TODO ranges as input might more efficient here
+zip(const std::vector<T> &a, const std::vector<U> &b) {
+    std::vector<std::pair<T, U>> res = ranges::views::zip(a, b);
+    return res;
+}
+
+template<typename R>
+inline std::vector<R>
+generate(size_t nElements, std::function<R(size_t)> transformation){
+    std::vector<R> result;
+    for(auto i : ranges::views::ints((size_t)0, nElements)) {
+        result.emplace_back(transformation(i));
+    }
+    return result;
+}
 }
 
 #endif //ARRUS_CORE_COMMON_COLLECTIONS_H

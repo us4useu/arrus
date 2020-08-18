@@ -17,7 +17,7 @@ function(create_core_test test_src)
         ../common/logging/impl/Logging.cpp
         ../common/logging/impl/LogSeverity.cpp
     )
-    target_link_libraries(${target_name} arrus-core GTest::GTest Boost::Boost fmt::fmt ${other_deps})
+    target_link_libraries(${target_name} arrus-core GTest::GTest Boost::Boost fmt::fmt range-v3::range-v3 ${other_deps})
     target_include_directories(
         ${target_name}
         PRIVATE
