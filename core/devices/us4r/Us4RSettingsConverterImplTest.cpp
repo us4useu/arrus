@@ -17,6 +17,8 @@ using namespace arrus;
 
 using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
 
+// -------- Mappings
+
 struct Mappings {
     ProbeAdapterSettings::ChannelMapping adapterMapping;
 
@@ -414,9 +416,127 @@ INSTANTIATE_TEST_CASE_P
          }
  ));
 
+// -------- Groups of active channels
 
-// Czy wlasciwe aktywne grupy kanalow sa ustawiane
+struct ActiveChannels {
+    ProbeAdapterSettings::ChannelMapping adapterMapping;
+    std::vector<ChannelIdx> probeMapping;
 
+    std::vector<BitMask> expectedUs4OEMMasks;
+
+    friend std::ostream &
+    operator<<(std::ostream &os, const ActiveChannels &mappings) {
+        os << "adapterMapping: ";
+        for(const auto &address : mappings.adapterMapping) {
+            os << "(" << address.first << ", " << address.second << ") ";
+        }
+
+        os << "probeMapping: ";
+
+        for(auto value : mappings.probeMapping) {
+            os << value << " ";
+        }
+
+        os << "expected groups masks: ";
+
+        int i = 0;
+        for(const auto & mask: mappings.expectedUs4OEMMasks) {
+            os << "Us4OEM:" << i << " :";
+            for(auto value : mask) {
+                os << (int) value << " ";
+            }
+        }
+        return os;
+    }
+};
+
+class ActiveChannelsTest
+        : public testing::TestWithParam<ActiveChannels> {
+};
+
+TEST_P(ActiveChannelsTest, CorrectlyGeneratesActiveChannelGroups) {
+    Us4RSettingsConverterImpl converter;
+
+    ActiveChannels testCase = GetParam();
+
+    ProbeAdapterSettings adapterSettings(
+            ProbeAdapterModelId("test", "test"),
+            testCase.adapterMapping.size(),
+            testCase.adapterMapping
+    );
+
+    ProbeSettings probeSettings(
+            ProbeModel(ProbeModelId("test", "test"),
+                       {32},
+                       {0.3e-3}, {1e6, 10e6}),
+            testCase.probeMapping
+    );
+
+    RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
+
+    auto[us4oemSettings, newAdapterSettings] =
+    converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
+                                      rxSettings);
+
+    EXPECT_EQ(us4oemSettings.size(), testCase.expectedUs4OEMMasks.size());
+
+    for(int i = 0; i < us4oemSettings.size(); ++i) {
+        EXPECT_EQ(us4oemSettings[i].getActiveChannelGroups(),
+                  testCase.expectedUs4OEMMasks[i]);
+    }
+}
+
+INSTANTIATE_TEST_CASE_P
+
+(TestingActiveChannelGroups, ActiveChannelsTest,
+ testing::Values(
+// Esaote 1 like case, full adapter to probe mapping
+// us4oem:0 :0-128, us4oem:1 : 0-64
+         ActiveChannels{
+                 .
+                 adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
+                     return ChannelAddress{i / 128, i % 128};
+                 }),
+                 .
+                 probeMapping = getRange<ChannelIdx>(0, 192),
+                 .
+                 expectedUs4OEMMasks = {
+                         // Us4OEM: 0
+                         getNTimes<bool>(true, 16),
+                         // Us4OEM: 1
+                         ::arrus::concat<bool>({
+                            getNTimes<bool>(true, 8),
+                            getNTimes<bool>(false, 8)
+                         })
+                 }
+         },
+// Esaote 1 case, partial adapter to probe mapping
+         ActiveChannels{
+                 .
+                 adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
+                     return ChannelAddress{i / 128, i % 128};
+                 }),
+                 .
+                 probeMapping = ::arrus::concat<ChannelIdx>({
+                     getRange<ChannelIdx>(0, 48),
+                     getRange<ChannelIdx>(144, 192),
+                 }),
+                 .
+                 expectedUs4OEMMasks = {
+                         // Us4OEM: 0
+                         ::arrus::concat<bool>({
+                            getNTimes<bool>(true, 6),
+                            getNTimes<bool>(false, 10)
+                         }),
+                         // Us4OEM: 1
+                         ::arrus::concat<bool>({
+                             getNTimes<bool>(false, 2),
+                             getNTimes<bool>(true, 6),
+                             getNTimes<bool>(false, 8)
+                         })
+                 }
+         }
+));
 }
 // Czy prawidlowe wartosci Rx sa ustawiane
 
