@@ -220,6 +220,20 @@ protected:
         }
     }
 
+    template<typename U>
+    void
+    expectUnique(const std::string &parameter, std::vector<U> values,
+                const std::string &msg = "") {
+        std::unordered_set<U> set(std::begin(values), std::end(values));
+        if(set.size() != values.size()) {
+            errors.emplace(parameter, arrus::format(
+                    "Parameter '{}{}' contains non-unique values. (got: '{}')",
+                    parameter, msg, ::arrus::toString(values)
+            ));
+
+        }
+    }
+
     void expectTrue(const std::string &parameter,
                     bool condition, const std::string &msg) {
         if(!condition) {

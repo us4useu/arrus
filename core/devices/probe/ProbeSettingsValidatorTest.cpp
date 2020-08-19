@@ -104,6 +104,14 @@ INSTANTIATE_TEST_CASE_P
          TestProbeSettings{
                  .numberOfElements{96},
                  .channelMapping = getRange<ChannelIdx>(0, 192)
+         },
+         // - Non-unique channels
+         TestProbeSettings{
+                 .numberOfElements{32},
+                 .channelMapping = ::arrus::concat(
+                         getRange<ChannelIdx>(0, 2),
+                         getRange<ChannelIdx>(0, 30)
+                 )
          }
  ));
 

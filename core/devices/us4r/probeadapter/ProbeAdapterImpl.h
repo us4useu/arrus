@@ -16,14 +16,21 @@ public:
 
     ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,
                      std::vector<Us4OEM::RawHandle> us4oems,
+                     ChannelIdx numberOfChannels,
                      ChannelMapping channelMapping)
             : ProbeAdapter(deviceId), modelId(std::move(modelId)),
               us4oems(std::move(us4oems)),
+              numberOfChannels(numberOfChannels),
               channelMapping(std::move(channelMapping)) {}
+
+    [[nodiscard]] ChannelIdx getNumberOfChannels() const override {
+        return numberOfChannels;
+    }
 
 private:
     ProbeAdapterModelId modelId;
     std::vector<Us4OEM::RawHandle> us4oems;
+    ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
 };
 

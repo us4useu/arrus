@@ -31,7 +31,7 @@ public:
         // the number of channel mapping elements.
         expectEqual<ChannelIdx>("channel mapping",
                                 obj.getChannelMapping().size(),
-                                obj.getNChannels(),
+                                obj.getNumberOfChannels(),
                                 " (size, compared to nChannels)");
 
         // Get the number of us4oems

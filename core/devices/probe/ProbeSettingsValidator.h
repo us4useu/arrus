@@ -33,12 +33,12 @@ public:
                 (ProbeModel::ElementIdxType)1,
                 std::numeric_limits<ProbeModel::ElementIdxType>::max()
         );
-
         expectEqual(
                 "nElements",
                 obj.getChannelMapping().size(),
                 (size_t)obj.getModel().getNumberOfElements().product()
         );
+        expectUnique("channelMapping", obj.getChannelMapping());
     }
 };
 

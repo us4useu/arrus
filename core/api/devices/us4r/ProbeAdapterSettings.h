@@ -16,15 +16,15 @@ public:
     using ChannelMapping = std::vector<ChannelAddress>;
 
     ProbeAdapterSettings(ProbeAdapterModelId modelId,
-                         ChannelIdx nChannels, ChannelMapping mapping)
-            : modelId(std::move(modelId)), nChannels(nChannels),
+                         ChannelIdx numberOfChannels, ChannelMapping mapping)
+            : modelId(std::move(modelId)), nChannels(numberOfChannels),
               mapping(std::move(mapping)) {}
 
     [[nodiscard]] const ProbeAdapterModelId &getModelId() const {
         return modelId;
     }
 
-    [[nodiscard]] ChannelIdx getNChannels() const {
+    [[nodiscard]] ChannelIdx getNumberOfChannels() const {
         return nChannels;
     }
 

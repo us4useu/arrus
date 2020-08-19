@@ -6,7 +6,7 @@
 #define ARRUS_REQUIRES_TRUE(CONDITION, MSG) \
 do {                                        \
     if (!(CONDITION)) {                     \
-        throw arrus::ArrusException((MSG)); \
+        throw ::arrus::ArrusException((MSG)); \
     }                                       \
 } while(0)
 
@@ -20,7 +20,7 @@ do {                                                      \
 #define ARRUS_REQUIRES_TRUE_FOR_ARGUMENT(CONDITION, MSG) \
 do {                                                     \
     if (!(CONDITION)) {                                  \
-        throw arrus::IllegalArgumentException((MSG));    \
+        throw ::arrus::IllegalArgumentException((MSG));    \
     }                                                    \
 } while(0)
 
@@ -39,7 +39,7 @@ do {                                                                    \
 #define ARRUS_REQUIRES_AT_LEAST(A, B, MSG)                \
 do {                                                      \
     if (!((A) >= (B))) {                                  \
-        throw arrus::IllegalArgumentException((MSG));     \
+        throw ::arrus::IllegalArgumentException((MSG));     \
     }                                                     \
 } while(0)
 
@@ -49,7 +49,17 @@ do {                                                      \
 #define ARRUS_REQUIRES_AT_MOST(A, B, MSG)                \
 do {                                                      \
     if (!((A) <= (B))) {                                  \
-        throw arrus::IllegalArgumentException((MSG));     \
+        throw ::arrus::IllegalArgumentException((MSG));     \
+    }                                                     \
+} while(0)
+
+/**
+ * Check if A >= B, otherwise throws arrus::IllegalArgumentException.
+ */
+#define ARRUS_REQUIRES_IN_CLOSED_INTERVAL(value, min, max, MSG) \
+do {                                                      \
+    if (!(((value) >= (min) && (value) <= (max)))) {      \
+        throw ::arrus::IllegalArgumentException((MSG));     \
     }                                                     \
 } while(0)
 

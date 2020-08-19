@@ -93,7 +93,7 @@ public:
         }
         return {result, ProbeAdapterSettings(
                 probeAdapterSettings.getModelId(),
-                probeAdapterSettings.getNChannels(),
+                probeAdapterSettings.getNumberOfChannels(),
                 adapterChannelMapping
         )};
     }

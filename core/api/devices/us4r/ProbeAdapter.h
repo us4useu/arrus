@@ -9,6 +9,7 @@ namespace arrus {
 class ProbeAdapter : public Device {
 public:
     using Handle = std::unique_ptr<ProbeAdapter>;
+    using RawHandle = PtrHandle<ProbeAdapter>;
 
     ~ProbeAdapter() override = default;
 
@@ -17,6 +18,7 @@ public:
     void operator=(ProbeAdapter const&) = delete;
     void operator=(ProbeAdapter const&&) = delete;
 
+    [[nodiscard]] virtual ChannelIdx getNumberOfChannels() const = 0;
 protected:
     explicit ProbeAdapter(const DeviceId &id): Device(id) {}
 };
