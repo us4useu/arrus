@@ -29,8 +29,9 @@ public:
         auto const nRx = Us4OEMImpl::N_RX_CHANNELS;
         auto const nTx = Us4OEMImpl::N_TX_CHANNELS;
         auto const actChSize = Us4OEMImpl::ACTIVE_CHANNEL_GROUP_SIZE;
+        auto const nActChGroups = Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS;
 
-        std::vector<Us4OEMSettings> result(nUs4OEMs);
+        std::vector<Us4OEMSettings> result;
         std::vector<Ordinal> currentRxGroup(nUs4OEMs);
         std::vector<Ordinal> currentRxGroupElement(nUs4OEMs);
 
@@ -77,6 +78,11 @@ public:
 
         // Active channel groups for us4oems
         std::vector<BitMask> activeChannelGroups;
+        // Initialize masks
+        for(Ordinal i = 0; i < nUs4OEMs; ++i) {
+            // all groups turned off
+            activeChannelGroups.emplace_back(nActChGroups);
+        }
         for(const auto adapterChannel : probeSettingsMapping) {
             auto[module, us4oemChannel] = adapterChannelMapping[adapterChannel];
             // When at least one channel in group has mapping, the whole
@@ -85,11 +91,11 @@ public:
         }
 
         for(int i = 0; i < nUs4OEMs; ++i) {
-            result[i] = {
+            result.emplace_back(
                     us4oemChannelMapping[i],
                     activeChannelGroups[i],
                     rxSettings
-            };
+            );
         }
         return {result, ProbeAdapterSettings(
                 probeAdapterSettings.getModelId(),

@@ -5,6 +5,7 @@
 #include <vector>
 #include <numeric>
 #include <unordered_set>
+#include <type_traits>
 
 #include <range/v3/all.hpp>
 
@@ -19,6 +20,22 @@ inline std::vector<T> getRange(T start, T end, T step = 1) {
     for(T i = start; i < end; i += step) {
         values.push_back(i);
     }
+    return values;
+}
+
+template<typename In, typename Out>
+inline std::vector<Out> castTo(std::vector<In> values) {
+    std::vector<Out> result(values.size());
+    std::transform(
+            std::begin(values), std::end(values),
+            std::begin(result),
+            [] (In &value) {return Out(value);}
+   );
+   return result;
+}
+
+template<typename T>
+inline std::vector<T> toVector(ranges::iota_view<T> values) {
     return values;
 }
 
@@ -55,9 +72,9 @@ zip(const std::vector<T> &a, const std::vector<U> &b) {
 
 template<typename R>
 inline std::vector<R>
-generate(size_t nElements, std::function<R(size_t)> transformation){
+generate(size_t nElements, std::function<R(size_t)> transformation) {
     std::vector<R> result;
-    for(auto i : ranges::views::ints((size_t)0, nElements)) {
+    for(auto i : ranges::views::ints((size_t) 0, nElements)) {
         result.emplace_back(transformation(i));
     }
     return result;
@@ -72,6 +89,21 @@ concat(const std::vector<T> &a, const std::vector<T> &b) {
     result.insert(std::end(result), std::begin(b), std::end(b));
     return result;
 
+}
+
+template<typename T>
+inline std::vector<T>
+concat(const std::vector<std::vector<T>> &a) {
+    std::vector<T> result;
+    size_t totalSize = 0;
+    for(const auto &v : a) {
+        totalSize += v.size();
+    }
+    result.reserve(totalSize);
+    for(const auto &vec : a) {
+        result.insert(std::end(result), std::begin(vec), std::end(vec));
+    }
+    return result;
 }
 
 }
