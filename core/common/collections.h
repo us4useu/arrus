@@ -6,9 +6,7 @@
 #include <numeric>
 #include <unordered_set>
 
-#include <range/v3/view/zip.hpp>
-#include <range/v3/view/iota.hpp>
-#include <range/v3/view/repeat_n.hpp>
+#include <range/v3/all.hpp>
 
 namespace arrus {
 
@@ -64,6 +62,18 @@ generate(size_t nElements, std::function<R(size_t)> transformation){
     }
     return result;
 }
+
+template<typename T>
+inline std::vector<T>
+concat(const std::vector<T> &a, const std::vector<T> &b) {
+    std::vector<T> result;
+    result.reserve(a.size() + b.size());
+    result.insert(std::begin(result), std::begin(a), std::end(a));
+    result.insert(std::end(result), std::begin(b), std::end(b));
+    return result;
+
+}
+
 }
 
 #endif //ARRUS_CORE_COMMON_COLLECTIONS_H

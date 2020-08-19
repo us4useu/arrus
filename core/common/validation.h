@@ -92,6 +92,23 @@ protected:
     }
 
     /**
+     * Checks is given value is equal to 'expected'.
+     */
+    template<typename U>
+    void
+    expectAtMost(const std::string &parameter, const U &value,
+                 const U &expected, const std::string &msg = "") {
+        if(value > expected) {
+            errors.emplace(parameter,
+                           arrus::format(
+                                   "Value '{}{}' should be at most '{}' "
+                                   "(found: '{}')",
+                                   parameter, msg, expected, value
+                           ));
+        }
+    }
+
+    /**
      * Checks is given value is divisible by divider.
      */
     template<typename U>
@@ -135,6 +152,27 @@ protected:
                                   "(found: '{}')",
                                   parameter, msg,
                                   min, max, toString(invalidValues)
+                    )
+            );
+        }
+    }
+
+    template<typename U>
+    void
+    expectAllPositive(const std::string &parameter,
+                      const std::vector<U> &values) {
+        std::set<U> invalidValues;
+        for(auto value : values) {
+            if(value <= 0) {
+                invalidValues.insert(value);
+            }
+        }
+        if(!invalidValues.empty()) {
+            errors.emplace(
+                    parameter,
+                    arrus::format("Value(s) '{}' should be positive "
+                                  "(found: '{}')",
+                                  parameter, toString(invalidValues)
                     )
             );
         }
@@ -192,7 +230,7 @@ protected:
     }
 
     void expectFalse(const std::string &parameter,
-                    bool condition, const std::string &msg) {
+                     bool condition, const std::string &msg) {
         if(condition) {
             errors.emplace(parameter, arrus::format(
                     "Value '{}': {}",

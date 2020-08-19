@@ -10,6 +10,9 @@
 
 #include <boost/algorithm/string/join.hpp>
 
+#include "arrus/core/api/common/Tuple.h"
+#include "arrus/core/api/common/Interval.h"
+
 namespace arrus {
 
 template<typename... Args>
@@ -33,7 +36,7 @@ inline std::string toString(
         const std::vector<T> &values) {
     std::vector<std::string> vStr(values.size());
     std::transform(std::begin(values), std::end(values), std::begin(vStr),
-                   [](auto v) {return std::to_string(v);});
+                   [](auto v) { return std::to_string(v); });
     return boost::algorithm::join(vStr, ", ");
 }
 
@@ -43,7 +46,7 @@ inline std::string toStringTransform(
         const std::function<std::string(T)> &func) {
     std::vector<std::string> vStr(values.size());
     std::transform(std::begin(values), std::end(values), std::begin(vStr),
-                   [&func](T v) {return func(v);});
+                   [&func](T v) { return func(v); });
     return boost::algorithm::join(vStr, ", ");
 }
 
@@ -51,7 +54,7 @@ template<typename T>
 inline std::string toString(const std::set<T> &values) {
     std::vector<std::string> vStr(values.size());
     std::transform(std::begin(values), std::end(values), std::begin(vStr),
-                   [](auto v) {return std::to_string(v);});
+                   [](auto v) { return std::to_string(v); });
     return boost::algorithm::join(vStr, ", ");
 }
 
@@ -59,9 +62,20 @@ template<typename T>
 inline std::string toString(const std::optional<T> value) {
     if(value.has_value()) {
         return std::to_string(value.value());
-    }
-    else return "(novalue)";
+    } else return "(novalue)";
 }
+
+template<typename T>
+inline std::string toString(const Tuple<T> tuple) {
+    return ::arrus::format("Tuple({})", toString(tuple.getValues()));
+}
+
+template<typename T>
+inline std::string toString(const Interval<T> i) {
+    return ::arrus::format("Interval: left: {}, right: {}",
+                           i.left(), i.right());
+}
+
 }
 
 #endif //ARRUS_CORE_COMMON_FORMAT_H

@@ -66,6 +66,9 @@ add_library(${TARGET_NAME} SHARED
     devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
 
     devices/probe/ProbeFactory.h
+    devices/probe/ProbeFactoryImpl.h
+    devices/probe/ProbeImpl.h
+    devices/probe/ProbeSettingsValidator.h
 
     session/SessionImpl.cpp
 
@@ -123,6 +126,7 @@ if(ARRUS_RUN_TESTS)
     create_core_test(devices/DeviceIdTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp)
+    create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp)
     create_core_test(devices/us4r/Us4RFactoryImplTest.cpp)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp)

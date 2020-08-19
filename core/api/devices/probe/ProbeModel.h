@@ -1,10 +1,13 @@
 #ifndef ARRUS_CORE_API_DEVICES_PROBE_PROBEMODEL_H
 #define ARRUS_CORE_API_DEVICES_PROBE_PROBEMODEL_H
 
+#include <utility>
+
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/common/exceptions.h"
+#include "arrus/core/api/devices/probe/ProbeModelId.h"
 
 namespace arrus {
 
@@ -13,18 +16,27 @@ namespace arrus {
  */
 class ProbeModel {
 public:
-    ProbeModel(const Tuple<ChannelIdx> &numberOfElements,
-               const Tuple<double> &pitch,
-               const Interval<double> &txFrequencyRange)
-            : numberOfElements(numberOfElements), pitch(pitch),
-              txFrequencyRange(txFrequencyRange) {
+
+    using ElementIdxType = ChannelIdx;
+
+    ProbeModel(
+            ProbeModelId modelId,
+            const Tuple<ElementIdxType> &numberOfElements,
+            const Tuple<double> &pitch,
+            const Interval<double> &txFrequencyRange)
+            : modelId(std::move(modelId)), numberOfElements(numberOfElements),
+              pitch(pitch), txFrequencyRange(txFrequencyRange) {
         if(numberOfElements.size() != pitch.size()) {
             throw IllegalArgumentException(
                     "Number of elements and pitch should have the same size.");
         }
     }
 
-    [[nodiscard]] const Tuple<ChannelIdx> &getNumberOfElements() const {
+    [[nodiscard]] const ProbeModelId &getModelId() const {
+        return modelId;
+    }
+
+    [[nodiscard]] const Tuple<ElementIdxType> &getNumberOfElements() const {
         return numberOfElements;
     }
 
@@ -37,7 +49,8 @@ public:
     }
 
 private:
-    Tuple<ChannelIdx> numberOfElements;
+    ProbeModelId modelId;
+    Tuple<ElementIdxType> numberOfElements;
     Tuple<double> pitch;
     Interval<double> txFrequencyRange;
 };
