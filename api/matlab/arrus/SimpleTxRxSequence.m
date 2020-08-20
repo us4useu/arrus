@@ -54,7 +54,7 @@ classdef SimpleTxRxSequence < Operation
         tgcSlope (1,1)
         fsDivider(1,1) {mustBeInteger, mustBePositive, ...
             mustBeLessThan(fsDivider, 257)} = 1
-        txInvert (1,1) {mustBeLogical} = false
+        txInvert (1,1) {mustBeLogical} = 0
     end
     
     methods
@@ -74,7 +74,7 @@ classdef SimpleTxRxSequence < Operation
             % Validate.
             mustBeXor(obj,{'txCenterElement','txApertureCenter'});
             if ~isempty(obj.rxCenterElement) || ~isempty(obj.rxApertureCenter)
-                mustBeXor(obj,{'rxCenterElement','rxAperstureCenter'});
+                mustBeXor(obj,{'rxCenterElement','rxApertureCenter'});
             end
             mustBeXor(obj,{'rxDepthRange','rxNSamples'});
             obj.rxDepthRange = mustBeLimit(obj,'rxDepthRange',0);
@@ -100,6 +100,8 @@ classdef SimpleTxRxSequence < Operation
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             
+            obj.txInvert = double(obj.txInvert);
+            
         end
     end
 end
@@ -112,8 +114,8 @@ function mustBeProperNumber(a)
 end
 
 function mustBeLogical(a)
-    if ~ilogical(a)
-        error('Arrus:params txInvert must be logical.')
+    if ~islogical(a) && ~isequal(a,1) && ~isequal(a,0)
+        error('txInvert property must be equal one of the following: true, false, 1 or 0.')
     end
         
 end

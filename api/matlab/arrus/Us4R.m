@@ -24,7 +24,7 @@ classdef Us4R < handle
     % :param logTime: set to true if you want to display acquisition \
     %    and reconstruction time (optional)
 
-    properties(Access = private)
+    properties %(Access = private)
         sys
         seq
         rec
@@ -133,7 +133,8 @@ classdef Us4R < handle
                 'txPri', sequenceOperation.txPri, ...
                 'tgcStart', sequenceOperation.tgcStart, ...
                 'tgcSlope', sequenceOperation.tgcSlope, ...
-                'fsDivider', sequenceOperation.fsDivider);
+                'fsDivider', sequenceOperation.fsDivider, ...
+                'txInvert', sequenceOperation.txInvert);
             
             % Validate compatibility of the sequence & the hardware
             obj.validateSequence;
@@ -265,7 +266,8 @@ classdef Us4R < handle
                                 'txPri',            'txPri'; ...
                                 'tgcStart',         'tgcStart'; ...
                                 'tgcSlope',         'tgcSlope'; ...
-                                'fsDivider'         'fsDivider'};
+                                'fsDivider'         'fsDivider'; ...
+                                'txInvert'          'txInvert'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -669,6 +671,8 @@ classdef Us4R < handle
             for iArius=0:(obj.sys.nArius-1)
                 Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
                 Us4MEX(iArius, "ClearScheduledReceive");
+                
+%                 class(obj.seq.txInvert)
                 for iFire=0:(obj.seq.nFire-1)    
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
@@ -678,7 +682,7 @@ classdef Us4R < handle
                     Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
                     Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
                     Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
-                    Us4MEX(iArius, "SetTxInvert", 0, iFire);
+                    Us4MEX(iArius, "SetTxInvert", obj.seq.txInvert, iFire);
                     
                     %% Rx
                     % SetRxChannelMapping for the new esaote adapter

@@ -3,10 +3,10 @@
 addpath('../arrus');
 
 nUs4OEM     = 2;
-probeName	= 'SL1543';
-adapterType = 'esaote2';
+probeName	= 'AC2541';
+adapterType = 'esaote3';
 
-txFrequency = 7e6;
+txFrequency = 3.3e6;
 samplingFrequency = 65e6;
 fsDivider = 1;
 
@@ -62,6 +62,7 @@ seqLIN = LINSequence(	'txCenterElement',	1:192, ...
                         'txPri',            200*1e-6, ...
                         'tgcStart',         14, ...
                         'tgcSlope',         2e2, ...
+                        'txInvert',         0, ...
                         'fsDivider',        fsDivider);                        
 
 % GPU/CPU reconstruction implemented in matlab.
@@ -75,13 +76,19 @@ rec = Reconstruction(   'filterEnable',     true, ...
                         'zGrid',            (  0:0.10:50)*1e-3);
 
 % us.upload(seqSTA, rec);
-us.upload(seqPWI, rec);
-% us.upload(seqLIN, rec);
+% us.upload(seqPWI, rec);
+us.upload(seqLIN, rec);
 
 %% Run sequence and reconstruction
-% [rf,img] = us.run;
-
-display = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
-us.runLoop(@display.isOpen, @display.updateImg);
+[rf,img] = us.run;
 
 
+
+% display = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
+% us.runLoop(@display.isOpen, @display.updateImg);
+
+
+
+%% 
+figure, 
+    plot(rf(2650:3000,15,96))
