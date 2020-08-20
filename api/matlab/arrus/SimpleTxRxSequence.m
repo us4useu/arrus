@@ -27,7 +27,8 @@ classdef SimpleTxRxSequence < Operation
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param fsDivider: sampling frequency divider. Should be positive int. \ 
     %   Default value is equal to 1, which means sampling with \
-    %   the highest possible frequency (no decimation).
+    %   the highest possible frequency (no decimation)
+    % :param txInvert: tx pulse polarity marker
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -53,6 +54,7 @@ classdef SimpleTxRxSequence < Operation
         tgcSlope (1,1)
         fsDivider(1,1) {mustBeInteger, mustBePositive, ...
             mustBeLessThan(fsDivider, 257)} = 1
+        txInvert (1,1) {mustBeLogical} = false
     end
     
     methods
@@ -72,7 +74,7 @@ classdef SimpleTxRxSequence < Operation
             % Validate.
             mustBeXor(obj,{'txCenterElement','txApertureCenter'});
             if ~isempty(obj.rxCenterElement) || ~isempty(obj.rxApertureCenter)
-                mustBeXor(obj,{'rxCenterElement','rxApertureCenter'});
+                mustBeXor(obj,{'rxCenterElement','rxAperstureCenter'});
             end
             mustBeXor(obj,{'rxDepthRange','rxNSamples'});
             obj.rxDepthRange = mustBeLimit(obj,'rxDepthRange',0);
@@ -108,6 +110,15 @@ function mustBeProperNumber(a)
     mustBeFinite(a)
     mustBeReal(a)
 end
+
+function mustBeLogical(a)
+    if ~ilogical(a)
+        error('Arrus:params txInvert must be logical.')
+    end
+        
+end
+
+
 
 function mustBeXor(obj,fieldNames)
     
