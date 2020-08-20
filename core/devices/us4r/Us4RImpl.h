@@ -4,8 +4,12 @@
 #include <unordered_map>
 #include <utility>
 
+#include <boost/algorithm/string.hpp>
+
+#include "arrus/core/devices/utils.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
+#include "arrus/core/api/devices/DeviceWithComponents.h"
 
 namespace arrus {
 
@@ -22,6 +26,19 @@ public:
               probeAdapter(std::move(probeAdapter)),
               probe(std::move(probe)) {}
 
+    Device::RawHandle getDevice(const std::string &path) override {
+        auto [root, tail] = getPathRoot(path);
+        boost::algorithm::trim(root);
+        boost::algorithm::trim(tail);
+        if(!tail.empty()) {
+            throw IllegalArgumentException(
+                arrus::format("Us4R devices allows access onl to the top-level "
+                              "devices (got relative path: '{}')", path)
+           );
+        }
+        DeviceId componentId = DeviceId::parse(root);
+        return getDevice(componentId);
+    }
 
     Device::RawHandle getDevice(const DeviceId &id) {
         auto ordinal = id.getOrdinal();

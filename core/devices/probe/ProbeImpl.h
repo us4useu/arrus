@@ -19,6 +19,8 @@ private:
     ProbeModel model;
     ProbeAdapter::RawHandle adapter;
     std::vector<ChannelIdx> channelMapping;
+};
+
 }
 
 #endif //ARRUS_CORE_DEVICES_PROBE_PROBEIMPL_H

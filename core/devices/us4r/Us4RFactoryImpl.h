@@ -24,16 +24,18 @@ namespace arrus {
 
 class Us4RFactoryImpl : public Us4RFactory {
 public:
-    Us4RFactoryImpl(Us4OEMFactory &us4oemFactory,
-                    ProbeAdapterFactory &adapterFactory,
-                    ProbeFactory &probeFactory,
-                    IUs4OEMFactory &ius4oemFactory,
-                    IUs4OEMInitializer &ius4oemInitializer,
-                    Us4RSettingsConverter &us4RSettingsConverter)
-            : us4oemFactory(us4oemFactory), ius4oemFactory(ius4oemFactory),
-              probeAdapterFactory(adapterFactory), probeFactory(probeFactory),
-              ius4oemInitializer(ius4oemInitializer),
-              us4RSettingsConverter(us4RSettingsConverter) {}
+    Us4RFactoryImpl(std::unique_ptr<Us4OEMFactory> us4oemFactory,
+                    std::unique_ptr<ProbeAdapterFactory> adapterFactory,
+                    std::unique_ptr<ProbeFactory> probeFactory,
+                    std::unique_ptr<IUs4OEMFactory> ius4oemFactory,
+                    std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer,
+                    std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter)
+            : us4oemFactory(std::move(us4oemFactory)),
+              ius4oemFactory(std::move(ius4oemFactory)),
+              probeAdapterFactory(std::move(adapterFactory)),
+              probeFactory(std::move(probeFactory)),
+              ius4oemInitializer(std::move(ius4oemInitializer)),
+              us4RSettingsConverter(std::move(us4RSettingsConverter)) {}
 
 
     Us4R::Handle
@@ -64,7 +66,7 @@ public:
 
             // Convert to Us4OEM settings
             auto[us4OEMSettings, adapterSettings] =
-                    us4RSettingsConverter.convertToUs4OEMSettings(
+                    us4RSettingsConverter->convertToUs4OEMSettings(
                     probeAdapterSettings, probeSettings, rxSettings);
 
             std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(us4OEMSettings);
@@ -75,10 +77,10 @@ public:
                     [](const Us4OEM::Handle &ptr) { return ptr.get(); });
             // Create adapter.
             ProbeAdapter::Handle adapter =
-                    probeAdapterFactory.getProbeAdapter(adapterSettings,
+                    probeAdapterFactory->getProbeAdapter(adapterSettings,
                                                         us4oemPtrs);
             // Create probe.
-            Probe::Handle probe = probeFactory.getProbe(probeSettings,
+            Probe::Handle probe = probeFactory->getProbe(probeSettings,
                                                         adapter.get());
             return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe);
         } else {
@@ -102,9 +104,9 @@ private:
         // existence of some master module (by default it's the 'Us4OEM:0').
         // Check the initializeModules function to see why.
         std::vector<IUs4OEMHandle> ius4oems =
-                ius4oemFactory.getModules(nUs4oems);
+                ius4oemFactory->getModules(nUs4oems);
 
-        ius4oemInitializer.initModules(ius4oems);
+        ius4oemInitializer->initModules(ius4oems);
 
         // Create Us4OEMs.
         Us4RImpl::Us4OEMs us4oems;
@@ -115,18 +117,18 @@ private:
 
         for(unsigned i = 0; i < us4oems.size(); ++i) {
             us4oems.push_back(
-                    us4oemFactory.getUs4OEM(i, ius4oems[i], us4oemCfgs[i])
+                    us4oemFactory->getUs4OEM(i, ius4oems[i], us4oemCfgs[i])
             );
         }
         return us4oems;
     }
 
-    IUs4OEMFactory &ius4oemFactory;
-    IUs4OEMInitializer &ius4oemInitializer;
-    Us4RSettingsConverter &us4RSettingsConverter;
-    Us4OEMFactory &us4oemFactory;
-    ProbeAdapterFactory &probeAdapterFactory;
-    ProbeFactory &probeFactory;
+    std::unique_ptr<IUs4OEMFactory> ius4oemFactory;
+    std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer;
+    std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter;
+    std::unique_ptr<Us4OEMFactory> us4oemFactory;
+    std::unique_ptr<ProbeAdapterFactory> probeAdapterFactory;
+    std::unique_ptr<ProbeFactory> probeFactory;
 };
 
 }

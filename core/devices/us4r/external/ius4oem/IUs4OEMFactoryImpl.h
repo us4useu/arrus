@@ -18,10 +18,7 @@ namespace arrus {
  */
 class IUs4OEMFactoryImpl : public IUs4OEMFactory {
 public:
-    static IUs4OEMFactory &getInstance() {
-        static IUs4OEMFactoryImpl instance;
-        return instance;
-    }
+    IUs4OEMFactoryImpl() = default;
 
     IUs4OEMHandle getIUs4OEM(unsigned index) override {
         us4r::Logger::SharedHandle logger =
@@ -49,9 +46,6 @@ public:
     IUs4OEMFactoryImpl(IUs4OEMFactoryImpl const &&) = delete;
 
     void operator=(IUs4OEMFactoryImpl const &&) = delete;
-
-private:
-    IUs4OEMFactoryImpl() = default;
 };
 
 }

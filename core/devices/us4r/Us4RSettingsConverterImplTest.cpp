@@ -538,5 +538,4 @@ INSTANTIATE_TEST_CASE_P
          }
 ));
 }
-// Czy prawidlowe wartosci Rx sa ustawiane
 

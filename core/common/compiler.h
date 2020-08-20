@@ -13,4 +13,13 @@
 #define COMPILER_IGNORE_UNUSED  _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")  _Pragma("GCC diagnostic ignored \"-Wunused-variable\"")
 #endif
 
+namespace arrus {
+
+template<typename TargetType, typename InType>
+inline bool isInstanceOf(const InType *in){
+    return dynamic_cast<const TargetType*>(in) != nullptr;
+}
+
+}
+
 #endif //ARRUS_CORE_COMMON_COMPILER_H

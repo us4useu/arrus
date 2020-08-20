@@ -2,6 +2,7 @@
 #define ARRUS_CORE_SESSION_SESSIONIMPL_H
 
 #include <unordered_map>
+#include <arrus/core/devices/us4r/Us4RFactory.h>
 
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -12,11 +13,13 @@ namespace arrus {
 
 class SessionImpl : public Session {
 public:
-    explicit SessionImpl(const SessionSettings &sessionSettings);
+    SessionImpl(
+            const SessionSettings &sessionSettings,
+            Us4RFactory::Handle us4RFactory);
 
-    Device::Handle &getDevice(const std::string &deviceId) override;
+    Device::RawHandle getDevice(const std::string &deviceId) override;
 
-    Device::Handle &getDevice(const DeviceId &deviceId) override;
+    Device::RawHandle getDevice(const DeviceId &deviceId) override;
 
     SessionImpl(SessionImpl const &) = delete;
 
@@ -33,7 +36,9 @@ private:
     DeviceMap configureDevices(const SessionSettings &sessionSettings);
 
     DeviceMap devices;
+    Us4RFactory::Handle us4rFactory;
 };
+
 }
 
 #endif //ARRUS_CORE_SESSION_SESSIONIMPL_H

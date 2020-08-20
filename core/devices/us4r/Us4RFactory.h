@@ -7,6 +7,9 @@
 namespace arrus {
 
 class Us4RFactory {
+public:
+    using Handle = std::unique_ptr<Us4RFactory>;
+
     virtual Us4R::Handle
     getUs4R(Ordinal ordinal, const Us4RSettings &settings) = 0;
 };

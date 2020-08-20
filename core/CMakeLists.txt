@@ -13,6 +13,7 @@ add_library(${TARGET_NAME} SHARED
     api/common/types.h
     api/common/Tuple.h
     api/common/Interval.h
+    api/devices/DeviceWithComponents.h
     api/devices/Device.h
     api/devices/TriggerGenerator.h
     api/devices/DeviceId.h
@@ -44,6 +45,7 @@ add_library(${TARGET_NAME} SHARED
     ../common/logging/LogSeverity.h
     ../common/logging/LoggerFactory.h
 
+    devices/utils.h
     devices/DeviceId.cpp
     devices/DeviceIdHasher.h
     devices/DeviceSettingsValidator.h
@@ -124,6 +126,7 @@ target_link_libraries(${TARGET_NAME}
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
     create_core_test(devices/DeviceIdTest.cpp)
+    create_core_test(devices/utilsTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp)
     create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp)

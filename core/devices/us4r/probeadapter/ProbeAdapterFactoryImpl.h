@@ -33,10 +33,9 @@ private:
             const ProbeAdapterSettings &settings,
             const std::vector<Us4OEM::RawHandle> &us4oems) {
         std::unordered_set<Ordinal> ordinals;
-        std::transform(std::begin(settings.getChannelMapping()),
-                       std::end(settings.getChannelMapping()),
-                       std::begin(ordinals),
-                       [](auto v) { return v.first; });
+        for(auto value : settings.getChannelMapping()) {
+            ordinals.insert(value.first);
+        }
         ARRUS_REQUIRES_TRUE(ordinals.size() == us4oems.size(),
                             arrus::format("Incorrect number of us4oems "
                                           "(provided {}, from settings {})",

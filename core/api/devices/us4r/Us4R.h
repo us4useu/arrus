@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "arrus/core/api/devices/Device.h"
+#include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
@@ -14,11 +15,11 @@ namespace arrus {
 /**
  * Us4R system: a group of Us4OEM modules and related components.
  */
-class Us4R : public Device {
+class Us4R : public DeviceWithComponents {
 public:
     using Handle = std::unique_ptr<Us4R>;
 
-    explicit Us4R(const DeviceId &id): Device(id) {}
+    explicit Us4R(const DeviceId &id): DeviceWithComponents(id) {}
 
     virtual ~Us4R() = default;
 

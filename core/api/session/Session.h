@@ -17,7 +17,7 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    virtual Device::Handle& getDevice(const std::string &deviceId) = 0;
+    virtual Device::RawHandle getDevice(const std::string &deviceId) = 0;
 
     /**
      * Returns a handle to device with given Id.
@@ -25,7 +25,7 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-   virtual Device::Handle& getDevice(const DeviceId &deviceId) = 0;
+   virtual Device::RawHandle getDevice(const DeviceId &deviceId) = 0;
 };
 
 /**
