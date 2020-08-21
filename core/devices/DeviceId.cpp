@@ -67,7 +67,7 @@ DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
     try {
         return DeviceTypeEnumStringRepr::getInstance().parse(deviceTypeStr);
     }
-    catch (const std::out_of_range &e) {
+    catch (const std::out_of_range&) {
         std::vector<std::string> availableKeys =
                 DeviceTypeEnumStringRepr::getInstance().keys();
         std::sort(availableKeys.begin(), availableKeys.end());

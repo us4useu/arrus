@@ -32,8 +32,8 @@ public:
         auto const nActChGroups = Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS;
 
         std::vector<Us4OEMSettings> result;
-        std::vector<Ordinal> currentRxGroup(nUs4OEMs);
-        std::vector<Ordinal> currentRxGroupElement(nUs4OEMs);
+        std::vector<ChannelIdx> currentRxGroup(nUs4OEMs);
+        std::vector<ChannelIdx> currentRxGroupElement(nUs4OEMs);
 
         // physical mapping for us4oems
         std::vector<Us4OEMSettings::ChannelMapping> us4oemChannelMapping;
@@ -41,9 +41,9 @@ public:
         ProbeAdapterSettings::ChannelMapping adapterChannelMapping;
 
         // Initialize mappings with 0, 1, 2, 3, ... 127
-        for(int i = 0; i < nUs4OEMs; ++i) {
+        for(int i = 0; i < (int)nUs4OEMs; ++i) {
             Us4OEMSettings::ChannelMapping mapping(nTx);
-            for(int j = 0; j < nTx; ++j) {
+            for(ChannelIdx j = 0; j < nTx; ++j) {
                 mapping[j] = j;
             }
             us4oemChannelMapping.emplace_back(mapping);
@@ -57,7 +57,7 @@ public:
             const auto element = currentRxGroupElement[module];
             if(element == 0) {
                 // Starting new group
-                currentRxGroup[module] = group;
+                currentRxGroup[module] = (ChannelIdx)group;
             } else {
                 // Safety condition
                 ARRUS_REQUIRES_TRUE(group == currentRxGroup[module],
@@ -68,8 +68,7 @@ public:
             }
             auto logicalChannel = group * nRx + element;
             us4oemChannelMapping[module][logicalChannel] = channel;
-            auto logicalAddr = std::make_pair(module, logicalChannel);
-            adapterChannelMapping.push_back(logicalAddr);
+            adapterChannelMapping.emplace_back(module, ChannelIdx(logicalChannel));
 
             currentRxGroupElement[module] =
                     (currentRxGroupElement[module] + 1) % nRx;

@@ -3,6 +3,7 @@
 
 #include <ius4oem.h>
 
+#include "arrus/core/common/tests.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h"
 
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
@@ -61,12 +62,12 @@ INSTANTIATE_TEST_CASE_P
  testing::Values(
          std::pair{TestUs4OEMSettings{},
                    ExpectedUs4RParameters{}},
-         std::pair{TestUs4OEMSettings{.pgaGain=24},
-                   ExpectedUs4RParameters{.pgaGain=PGA_GAIN::PGA_GAIN_24dB}},
-         std::pair{TestUs4OEMSettings{.lnaGain=12},
-                   ExpectedUs4RParameters{.lnaGain=LNA_GAIN_GBL::LNA_GAIN_GBL_12dB}},
-         std::pair{TestUs4OEMSettings{.lpfCutoff=(int) 15e6},
-                   ExpectedUs4RParameters{.lpfCutoff=LPF_PROG::LPF_PROG_15MHz}}
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.pgaGain=24)),
+                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (x.pgaGain=PGA_GAIN::PGA_GAIN_24dB))},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lnaGain=12)),
+                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (x.lnaGain=LNA_GAIN_GBL::LNA_GAIN_GBL_12dB))},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lpfCutoff=(int) 15e6)),
+                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (x.lpfCutoff=LPF_PROG::LPF_PROG_15MHz))}
  ));
 
 class Us4OEMFactoryOptionalParametersTest
@@ -120,13 +121,15 @@ INSTANTIATE_TEST_CASE_P
 (Us4OEMFactorySetsOptionalIUs4OEMProperties,
  Us4OEMFactoryOptionalParametersTest,
  testing::Values(
-         std::pair{TestUs4OEMSettings{.dtgcAttenuation=0},
-                   ExpectedUs4RParameters{.dtgcAttValue=DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_0dB}},
-         std::pair{TestUs4OEMSettings{.dtgcAttenuation={}},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=0)),
+                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters,
+                                          (x.dtgcAttValue=DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_0dB))},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation={})),
                    ExpectedUs4RParameters{}}, // Any value is accepted
-         std::pair{TestUs4OEMSettings{.activeTermination=200},
-                   ExpectedUs4RParameters{.activeTerminationValue=GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200}},
-         std::pair{TestUs4OEMSettings{.activeTermination={}},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination=200)),
+                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters,
+                                          (x.activeTerminationValue=GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200))},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination={})),
                    ExpectedUs4RParameters{}}
  ));
 
@@ -166,15 +169,16 @@ INSTANTIATE_TEST_CASE_P
  Us4OEMFactoryTGCSamplesTest,
  testing::Values(
          // NO TGC
-         std::pair{TestUs4OEMSettings{.tgcSamples={}},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                    x.tgcSamples={})),
                    ExpectedUs4RParameters{}},
          // TGC samples set
-         std::pair{TestUs4OEMSettings{
-                 .pgaGain=30,
-                 .lnaGain=24,
-                 .tgcSamples={30, 35, 40}},
-                   ExpectedUs4RParameters{.tgcSamplesNormalized={0.4, 0.525,
-                                                                 0.65}}}
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                    x.pgaGain=30,
+                    x.lnaGain=24,
+                    x.tgcSamples={30, 35, 40})),
+                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (
+                    x.tgcSamplesNormalized={0.4, 0.525,0.65}))}
  ));
 
 // Mappings.
@@ -190,8 +194,9 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
         std::swap(channelMapping[i * 32], channelMapping[(i + 1) * 32 - 1]);
     }
 
-    TestUs4OEMSettings cfg{.channelMapping=std::vector<ChannelIdx>(
-            std::begin(channelMapping), std::end(channelMapping))};
+    TestUs4OEMSettings cfg;
+    cfg.channelMapping = std::vector<ChannelIdx>(
+            std::begin(channelMapping), std::end(channelMapping));
     Us4OEMFactoryImpl factory;
     // Expect
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
@@ -220,8 +225,9 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
         std::swap(channelMapping[i * 32 + 1], channelMapping[(i + 1) * 32 - 2]);
     }
 
-    TestUs4OEMSettings cfg{.channelMapping=std::vector<ChannelIdx>(
-            std::begin(channelMapping), std::end(channelMapping))};
+    TestUs4OEMSettings cfg;
+    cfg.channelMapping = std::vector<ChannelIdx>(
+            std::begin(channelMapping), std::end(channelMapping));
     Us4OEMFactoryImpl factory;
     // Expect
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
@@ -234,7 +240,8 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     std::vector<ChannelIdx> channelMapping = getRange<ChannelIdx>(0, 128, 1);
-    TestUs4OEMSettings cfg{.channelMapping=channelMapping};
+    TestUs4OEMSettings cfg;
+    cfg.channelMapping = channelMapping;
     Us4OEMFactoryImpl factory;
     // Expect
     {

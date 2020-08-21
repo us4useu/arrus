@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <cctype>
 #include <vector>
+#include <set>
+#include <optional>
 
 #include <boost/algorithm/string/join.hpp>
 
@@ -51,7 +53,7 @@ inline std::string toStringTransform(
 }
 
 template<typename T>
-inline std::string toString(const std::set<T> &values) {
+inline std::string toString(const ::std::set<T> &values) {
     std::vector<std::string> vStr(values.size());
     std::transform(std::begin(values), std::end(values), std::begin(vStr),
                    [](auto v) { return std::to_string(v); });

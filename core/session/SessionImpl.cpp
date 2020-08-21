@@ -67,7 +67,7 @@ Device::RawHandle SessionImpl::getDevice(const std::string &path) {
 Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
     try {
         return devices.at(deviceId).get();
-    } catch(const std::out_of_range &e) {
+    } catch(const std::out_of_range&) {
         throw IllegalArgumentException(
                 arrus::format("Device unavailable: {}", deviceId.toString()));
     }

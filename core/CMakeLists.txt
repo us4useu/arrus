@@ -87,7 +87,7 @@ add_library(${TARGET_NAME} SHARED
 
     session/SessionImpl.h
     session/SessionImpl.cpp
-)
+        common/tests.h)
 
 ################################################################################
 # Compile definitions
@@ -119,19 +119,29 @@ target_link_libraries(${TARGET_NAME}
     fmt::fmt
     range-v3::range-v3
 )
+################################################################################
+# Target compile options
+################################################################################
+target_compile_options(${TARGET_NAME} PRIVATE
+        ${ARRUS_CPP_COMMON_COMPILE_OPTIONS}
+        ${ARRUS_CPP_STRICT_COMPILE_OPTIONS}
+)
+target_compile_definitions(${TARGET_NAME} PRIVATE
+        ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}
+)
 
 ################################################################################
 # Tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
-    create_core_test(devices/DeviceIdTest.cpp)
+    create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/utilsTest.cpp)
-    create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp)
-    create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp)
-    create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp)
-    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp)
-    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp)
-    create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp devices/DeviceId.cpp)
+#    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
+    create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
 endif()

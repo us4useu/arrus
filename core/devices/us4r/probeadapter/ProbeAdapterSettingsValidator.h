@@ -30,13 +30,13 @@ public:
         // Make sure, that the number of channels is equal to
         // the number of channel mapping elements.
         expectEqual<ChannelIdx>("channel mapping",
-                                obj.getChannelMapping().size(),
+								static_cast<ChannelIdx>(obj.getChannelMapping().size()),
                                 obj.getNumberOfChannels(),
                                 " (size, compared to nChannels)");
 
         // Get the number of us4oems
         auto modules = obj.getChannelMapping() |
-                       ranges::views::transform([](auto v) { return v.first; });
+                       ranges::view::transform([](auto v) { return v.first; });
 
         // Check if contains consecutive ordinal numbers.
         // Us4OEMs should have exactly ordinals: 0, 1, ... nmodules-1
@@ -97,15 +97,14 @@ public:
 
                 // Make sure, the mapping contains [0,31)*i*32 groups
                 // (where i can be 0, 1, 2, 3)
-                auto groups = channelsSet | ranges::views::transform(
-                        [](auto v) { return v / N_RX; });
+                auto groups = channelsSet | ranges::view::transform(
+                        [=](auto v) { return v / N_RX; });
 
 
                 bool isSingleGroup = std::reduce(
                         std::begin(groups), std::end(groups),
                         true,
-                        [&groups](bool init,
-                           const OEMMappingElement &idx) {
+                        [&groups](bool init, auto idx) {
                            return init && idx == groups.front();
                         });
 

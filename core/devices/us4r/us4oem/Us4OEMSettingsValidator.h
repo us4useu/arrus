@@ -29,21 +29,21 @@ public:
         constexpr ChannelIdx N_RX_GROUPS = N_TX_CHANNELS / RX_SIZE;
 
         // Active channel groups
-        expectEqual<unsigned>("active channel groups",
+        expectEqual("active channel groups",
                               obj.getActiveChannelGroups().size(),
-                              Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS,
+					(size_t)Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS,
                               "(size)");
 
         // Channel mapping:
         // The size of the mapping:
         // Us4OEM mapping should include all channels, we don't want
         // the situation, where some o channels are not defined.
-        expectEqual<unsigned>("channel mapping",
+        expectEqual("channel mapping",
                               obj.getChannelMapping().size(),
-                              N_TX_CHANNELS,
+							  (size_t)N_TX_CHANNELS,
                               "(size)");
 
-        if(obj.getChannelMapping().size() == N_TX_CHANNELS) {
+        if(obj.getChannelMapping().size() == (size_t)N_TX_CHANNELS) {
             auto &channelMapping = obj.getChannelMapping();
 
             // Check if contains (possibly permuted) groups:
@@ -91,10 +91,10 @@ public:
 
         if(!obj.getRxSettings().getTGCSamples().empty()) {
             // Maximum/minimum number of samples.
-            expectInRange<unsigned>(
+            expectInRange(
                     "tgc samples",
                     obj.getRxSettings().getTGCSamples().size(),
-                    1, Us4OEMImpl::N_TGC_SAMPLES,
+					(size_t)1, (size_t)Us4OEMImpl::N_TGC_SAMPLES,
                     "(size)"
             );
 

@@ -12,22 +12,22 @@ namespace arrus {
 class LNAGainValueMap {
 
 public:
-    using LNAGainValueType = uint16;
+    using ValueType = uint16;
 
     static LNAGainValueMap &getInstance() {
         static LNAGainValueMap instance;
         return instance;
     }
 
-    us4r::afe58jd18::LNA_GAIN_GBL getEnumValue(const LNAGainValueType value) {
+    us4r::afe58jd18::LNA_GAIN_GBL getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 
     /**
      * Returns a sorted set of available values.
      */
-    std::set<LNAGainValueType> getAvailableValues() const {
-        std::set<LNAGainValueType> values;
+    std::set<ValueType> getAvailableValues() const {
+        std::set<ValueType> values;
         std::transform(std::begin(valueMap), std::end(valueMap),
                        std::inserter(values, std::end(values)),
                        [](auto &val) {
@@ -45,14 +45,14 @@ public:
     void operator=(LNAGainValueMap const &&) = delete;
 
 private:
-    std::unordered_map<LNAGainValueType, us4r::afe58jd18::LNA_GAIN_GBL> valueMap;
+    std::unordered_map<ValueType, us4r::afe58jd18::LNA_GAIN_GBL> valueMap;
 
     LNAGainValueMap() {
-        valueMap.emplace(12,
+        valueMap.emplace(ValueType(12),
                          us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_12dB);
-        valueMap.emplace(18,
+        valueMap.emplace(ValueType(18),
                          us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_18dB);
-        valueMap.emplace(24,
+        valueMap.emplace(ValueType(24),
                          us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_24dB);
     }
 

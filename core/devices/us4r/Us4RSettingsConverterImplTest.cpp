@@ -2,9 +2,11 @@
 
 #include <type_traits>
 #include <ostream>
+#include <range/v3/all.hpp>
 
 #include "arrus/core/devices/us4r/Us4RSettingsConverterImpl.h"
 
+#include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
@@ -103,50 +105,44 @@ INSTANTIATE_TEST_CASE_P
          // NOTE: the assumption is here that unmapped us4oem channels
          // are mapped by identity function.
          // Two modules, 0: 0-32, 1: 0-32
-         Mappings{
-                 .adapterMapping = generate<ChannelAddress>(64, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(Mappings, (
+                 x.adapterMapping = generate<ChannelAddress>(64, [](size_t i) {
                      return ChannelAddress{i / 32, i % 32};
                  }),
-                 .
-                 expectedUs4OEMMappings = {
+                 x.expectedUs4OEMMappings = {
                          // 0:
                          getRange<ChannelIdx>(0, 128),
                          // 1:
                          getRange<ChannelIdx>(0, 128)
                  },
 // The same as the input adapter mapping
-                 .
-                 expectedAdapterMapping =
+                 x.expectedAdapterMapping =
                  generate<ChannelAddress>(64, [](size_t i) {
                      return ChannelAddress{i / 32, i % 32};
                  })
-         },
+         )),
 // Two modules, 0: 0-128, 1: 0-64
-         Mappings{
-                 .
-                 adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(Mappings, (
+                 x.adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
                      return ChannelAddress{i / 128, i % 128};
                  }),
-                 .
-                 expectedUs4OEMMappings = {
+                 x.expectedUs4OEMMappings = {
                          // 0:
                          getRange<ChannelIdx>(0, 128),
                          // 1:
                          getRange<ChannelIdx>(0, 128)
                  },
 // The same as the input adapter mapping
-                 .
-                 expectedAdapterMapping =
+                 x.expectedAdapterMapping =
                  generate<ChannelAddress>(192, [](size_t i) {
                      return ChannelAddress{i / 128, i % 128};
                  })
-         },
+         )),
 // Two modules, 0: 0-31, 1: 63-32, 0: 64-95, 1: 127-96
 // Expected: us4oems: 0: 0-127, 1: 0-31, 63-32, 64-95, 127-96
 // Expected: probe adapter: 0: 0-31, 1: 32-63, 0: 64-95, 1: 96-127
-         Mappings{
-                 .
-                 adapterMapping = generate<ChannelAddress>(128, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(Mappings, (
+                 x.adapterMapping = generate<ChannelAddress>(128, [](size_t i) {
                      Ordinal module = (i / 32) % 2;
                      ChannelIdx channel = i;
                      if(module == 1) {
@@ -154,25 +150,24 @@ INSTANTIATE_TEST_CASE_P
                      }
                      return ChannelAddress{module, channel};
                  }),
-                 .
-                 expectedUs4OEMMappings = {
+                 x.expectedUs4OEMMappings = {
                          // 0:
                          getRange<ChannelIdx>(0, 128),
                          // 1:
                          ::arrus::concat<ChannelIdx>(
                                  {
                                          getRange<ChannelIdx>(0, 32),
-                                         ranges::views::iota(32, 64)
-                                         | ranges::views::reverse
-                                         | ranges::views::transform(
+                                         ranges::view::iota(32, 64)
+                                         | ranges::view::reverse
+                                         | ranges::view::transform(
                                                  [](auto v) {
                                                      return ChannelIdx(v);
                                                  })
                                          | ranges::to_vector,
                                          getRange<ChannelIdx>(64, 96),
-                                         ranges::views::iota(96, 128)
-                                         | ranges::views::reverse
-                                         | ranges::views::transform(
+                                         ranges::view::iota(96, 128)
+                                         | ranges::view::reverse
+                                         | ranges::view::transform(
                                                  [](auto v) {
                                                      return ChannelIdx(v);
                                                  })
@@ -180,18 +175,16 @@ INSTANTIATE_TEST_CASE_P
                                  })
                  },
 // The same as the input adapter mapping
-                 .
-                 expectedAdapterMapping =
+                 x.expectedAdapterMapping =
                  generate<ChannelAddress>(128, [](size_t i) {
                      Ordinal module = (i / 32) % 2;
                      ChannelIdx channel = i;
                      return ChannelAddress{module, channel};
                  })
-         },
+         )),
 // Two modules, 0: 32-0, 1: 0-32, 0: 64-32, 1: 32-64
-         Mappings{
-                 .
-                 adapterMapping = generate<ChannelAddress>(128, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(Mappings, (
+                 x.adapterMapping = generate<ChannelAddress>(128, [](size_t i) {
                      Ordinal module = (i / 32) % 2;
                      ChannelIdx channel = i;
                      if(module == 0) {
@@ -201,21 +194,20 @@ INSTANTIATE_TEST_CASE_P
                      }
                      return ChannelAddress{module, channel};
                  }),
-                 .
-                 expectedUs4OEMMappings = {
+                 x.expectedUs4OEMMappings = {
                          // 0:
                          ::arrus::concat<ChannelIdx>(
                                  {
-                                         ranges::views::iota(0, 32)
-                                         | ranges::views::reverse
-                                         | ranges::views::transform(
+                                         ranges::view::iota(0, 32)
+                                         | ranges::view::reverse
+                                         | ranges::view::transform(
                                                  [](auto v) {
                                                      return ChannelIdx(v);
                                                  })
                                          | ranges::to_vector,
-                                         ranges::views::iota(32, 64)
-                                         | ranges::views::reverse
-                                         | ranges::views::transform(
+                                         ranges::view::iota(32, 64)
+                                         | ranges::view::reverse
+                                         | ranges::view::transform(
                                                  [](auto v) {
                                                      return ChannelIdx(v);
                                                  })
@@ -226,18 +218,16 @@ INSTANTIATE_TEST_CASE_P
                          getRange<ChannelIdx>(0, 128)
 
                  },
-                 .
-                 expectedAdapterMapping =
+                 x.expectedAdapterMapping =
                  generate<ChannelAddress>(128, [](size_t i) {
                      Ordinal module = (i / 32) % 2;
                      ChannelIdx channel = (i / 32 / 2) * 32 + (i % 32);
                      return ChannelAddress{module, channel};
                  })
-         },
+         )),
 // two modules, groups are shuffled for us4oem: 0: 64-32, 32-0
-         Mappings{
-                 .
-                 adapterMapping = generate<ChannelAddress>(128, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(Mappings, (
+                 x.adapterMapping = generate<ChannelAddress>(128, [](size_t i) {
                      Ordinal module = (i / 32) % 2;
                      ChannelIdx channel = i;
                      if(module == 0) {
@@ -247,21 +237,20 @@ INSTANTIATE_TEST_CASE_P
                      }
                      return ChannelAddress{module, channel};
                  }),
-                 .
-                 expectedUs4OEMMappings = {
+                 x.expectedUs4OEMMappings = {
                          // 0:
                          ::arrus::concat<ChannelIdx>(
                                  {
-                                         ranges::views::iota(0, 32)
-                                         | ranges::views::reverse
-                                         | ranges::views::transform(
+                                         ranges::view::iota(0, 32)
+                                         | ranges::view::reverse
+                                         | ranges::view::transform(
                                                  [](auto v) {
                                                      return ChannelIdx(v);
                                                  })
                                          | ranges::to_vector,
-                                         ranges::views::iota(32, 64)
-                                         | ranges::views::reverse
-                                         | ranges::views::transform(
+                                         ranges::view::iota(32, 64)
+                                         | ranges::view::reverse
+                                         | ranges::view::transform(
                                                  [](auto v) {
                                                      return ChannelIdx(v);
                                                  })
@@ -272,8 +261,7 @@ INSTANTIATE_TEST_CASE_P
                          getRange<ChannelIdx>(0, 128)
 
                  },
-                 .
-                 expectedAdapterMapping =
+                 x.expectedAdapterMapping =
                  generate<ChannelAddress>(128, [](size_t i)
                  {
                      Ordinal module = (i / 32) % 2;
@@ -285,30 +273,26 @@ INSTANTIATE_TEST_CASE_P
                      }
                      return ChannelAddress{module, channel};
                  })
-         },
+         )),
 // Two modules, 0: 0, 1: 0, 0: 1, 1: 1, ..., 0:31, 1:31
-         Mappings{
-                 .
-                 adapterMapping = generate<ChannelAddress>(64, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(Mappings, (
+                 x.adapterMapping = generate<ChannelAddress>(64, [](size_t i) {
                      return ChannelAddress{i % 2, i / 2};
                  }),
-                 .
-                 expectedUs4OEMMappings = {
+                 x.expectedUs4OEMMappings = {
                          // 0:
                          getRange<ChannelIdx>(0, 128),
                          // 1:
                          getRange<ChannelIdx>(0, 128)
                  },
-                 .
-                 expectedAdapterMapping =
+                 x.expectedAdapterMapping =
                  generate<ChannelAddress>(64, [](size_t i) {
                      return ChannelAddress{i % 2, i / 2};
                  })
-         },
+         )),
 // Two modules, some randomly generated permutation
-         Mappings{
-                 .
-                 adapterMapping =
+         ARRUS_STRUCT_INIT_LIST(Mappings, (
+                 x.adapterMapping =
 // Random mapping for modules 0, 1, 0, 1...
                          {{0, 17},
                           {1, 13},
@@ -375,8 +359,7 @@ INSTANTIATE_TEST_CASE_P
                           {0, 7},
                           {1, 8}
                          },
-                 .
-                 expectedUs4OEMMappings = {
+                 x.expectedUs4OEMMappings = {
                          // 0:
                          ::arrus::concat<ChannelIdx>(
                                 {
@@ -408,12 +391,11 @@ INSTANTIATE_TEST_CASE_P
                                      ::arrus::getRange<ChannelIdx>(32, 128)
                          })
                  },
-                 .
-                 expectedAdapterMapping =
+                 x.expectedAdapterMapping =
                  generate<ChannelAddress>(64, [](size_t i) {
                      return ChannelAddress{i % 2, i / 2};
                  })
-         }
+         ))
  ));
 
 // -------- Groups of active channels
@@ -492,15 +474,12 @@ INSTANTIATE_TEST_CASE_P
  testing::Values(
 // Esaote 1 like case, full adapter to probe mapping
 // us4oem:0 :0-128, us4oem:1 : 0-64
-         ActiveChannels{
-                 .
-                 adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(ActiveChannels, (
+                 x.adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
                      return ChannelAddress{i / 128, i % 128};
                  }),
-                 .
-                 probeMapping = getRange<ChannelIdx>(0, 192),
-                 .
-                 expectedUs4OEMMasks = {
+                 x.probeMapping = getRange<ChannelIdx>(0, 192),
+                 x.expectedUs4OEMMasks = {
                          // Us4OEM: 0
                          getNTimes<bool>(true, 16),
                          // Us4OEM: 1
@@ -509,20 +488,17 @@ INSTANTIATE_TEST_CASE_P
                             getNTimes<bool>(false, 8)
                          })
                  }
-         },
+         )),
 // Esaote 1 case, partial adapter to probe mapping
-         ActiveChannels{
-                 .
-                 adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
+         ARRUS_STRUCT_INIT_LIST(ActiveChannels, (
+                 x.adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
                      return ChannelAddress{i / 128, i % 128};
                  }),
-                 .
-                 probeMapping = ::arrus::concat<ChannelIdx>({
+                 x.probeMapping = ::arrus::concat<ChannelIdx>({
                      getRange<ChannelIdx>(0, 48),
                      getRange<ChannelIdx>(144, 192),
                  }),
-                 .
-                 expectedUs4OEMMasks = {
+                 x.expectedUs4OEMMasks = {
                          // Us4OEM: 0
                          ::arrus::concat<bool>({
                             getNTimes<bool>(true, 6),
@@ -535,7 +511,7 @@ INSTANTIATE_TEST_CASE_P
                              getNTimes<bool>(false, 8)
                          })
                  }
-         }
+         ))
 ));
 }
 

@@ -3,6 +3,7 @@
 
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/devices/utils.h"
+#include "arrus/core/common/tests.h"
 
 namespace {
 
@@ -35,22 +36,22 @@ INSTANTIATE_TEST_CASE_P
 
 (TestingCorrectGetPathRoot, GetPathRootTest,
  testing::Values(
-         GetPathRootTestCase{
-                 .path = "/Us4R:0",
-                 .expectedRootTail = {"Us4R:0", ""}
-         },
-         GetPathRootTestCase{
-                 .path = "/Us4R:0/Probe:0",
-                 .expectedRootTail = {"Us4R:0", "/Probe:0"}
-         },
-         GetPathRootTestCase{
-                 .path = "/Us4R:0/Us4OEM:3",
-                 .expectedRootTail = {"Us4R:0", "/Us4OEM:3"}
-         },
-         GetPathRootTestCase{
-                 .path = "/Us4R:0/Us4OEM:3/Sequencer:0",
-                 .expectedRootTail = {"Us4R:0", "/Us4OEM:3/Sequencer:0"}
-         }
+         ARRUS_STRUCT_INIT_LIST(GetPathRootTestCase, (
+                 x.path = "/Us4R:0",
+                 x.expectedRootTail = {"Us4R:0", ""}
+         )),
+         ARRUS_STRUCT_INIT_LIST(GetPathRootTestCase, (
+                 x.path = "/Us4R:0/Probe:0",
+                 x.expectedRootTail = {"Us4R:0", "/Probe:0"}
+         )),
+         ARRUS_STRUCT_INIT_LIST(GetPathRootTestCase, (
+                 x.path = "/Us4R:0/Us4OEM:3",
+                 x.expectedRootTail = {"Us4R:0", "/Us4OEM:3"}
+         )),
+         ARRUS_STRUCT_INIT_LIST(GetPathRootTestCase, (
+                 x.path = "/Us4R:0/Us4OEM:3/Sequencer:0",
+                 x.expectedRootTail = {"Us4R:0", "/Us4OEM:3/Sequencer:0"}
+         ))
  )
 );
 
@@ -67,8 +68,8 @@ TEST_P(GetPathRootInvalidInputTest, GetPathRootInvalidInputTest) {
 INSTANTIATE_TEST_CASE_P
 (InvalidDataTest, GetPathRootInvalidInputTest,
 testing::Values(
-        GetPathRootTestCase{.path = ""},
-        GetPathRootTestCase{.path = "/"}
+        ARRUS_STRUCT_INIT_LIST(GetPathRootTestCase, (x.path = "")),
+        ARRUS_STRUCT_INIT_LIST(GetPathRootTestCase, (x.path = "/"))
 ));
 
 }

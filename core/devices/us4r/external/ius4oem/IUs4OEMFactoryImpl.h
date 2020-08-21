@@ -30,7 +30,7 @@ public:
         std::vector<IUs4OEMHandle> us4oems;
 
         std::vector<Ordinal> ordinals(nModules);
-        std::iota(std::begin(ordinals), std::end(ordinals), 0);
+        std::iota(std::begin(ordinals), std::end(ordinals), Ordinal(0));
 
         // Create Us4OEM handles.
         for(auto ordinal : ordinals) {

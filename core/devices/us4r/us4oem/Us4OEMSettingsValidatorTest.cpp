@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <ostream>
+#include "arrus/core/common/tests.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/common/logging/impl/Logging.h"
@@ -27,7 +28,7 @@ INSTANTIATE_TEST_CASE_P
 (ValidUs4OEMSettings, CorrectUs4OEMSettingsTest,
  testing::Values(
          TestUs4OEMSettings{},
-         TestUs4OEMSettings{.channelMapping={
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.channelMapping={
                  // 0-31
                  26, 27, 25, 23, 28, 22, 20, 21,
                  24, 18, 19, 15, 17, 16, 29, 13,
@@ -47,19 +48,19 @@ INSTANTIATE_TEST_CASE_P
                  96, 97, 98, 99, 100, 101, 102, 103,
                  104, 105, 106, 107, 108, 109, 110, 111,
                  112, 113, 114, 115, 116, 117, 118, 119,
-                 120, 121, 122, 123, 124, 125, 126, 127}},
-         TestUs4OEMSettings{.activeChannelGroups={
+                 120, 121, 122, 123, 124, 125, 126, 127})),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeChannelGroups={
                  false, false, false, true, true, true, true, true,
-                 true, false, true, true, true, true, true, true}},
-         TestUs4OEMSettings{.dtgcAttenuation=6},
-         TestUs4OEMSettings{.dtgcAttenuation={}}, // Turn off
-         TestUs4OEMSettings{.pgaGain=24},
-         TestUs4OEMSettings{.lnaGain=24},
-         TestUs4OEMSettings{.lpfCutoff=(int) 15e6},
-         TestUs4OEMSettings{.activeTermination=200},
-         TestUs4OEMSettings{.activeTermination={}}, // Turn off
-         TestUs4OEMSettings{.tgcSamples={14.0f, 20.0f, 25.0f}},
-         TestUs4OEMSettings{.tgcSamples={}} // Turn off
+                 true, false, true, true, true, true, true, true})),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=6)),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation={})), // Turn off
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.pgaGain=24)),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lnaGain=24)),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lpfCutoff=(int) 15e6)),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination=200)),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination={})), // Turn off
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.tgcSamples={14.0f, 20.0f, 25.0f})),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.tgcSamples={})) // Turn off
  ));
 
 class InCorrectUs4OEMSettingsTest
@@ -81,11 +82,11 @@ INSTANTIATE_TEST_CASE_P
 (InvalidUs4OEMSettings, InCorrectUs4OEMSettingsTest,
  testing::Values(
          // Invalid size of the channel mapping
-         TestUs4OEMSettings{
-                 .channelMapping = {0, 1, 2, 3, 4, 5, 6, 7, 8},
-                 .invalidParameters = {"channel mapping"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.channelMapping = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+                 x.invalidParameters = {"channel mapping"})),
          // Invalid mapping (channel mapping are mixed between 32-element groups)
-         TestUs4OEMSettings{.channelMapping={
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.channelMapping={
                  // 0-31, missing 11
                  26, 27, 25, 23, 28, 22, 20, 21,
                  24, 18, 19, 15, 17, 16, 29, 13,
@@ -109,72 +110,72 @@ INSTANTIATE_TEST_CASE_P
                  104, 105, 106, 107, 108, 109, 110, 111,
                  112, 113, 114, 115, 116, 117, 118, 119,
                  120, 121, 122, 124, 125, 126, 127,
-                 77}},
+                 77})),
 
          // Invalid number of active channel groups
-         TestUs4OEMSettings{
-                 .activeChannelGroups = getNTimes(false, 15),
-                 .invalidParameters = {"active channel groups"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.activeChannelGroups = getNTimes(false, 15),
+                 x.invalidParameters = {"active channel groups"})),
          // Empty array of active channel groups
-         TestUs4OEMSettings{
-                 .activeChannelGroups = {},
-                 .invalidParameters = {"active channel groups"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.activeChannelGroups = {},
+                 x.invalidParameters = {"active channel groups"})),
          // Invalid value
-         TestUs4OEMSettings{
-                 .pgaGain = 777,
-                 .invalidParameters = {"pga gain"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.pgaGain = 777,
+                 x.invalidParameters = {"pga gain"})),
          // Invalid value
-         TestUs4OEMSettings{
-                 .lnaGain = 666,
-                 .invalidParameters = {"lna gain"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.lnaGain = 666,
+                 x.invalidParameters = {"lna gain"})),
          // Invalid value
-         TestUs4OEMSettings{
-                 .dtgcAttenuation = 123,
-                 .invalidParameters = {"dtgc attenuation"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.dtgcAttenuation = 123,
+                 x.invalidParameters = {"dtgc attenuation"})),
          // Invalid value
-         TestUs4OEMSettings{
-                 .lpfCutoff = 1,
-                 .invalidParameters = {"lpf cutoff"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.lpfCutoff = 1,
+                 x.invalidParameters = {"lpf cutoff"})),
          // Invalid value
-         TestUs4OEMSettings{
-                 .activeTermination = 9999,
-                 .invalidParameters = {"active termination"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.activeTermination = 9999,
+                 x.invalidParameters = {"active termination"})),
 
          // Invalid number of TGC samples
-         TestUs4OEMSettings{
-                 .tgcSamples = getNTimes(40.0f, 1024),
-                 .invalidParameters = {"tgc samples"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.tgcSamples = getNTimes(40.0f, 1024),
+                 x.invalidParameters = {"tgc samples"})),
          // Invalid TGC samples values (1) below the range
-         TestUs4OEMSettings{
-                 .pgaGain = 30,
-                 .lnaGain = 24,
-                 .tgcSamples = {13.0f},
-                 .invalidParameters = {"tgc samples"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.pgaGain = 30,
+                 x.lnaGain = 24,
+                 x.tgcSamples = {13.0f},
+                 x.invalidParameters = {"tgc samples"})),
          // Invalid TGC samples values (2) above the range
-         TestUs4OEMSettings{
-                .pgaGain = 30,
-                .lnaGain = 24,
-                .tgcSamples = {55.0f},
-                .invalidParameters = {"tgc samples"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                x.pgaGain = 30,
+                x.lnaGain = 24,
+                x.tgcSamples = {55.0f},
+                x.invalidParameters = {"tgc samples"})),
          // Invalid TGC samples values (3) below 0
-         TestUs4OEMSettings{
-                .pgaGain = 24,
-                .lnaGain = 12,
-                .tgcSamples = {-1.0f},
-                .invalidParameters = {"tgc samples"}},
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                x.pgaGain = 24,
+                x.lnaGain = 12,
+                x.tgcSamples = {-1.0f},
+                x.invalidParameters = {"tgc samples"})),
          // Invalid TGC samples values (3) multiple wrong values
-         TestUs4OEMSettings{
-                 .pgaGain = 24,
-                 .lnaGain = 24,
-                 .tgcSamples = {0, 15, 50.0f},
-                 .invalidParameters = {"tgc samples"}},
-         TestUs4OEMSettings{
-                 .pgaGain = 11,
-                 .lnaGain = 22,
-                 .invalidParameters = {"pga gain", "lna gain"}}
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.pgaGain = 24,
+                 x.lnaGain = 24,
+                 x.tgcSamples = {0, 15, 50.0f},
+                 x.invalidParameters = {"tgc samples"})),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+                 x.pgaGain = 11,
+                 x.lnaGain = 22,
+                 x.invalidParameters = {"pga gain", "lna gain"}))
 ));
 
-// Test that multiple errors are signeld
+// Test that multiple errors are signaled
 
 // Main
 int main(int argc, char **argv) {

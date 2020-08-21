@@ -12,7 +12,7 @@ namespace arrus {
 class ActiveTerminationValueMap {
 
 public:
-    using ActiveTerminationValueType = uint16;
+    using ValueType = uint16;
 
     static ActiveTerminationValueMap &getInstance() {
         static ActiveTerminationValueMap instance;
@@ -20,15 +20,15 @@ public:
     }
 
     us4r::afe58jd18::GBL_ACTIVE_TERM
-    getEnumValue(const ActiveTerminationValueType value) {
+    getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 
     /**
      * Returns a sorted set of available values.
      */
-    std::set<ActiveTerminationValueType> getAvailableValues() const {
-        std::set<ActiveTerminationValueType> values;
+    std::set<ValueType> getAvailableValues() const {
+        std::set<ValueType> values;
         std::transform(std::begin(valueMap), std::end(valueMap),
                        std::inserter(values, std::end(values)),
                        [](auto &val) {
@@ -46,17 +46,17 @@ public:
     void operator=(ActiveTerminationValueMap const &&) = delete;
 
 private:
-    std::unordered_map<ActiveTerminationValueType, us4r::afe58jd18::GBL_ACTIVE_TERM> valueMap;
+    std::unordered_map<ValueType, us4r::afe58jd18::GBL_ACTIVE_TERM> valueMap{};
 
     ActiveTerminationValueMap() {
-        valueMap.emplace(50,
+        valueMap.emplace((ValueType)50,
                          us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
-        valueMap.emplace(100,
+        valueMap.emplace((ValueType)100,
                          us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_100);
 
-        valueMap.emplace(200,
+        valueMap.emplace((ValueType)200,
                          us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200);
-        valueMap.emplace(400,
+        valueMap.emplace((ValueType)400,
                          us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_400);
     }
 

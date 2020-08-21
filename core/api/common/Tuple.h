@@ -19,7 +19,7 @@ public:
         return values[i];
     }
 
-    [[nodiscard]] unsigned long size() const {
+    [[nodiscard]] size_t size() const {
         return values.size();
     }
 
@@ -27,10 +27,12 @@ public:
         return values;
     }
 
-    T product() const {
+    size_t product() const {
         return std::reduce(
-                std::begin(values), std::end(values), 1,
-                [](const auto &v1, const auto &v2) { return v1 * v2; }
+                std::begin(values), std::end(values), size_t(1),
+                [](auto v1, auto v2) -> size_t {
+                	return v1 * v2;
+                }
         );
     }
 private:

@@ -96,7 +96,7 @@ private:
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");
-        Ordinal nUs4oems = us4oemCfgs.size();
+        Ordinal nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
 
         // Initialize Us4OEMs.
         // We need to initialize Us4OEMs on a Us4R system level.
@@ -117,7 +117,9 @@ private:
 
         for(unsigned i = 0; i < us4oems.size(); ++i) {
             us4oems.push_back(
-                    us4oemFactory->getUs4OEM(i, ius4oems[i], us4oemCfgs[i])
+                    us4oemFactory->getUs4OEM(
+                    		static_cast<ChannelIdx>(i),
+							ius4oems[i], us4oemCfgs[i])
             );
         }
         return us4oems;

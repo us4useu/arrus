@@ -42,10 +42,10 @@ public:
                 arrus::format("Maximum number of channels: {}", UINT8_MAX));
 
         for(auto value : cfg.getChannelMapping()) {
-            ARRUS_REQUIRES_AT_MOST(value, UINT8_MAX, arrus::format(
+            ARRUS_REQUIRES_AT_MOST(value, (ChannelIdx)UINT8_MAX, arrus::format(
                             "Us4OEM channel index cannot exceed {}",
-                            UINT8_MAX));
-            channelMapping.push_back(value);
+							(ChannelIdx)UINT8_MAX));
+            channelMapping.push_back(static_cast<uint8_t>(value));
         }
 
         uint8_t virtualIdx = 0;
@@ -90,7 +90,7 @@ public:
             const TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
                     cfg.getRxSettings().getTGCSamples(),
                     maxGain - Us4OEMImpl::TGC_RANGE,
-                    maxGain);
+                    static_cast<TGCSampleValue>(maxGain));
 
             ius4oem->TGCEnable();
             // Currently firing parameter does not matter.

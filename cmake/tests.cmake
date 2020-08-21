@@ -7,6 +7,11 @@ function(create_core_test test_src)
         set(other_deps ${ARGV2})
     endif()
 
+    # TODO(pjarosik) make the below a parameter
+    if(NOT DEFINED ARRUS_CPP_COMMON_COMPILE_OPTIONS)
+        message(FATAL_ERROR "ARRUS_CPP_COMMON_COMPILE_OPTIONS must be set for test targets.")
+    endif()
+
     # replace / in test_src with _
     get_filename_component(target_name_file ${test_src} NAME_WE)
     get_filename_component(target_name_dir ${test_src} DIRECTORY)
@@ -14,10 +19,17 @@ function(create_core_test test_src)
 
     add_executable(${target_name}
         ${test_src}
+        common/logging.cpp
         ../common/logging/impl/Logging.cpp
         ../common/logging/impl/LogSeverity.cpp
+        ${other_srcs}
     )
-    target_link_libraries(${target_name} arrus-core GTest::GTest Boost::Boost fmt::fmt range-v3::range-v3 ${other_deps})
+    target_link_libraries(${target_name}
+            GTest::GTest
+            Boost::Boost
+            fmt::fmt
+            range-v3::range-v3
+    ${other_deps})
     target_include_directories(
         ${target_name}
         PRIVATE
@@ -26,5 +38,6 @@ function(create_core_test test_src)
         ${CMAKE_CURRENT_BINARY_DIR} # Required for pb.h files (protobuf).
         ${Us4_INCLUDE_DIR} # Required to mock us4 devices. TODO(pjarosik) do not depend tests on external libraries
     )
+    target_compile_options(${target_name} PRIVATE ${ARRUS_CPP_COMMON_COMPILE_OPTIONS})
     add_test(NAME ${test_src} COMMAND ${target_name})
 endfunction()

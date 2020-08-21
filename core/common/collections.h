@@ -66,7 +66,7 @@ template<typename T, typename U>
 inline std::vector<std::pair<T, U>>
 // TODO ranges as input might more efficient here
 zip(const std::vector<T> &a, const std::vector<U> &b) {
-    std::vector<std::pair<T, U>> res = ranges::views::zip(a, b);
+    std::vector<std::pair<T, U>> res = ranges::view::zip(a, b);
     return res;
 }
 
@@ -74,7 +74,7 @@ template<typename R>
 inline std::vector<R>
 generate(size_t nElements, std::function<R(size_t)> transformation) {
     std::vector<R> result;
-    for(auto i : ranges::views::ints((size_t) 0, nElements)) {
+    for(auto i : ranges::view::ints((size_t) 0, nElements)) {
         result.emplace_back(transformation(i));
     }
     return result;

@@ -54,6 +54,19 @@ else()
     message(FATAL_ERROR "Unsupported platform.")
 endif()
 
+# Common C++ compile options
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+    # permissive- is required by range-v3/0.5.0
+    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS /permissive-)
+    set(ARRUS_CPP_STRICT_COMPILE_OPTIONS /W4 /WX)
+
+    set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
+            # warnings occurs in boost bimap implementation headers
+            _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
+else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+    set(ARRUS_CPP_STRICT_COMPILE_OPTIONS -Wall -Wextra -pedantic -Werror)
+    set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
+endif()
 
 ################################################################################
 # Common dependencies

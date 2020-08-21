@@ -28,7 +28,7 @@ do {                                                     \
 do {                                                                    \
     try {                                                               \
         EXPR;                                                           \
-    } catch(const IN_EXCEPTION_TYPE &e) {                               \
+    } catch(const IN_EXCEPTION_TYPE&) {                               \
         throw (OUT_EXCEPTION);                                          \
     }                                                                   \
 } while(0)

@@ -40,9 +40,9 @@ public:
         return getDevice(componentId);
     }
 
-    Device::RawHandle getDevice(const DeviceId &id) {
-        auto ordinal = id.getOrdinal();
-        switch(id.getDeviceType()) {
+    Device::RawHandle getDevice(const DeviceId &deviceId) {
+        auto ordinal = deviceId.getOrdinal();
+        switch(deviceId.getDeviceType()) {
             case DeviceType::Us4OEM:
                 return getUs4OEM(ordinal).get();
             case DeviceType::ProbeAdapter:
@@ -50,7 +50,7 @@ public:
             case DeviceType::Probe:
                 return getProbe(ordinal).get();
             default:
-                throw DeviceNotFoundException(id);
+                throw DeviceNotFoundException(deviceId);
         }
     }
 

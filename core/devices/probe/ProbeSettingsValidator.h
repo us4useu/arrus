@@ -14,8 +14,8 @@ public:
 
     void validate(const ProbeSettings &obj) override {
 
-        expectAtMost<unsigned>("numberOfElements",
-                  obj.getModel().getNumberOfElements().size(), 2,
+        expectAtMost("numberOfElements",
+                  obj.getModel().getNumberOfElements().size(), (size_t)2,
                   "(size)");
         expectEqual("numberOfElements",
                     obj.getModel().getNumberOfElements().size(),

@@ -12,22 +12,22 @@ namespace arrus {
 class PGAGainValueMap {
 
 public:
-    using PGAGainValueType = uint16;
+    using ValueType = uint16;
 
     static PGAGainValueMap &getInstance() {
         static PGAGainValueMap instance;
         return instance;
     }
 
-    us4r::afe58jd18::PGA_GAIN getEnumValue(const PGAGainValueType value) {
+    us4r::afe58jd18::PGA_GAIN getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 
     /**
      * Returns a sorted set of available values.
      */
-    std::set<PGAGainValueType> getAvailableValues() const {
-        std::set<PGAGainValueType> values;
+    std::set<ValueType> getAvailableValues() const {
+        std::set<ValueType> values;
         std::transform(std::begin(valueMap), std::end(valueMap),
                        std::inserter(values, std::end(values)),
                        [](auto &val) {
@@ -45,11 +45,11 @@ public:
     void operator=(PGAGainValueMap const &&) = delete;
 
 private:
-    std::unordered_map<PGAGainValueType, us4r::afe58jd18::PGA_GAIN> valueMap;
+    std::unordered_map<ValueType, us4r::afe58jd18::PGA_GAIN> valueMap;
 
     PGAGainValueMap() {
-        valueMap.emplace(24, us4r::afe58jd18::PGA_GAIN::PGA_GAIN_24dB);
-        valueMap.emplace(30, us4r::afe58jd18::PGA_GAIN::PGA_GAIN_30dB);
+        valueMap.emplace(ValueType(24), us4r::afe58jd18::PGA_GAIN::PGA_GAIN_24dB);
+        valueMap.emplace(ValueType(30), us4r::afe58jd18::PGA_GAIN::PGA_GAIN_30dB);
     }
 
 };
