@@ -3,7 +3,6 @@ classdef TxRxSequence
     %   
     %   properties: 
     %       TxRxList - object array of class TxRx
-    %       pri - pulse repetition interval [s]
     %
     %   methods: 
     %       TxRxSequence() - constructor. 
@@ -13,7 +12,7 @@ classdef TxRxSequence
     
     properties
         TxRxList {mustBeTxRx}
-        pri (1,1) {mustBeReal, mustBePositive} = 2000*1e-6
+
         
     end
     
@@ -21,11 +20,6 @@ classdef TxRxSequence
         function obj = TxRxSequence(varargin)                
             if nargin == 1
                 obj.TxRxList = varargin{1};
-                
-            elseif nargin == 2
-                obj.TxRxList = varargin{1};
-                obj.pri = varargin{2};
-                
                 
             elseif nargin > 1 
                 error('Too many arguments for TxRxSequence constructor.')

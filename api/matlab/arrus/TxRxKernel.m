@@ -218,9 +218,11 @@ classdef TxRxKernel < handle
             for iArius = 0:obj.usSystem.nArius-1
                 Us4MEX(iArius, "SetNTriggers", obj.nFire);
                 for iTrig = 0:obj.nFire-2
-                    Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6,  0, iTrig);
+%                     Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6,  0, iTrig);
+                    Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTrig+1).pri*1e6,  0, iTrig);
                 end
-                Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 1, obj.nFire-1);
+%                 Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 1, obj.nFire-1);
+                Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(nFire).pri*1e6, 1, obj.nFire-1);
                 Us4MEX(iArius, "EnableSequencer");
             end
 

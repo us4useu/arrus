@@ -4,6 +4,7 @@ classdef TxRx
     %   properties:
     %       Tx - Tx object
     %       Rx - Rx object
+    %       pri - pulse repetition interval [s]    
     %
     %   methods:
     %       TxRx() - constructor.
@@ -16,6 +17,7 @@ classdef TxRx
     properties
         Tx@Tx = Tx()
         Rx@Rx = Rx()
+        pri (1,1) {mustBeReal, mustBePositive} = 2000*1e-6        
     end
     
     
@@ -27,10 +29,12 @@ classdef TxRx
                 % adding parameters to parser
                 addParameter(p, 'Tx',Tx())
                 addParameter(p, 'Rx',Rx())
+                addParameter(p, 'pri',2e-3)
                 parse(p, varargin{:})
                                 
                 obj.Tx = p.Results.Tx;
                 obj.Rx = p.Results.Rx;
+                obj.pri = p.Results.pri;
             end                 
         end
         
