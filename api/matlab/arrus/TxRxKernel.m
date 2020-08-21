@@ -137,7 +137,8 @@ classdef TxRxKernel < handle
             % Program Tx/Rx sequence
             for iArius = 0:nArius-1
                 Us4MEX(iArius, "SetNumberOfFirings", obj.nFire);
-                Us4MEX(iArius, "ClearScheduledReceive"); 
+                Us4MEX(iArius, "ClearScheduledReceive");
+                Us4MEX(iArius, "SetNTriggers", obj.nFire);
             end
 
             iFire = 0;
@@ -171,6 +172,7 @@ classdef TxRxKernel < handle
                         Us4MEX(iArius, "SetTxHalfPeriods", obj.sequence.TxRxList(iTxRx).Tx.pulse.nPeriods*2, iFire);
                         Us4MEX(iArius, "SetTxInvert", 0, iFire);
 
+
                         % Rx
 %                         disp(obj.maskFormat(moduleRxApertures(iArius+1, :, iSubTxRx).'))
 %                         disp(obj.sequence.TxRxList(iTxRx).Rx.delay)
@@ -194,12 +196,16 @@ classdef TxRxKernel < handle
                             obj.sequence.TxRxList(iTxRx).Rx.fsDivider-1,...
                             iFire ...
                             );
-
+                        
+                        
+                        % trigger
+                        Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTxRx).pri*1e6,  0, iFire);
                     end
                     iFire = iFire+1;
                 end
                 
             end
+            
             % note: after loop over n TxRx events the 'iFire' represents
             % total number of firings
             obj.nSamp = nSamp;
@@ -216,15 +222,16 @@ classdef TxRxKernel < handle
 
             % Program triggering
             for iArius = 0:obj.usSystem.nArius-1
-                Us4MEX(iArius, "SetNTriggers", obj.nFire);
-                for iTrig = 0:obj.nFire-2
+%                 Us4MEX(iArius, "SetNTriggers", obj.nFire);
+%                 for iTrig = 0:obj.nFire-2
 %                     Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6,  0, iTrig);
-                    Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTrig+1).pri*1e6,  0, iTrig);
-                end
+%                     Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTrig+1).pri*1e6,  0, iTrig);
+%                 end
 %                 Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 1, obj.nFire-1);
-                Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(nFire).pri*1e6, 1, obj.nFire-1);
+                Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(end).pri*1e6, 1, obj.nFire-1);
                 Us4MEX(iArius, "EnableSequencer");
             end
+            %}
 
         end
         
@@ -452,17 +459,22 @@ classdef TxRxKernel < handle
         
         function rf = run(obj)
             pauseMultip = 2;
-          
+            obj.nFire
+            obj.nSubTxRx
+            pauseTime = 0;
+            for iTxRx = 1:length(obj.nSubTxRx)
+                pauseTime = pauseTime + ...
+                    pauseMultip*...
+                    obj.sequence.TxRxList(iTxRx).pri*...
+                    obj.nSubTxRx(iTxRx);
+            end
+            
             % Start acquisitions (1st sequence exec., no transfer to host)
             Us4MEX(0, "TriggerStart");
-            pause(pauseMultip * obj.sequence.pri * obj.nFire);
-
-            %% Capture data
-%             for iArius=0:(obj.usSystem.nArius-1)
-%                 Us4MEX(iArius, "EnableReceive");
-%             end
+            pause(pauseTime);
+            
             Us4MEX(0, "TriggerSync");
-            pause(pauseMultip * obj.sequence.pri * obj.nFire);
+            pause(pauseTime);
             
             %% Transfer to PC
 
