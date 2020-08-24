@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_COMMON_FORMAT_H
-#define ARRUS_CORE_COMMON_FORMAT_H
+#ifndef ARRUS_COMMON_FORMAT_H
+#define ARRUS_COMMON_FORMAT_H
 
 // String formatting and parsing utilities.
 // Currently wraps fmt library calls.
@@ -80,4 +80,4 @@ inline std::string toString(const Interval<T> i) {
 
 }
 
-#endif //ARRUS_CORE_COMMON_FORMAT_H
+#endif //ARRUS_COMMON_FORMAT_H

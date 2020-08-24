@@ -4,14 +4,17 @@ set(TARGET_NAME mex_object_wrapper)
 # Source files
 ################################################################################
 set(SOURCE_FILES
-    "common.h"
-    "DefaultMexObjectManager.h"
-    "MexContext.h"
-    "MexFunction.cpp"
-    "MexFunction.h"
-    "MexObjectManager.h"
-    "MexObjectWrapper.h"
-    "arrus/SessionWrapper.h"
+    ${ARRUS_ROOT_DIR}/arrus/common/compiler.h
+    ${ARRUS_ROOT_DIR}/arrus/common/asserts.h
+    ${ARRUS_ROOT_DIR}/arrus/common/format.h
+    common.h
+    DefaultMexObjectManager.h
+    MexContext.h
+    MexFunction.cpp
+    MexFunction.h
+    MexObjectManager.h
+    MexObjectWrapper.h
+    arrus/SessionWrapper.h
 )
 
 ################################################################################
@@ -31,6 +34,7 @@ matlab_add_mex(
     SRC
         ${SOURCE_FILES}
     LINK_TO
+        arrus-core
         Boost::Boost
         fmt::fmt
 )
@@ -41,6 +45,7 @@ target_include_directories(
     ${TARGET_NAME}
     PRIVATE
         ${PROJECT_SOURCE_DIR}
+        ${ARRUS_ROOT_DIR}
 )
 
 ################################################################################

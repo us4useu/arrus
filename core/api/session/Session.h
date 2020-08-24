@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_API_SESSION_SESSION_H
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
+#include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/SessionSettings.h"
@@ -34,7 +35,12 @@ public:
 * @param sessionSettings session settings to set.
 * @return a unique handle to session
 */
+ARRUS_CPP_EXPORT
 Session::Handle createSession(const SessionSettings &sessionSettings);
+
+// TODO(pjarosik) remove
+ARRUS_CPP_EXPORT
+int testConnection();
 
 }
 

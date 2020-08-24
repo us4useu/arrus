@@ -12,7 +12,7 @@
 #include <boost/algorithm/string/join.hpp>
 
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/core/common/format.h"
+#include "arrus/common/format.h"
 
 namespace arrus {
 

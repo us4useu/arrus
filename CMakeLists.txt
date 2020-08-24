@@ -61,12 +61,20 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS /W4 /WX)
 
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
+            _WIN32
             # warnings occurs in boost bimap implementation headers
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS -Wall -Wextra -pedantic -Werror)
-    set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
+    set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
+            _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
 endif()
+
+# installation directories
+set(ARRUS_BIN_INSTALL_DIR bin)
+set(ARRUS_LIB_INSTALL_DIR lib64)
+set(ARRUS_INCLUDE_INSTALL_DIR include)
+set(ARRUS_DOCS_INSTALL_DIR docs)
 
 ################################################################################
 # Common dependencies

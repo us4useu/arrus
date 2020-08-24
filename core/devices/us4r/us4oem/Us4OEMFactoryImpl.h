@@ -2,7 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H
 
 #include "arrus/core/api/devices/us4r/RxSettings.h"
-#include "arrus/core/common/asserts.h"
+#include "arrus/common/asserts.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"

@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4SETTINGSCONVERTERIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_US4SETTINGSCONVERTERIMPL_H
 
-#include "arrus/core/common/asserts.h"
+#include "arrus/common/asserts.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 

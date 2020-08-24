@@ -5,8 +5,8 @@
 #include <boost/algorithm/string.hpp>
 
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/core/common/format.h"
-#include "arrus/core/common/compiler.h"
+#include "arrus/common/format.h"
+#include "arrus/common/compiler.h"
 #include "arrus/core/devices/utils.h"
 
 #include "arrus/core/devices/us4r/Us4RFactoryImpl.h"
@@ -31,6 +31,10 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
                 std::make_unique<Us4RSettingsConverterImpl>()
             )
     );
+}
+
+int testConnection() {
+    return 765;
 }
 
 SessionImpl::SessionImpl(const SessionSettings &sessionSettings,

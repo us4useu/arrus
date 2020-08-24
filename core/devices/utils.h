@@ -3,7 +3,7 @@
 
 #include <string>
 #include <range/v3/all.hpp>
-#include "arrus/core/common/format.h"
+#include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
 
 namespace arrus {

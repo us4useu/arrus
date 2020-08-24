@@ -5,7 +5,7 @@
 #include "common.h"
 #include "api/matlab/wrappers/arrus/SessionWrapper.h"
 
-namespace arrus::matlab_wrappers {
+namespace arrus::matlab {
 
 template<typename T>
 class DefaultMexObjectManager : public MexObjectManager {

@@ -8,7 +8,7 @@
 #include "api/matlab/wrappers/common.h"
 #include "api/matlab/wrappers/MexContext.h"
 
-namespace arrus::matlab_wrappers {
+namespace arrus::matlab {
 
 class MexObjectWrapper {
 public:

@@ -6,12 +6,12 @@
 #include <utility>
 
 #include "api/matlab/wrappers/common.h"
-#include "core/common/asserts.h"
-#include "core/common/format.h"
+#include "common/asserts.h"
+#include "common/format.h"
 #include "api/matlab/wrappers/MexObjectWrapper.h"
 #include "api/matlab/wrappers/MexContext.h"
 
-namespace arrus::matlab_wrappers {
+namespace arrus::matlab {
 
 class MexObjectManager {
 public:

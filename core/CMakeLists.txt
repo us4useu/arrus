@@ -33,10 +33,8 @@ add_library(${TARGET_NAME} SHARED
     api/session/SessionSettings.h
 
     common/hash.h
-    common/compiler.h
     common/collections.h
-    common/asserts.h
-    common/format.h
+
     common/validation.h
     common/logging.h
     common/logging.cpp
@@ -44,6 +42,9 @@ add_library(${TARGET_NAME} SHARED
     ../common/logging/Logger.h
     ../common/logging/LogSeverity.h
     ../common/logging/LoggerFactory.h
+    ../common/compiler.h
+    ../common/asserts.h
+    ../common/format.h
 
     devices/utils.h
     devices/DeviceId.cpp
@@ -87,7 +88,8 @@ add_library(${TARGET_NAME} SHARED
 
     session/SessionImpl.h
     session/SessionImpl.cpp
-        common/tests.h)
+    common/tests.h
+    api/common/macros.h)
 
 ################################################################################
 # Compile definitions
@@ -128,6 +130,8 @@ target_compile_options(${TARGET_NAME} PRIVATE
 )
 target_compile_definitions(${TARGET_NAME} PRIVATE
         ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}
+        # MSVC dll export declspec
+        ARRUS_CPP_API_BUILD_STAGE
 )
 
 ################################################################################
@@ -145,3 +149,13 @@ if(ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
 endif()
+
+################################################################################
+# Installation
+################################################################################
+install(
+    TARGETS
+        ${TARGET_NAME}
+    DESTINATION
+        ${ARRUS_LIB_INSTALL_DIR}
+)

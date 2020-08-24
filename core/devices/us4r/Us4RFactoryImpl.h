@@ -9,7 +9,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializer.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactory.h"
 #include "arrus/core/devices/probe/ProbeFactory.h"
-#include "arrus/core/common/asserts.h"
+#include "arrus/common/asserts.h"
 #include "arrus/core/devices/us4r/Us4RFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/Us4RImpl.h"

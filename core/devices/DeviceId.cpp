@@ -4,8 +4,8 @@
 
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/core/common/format.h"
-#include "arrus/core/common/asserts.h"
+#include "arrus/common/format.h"
+#include "arrus/common/asserts.h"
 
 namespace arrus {
 

@@ -10,8 +10,8 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/DeviceSettingsValidator.h"
 #include "arrus/core/common/collections.h"
-#include "arrus/core/common/format.h"
-#include "arrus/core/common/asserts.h"
+#include "arrus/common/format.h"
+#include "arrus/common/asserts.h"
 
 namespace arrus {
 

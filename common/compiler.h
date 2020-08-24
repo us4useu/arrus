@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_COMMON_COMPILER_H
-#define ARRUS_CORE_COMMON_COMPILER_H
+#ifndef ARRUS_COMMON_COMPILER_H
+#define ARRUS_COMMON_COMPILER_H
 
 #define IGNORE_UNUSED(x) do {(void)(x);} while(0)
 
@@ -22,4 +22,4 @@ inline bool isInstanceOf(const InType *in){
 
 }
 
-#endif //ARRUS_CORE_COMMON_COMPILER_H
+#endif //ARRUS_COMMON_COMPILER_H

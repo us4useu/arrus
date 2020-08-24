@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <ostream>
 
-#include "arrus/core/common/format.h"
+#include "arrus/common/format.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/probe/ProbeSettingsValidator.h"

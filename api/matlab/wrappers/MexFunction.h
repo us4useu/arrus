@@ -5,7 +5,8 @@
 #include <string>
 #include <memory>
 
-#include "core/common/compiler.h"
+#include "arrus/common/compiler.h"
+#include "arrus/common/asserts.h"
 #include "api/matlab/wrappers/common.h"
 #include "api/matlab/wrappers/MexObjectManager.h"
 #include "api/matlab/wrappers/MexObjectWrapper.h"
@@ -18,7 +19,7 @@ COMPILER_PUSH_DIAGNOSTIC_STATE
 #include <mexAdapter.hpp>
 COMPILER_POP_DIAGNOSTIC_STATE
 
-using namespace arrus::matlab_wrappers;
+using namespace arrus::matlab;
 using namespace matlab::mex;
 
 /**
