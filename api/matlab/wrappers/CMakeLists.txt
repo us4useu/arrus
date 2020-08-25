@@ -1,4 +1,4 @@
-set(TARGET_NAME mex_object_wrapper)
+set(TARGET_NAME arrus_mex_object_wrapper)
 
 ################################################################################
 # Source files
@@ -30,7 +30,7 @@ endif ()
 matlab_add_mex(
     NAME
         ${TARGET_NAME}
-    SHARED
+    MODULE
     SRC
         ${SOURCE_FILES}
     LINK_TO
@@ -55,5 +55,12 @@ target_compile_definitions(${TARGET_NAME}
     PRIVATE
     # Mute std::unique() deprecation warning from matlab api headers.
     "_SILENCE_CXX17_SHARED_PTR_UNIQUE_DEPRECATION_WARNING"
+)
+
+install(
+        TARGETS
+        ${TARGET_NAME}
+        DESTINATION
+        ${ARRUS_MATLAB_INSTALL_DIR}/+arrus
 )
 

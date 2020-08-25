@@ -122,26 +122,30 @@ install(
 # Embed external dependencies
 ################################################################################
 if(ARRUS_EMBED_DEPS)
-    message("ROOT DIR: ${Us4_ROOT_DIR}")
+    # TODO Remove transitive dependency on boost (embed deps directly).
+    message("Us4r API ROOT DIR: ${Us4_ROOT_DIR}")
+    # Sanitize provided path.
+    string(REPLACE "\\" "/" Us4_ROOT_DIR_SANITIZED ${Us4_ROOT_DIR})
+
     install(
         DIRECTORY
-            ${Us4_ROOT_DIR}/lib64/
+            ${Us4_ROOT_DIR_SANITIZED}/lib64/
         DESTINATION
-            lib64
+            ${ARRUS_LIB_INSTALL_DIR}
     )
     install(
        FILES
             # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR}/matlab/Us4MEX.mexw64
+            ${Us4_ROOT_DIR_SANITIZED}/matlab/Us4MEX.mexw64
        DESTINATION
             matlab/arrus
     )
     install(
         FILES
             # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR}/bin/us4OEMFirmwareUpdate.exe
+            ${Us4_ROOT_DIR_SANITIZED}/bin/us4OEMFirmwareUpdate.exe
         DESTINATION
-            bin
+            ${ARRUS_BIN_INSTALL_DIR}
     )
 endif()
 

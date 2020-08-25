@@ -2,6 +2,7 @@
 #define ARRUS_API_MATLAB_WRAPPERS_ARRUS_SESSIONOBJECTWRAPPER_H
 
 #include <utility>
+#include <string>
 
 #include "arrus/api/matlab/wrappers/MexObjectWrapper.h"
 #include "arrus/api/matlab/wrappers/DefaultMexObjectManager.h"
@@ -9,8 +10,6 @@
 #include "arrus/core/api/session/Session.h"
 #include "arrus/common/format.h"
 
-#include <csignal>
-#include <fstream>
 
 namespace arrus::matlab {
 
@@ -25,15 +24,20 @@ public:
         this->ctx->logInfo("Constructor");
 
         // TODO remove
+        this->ctx->logInfo("calling");
         auto value = ::arrus::testConnection();
-        ctx->logInfo(
+        this->ctx->logInfo("after calling");
+        this->ctx->logInfo(
             arrus::format("Test connection, {}", value)
         );
+        this->ctx->logInfo("1");
 
         this->addMethod("test1", std::bind(&SessionWrapper::test1,
                 this, std::placeholders::_1));
+        this->ctx->logInfo("2");
         this->addMethod("test2", std::bind(&SessionWrapper::test2,
                 this, std::placeholders::_1));
+        this->ctx->logInfo("3");
     }
 
     ~SessionWrapper() override {
