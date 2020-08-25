@@ -80,7 +80,10 @@ us.upload(seqPWI, rec);
 
 %% Run sequence and reconstruction
 [rf,img] = us.run;
+%%
 figure, imagesc(img)
+figure, 
+    imagesc(rf(500:1000,:,1))
 
 % display = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
 % us.runLoop(@display.isOpen, @display.updateImg);

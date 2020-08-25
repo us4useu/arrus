@@ -53,7 +53,7 @@ us.upload(sequence);
 
 toc
 
-% %% images
+%% images
 % for i = 1:size(rf,3)
 %     figure, imagesc(log(double(rf(:,:,i)).^2+1))
 % end
@@ -63,4 +63,4 @@ toc
 % set(gca,'ylim',[1300,1900])
 
 figure, 
-    imagesc(rf(:,:,1))
+    imagesc(rf(900:1400,:,1))
