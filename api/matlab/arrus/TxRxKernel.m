@@ -26,6 +26,7 @@ classdef TxRxKernel < handle
         nSamp = 0 % vector with sample numbers for all firings
         startSamp = 0 % vector with first sample numbers for all firings
         nSubTxRx = 0 % vector with number of firings in each TxRx event. sum(nSubTxRx) == nFire
+        pri = 0 % vector with pri in each firing
         
         % Arrays describing relation between module channel 
         % and probe element in each TxRx, used in programHW
@@ -144,6 +145,7 @@ classdef TxRxKernel < handle
             iFire = 0;
             nSamp = NaN(1,obj.nFire);
             startSamp = NaN(1,obj.nFire);
+            pri = NaN(1,obj.nFire);
             for iTxRx = 1:nTxRx 
                 rxTime = obj.sequence.TxRxList(iTxRx).Rx.delay  ...
                     + obj.sequence.TxRxList(iTxRx).Rx.time ...
@@ -152,11 +154,18 @@ classdef TxRxKernel < handle
                 fs = samplingFrequency./obj.sequence.TxRxList(iTxRx).Rx.fsDivider;
                 moduleTxApertures = obj.module2TxMaps{iTxRx};
                 moduleTxDelays = obj.module2TxDelaysMaps{iTxRx};
-                moduleRxApertures = obj.module2RxMaps{iTxRx};                
+                moduleRxApertures = obj.module2RxMaps{iTxRx};          
+
+                thisNSamp = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
+                thisStartSamp = floor(obj.sequence.TxRxList(iTxRx).Rx.delay.*fs);
+                
                 for iSubTxRx = 1:obj.nSubTxRx(iTxRx)
 
-                    nSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
-                    startSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay.*fs);
+%                     nSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.time.*fs);
+%                     startSamp(iFire+1) = floor(obj.sequence.TxRxList(iTxRx).Rx.delay.*fs);
+                    nSamp(iFire+1) = thisNSamp;
+                    startSamp(iFire+1) = thisStartSamp;
+
 
 %                     disp(obj.sequence.TxRxList(iTxRx).Rx.delay)
 %                     disp(startSamp)
@@ -199,7 +208,18 @@ classdef TxRxKernel < handle
                         
                         
                         % trigger
-                        Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTxRx).pri*1e6,  0, iFire);
+                        if isequal(obj.sequence.TxRxList(iTxRx).pri,'min')
+                            thisPri = (thisNSamp+thisStartSamp)/fs;
+                            pri(iFire+1) = thisPri;
+%                             Us4MEX(iArius, "SetTrigger", pri,  0, iFire);
+                        else
+
+                            thisPri = obj.sequence.TxRxList(iTxRx).pri;
+                            pri(iFire+1) = thisPri;
+%                             Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTxRx).pri*1e6,  0, iFire);
+                        end
+                            Us4MEX(iArius, "SetTrigger", thisPri*1e6,  0, iFire);                        
+                        
                     end
                     iFire = iFire+1;
                 end
@@ -210,25 +230,13 @@ classdef TxRxKernel < handle
             % total number of firings
             obj.nSamp = nSamp;
             obj.startSamp = startSamp;
-%             disp(['nSamp: ',num2str(nSamp)])
-%             disp(['startSamp: ',num2str(startSamp)])
+            obj.pri = pri;
 
-            
-            for iArius = 0:nArius-1
-                Us4MEX(iArius, "EnableTransmit");
-            end
-            
-           
-
-            % Program triggering
+            % This is the last trigger
             for iArius = 0:obj.usSystem.nArius-1
-%                 Us4MEX(iArius, "SetNTriggers", obj.nFire);
-%                 for iTrig = 0:obj.nFire-2
-%                     Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6,  0, iTrig);
-%                     Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTrig+1).pri*1e6,  0, iTrig);
-%                 end
-%                 Us4MEX(iArius, "SetTrigger", obj.sequence.pri*1e6, 1, obj.nFire-1);
-                Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(end).pri*1e6, 1, obj.nFire-1);
+                Us4MEX(iArius, "EnableTransmit");
+%                 Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(end).pri*1e6, 1, obj.nFire-1);
+                Us4MEX(iArius, "SetTrigger", thisPri*1e6, 1, obj.nFire-1);
                 Us4MEX(iArius, "EnableSequencer");
             end
             %}
@@ -461,13 +469,27 @@ classdef TxRxKernel < handle
             pauseMultip = 2;
             obj.nFire
             obj.nSubTxRx
+%             pauseTime = 0;
+            
+%             for iTxRx = 1:length(obj.nSubTxRx)
+%                 pauseTime = pauseTime + ...
+%                     pauseMultip*...
+%                     obj.sequence.TxRxList(iTxRx).pri*...
+%                     obj.nSubTxRx(iTxRx);
+%                 
+%                 disp(['1: ',num2str(obj.sequence.TxRxList(iTxRx).pri)])
+%                 
+%             end
+            
+            
             pauseTime = 0;
-            for iTxRx = 1:length(obj.nSubTxRx)
+            for iFire = 1:obj.nFire
                 pauseTime = pauseTime + ...
                     pauseMultip*...
-                    obj.sequence.TxRxList(iTxRx).pri*...
-                    obj.nSubTxRx(iTxRx);
+                    obj.pri(iFire);
             end
+            disp(['pauseTime: ',num2str(pauseTime*1e6), '[us], nFire: ',num2str(obj.nFire)])
+
             
             % Start acquisitions (1st sequence exec., no transfer to host)
             Us4MEX(0, "TriggerStart");

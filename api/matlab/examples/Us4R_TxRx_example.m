@@ -1,6 +1,6 @@
 
 % path to the MATLAB API filesqui
-addpath('../arrus');
+% addpath('../arrus');
 
 nUs4OEM     = 2;
 
@@ -20,7 +20,7 @@ fsDivider = 1;
 
 
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM, probeName, adapterType, 5, true);
+us	= Us4R(nUs4OEM, probeName, adapterType, 1, true);
 
 %%
 % 
@@ -32,17 +32,17 @@ us	= Us4R(nUs4OEM, probeName, adapterType, 5, true);
 
 
 
-txap = true(1,192*2);
+txap = false(1,32); txap(1:32) = true;
 
-rxap = true(1,192);
-% rxap = false(1,192); rxap(50:70) = true; %rxap(129) = true;
+% rxap = true(1,192);
+rxap = false(1,32); rxap(1:32) = true; 
 
-pulse = Pulse('nPeriods',[2], 'frequency', [5e6]);
+pulse = Pulse('nPeriods',[2], 'frequency', [7e6]);
 t1 = Tx('pulse', pulse, 'aperture', txap);
 % r1 = Rx('aperture', rxap, 'time', 7e-6,'delay',15e-6);
 r1 = Rx('aperture', rxap, 'time', 50e-6, 'delay', 10e-6);
-txrx1 = TxRx('Tx',t1,'Rx', r1);
-sequence = TxRxSequence([txrx1, txrx1, txrx1]);
+txrx1 = TxRx('Tx',t1,'Rx', r1, 'pri', 150e-6);
+sequence = TxRxSequence([txrx1]);
 %%
 tic
 us.upload(sequence);
@@ -58,7 +58,7 @@ toc
 %     figure, imagesc(log(double(rf(:,:,i)).^2+1))
 % end
 
-% figure, imagesc(log(double(rf(:,:,1)).^2+1))
+figure, imagesc(log(double(rf(:,:,1)).^2+1))
 % set(gca,'xlim',[45,75])
 % set(gca,'ylim',[1300,1900])
 
