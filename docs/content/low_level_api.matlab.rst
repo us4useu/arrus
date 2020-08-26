@@ -32,12 +32,12 @@ System configuration
 
 SetRxChannelMapping
 -------------------
-..  mat:function:: Us4MEX(moduleIndex, "SetRxChannelMapping", srcChannel, dstChannel)
+..  mat:function:: Us4MEX(moduleIndex, "SetRxChannelMapping", mapping, rxMapId)
 
     Sets RX mapping from the source (module's) channel to the destination (Probe's) channel.
-
-    :param srcChannel: source channel number
-    :param dstChannel: destination channel number
+	
+    :param mapping: 32-element vector with channel mapping. mapping[source channel] = destination channel. 
+    :param rxMapId: mapping index
 
 .. _mex-SetTxChannelMapping:
 
@@ -367,31 +367,24 @@ ClearScheduledReceive
 
     Clears a queue of RX tasks, should be called before defining any new TX/RX scheme.
 
-.. _mex-EnableReceive:
-
-EnableReceive
--------------
-
-..  mat:function:: Us4MEX(moduleIndex, "EnableReceive")
-
-    Enables RX data transfer from the probe's adapter to the module's internal memory.
-
 .. _mex-ScheduleReceive:
 
 ScheduleReceive
 ---------------
 
-..  mat:function:: Us4MEX(moduleIndex, "ScheduleReceive", address, length, startSample, decimation)
+..  mat:function:: Us4MEX(moduleIndex, "ScheduleReceive", firing, address, length, startSample, decimation, rxMapId)
 
     Schedules a new data transmission from the probe's adapter to the module's internal memory.
 
     This function queues a new data transmission from all available RX channels to the device's internal memory.
     Data transfer starts with the next "TriggerStart" operation call.
 
+    :param firing: a firing, in which this data transmission should apply, **starts from 0**
     :param address: module's internal memory address (a number), where RX data should be saved
-    :param length: number of samples from single channel to acquire
+    :param length: number of samples (per 32 channels) to acquire
     :param startSample: starting sample (delay from trigger). MUST BE EQUAL FOR ALL FUNTION CALLS (current firmware limitation)
     :param decimation: number of samples to skip before writing to memory. MUST BE EQUAL FOR ALL FUNTION CALLS (current firmware limitation)
+    :param rxMapId: index of the rx channel mapping to be used.
 
 TX Triggers
 ===========
@@ -410,13 +403,12 @@ SetNTriggers
 
 SetTrigger
 ----------
-..  mat:function:: Us4MEX(moduleIndex, "SetTrigger", timeToNextTrigger, timeToNextTx, syncReq, idx)
+..  mat:function:: Us4MEX(moduleIndex, "SetTrigger", timeToNextTrigger, syncReq, idx)
 
     Sets parameters of the trigger event.
     Each trigger event will generate a trigger signal for the current firing/acquisition and set next firing parameters.
 
     :param timeToNextTrigger: time between current and the next trigger [uS]
-    :param timeToNextTx: delay between current trigger and setting next firing parameters [uS]
     :param syncReq: should the trigger generator pause and wait for the TriggerSync() call
     :param idx: a firing, in which the parameters values should apply, **starts from 0**
 
@@ -428,6 +420,15 @@ EnableTransmit
 ..  mat:function:: Us4MEX(moduleIndex, "EnableTransmit")
 
     Enables TX pulse generation.
+    
+.. _mex-EnableSequencer:
+
+EnableSequencer
+---------------
+
+..  mat:function:: Us4MEX(moduleIndex, "EnableSequencer")
+
+    Enables hardware sequencer.
 
 .. _mex-TriggerStart:
 

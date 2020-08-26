@@ -10,9 +10,10 @@ switch probeName
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
         
-%     case 'SP2430'
-%         probe.nElem	= 96;
-%         probe.pitch	= 0.22e-3;
+    case 'SP2430'
+        probe.nElem	= 96;
+        probe.pitch	= 0.22e-3;
+        probe.probeMap = [1:48, 145:192];
         
     case 'AC2541'
         probe.nElem	= 192;
@@ -22,6 +23,10 @@ switch probeName
         probe.nElem	= 128;
         probe.pitch	= 0.3048e-3;
         
+    case 'L7-4'
+        probe.nElem	= 128;
+        probe.pitch	= 0.298e-3;
+        
     otherwise
         error(['Unhandled probe model ', probeName]);
         probe = [];
@@ -29,9 +34,14 @@ switch probeName
         
 end
 
+if ~isfield(probe,'probeMap')
+    probe.probeMap = 1:probe.nElem;
+end
+
+
 %% Adapter type & channel mapping
 switch probeName
-    case {'AL2442','SL1543','AC2541'}
+    case {'AL2442','SL1543','SP2430','AC2541'}
         if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
@@ -77,7 +87,22 @@ switch probeName
         else
             error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
         end
-        
+       
+    case 'L7-4'
+        if strcmp(adapterType, "atl/philips")
+            probe.adapType      = 2;
+            
+            probe.rxChannelMap	= [32:-1:1 ; 1:1:32];
+            probe.rxChannelMap(1,[16 17]) = [16 17];
+            probe.rxChannelMap(2,[16 17]) = [17 16];
+            
+            probe.txChannelMap	= [ probe.rxChannelMap +  0, ...
+                                    probe.rxChannelMap + 32, ...
+                                    probe.rxChannelMap + 64, ...
+                                    probe.rxChannelMap + 96];
+        else
+            error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
+        end
 end
 
 end
