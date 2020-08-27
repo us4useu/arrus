@@ -21,6 +21,12 @@ namespace arrus::matlab {
 
     using MexMethodArgs = ::matlab::mex::ArgumentList;
     using MexMethodReturnType = ::matlab::data::TypedArray<::matlab::data::Array>;
+
+
+    bool inline isArrayScalar(const ::matlab::data::Array &array) {
+        return array.getNumberOfElements() == 1;
+    }
+
 }
 
 #endif //ARRUS_API_MATLAB_WRAPPERS_COMMON_H

@@ -4,9 +4,8 @@ classdef Session < arrus.MexObject
             obj = obj@arrus.MexObject("Session");
         end
         
-        function res = test1(obj)
-            res = obj.callMethod("test1");
+        function res = getDevice(obj, deviceId)
+            res = obj.callMethod("getDevice", deviceId);
         end
-        
     end
 end

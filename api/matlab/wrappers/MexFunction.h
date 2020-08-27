@@ -11,7 +11,7 @@
 #include "api/matlab/wrappers/MexObjectManager.h"
 #include "api/matlab/wrappers/MexObjectWrapper.h"
 #include "api/matlab/wrappers/MexContext.h"
-#include "api/matlab/wrappers/arrus/SessionWrapper.h"
+#include "api/matlab/wrappers/session/SessionWrapper.h"
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
 #pragma warning(disable: 4100 4189 4458 4702)

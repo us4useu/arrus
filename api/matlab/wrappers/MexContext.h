@@ -20,11 +20,17 @@ namespace arrus::matlab {
     public:
         using MatlabEnginePtr = std::shared_ptr<::matlab::engine::MATLABEngine>;
 
+        using SharedHandle = std::shared_ptr<MexContext>;
+
         explicit MexContext(MatlabEnginePtr matlabEngine)
             : matlabEngine(std::move(matlabEngine)) {}
 
         [[nodiscard]] ::matlab::data::ArrayFactory &getArrayFactory() {
             return factory;
+        }
+
+        MatlabEnginePtr &getMatlabEngine() {
+            return matlabEngine;
         }
 
         void logInfo(const std::string &msg) {

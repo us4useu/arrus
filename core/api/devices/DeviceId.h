@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 
+#include "arrus/core/api/common/macros.h"
+
 namespace arrus {
 
 /**
@@ -24,6 +26,7 @@ enum class DeviceType {
     * @param deviceTypeStr string representation of device type enum.
     * @return device type enum
     */
+ARRUS_CPP_EXPORT
 DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr);
 
 /**
@@ -32,6 +35,7 @@ DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr);
  * @param deviceType device type enum to convert
  * @return string representation of device type
  */
+ARRUS_CPP_EXPORT
 std::string toString(DeviceType deviceTypeEnum);
 
 /**
@@ -65,6 +69,7 @@ public:
         return !(rhs == *this);
     }
 
+    ARRUS_CPP_EXPORT
     friend std::ostream &operator<<(std::ostream &os, const DeviceId &id);
 
     [[nodiscard]] std::string toString() const {

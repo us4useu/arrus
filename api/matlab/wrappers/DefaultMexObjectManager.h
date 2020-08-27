@@ -3,7 +3,7 @@
 
 #include "MexObjectManager.h"
 #include "common.h"
-#include "api/matlab/wrappers/arrus/SessionWrapper.h"
+#include "arrus/api/matlab/wrappers/session/SessionWrapper.h"
 
 namespace arrus::matlab {
 

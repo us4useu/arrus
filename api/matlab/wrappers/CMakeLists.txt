@@ -8,13 +8,15 @@ set(SOURCE_FILES
     ${ARRUS_ROOT_DIR}/arrus/common/asserts.h
     ${ARRUS_ROOT_DIR}/arrus/common/format.h
     common.h
+    convert.h
     DefaultMexObjectManager.h
     MexContext.h
     MexFunction.cpp
     MexFunction.h
     MexObjectManager.h
     MexObjectWrapper.h
-    arrus/SessionWrapper.h
+    session/SessionWrapper.h
+    devices/convertDeviceId.h
 )
 
 ################################################################################
