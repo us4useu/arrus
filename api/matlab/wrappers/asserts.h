@@ -48,7 +48,7 @@ do {                                                  \
 
 #define ARRUS_MATLAB_REQUIRES_INTEGER(value) \
     ARRUS_MATLAB_REQUIRES_INTEGER_EXCEPTION( \
-        arrus::IllegalArgumentException(arrus::format(            \
+        value, arrus::IllegalArgumentException(arrus::format(            \
             "Value {} should be integer", value)))
 
 

@@ -7,7 +7,7 @@
 #include "arrus/api/matlab/wrappers/convert.h"
 #include "arrus/api/matlab/wrappers/devices/us4r/convertUs4OEMSettings.h"
 #include "arrus/api/matlab/wrappers/devices/us4r/convertProbeAdapterSettings.h"
-#include "arrus/api/matlab/wrappers/devices/us4r/convertProbeSettings.h"
+#include "api/matlab/wrappers/devices/probe/convertProbeSettings.h"
 #include "arrus/api/matlab/wrappers/devices/us4r/convertRxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 #include "mex.hpp"

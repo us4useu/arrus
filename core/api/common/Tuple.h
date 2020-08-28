@@ -15,6 +15,8 @@ class Tuple {
 public:
     Tuple(const std::initializer_list<T> &values) : values(values) {}
 
+    explicit Tuple(const std::vector<T> &values) : values(values) {}
+
     const T &operator[](size_t i) const {
         return values[i];
     }

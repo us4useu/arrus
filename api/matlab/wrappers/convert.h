@@ -81,6 +81,17 @@ std::vector<T> getVector(const MexContext::SharedHandle &ctx,
     return convertToVector<T>(arr);
 }
 
+template<typename T>
+std::vector<T> getIntVector(const MexContext::SharedHandle &ctx,
+                         const ::matlab::data::Array &object,
+                         const std::string &propertyName) {
+    ::matlab::data::TypedArray<double> arr =
+        getProperty(ctx, object, propertyName);
+    ARRUS_MATLAB_REQUIRES_ALL_INTEGER(arr);
+    ARRUS_REQUIRES_ALL_DATA_TYPE_VALUE(arr, T, propertyName);
+    return convertToVector<T>(arr);
+}
+
 }
 
 

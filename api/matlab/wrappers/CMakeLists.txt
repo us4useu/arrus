@@ -37,8 +37,9 @@ matlab_add_mex(
         devices/us4r/convertUs4OEMSettings.h
         devices/us4r/convertProbeAdapterSettings.h
         devices/us4r/convertProbeAdapterModelId.h
-        devices/us4r/convertProbeModel.h
-        devices/us4r/convertProbeSettings.h
+        devices/probe/convertProbeModel.h
+        devices/probe/convertProbeModelId.h
+        devices/probe/convertProbeSettings.h
         devices/us4r/convertRxSettings.h
         MatlabOutBuffer.h
     LINK_TO
