@@ -30,25 +30,31 @@ us	= Us4R(nUs4OEM, probeName, adapterType, 1, true);
 %   dorobic Rx.nSamp i Rx.startSamp
 %   Tx('pulse') -> Tx('excitation')?
 
+% test1 (full aperture)
+txap = true(1,192);
+rxap = true(1,192);
 
 
-txap = false(1,32); txap(1:32) = true;
+% % test2 (aperture first 32 elements)
+% txap = false(1,32); txap(1:32) = true;
+% rxap = false(1,32); rxap(1:32) = true; 
 
-% rxap = true(1,192);
-rxap = false(1,32); rxap(1:32) = true; 
+
 
 pulse = Pulse('nPeriods',[2], 'frequency', [7e6]);
 t1 = Tx('pulse', pulse, 'aperture', txap);
 % r1 = Rx('aperture', rxap, 'time', 7e-6,'delay',15e-6);
-r1 = Rx('aperture', rxap, 'time', 50e-6, 'delay', 10e-6);
-txrx1 = TxRx('Tx',t1,'Rx', r1, 'pri', 150e-6);
+r1 = Rx('aperture', rxap, 'time', 20e-6, 'delay', 20e-6);
+txrx1 = TxRx('Tx',t1,'Rx', r1, 'pri', 'min');
 sequence = TxRxSequence([txrx1]);
 %%
 tic
+disp('uploading a sequence...')
 us.upload(sequence);
 % 
-
+toc
 %% Run sequence (no reconstruction)
+tic
 [rf] = us.run;
 
 toc
@@ -62,5 +68,5 @@ figure, imagesc(log(double(rf(:,:,1)).^2+1))
 % set(gca,'xlim',[45,75])
 % set(gca,'ylim',[1300,1900])
 
-figure, 
-    imagesc(rf(900:1400,:,1))
+% figure, 
+%     imagesc(rf(900:1400,:,1))

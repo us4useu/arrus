@@ -20,7 +20,7 @@ classdef TxRxKernel < handle
         usSystem = []
     end
     
-    properties (Access = private)
+    properties % (Access = private)
         
         nFire = 0 % number of all firings
         nSamp = 0 % vector with sample numbers for all firings
@@ -209,15 +209,18 @@ classdef TxRxKernel < handle
                         
                         % trigger
                         if isequal(obj.sequence.TxRxList(iTxRx).pri,'min')
-                            thisPri = (thisNSamp+thisStartSamp)/fs;
+                            thisPri = (thisNSamp+thisStartSamp-1)/fs + 30e-6; % for now must be 30us added, otherwise it does not make it
                             pri(iFire+1) = thisPri;
+%                             disp(['current pri: ', num2str(thisPri), '; minimal pri: ', num2str((thisNSamp+thisStartSamp)/fs)])
 %                             Us4MEX(iArius, "SetTrigger", pri,  0, iFire);
                         else
 
                             thisPri = obj.sequence.TxRxList(iTxRx).pri;
                             pri(iFire+1) = thisPri;
+%                             disp(['current pri: ', num2str(thisPri), '; minimal pri: ', num2str((thisNSamp+thisStartSamp)/fs)])
 %                             Us4MEX(iArius, "SetTrigger", obj.sequence.TxRxList(iTxRx).pri*1e6,  0, iFire);
                         end
+                            disp(['current pri: ', num2str(thisPri), '; minimal pri: ', num2str((thisNSamp+thisStartSamp)/fs)])
                             Us4MEX(iArius, "SetTrigger", thisPri*1e6,  0, iFire);                        
                         
                     end
@@ -450,7 +453,7 @@ classdef TxRxKernel < handle
                 end
             end
             
-            %{
+            %
             % clear empty channel groups (i.e. size(moduleRxApertures,3)
             % will be equal to nFire
             emptyGroups = [];
@@ -461,14 +464,12 @@ classdef TxRxKernel < handle
             end
             moduleRxApertures(:,:,emptyGroups) = [];
             %}
-            
+
         end % of apertures2modules()  
         
         
         function rf = run(obj)
             pauseMultip = 2;
-            obj.nFire
-            obj.nSubTxRx
 %             pauseTime = 0;
             
 %             for iTxRx = 1:length(obj.nSubTxRx)
