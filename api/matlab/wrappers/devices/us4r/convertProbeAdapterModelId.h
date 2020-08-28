@@ -9,7 +9,9 @@ namespace arrus::matlab {
     ProbeAdapterModelId
     convertToProbeAdapterModelId(const MexContext::SharedHandle &ctx,
                                   const ::matlab::data::Array &object) {
-        // TODO implement
+        std::string name = getProperty(ctx, object, "name")[0];
+        std::string manuf = getProperty(ctx, object, "manufacturer")[0];
+        return ProbeAdapterModelId(name, manuf);
     }
 }
 

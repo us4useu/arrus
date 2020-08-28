@@ -9,7 +9,7 @@ namespace arrus {
 class ProbeAdapterModelId {
 public:
     explicit ProbeAdapterModelId(std::string name, std::string manufacturer)
-            : name(std::move(name)), manufacturer(manufacturer) {}
+            : name(std::move(name)), manufacturer(std::move(manufacturer)) {}
 
     [[nodiscard]] const std::string &getName() const {
         return name;

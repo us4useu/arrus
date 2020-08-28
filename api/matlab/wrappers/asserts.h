@@ -22,26 +22,35 @@ do {                                                      \
     }                                                     \
 } while(0)
 
-#define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE(value, dataType)          \
+#define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(value, dataType, e)          \
 do {                                                                    \
     dataType min = std::numeric_limits<dataType>::min();                \
     dataType max = std::numeric_limits<dataType>::max();                \
-    if (value < min || value > max) {                                   \
-        throw arrus::IllegalArgumentException(arrus::format(            \
-            "Value {} should be in range [{}, {}]", value, min, max     \
-        ));                                                             \
+    if (value < min || value > max) {                                                \
+        throw e; \
     }                                                                   \
 } while(0)
 
-#define ARRUS_MATLAB_REQUIRES_INTEGER(value)          \
+#define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE(value, dataType) \
+    ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(value, dataType, \
+        arrus::IllegalArgumentException(arrus::format(            \
+            "Value {} should be in range [{}, {}]", value, min, max     \
+        ));                                                             \
+    )
+
+#define ARRUS_MATLAB_REQUIRES_INTEGER_EXCEPTION(value, exception)          \
 do {                                                  \
     double ignore;                                    \
-    if (std::modf(value, &ignore) != 0.0) {   \
-        throw arrus::IllegalArgumentException(arrus::format(            \
-            "Value {} should be integer", value     \
-        ));                                                             \
+    if (std::modf(value, &ignore) != 0.0) {                          \
+        throw exception;                                                  \
     }                                                                   \
 } while(0)
+
+#define ARRUS_MATLAB_REQUIRES_INTEGER(value) \
+    ARRUS_MATLAB_REQUIRES_INTEGER_EXCEPTION( \
+        arrus::IllegalArgumentException(arrus::format(            \
+            "Value {} should be integer", value)))
+
 
 #define ARRUS_REQUIRES_ALL_DATA_TYPE_VALUE(list, dataType, msg)          \
 do {                                                                    \
