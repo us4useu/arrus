@@ -78,7 +78,7 @@ do {                                                    \
                 "Value {} should be binary", value     \
             ));                                                             \
         }                                               \
-        if(value != 1 || value != 0) {                   \
+        if(value != 1 && value != 0) {                   \
         throw arrus::IllegalArgumentException(arrus::format(            \
                 "Value {} should be binary", value     \
             ));                                                         \
