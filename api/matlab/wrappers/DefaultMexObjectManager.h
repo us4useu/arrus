@@ -12,8 +12,7 @@ class DefaultMexObjectManager : public MexObjectManager {
     using MexObjectManager::MexObjectManager;
 
     MexObjectHandle
-    create(std::shared_ptr<MexContext> ctx,
-            const MexMethodArgs &args) override {
+    create(std::shared_ptr<MexContext> ctx, MexMethodArgs &args) override {
         auto ptr = std::unique_ptr<T>(new T(ctx, args));
         return insert(std::move(ptr));
     }

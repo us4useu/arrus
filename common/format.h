@@ -9,6 +9,7 @@
 #include <vector>
 #include <set>
 #include <optional>
+#include <sstream>
 
 #include <boost/algorithm/string/join.hpp>
 
@@ -31,6 +32,16 @@ auto format(Args &&... args) {
  */
 inline bool isDigitsOnly(const std::string &num) {
     return std::all_of(num.begin(), num.end(), isdigit);
+}
+
+/**
+ * General purpose 'toString' function basing on ostream << operator.
+ */
+template<typename T>
+std::string toString(const T &t)  {
+    std::ostringstream ss;
+    ss << t;
+    return ss.str();
 }
 
 template<typename T>

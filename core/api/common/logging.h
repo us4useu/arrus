@@ -2,7 +2,10 @@
 #define ARRUS_CORE_API_COMMON_LOGGING_H
 
 
+#include "arrus/core/api/common/macros.h"
 #include <memory>
+
+#include "arrus/core/api/common/LoggerFactory.h"
 
 namespace arrus {
     /**
@@ -14,6 +17,7 @@ namespace arrus {
      *
      * @param factory logger factory to set
      */
+    ARRUS_CPP_EXPORT
     void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory);
 }
 

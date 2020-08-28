@@ -1,25 +1,6 @@
 set(TARGET_NAME arrus_mex_object_wrapper)
 
 ################################################################################
-# Source files
-################################################################################
-set(SOURCE_FILES
-    ${ARRUS_ROOT_DIR}/arrus/common/compiler.h
-    ${ARRUS_ROOT_DIR}/arrus/common/asserts.h
-    ${ARRUS_ROOT_DIR}/arrus/common/format.h
-    common.h
-    convert.h
-    DefaultMexObjectManager.h
-    MexContext.h
-    MexFunction.cpp
-    MexFunction.h
-    MexObjectManager.h
-    MexObjectWrapper.h
-    session/SessionWrapper.h
-    devices/convertDeviceId.h
-)
-
-################################################################################
 # Target and dependencies
 ################################################################################
 find_package(Matlab REQUIRED) # TODO require exact 9.5 version
@@ -34,7 +15,32 @@ matlab_add_mex(
         ${TARGET_NAME}
     MODULE
     SRC
-        ${SOURCE_FILES}
+        ${ARRUS_ROOT_DIR}/arrus/common/compiler.h
+        ${ARRUS_ROOT_DIR}/arrus/common/asserts.h
+        ${ARRUS_ROOT_DIR}/arrus/common/format.h
+        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LoggerImpl.h
+        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
+        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.h
+        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
+        common.h
+        convert.h
+        DefaultMexObjectManager.h
+        MexContext.h
+        MexFunction.cpp
+        MexFunction.h
+        MexObjectManager.h
+        MexObjectWrapper.h
+        session/SessionWrapper.h
+        session/convertSessionSettings.h
+        devices/convertDeviceId.h
+        devices/us4r/convertUs4RSettings.h
+        devices/us4r/convertUs4OEMSettings.h
+        devices/us4r/convertProbeAdapterSettings.h
+        devices/us4r/convertProbeAdapterModelId.h
+        devices/us4r/convertProbeModel.h
+        devices/us4r/convertProbeSettings.h
+        devices/us4r/convertRxSettings.h
+        MatlabOutBuffer.h
     LINK_TO
         arrus-core
         Boost::Boost

@@ -4,8 +4,8 @@
 #include <memory>
 #include <string>
 
-#include "arrus/common/logging/LogSeverity.h"
-#include "arrus/common/logging/LoggerFactory.h"
+#include "core/api/common/LogSeverity.h"
+#include "core/api/common/LoggerFactory.h"
 #include "arrus/common/logging/impl/LoggerImpl.h"
 
 namespace arrus {
@@ -23,7 +23,8 @@ public:
      * @param severity severity level of the records that will be stored in the
      * given output file
      */
-    void addTextSink(std::shared_ptr<std::ostream> &ostream, LogSeverity severity);
+    void addTextSink(std::shared_ptr<std::ostream> &ostream, LogSeverity severity,
+                     bool autoFlush = false);
 
     /**
      * Sets a minimum severity level for messages printed to the standard output.
@@ -31,6 +32,7 @@ public:
      * @param severity severity level to apply
      */
     void addClog(LogSeverity severity);
+
 
     Logger::Handle getLogger() override;
 

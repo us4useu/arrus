@@ -1,10 +1,10 @@
-#ifndef ARRUS_COMMON_LOGGING_LOGGERFACTORY_H
-#define ARRUS_COMMON_LOGGING_LOGGERFACTORY_H
+#ifndef ARRUS_CORE_API_COMMON_LOGGERFACTORY_H
+#define ARRUS_CORE_API_COMMON_LOGGERFACTORY_H
 
 #include <utility>
 #include <vector>
 
-#include "arrus/common/logging/Logger.h"
+#include "Logger.h"
 
 namespace arrus {
 
@@ -18,4 +18,4 @@ public:
 
 }
 
-#endif //ARRUS_COMMON_LOGGING_LOGGERFACTORY_H
+#endif //ARRUS_CORE_API_COMMON_LOGGERFACTORY_H

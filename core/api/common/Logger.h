@@ -1,8 +1,8 @@
-#ifndef ARRUS_COMMON_LOGGING_LOGGER_H
-#define ARRUS_COMMON_LOGGING_LOGGER_H
+#ifndef ARRUS_CORE_API_COMMON_LOGGER_H
+#define ARRUS_CORE_API_COMMON_LOGGER_H
 
 #include <memory>
-#include "arrus/common/logging/LogSeverity.h"
+#include "LogSeverity.h"
 
 namespace arrus {
 
@@ -40,4 +40,4 @@ public:
 
 }
 
-#endif //ARRUS_COMMON_LOGGING_LOGGER_H
+#endif //ARRUS_CORE_API_COMMON_LOGGER_H

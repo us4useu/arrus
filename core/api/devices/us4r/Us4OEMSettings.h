@@ -5,6 +5,7 @@
 #include <vector>
 #include <bitset>
 #include <optional>
+#include <ostream>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
@@ -57,6 +58,8 @@ public:
     [[nodiscard]] const RxSettings &getRxSettings() const {
         return rxSettings;
     }
+
+
 
 private:
     std::vector<ChannelIdx> channelMapping;

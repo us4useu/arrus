@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_DEVICES_PROBE_PROBEMODEL_H
 
 #include <utility>
+#include <ostream>
 
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/Interval.h"
@@ -47,6 +48,8 @@ public:
     [[nodiscard]] const Interval<double> &getTxFrequencyRange() const {
         return txFrequencyRange;
     }
+
+
 
 private:
     ProbeModelId modelId;

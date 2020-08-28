@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_COMMON_LOGGING_H
 #define ARRUS_CORE_COMMON_LOGGING_H
 
-#include "arrus/common/logging/LoggerFactory.h"
+#include "arrus/core/api/common/LoggerFactory.h"
 #include "arrus/core/api/common/logging.h"
 
 namespace arrus {

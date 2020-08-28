@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <utility>
+#include <ostream>
 
 #include "arrus/core/api/common/types.h"
 
@@ -44,6 +45,8 @@ public:
     [[nodiscard]] const std::optional<uint16> &getActiveTermination() const {
         return activeTermination;
     }
+
+
 
 private:
     std::optional<uint16> dtgcAttenuation;

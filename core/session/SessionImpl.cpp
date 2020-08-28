@@ -16,31 +16,31 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
+#include "arrus/core/session/SessionSettings.h"
 
 namespace arrus {
 
 Session::Handle createSession(const SessionSettings &sessionSettings) {
     return std::make_unique<SessionImpl>(
-            sessionSettings,
-            std::make_unique<Us4RFactoryImpl>(
-                std::make_unique<Us4OEMFactoryImpl>(),
-                std::make_unique<ProbeAdapterFactoryImpl>(),
-                std::make_unique<ProbeFactoryImpl>(),
-                std::make_unique<IUs4OEMFactoryImpl>(),
-                std::make_unique<IUs4OEMInitializerImpl>(),
-                std::make_unique<Us4RSettingsConverterImpl>()
-            )
+        sessionSettings,
+        std::make_unique<Us4RFactoryImpl>(
+            std::make_unique<Us4OEMFactoryImpl>(),
+            std::make_unique<ProbeAdapterFactoryImpl>(),
+            std::make_unique<ProbeFactoryImpl>(),
+            std::make_unique<IUs4OEMFactoryImpl>(),
+            std::make_unique<IUs4OEMInitializerImpl>(),
+            std::make_unique<Us4RSettingsConverterImpl>()
+        )
     );
-}
-
-int testConnection() {
-    return 765;
 }
 
 SessionImpl::SessionImpl(const SessionSettings &sessionSettings,
                          Us4RFactory::Handle us4RFactory)
-        : us4rFactory(std::move(us4RFactory)) {
-    devices = configureDevices(sessionSettings);
+    : us4rFactory(std::move(us4RFactory)) {
+    getDefaultLogger()->log(LogSeverity::DEBUG,
+                            arrus::format("Configuring session: {}",
+                                          toString(sessionSettings)));
+//    devices = configureDevices(sessionSettings);
 }
 
 Device::RawHandle SessionImpl::getDevice(const std::string &path) {
@@ -49,7 +49,7 @@ Device::RawHandle SessionImpl::getDevice(const std::string &path) {
     boost::algorithm::trim(sanitizedPath);
 
     // parse path
-    auto [root, tail] = ::arrus::getPathRoot(sanitizedPath);
+    auto[root, tail] = ::arrus::getPathRoot(sanitizedPath);
 
     auto deviceId = DeviceId::parse(root);
     Device::RawHandle rootDevice = getDevice(deviceId);
@@ -58,7 +58,7 @@ Device::RawHandle SessionImpl::getDevice(const std::string &path) {
         return rootDevice;
     } else {
         if(isInstanceOf<DeviceWithComponents>(rootDevice)) {
-            return ((DeviceWithComponents*)rootDevice)->getDevice(tail);
+            return ((DeviceWithComponents *) rootDevice)->getDevice(tail);
         } else {
             throw IllegalArgumentException(arrus::format(
                 "Invalid path '{}', top-level devices can be accessed only.",
@@ -71,9 +71,9 @@ Device::RawHandle SessionImpl::getDevice(const std::string &path) {
 Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
     try {
         return devices.at(deviceId).get();
-    } catch(const std::out_of_range&) {
+    } catch(const std::out_of_range &) {
         throw IllegalArgumentException(
-                arrus::format("Device unavailable: {}", deviceId.toString()));
+            arrus::format("Device unavailable: {}", deviceId.toString()));
     }
 }
 
@@ -87,5 +87,6 @@ SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     result.emplace(us4r->getDeviceId(), std::move(us4r));
     return result;
 }
+
 
 }

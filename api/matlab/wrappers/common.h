@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <cmath>
 
 #include <common/compiler.h>
 
@@ -27,6 +28,10 @@ namespace arrus::matlab {
         return array.getNumberOfElements() == 1;
     }
 
+    bool inline isInteger(const double value) {
+        double ignore;
+        return std::modf(value, &ignore) == 0.0;
+    }
 }
 
 #endif //ARRUS_API_MATLAB_WRAPPERS_COMMON_H

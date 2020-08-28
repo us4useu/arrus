@@ -39,6 +39,7 @@ private:
     Us4RFactory::Handle us4rFactory;
 };
 
+
 }
 
 #endif //ARRUS_CORE_SESSION_SESSIONIMPL_H

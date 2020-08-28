@@ -21,6 +21,7 @@ namespace arrus::matlab {
                                      "Device ordinal value should be a scalar");
         double ordinal = ordinalArr[0];
         ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE(ordinal, Ordinal);
+        ARRUS_MATLAB_REQUIRES_INTEGER(ordinal);
         return DeviceId(dt, (Ordinal)ordinal);
     }
 

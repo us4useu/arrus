@@ -4,7 +4,7 @@ classdef SessionSettings
     % :param us4RSettings: us4Settings to apply durring session
     
     properties(GetAccess = public, SetAccess = private)
-        us4RSettings arrus.devices.Us4RSettings
+        us4RSettings arrus.devices.us4r.Us4RSettings
     end
     
     methods(Access = public)

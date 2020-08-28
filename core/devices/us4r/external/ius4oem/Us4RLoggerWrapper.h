@@ -6,7 +6,7 @@
 // us4r
 #include <logging/Logger.h>
 
-#include "arrus/common/logging/Logger.h"
+#include "arrus/core/api/common/Logger.h"
 
 namespace arrus {
 

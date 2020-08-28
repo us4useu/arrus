@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_SESSION_SESSIONSETTINGS_H
 
 #include <utility>
+#include <ostream>
 
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 
@@ -14,6 +15,8 @@ public:
     [[nodiscard]] const Us4RSettings &getUs4RSettings() const {
         return us4RSettings;
     }
+
+
 
 private:
     Us4RSettings us4RSettings;

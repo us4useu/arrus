@@ -3,7 +3,8 @@
 
 #include <memory>
 
-#include "common/compiler.h"
+#include "arrus/common/compiler.h"
+#include "arrus/core/api/common/Logger.h"
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
 #pragma warning(disable: 4100 4189 4458 4702)
@@ -33,20 +34,26 @@ namespace arrus::matlab {
             return matlabEngine;
         }
 
+        void setDefaultLogger(const Logger::SharedHandle &logger) {
+            this->defaultLogger = logger;
+        }
+
+        void log(LogSeverity severity, const std::string &msg) {
+            if(this->defaultLogger != nullptr) {
+                this->defaultLogger->log(severity, msg);
+            }
+            else {
+                matlabEngine->feval(u"disp", 0,
+                                    std::vector<::matlab::data::Array>(
+                                        {factory.createScalar(msg)}));
+            }
+        }
+
         void logInfo(const std::string &msg) {
-            matlabEngine->feval(u"disp", 0,
-                                std::vector<::matlab::data::Array>(
-                                    {factory.createScalar(msg)}));
+            log(LogSeverity::INFO, msg);
         }
 
-        void logInfoAsync(const std::string &msg) {
-            matlabEngine->fevalAsync(u"disp", 0,
-                                     std::vector<::matlab::data::Array>(
-                                         {factory.createScalar(msg)}));
-        }
-
-
-        void logError(const std::string &msg) {
+        void raiseError(const std::string &msg) {
             // TODO(pjarosik) add exception name as defined in common dropbox paper
             matlabEngine->feval(u"error", 0,
                                 std::vector<::matlab::data::Array>(
@@ -56,6 +63,7 @@ namespace arrus::matlab {
     private:
         ::matlab::data::ArrayFactory factory;
         MatlabEnginePtr matlabEngine;
+        Logger::SharedHandle defaultLogger;
     };
 
 

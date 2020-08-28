@@ -39,9 +39,9 @@ add_library(${TARGET_NAME} SHARED
     common/logging.h
     common/logging.cpp
 
-    ../common/logging/Logger.h
-    ../common/logging/LogSeverity.h
-    ../common/logging/LoggerFactory.h
+    api/common/Logger.h
+    api/common/LogSeverity.h
+    api/common/LoggerFactory.h
     ../common/compiler.h
     ../common/asserts.h
     ../common/format.h
@@ -55,6 +55,8 @@ add_library(${TARGET_NAME} SHARED
     devices/us4r/us4oem/Us4OEMFactoryImpl.h
     devices/us4r/us4oem/Us4OEMImpl.h
     devices/us4r/us4oem/Us4OEMSettingsValidator.h
+    devices/us4r/us4oem/Us4OEMSettings.h
+    devices/us4r/us4oem/Us4OEMSettings.cpp
 
     devices/us4r/Us4RFactory.h
     devices/us4r/Us4RFactoryImpl.h
@@ -62,18 +64,30 @@ add_library(${TARGET_NAME} SHARED
     devices/us4r/Us4RSettingsValidator.h
     devices/us4r/Us4RSettingsConverter.h
     devices/us4r/Us4RSettingsConverterImpl.h
+    devices/us4r/Us4RSettings.h
+    devices/us4r/Us4RSettings.cpp
+    devices/us4r/RxSettings.h
+    devices/us4r/RxSettings.cpp
 
     devices/us4r/probeadapter/ProbeAdapterFactory.h
     devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h
     devices/us4r/probeadapter/ProbeAdapterImpl.h
     devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
+    devices/us4r/probeadapter/ProbeAdapterSettings.h
+    devices/us4r/probeadapter/ProbeAdapterSettings.cpp
 
     devices/probe/ProbeFactory.h
     devices/probe/ProbeFactoryImpl.h
     devices/probe/ProbeImpl.h
     devices/probe/ProbeSettingsValidator.h
+    devices/probe/ProbeSettings.h
+    devices/probe/ProbeSettings.cpp
+    devices/probe/ProbeModel.h
+    devices/probe/ProbeModel.cpp
 
     session/SessionImpl.cpp
+    session/SessionSettings.h
+    session/SessionSettings.cpp
 
     devices/us4r/external/ius4oem/IUs4OEMFactory.h
     devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h

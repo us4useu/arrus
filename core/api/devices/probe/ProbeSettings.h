@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_DEVICES_PROBE_PROBESETTINGS_H
 
 #include <utility>
+#include <ostream>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
@@ -27,6 +28,8 @@ public:
     [[nodiscard]] const ProbeModel &getModel() const {
         return model;
     }
+
+
 
 private:
     ProbeModel model;

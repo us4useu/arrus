@@ -8,7 +8,7 @@ classdef RxSettings
     % :param tgcSamples: (vector, optional) TGC curve to apply, when set \
     %   to empty array, TGC will be off [dB]
     % :param lpfCutoff: Low-pass filter cutoff value [Hz]
-    % :param active termination: active termination value
+    % :param activeTermination: active termination value
     
     properties(GetAccess = public, SetAccess = private)
         dtgcAttenuation

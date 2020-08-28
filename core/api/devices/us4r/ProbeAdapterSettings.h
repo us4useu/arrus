@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <unordered_set>
+#include <ostream>
 
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/common/types.h"
@@ -31,6 +32,8 @@ public:
     [[nodiscard]] const ChannelMapping &getChannelMapping() const {
         return mapping;
     }
+
+
 
 private:
     ProbeAdapterModelId modelId;

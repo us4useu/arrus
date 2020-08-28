@@ -9,7 +9,7 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/support/date_time.hpp>
 
-#include "arrus/common/logging/LogSeverity.h"
+#include "core/api/common/LogSeverity.h"
 #include "arrus/common/logging/impl/Logging.h"
 
 
@@ -20,28 +20,29 @@ namespace arrus {
 
 static void
 addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
-            LogSeverity minSeverity) {
+                    LogSeverity minSeverity, bool autoFlush) {
     typedef boost::log::sinks::synchronous_sink<
-            boost::log::sinks::text_ostream_backend> textSink;
+        boost::log::sinks::text_ostream_backend> textSink;
     boost::shared_ptr<textSink> sink = boost::make_shared<textSink>();
 
     sink->locked_backend()->add_stream(ostream);
+    sink->locked_backend()->auto_flush(autoFlush);
     sink->set_filter(severity >= minSeverity);
 
     namespace expr = boost::log::expressions;
 
     boost::log::formatter formatter = expr::stream
-            << "["
-            << expr::format_date_time<boost::posix_time::ptime>(
-                    "TimeStamp",
-                    "%Y-%m-%d %H:%M:%S")
-            << "]"
-            << expr::if_(expr::has_attr(deviceIdLogAttr))
-            [
-                    expr::stream << "[" << deviceIdLogAttr << "]"
-            ]
-            << " " << severity << ": "
-            << expr::smessage;
+        << "["
+        << expr::format_date_time<boost::posix_time::ptime>(
+            "TimeStamp",
+            "%Y-%m-%d %H:%M:%S")
+        << "]"
+        << expr::if_(expr::has_attr(deviceIdLogAttr))
+        [
+            expr::stream << "[" << deviceIdLogAttr << "]"
+        ]
+        << " " << severity << ": "
+        << expr::smessage;
     sink->set_formatter(formatter);
     boost::log::core::get()->add_sink(sink);
 }
@@ -52,16 +53,16 @@ Logging::Logging() {
 
 void
 Logging::addTextSink(std::shared_ptr<std::ostream> &ostream,
-                     LogSeverity minSeverity) {
+                     LogSeverity minSeverity, bool autoFlush) {
     boost::shared_ptr<std::ostream> boostPtr = boost::shared_ptr<std::ostream>(
-            ostream.get(),
-            [ostream](std::ostream *) mutable {ostream.reset();});
-    addTextSinkBoostPtr(boostPtr, minSeverity);
+        ostream.get(),
+        [ostream](std::ostream *) mutable { ostream.reset(); });
+    addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
 }
 
 void Logging::addClog(LogSeverity severity) {
     boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
-    addTextSinkBoostPtr(stream, severity);
+    addTextSinkBoostPtr(stream, severity, false);
 }
 
 Logger::Handle Logging::getLogger() {

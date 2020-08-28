@@ -22,7 +22,7 @@ public:
             : classId(std::move(classId)), ctx(std::move(ctx)) {}
 
     virtual MexObjectHandle
-    create(std::shared_ptr<MexContext> ctx, const MexMethodArgs &args) = 0;
+    create(std::shared_ptr<MexContext> ctx, MexMethodArgs &args) = 0;
 
     virtual void remove(const MexObjectHandle handle) {
         objects.erase(handle);

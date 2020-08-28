@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <map>
+#include <ostream>
 
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
@@ -43,11 +44,10 @@ public:
         return rxSettings;
     }
 
-
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
-    std::vector<Us4OEMSettings> us4oemSettings{};
+    std::vector<Us4OEMSettings> us4oemSettings;
     /** Probe adapter settings. Optional - when not set, at least one
      *  Us4OEMSettings must be set. When is set, the list of Us4OEM
      *  settings should be empty. */
