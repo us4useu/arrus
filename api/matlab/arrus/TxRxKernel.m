@@ -33,6 +33,12 @@ classdef TxRxKernel < handle
         module2RxMaps = {} 
         module2TxMaps = {}
         module2TxDelaysMaps = {}
+        
+        % constant properties: 
+        % minPriAddendum is a time which is added to estimated pri in case
+        %   when 'min' is set to pri property in TxRx object.
+        %   For now is is (arbitrarily/empirically) selected to 30us.
+        minPriAddendum = 30e-6; 
 
     end
     
@@ -209,7 +215,7 @@ classdef TxRxKernel < handle
                         
                         % trigger
                         if isequal(obj.sequence.TxRxList(iTxRx).pri,'min')
-                            thisPri = (thisNSamp+thisStartSamp-1)/fs + 30e-6; % for now must be 30us added, otherwise it does not make it
+                            thisPri = (thisNSamp+thisStartSamp-1)/fs + obj.minPriAddendum; 
                             pri(iFire+1) = thisPri;
 %                             disp(['current pri: ', num2str(thisPri), '; minimal pri: ', num2str((thisNSamp+thisStartSamp)/fs)])
 %                             Us4MEX(iArius, "SetTrigger", pri,  0, iFire);

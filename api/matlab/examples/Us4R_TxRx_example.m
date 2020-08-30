@@ -44,7 +44,7 @@ rxap = true(1,192);
 pulse = Pulse('nPeriods',[2], 'frequency', [7e6]);
 t1 = Tx('pulse', pulse, 'aperture', txap);
 % r1 = Rx('aperture', rxap, 'time', 7e-6,'delay',15e-6);
-r1 = Rx('aperture', rxap, 'time', 20e-6, 'delay', 20e-6);
+r1 = Rx('aperture', rxap, 'time', 40e-6, 'delay', 0e-6);
 txrx1 = TxRx('Tx',t1,'Rx', r1, 'pri', 'min');
 sequence = TxRxSequence([txrx1]);
 %%
