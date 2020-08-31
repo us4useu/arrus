@@ -12,6 +12,8 @@ class Session {
 public:
     using Handle = std::unique_ptr<Session>;
 
+    virtual ~Session() = default;
+
     /**
      * Returns a handle to device with given Id.
      *

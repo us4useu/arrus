@@ -48,6 +48,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 throw arrus::IllegalArgumentException(arrus::format(
                     "Unrecognized global function: {}", methodId));
             }
+            return;
         }
 
         ManagerPtr &manager = managers.at(classId);

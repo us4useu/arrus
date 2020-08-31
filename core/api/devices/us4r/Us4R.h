@@ -21,7 +21,7 @@ public:
 
     explicit Us4R(const DeviceId &id): DeviceWithComponents(id) {}
 
-    virtual ~Us4R() = default;
+    ~Us4R() override = default;
 
     /**
      * Returns a handle to Us4OEM identified by given ordinal number.

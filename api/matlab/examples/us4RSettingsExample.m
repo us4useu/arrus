@@ -5,7 +5,8 @@ import arrus.devices.us4r.*;
 import arrus.devices.probe.*;
 import arrus.session.*;
 
-arrus.setConsoleLogger('TRACE');
+arrus.setLogLevel('TRACE');
+arrus.addLogFile('test.log', 'TRACE');
 
 rxSettings = RxSettings(...
     'dtgcAttenuation', 42,...

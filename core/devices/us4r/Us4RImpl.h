@@ -10,12 +10,17 @@
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/common/logging.h"
 
 namespace arrus {
 
 class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEM::Handle>;
+
+    ~Us4RImpl() override {
+        getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
+    }
 
     Us4RImpl(const DeviceId &id, Us4OEMs &us4oems)
             : Us4R(id), us4oems(std::move(us4oems)) {}

@@ -3,6 +3,7 @@
 
 #include <utility>
 
+#include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 
@@ -25,6 +26,10 @@ public:
             N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
     static constexpr size_t N_TGC_SAMPLES = 1022;
 
+    ~Us4OEMImpl() override {
+        getDefaultLogger()->log(LogSeverity::DEBUG,
+        arrus::format("Destroying {} instance", getDeviceId().toString()));
+    }
 
     void startTrigger() override {
 
