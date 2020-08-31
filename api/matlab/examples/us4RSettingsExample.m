@@ -3,6 +3,7 @@ addpath('C:\Users\pjarosik\src\arrus\arrus\api\matlab');
 
 import arrus.devices.us4r.*;
 import arrus.devices.probe.*;
+import arrus.session.*;
 
 arrus.setConsoleLogger('TRACE');
 
@@ -23,7 +24,7 @@ adapterSettings = ProbeAdapterSettings(ProbeAdapterModelId('esaote2', 'us4us'), 
 probeModel = ProbeModel(ProbeModelId('sl1543', 'esaote'), 128, 0.3e-3, [1e6, 10e6]);
 
 probeSettings = ProbeSettings(probeModel, 0:127);
-us4RSettings = arrus.devices.us4r.Us4RSettings(adapterSettings, probeSettings, rxSettings);
-sessionSettings = arrus.session.SessionSettings(us4RSettings);
+us4RSettings = Us4RSettings(adapterSettings, probeSettings, rxSettings);
+sessionSettings = SessionSettings(us4RSettings);
 
-arrus.session.Session(sessionSettings);
+Session(sessionSettings);

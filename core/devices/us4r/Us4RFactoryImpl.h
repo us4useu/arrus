@@ -115,7 +115,7 @@ private:
                                      "Values are not equal: ius4oem size, "
                                      "us4oem settings size"));
 
-        for(unsigned i = 0; i < us4oems.size(); ++i) {
+        for(unsigned i = 0; i < ius4oems.size(); ++i) {
             us4oems.push_back(
                     us4oemFactory->getUs4OEM(
                     		static_cast<ChannelIdx>(i),

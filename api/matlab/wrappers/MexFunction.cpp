@@ -2,6 +2,7 @@
 #include "arrus/core/api/common/logging.h"
 
 #include <boost/stacktrace.hpp>
+#include <fstream>
 
 #undef ERROR
 
@@ -23,7 +24,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
         MexObjectClassId classId = inputs[0][0];
         MexObjectMethodId methodId = inputs[1][0];
 
-        if(classId == "__global" && methodId == "setConsoleLogger") {
+        if(classId == "__global" && methodId == "setLogLevel") {
             // The first call to MexFunction should set console log
             // verbosity, or the default one will be used.
             arrus::LogSeverity sev = getLoggerSeverity(inputs);
@@ -33,7 +34,20 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
         setConsoleLogIfNecessary(arrus::LogSeverity::INFO);
         // Other global functions.
         if(classId == "__global") {
-            // TODO
+            if(methodId == "addLogFile") {
+                ARRUS_REQUIRES_AT_LEAST(inputs.size(), 4,
+                                        "A path to the log file and "
+                                        "logging level are required.");
+                std::string filepath = inputs[2][0];
+                arrus::LogSeverity level = convertToLogSeverity(inputs[3]);
+                std::shared_ptr<std::ostream> logFileStream =
+                    std::make_shared<std::ofstream>(filepath.c_str(),
+                                                    std::ios_base::app);
+                this->logging->addTextSink(logFileStream, level);
+            } else {
+                throw arrus::IllegalArgumentException(arrus::format(
+                    "Unrecognized global function: {}", methodId));
+            }
         }
 
         ManagerPtr &manager = managers.at(classId);
@@ -85,7 +99,12 @@ void MexFunction::setConsoleLogIfNecessary(const arrus::LogSeverity severity) {
 arrus::LogSeverity MexFunction::getLoggerSeverity(ArgumentList inputs) {
     ARRUS_REQUIRES_AT_LEAST(inputs.size(), 3,
                             "Log severity level is required.");
-    std::string severity = inputs[2][0];
+    return convertToLogSeverity(inputs[2]);
+}
+
+arrus::LogSeverity
+MexFunction::convertToLogSeverity(const ::matlab::data::Array &severityStr) {
+    std::string severity = severityStr[0];
     if(severity == "FATAL") {
         return arrus::LogSeverity::FATAL;
     } else if(severity == "ERROR") {

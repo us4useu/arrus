@@ -40,7 +40,7 @@ SessionImpl::SessionImpl(const SessionSettings &sessionSettings,
     getDefaultLogger()->log(LogSeverity::DEBUG,
                             arrus::format("Configuring session: {}",
                                           toString(sessionSettings)));
-//    devices = configureDevices(sessionSettings);
+    devices = configureDevices(sessionSettings);
 }
 
 Device::RawHandle SessionImpl::getDevice(const std::string &path) {

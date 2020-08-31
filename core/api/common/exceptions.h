@@ -22,6 +22,11 @@ public:
         : IllegalArgumentException("Device " + id.toString() + " not found.") {}
 };
 
+class IllegalStateException : public ArrusException {
+public:
+    using ArrusException::ArrusException;
+};
+
 
 }
 

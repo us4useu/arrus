@@ -57,6 +57,8 @@ private:
     void setConsoleLogIfNecessary(const arrus::LogSeverity sev);
 
     arrus::LogSeverity getLoggerSeverity(ArgumentList inputs);
+
+    arrus::LogSeverity convertToLogSeverity(const ::matlab::data::Array& severityStr);
 };
 
 
