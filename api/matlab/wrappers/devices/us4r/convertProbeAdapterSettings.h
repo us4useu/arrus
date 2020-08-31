@@ -24,7 +24,7 @@ convertToProbeAdapterSettings(const MexContext::SharedHandle &ctx,
     // convert (2xn) array to list of pairs
     ARRUS_REQUIRES_EQUAL(
         chMap.getDimensions()[0], 2,
-        IllegalArgumentException("Probe adapter channel mapping"
+        IllegalArgumentException("Probe adapter channel mapping "
                                  "should have exactly two dimensions."));
     ProbeAdapterSettings::ChannelMapping channelMapping(
         chMap.getDimensions()[1]);
@@ -45,16 +45,16 @@ convertToProbeAdapterSettings(const MexContext::SharedHandle &ctx,
                 "(found {} in adapter channel mapping).", ordinal)));
 
         ARRUS_MATLAB_REQUIRES_INTEGER_EXCEPTION(
-            ordinal, IllegalArgumentException(
+            channel, IllegalArgumentException(
             arrus::format(
                 "Channel number should be an integer "
                 "(found {} in adapter channel mapping).", channel)));
         ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(
-            ordinal, Ordinal, IllegalArgumentException(
+            channel, ChannelIdx, IllegalArgumentException(
             arrus::format(
                 "Channel number should be uint16 "
                 "(found {} in adapter channel mapping).", channel)));
-        channelMapping[i] = {ordinal, channel};
+        channelMapping[i] = {(Ordinal)ordinal, (ChannelIdx)channel};
     }
     return ProbeAdapterSettings(modelId, nChannels, channelMapping);
 }

@@ -17,7 +17,7 @@ convertToProbeSettings(const MexContext::SharedHandle &ctx,
     using ElementType = ProbeModel::ElementIdxType;
 
     std::vector<ElementType> channelMapping = getIntVector<ElementType>(
-        ctx, object, "nElements");
+        ctx, object, "channelMapping");
 
     return ProbeSettings(model, channelMapping);
 }

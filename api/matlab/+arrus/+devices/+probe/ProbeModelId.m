@@ -11,8 +11,8 @@ classdef ProbeModelId
     
     methods
         function obj = ProbeModelId(name, manufacturer)
-            obj.name = name;
-            obj.manufacturer = manufacturer;
+            obj.name = convertCharsToStrings(name);
+            obj.manufacturer = convertCharsToStrings(manufacturer);
         end
     end
 end

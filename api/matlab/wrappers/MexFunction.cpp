@@ -61,9 +61,6 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
         }
     }
     catch(const std::exception &e) {
-        std::stringstream sstr;
-        sstr << boost::stacktrace::stacktrace();
-        mexContext->log(arrus::LogSeverity::DEBUG, sstr.str());
         mexContext->raiseError(e.what());
     }
 
@@ -72,17 +69,11 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
 void MexFunction::setConsoleLogIfNecessary(const arrus::LogSeverity severity) {
     if(logging == nullptr) {
         try {
-            mexContext->logInfo("1");
             this->logging = std::make_shared<arrus::Logging>();
-            mexContext->logInfo("1");
             this->logging->addTextSink(this->matlabOstream, severity, true);
-            mexContext->logInfo("1");
             arrus::Logger::SharedHandle defaultLogger = this->logging->getLogger();
-            mexContext->logInfo("1");
             this->mexContext->setDefaultLogger(defaultLogger);
-            mexContext->logInfo("1");
             arrus::setLoggerFactory(logging);
-            mexContext->logInfo("1");
         } catch(const std::exception &e) {
             this->logging = nullptr;
             throw e;
