@@ -99,7 +99,8 @@ add_library(${TARGET_NAME} SHARED
     devices/probe/ProbeModel.h
     devices/probe/ProbeModel.cpp
 
-    io/settings.h
+    api/io/settings.h
+    io/settings.cpp
     ${PROTO_SRC}
     ${PROTO_HDRS}
 
