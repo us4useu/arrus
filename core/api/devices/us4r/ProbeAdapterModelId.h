@@ -3,13 +3,14 @@
 
 #include <string>
 #include <utility>
+#include <ostream>
 
 namespace arrus {
 
 class ProbeAdapterModelId {
 public:
-    explicit ProbeAdapterModelId(std::string name, std::string manufacturer)
-            : name(std::move(name)), manufacturer(std::move(manufacturer)) {}
+    explicit ProbeAdapterModelId(std::string manufacturer, std::string name)
+        : manufacturer(std::move(manufacturer)), name(std::move(name)) {}
 
     [[nodiscard]] const std::string &getName() const {
         return name;
@@ -19,9 +20,23 @@ public:
         return manufacturer;
     }
 
+    friend std::ostream &
+    operator<<(std::ostream &os, const ProbeAdapterModelId &id) {
+        os << "ProbeAdapterModelId("
+        << "manufacturer: " << id.manufacturer << " name: " << id.name
+        << ")";
+        return os;
+    }
+
+    [[nodiscard]] std::string toString() const {
+        std::stringstream sstr;
+        sstr << *this;
+        return sstr.str();
+    }
+
 private:
-    std::string name;
     std::string manufacturer;
+    std::string name;
 };
 
 }

@@ -5,14 +5,14 @@ classdef ProbeAdapterModelId
     % :param manufacturer: name of the manufacturer
     
     properties(GetAccess = public, SetAccess = private)
-        name
         manufacturer
+        name
     end
     
     methods
-        function obj = ProbeAdapterModelId(name, manufacturer)
-            obj.name = convertCharsToStrings(name);
+        function obj = ProbeAdapterModelId(manufacturer, name)
             obj.manufacturer = convertCharsToStrings(manufacturer);
+            obj.name = convertCharsToStrings(name);
         end
     end
 end

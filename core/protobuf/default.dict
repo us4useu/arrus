@@ -1,8 +1,8 @@
 adapter_models: [
     {
         id: {
-            name: "esaote"
             manufacturer: "us4us"
+            name: "esaote"
         }
         n_channels: 192
         us4oem_channels_regions: [
@@ -40,8 +40,8 @@ adapter_models: [
     },
     {
         id: {
-            name: "esaote2"
             manufacturer: "us4us"
+            name: "esaote2"
         }
         n_channels: 192
         us4oem_channels_regions: [
@@ -91,8 +91,8 @@ adapter_models: [
     },
     {
         id: {
-            name: "ultrasonix"
             manufacturer: "us4us"
+            name: "ultrasonix"
         }
         n_channels: 128
         us4oem_channels_regions: [
@@ -141,8 +141,8 @@ adapter_models: [
 probe_models: [
     {
         id: {
-            name: "sl1543"
             manufacturer: "esaote"
+            name: "sl1543"
         }
         n_channels: 192,
         pitch: 0.245e-3
@@ -176,17 +176,17 @@ probe_models: [
 probe_to_adapter_connections = [
     {
         probe_model_id: {
-            name: "sl1543"
             manufacturer: "esaote"
+            name: "sl1543"
         }
         adapter_model_id: [
             {
-                name: "esaote"
                 manufacturer: "us4us"
+                name: "esaote"
             },
             {
-                name: "esaote2"
                 manufacturer: "us4us"
+                name: "esaote2"
             }
         ]
         adapter_channels_range: {
@@ -196,17 +196,17 @@ probe_to_adapter_connections = [
     },
     {
         probe_model_id: {
-            name: "al2442"
             manufacturer: "esaote"
+            name: "al2442"
         }
         adapter_model_id: [
             {
-                name: "esaote"
                 manufacturer: "us4us"
+                name: "esaote"
             },
             {
-                name: "esaote2"
                 manufacturer: "us4us"
+                name: "esaote2"
             }
         ]
         adapter_channels_range: {
@@ -216,17 +216,17 @@ probe_to_adapter_connections = [
     },
     {
          probe_model_id: {
-             name: "sp2430"
              manufacturer: "esaote"
+             name: "sp2430"
          }
          adapter_model_id: [
              {
-                 name: "esaote"
                  manufacturer: "us4us"
+                 name: "esaote"
              },
              {
-                 name: "esaote2"
                  manufacturer: "us4us"
+                 name: "esaote2"
              }
          ]
          adapter_channels_range: [
@@ -242,13 +242,13 @@ probe_to_adapter_connections = [
      },
     {
          probe_model_id: {
-             name: "l14-5/38"
              manufacturer: "ultrasonix"
+             name: "l14-5/38"
          }
          adapter_model_id: [
              {
-                 name: "ultrasonix"
                  manufacturer: "us4us"
+                 name: "ultrasonix"
              },
          ]
          adapter_channels_range: {

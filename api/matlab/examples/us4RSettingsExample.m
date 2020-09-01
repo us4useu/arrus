@@ -19,10 +19,10 @@ rxSettings = RxSettings(...
 
 adapterMapping =  cat(1, cat(2, zeros(1, 64), ones(1, 64)), cat(2, 0:63, 0:63));
 
-adapterSettings = ProbeAdapterSettings(ProbeAdapterModelId('esaote2', 'us4us'), ...
+adapterSettings = ProbeAdapterSettings(ProbeAdapterModelId('us4us', 'esaote2'), ...
     128, adapterMapping);
 
-probeModel = ProbeModel(ProbeModelId('sl1543', 'esaote'), 128, 0.3e-3, [1e6, 10e6]);
+probeModel = ProbeModel(ProbeModelId('esaote','sl1543'), 128, 0.3e-3, [1e6, 10e6]);
 
 probeSettings = ProbeSettings(probeModel, 0:127);
 us4RSettings = Us4RSettings(adapterSettings, probeSettings, rxSettings);

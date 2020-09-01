@@ -1,18 +1,18 @@
 classdef ProbeModelId
     % Probe model id.
     % 
-    % :param name: name of the model
     % :param manufacturer: name of the manufacturer
-    
+    % :param name: name of the model
+
     properties(GetAccess = public, SetAccess = private)
-        name
         manufacturer
+        name
     end
     
     methods
-        function obj = ProbeModelId(name, manufacturer)
-            obj.name = convertCharsToStrings(name);
+        function obj = ProbeModelId(manufacturer, name)
             obj.manufacturer = convertCharsToStrings(manufacturer);
+            obj.name = convertCharsToStrings(name);
         end
     end
 end

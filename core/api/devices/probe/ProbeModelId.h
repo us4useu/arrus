@@ -10,8 +10,8 @@ namespace arrus {
 
 class ProbeModelId {
 public:
-    explicit ProbeModelId(std::string name, std::string manufacturer)
-    : name(std::move(name)), manufacturer(std::move(manufacturer)) {}
+    explicit ProbeModelId(std::string manufacturer, std::string name)
+    : manufacturer(std::move(manufacturer)), name(std::move(name)) {}
 
     [[nodiscard]] const std::string &getName() const {
         return name;
@@ -23,7 +23,8 @@ public:
 
     friend std::ostream &operator<<(std::ostream &os, const ProbeModelId &id) {
         os << "ProbeModel("
-           << "name: " << id.name << " manufacturer: " << id.manufacturer
+           << "manufacturer: " << id.manufacturer
+           << " name: " << id.name
            << ")";
         return os;
     }
@@ -35,8 +36,8 @@ public:
     }
 
 private:
-    std::string name;
     std::string manufacturer;
+    std::string name;
 };
 
 }

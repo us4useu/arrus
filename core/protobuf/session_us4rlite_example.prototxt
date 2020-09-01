@@ -6,13 +6,13 @@ dictionary_file: "default.dict"
 
 us4rlite: {
     probe_model_id: {
-        name: "sl1543"
         manufacturer: "esaote"
+        name: "sl1543"
     }
 
     adapter_model_id: {
-        name: "esaote2"
         manufacturer: "us4us"
+        name: "esaote2"
     }
 
     # Default initial values.
