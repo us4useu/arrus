@@ -30,12 +30,12 @@ public:
                     std::unique_ptr<IUs4OEMFactory> ius4oemFactory,
                     std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer,
                     std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter)
-            : us4oemFactory(std::move(us4oemFactory)),
-              ius4oemFactory(std::move(ius4oemFactory)),
-              probeAdapterFactory(std::move(adapterFactory)),
-              probeFactory(std::move(probeFactory)),
-              ius4oemInitializer(std::move(ius4oemInitializer)),
-              us4RSettingsConverter(std::move(us4RSettingsConverter)) {}
+        : ius4oemFactory(std::move(ius4oemFactory)),
+          ius4oemInitializer(std::move(ius4oemInitializer)),
+          us4oemFactory(std::move(us4oemFactory)),
+          us4RSettingsConverter(std::move(us4RSettingsConverter)),
+          probeAdapterFactory(std::move(adapterFactory)),
+          probeFactory(std::move(probeFactory)) {}
 
 
     Us4R::Handle
@@ -51,42 +51,42 @@ public:
             // Probe, Adapter -> Us4OEM settings.
             // Adapter
             auto &probeAdapterSettings =
-                    settings.getProbeAdapterSettings().value();
+                settings.getProbeAdapterSettings().value();
             ProbeAdapterSettingsValidator adapterValidator(0);
             adapterValidator.validate(probeAdapterSettings);
             adapterValidator.throwOnErrors();
             // Probe
             auto &probeSettings =
-                    settings.getProbeSettings().value();
+                settings.getProbeSettings().value();
             // TODO validate probe settings
             auto &rxSettings =
-                    settings.getRxSettings().value();
+                settings.getRxSettings().value();
             // Rx settings will be validated by a specific device
             // (Us4OEMs validator)
 
             // Convert to Us4OEM settings
             auto[us4OEMSettings, adapterSettings] =
-                    us4RSettingsConverter->convertToUs4OEMSettings(
-                    probeAdapterSettings, probeSettings, rxSettings);
+            us4RSettingsConverter->convertToUs4OEMSettings(
+                probeAdapterSettings, probeSettings, rxSettings);
 
             std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(us4OEMSettings);
             std::vector<Us4OEM::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(
-                    std::begin(us4oems), std::end(us4oems),
-                    std::begin(us4oemPtrs),
-                    [](const Us4OEM::Handle &ptr) { return ptr.get(); });
+                std::begin(us4oems), std::end(us4oems),
+                std::begin(us4oemPtrs),
+                [](const Us4OEM::Handle &ptr) { return ptr.get(); });
             // Create adapter.
             ProbeAdapter::Handle adapter =
-                    probeAdapterFactory->getProbeAdapter(adapterSettings,
-                                                        us4oemPtrs);
+                probeAdapterFactory->getProbeAdapter(adapterSettings,
+                                                     us4oemPtrs);
             // Create probe.
             Probe::Handle probe = probeFactory->getProbe(probeSettings,
-                                                        adapter.get());
+                                                         adapter.get());
             return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe);
         } else {
             // Custom Us4OEMs only
             std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(
-                    settings.getUs4OEMSettings());
+                settings.getUs4OEMSettings());
             return std::make_unique<Us4RImpl>(id, us4oems);
         }
     }
@@ -104,7 +104,7 @@ private:
         // existence of some master module (by default it's the 'Us4OEM:0').
         // Check the initializeModules function to see why.
         std::vector<IUs4OEMHandle> ius4oems =
-                ius4oemFactory->getModules(nUs4oems);
+            ius4oemFactory->getModules(nUs4oems);
 
         ius4oemInitializer->initModules(ius4oems);
 
@@ -112,14 +112,14 @@ private:
         Us4RImpl::Us4OEMs us4oems;
         ARRUS_REQUIRES_EQUAL(ius4oems.size(), us4oemCfgs.size(),
                              ArrusException(
-                                     "Values are not equal: ius4oem size, "
-                                     "us4oem settings size"));
+                                 "Values are not equal: ius4oem size, "
+                                 "us4oem settings size"));
 
         for(unsigned i = 0; i < ius4oems.size(); ++i) {
             us4oems.push_back(
-                    us4oemFactory->getUs4OEM(
-                    		static_cast<ChannelIdx>(i),
-							ius4oems[i], us4oemCfgs[i])
+                us4oemFactory->getUs4OEM(
+                    static_cast<ChannelIdx>(i),
+                    ius4oems[i], us4oemCfgs[i])
             );
         }
         return us4oems;
@@ -127,8 +127,8 @@ private:
 
     std::unique_ptr<IUs4OEMFactory> ius4oemFactory;
     std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer;
-    std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter;
     std::unique_ptr<Us4OEMFactory> us4oemFactory;
+    std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter;
     std::unique_ptr<ProbeAdapterFactory> probeAdapterFactory;
     std::unique_ptr<ProbeFactory> probeFactory;
 };

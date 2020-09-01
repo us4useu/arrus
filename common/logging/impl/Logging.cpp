@@ -9,7 +9,7 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/support/date_time.hpp>
 
-#include "core/api/common/LogSeverity.h"
+#include "arrus/core/api/common/LogSeverity.h"
 #include "arrus/common/logging/impl/Logging.h"
 
 

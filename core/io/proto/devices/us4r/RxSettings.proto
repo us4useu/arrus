@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package arrus.proto;
 
-import "arrus/core/io/proto/common/LinearFunction.proto";
+import "io/proto/common/LinearFunction.proto";
 
 message RxSettings {
   uint32 dtgcAttenuation = 1;

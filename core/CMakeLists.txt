@@ -1,8 +1,22 @@
 set(TARGET_NAME arrus-core)
 
-# Protobuf source files
-#protobuf_generate_cpp(PROTO_SRC PROTO_HDRS protobuf/settings/SessionSettings.proto)
-#message("GENERATED PROTO: ${PROTO_SRC} ${PROTO_HDRS}")
+################################################################################
+# protobuf
+################################################################################
+
+
+protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
+    io/proto/Dictionary.proto
+    io/proto/session/SessionSettings.proto
+    io/proto/common/Interval.proto
+    io/proto/common/LinearFunction.proto
+    io/proto/devices/probe/ProbeModel.proto
+    io/proto/devices/us4r/ProbeAdapterModel.proto
+    io/proto/devices/us4r/ProbeToAdapterConnection.proto
+    io/proto/devices/us4r/RxSettings.proto
+    io/proto/devices/us4r/Us4OEMSettings.proto
+    io/proto/devices/us4r/Us4RSettings.proto
+)
 ################################################################################
 # Target
 ################################################################################
@@ -86,6 +100,8 @@ add_library(${TARGET_NAME} SHARED
     devices/probe/ProbeModel.cpp
 
     io/settings.h
+    ${PROTO_SRC}
+    ${PROTO_HDRS}
 
     session/SessionImpl.cpp
     session/SessionSettings.h

@@ -7,7 +7,7 @@
 #include <boost/log/core.hpp>
 #include <boost/log/attributes.hpp>
 
-#include "core/api/common/Logger.h"
+#include "arrus/core/api/common/Logger.h"
 
 namespace arrus {
 

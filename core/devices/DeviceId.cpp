@@ -54,7 +54,6 @@ public:
 
 private:
     DeviceTypeEnumStringRepr() {
-        typedef boost::bimap<std::string, DeviceType>::value_type val;
         for (const auto& [e, str] : DEVICE_TYPE_ENUM_STRINGS) {
             reprs.insert({str, e});
         }

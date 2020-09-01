@@ -4,8 +4,8 @@
 #include <memory>
 #include <string>
 
-#include "core/api/common/LogSeverity.h"
-#include "core/api/common/LoggerFactory.h"
+#include "arrus/core/api/common/LogSeverity.h"
+#include "arrus/core/api/common/LoggerFactory.h"
 #include "arrus/common/logging/impl/LoggerImpl.h"
 
 namespace arrus {
