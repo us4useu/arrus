@@ -41,12 +41,18 @@ def main():
 
     build_dir = os.path.join(src_dir, "build")
 
+    cmake_cmd = []
+    join_cmd = False
     if os.name == "nt":
+        # Just call the .bat file in the same cmd as the
+        join_cmd = True
+        cmake_cmd += [os.path.join(build_dir, 'activate.bat'), "&&"]
         pass
     else:
+        join_cmd = False
         shell_source(f"{os.path.join(build_dir, 'activate.sh')}")
 
-    cmake_cmd = [
+    cmake_cmd += [
         "cmake",
         "--build", build_dir,
         "--config", configuration
@@ -62,6 +68,8 @@ def main():
         current_env["PATH"] = os.path.join(us4r_dir, "lib64") +os.pathsep + current_env["PATH"]
 
     print(f"Calling with Path {current_env['PATH']}")
+    if join_cmd:
+        cmake_cmd = " ".join(cmake_cmd)
     process = subprocess.Popen(cmake_cmd, env=current_env)
     process.wait()
     return_code = process.returncode
