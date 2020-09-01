@@ -3,8 +3,6 @@ set(TARGET_NAME arrus-core)
 ################################################################################
 # protobuf
 ################################################################################
-
-
 protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/Dictionary.proto
     io/proto/session/SessionSettings.proto
@@ -20,8 +18,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
 ################################################################################
 # Target
 ################################################################################
-add_library(${TARGET_NAME} SHARED
-
+set(SRC_FILES
     api/common/exceptions.h
     api/common/logging.h
     api/common/types.h
@@ -101,8 +98,6 @@ add_library(${TARGET_NAME} SHARED
 
     api/io/settings.h
     io/settings.cpp
-    ${PROTO_SRC}
-    ${PROTO_HDRS}
 
     session/SessionImpl.cpp
     session/SessionSettings.h
@@ -124,6 +119,13 @@ add_library(${TARGET_NAME} SHARED
     common/tests.h
     api/common/macros.h)
 
+set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
+    "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
+
+# We do not use strict compile options (-wall, /w4, etc.) for auto generated files,
+# because some of those files generate compile warnings (e.g. protobuf files).
+
+add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS})
 ################################################################################
 # Compile definitions
 ################################################################################
@@ -157,9 +159,9 @@ target_link_libraries(${TARGET_NAME}
 ################################################################################
 # Target compile options
 ################################################################################
+# strict compile options defined for on the source level
 target_compile_options(${TARGET_NAME} PRIVATE
         ${ARRUS_CPP_COMMON_COMPILE_OPTIONS}
-        ${ARRUS_CPP_STRICT_COMPILE_OPTIONS}
 )
 target_compile_definitions(${TARGET_NAME} PRIVATE
         ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}

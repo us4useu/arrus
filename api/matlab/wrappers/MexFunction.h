@@ -16,7 +16,7 @@
 #include "arrus/common/logging/impl/Logging.h"
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
-#pragma warning(disable: 4100 4189 4458 4702)
+COMPILER_DISABLE_MSVC_WARNINGS(4100 4189 4458 4702)
 
 #include <mex.hpp>
 #include <mexAdapter.hpp>
