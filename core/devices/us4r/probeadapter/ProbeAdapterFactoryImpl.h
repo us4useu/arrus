@@ -12,7 +12,7 @@ class ProbeAdapterFactoryImpl : public ProbeAdapterFactory {
 public:
     ProbeAdapter::Handle
     getProbeAdapter(const ProbeAdapterSettings &settings,
-                    std::vector<Us4OEM::RawHandle> us4oems) override {
+                    const std::vector<Us4OEM::RawHandle> &us4oems) override {
         const DeviceId id(DeviceType::ProbeAdapter, 0);
         ProbeAdapterSettingsValidator validator(id.getOrdinal());
         validator.validate(settings);

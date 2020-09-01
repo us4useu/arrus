@@ -11,7 +11,7 @@ class ProbeAdapterFactory {
 public:
     virtual ProbeAdapter::Handle
     getProbeAdapter(const ProbeAdapterSettings &settings,
-                    std::vector<Us4OEM::RawHandle> us4oems) = 0;
+                    const std::vector<Us4OEM::RawHandle> &us4oems) = 0;
 };
 }
 
