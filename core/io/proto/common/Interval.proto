@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+// A closed interval [min, max]
+message Interval {
+    int32 left = 1;
+    int32 right = 2;
+}

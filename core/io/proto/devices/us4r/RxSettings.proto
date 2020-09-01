@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "arrus/core/io/proto/common/LinearFunction.proto";
+
+message RxSettings {
+  uint32 dtgcAttenuation = 1;
+  uint32 pga_gain = 2;
+  uint32 lna_gain = 3;
+  LinearFunction tgc_curve_linear = 4;
+  repeated double tgc_samples = 5;
+
+  uint32 lpfCutoff = 6;
+  uint32 activeTermination = 7;
+}

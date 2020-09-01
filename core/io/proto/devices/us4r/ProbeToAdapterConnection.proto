@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "arrus/core/io/proto/devices/probe/ProbeModel.proto";
+import "arrus/core/io/proto/devices/us4r/ProbeAdapterModel.proto";
+import "arrus/core/io/proto/common/Interval.proto";
+
+message ProbeToAdapterConnection {
+  ProbeModel.Id probe_model_id = 1;
+  repeated ProbeAdapterModel.Id probe_adapter_model_id = 2;
+
+  // Channel mapping - one of:
+  repeated uint32 channel_mapping = 3;
+  repeated Interval channel_mapping_ranges = 4;
+}

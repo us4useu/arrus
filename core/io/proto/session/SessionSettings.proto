@@ -6,18 +6,7 @@ import "arrus/core/protobuf/settings/Us4OEMSettings.proto";
 import "arrus/core/protobuf/settings/Us4RSettings.proto";
 
 message SessionSettings {
-
-  enum LoggingLevel {
-    INFO = 0; // default
-    DEBUG = 1;
-    TRACE = 2;
-    WARNING = 3;
-    ERROR = 4;
-    FATAL = 5;
-  }
-
-  LoggingLevel logging_level = 1;
+  Us4RSettings us4r = 1;
   string dictionary_file = 2;
-  Us4RSettings us4rlite = 3;
 }
 

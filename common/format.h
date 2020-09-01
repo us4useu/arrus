@@ -85,8 +85,8 @@ inline std::string toString(const Tuple<T> tuple) {
 
 template<typename T>
 inline std::string toString(const Interval<T> i) {
-    return ::arrus::format("Interval: left: {}, right: {}",
-                           i.left(), i.right());
+    return ::arrus::format("Interval: start: {}, right: {}",
+                           i.start(), i.end());
 }
 
 }

@@ -9,23 +9,21 @@ namespace arrus {
 
 template<typename T>
 class Interval {
-
 public:
-
-    Interval(const T &left, const T &right)
-            : Interval(std::make_pair(left, right)) {}
+    Interval(const T &start, const T &end)
+            : Interval(std::make_pair(start, end)) {}
 
     explicit Interval(const std::pair<T, T> &interval) {
         if(interval.first > interval.second) {
-            throw IllegalArgumentException("Left border should not be greater "
-                                           "than the right border.");
+            throw IllegalArgumentException("Start should not be greater "
+                                           "than the end of the interval.");
         }
         this->interval = {interval.first, interval.second};
     }
 
-    const T &left() const { return interval.first; }
+    const T &start() const { return interval.first; }
 
-    const T &right() const { return interval.second; }
+    const T &end() const { return interval.second; }
 
 private:
     std::pair<T, T> interval;

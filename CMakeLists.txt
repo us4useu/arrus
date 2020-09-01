@@ -65,6 +65,7 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             # warnings occurs in boost bimap implementation headers
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS -Wall -Wextra -pedantic -Werror)
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)

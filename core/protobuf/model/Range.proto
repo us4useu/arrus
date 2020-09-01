@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package arrus.proto;
-
-// Represents a contigous range [start, end)
-message Range {
-    int32 start = 1;
-    int32 end = 2;
-}

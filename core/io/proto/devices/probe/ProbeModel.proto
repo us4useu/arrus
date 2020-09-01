@@ -4,11 +4,11 @@ package arrus.proto;
 
 message ProbeModel {
   message Id {
-    string name = 1;
-    string manufacturer = 2;
+    string manufacturer = 1;
+    string name = 2;
   }
   Id id = 1;
-  // Dimensions
-  repeated uint32 n_channels = 2;
+  repeated uint32 n_elements = 2;
   repeated double pitch = 3;
+  repeated double txFrequencyRange = 4;
 }

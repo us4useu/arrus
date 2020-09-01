@@ -85,6 +85,8 @@ add_library(${TARGET_NAME} SHARED
     devices/probe/ProbeModel.h
     devices/probe/ProbeModel.cpp
 
+    io/settings.h
+
     session/SessionImpl.cpp
     session/SessionSettings.h
     session/SessionSettings.cpp

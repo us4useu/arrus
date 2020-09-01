@@ -25,8 +25,8 @@ public:
         expectAllPositive("pitch", obj.getModel().getPitch().getValues());
         expectAllPositive<double>(
                 "txFrequencyRange",
-                {obj.getModel().getTxFrequencyRange().left(),
-                 obj.getModel().getTxFrequencyRange().right()});
+                {obj.getModel().getTxFrequencyRange().start(),
+                 obj.getModel().getTxFrequencyRange().end()});
         expectAllInRange(
                 "numberOfElements",
                 obj.getModel().getNumberOfElements().getValues(),

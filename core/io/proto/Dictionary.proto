@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "arrus/core/io/proto/devices/probe/ProbeModel.proto";
+import "arrus/core/io/proto/devices/us4r/ProbeAdapterModel.proto";
+import "arrus/core/io/proto/devices/us4r/ProbeToAdapterConnection.proto";
+
+message Dictionary {
+  repeated ProbeModel probe_models = 1;
+  repeated ProbeAdapterModel probe_adapter_models = 2;
+  repeated ProbeToAdapterConnection probe_to_adapter_connections = 3;
+}
