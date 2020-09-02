@@ -38,6 +38,12 @@ switch probeName
         probe.nElem	= 128;
         probe.pitch	= "???";
         probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
+
+    case '5L128' % Olympus, linear
+        probe.nElem	= 128;
+        probe.pitch	= 0.6047e-3;
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
+        
         
         
     otherwise

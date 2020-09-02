@@ -3,17 +3,17 @@
 addpath('../arrus');
 
 nUs4OEM     = 2;
-probeName	= 'SL1543';
-adapterType = 'esaote2';
+probeName	= '5L128';
+adapterType = 'esaote3';
 
-txFrequency = 7e6;
+txFrequency = 5e6;
 samplingFrequency = 65e6;
 fsDivider = 1;
 
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
 
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM, probeName, adapterType, 50, true);
+us	= Us4R(nUs4OEM, probeName, adapterType, 1, true);
 
 seqSTA = STASequence(	'txApertureCenter', (-15:3:15)*1e-3, ...
                         'txApertureSize',   32, ...
@@ -33,11 +33,11 @@ seqSTA = STASequence(	'txApertureCenter', (-15:3:15)*1e-3, ...
 
 
 seqPWI = PWISequence(	'txApertureCenter', 0*1e-3, ...
-                        'txApertureSize',   192, ...
+                        'txApertureSize',   128, ...
                         'rxApertureCenter', 0*1e-3, ...
-                        'rxApertureSize',   192, ...
+                        'rxApertureSize',   128, ...
                         'txFocus',          inf*1e-3, ...
-                        'txAngle',          [-5,0,5]*pi/180, ...
+                        'txAngle',          [0]*pi/180, ...
                         'speedOfSound',     1450, ...
                         'txFrequency',      txFrequency, ...
                         'txNPeriods',       2, ...
@@ -79,9 +79,12 @@ us.upload(seqPWI, rec);
 % us.upload(seqLIN, rec);
 
 %% Run sequence and reconstruction
-% [rf,img] = us.run;
+[rf,img] = us.run;
+% 
+% display = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
+% us.runLoop(@display.isOpen, @display.updateImg);
 
-display = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
-us.runLoop(@display.isOpen, @display.updateImg);
 
+%%
+figure, imagesc(img)
 
