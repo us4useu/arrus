@@ -5,28 +5,40 @@ switch probeName
     case 'AL2442'
         probe.nElem	= 192;
         probe.pitch	= 0.21e-3;
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
         
     case 'SL1543'
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
         
     case 'SP2430'
         probe.nElem	= 96;
         probe.pitch	= 0.22e-3;
         probe.probeMap = [1:48, 145:192];
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
         
     case 'AC2541'
         probe.nElem	= 192;
         probe.pitch	= 0.30e-3;
         probe.curvRadius = -50e-3;
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
         
     case 'L14-5/38'
         probe.nElem	= 128;
         probe.pitch	= 0.3048e-3;
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
         
     case 'L7-4'
         probe.nElem	= 128;
         probe.pitch	= 0.298e-3;
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
+        
+    case 'LA/20/128' % Vermon, linear, high frequency
+        probe.nElem	= 128;
+        probe.pitch	= "???";
+        probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
+        
         
     otherwise
         error(['Unhandled probe model ', probeName]);
