@@ -53,7 +53,7 @@ classdef Us4R < handle
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
-            obj.sys.curv = probe.curv;
+            obj.sys.curvRadius = probe.curvRadius;
             obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
@@ -279,7 +279,7 @@ classdef Us4R < handle
             end
             
             %% Warning: Convex & PWI/STA
-            if obj.sys.curv ~= 0 && ~strcmp(obj.seq.type,"lin")
+            if ~isnan(obj.sys.curvRadius) && ~strcmp(obj.seq.type,"lin")
                 warning('In this API version only LIN sequence is valid for convex arrays.');
             end
             

@@ -18,7 +18,7 @@ switch probeName
     case 'AC2541'
         probe.nElem	= 192;
         probe.pitch	= 0.30e-3;
-        probe.curv = -50e-3;
+        probe.curvRadius = -50e-3;
         
     case 'L14-5/38'
         probe.nElem	= 128;
@@ -39,20 +39,20 @@ if ~isfield(probe,'probeMap')
     probe.probeMap = 1:probe.nElem;
 end
 
-if ~isfield(probe,'curv')
-    probe.curv = 0;
+if ~isfield(probe,'curvRadius')
+    probe.curvRadius = nan;
 end
 
 % position (pos,x,z) and orientation (ang) of each probe element
 probe.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch;
-if probe.curv == 0
+if isnan(probe.curvRadius)
     probe.angElem = zeros(1,probe.nElem);
     probe.xElem = probe.posElem;
     probe.zElem = zeros(1,probe.nElem);
 else
-    probe.angElem = probe.posElem / -probe.curv;
-    probe.xElem = -probe.curv * sin(probe.angElem);
-    probe.zElem = -probe.curv * cos(probe.angElem);
+    probe.angElem = probe.posElem / -probe.curvRadius;
+    probe.xElem = -probe.curvRadius * sin(probe.angElem);
+    probe.zElem = -probe.curvRadius * cos(probe.angElem);
     probe.zElem = probe.zElem - min(probe.zElem);
 end
 
