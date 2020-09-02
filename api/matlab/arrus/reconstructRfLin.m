@@ -53,12 +53,26 @@ dT          = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with 
 
 rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * acq.c/2;              % [mm] (nSamp,1) radial distance from the line origin
+
 xVec        = rVec.*sin(txAng);                             % [mm] (nSamp,1,1 or nTx) horiz. distance from the line origin
 zVec        = rVec.*cos(txAng);                             % [mm] (nSamp,1,1 or nTx) vert.  distance from the line origin
-eVec        = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;  % [mm] (1,nRx) horiz. position of the rx aperture elements
+
+posElem     = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;	% [mm] (1,nRx) position of the rx aperture elements along probes curvature
+if isnan(sys.curvRadius)
+    angElem	= zeros(1,nRx);
+    xElem	= posElem;
+    zElem	= zeros(1,nRx);
+else
+    angElem	= posElem / -sys.curvRadius;
+    xElem	= -sys.curvRadius * sin(angElem);
+    zElem	= -sys.curvRadius * (cos(angElem) - 1);
+end
+
+% warning - different definition of z=0: z is 0 for the aperture center.
+% warning - different aperture position in rf simulation and reconstruction
 
 txDist      = rVec;                                         % [mm] (nSamp,1) tx distance (from the line origin)
-rxDist      = sqrt((xVec-eVec).^2 + zVec.^2);               % [mm] (nSamp,nRx,1 or nTx) rx distance (to each rx element)
+rxDist      = sqrt((xVec-xElem).^2 + (zVec-zElem).^2);      % [mm] (nSamp,nRx,1 or nTx) rx distance (to each rx element)
 
 t           = (txDist + rxDist)/acq.c + dT;                 % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
 if isa(rfRaw,'gpuArray')
@@ -69,7 +83,7 @@ iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx,
 iSamp(iSamp<1 | iSamp>nSamp)	= inf;
 iSamp       = reshape(iSamp + (0:(nRx-1))*nSamp,nSamp*nRx,[]);	% [samp] (nSamp*nRx,1 or nTx)
 
-rxTang      = abs(xVec-eVec)./zVec;                         % [] (nSamp,nRx,1 or nTx)
+rxTang      = abs(tan(atan2(xVec-xElem,zVec-zElem) - angElem)); % [] (nSamp,nRx,1 or nTx)
 rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
 % rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
 rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or nTx) normalized rx apodization vector
