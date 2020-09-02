@@ -126,7 +126,7 @@ switch probeName
             error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
         end
        
-    case 'L7-4'
+    case {'L7-4', 'LA/20/128'}
         if strcmp(adapterType, "atl/philips")
             probe.adapType      = 2;
             
