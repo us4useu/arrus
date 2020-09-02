@@ -12,8 +12,9 @@ classdef Us4R < handle
     % 
     % Available adapter types:
     %
-    % - 'esaote': legacy adapter for esaote probes,
-    % - 'esaote2': current version of the esaote adapter,
+    % - 'esaote': 1st esaote adapter (no alternation in element handling),
+    % - 'esaote2': 2nd esaote adapter (troublesome mapping),
+    % - 'esaote3': current version of the esaote adapter,
     % - 'ultrasonix': current version of the ultrasonix probe adapter. 
     % - 'atl/philips': current version of the ATL/PHILIPS probe adapter.
     % 
