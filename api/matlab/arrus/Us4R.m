@@ -591,7 +591,7 @@ classdef Us4R < handle
         function validateSequence(obj)
             
             %% Validate number of firings
-            if obj.seq.nFire > 1024
+            if obj.seq.nFire > 2048
                 error("ARRUS:IllegalArgument", ...
                         ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
             end
@@ -603,9 +603,9 @@ classdef Us4R < handle
             end
             
             %% Validate number of samples
-            if obj.seq.nSamp > 2^13/obj.seq.fsDivider
+            if obj.seq.nSamp > 65536/obj.seq.fsDivider
                 error("ARRUS:IllegalArgument", ...
-                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(2^13/obj.seq.fsDivider) '.'])
+                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536/obj.seq.fsDivider) '.'])
             end
             
             if mod(obj.seq.nSamp,64) ~= 0
