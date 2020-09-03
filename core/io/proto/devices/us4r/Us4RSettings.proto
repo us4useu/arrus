@@ -24,8 +24,6 @@ message Us4RSettings {
   }
 
   ProbeToAdapterConnection probe_to_adapter_connection = 5;
-
   RxSettings rx_settings = 6;
-
   repeated Us4OEMSettings us4oems = 7;
 }

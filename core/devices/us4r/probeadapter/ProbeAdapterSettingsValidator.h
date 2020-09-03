@@ -24,6 +24,12 @@ public:
             DeviceId(DeviceType::ProbeAdapter, ordinal)) {}
 
     void validate(const ProbeAdapterSettings &obj) override {
+        auto &id = obj.getModelId();
+        expectTrue("modelId", !id.getManufacturer().empty(),
+                   "manufacturer name should not be empty.");
+        expectTrue("modelId", !id.getName().empty(),
+                   "device name should not be empty.");
+
         using OEMMapping = Us4OEMSettings::ChannelMapping;
         using OEMMappingElement = OEMMapping::value_type;
         const auto N_RX = Us4OEMImpl::N_RX_CHANNELS;

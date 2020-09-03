@@ -52,13 +52,13 @@ inline std::vector<T> getNTimes(const T value, size_t n) {
 }
 
 template<typename T>
-inline size_t countUnique(const std::vector<T> values) {
+inline size_t countUnique(const std::vector<T> &values) {
     return std::unordered_set<T>(std::begin(values), std::end(values)).size();
 }
 
 template<typename T>
 inline bool
-setContains(const std::unordered_set<T> set, const T &value) {
+setContains(const std::unordered_set<T> &set, const T &value) {
     return set.find(value) != set.end();
 }
 

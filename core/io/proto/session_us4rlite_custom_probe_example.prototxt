@@ -1,5 +1,3 @@
-logging_level: TRACE
-
 # It will be searched for in the current directory, then in the directory
 # pointed to by ARRUS_PATH env variable.
 dictionary_file: "default.dict"

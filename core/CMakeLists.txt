@@ -117,7 +117,7 @@ set(SRC_FILES
     session/SessionImpl.h
     session/SessionImpl.cpp
     common/tests.h
-    api/common/macros.h)
+    api/common/macros.h io/validators/ProbeModelProtoValidator.h io/validators/ProbeAdapterModelProtoValidator.h io/validators/RxSettingsProtoValidator.h io/validators/SessionSettingsProtoValidator.h io/validators/DictionaryProtoValidator.h io/validators/ProbeToAdapterConnectionProtoValidator.h io/SettingsDictionary.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
