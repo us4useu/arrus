@@ -36,7 +36,7 @@ switch probeName
         
     case 'LA/20/128' % Vermon, linear, high frequency
         probe.nElem	= 128;
-        probe.pitch	= "???";
+        probe.pitch	= 0.1e-3;
         probe.maxVpp = 60; % max safe voltage peak-to-peak [V]
 
     case '5L128' % Olympus, linear
@@ -76,7 +76,7 @@ end
 
 %% Adapter type & channel mapping
 switch probeName
-    case {'AL2442','SL1543','SP2430','AC2541'}
+    case {'AL2442','SL1543','SP2430','AC2541','5L128'}
         if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
