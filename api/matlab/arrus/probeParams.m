@@ -38,13 +38,26 @@ switch probeName
         probe.nElem	= 128;
         probe.pitch	= 0.1e-3;
         probe.maxVpp = 30; 
-
-    case '5L128' % Olympus, linear
+        
+    case '5L128' % Olympus NDT, linear
         probe.nElem	= 128;
-        probe.pitch	= 0.6047e-3;
-        probe.maxVpp = 100; 
+        probe.pitch	= 0.6e-3;
+        probe.maxVpp = 100;
         
+    case '10L128' % Olympus NDT, linear
+        probe.nElem	= 128;
+        probe.pitch	= 0.5e-3;
+        probe.maxVpp = 100;
         
+    case '5L64' % Olympus NDT, linear
+        probe.nElem	= 64;
+        probe.pitch	= 0.6e-3;
+        probe.maxVpp = 100;
+        
+    case '10L32' % Olympus NDT, linear
+        probe.nElem	= 32;
+        probe.pitch	= 0.31e-3;
+        probe.maxVpp = 100;
         
     otherwise
         error(['Unhandled probe model ', probeName]);
