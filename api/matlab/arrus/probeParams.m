@@ -96,7 +96,7 @@ end
 
 %% Adapter type & channel mapping
 switch probeName
-    case {'AL2442','SL1543','SP2430','AC2541','5L128'}
+    case {'AL2442','SL1543','SP2430','AC2541','5L128','10L128','5L64','10L32'}
         if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
