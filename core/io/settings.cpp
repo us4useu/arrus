@@ -1,11 +1,15 @@
 #include "arrus/core/api/io/settings.h"
 #include <fcntl.h>
+#include <filesystem>
 #include <memory>
 #include <unordered_map>
+#include <cstdlib>
+#include "arrus/core/api/common/macros.h"
 
 #ifdef _MSC_VER
 
 #include <io.h>
+
 #define ARRUS_OPEN_FILE _open
 
 #endif
@@ -68,8 +72,8 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
 
         ARRUS_REQUIRES_EQUAL(modules.size(), channels.size(),
                              IllegalArgumentException(
-                             "Us4oems and channels lists should have "
-                             "the same size"));
+                                 "Us4oems and channels lists should have "
+                                 "the same size"));
 
         channelMapping.reserve(modules.size());
         for(int i = 0; i < modules.size(); ++i) {
@@ -291,18 +295,48 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
 
 SessionSettings readSessionSettings(const std::string &filepath) {
     // Read and validate session.
+    std::filesystem::path sessionSettingsPath{filepath};
+    if(!std::filesystem::is_regular_file(sessionSettingsPath)) {
+        throw IllegalArgumentException(
+            ::arrus::format("File not found {}.", filepath));
+    }
     std::unique_ptr<ap::SessionSettings> s =
         readProtoTxt<ap::SessionSettings>(filepath);
+
+    //Validate.
     SessionSettingsProtoValidator validator(
         "session settings in " + filepath);
     validator.validate(s);
     validator.throwOnErrors();
 
     // Read and validate Dictionary.
-
     std::unique_ptr<ap::Dictionary> d;
     if(!s->dictionary_file().empty()) {
-        d = readProtoTxt<ap::Dictionary>(s->dictionary_file());
+        std::string dictionaryPathStr;
+        // 1. Try to use the parent directory of session settings.
+        auto dictP = sessionSettingsPath.parent_path() / s->dictionary_file();
+        if(std::filesystem::is_regular_file(dictP)) {
+            dictionaryPathStr = dictP.u8string();
+        } else {
+            // 2. Try to use ARRUS_PATH, if available.
+            const char* arrusP = std::getenv(ARRUS_PATH_KEY);
+            if(arrusP != nullptr) {
+                std::filesystem::path arrusDicP {arrusP};
+                arrusDicP = arrusDicP / s->dictionary_file();
+                if(std::filesystem::is_regular_file(arrusDicP)) {
+                    dictionaryPathStr = arrusDicP.u8string();
+                } else {
+                    throw IllegalArgumentException(
+                        ::arrus::format("Invalid path to dictionary: {}",
+                                        s->dictionary_file()));
+                }
+            } else {
+                throw IllegalArgumentException(
+                    ::arrus::format("Invalid path to dictionary: {}",
+                                    s->dictionary_file()));
+            }
+        }
+        d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
         DictionaryProtoValidator dictionaryValidator("dictionary");
         dictionaryValidator.validate(d);
         dictionaryValidator.throwOnErrors();
