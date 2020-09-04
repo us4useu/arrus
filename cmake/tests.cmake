@@ -25,11 +25,11 @@ function(create_core_test test_src)
         ${other_srcs}
     )
     target_link_libraries(${target_name}
-            GTest::GTest
-            Boost::Boost
-            fmt::fmt
-            range-v3::range-v3
-    ${other_deps})
+        GTest::GTest
+        Boost::Boost
+        fmt::fmt
+        range-v3::range-v3
+        ${other_deps})
     target_include_directories(
         ${target_name}
         PRIVATE

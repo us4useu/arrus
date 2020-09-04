@@ -15,7 +15,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/RxSettings.proto
     io/proto/devices/us4r/Us4OEMSettings.proto
     io/proto/devices/us4r/Us4RSettings.proto
-)
+    )
 ################################################################################
 # Target
 ################################################################################
@@ -99,6 +99,13 @@ set(SRC_FILES
 
     api/io/settings.h
     io/settings.cpp
+    io/validators/ProbeModelProtoValidator.h
+    io/validators/ProbeAdapterModelProtoValidator.h
+    io/validators/RxSettingsProtoValidator.h
+    io/validators/SessionSettingsProtoValidator.h
+    io/validators/DictionaryProtoValidator.h
+    io/validators/ProbeToAdapterConnectionProtoValidator.h
+    io/SettingsDictionary.h
 
     session/SessionImpl.cpp
     session/SessionSettings.h
@@ -118,7 +125,7 @@ set(SRC_FILES
     session/SessionImpl.h
     session/SessionImpl.cpp
     common/tests.h
-    api/common/macros.h io/validators/ProbeModelProtoValidator.h io/validators/ProbeAdapterModelProtoValidator.h io/validators/RxSettingsProtoValidator.h io/validators/SessionSettingsProtoValidator.h io/validators/DictionaryProtoValidator.h io/validators/ProbeToAdapterConnectionProtoValidator.h io/SettingsDictionary.h)
+    api/common/macros.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -133,7 +140,7 @@ add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS})
 target_compile_definitions(${TARGET_NAME}
     PRIVATE
     "BOOST_ALL_NO_LIB"
-)
+    )
 
 ################################################################################
 # Include directories
@@ -142,7 +149,7 @@ target_include_directories(${TARGET_NAME}
     PRIVATE
     ${ARRUS_ROOT_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
-)
+    )
 
 ################################################################################
 # Dependencies
@@ -156,42 +163,46 @@ target_link_libraries(${TARGET_NAME}
     Protobuf::Protobuf
     fmt::fmt
     range-v3::range-v3
-)
+    )
 ################################################################################
 # Target compile options
 ################################################################################
 # strict compile options defined for on the source level
 target_compile_options(${TARGET_NAME} PRIVATE
-        ${ARRUS_CPP_COMMON_COMPILE_OPTIONS}
-)
+    ${ARRUS_CPP_COMMON_COMPILE_OPTIONS}
+    )
 target_compile_definitions(${TARGET_NAME} PRIVATE
-        ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}
-        # MSVC dll export declspec
-        ARRUS_CPP_API_BUILD_STAGE
-)
+    ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}
+    # MSVC dll export declspec
+    ARRUS_CPP_API_BUILD_STAGE
+    )
 
 ################################################################################
 # Tests
 ################################################################################
-if(ARRUS_RUN_TESTS)
+if (ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
+
+    # core::devices test
     create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/utilsTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp devices/DeviceId.cpp)
-#    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
+    #    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
-endif()
+    # io tests
+    create_core_test(io/settingsTest.cpp "io/settings.cpp" "Protobuf::Protobuf")
+endif ()
 
 ################################################################################
 # Installation
 ################################################################################
 install(
     TARGETS
-        ${TARGET_NAME}
+    ${TARGET_NAME}
     DESTINATION
-        ${ARRUS_LIB_INSTALL_DIR}
+    ${ARRUS_LIB_INSTALL_DIR}
 )

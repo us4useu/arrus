@@ -21,6 +21,6 @@ message ProbeAdapterModel {
 
   Id id = 1;
   uint32 n_channels = 2;
-  ChannelMappingMask channels_mapping = 3;
+  ChannelMappingMask channel_mapping = 3;
   repeated ChannelMappingRegion channel_mapping_regions = 4;
 }
