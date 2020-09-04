@@ -50,6 +50,26 @@ classdef Us4R < handle
             obj.sys.voltage = voltage;
             
             probe = probeParams(probeName,adapterType);
+            
+            % checking if voltage is safe
+            isProperVoltageValue = @(x) ...
+                   isnumeric(x) ...
+                && isscalar(x) ...
+                && isfinite(x) ...
+                && x >= 0;
+
+            if ~isProperVoltageValue(voltage)
+                error('Invalid exctitation voltage value.')
+            end
+            
+            if 2*voltage > probe.maxVpp
+                error(['The electrical excitation exceeds the safe limit. ', ...
+                       'For the current probe the limit is ', ...
+                       num2str(probe.maxVpp/2), '[V].' ...
+                       ])
+            end
+            
+            
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
@@ -61,6 +81,7 @@ classdef Us4R < handle
             obj.sys.angElem = probe.angElem;% [rad] (1 x nElem) orientation of probe elements
             obj.sys.zElem = probe.zElem;	% [m] (1 x nElem) z-position of probe elements
             obj.sys.xElem = probe.xElem;	% [m] (1 x nElem) x-position of probe elements
+%             obj.sys.maxVpp = probe.maxVpp;
 
             if obj.sys.adapType == 0
                 % old adapter type (00001111)

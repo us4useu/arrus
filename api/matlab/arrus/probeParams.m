@@ -5,34 +5,72 @@ switch probeName
     case 'AL2442'
         probe.nElem	= 192;
         probe.pitch	= 0.21e-3;
+        probe.maxVpp = 100; % max safe voltage peak-to-peak [Vpp]
         
     case 'SL1543'
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
+        probe.maxVpp = 100; 
         
     case 'SP2430'
         probe.nElem	= 96;
         probe.pitch	= 0.22e-3;
         probe.probeMap = [1:48, 145:192];
+        probe.maxVpp = 100; 
         
     case 'AC2541'
         probe.nElem	= 192;
         probe.pitch	= 0.30e-3;
         probe.curvRadius = -50e-3;
+        probe.maxVpp = 100; 
         
     case 'L14-5/38'
         probe.nElem	= 128;
         probe.pitch	= 0.3048e-3;
+        probe.maxVpp = 100; 
         
     case 'L7-4'
         probe.nElem	= 128;
         probe.pitch	= 0.298e-3;
+        probe.maxVpp = 100; 
+        
+    case 'LA/20/128' % Vermon, linear, high frequency
+        probe.nElem	= 128;
+        probe.pitch	= 0.1e-3;
+        probe.maxVpp = 30; 
+        
+    case '5L128' % Olympus NDT, linear
+        probe.nElem	= 128;
+        probe.pitch	= 0.6e-3;
+        probe.maxVpp = 100;
+        
+    case '10L128' % Olympus NDT, linear
+        probe.nElem	= 128;
+        probe.pitch	= 0.5e-3;
+        probe.maxVpp = 100;
+        
+    case '5L64' % Olympus NDT, linear
+        probe.nElem	= 64;
+        probe.pitch	= 0.6e-3;
+        probe.maxVpp = 100;
+        
+    case '10L32' % Olympus NDT, linear
+        probe.nElem	= 32;
+        probe.pitch	= 0.31e-3;
+        probe.maxVpp = 100;
         
     otherwise
         error(['Unhandled probe model ', probeName]);
         probe = [];
         return;
         
+end
+
+if ~isnumeric(probe.maxVpp) ...
+        || ~isscalar(probe.maxVpp) ...
+        || ~isfinite(probe.maxVpp) ...
+        || ~(probe.maxVpp >= 0)
+    error('Invalid maxVpp value. Must be nonnegative finite scalar value.')
 end
 
 if ~isfield(probe,'probeMap')
@@ -58,7 +96,7 @@ end
 
 %% Adapter type & channel mapping
 switch probeName
-    case {'AL2442','SL1543','SP2430','AC2541'}
+    case {'AL2442','SL1543','SP2430','AC2541','5L128','10L128','5L64','10L32'}
         if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
@@ -114,7 +152,7 @@ switch probeName
             error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
         end
        
-    case 'L7-4'
+    case {'L7-4', 'LA/20/128'}
         if strcmp(adapterType, "atl/philips")
             probe.adapType      = 2;
             
