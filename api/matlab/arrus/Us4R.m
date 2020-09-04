@@ -57,10 +57,6 @@ classdef Us4R < handle
                 && isscalar(x) ...
                 && isfinite(x) ...
                 && x >= 0;
-            
-            if ~isProperVoltageValue(probe.maxVpp)
-                error('Invalid maxVpp value (check probeParams.m)')
-            end
 
             if ~isProperVoltageValue(voltage)
                 error('Invalid exctitation voltage value.')

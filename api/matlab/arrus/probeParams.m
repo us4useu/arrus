@@ -53,6 +53,13 @@ switch probeName
         
 end
 
+if ~isnumeric(probe.maxVpp) ...
+        || ~isscalar(probe.maxVpp) ...
+        || ~isfinite(probe.maxVpp) ...
+        || ~(probe.maxVpp >= 0)
+    error('Invalid maxVpp value. Must be nonnegative finite scalar value.')
+end
+
 if ~isfield(probe,'probeMap')
     probe.probeMap = 1:probe.nElem;
 end
