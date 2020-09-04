@@ -6,7 +6,7 @@ nUs4OEM     = 2;
 probeName	= 'LA/20/128';
 adapterType = 'atl/philips';
 
-txFrequency = 5e6;
+txFrequency = 19.8e6;
 samplingFrequency = 65e6;
 fsDivider = 1;
 
