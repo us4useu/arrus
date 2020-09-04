@@ -6,6 +6,7 @@
 #ifdef _MSC_VER
 
 #include <io.h>
+#define ARRUS_OPEN_FILE _open
 
 #endif
 
@@ -36,7 +37,7 @@ namespace ap = arrus::proto;
 
 template<typename T>
 std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
-    int fd = open(filepath.c_str(), O_RDONLY);
+    int fd = ARRUS_OPEN_FILE(filepath.c_str(), O_RDONLY);
     ARRUS_REQUIRES_TRUE(
         fd != 0, arrus::format("Could not open file {}", filepath));
     google::protobuf::io::FileInputStream input(fd);
@@ -53,6 +54,7 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     auto nChannels = static_cast<ChannelIdx>(proto.n_channels());
 
     ProbeAdapterSettings::ChannelMapping channelMapping;
+    using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
 
     if(proto.has_channels_mapping()) {
         const auto &mapping = proto.channels_mapping();
@@ -63,15 +65,24 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
             std::begin(us4oems), std::end(us4oems));
         auto channels = ::arrus::castTo<ChannelIdx>(
             std::begin(inChannels), std::end(inChannels));
-        channelMapping = ::arrus::zip(modules, channels);
+
+        ARRUS_REQUIRES_EQUAL(modules.size(), channels.size(),
+                             IllegalArgumentException(
+                             "Us4oems and channels lists should have "
+                             "the same size"));
+
+        channelMapping.reserve(modules.size());
+        for(int i = 0; i < modules.size(); ++i) {
+            channelMapping[i] = {modules[i], channels[i]};
+        }
     } else if(!proto.channel_mapping_regions().empty()) {
         std::vector<Ordinal> modules;
         std::vector<ChannelIdx> channels;
         for(auto const &region : proto.channel_mapping_regions()) {
             auto module = static_cast<Ordinal>(region.us4oem());
             for(auto channel : region.channels()) {
-                modules.push_back(module);
-                channels.push_back(static_cast<ChannelIdx>(channel));
+                channelMapping.emplace_back(
+                    module, static_cast<ChannelIdx>(channel));
             }
         }
     }
@@ -113,7 +124,7 @@ std::vector<ChannelIdx> readProbeConnectionChannelMapping(
         std::vector<ChannelIdx> result;
         for(auto const &range: ranges) {
             for(int i = range.begin(); i <= range.end(); ++i) {
-                result.push_back(i);
+                result.push_back(static_cast<ChannelIdx>(i));
             }
         }
         return result;
@@ -139,7 +150,7 @@ readDictionary(const ap::Dictionary *proto) {
 
     for(const ap::ProbeToAdapterConnection &conn : proto->probe_to_adapter_connections()) {
         std::string key =
-            SettingsDictionary::convertIdToString(conn.probe_model_id());
+            SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
         const ap::ProbeToAdapterConnection *ptr = &conn;
         connections.emplace(key, ptr);
     }
@@ -150,7 +161,7 @@ readDictionary(const ap::Dictionary *proto) {
         result.insertProbeModel(probeModel);
 
         std::string key =
-            SettingsDictionary::convertIdToString(probe.id());
+            SettingsDictionary::convertProtoIdToString(probe.id());
         auto range = connections.equal_range(key);
         for(auto it = range.first; it != range.second; ++it) {
             auto conn = it->second;

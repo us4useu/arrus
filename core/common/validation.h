@@ -34,10 +34,19 @@ class Validator {
         return result;
     }
 
+    [[nodiscard]] const std::multimap<std::string, std::string> &
+    getErrors() const {
+        return errors;
+    }
+
+    const std::string &getComponentName() const {
+        return componentName;
+    }
+
     template<typename V>
     void copyErrorsFrom(const Validator<V> &validator) {
-        for(auto&[key, value] : validator.errors) {
-            errors.emplace(validator.componentName + key, value);
+        for(auto&[key, value] : validator.getErrors()) {
+            errors.emplace(validator.getComponentName() + key, value);
         }
     }
 
@@ -137,14 +146,28 @@ class Validator {
         }
     }
 
-    template<typename V, typename Iterator>
+    template<typename V, typename Container>
     void
-    expectAllDataType(const std::string &parameter,
-                      const Iterator begin, const Iterator end,
+    expectAllDataType(const std::string &parameter, const Container &container,
                       const std::string &msg = "") {
         constexpr auto min = std::numeric_limits<V>::min();
         constexpr auto max = std::numeric_limits<V>::max();
-        expectAllInRange(parameter, begin, end, min, max, msg);
+        std::set<typename Container::value_type> invalidValues;
+
+        for(auto const &value : container) {
+            if(!(value >= min && value <= max)) {
+                invalidValues.insert(value);
+            }
+        }
+
+        if(!invalidValues.empty()) {
+            errors.emplace(
+                parameter, arrus::format(
+                    "Value(s) '{}{}' should be in range [{}, {}] (found: '{}')",
+                    parameter, msg, min, max, toString(invalidValues)
+                )
+            );
+        }
     }
 
     /**
@@ -218,7 +241,14 @@ class Validator {
                    const std::string &msg = "") {
         constexpr auto min = std::numeric_limits<V>::min();
         constexpr auto max = std::numeric_limits<V>::max();
-        expectInRange(parameter, value, min, max, msg);
+        if(!(value >= min && value <= max)) {
+            errors.emplace(
+                parameter,
+                arrus::format(
+                    "Value '{}{}' should be in range [{}, {}] "
+                    "(found: '{}')",
+                    parameter, msg, min, max, value));
+        }
     }
 
     /**

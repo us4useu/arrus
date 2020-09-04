@@ -51,6 +51,12 @@ class SettingsDictionary {
         return id.getManufacturer() + id.getName();
     }
 
+    template<typename T>
+    static
+    std::string convertProtoIdToString(const T &id) {
+        return id.manufacturer() + id.name();
+    }
+
     private:
     //
     // manufacturer + name -> adapter

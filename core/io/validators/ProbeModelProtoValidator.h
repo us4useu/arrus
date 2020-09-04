@@ -20,9 +20,7 @@ public:
 
     void validate(const arrus::proto::ProbeModel &obj) override {
         // Data type
-        expectAllDataType<ChannelIdx>(
-            "n_elements",
-            std::begin(obj.n_elements()), std::end(obj.n_elements()));
+        expectAllDataType<ChannelIdx>("n_elements", obj.n_elements());
     }
 };
 

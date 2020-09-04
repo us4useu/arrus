@@ -27,12 +27,13 @@ class ProbeToAdapterConnectionProtoValidator
         if(hasChannelMapping) {
             expectAllDataType<ChannelIdx>(
                 "channel_mapping",
-                std::begin(obj.channel_mapping()),
-                std::end(obj.channel_mapping()));
+                obj.channel_mapping());
         }
 
         if(hasMappingIntervals) {
             for(auto const &range : obj.channel_mapping_ranges()) {
+                expectTrue("range", range.begin() <= range.end(),
+                            "should be begin <= end.");
                 expectDataType<ChannelIdx>("region.begin", range.begin());
                 expectDataType<ChannelIdx>("region.end", range.end());
             }

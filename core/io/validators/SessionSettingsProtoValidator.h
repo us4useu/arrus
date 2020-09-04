@@ -63,10 +63,8 @@ class SessionSettingsProtoValidator
                 expectTrue(fieldName, settings.has_rx_settings(),
                            "Rx settings are required.");
 
-                expectAllDataType<ChannelIdx>(fieldName,
-                    std::begin(settings.channel_mapping()),
-                    std::end(settings.channel_mapping()),
-                    "channel_mapping");
+                expectAllDataType<ChannelIdx>(
+                    fieldName, settings.channel_mapping(), "channel_mapping");
 
                 RxSettingsProtoValidator validator(fieldName);
                 validator.validate(settings.rx_settings());

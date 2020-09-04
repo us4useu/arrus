@@ -13,7 +13,7 @@ namespace arrus::io {
 
 class ProbeAdapterModelProtoValidator
     : public Validator<arrus::proto::ProbeAdapterModel> {
-public:
+    public:
 
     explicit ProbeAdapterModelProtoValidator(const std::string &componentName)
         : Validator(componentName) {}
@@ -28,19 +28,16 @@ public:
             auto const &ordinals = obj.channels_mapping().us4oems();
             auto const &channels = obj.channels_mapping().channels();
             expectAllDataType<Ordinal>(
-                "channel_mapping.us4oems",
-                 std::begin(ordinals), std::end(ordinals));
+                "channel_mapping.us4oems", ordinals);
             expectAllDataType<ChannelIdx>(
-                "channel_mapping.channels",
-                std::begin(channels), std::end(channels));
+                "channel_mapping.channels", channels);
         }
         if(hasChannelMappingsRegions) {
             for(auto const &region: obj.channel_mapping_regions()) {
                 expectDataType<Ordinal>("channel_mapping_regions.us4oem",
                                         region.us4oem());
                 expectAllDataType<ChannelIdx>(
-                    "channel_mapping_regions.channels",
-                    std::begin(region.channels()), std::end(region.channels()));
+                    "channel_mapping_regions.channels", region.channels());
             }
         }
 
