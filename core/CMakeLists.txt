@@ -6,7 +6,8 @@ set(TARGET_NAME arrus-core)
 protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/Dictionary.proto
     io/proto/session/SessionSettings.proto
-    io/proto/common/Interval.proto
+    io/proto/common/IntervalInteger.proto
+    io/proto/common/IntervalDouble.proto
     io/proto/common/LinearFunction.proto
     io/proto/devices/probe/ProbeModel.proto
     io/proto/devices/us4r/ProbeAdapterModel.proto

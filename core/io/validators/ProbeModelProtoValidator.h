@@ -19,10 +19,10 @@ public:
         : Validator(componentName) {}
 
     void validate(const arrus::proto::ProbeModel &obj) override {
-        expectTrue("tx_frequency_range",
-                   obj.txfrequencyrange().size() == 2,
-                   "Tx frequency range should have exactly two "
-                   "values: [start, end]");
+        // Data type
+        expectAllDataType<ChannelIdx>(
+            "n_elements",
+            std::begin(obj.n_elements()), std::end(obj.n_elements()));
     }
 };
 

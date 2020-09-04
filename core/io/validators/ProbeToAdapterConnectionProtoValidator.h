@@ -15,13 +15,30 @@ namespace arrus::io {
 
 class ProbeToAdapterConnectionProtoValidator
     : public Validator<arrus::proto::ProbeToAdapterConnection> {
-public:
+    public:
 
     using Validator::Validator;
 
     void validate(const proto::ProbeToAdapterConnection &obj) override {
         bool hasChannelMapping = !obj.channel_mapping().empty();
         bool hasMappingIntervals = !obj.channel_mapping_ranges().empty();
+
+        // data types
+        if(hasChannelMapping) {
+            expectAllDataType<ChannelIdx>(
+                "channel_mapping",
+                std::begin(obj.channel_mapping()),
+                std::end(obj.channel_mapping()));
+        }
+
+        if(hasMappingIntervals) {
+            for(auto const &range : obj.channel_mapping_ranges()) {
+                expectDataType<ChannelIdx>("region.begin", range.begin());
+                expectDataType<ChannelIdx>("region.end", range.end());
+            }
+        }
+
+        // semantic
         expectTrue("probe_to_adapter_connection",
                    !(hasChannelMapping ^ hasMappingIntervals),
                    "Exactly one of the following should set: "

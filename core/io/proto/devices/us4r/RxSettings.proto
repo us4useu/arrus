@@ -7,16 +7,16 @@ import "io/proto/common/LinearFunction.proto";
 message RxSettings {
   // optional
   oneof dtgcAttenuation_ {
-    uint32 dtgc_attenuation = 1;
+    uint32 dtgc_attenuation = 2;
   }
-  uint32 pga_gain = 2;
-  uint32 lna_gain = 3;
-  LinearFunction tgc_curve_linear = 4;
-  repeated double tgc_samples = 5;
+  uint32 pga_gain = 3;
+  uint32 lna_gain = 4;
+  LinearFunction tgc_curve_linear = 5;
+  repeated double tgc_samples = 6;
 
-  uint32 lpf_cutoff = 6;
+  uint32 lpf_cutoff = 7;
 
   oneof activeTermination_ {
-    uint32 active_termination = 7;
+    uint32 active_termination = 9;
   }
 }

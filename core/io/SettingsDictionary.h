@@ -6,22 +6,25 @@
 namespace arrus::io {
 
 class SettingsDictionary {
-public:
+    public:
 
-    ProbeAdapterSettings
-    getAdapterSettings(const ProbeAdapterModelId &adapterModelId) {
+    [[nodiscard]] ProbeAdapterSettings
+    getAdapterSettings(const ProbeAdapterModelId &adapterModelId) const {
         return adaptersMap.at(convertIdToString(adapterModelId));
     }
 
     void insertAdapterSettings(ProbeAdapterSettings &&adapter) {
         std::string key = convertIdToString(adapter.getModelId());
-        adaptersMap.emplace(key, std::forward<ProbeAdapterSettings>(adapter));
+        adaptersMap.emplace(key,
+                            std::forward<ProbeAdapterSettings>(adapter));
     }
 
-    ProbeSettings getProbeSettings(const ProbeModelId &probeModelId,
-                                   const ProbeAdapterModelId &adapterModelId) {
+    [[nodiscard]] ProbeSettings
+    getProbeSettings(const ProbeModelId &probeModelId,
+                     const ProbeAdapterModelId &adapterModelId) const {
         std::string key =
-            convertIdToString(probeModelId) + convertIdToString(adapterModelId);
+            convertIdToString(probeModelId) +
+            convertIdToString(adapterModelId);
         return probesMap.at(key);
     }
 
@@ -30,19 +33,31 @@ public:
         std::string key =
             convertIdToString(probe.getModel().getModelId()) +
             convertIdToString(adapterId);
-        probesMap.emplace(key, probe);
+        probesMap.emplace(key, std::forward<ProbeSettings>(probe));
     }
 
-    template<typename T> static
+    [[nodiscard]] ProbeModel getProbeModel(const ProbeModelId &id) const {
+        return modelsMap.at(convertIdToString(id));
+    }
+
+    void insertProbeModel(const ProbeModel &probeModel) {
+        std::string key = convertIdToString(probeModel.getModelId());
+        modelsMap.emplace(key, probeModel);
+    }
+
+    template<typename T>
+    static
     std::string convertIdToString(const T &id) {
         return id.getManufacturer() + id.getName();
     }
-private:
+
+    private:
     //
     // manufacturer + name -> adapter
     std::unordered_map<std::string, ProbeAdapterSettings> adaptersMap;
     // adapter manufacturer + a. name + probe manufacturer + p. name -> probe s.
     std::unordered_map<std::string, ProbeSettings> probesMap;
+    std::unordered_map<std::string, ProbeModel> modelsMap;
 };
 
 }

@@ -16,8 +16,20 @@ namespace arrus::io {
 class RxSettingsProtoValidator : public Validator<arrus::proto::RxSettings> {
     using Validator::Validator;
 
-public:
+    public:
     void validate(const arrus::proto::RxSettings &obj) override {
+
+        if(obj.dtgcAttenuation__case() == proto::RxSettings::kDtgcAttenuation) {
+            expectDataType<uint16>("dtgc_attenuation", obj.dtgc_attenuation());
+        }
+        expectDataType<uint16>("pga_gain", obj.pga_gain());
+        expectDataType<uint16>("lna_gain", obj.lna_gain());
+
+        if(obj.activeTermination__case() ==
+           proto::RxSettings::kActiveTermination) {
+            expectDataType<uint16>("active_termination", obj.active_termination());
+        }
+
         bool hasTgcLinearFunction = obj.has_tgc_curve_linear();
         bool hasTgcSamples = !obj.tgc_samples().empty();
         expectTrue("tgc curve",

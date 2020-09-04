@@ -22,13 +22,15 @@ namespace arrus::io {
 class SessionSettingsProtoValidator
     : public Validator<std::unique_ptr<arrus::proto::SessionSettings>> {
 
-public:
+    public:
     explicit SessionSettingsProtoValidator(const std::string &name)
         : Validator(name) {}
 
     void validate(
         const std::unique_ptr<arrus::proto::SessionSettings> &obj) override {
         expectTrue("us4r", obj->has_us4r(), "us4r settings are required");
+
+        // TODO extract us4r settings validator
 
         if(hasErrors()) {
             return;
@@ -57,8 +59,16 @@ public:
         if(hasUs4oemSettings) {
             int i = 0;
             for(auto &settings : us4r.us4oems()) {
-                RxSettingsProtoValidator validator(
-                    "Us4OEM:" + std::to_string(i));
+                std::string fieldName = "Us4OEM:" + std::to_string(i);
+                expectTrue(fieldName, settings.has_rx_settings(),
+                           "Rx settings are required.");
+
+                expectAllDataType<ChannelIdx>(fieldName,
+                    std::begin(settings.channel_mapping()),
+                    std::end(settings.channel_mapping()),
+                    "channel_mapping");
+
+                RxSettingsProtoValidator validator(fieldName);
                 validator.validate(settings.rx_settings());
                 copyErrorsFrom(validator);
                 ++i;

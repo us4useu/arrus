@@ -23,7 +23,7 @@ inline std::vector<T> getRange(T start, T end, T step = 1) {
     return values;
 }
 
-template<typename In, typename Out>
+template<typename Out, typename In>
 inline std::vector<Out> castTo(std::vector<In> values) {
     std::vector<Out> result(values.size());
     std::transform(
@@ -32,6 +32,14 @@ inline std::vector<Out> castTo(std::vector<In> values) {
             [] (In &value) {return Out(value);}
    );
    return result;
+}
+
+template<typename Out, typename Iterator>
+inline std::vector<Out> castTo(const Iterator begin, const Iterator end) {
+    std::vector<Out> result;
+    std::transform(begin, end, std::back_inserter(result),
+        [] (auto &value) {return Out(value);});
+    return result;
 }
 
 template<typename T>
