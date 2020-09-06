@@ -1,10 +1,9 @@
 #ifndef ARRUS_CORE_API_COMMON_LOGGING_H
 #define ARRUS_CORE_API_COMMON_LOGGING_H
 
-
-#include "arrus/core/api/common/macros.h"
 #include <memory>
 
+#include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/common/LoggerFactory.h"
 
 namespace arrus {

@@ -8,6 +8,7 @@
 
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 #include "arrus/core/devices/us4r/tests/MockIUs4OEM.h"
+#include "arrus/common/logging/impl/Logging.h"
 
 namespace {
 
@@ -263,3 +264,12 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
 }
 
 }
+
+int main(int argc, char **argv) {
+    std::cerr << "Starting" << std::endl;
+    INIT_ARRUS_TEST_LOG(arrus::Logging);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
+

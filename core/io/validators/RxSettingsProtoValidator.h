@@ -29,12 +29,6 @@ class RxSettingsProtoValidator : public Validator<arrus::proto::RxSettings> {
            proto::RxSettings::kActiveTermination) {
             expectDataType<uint16>("active_termination", obj.active_termination());
         }
-
-        bool hasTgcLinearFunction = obj.has_tgc_curve_linear();
-        bool hasTgcSamples = !obj.tgc_samples().empty();
-        expectTrue("tgc curve",
-                   !(hasTgcLinearFunction && hasTgcSamples),
-                   "Duplicated definition of tgc curve");
     }
 
 };

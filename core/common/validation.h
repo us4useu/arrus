@@ -310,18 +310,14 @@ class Validator {
     void expectTrue(const std::string &parameter,
                     bool condition, const std::string &msg) {
         if(!condition) {
-            errors.emplace(parameter, arrus::format(
-                "Value '{}': {}",
-                parameter, msg));
+            errors.emplace(parameter, arrus::format("{}", msg));
         }
     }
 
     void expectFalse(const std::string &parameter,
                      bool condition, const std::string &msg) {
         if(condition) {
-            errors.emplace(parameter, arrus::format(
-                "Value '{}': {}",
-                parameter, msg));
+            errors.emplace(parameter, arrus::format("{}", msg));
         }
     }
 

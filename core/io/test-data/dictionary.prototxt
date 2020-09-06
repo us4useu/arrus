@@ -189,7 +189,7 @@ probe_models: [
     }
 ]
 
-probe_to_adapter_connections = [
+probe_to_adapter_connections: [
     {
         probe_model_id: {
             manufacturer: "esaote"
@@ -206,8 +206,8 @@ probe_to_adapter_connections = [
             }
         ]
         channel_mapping_ranges: {
-            start: 0
-            end: 192
+            begin: 0
+            end: 191
         }
     },
     {
@@ -226,8 +226,8 @@ probe_to_adapter_connections = [
             }
         ]
         channel_mapping_ranges: {
-            start: 0
-            end: 192
+            begin: 0
+            end: 191
         }
     },
     {
@@ -247,12 +247,12 @@ probe_to_adapter_connections = [
          ]
          channel_mapping_ranges: [
             {
-                start: 0
-                end: 48
+                begin: 0
+                end: 47
             },
             {
-                start: 144,
-                end: 192
+                begin: 144,
+                end: 191
             }
          ]
      },
@@ -265,13 +265,11 @@ probe_to_adapter_connections = [
              {
                  manufacturer: "us4us"
                  name: "ultrasonix"
-             },
+             }
          ]
          channel_mapping_ranges: {
-                start: 0
+                begin: 0
                 end: 128
          }
-     },
-
-
+     }
 ]

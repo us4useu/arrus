@@ -3,7 +3,7 @@
 
 #define ARRUS_PATH_KEY "ARRUS_PATH"
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(ARRUS_CORE_UNIT_TESTS)
 
 #if defined(ARRUS_CPP_API_BUILD_STAGE)
 #define ARRUS_CPP_EXPORT __declspec(dllexport)

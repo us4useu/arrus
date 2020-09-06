@@ -19,14 +19,14 @@ class ProbeAdapterModelProtoValidator
         : Validator(componentName) {}
 
     void validate(const arrus::proto::ProbeAdapterModel &obj) override {
-        bool hasChannelMappings = obj.has_channels_mapping();
+        bool hasChannelMappings = obj.has_channel_mapping();
         bool hasChannelMappingsRegions = !obj.channel_mapping_regions().empty();
 
         // Data types
         expectDataType<ChannelIdx>("n_channels", obj.n_channels());
         if(hasChannelMappings) {
-            auto const &ordinals = obj.channels_mapping().us4oems();
-            auto const &channels = obj.channels_mapping().channels();
+            auto const &ordinals = obj.channel_mapping().us4oems();
+            auto const &channels = obj.channel_mapping().channels();
             expectAllDataType<Ordinal>(
                 "channel_mapping.us4oems", ordinals);
             expectAllDataType<ChannelIdx>(
@@ -43,7 +43,7 @@ class ProbeAdapterModelProtoValidator
 
         // Semantic
         expectTrue("channel mapping",
-                   !(hasChannelMappings ^ hasChannelMappingsRegions),
+                   hasChannelMappings ^ hasChannelMappingsRegions,
                    "Exactly one of the following should be set for "
                    "probe adapter model: (channel mappings, channel "
                    "mapping regions)");

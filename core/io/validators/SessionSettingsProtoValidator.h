@@ -45,8 +45,7 @@ class SessionSettingsProtoValidator
                                        us4r.has_probe_to_adapter_connection() ||
                                        us4r.has_rx_settings();
 
-
-        expectTrue("us4r", !(hasUs4oemSettings ^ hasProbeAdapterSettings),
+        expectTrue("us4r", hasUs4oemSettings ^ hasProbeAdapterSettings,
                    "Exactly one of the following should be set in us4r "
                    "settings: a list of us4oem settings or: (probe settings, "
                    "adapter settings, probe<->adapter connection, rx settings)"
@@ -73,13 +72,18 @@ class SessionSettingsProtoValidator
             }
         } else if(hasProbeAdapterSettings) {
             bool hasAllProbeSettings = hasProbeSettings && hasAdapterSettings &&
-                                       us4r.has_probe_to_adapter_connection() &&
                                        us4r.has_rx_settings();
 
             expectTrue("us4r", hasAllProbeSettings,
                        "All of the following fields are required: "
-                       "(probe settings, adapter settings, "
-                       "probe <-> adapter connection, rx settings)");
+                       "(probe settings, adapter settings, rx settings)");
+
+            if(us4r.has_probe() || us4r.has_adapter()) {
+                // Custom probe or adapter
+                expectTrue("us4r", us4r.has_probe_to_adapter_connection(),
+                           "Probe to adapter connection is required "
+                           "for custom probe and adapter definitions.");
+            }
 
             if(hasErrors()) {
                 return;

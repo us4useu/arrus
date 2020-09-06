@@ -20,7 +20,7 @@ std::shared_ptr<LoggerFactory> getLoggerFactory() {
 }
 
 Logger::SharedHandle getDefaultLogger() {
-    if(loggerFactory == nullptr) {
+    if(defaultLogger == nullptr) {
         throw IllegalStateException("Logging mechanism is not initialized, "
                                     "register logger factory first.");
     }

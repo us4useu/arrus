@@ -183,18 +183,26 @@ target_compile_definitions(${TARGET_NAME} PRIVATE
 if (ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
 
+    set(ARRUS_CORE_DEVICES_TESTS_SRCS
+        devices/DeviceId.cpp common/logging.cpp)
     # core::devices test
     create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/utilsTest.cpp)
-    create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp
+            "${ARRUS_CORE_DEVICES_TESTS_SRCS}")
     create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp devices/DeviceId.cpp)
-    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "devices/DeviceId.cpp;common/logging.cpp")
     #    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
-    # io tests
-    create_core_test(io/settingsTest.cpp "io/settings.cpp" "Protobuf::Protobuf")
+    # core::io tests
+    set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
+    create_core_test(
+        io/settingsTest.cpp
+        "" # no additional source files
+        "Protobuf::Protobuf;arrus-core"
+        "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
 endif ()
 
 ################################################################################

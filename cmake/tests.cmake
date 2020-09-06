@@ -6,6 +6,9 @@ function(create_core_test test_src)
     if(${ARGC} GREATER 2)
         set(other_deps ${ARGV2})
     endif()
+    if(${ARGC} GREATER 2)
+        set(compile_definitions ${ARGV3})
+    endif()
 
     # TODO(pjarosik) make the below a parameter
     if(NOT DEFINED ARRUS_CPP_COMMON_COMPILE_OPTIONS)
@@ -19,7 +22,6 @@ function(create_core_test test_src)
 
     add_executable(${target_name}
         ${test_src}
-        common/logging.cpp
         ../common/logging/impl/Logging.cpp
         ../common/logging/impl/LogSeverity.cpp
         ${other_srcs}
@@ -39,5 +41,12 @@ function(create_core_test test_src)
         ${Us4_INCLUDE_DIR} # Required to mock us4 devices. TODO(pjarosik) do not depend tests on external libraries
     )
     target_compile_options(${target_name} PRIVATE ${ARRUS_CPP_COMMON_COMPILE_OPTIONS})
+    target_compile_definitions(${target_name} PRIVATE
+        ARRUS_CORE_UNIT_TESTS
+        _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
+        ${compile_definitions})
     add_test(NAME ${test_src} COMMAND ${target_name})
+
+    prepend_env_path(ARRUS_TESTS_ENV_PATH ${Us4_LIB_DIR})
+    set_tests_properties(${test_src} PROPERTIES ENVIRONMENT "PATH=${ARRUS_TESTS_ENV_PATH}")
 endfunction()

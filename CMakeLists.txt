@@ -26,10 +26,14 @@ set(CMAKE_MODULE_PATH
 ################################################################################
 # Global options and settings
 ################################################################################
+include(common)
+
 set(ARRUS_ROOT_DIR ${CMAKE_SOURCE_DIR}/..)
 set(ARRUS_DOCS_INSTALL_DIR docs)
 set(ARRUS_MATLAB_INSTALL_DIR matlab)
 set(ARRUS_PYTHON_INSTALL_DIR python)
+
+set(Us4_LIB_DIR ${Us4_ROOT_DIR}/lib64)
 
 option(ARRUS_BUILD_PY "Build python API." OFF)
 option(ARRUS_BUILD_MATLAB "Build MATLAB API." OFF)

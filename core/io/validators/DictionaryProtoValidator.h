@@ -55,6 +55,8 @@ public:
                            probeIds.find(probeId) == probeIds.end(),
                            "id already used.");
 
+                probeIds.emplace(probeId);
+
                 ProbeModelProtoValidator probeValidator(fieldName);
                 probeValidator.validate(probe);
                 copyErrorsFrom(probeValidator);
@@ -73,6 +75,8 @@ public:
                 expectTrue(fieldName,
                            adapterIds.find(adapterId) == adapterIds.end(),
                            "id already used.");
+
+                adapterIds.emplace(adapterId);
 
                 ProbeAdapterModelProtoValidator adapterValidator(fieldName);
                 adapterValidator.validate(adapter);

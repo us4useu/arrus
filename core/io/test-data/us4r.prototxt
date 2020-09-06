@@ -1,4 +1,4 @@
-dictionary_file: "default.dict"
+dictionary_file: "dictionary.prototxt"
 
 us4r: {
     probe_id: {
@@ -16,7 +16,7 @@ us4r: {
         lna_gain: 24
         pga_gain: 30
         tgc_samples: [14, 15, 16]
-        lpf_cutoff: 10e6
+        lpf_cutoff: 10000000
         active_termination: 200
     }
 

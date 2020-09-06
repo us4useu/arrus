@@ -4,7 +4,9 @@
 #include <memory>
 #include <unordered_map>
 #include <cstdlib>
-#include "arrus/core/api/common/macros.h"
+
+#include "arrus/core/common/logging.h"
+#include "arrus/core/session/SessionSettings.h"
 
 #ifdef _MSC_VER
 
@@ -60,8 +62,8 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     ProbeAdapterSettings::ChannelMapping channelMapping;
     using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
 
-    if(proto.has_channels_mapping()) {
-        const auto &mapping = proto.channels_mapping();
+    if(proto.has_channel_mapping()) {
+        const auto &mapping = proto.channel_mapping();
         const auto &us4oems = mapping.us4oems();
         const auto &inChannels = mapping.channels();
 
@@ -74,8 +76,7 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
                              IllegalArgumentException(
                                  "Us4oems and channels lists should have "
                                  "the same size"));
-
-        channelMapping.reserve(modules.size());
+        channelMapping = std::vector<ChannelAddress>{modules.size()};
         for(int i = 0; i < modules.size(); ++i) {
             channelMapping[i] = {modules[i], channels[i]};
         }
@@ -103,7 +104,7 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     // TODO move
     Tuple<ElementIdxType> nElements{nElementsVec};
 
-    std::vector<double> pitchVec;
+    std::vector<double> pitchVec(proto.pitch().size());
     std::copy(std::begin(proto.pitch()), std::end(proto.pitch()),
               std::begin(pitchVec));
     Tuple<double> pitch{pitchVec};
@@ -294,6 +295,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
 
 
 SessionSettings readSessionSettings(const std::string &filepath) {
+    auto logger = ::arrus::getDefaultLogger();
     // Read and validate session.
     std::filesystem::path sessionSettingsPath{filepath};
     if(!std::filesystem::is_regular_file(sessionSettingsPath)) {
@@ -319,9 +321,9 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             dictionaryPathStr = dictP.u8string();
         } else {
             // 2. Try to use ARRUS_PATH, if available.
-            const char* arrusP = std::getenv(ARRUS_PATH_KEY);
+            const char *arrusP = std::getenv(ARRUS_PATH_KEY);
             if(arrusP != nullptr) {
-                std::filesystem::path arrusDicP {arrusP};
+                std::filesystem::path arrusDicP{arrusP};
                 arrusDicP = arrusDicP / s->dictionary_file();
                 if(std::filesystem::is_regular_file(arrusDicP)) {
                     dictionaryPathStr = arrusDicP.u8string();
@@ -346,7 +348,14 @@ SessionSettings readSessionSettings(const std::string &filepath) {
 
     Us4RSettings us4rSettings = readUs4RSettings(s->us4r(), dictionary);
     // TODO std move
-    return SessionSettings(us4rSettings);
+
+    SessionSettings sessionSettings(us4rSettings);
+
+    logger->log(LogSeverity::DEBUG,
+                arrus::format("Read settings from {}: {}",
+                              filepath, toString(sessionSettings)));
+
+    return sessionSettings;
 }
 
 

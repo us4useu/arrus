@@ -41,7 +41,7 @@ class ProbeToAdapterConnectionProtoValidator
 
         // semantic
         expectTrue("probe_to_adapter_connection",
-                   !(hasChannelMapping ^ hasMappingIntervals),
+                   hasChannelMapping ^ hasMappingIntervals,
                    "Exactly one of the following should set: "
                    "channel_mapping, channel_mappign_ranges"
         );
