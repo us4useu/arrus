@@ -29,10 +29,12 @@ public:
     virtual void log(const LogSeverity severity, const std::string &msg) = 0;
 
     /**
-     * Logs a given string message with given severity level.
+     * Sets logger attribute with given value.
      *
-     * @param severity severity attached to the message
-     * @param msg message to log
+     * This function can be used e.g. to set device id of the device logger.
+     *
+     * @param key attribute's name
+     * @param value value to set
      */
     virtual void
     setAttribute(const std::string &key, const std::string &value) = 0;

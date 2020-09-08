@@ -29,8 +29,6 @@ public:
         return model;
     }
 
-
-
 private:
     ProbeModel model;
     /** A probe channel mapping to the underlying device. */

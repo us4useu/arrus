@@ -94,14 +94,14 @@ public:
             expectInRange(
                     "tgc samples",
                     obj.getRxSettings().getTGCSamples().size(),
-					(size_t)1, (size_t)Us4OEMImpl::N_TGC_SAMPLES,
+					(size_t)1, (size_t)Us4OEMImpl::TGC_N_SAMPLES,
                     "(size)"
             );
 
             // Maximum/minimum value of a TGC sample.
             auto tgcMax = float(obj.getRxSettings().getPGAGain()
                                 + obj.getRxSettings().getLNAGain());
-            auto tgcMin = std::max(0.0f, float(tgcMax - Us4OEMImpl::TGC_RANGE));
+            auto tgcMin = std::max(0.0f, float(tgcMax - Us4OEMImpl::TGC_ATTENUATION_RANGE));
             expectAllInRange("tgc samples",
                              obj.getRxSettings().getTGCSamples(), tgcMin,
                              tgcMax);

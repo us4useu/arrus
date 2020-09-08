@@ -43,6 +43,10 @@ set(SRC_FILES
     api/devices/us4r/RxSettings.h
     api/session/Session.h
     api/session/SessionSettings.h
+    api/ops/us4r/TxRxSequence.h
+    api/ops/us4r/Tx.h
+    api/ops/us4r/Rx.h
+    api/ops/us4r/Pulse.h
 
     common/hash.h
     common/collections.h
@@ -66,6 +70,7 @@ set(SRC_FILES
     devices/us4r/us4oem/Us4OEMFactory.h
     devices/us4r/us4oem/Us4OEMFactoryImpl.h
     devices/us4r/us4oem/Us4OEMImpl.h
+    devices/us4r/us4oem/Us4OEMImpl.cpp
     devices/us4r/us4oem/Us4OEMSettingsValidator.h
     devices/us4r/us4oem/Us4OEMSettings.h
     devices/us4r/us4oem/Us4OEMSettings.cpp
@@ -84,6 +89,7 @@ set(SRC_FILES
     devices/us4r/probeadapter/ProbeAdapterFactory.h
     devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h
     devices/us4r/probeadapter/ProbeAdapterImpl.h
+    devices/us4r/probeadapter/ProbeAdapterImpl.cpp
     devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
     devices/us4r/probeadapter/ProbeAdapterSettings.h
     devices/us4r/probeadapter/ProbeAdapterSettings.cpp
@@ -91,6 +97,7 @@ set(SRC_FILES
     devices/probe/ProbeFactory.h
     devices/probe/ProbeFactoryImpl.h
     devices/probe/ProbeImpl.h
+    devices/probe/ProbeImpl.cpp
     devices/probe/ProbeSettingsValidator.h
     devices/probe/ProbeSettings.h
     devices/probe/ProbeSettings.cpp

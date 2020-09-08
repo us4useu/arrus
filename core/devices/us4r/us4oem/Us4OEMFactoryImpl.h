@@ -89,7 +89,7 @@ public:
             // TODO(pjarosik) extract a common function to compute normalized tgc samples
             const TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
                     cfg.getRxSettings().getTGCSamples(),
-                    maxGain - Us4OEMImpl::TGC_RANGE,
+                    maxGain - Us4OEMImpl::TGC_ATTENUATION_RANGE,
                     static_cast<TGCSampleValue>(maxGain));
 
             ius4oem->TGCEnable();
