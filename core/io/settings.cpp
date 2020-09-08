@@ -11,8 +11,12 @@
 #ifdef _MSC_VER
 
 #include <io.h>
-
 #define ARRUS_OPEN_FILE _open
+
+#elif ARRUS_LINUX
+
+#include <fcntl.h>
+#define ARRUS_OPEN_FILE open
 
 #endif
 
