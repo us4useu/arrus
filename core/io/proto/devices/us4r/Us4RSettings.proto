@@ -1,0 +1,29 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+import "io/proto/devices/probe/ProbeModel.proto";
+import "io/proto/devices/us4r/ProbeAdapterModel.proto";
+import "io/proto/devices/us4r/ProbeToAdapterConnection.proto";
+import "io/proto/devices/us4r/RxSettings.proto";
+import "io/proto/devices/us4r/Us4OEMSettings.proto";
+
+message Us4RSettings {
+
+  // Only one of the following is available: (probe, adapter, rxsettings)
+  // or a list of us4oem settings.
+
+  oneof one_of_probe_representation {
+    ProbeModel.Id probe_id = 1;
+    ProbeModel probe = 2;
+  }
+
+  oneof one_of_adapter_representation {
+    ProbeAdapterModel.Id adapter_id = 3;
+    ProbeAdapterModel adapter = 4;
+  }
+
+  ProbeToAdapterConnection probe_to_adapter_connection = 5;
+  RxSettings rx_settings = 6;
+  repeated Us4OEMSettings us4oems = 7;
+}

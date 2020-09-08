@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "io/proto/devices/us4r/Us4RSettings.proto";
+
+message SessionSettings {
+  Us4RSettings us4r = 1;
+  string dictionary_file = 2;
+}
+

@@ -1,0 +1,25 @@
+dictionary_file: "dictionary.prototxt"
+
+us4r: {
+    probe_id: {
+        manufacturer: "esaote"
+        name: "sl1543"
+    }
+
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "esaote2"
+    }
+
+    # Default initial values.
+    rx_settings: {
+        lna_gain: 24
+        pga_gain: 30
+        tgc_samples: [14, 15, 16]
+        lpf_cutoff: 10000000
+        active_termination: 200
+    }
+
+}
+
+

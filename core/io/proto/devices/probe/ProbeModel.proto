@@ -1,0 +1,17 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+import "io/proto/common/IntervalDouble.proto";
+
+
+message ProbeModel {
+  message Id {
+    string manufacturer = 1;
+    string name = 2;
+  }
+  Id id = 1;
+  repeated uint32 n_elements = 2;
+  repeated double pitch = 3;
+  IntervalDouble tx_frequency_range = 4;
+}
