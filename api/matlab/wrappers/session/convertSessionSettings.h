@@ -7,7 +7,7 @@
 #include "mex.hpp"
 
 namespace arrus::matlab {
-    SessionSettings
+    arrus::session::SessionSettings
     convertToSessionSettings(const MexContext::SharedHandle &ctx,
                              const ::matlab::data::Array &object) {
         auto matlabEngine = ctx->getMatlabEngine();
@@ -15,8 +15,9 @@ namespace arrus::matlab {
         // us4RSettings
         ::matlab::data::Array us4rSettingsObj = matlabEngine->getProperty(
             object, "us4RSettings");
-        Us4RSettings us4RSettings = convertToUs4RSettings(ctx, us4rSettingsObj);
-        return SessionSettings(us4RSettings);
+        ::arrus::devices::Us4RSettings us4RSettings =
+            convertToUs4RSettings(ctx, us4rSettingsObj);
+        return ::arrus::session::SessionSettings(us4RSettings);
     }
 
 }

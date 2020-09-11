@@ -6,7 +6,7 @@
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4RSettingsConverter {
 public:

@@ -3,7 +3,7 @@
 
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 std::ostream &operator<<(std::ostream &os, const RxSettings &settings);
 

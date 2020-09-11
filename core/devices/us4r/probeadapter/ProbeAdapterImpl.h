@@ -7,7 +7,7 @@
 #include <utility>
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeAdapterImpl : public ProbeAdapter {
 public:

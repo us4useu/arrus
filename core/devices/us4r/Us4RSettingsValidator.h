@@ -4,7 +4,7 @@
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 #include "arrus/core/devices/DeviceSettingsValidator.h"
 
-namespace arrus {
+namespace arrus::devices {
 class Us4RSettingsValidator : public DeviceSettingsValidator<Us4RSettings> {
 public:
     explicit Us4RSettingsValidator(Ordinal moduleOrdinal)

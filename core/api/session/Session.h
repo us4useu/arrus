@@ -6,7 +6,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/SessionSettings.h"
 
-namespace arrus {
+namespace arrus::session {
 
 class Session {
 public:
@@ -20,7 +20,8 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    virtual Device::RawHandle getDevice(const std::string &deviceId) = 0;
+    virtual arrus::devices::Device::RawHandle
+    getDevice(const std::string &deviceId) = 0;
 
     /**
      * Returns a handle to device with given Id.
@@ -28,7 +29,8 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-   virtual Device::RawHandle getDevice(const DeviceId &deviceId) = 0;
+    virtual arrus::devices::Device::RawHandle
+    getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 };
 
 /**
@@ -39,11 +41,6 @@ public:
 */
 ARRUS_CPP_EXPORT
 Session::Handle createSession(const SessionSettings &sessionSettings);
-
-// TODO(pjarosik) remove
-ARRUS_CPP_EXPORT
-int testConnection();
-
 }
 
 

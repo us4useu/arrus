@@ -5,7 +5,7 @@
 #include <utility>
 #include <ostream>
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeAdapterModelId {
 public:

@@ -3,7 +3,7 @@
 
 #include "../Device.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Probe : public Device {
 public:

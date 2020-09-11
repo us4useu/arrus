@@ -5,7 +5,7 @@
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeImpl : public Probe {
 public:

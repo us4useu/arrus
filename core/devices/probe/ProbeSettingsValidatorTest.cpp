@@ -7,7 +7,7 @@
 #include "arrus/core/devices/probe/ProbeSettingsValidator.h"
 
 namespace {
-using namespace arrus;
+using namespace arrus::devices;
 
 struct TestProbeSettings {
     ProbeModelId modelId{"test", "test"};

@@ -3,7 +3,7 @@
 #include "arrus/common/format.h"
 #include "arrus/core/devices/us4r/RxSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 std::ostream &
 operator<<(std::ostream &os, const Us4OEMSettings &settings) {

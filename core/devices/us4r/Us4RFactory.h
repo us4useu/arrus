@@ -4,7 +4,7 @@
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4RFactory {
 public:

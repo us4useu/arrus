@@ -2,12 +2,18 @@
 #define ARRUS_CORE_IO_SETTINGSDICTIONARY_H
 
 #include <unordered_map>
+#include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 
 namespace arrus::io {
 
+using ::arrus::devices::ProbeAdapterSettings;
+using ::arrus::devices::ProbeSettings;
+using ::arrus::devices::ProbeModel;
+using ::arrus::devices::ProbeModelId;
+using ::arrus::devices::ProbeAdapterModelId;
+
 class SettingsDictionary {
     public:
-
     [[nodiscard]] ProbeAdapterSettings
     getAdapterSettings(const ProbeAdapterModelId &adapterModelId) const {
         return adaptersMap.at(convertIdToString(adapterModelId));

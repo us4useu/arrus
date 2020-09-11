@@ -3,7 +3,7 @@
 
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 std::ostream &operator<<(std::ostream &os, const ProbeSettings &settings);
 }
 

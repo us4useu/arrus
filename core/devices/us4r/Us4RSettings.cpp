@@ -5,7 +5,7 @@
 #include "arrus/core/devices/probe/ProbeSettings.h"
 #include "arrus/core/devices/us4r/RxSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 template<typename T>
 static inline void printOptionalValue(const std::optional<T> value,

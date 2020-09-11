@@ -15,7 +15,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4OEMSettingsValidator : public DeviceSettingsValidator<Us4OEMSettings> {
 public:

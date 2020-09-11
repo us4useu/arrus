@@ -43,7 +43,7 @@ public:
     MexMethodReturnType getDevice(MexMethodArgs &inputs) {
         ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 1, "getDevice");
 
-        DeviceId deviceId = convertToDeviceId(ctx, inputs[0]);
+        arrus::devices::DeviceId deviceId = convertToDeviceId(ctx, inputs[0]);
         ctx->logInfo(arrus::format("Got DeviceId: {}", deviceId.toString()));
         return ctx->getArrayFactory().createCellArray({1, 1},
                                                       ctx->getArrayFactory().createArray<double>(

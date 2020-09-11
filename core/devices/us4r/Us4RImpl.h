@@ -12,7 +12,7 @@
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/common/logging.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4RImpl : public Us4R {
 public:

@@ -6,20 +6,18 @@
 
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 
-namespace arrus {
+namespace arrus::session {
 class SessionSettings {
 public:
-    explicit SessionSettings(Us4RSettings us4RSettings) :
-            us4RSettings(std::move(us4RSettings)) {}
+    explicit SessionSettings(arrus::devices::Us4RSettings us4RSettings) :
+        us4RSettings(std::move(us4RSettings)) {}
 
-    [[nodiscard]] const Us4RSettings &getUs4RSettings() const {
+    [[nodiscard]] const arrus::devices::Us4RSettings &getUs4RSettings() const {
         return us4RSettings;
     }
 
-
-
 private:
-    Us4RSettings us4RSettings;
+    arrus::devices::Us4RSettings us4RSettings;
 };
 }
 

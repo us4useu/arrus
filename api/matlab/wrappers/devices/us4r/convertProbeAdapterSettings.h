@@ -4,13 +4,15 @@
 #include "arrus/api/matlab/wrappers/MexContext.h"
 #include "arrus/api/matlab/wrappers/devices/us4r/convertProbeAdapterModelId.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
+#include "arrus/common/format.h"
 #include "mex.hpp"
 
 namespace arrus::matlab {
-ProbeAdapterSettings
+::arrus::devices::ProbeAdapterSettings
 convertToProbeAdapterSettings(const MexContext::SharedHandle &ctx,
                               const ::matlab::data::Array &object) {
 
+    using namespace arrus::devices;
     auto modelIdArr = getProperty(ctx, object, "modelId");
     ProbeAdapterModelId modelId = convertToProbeAdapterModelId(
         ctx, modelIdArr);

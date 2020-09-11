@@ -8,6 +8,7 @@
 
 namespace {
 using namespace arrus;
+using namespace arrus::devices;
 
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 

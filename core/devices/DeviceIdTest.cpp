@@ -6,7 +6,7 @@
 
 namespace {
 
-using namespace arrus;
+using namespace arrus::devices;
 
 // DeviceId
 

@@ -11,7 +11,7 @@
 #include "arrus/core/devices/probe/ProbeFactory.h"
 #include "ProbeImpl.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeFactoryImpl : public ProbeFactory {
 public:

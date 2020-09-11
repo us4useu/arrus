@@ -3,7 +3,7 @@
 
 #include "IUs4OEMInitializer.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class IUs4OEMInitializerImpl : public IUs4OEMInitializer {
 public:

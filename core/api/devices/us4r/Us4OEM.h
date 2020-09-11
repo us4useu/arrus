@@ -6,7 +6,7 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/TriggerGenerator.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4OEM : public Device, public TriggerGenerator {
 public:

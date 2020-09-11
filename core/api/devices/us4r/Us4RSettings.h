@@ -11,7 +11,7 @@
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4RSettings {
 public:

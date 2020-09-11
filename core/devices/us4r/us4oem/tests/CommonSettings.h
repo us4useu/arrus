@@ -5,6 +5,7 @@
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 
 using namespace arrus;
+using namespace arrus::devices;
 
 struct TestUs4OEMSettings {
     std::vector<ChannelIdx> channelMapping{getRange<ChannelIdx>(0, 128)};

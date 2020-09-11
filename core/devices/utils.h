@@ -6,7 +6,7 @@
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 // Device path
 constexpr char PATH_DELIMITER = '/';

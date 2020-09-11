@@ -7,7 +7,7 @@
 
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 /**
  * This class should not be part of the c++ api! Due to dependency on IUs4OEMHandle

@@ -7,7 +7,7 @@
 
 namespace {
 
-using namespace arrus;
+using namespace arrus::devices;
 using ::testing::Return;
 using ::testing::InSequence;
 

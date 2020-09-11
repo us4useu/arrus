@@ -13,7 +13,7 @@
 #include "arrus/common/format.h"
 #include "arrus/common/asserts.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeAdapterSettingsValidator
         : public DeviceSettingsValidator<ProbeAdapterSettings> {

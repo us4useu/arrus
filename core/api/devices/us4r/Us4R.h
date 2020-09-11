@@ -10,7 +10,7 @@
 #include "arrus/core/api/devices/probe/Probe.h"
 
 
-namespace arrus {
+namespace arrus::devices {
 
 /**
  * Us4R system: a group of Us4OEM modules and related components.

@@ -5,7 +5,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4RSettingsConverterImpl : public Us4RSettingsConverter {
 public:

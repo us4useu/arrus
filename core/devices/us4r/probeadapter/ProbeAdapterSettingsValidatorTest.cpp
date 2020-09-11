@@ -11,7 +11,7 @@
 
 namespace {
 
-using namespace arrus;
+using namespace arrus::devices;
 using ChannelAddress = ::arrus::ProbeAdapterSettings::ChannelAddress;
 
 struct TestAdapterSettings {

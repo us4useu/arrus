@@ -13,6 +13,7 @@
 namespace {
 
 using namespace arrus;
+using namespace arrus::devices;
 using namespace us4r::afe58jd18;
 
 using ::testing::_;

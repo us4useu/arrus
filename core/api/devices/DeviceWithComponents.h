@@ -5,7 +5,7 @@
 
 #include "arrus/core/api/devices/Device.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class DeviceWithComponents : public Device {
 public:

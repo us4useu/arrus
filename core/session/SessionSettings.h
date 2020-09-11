@@ -3,7 +3,7 @@
 
 #include "arrus/core/api/session/SessionSettings.h"
 
-namespace arrus {
+namespace arrus::session {
 
 std::ostream &
 operator<<(std::ostream &os, const SessionSettings &settings);

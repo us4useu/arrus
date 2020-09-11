@@ -3,7 +3,7 @@
 #include "arrus/common/format.h"
 
 
-namespace arrus {
+namespace arrus::devices {
 std::ostream &operator<<(std::ostream &os, const ProbeModel &model) {
     os << "modelId: " << model.getModelId().getName() << ", "
        << model.getModelId().getManufacturer()

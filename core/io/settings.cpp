@@ -44,6 +44,7 @@ namespace arrus::io {
 
 namespace ap = arrus::proto;
 
+using namespace arrus::devices;
 
 template<typename T>
 std::unique_ptr<T> readProtoTxt(const std::string &filepath) {

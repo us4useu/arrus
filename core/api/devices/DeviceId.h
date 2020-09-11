@@ -6,7 +6,7 @@
 
 #include "arrus/core/api/common/macros.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 /**
  * Device types available in the system.

@@ -4,7 +4,7 @@
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/devices/DeviceSettingsValidator.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeSettingsValidator : public DeviceSettingsValidator<ProbeSettings> {
 

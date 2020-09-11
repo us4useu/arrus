@@ -9,7 +9,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 
-namespace arrus {
+namespace arrus::devices {
 class Us4OEMFactoryImpl : public Us4OEMFactory {
 public:
     Us4OEMFactoryImpl() = default;

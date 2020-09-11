@@ -17,8 +17,11 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/session/SessionSettings.h"
+#include "Device.h"
 
-namespace arrus {
+namespace arrus::session {
+
+using namespace arrus::devices;
 
 Session::Handle createSession(const SessionSettings &sessionSettings) {
     return std::make_unique<SessionImpl>(
@@ -43,7 +46,7 @@ SessionImpl::SessionImpl(const SessionSettings &sessionSettings,
     devices = configureDevices(sessionSettings);
 }
 
-Device::RawHandle SessionImpl::getDevice(const std::string &path) {
+arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path) {
     // sanitize
     std::string sanitizedPath{path};
     boost::algorithm::trim(sanitizedPath);
@@ -52,7 +55,7 @@ Device::RawHandle SessionImpl::getDevice(const std::string &path) {
     auto[root, tail] = ::arrus::getPathRoot(sanitizedPath);
 
     auto deviceId = DeviceId::parse(root);
-    Device::RawHandle rootDevice = getDevice(deviceId);
+    arrus::devices::Device::RawHandle rootDevice = getDevice(deviceId);
 
     if(tail.empty()) {
         return rootDevice;
@@ -68,7 +71,7 @@ Device::RawHandle SessionImpl::getDevice(const std::string &path) {
     }
 }
 
-Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
+arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
     try {
         return devices.at(deviceId).get();
     } catch(const std::out_of_range &) {

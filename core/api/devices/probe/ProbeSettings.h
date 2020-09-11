@@ -7,7 +7,7 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
 
-namespace arrus {
+namespace arrus::devices {
 class ProbeSettings {
 public:
     /**

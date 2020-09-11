@@ -1,7 +1,6 @@
 #include "Us4OEMImpl.h"
 
-namespace arrus {
-
+namespace arrus::devices {
 
 Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                        BitMask activeChannelGroups,

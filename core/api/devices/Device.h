@@ -6,8 +6,7 @@
 
 #include <memory>
 
-namespace arrus {
-
+namespace arrus::devices {
 class Device {
 public:
     using Handle = std::unique_ptr<Device>;

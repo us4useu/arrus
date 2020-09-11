@@ -7,9 +7,10 @@
 #include "mex.hpp"
 
 namespace arrus::matlab {
-ProbeModel
+::arrus::devices::ProbeModel
 convertToProbeModel(const MexContext::SharedHandle &ctx,
                     const ::matlab::data::Array &object) {
+    using namespace arrus::devices;
     auto modelIdArr = getProperty(ctx, object, "modelId");
     ProbeModelId id = convertToProbeModelId(ctx, modelIdArr);
 

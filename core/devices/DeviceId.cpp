@@ -7,7 +7,7 @@
 #include "arrus/common/format.h"
 #include "arrus/common/asserts.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 static const std::unordered_map<DeviceType, std::string>
         DEVICE_TYPE_ENUM_STRINGS = {

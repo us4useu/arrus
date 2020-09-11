@@ -7,7 +7,7 @@
 
 #include "arrus/core/api/common/types.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class DTGCAttenuationValueMap {
 

@@ -2,7 +2,7 @@
 
 #include "arrus/common/format.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 std::ostream &
 operator<<(std::ostream &os, const RxSettings &settings) {

@@ -10,7 +10,7 @@
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 /**
  * A specification of the probe model.

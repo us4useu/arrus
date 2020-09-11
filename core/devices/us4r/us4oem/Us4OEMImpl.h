@@ -11,7 +11,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4OEMImpl : public Us4OEM {
 public:

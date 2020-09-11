@@ -20,7 +20,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4RFactoryImpl : public Us4RFactory {
 public:

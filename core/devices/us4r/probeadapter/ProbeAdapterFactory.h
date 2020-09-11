@@ -6,7 +6,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 
-namespace arrus {
+namespace arrus::devices {
 class ProbeAdapterFactory {
 public:
     virtual ProbeAdapter::Handle

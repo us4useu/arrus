@@ -6,7 +6,7 @@
 
 #include "arrus/core/api/devices/DeviceId.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 using IUs4OEMHandle = std::unique_ptr<IUs4OEM>;
 

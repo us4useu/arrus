@@ -4,7 +4,7 @@
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 class ProbeFactory {
 public:
     virtual Probe::Handle

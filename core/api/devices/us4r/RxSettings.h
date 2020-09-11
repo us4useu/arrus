@@ -8,7 +8,7 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class RxSettings {
 public:

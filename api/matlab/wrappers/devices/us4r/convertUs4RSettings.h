@@ -14,8 +14,10 @@
 
 namespace arrus::matlab {
 
-Us4RSettings convertToUs4RSettings(const MexContext::SharedHandle &ctx,
-                                   const ::matlab::data::Array &object) {
+::arrus::devices::Us4RSettings
+convertToUs4RSettings(const MexContext::SharedHandle &ctx,
+                      const ::matlab::data::Array &object) {
+    using namespace arrus::devices;
     auto us4OEMProp = getProperty(ctx, object, "us4OEMSettings");
     if(!us4OEMProp.isEmpty()) {
         ::std::vector<Us4OEMSettings> res;

@@ -4,7 +4,7 @@
 #include <memory>
 #include "arrus/core/api/devices/Device.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeAdapter : public Device {
 public:

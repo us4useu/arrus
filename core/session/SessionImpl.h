@@ -9,17 +9,19 @@
 #include "arrus/core/common/hash.h"
 #include "arrus/core/devices/DeviceIdHasher.h"
 
-namespace arrus {
+namespace arrus::session {
 
 class SessionImpl : public Session {
 public:
     SessionImpl(
-            const SessionSettings &sessionSettings,
-            Us4RFactory::Handle us4RFactory);
+        const SessionSettings &sessionSettings,
+        arrus::devices::Us4RFactory::Handle us4RFactory);
 
-    Device::RawHandle getDevice(const std::string &deviceId) override;
+    arrus::devices::Device::RawHandle
+    getDevice(const std::string &deviceId) override;
 
-    Device::RawHandle getDevice(const DeviceId &deviceId) override;
+    arrus::devices::Device::RawHandle
+    getDevice(const arrus::devices::DeviceId &deviceId) override;
 
     SessionImpl(SessionImpl const &) = delete;
 
@@ -30,13 +32,16 @@ public:
     void operator=(SessionImpl const &&) = delete;
 
 private:
-    using DeviceMap = std::unordered_map<DeviceId, Device::Handle,
-            GET_HASHER_NAME(DeviceId)>;
+    using DeviceMap = std::unordered_map<
+        arrus::devices::DeviceId,
+        arrus::devices::Device::Handle,
+        GET_HASHER_NAME(arrus::devices::DeviceId)>;
 
-    DeviceMap configureDevices(const SessionSettings &sessionSettings);
+    DeviceMap
+    configureDevices(const SessionSettings &sessionSettings);
 
     DeviceMap devices;
-    Us4RFactory::Handle us4rFactory;
+    arrus::devices::Us4RFactory::Handle us4rFactory;
 };
 
 

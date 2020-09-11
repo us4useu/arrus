@@ -1,7 +1,7 @@
 #include "SessionSettings.h"
 #include "arrus/core/devices/us4r/Us4RSettings.h"
 
-namespace arrus {
+namespace arrus::session {
 
 std::ostream &
 operator<<(std::ostream &os, const SessionSettings &settings) {

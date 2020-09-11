@@ -3,7 +3,7 @@
 #include "arrus/common/format.h"
 #include "arrus/core/devices/probe/ProbeModel.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 std::ostream &
 operator<<(std::ostream &os, const ProbeSettings &settings) {

@@ -6,7 +6,7 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h"
 #include "ProbeAdapterImpl.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeAdapterFactoryImpl : public ProbeAdapterFactory {
 public:

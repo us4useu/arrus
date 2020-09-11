@@ -4,7 +4,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "IUs4OEMFactory.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class IUs4OEMInitializer {
 public:

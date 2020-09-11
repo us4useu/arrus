@@ -6,7 +6,7 @@
 #include <ostream>
 #include <sstream>
 
-namespace arrus {
+namespace arrus::devices {
 
 class ProbeModelId {
 public:

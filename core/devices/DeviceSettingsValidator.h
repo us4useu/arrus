@@ -4,7 +4,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/common/validation.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 template<typename D>
 class DeviceSettingsValidator : public Validator<D> {

@@ -8,7 +8,7 @@
 
 #include "arrus/core/api/common/Logger.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 class Us4RLoggerWrapper : public us4r::Logger {
 public:

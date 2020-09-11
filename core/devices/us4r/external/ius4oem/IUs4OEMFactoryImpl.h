@@ -11,7 +11,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/Us4RLoggerWrapper.h"
 
 
-namespace arrus {
+namespace arrus::devices {
 
 /**
  * A simple wrapper over GetUs4OEM method available in Us4.

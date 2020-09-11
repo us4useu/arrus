@@ -6,9 +6,10 @@
 #include "mex.hpp"
 
 namespace arrus::matlab {
-    ProbeAdapterModelId
+    ::arrus::devices::ProbeAdapterModelId
     convertToProbeAdapterModelId(const MexContext::SharedHandle &ctx,
                                   const ::matlab::data::Array &object) {
+        using namespace arrus::devices;
         std::string name = getProperty(ctx, object, "name")[0];
         std::string manuf = getProperty(ctx, object, "manufacturer")[0];
         return ProbeAdapterModelId(name, manuf);

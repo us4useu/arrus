@@ -10,7 +10,7 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 
-namespace arrus {
+namespace arrus::devices {
 
 /**
  * Us4OEM settings.

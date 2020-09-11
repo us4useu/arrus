@@ -8,12 +8,15 @@
 
 namespace arrus::matlab {
 
-    DeviceId convertToDeviceId(const MexContext::SharedHandle& ctx,
+    ::arrus::devices::DeviceId convertToDeviceId(const MexContext::SharedHandle& ctx,
                                const ::matlab::data::Array &object) {
+        using namespace arrus::devices;
+        
         auto matlabEngine = ctx->getMatlabEngine();
         std::string deviceTypeStr = convertToString(
             matlabEngine->getProperty(object, "deviceType"));
-        DeviceType dt = arrus::parseToDeviceTypeEnum(deviceTypeStr);
+        DeviceType dt =
+            arrus::devices::parseToDeviceTypeEnum(deviceTypeStr);
 
         ::matlab::data::TypedArray<double> ordinalArr =
             matlabEngine->getProperty(object, "ordinal");

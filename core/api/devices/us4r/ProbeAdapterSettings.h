@@ -9,7 +9,7 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h"
 
-namespace arrus {
+namespace arrus::devices {
 class ProbeAdapterSettings {
 public:
     using Us4OEMOrdinal = Ordinal;

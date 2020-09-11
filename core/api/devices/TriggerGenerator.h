@@ -1,7 +1,7 @@
 #ifndef ARRUS_CORE_API_DEVICES_TRIGGERGENERATOR_H
 #define ARRUS_CORE_API_DEVICES_TRIGGERGENERATOR_H
 
-namespace arrus {
+namespace arrus::devices {
 
 /**
  * A device that has ability to generate triggers.
