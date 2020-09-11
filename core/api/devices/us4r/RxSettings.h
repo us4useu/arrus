@@ -6,14 +6,15 @@
 #include <ostream>
 
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
 
 namespace arrus {
 
-using TGCSampleValue = float;
-using TGCCurve = std::vector<TGCSampleValue>;
-
 class RxSettings {
 public:
+    using TGCSample = arrus::ops::us4r::TGCSampleValue;
+    using TGCCurve = arrus::ops::us4r::TGCCurve;
+
     RxSettings(
             const std::optional<uint16> &dtgcAttenuation, uint16 pgaGain,
             uint16 lnaGain, TGCCurve tgcSamples, uint32 lpfCutoff,

@@ -132,7 +132,20 @@ set(SRC_FILES
     session/SessionImpl.h
     session/SessionImpl.cpp
     common/tests.h
-    api/common/macros.h)
+    # TODO(pjarosik) cleanup below
+    api/common/macros.h
+    api/framework/Variable.h
+    api/framework/Tensor.h
+    api/framework/Constant.h
+    framework/graph/Graph.h
+    api/framework/Op.h
+    api/framework/CircularQueue.h
+    api/devices.h api/framework.h
+    ops/us4r/TxRxSequence.h
+    ops/us4r/TxRxSequence.cpp
+    api/ops/us4r/tgc.h
+    api/examples.h
+    )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

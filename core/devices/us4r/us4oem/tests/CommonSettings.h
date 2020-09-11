@@ -12,7 +12,7 @@ struct TestUs4OEMSettings {
     std::optional<uint16> dtgcAttenuation{42};
     uint16 pgaGain{30};
     uint16 lnaGain{24};
-    TGCCurve tgcSamples{getRange<float>(30, 40, 0.5)};
+    RxSettings::TGCCurve tgcSamples{getRange<float>(30, 40, 0.5)};
     uint32 lpfCutoff{(int) 10e6};
     std::optional<uint16> activeTermination{50};
 

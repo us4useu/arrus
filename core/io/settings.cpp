@@ -198,7 +198,7 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
     auto pgaGain = static_cast<uint16>(proto.pga_gain());
     auto lnaGain = static_cast<uint16>(proto.lna_gain());
 
-    TGCCurve tgcSamples = castTo<TGCSampleValue>(
+    RxSettings::TGCCurve tgcSamples = castTo<TGCSampleValue>(
         std::begin(proto.tgc_samples()), std::end(proto.tgc_samples()));
 
     uint32 lpfCutoff = proto.lpf_cutoff();

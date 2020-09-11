@@ -27,24 +27,24 @@ public:
         // Configure IUs4OEM
         ChannelIdx chGroupSize = Us4OEMImpl::N_RX_CHANNELS;
         ARRUS_REQUIRES_TRUE(
-                IUs4OEM::NCH % chGroupSize == 0,
-                arrus::format("Number of Us4OEM channels ({}) is not "
-                              "divisible by the size of channel group ({})",
-                              IUs4OEM::NCH, chGroupSize));
+            IUs4OEM::NCH % chGroupSize == 0,
+            arrus::format("Number of Us4OEM channels ({}) is not "
+                          "divisible by the size of channel group ({})",
+                          IUs4OEM::NCH, chGroupSize));
         ChannelIdx nChannelGroups = IUs4OEM::NCH / chGroupSize;
 
         // Tx channel mapping
         // Convert to uint8_t
         std::vector<uint8_t> channelMapping;
         ARRUS_REQUIRES_AT_MOST(
-                cfg.getChannelMapping().size(),
-                UINT8_MAX,
-                arrus::format("Maximum number of channels: {}", UINT8_MAX));
+            cfg.getChannelMapping().size(),
+            UINT8_MAX,
+            arrus::format("Maximum number of channels: {}", UINT8_MAX));
 
         for(auto value : cfg.getChannelMapping()) {
-            ARRUS_REQUIRES_AT_MOST(value, (ChannelIdx)UINT8_MAX, arrus::format(
-                            "Us4OEM channel index cannot exceed {}",
-							(ChannelIdx)UINT8_MAX));
+            ARRUS_REQUIRES_AT_MOST(value, (ChannelIdx) UINT8_MAX, arrus::format(
+                "Us4OEM channel index cannot exceed {}",
+                (ChannelIdx) UINT8_MAX));
             channelMapping.push_back(static_cast<uint8_t>(value));
         }
 
@@ -61,14 +61,14 @@ public:
         // Otherwise store rxChannelMapping in Us4OEM handle for further usage.
 
         const bool isSinglePermutation = hasConsistentPermutations(
-                cfg.getChannelMapping(), chGroupSize, nChannelGroups);
+            cfg.getChannelMapping(), chGroupSize, nChannelGroups);
 
         if(isSinglePermutation) {
             ius4oem->SetRxChannelMapping(
-                    std::vector<uint8_t>(
-                            std::begin(channelMapping),
-                            std::begin(channelMapping) + chGroupSize),
-                    0);
+                std::vector<uint8_t>(
+                    std::begin(channelMapping),
+                    std::begin(channelMapping) + chGroupSize),
+                0);
         }
         // otherwise store the complete channel mapping array in Us4OEM handle
         // (check the value returned by current method).
@@ -78,19 +78,19 @@ public:
         const auto pgaGain = cfg.getRxSettings().getPGAGain();
         const auto lnaGain = cfg.getRxSettings().getLNAGain();
         ius4oem->SetPGAGain(
-                PGAGainValueMap::getInstance().getEnumValue(pgaGain));
+            PGAGainValueMap::getInstance().getEnumValue(pgaGain));
         ius4oem->SetLNAGain(
-                LNAGainValueMap::getInstance().getEnumValue(lnaGain));
+            LNAGainValueMap::getInstance().getEnumValue(lnaGain));
         // Convert TGC values to [0, 1] range
         if(cfg.getRxSettings().getTGCSamples().empty()) {
             ius4oem->TGCDisable();
         } else {
             const auto maxGain = pgaGain + lnaGain;
             // TODO(pjarosik) extract a common function to compute normalized tgc samples
-            const TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
-                    cfg.getRxSettings().getTGCSamples(),
-                    maxGain - Us4OEMImpl::TGC_ATTENUATION_RANGE,
-                    static_cast<TGCSampleValue>(maxGain));
+            const RxSettings::TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
+                cfg.getRxSettings().getTGCSamples(),
+                maxGain - Us4OEMImpl::TGC_ATTENUATION_RANGE,
+                static_cast<RxSettings::TGCSample>(maxGain));
 
             ius4oem->TGCEnable();
             // Currently firing parameter does not matter.
@@ -101,7 +101,7 @@ public:
         if(cfg.getRxSettings().getDTGCAttenuation().has_value()) {
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
                              DTGCAttenuationValueMap::getInstance().getEnumValue(
-                                     cfg.getRxSettings().getDTGCAttenuation().value()));
+                                 cfg.getRxSettings().getDTGCAttenuation().value()));
         } else {
             // DTGC value does not matter
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
@@ -111,33 +111,34 @@ public:
 
         // Filtering
         ius4oem->SetLPFCutoff(LPFCutoffValueMap::getInstance().getEnumValue(
-                cfg.getRxSettings().getLPFCutoff()));
+            cfg.getRxSettings().getLPFCutoff()));
 
         // Active termination
         if(cfg.getRxSettings().getActiveTermination().has_value()) {
             ius4oem->SetActiveTermination(
-                    us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
-                    ActiveTerminationValueMap::getInstance().getEnumValue(
-                            cfg.getRxSettings().getActiveTermination().value()));
+                us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
+                ActiveTerminationValueMap::getInstance().getEnumValue(
+                    cfg.getRxSettings().getActiveTermination().value()));
         } else {
             ius4oem->SetActiveTermination(
-                    us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
-                    us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
+                us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
+                us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
         }
 
 
         return std::make_unique<Us4OEMImpl>(
-                DeviceId(DeviceType::Us4OEM, ordinal),
-                std::move(ius4oem), cfg.getActiveChannelGroups(),
-                channelMapping);
+            DeviceId(DeviceType::Us4OEM, ordinal),
+            std::move(ius4oem), cfg.getActiveChannelGroups(),
+            channelMapping);
     }
 
 private:
 
-    static TGCCurve getNormalizedTGCSamples(const TGCCurve &samples,
-                                            const TGCSampleValue min,
-                                            const TGCSampleValue max) {
-        TGCCurve result;
+    static RxSettings::TGCCurve
+    getNormalizedTGCSamples(const RxSettings::TGCCurve &samples,
+                            const RxSettings::TGCSample min,
+                            const RxSettings::TGCSample max) {
+        RxSettings::TGCCurve result;
         auto range = max - min;
         std::transform(std::begin(samples), std::end(samples),
                        std::back_inserter(result),

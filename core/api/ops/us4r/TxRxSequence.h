@@ -2,6 +2,10 @@
 #define ARRUS_CORE_API_OPS_US4R_TXRXSEQUENCE_H
 
 #include <utility>
+
+#include "arrus/core/api/devices/Device.h"
+#include "arrus/core/api/framework.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/Rx.h"
 
@@ -11,21 +15,41 @@ class TxRxSequence {
 public:
     using TxRx = std::pair<Tx, Rx>;
 
-    TxRxSequence(std::vector<TxRx> sequence, double pri)
-    : sequence(std::move(sequence)), pri(pri) {}
+    TxRxSequence(DeviceId placement, std::vector<TxRx> sequence,
+                 double pri, TGCCurve tgcCurve)
+        : txrxs(std::move(sequence)), pri(pri),
+          tgcCurve(std::move(tgcCurve)) {}
 
-    [[nodiscard]] const std::vector<TxRx> &getSequence() const {
-        return sequence;
+    [[nodiscard]] const std::vector<TxRx> &getOps() const {
+        return txrxs;
     }
 
     [[nodiscard]] double getPri() const {
         return pri;
     }
 
-private:
+    [[nodiscard]] const TGCCurve &getTgcCurve() const {
+        return tgcCurve;
+    }
 
-    std::vector<TxRx> sequence;
+    /**
+     * Actually it will return circular queue element data.
+     * Consider replacing CircularQueue::Element with Tensor
+     * @return
+     */
+    CircularQueue::Element getData() const;
+
+    /**
+     * When there is no metadata with given id - throw a Runtime exception.
+     *
+     * @param key
+     * @return
+     */
+    CircularQueue::Element getMetadata(const std::string &key) const;
+private:
+    std::vector<TxRx> txrxs;
     double pri;
+    TGCCurve tgcCurve;
 };
 
 }

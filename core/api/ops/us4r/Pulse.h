@@ -7,7 +7,8 @@ class Pulse {
 
 public:
     Pulse(double centerFrequency, double nPeriods, bool inverse) :
-        centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse) {}
+        centerFrequency(centerFrequency), nPeriods(nPeriods),
+        inverse(inverse) {}
 
     [[nodiscard]] double getCenterFrequency() const {
         return centerFrequency;

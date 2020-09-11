@@ -29,7 +29,7 @@ struct ExpectedUs4RParameters {
     LNA_GAIN_GBL lnaGain = LNA_GAIN_GBL::LNA_GAIN_GBL_24dB;
     DIG_TGC_ATTENUATION dtgcAttValue = DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB;
     EN_DIG_TGC dtgcAttEnabled = EN_DIG_TGC::EN_DIG_TGC_EN;
-    TGCCurve tgcSamplesNormalized = getRange<float>(0.4, 0.65, 0.0125);
+    RxSettings::TGCCurve tgcSamplesNormalized = getRange<float>(0.4, 0.65, 0.0125);
     bool tgcEnabled = true;
     LPF_PROG lpfCutoff = LPF_PROG::LPF_PROG_10MHz;
     GBL_ACTIVE_TERM activeTerminationValue = GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50;
@@ -142,7 +142,7 @@ class Us4OEMFactoryTGCSamplesTest
 TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
-    TGCCurve tgcCurve = GetParam().first.getUs4OEMSettings().getRxSettings().getTGCSamples();
+    RxSettings::TGCCurve tgcCurve = GetParam().first.getUs4OEMSettings().getRxSettings().getTGCSamples();
 
     if(tgcCurve.empty()) {
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), TGCDisable());

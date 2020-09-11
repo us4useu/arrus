@@ -7,7 +7,9 @@
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "arrus/core/ops/us4r/TxRxSequence.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
+
 
 namespace arrus {
 
@@ -31,7 +33,7 @@ public:
 
     ~Us4OEMImpl() override;
 
-    void setTxRxSequence();
+    void setTxRxSequence(const ::arrus::ops::us4r::TxRxSequence &seq);
 
 
 private:
