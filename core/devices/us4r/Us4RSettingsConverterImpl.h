@@ -18,7 +18,7 @@ public:
         // for each module there is N_RX_CHANNELS*k elements in mapping
         // each group of N_RX_CHANNELS contains elements grouped to a single bucket (i*32, (i+1)*32)
         const auto &adapterSettingsMapping =
-                probeAdapterSettings.getChannelMapping();
+            probeAdapterSettings.getChannelMapping();
         const auto &probeSettingsMapping = probeSettings.getChannelMapping();
 
         // get number of us4oems from the probe adapter mapping
@@ -41,7 +41,7 @@ public:
         ProbeAdapterSettings::ChannelMapping adapterChannelMapping;
 
         // Initialize mappings with 0, 1, 2, 3, ... 127
-        for(int i = 0; i < (int)nUs4OEMs; ++i) {
+        for(int i = 0; i < (int) nUs4OEMs; ++i) {
             Us4OEMSettings::ChannelMapping mapping(nTx);
             for(ChannelIdx j = 0; j < nTx; ++j) {
                 mapping[j] = j;
@@ -57,7 +57,7 @@ public:
             const auto element = currentRxGroupElement[module];
             if(element == 0) {
                 // Starting new group
-                currentRxGroup[module] = (ChannelIdx)group;
+                currentRxGroup[module] = (ChannelIdx) group;
             } else {
                 // Safety condition
                 ARRUS_REQUIRES_TRUE(group == currentRxGroup[module],
@@ -68,10 +68,11 @@ public:
             }
             auto logicalChannel = group * nRx + element;
             us4oemChannelMapping[module][logicalChannel] = channel;
-            adapterChannelMapping.emplace_back(module, ChannelIdx(logicalChannel));
+            adapterChannelMapping.emplace_back(module,
+                                               ChannelIdx(logicalChannel));
 
             currentRxGroupElement[module] =
-                    (currentRxGroupElement[module] + 1) % nRx;
+                (currentRxGroupElement[module] + 1) % nRx;
 
         }
 
@@ -83,7 +84,8 @@ public:
             activeChannelGroups.emplace_back(nActChGroups);
         }
         for(const auto adapterChannel : probeSettingsMapping) {
-            auto[module, us4oemChannel] = adapterChannelMapping[adapterChannel];
+            auto[module, logicalChannel] = adapterChannelMapping[adapterChannel];
+            auto us4oemChannel = us4oemChannelMapping[module][logicalChannel];
             // When at least one channel in group has mapping, the whole
             // group of channels has to be active
             activeChannelGroups[module][us4oemChannel / actChSize] = true;
@@ -91,24 +93,24 @@ public:
 
         for(int i = 0; i < nUs4OEMs; ++i) {
             result.emplace_back(
-                    us4oemChannelMapping[i],
-                    activeChannelGroups[i],
-                    rxSettings
+                us4oemChannelMapping[i],
+                activeChannelGroups[i],
+                rxSettings
             );
         }
         return {result, ProbeAdapterSettings(
-                probeAdapterSettings.getModelId(),
-                probeAdapterSettings.getNumberOfChannels(),
-                adapterChannelMapping
+            probeAdapterSettings.getModelId(),
+            probeAdapterSettings.getNumberOfChannels(),
+            adapterChannelMapping
         )};
     }
 
 private:
     static Ordinal
     getNumberOfModules(
-            const ProbeAdapterSettings::ChannelMapping &adapterMapping) {
+        const ProbeAdapterSettings::ChannelMapping &adapterMapping) {
         std::vector<bool> mask(
-                std::numeric_limits<Ordinal>::max());
+            std::numeric_limits<Ordinal>::max());
         Ordinal count = 0;
         for(auto[module, channel] : adapterMapping) {
             if(!mask[module]) {

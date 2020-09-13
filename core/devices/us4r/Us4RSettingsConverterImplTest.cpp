@@ -512,7 +512,44 @@ INSTANTIATE_TEST_CASE_P
                              getNTimes<bool>(false, 8)
                          })
                  }
-         ))
+         )),
+// esaote 1, but reverse the channels: 32-0, 64-32, .. for module 0;
+// for module 1 keep the order as is
+// partial adapter to probe mapping
+    ARRUS_STRUCT_INIT_LIST(ActiveChannels, (
+        x.adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
+            Ordinal module;
+            ChannelIdx channel;
+            if(i < 128) {
+                ChannelIdx group = i / 32;
+                module = 0;
+                channel = (group+1) * 32 - (i % 32 + 1);
+            } else {
+                module = 1;
+                channel = i % 128;
+            }
+            return ChannelAddress{module, channel};
+        }),
+        x.probeMapping = ::arrus::concat<ChannelIdx>({
+                getRange<ChannelIdx>(0, 48),
+                getRange<ChannelIdx>(144, 192)
+        }),
+        x.expectedUs4OEMMasks = {
+            // Us4OEM: 0
+            ::arrus::concat<bool>({
+                getNTimes<bool>(true, 4),
+                getNTimes<bool>(false, 2),
+                getNTimes<bool>(true, 2),
+                getNTimes<bool>(false, 8)
+            }),
+            // Us4OEM: 1
+            ::arrus::concat<bool>({
+                getNTimes<bool>(false, 2),
+                getNTimes<bool>(true, 6),
+                getNTimes<bool>(false, 8)
+            })
+        }
+    ))
 ));
 }
 
