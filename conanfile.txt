@@ -4,6 +4,8 @@ protobuf/3.11.4
 gtest/1.10.0
 fmt/7.0.1
 range-v3/0.5.0@ericniebler/stable
+ms-gsl/2.1.0
+
 
 [options]
 boost:shared=True

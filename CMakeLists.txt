@@ -96,6 +96,7 @@ find_package(Protobuf REQUIRED)
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(fmt REQUIRED)
 find_package(range-v3 REQUIRED)
+find_package(Microsoft.GSL REQUIRED)
 ################################################################################
 # Sub-projects
 ################################################################################

@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <type_traits>
 
+#include <gsl/span>
 #include <range/v3/all.hpp>
 
 namespace arrus {
@@ -27,18 +28,18 @@ template<typename Out, typename In>
 inline std::vector<Out> castTo(std::vector<In> values) {
     std::vector<Out> result(values.size());
     std::transform(
-            std::begin(values), std::end(values),
-            std::begin(result),
-            [] (In &value) {return Out(value);}
-   );
-   return result;
+        std::begin(values), std::end(values),
+        std::begin(result),
+        [](In &value) { return Out(value); }
+    );
+    return result;
 }
 
 template<typename Out, typename Iterator>
 inline std::vector<Out> castTo(const Iterator begin, const Iterator end) {
     std::vector<Out> result;
     std::transform(begin, end, std::back_inserter(result),
-        [] (auto &value) {return Out(value);});
+                   [](auto &value) { return Out(value); });
     return result;
 }
 
@@ -112,6 +113,32 @@ concat(const std::vector<std::vector<T>> &a) {
         result.insert(std::end(result), std::begin(vec), std::end(vec));
     }
     return result;
+}
+
+template<typename T>
+inline std::vector<T>
+permute(const std::vector<T> &input, const gsl::span<size_t> perm) {
+    std::vector<T> output(perm.size());
+    int i = 0;
+    for(size_t i = 0; i < perm.size(); ++i) {
+        output[i] = input[perm[i]];
+    }
+    return output;
+}
+
+template<int size>
+inline std::bitset<size>
+toBitset(const std::vector<bool> &in) {
+    std::bitset<size> result;
+    for(size_t i = 0; i < size; ++i) {
+        result[i] = in[i];
+    }
+    return result;
+}
+
+template <typename Map, typename K>
+inline bool containsKey(Map map, const K &key) {
+    return map.find(key) != std::end(map);
 }
 
 }

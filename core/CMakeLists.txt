@@ -64,8 +64,8 @@ set(SRC_FILES
 
     devices/utils.h
     devices/DeviceId.cpp
-    devices/DeviceIdHasher.h
-    devices/DeviceSettingsValidator.h
+    devices/DeviceId.h
+    devices/SettingsValidator.h
 
     devices/us4r/us4oem/Us4OEMFactory.h
     devices/us4r/us4oem/Us4OEMFactoryImpl.h
@@ -140,12 +140,14 @@ set(SRC_FILES
     framework/graph/Graph.h
     api/framework/Op.h
     api/framework/CircularQueue.h
-    api/devices.h api/framework.h
+    api/devices.h
+    api/framework.h
     ops/us4r/TxRxSequence.h
     ops/us4r/TxRxSequence.cpp
     api/ops/us4r/tgc.h
     api/examples.h
-    )
+    devices/TxRxParameters.h
+    common/interpolate.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -168,8 +170,7 @@ target_compile_definitions(${TARGET_NAME}
 target_include_directories(${TARGET_NAME}
     PRIVATE
     ${ARRUS_ROOT_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}
-    )
+    ${CMAKE_CURRENT_BINARY_DIR})
 
 ################################################################################
 # Dependencies
@@ -183,20 +184,17 @@ target_link_libraries(${TARGET_NAME}
     Protobuf::Protobuf
     fmt::fmt
     range-v3::range-v3
-    )
+    Microsoft.GSL::GSL)
 ################################################################################
 # Target compile options
 ################################################################################
 # strict compile options defined for on the source level
 target_compile_options(${TARGET_NAME} PRIVATE
-    ${ARRUS_CPP_COMMON_COMPILE_OPTIONS}
-    )
+    ${ARRUS_CPP_COMMON_COMPILE_OPTIONS})
 target_compile_definitions(${TARGET_NAME} PRIVATE
     ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}
     # MSVC dll export declspec
-    ARRUS_CPP_API_BUILD_STAGE
-    )
-
+    ARRUS_CPP_API_BUILD_STAGE)
 ################################################################################
 # Tests
 ################################################################################
