@@ -2,13 +2,13 @@
 #define ARRUS_CORE_DEVICES_US4R_US4RSETTINGSVALIDATOR_H
 
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
-#include "arrus/core/devices/DeviceSettingsValidator.h"
+#include "arrus/core/devices/SettingsValidator.h"
 
 namespace arrus::devices {
-class Us4RSettingsValidator : public DeviceSettingsValidator<Us4RSettings> {
+class Us4RSettingsValidator : public SettingsValidator<Us4RSettings> {
 public:
     explicit Us4RSettingsValidator(Ordinal moduleOrdinal)
-            : DeviceSettingsValidator<Us4RSettings>(
+            : SettingsValidator<Us4RSettings>(
             DeviceId(DeviceType::Us4R, moduleOrdinal)) {}
 
     void validate(const Us4RSettings &obj) override {

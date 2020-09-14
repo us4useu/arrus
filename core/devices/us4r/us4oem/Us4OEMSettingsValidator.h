@@ -7,7 +7,7 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/DeviceSettingsValidator.h"
+#include "arrus/core/devices/SettingsValidator.h"
 
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h"
@@ -17,10 +17,10 @@
 
 namespace arrus::devices {
 
-class Us4OEMSettingsValidator : public DeviceSettingsValidator<Us4OEMSettings> {
+class Us4OEMSettingsValidator : public SettingsValidator<Us4OEMSettings> {
 public:
     explicit Us4OEMSettingsValidator(Ordinal moduleOrdinal)
-            : DeviceSettingsValidator<Us4OEMSettings>(
+            : SettingsValidator<Us4OEMSettings>(
             DeviceId(DeviceType::Us4OEM, moduleOrdinal)) {}
 
     void validate(const Us4OEMSettings &obj) override {
@@ -66,7 +66,7 @@ public:
                         arrus::format(
                                 "Some of Us4OEM channels: '{}' "
                                 "are missing in the group of channels [{}, {}]",
-                                toString(missingValues),
+                                ::arrus::toString(missingValues),
                                 group * RX_SIZE, (group + 1) * RX_SIZE
                         )
                 );

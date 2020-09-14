@@ -31,6 +31,7 @@ function(create_core_test test_src)
         Boost::Boost
         fmt::fmt
         range-v3::range-v3
+        Microsoft.GSL::GSL
         ${other_deps})
     target_include_directories(
         ${target_name}

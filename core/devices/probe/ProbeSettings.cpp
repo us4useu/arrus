@@ -8,7 +8,7 @@ namespace arrus::devices {
 std::ostream &
 operator<<(std::ostream &os, const ProbeSettings &settings) {
     os << "model: " << settings.getModel() << " channelMapping: "
-       << toString(settings.getChannelMapping());
+       << ::arrus::toString(settings.getChannelMapping());
     return os;
 }
 

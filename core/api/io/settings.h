@@ -8,7 +8,7 @@
 namespace arrus::io {
 
 ARRUS_CPP_EXPORT
-SessionSettings readSessionSettings(const std::string &file);
+::arrus::session::SessionSettings readSessionSettings(const std::string &file);
 
 }
 

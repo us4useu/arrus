@@ -31,7 +31,12 @@ inline std::size_t hash_combine(const T &v, Rest... rest) {
             return arrus::hash_combine(__VA_ARGS__); \
         } \
     };
-
+template <typename Container>
+struct ContainerHash {
+    std::size_t operator()(const Container &c) const {
+        return boost::hash_range(std::begin(c), std::end(c));
+    }
+};
 }
 
 #endif //ARRUS_CORE_COMMON_HASH_H

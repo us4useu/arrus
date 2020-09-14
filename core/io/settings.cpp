@@ -44,7 +44,8 @@ namespace arrus::io {
 
 namespace ap = arrus::proto;
 
-using namespace arrus::devices;
+using namespace ::arrus::devices;
+using namespace ::arrus::session;
 
 template<typename T>
 std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
@@ -199,7 +200,7 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
     auto pgaGain = static_cast<uint16>(proto.pga_gain());
     auto lnaGain = static_cast<uint16>(proto.lna_gain());
 
-    RxSettings::TGCCurve tgcSamples = castTo<TGCSampleValue>(
+    RxSettings::TGCCurve tgcSamples = castTo<arrus::ops::us4r::TGCSampleValue>(
         std::begin(proto.tgc_samples()), std::end(proto.tgc_samples()));
 
     uint32 lpfCutoff = proto.lpf_cutoff();

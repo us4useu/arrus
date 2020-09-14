@@ -2,15 +2,15 @@
 #define ARRUS_CORE_DEVICES_PROBE_PROBESETTINGSVALIDATOR_H
 
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
-#include "arrus/core/devices/DeviceSettingsValidator.h"
+#include "arrus/core/devices/SettingsValidator.h"
 
 namespace arrus::devices {
 
-class ProbeSettingsValidator : public DeviceSettingsValidator<ProbeSettings> {
+class ProbeSettingsValidator : public SettingsValidator<ProbeSettings> {
 
 public:
     explicit ProbeSettingsValidator(const Ordinal ordinal)
-        : DeviceSettingsValidator(DeviceId(DeviceType::Probe, ordinal)) {}
+        : SettingsValidator(DeviceId(DeviceType::Probe, ordinal)) {}
 
     void validate(const ProbeSettings &obj) override {
         // verify id

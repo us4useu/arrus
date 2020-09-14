@@ -19,6 +19,7 @@ class ProbeAdapterModelProtoValidator
         : Validator(componentName) {}
 
     void validate(const arrus::proto::ProbeAdapterModel &obj) override {
+        using namespace arrus::devices;
         bool hasChannelMappings = obj.has_channel_mapping();
         bool hasChannelMappingsRegions = !obj.channel_mapping_regions().empty();
 

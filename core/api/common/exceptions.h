@@ -18,7 +18,7 @@ public:
 
 class DeviceNotFoundException : public IllegalArgumentException {
 public:
-    explicit DeviceNotFoundException(const DeviceId &id)
+    explicit DeviceNotFoundException(const arrus::devices::DeviceId &id)
         : IllegalArgumentException("Device " + id.toString() + " not found.") {}
 };
 

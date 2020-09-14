@@ -1,5 +1,6 @@
 #include "arrus/core/session/SessionImpl.h"
 
+#include <gsl/gsl>
 #include <memory>
 
 #include <boost/algorithm/string.hpp>
@@ -17,7 +18,6 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/session/SessionSettings.h"
-#include "Device.h"
 
 namespace arrus::session {
 
@@ -52,7 +52,7 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path
     boost::algorithm::trim(sanitizedPath);
 
     // parse path
-    auto[root, tail] = ::arrus::getPathRoot(sanitizedPath);
+    auto[root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
 
     auto deviceId = DeviceId::parse(root);
     arrus::devices::Device::RawHandle rootDevice = getDevice(deviceId);

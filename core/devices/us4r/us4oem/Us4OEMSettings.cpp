@@ -7,8 +7,9 @@ namespace arrus::devices {
 
 std::ostream &
 operator<<(std::ostream &os, const Us4OEMSettings &settings) {
-    os << "channelMapping: " << toString(settings.getChannelMapping())
-       << " activeChannelGroups: " << toString(settings.getActiveChannelGroups())
+    os << "channelMapping: " << ::arrus::toString(settings.getChannelMapping())
+       << " activeChannelGroups: "
+       << ::arrus::toString(settings.getActiveChannelGroups())
        << " rxSettings: " << settings.getRxSettings();
     return os;
 }

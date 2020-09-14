@@ -6,15 +6,15 @@ namespace arrus::ops::us4r {
 class Pulse {
 
 public:
-    Pulse(double centerFrequency, double nPeriods, bool inverse) :
+    Pulse(float centerFrequency, float nPeriods, bool inverse) :
         centerFrequency(centerFrequency), nPeriods(nPeriods),
         inverse(inverse) {}
 
-    [[nodiscard]] double getCenterFrequency() const {
+    [[nodiscard]] float getCenterFrequency() const {
         return centerFrequency;
     }
 
-    [[nodiscard]] double getNPeriods() const {
+    [[nodiscard]] float getNPeriods() const {
         return nPeriods;
     }
 
@@ -23,8 +23,8 @@ public:
     }
 
 private:
-    double centerFrequency;
-    double nPeriods;
+    float centerFrequency;
+    float nPeriods;
     bool inverse;
 };
 

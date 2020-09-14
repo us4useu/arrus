@@ -5,9 +5,8 @@
 #include <arrus/core/devices/us4r/Us4RFactory.h>
 
 #include "arrus/core/api/session/Session.h"
-#include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/common/hash.h"
-#include "arrus/core/devices/DeviceIdHasher.h"
+#include "arrus/core/devices/DeviceId.h"
 
 namespace arrus::session {
 

@@ -8,9 +8,9 @@ std::ostream &operator<<(std::ostream &os, const ProbeModel &model) {
     os << "modelId: " << model.getModelId().getName() << ", "
        << model.getModelId().getManufacturer()
        << " numberOfElements: "
-       << toString(model.getNumberOfElements())
-       << " pitch: " << toString(model.getPitch())
-       << " txFrequencyRange: " << toString(model.getTxFrequencyRange());
+       << ::arrus::toString(model.getNumberOfElements())
+       << " pitch: " << ::arrus::toString(model.getPitch())
+       << " txFrequencyRange: " << ::arrus::toString(model.getTxFrequencyRange());
     return os;
 }
 }

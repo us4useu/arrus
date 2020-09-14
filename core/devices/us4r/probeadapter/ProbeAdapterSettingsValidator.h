@@ -8,7 +8,7 @@
 
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/DeviceSettingsValidator.h"
+#include "arrus/core/devices/SettingsValidator.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/common/format.h"
 #include "arrus/common/asserts.h"
@@ -16,11 +16,11 @@
 namespace arrus::devices {
 
 class ProbeAdapterSettingsValidator
-        : public DeviceSettingsValidator<ProbeAdapterSettings> {
+        : public SettingsValidator<ProbeAdapterSettings> {
 
 public:
     explicit ProbeAdapterSettingsValidator(const Ordinal ordinal)
-            : DeviceSettingsValidator(
+            : SettingsValidator(
             DeviceId(DeviceType::ProbeAdapter, ordinal)) {}
 
     void validate(const ProbeAdapterSettings &obj) override {

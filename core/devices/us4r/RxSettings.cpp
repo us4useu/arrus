@@ -6,12 +6,12 @@ namespace arrus::devices {
 
 std::ostream &
 operator<<(std::ostream &os, const RxSettings &settings) {
-    os << "dtgcAttenuation: " << toString(settings.getDTGCAttenuation())
+    os << "dtgcAttenuation: " << ::arrus::toString(settings.getDTGCAttenuation())
        << " pgaGain: " << settings.getPGAGain()
        << " lnaGain: " << settings.getLNAGain()
-       << " tgcSamples: " << toString(settings.getTGCSamples())
+       << " tgcSamples: " << ::arrus::toString(settings.getTGCSamples())
        << " lpfCutoff: " << settings.getLPFCutoff()
-       << " activeTermination: " << toString(settings.getActiveTermination());
+       << " activeTermination: " << ::arrus::toString(settings.getActiveTermination());
     return os;
 }
 

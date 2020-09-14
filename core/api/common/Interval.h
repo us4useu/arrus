@@ -25,6 +25,8 @@ public:
 
     const T &end() const { return interval.second; }
 
+    std::pair<T, T> asPair() const {return interval;}
+
 private:
     std::pair<T, T> interval;
 };
