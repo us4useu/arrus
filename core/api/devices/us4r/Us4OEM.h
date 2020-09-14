@@ -17,6 +17,8 @@ public:
 
     ~Us4OEM() override = default;
 
+    virtual double getSamplingFrequency() = 0;
+
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
     void operator=(Us4OEM const&) = delete;
