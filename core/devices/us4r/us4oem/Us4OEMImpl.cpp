@@ -124,7 +124,8 @@ void Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         setTGC(tgc, firing);
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
         ius4oem->SetRxTime(rxTime, firing);
-        ius4oem->ScheduleReceive(firing, outputAddress, nBytes,
+
+        ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
                                  TRIGGER_DELAY + startSample,
                                  op.getRxDecimationFactor(),
                                  rxMapId);

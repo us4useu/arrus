@@ -5,7 +5,7 @@
 namespace arrus::devices {
 
 ProbeImpl::ProbeImpl(const DeviceId &id, ProbeModel model,
-                     ProbeAdapter::RawHandle adapter,
+                     ProbeAdapterImpl::RawHandle adapter,
                      std::vector<ChannelIdx> channelMapping)
     : Probe(id), logger{getLoggerFactory()->getLogger()},
       model(std::move(model)), adapter(adapter),
@@ -51,6 +51,8 @@ void ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                 rxAperture, op.getRxSampleRange(),
                                 op.getRxDecimationFactor(), op.getPri());
     }
+
+    adapter->setTxRxSequence(adapterSeq, tgcSamples);
 
     // TODO call
 }
