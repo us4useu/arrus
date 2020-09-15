@@ -101,12 +101,10 @@ void Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             ::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()), firing);
         // Delays
         uint8 txChannel = 0;
-        uint8 activeTxChannel = 0;
         for(bool bit : op.getTxAperture()) {
             float txDelay = 0;
             if(bit) {
-                txDelay = op.getTxDelays()[activeTxChannel];
-                ++activeTxChannel;
+                txDelay = op.getTxDelays()[txChannel];
             }
             ius4oem->SetTxDelay(txChannel, txDelay, firing);
             ++txChannel;

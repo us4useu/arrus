@@ -4,8 +4,23 @@ namespace arrus::devices {
 
 using namespace ::arrus::ops::us4r;
 
+ProbeAdapterImpl::ProbeAdapterImpl(DeviceId deviceId,
+                                   ProbeAdapterModelId modelId,
+                                   std::vector<Us4OEM::RawHandle> us4oems,
+                                   ChannelIdx numberOfChannels,
+                                   ChannelMapping channelMapping)
+    : ProbeAdapter(deviceId), logger(getLoggerFactory()->getLogger()),
+      modelId(std::move(modelId)),
+      us4oems(std::move(us4oems)),
+      numberOfChannels(numberOfChannels),
+      channelMapping(std::move(channelMapping)) {
+
+    INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
+}
+
 void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                        const TGCCurve &tgcSamples) {
+
     // TODO validation: tx and rx aperture should have exactly nchannels
     // TODO number of active tx/rx channels: will be verified by us4oems
     // (should not exceed the number of available channels)
@@ -29,6 +44,8 @@ void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     // each us4oem module.
     uint32 opNumber = 0;
     for(const auto &op : seq) {
+        logger->log(LogSeverity::TRACE, arrus::format("Setting tx/rx {}", op));
+
         const auto &txAperture = op.getTxAperture();
         const auto &rxAperture = op.getRxAperture();
         const auto &txDelays = op.getTxDelays();
@@ -41,14 +58,14 @@ void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         for(size_t ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
             txApertures[ordinal][opNumber].resize(Us4OEMImpl::N_ADDR_CHANNELS);
             rxApertures[ordinal][opNumber].resize(Us4OEMImpl::N_ADDR_CHANNELS);
-            // tx delays determined dynamically.
+            txDelaysList[ordinal][opNumber].resize(Us4OEMImpl::N_ADDR_CHANNELS);
         }
 
         for(size_t ach = 0; ach < numberOfChannels; ++ach) {
             const auto[dstModule, dstChannel] = channelMapping[ach];
             txApertures[dstModule][opNumber][dstChannel] = op.getTxAperture()[ach];
             rxApertures[dstModule][opNumber][dstChannel] = op.getRxAperture()[ach];
-            txDelaysList[dstModule][opNumber].push_back(op.getTxDelays()[ach]);
+            txDelaysList[dstModule][opNumber][dstChannel] = op.getTxDelays()[ach];
         }
         ++opNumber;
     }
@@ -69,12 +86,12 @@ void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             us4oemSeq.emplace_back(txAperture, txDelays, op.getTxPulse(),
                                    rxAperture, op.getRxSampleRange(),
                                    op.getRxDecimationFactor(), op.getPri());
+            ++i;
         }
-
+        // TODO us4oem->SetTxRxSequence(us4oemSeq);
         // TODO What if tx aperture and rx aperture are empty?
         // Should be set - the same number of operations should be put
         // However, the data be ommitted if rx aperture is empty
-        ++i;
         ++us4oemOrdinal;
     }
 }

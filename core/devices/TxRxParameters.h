@@ -14,6 +14,20 @@ namespace arrus::devices {
 
 class TxRxParameters {
 public:
+    /**
+     *
+     * tx aperture, tx delays and rx aperture should have the same size
+     * (tx delays is NOT limited to the tx aperture active elements -
+     * the whole array must be provided).
+     *
+     * @param txAperture
+     * @param txDelays
+     * @param txPulse
+     * @param rxAperture
+     * @param rxSampleRange
+     * @param rxDecimationFactor
+     * @param pri
+     */
     TxRxParameters(std::vector<bool> txAperture,
                    const gsl::span<const float> &txDelays,
                    const ops::us4r::Pulse &txPulse,

@@ -117,9 +117,8 @@ concat(const std::vector<std::vector<T>> &a) {
 
 template<typename T>
 inline std::vector<T>
-permute(const std::vector<T> &input, const gsl::span<size_t> perm) {
+permute(const std::vector<T> &input, const gsl::span<size_t> &perm) {
     std::vector<T> output(perm.size());
-    int i = 0;
     for(size_t i = 0; i < perm.size(); ++i) {
         output[i] = input[perm[i]];
     }

@@ -9,6 +9,7 @@
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/common/asserts.h"
+#include "arrus/core/common/logging.h"
 
 
 namespace arrus::devices {
@@ -21,11 +22,7 @@ public:
     ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,
                      std::vector<Us4OEM::RawHandle> us4oems,
                      ChannelIdx numberOfChannels,
-                     ChannelMapping channelMapping)
-            : ProbeAdapter(deviceId), modelId(std::move(modelId)),
-              us4oems(std::move(us4oems)),
-              numberOfChannels(numberOfChannels),
-              channelMapping(std::move(channelMapping)) {}
+                     ChannelMapping channelMapping);
 
     [[nodiscard]] ChannelIdx getNumberOfChannels() const override {
         return numberOfChannels;
@@ -35,6 +32,7 @@ public:
                          const ::arrus::ops::us4r::TGCCurve &tgcSamples);
 
 private:
+    Logger::Handle logger;
     ProbeAdapterModelId modelId;
     std::vector<Us4OEM::RawHandle> us4oems;
     ChannelIdx numberOfChannels;

@@ -42,7 +42,6 @@ public:
 
     using OutputDtype = int16;
 
-
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping);
