@@ -162,7 +162,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         uint8 channel = 0;
 
         std::vector<uint8> conflictingChannels;
-        std::bitset<N_RX_ADDRESABLE_CHANNELS> outputRxAperture;
+        std::bitset<N_ADDR_CHANNELS> outputRxAperture;
 
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {

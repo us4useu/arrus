@@ -29,7 +29,7 @@ public:
     // Number of tx/rx channels.
     static constexpr ChannelIdx N_TX_CHANNELS = 128;
     static constexpr ChannelIdx N_RX_CHANNELS = 32;
-    static constexpr ChannelIdx N_RX_ADDRESABLE_CHANNELS = N_TX_CHANNELS;
+    static constexpr ChannelIdx N_ADDR_CHANNELS = N_TX_CHANNELS;
     static constexpr ChannelIdx ACTIVE_CHANNEL_GROUP_SIZE = 8;
     static constexpr ChannelIdx N_ACTIVE_CHANNEL_GROUPS =
         N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
@@ -60,7 +60,7 @@ public:
 
 
 private:
-    using Us4rBitMask = std::bitset<Us4OEMImpl::N_RX_ADDRESABLE_CHANNELS>;
+    using Us4rBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
