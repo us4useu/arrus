@@ -69,30 +69,30 @@ public:
             us4RSettingsConverter->convertToUs4OEMSettings(
                 probeAdapterSettings, probeSettings, rxSettings);
 
-            std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(us4OEMSettings);
-            std::vector<Us4OEM::RawHandle> us4oemPtrs(us4oems.size());
+            std::vector<Us4OEMImpl::Handle> us4oems = getUs4OEMs(us4OEMSettings);
+            std::vector<Us4OEMImpl::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(
                 std::begin(us4oems), std::end(us4oems),
                 std::begin(us4oemPtrs),
                 [](const Us4OEM::Handle &ptr) { return ptr.get(); });
             // Create adapter.
-            ProbeAdapter::Handle adapter =
+            ProbeAdapterImpl::Handle adapter =
                 probeAdapterFactory->getProbeAdapter(adapterSettings,
                                                      us4oemPtrs);
             // Create probe.
-            Probe::Handle probe = probeFactory->getProbe(probeSettings,
+            ProbeImpl::Handle probe = probeFactory->getProbe(probeSettings,
                                                          adapter.get());
             return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe);
         } else {
             // Custom Us4OEMs only
-            std::vector<Us4OEM::Handle> us4oems = getUs4OEMs(
+            std::vector<Us4OEMImpl::Handle> us4oems = getUs4OEMs(
                 settings.getUs4OEMSettings());
             return std::make_unique<Us4RImpl>(id, us4oems);
         }
     }
 
 private:
-    std::vector<Us4OEM::Handle>
+    std::vector<Us4OEMImpl::Handle>
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");

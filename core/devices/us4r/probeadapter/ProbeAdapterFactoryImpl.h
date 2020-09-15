@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERFACTORYIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERFACTORYIMPL_H
 
+#include <memory>
+
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "ProbeAdapterFactory.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h"
@@ -10,9 +12,9 @@ namespace arrus::devices {
 
 class ProbeAdapterFactoryImpl : public ProbeAdapterFactory {
 public:
-    ProbeAdapter::Handle
+    ProbeAdapterImpl::Handle
     getProbeAdapter(const ProbeAdapterSettings &settings,
-                    const std::vector<Us4OEM::RawHandle> &us4oems) override {
+                    const std::vector<Us4OEMImpl::RawHandle> &us4oems) override {
         const DeviceId id(DeviceType::ProbeAdapter, 0);
         ProbeAdapterSettingsValidator validator(id.getOrdinal());
         validator.validate(settings);
@@ -20,18 +22,18 @@ public:
 
         assertCorrectNumberOfUs4OEMs(settings, us4oems);
 
-        return ProbeAdapter::Handle(new ProbeAdapterImpl(
-                id,
-                settings.getModelId(),
-                us4oems,
-                settings.getNumberOfChannels(),
-                settings.getChannelMapping()));
+        return std::make_unique<ProbeAdapterImpl>(
+            id,
+            settings.getModelId(),
+            us4oems,
+            settings.getNumberOfChannels(),
+            settings.getChannelMapping());
     }
 
 private:
     static void assertCorrectNumberOfUs4OEMs(
-            const ProbeAdapterSettings &settings,
-            const std::vector<Us4OEM::RawHandle> &us4oems) {
+        const ProbeAdapterSettings &settings,
+        const std::vector<Us4OEM::RawHandle> &us4oems) {
         std::unordered_set<Ordinal> ordinals;
         for(auto value : settings.getChannelMapping()) {
             ordinals.insert(value.first);

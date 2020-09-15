@@ -93,7 +93,7 @@ void Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
         float rxTime = getRxTime(nSamples);
 
-        size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDtype);
+        size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
         auto rxMapId = rxMappings.find(firing)->second;
 
         // Tx

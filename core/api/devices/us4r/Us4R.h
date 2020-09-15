@@ -29,7 +29,7 @@ public:
      * @param ordinal ordinal number of the us4oem to get
      * @return a handle to the us4oem module
      */
-    virtual Us4OEM::Handle &getUs4OEM(Ordinal ordinal) = 0;
+    virtual Us4OEM::RawHandle getUs4OEM(Ordinal ordinal) = 0;
 
     /**
      * Returns a handle to an adapter identified by given ordinal number.
@@ -37,7 +37,7 @@ public:
      * @param ordinal ordinal number of the adapter to get
      * @return a handle to the adapter device
      */
-    virtual ProbeAdapter::Handle &getProbeAdapter(Ordinal ordinal) = 0;
+    virtual ProbeAdapter::RawHandle getProbeAdapter(Ordinal ordinal) = 0;
 
     /**
      * Returns a handle to a probe identified by given ordinal number.
@@ -45,7 +45,7 @@ public:
      * @param ordinal ordinal number of the probe to get
      * @return a handle to the probe
      */
-    virtual Probe::Handle &getProbe(Ordinal ordinal) = 0;
+    virtual Probe::RawHandle getProbe(Ordinal ordinal) = 0;
 
     Us4R(Us4R const&) = delete;
     Us4R(Us4R const&&) = delete;

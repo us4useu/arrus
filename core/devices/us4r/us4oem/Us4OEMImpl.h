@@ -21,6 +21,10 @@ namespace arrus::devices {
  */
 class Us4OEMImpl : public Us4OEM {
 public:
+    using Handle = std::unique_ptr<Us4OEMImpl>;
+    using RawHandle = PtrHandle<Us4OEMImpl>;
+
+    using OutputDType = int16;
     // TGC constants.
     static constexpr float TGC_ATTENUATION_RANGE = 40.0f;
     static constexpr float TGC_SAMPLING_FREQUENCY = 1e6;
@@ -40,7 +44,6 @@ public:
     static constexpr float RX_DELAY = 0.0;
     static constexpr float RX_TIME_EPSILON = 10e-6;
 
-    using OutputDtype = int16;
 
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,

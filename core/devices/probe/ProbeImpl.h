@@ -7,13 +7,17 @@
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/common/logging.h"
+#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.h"
 
 namespace arrus::devices {
 
 class ProbeImpl : public Probe {
 public:
+    using Handle = std::unique_ptr<ProbeImpl>;
+    using RawHandle = PtrHandle<ProbeImpl>;
+
     ProbeImpl(const DeviceId &id, ProbeModel model,
-              ProbeAdapter::RawHandle adapter,
+              ProbeAdapterImpl::RawHandle adapter,
               std::vector<ChannelIdx> channelMapping);
 
     /**
@@ -28,7 +32,7 @@ public:
 private:
     Logger::Handle logger;
     ProbeModel model;
-    ProbeAdapter::RawHandle adapter;
+    ProbeAdapterImpl::RawHandle adapter;
     std::vector<ChannelIdx> channelMapping;
 };
 

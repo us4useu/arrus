@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_PROBE_PROBEFACTORYIMPL_H
 #define ARRUS_CORE_DEVICES_PROBE_PROBEFACTORYIMPL_H
 
+#include <memory>
 
 #include "arrus/core/devices/probe/ProbeSettingsValidator.h"
 #include "arrus/core/api/devices/Device.h"
@@ -15,8 +16,8 @@ namespace arrus::devices {
 
 class ProbeFactoryImpl : public ProbeFactory {
 public:
-    Probe::Handle getProbe(const ProbeSettings &settings,
-                           ProbeAdapter::RawHandle adapter) override {
+    ProbeImpl::Handle getProbe(const ProbeSettings &settings,
+                           ProbeAdapterImpl::RawHandle adapter) override {
         DeviceId id(DeviceType::Probe, 0);
         ProbeSettingsValidator validator(id.getOrdinal());
         validator.validate(settings);
@@ -33,8 +34,8 @@ public:
                                   value, adapter->getNumberOfChannels())
             );
         }
-        return Probe::Handle(new ProbeImpl(id, settings.getModel(), adapter,
-                                       settings.getChannelMapping()));
+        return std::make_unique<ProbeImpl>(id, settings.getModel(), adapter,
+                                       settings.getChannelMapping());
     }
 };
 

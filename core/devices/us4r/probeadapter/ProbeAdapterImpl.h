@@ -16,11 +16,14 @@ namespace arrus::devices {
 
 class ProbeAdapterImpl : public ProbeAdapter {
 public:
+    using Handle = std::unique_ptr<ProbeAdapterImpl>;
+    using RawHandle = PtrHandle<ProbeAdapterImpl>;
+
     using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
     using ChannelMapping = ProbeAdapterSettings::ChannelMapping;
 
     ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,
-                     std::vector<Us4OEM::RawHandle> us4oems,
+                     std::vector<Us4OEMImpl::RawHandle> us4oems,
                      ChannelIdx numberOfChannels,
                      ChannelMapping channelMapping);
 
@@ -34,7 +37,7 @@ public:
 private:
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
-    std::vector<Us4OEM::RawHandle> us4oems;
+    std::vector<Us4OEMImpl::RawHandle> us4oems;
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
 };

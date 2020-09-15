@@ -6,7 +6,7 @@ using namespace ::arrus::ops::us4r;
 
 ProbeAdapterImpl::ProbeAdapterImpl(DeviceId deviceId,
                                    ProbeAdapterModelId modelId,
-                                   std::vector<Us4OEM::RawHandle> us4oems,
+                                   std::vector<Us4OEMImpl::RawHandle> us4oems,
                                    ChannelIdx numberOfChannels,
                                    ChannelMapping channelMapping)
     : ProbeAdapter(deviceId), logger(getLoggerFactory()->getLogger()),
@@ -88,7 +88,7 @@ void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                    op.getRxDecimationFactor(), op.getPri());
             ++i;
         }
-        // TODO us4oem->SetTxRxSequence(us4oemSeq);
+        us4oem->setTxRxSequence(us4oemSeq, tgcSamples);
         // TODO What if tx aperture and rx aperture are empty?
         // Should be set - the same number of operations should be put
         // However, the data be ommitted if rx aperture is empty

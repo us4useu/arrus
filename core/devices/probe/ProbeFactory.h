@@ -1,15 +1,15 @@
 #ifndef ARRUS_CORE_DEVICES_PROBE_PROBEFACTORY_H
 #define ARRUS_CORE_DEVICES_PROBE_PROBEFACTORY_H
 
-#include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
+#include "arrus/core/devices/probe/ProbeImpl.h"
 
 namespace arrus::devices {
 class ProbeFactory {
 public:
-    virtual Probe::Handle
+    virtual ProbeImpl::Handle
     getProbe(const ProbeSettings &settings,
-             ProbeAdapter::RawHandle adapter) = 0;
+             ProbeAdapterImpl::RawHandle adapter) = 0;
 };
 }
 

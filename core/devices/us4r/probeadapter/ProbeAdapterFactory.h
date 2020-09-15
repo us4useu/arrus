@@ -5,13 +5,14 @@
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "ProbeAdapterImpl.h"
 
 namespace arrus::devices {
 class ProbeAdapterFactory {
 public:
-    virtual ProbeAdapter::Handle
+    virtual ProbeAdapterImpl::Handle
     getProbeAdapter(const ProbeAdapterSettings &settings,
-                    const std::vector<Us4OEM::RawHandle> &us4oems) = 0;
+                    const std::vector<Us4OEMImpl::RawHandle> &us4oems) = 0;
 };
 }
 
