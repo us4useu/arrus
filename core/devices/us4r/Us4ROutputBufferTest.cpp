@@ -2,7 +2,9 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <limits>
 
+#include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/common/logging/impl/Logging.h"
@@ -13,37 +15,51 @@ namespace {
 using namespace arrus;
 using namespace arrus::devices;
 
-TEST(Us4OutputBufferTest, Us4OutputBufferTest1) {
+struct TestCase {
+    TestCase(Ordinal nus4Oems, uint16 nFrames, uint16 numberOfQueueElements,
+             double producerSleepTimeVariance, double consumerSleepTimeVariance)
+        : nus4oems(nus4Oems), nFrames(nFrames),
+          numberOfQueueElements(numberOfQueueElements),
+          producerSleepTimeVariance(producerSleepTimeVariance),
+          consumerSleepTimeVariance(consumerSleepTimeVariance) {}
+
+    Ordinal nus4oems = 1;
+    uint16 nFrames = 10;
+    uint16 numberOfQueueElements = 3;
+    double producerSleepTimeVariance = 0;
+    double consumerSleepTimeVariance = 0;
+};
+
+class Us4ROutputBufferTest
+    : public testing::TestWithParam<TestCase> {
+};
+
+TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
+    // Tests
     // TODO random sleep for producers/consummer
     // TODO parametrize
-    constexpr uint16 LOG_FREQ = 100;
-    constexpr Ordinal N_US4OEMS = 8;
-    constexpr uint16 NUMBER_OF_FRAMES = 6000;
-    constexpr uint16 NUMBER_OF_ELEMENTS = 3;
+    constexpr uint16 LOG_FREQ = 1000;
+    Ordinal nus4oems = GetParam().nus4oems;
+    uint16 nFrames = GetParam().nFrames;
+    uint16 nElements = GetParam().numberOfQueueElements;
     constexpr uint32 N_SAMPLES = 64;
     constexpr size_t OUTPUT_SIZE = N_SAMPLES * 32; //in number of array elements
 
-    std::vector<size_t> outputSizes = getNTimes<size_t>(N_SAMPLES, N_US4OEMS);
-    Us4ROutputBuffer buffer(outputSizes, NUMBER_OF_ELEMENTS);
+    std::vector<size_t> outputSizes = getNTimes<size_t>(N_SAMPLES, nus4oems);
+    Us4ROutputBuffer buffer(outputSizes, nElements);
 
     auto callback = [&](Ordinal n) {
         uint16 outputNumber = 0;
-        while(outputNumber < NUMBER_OF_FRAMES) {
+        while(outputNumber < nFrames) {
             try {
                 if(n == 0 && outputNumber % LOG_FREQ == 0) {
                     getDefaultLogger()->log(
                         arrus::LogSeverity::DEBUG,
                         ::arrus::format("Saving frame {}", outputNumber));
                 }
-
-                // should block, when the data is not ready -
-                // writing to data should happen in synchronized way, as it will
-                // be done by us4oems
-                // the other option is to execute transfer after
-                // unblocking the thread, when the data is ready
                 auto func = [&] {
                     uint16 *data = buffer.getAddress(
-                        (outputNumber % NUMBER_OF_ELEMENTS), n);
+                        (outputNumber % nElements), n);
                     for(size_t i = 0; i < OUTPUT_SIZE; ++i) {
                         data[i] = outputNumber;
                     }
@@ -57,13 +73,13 @@ TEST(Us4OutputBufferTest, Us4OutputBufferTest1) {
     };
 
     // run threads
-    std::vector<std::thread> us4oems(N_US4OEMS);
-    for(int i = 0; i < N_US4OEMS; ++i) {
+    std::vector<std::thread> us4oems(nus4oems);
+    for(int i = 0; i < nus4oems; ++i) {
         us4oems[i] = std::thread(callback, static_cast<Ordinal>(i));
     }
 
     uint16 frameNumber = 0;
-    while(frameNumber < NUMBER_OF_FRAMES) {
+    while(frameNumber < nFrames) {
         uint16 *d = buffer.front();
         size_t size = buffer.getElementSize();
         if(frameNumber % LOG_FREQ == 0) {
@@ -84,6 +100,48 @@ TEST(Us4OutputBufferTest, Us4OutputBufferTest1) {
     }
 }
 }
+#define TEST_CASE_PARAMETERS_SET1(nus4oems) \
+    TestCase(nus4oems, 1, 2, 0, 0), \
+    TestCase(nus4oems, 100, 2, 0, 0), \
+    TestCase(nus4oems, 10, 100, 0, 0), \
+    TestCase(nus4oems, 100, 10, 0, 0), \
+    TestCase(nus4oems, 10000, 2, 0, 0)
+
+INSTANTIATE_TEST_CASE_P
+(SingleProducerCallback, Us4ROutputBufferTest,
+ testing::Values(
+     TEST_CASE_PARAMETERS_SET1(1)
+ ));
+
+INSTANTIATE_TEST_CASE_P
+(TwoProducersCallback, Us4ROutputBufferTest,
+ testing::Values(
+     TEST_CASE_PARAMETERS_SET1(2)
+ ));
+
+INSTANTIATE_TEST_CASE_P
+(ThreeProducersCallback, Us4ROutputBufferTest,
+ testing::Values(
+     TEST_CASE_PARAMETERS_SET1(3)
+ ));
+
+INSTANTIATE_TEST_CASE_P
+(FourProducersCallback, Us4ROutputBufferTest,
+ testing::Values(
+     TEST_CASE_PARAMETERS_SET1(4)
+ ));
+
+INSTANTIATE_TEST_CASE_P
+(EightProducersCallback, Us4ROutputBufferTest,
+ testing::Values(
+     TEST_CASE_PARAMETERS_SET1(8)
+ ));
+
+INSTANTIATE_TEST_CASE_P
+(SixteenProducersCallback, Us4ROutputBufferTest,
+ testing::Values(
+     TEST_CASE_PARAMETERS_SET1(16)
+ ));
 
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG_LEVEL(arrus::Logging, LogSeverity::DEBUG);

@@ -65,6 +65,7 @@ public:
 
     virtual ~Us4ROutputBuffer() {
         ::operator delete(dataBuffer, std::align_val_t(DATA_ALIGNMENT));
+        getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
     uint16 *getAddress(uint16 elementNumber, Ordinal us4oem) {
