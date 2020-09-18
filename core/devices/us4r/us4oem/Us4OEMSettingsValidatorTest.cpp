@@ -180,7 +180,7 @@ INSTANTIATE_TEST_CASE_P
 
 // Main
 int main(int argc, char **argv) {
-    INIT_ARRUS_TEST_LOG(arrus::Logging);
+    ARRUS_INIT_TEST_LOG(arrus::Logging);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

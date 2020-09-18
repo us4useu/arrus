@@ -66,6 +66,7 @@ void Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     // TODO TX frequency should be in range available for given us4oem (1-20MHz?)
     // TODO number of periods should be 0.5 or 1 or 1.5 or 2, or 2.5 .... maximum number of cycles: 32
     // TODO PRI should be in some range (lets say 100 - 1000 us) PRF: 1 Hz - 20kHz
+    // liczba probek powinna byc podzielna przez 64
     // maksymalna liczba profili opoznien: 1024
 
     // General sequence parameters.
@@ -249,7 +250,7 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
         std::vector<float> tgcNormalized(actualTGC.size());
         size_t i = 0;
         for(auto val : actualTGC) {
-            tgcNormalized[i] = (val-14)/40;
+            tgcNormalized[i] = (val - 14) / 40;
         }
         ius4oem->TGCSetSamples(tgcNormalized, firing);
     }

@@ -6,6 +6,7 @@
 #include <numeric>
 #include <unordered_set>
 #include <type_traits>
+#include <bitset>
 
 #include <gsl/span>
 #include <range/v3/all.hpp>

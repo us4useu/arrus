@@ -27,6 +27,11 @@ public:
     using ArrusException::ArrusException;
 };
 
+class TimeoutException : public ArrusException {
+public:
+    using ArrusException::ArrusException;
+};
+
 
 }
 

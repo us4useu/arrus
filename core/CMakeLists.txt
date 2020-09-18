@@ -147,7 +147,7 @@ set(SRC_FILES
     api/ops/us4r/tgc.h
     api/examples.h
     devices/TxRxParameters.h
-    common/interpolate.h)
+    common/interpolate.h devices/us4r/Us4ROutputBuffer.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -214,6 +214,7 @@ if (ARRUS_RUN_TESTS)
     #    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
+    create_core_test(devices/us4r/Us4ROutputBufferTest.cpp "common/logging.cpp")
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
     create_core_test(

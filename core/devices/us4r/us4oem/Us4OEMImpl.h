@@ -42,7 +42,7 @@ public:
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32 TRIGGER_DELAY = 240;
     static constexpr float RX_DELAY = 0.0;
-    static constexpr float RX_TIME_EPSILON = 10e-6;
+    static constexpr float RX_TIME_EPSILON = static_cast<float>(10e-6);
 
 
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,

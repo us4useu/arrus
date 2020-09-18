@@ -10,6 +10,7 @@ do {                                        \
     }                                       \
 } while(0)
 
+
 #define ARRUS_REQUIRES_TRUE_E(CONDITION, EXCEPTION) \
 do {                                        \
     if (!(CONDITION)) {                     \
@@ -70,5 +71,15 @@ do {                                                      \
     }                                                     \
 } while(0)
 
-
+#define ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(cv, lock, timeout, exceptionMsg) \
+    if(timeout.has_value()) { \
+        auto status = cv.wait_for(lock,                                     \
+            std::chrono::milliseconds(timeout.value())); \
+        if(status == std::cv_status::timeout) { \
+            throw TimeoutException(exceptionMsg); \
+        } \
+    } \
+    else { \
+        cv.wait(lock); \
+    }
 #endif //ARRUS_COMMON_ASSERTS_H
