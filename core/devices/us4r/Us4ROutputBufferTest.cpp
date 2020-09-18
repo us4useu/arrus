@@ -3,6 +3,7 @@
 #include <thread>
 #include <chrono>
 #include <limits>
+#include <random>
 
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
@@ -17,17 +18,17 @@ using namespace arrus::devices;
 
 struct TestCase {
     TestCase(Ordinal nus4Oems, uint16 nFrames, uint16 numberOfQueueElements,
-             double producerSleepTimeVariance, double consumerSleepTimeVariance)
+             double producerSleepTimeDispersion, double consumerSleepTimeDispersion)
         : nus4oems(nus4Oems), nFrames(nFrames),
           numberOfQueueElements(numberOfQueueElements),
-          producerSleepTimeVariance(producerSleepTimeVariance),
-          consumerSleepTimeVariance(consumerSleepTimeVariance) {}
+          producerSleepTimeDispersion(producerSleepTimeDispersion),
+          consumerSleepTimeDispersion(consumerSleepTimeDispersion) {}
 
     Ordinal nus4oems = 1;
     uint16 nFrames = 10;
     uint16 numberOfQueueElements = 3;
-    double producerSleepTimeVariance = 0;
-    double consumerSleepTimeVariance = 0;
+    double producerSleepTimeDispersion = 0;
+    double consumerSleepTimeDispersion = 0;
 };
 
 class Us4ROutputBufferTest
@@ -36,8 +37,6 @@ class Us4ROutputBufferTest
 
 TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
     // Tests
-    // TODO random sleep for producers/consummer
-    // TODO parametrize
     constexpr uint16 LOG_FREQ = 1000;
     Ordinal nus4oems = GetParam().nus4oems;
     uint16 nFrames = GetParam().nFrames;
@@ -48,9 +47,20 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
     std::vector<size_t> outputSizes = getNTimes<size_t>(N_SAMPLES, nus4oems);
     Us4ROutputBuffer buffer(outputSizes, nElements);
 
+    // rng for time sleeps
+    double producerSleepTimeDisp = GetParam().producerSleepTimeDispersion;
+    double consumerSleepTimeDisp = GetParam().consumerSleepTimeDispersion;
+
     auto callback = [&](Ordinal n) {
+        std::random_device rd{};
+        std::mt19937 rng{rd()};
+        std::normal_distribution<> rDistr{0.0, 1.0};
         uint16 outputNumber = 0;
         while(outputNumber < nFrames) {
+            if(producerSleepTimeDisp > 0.0) {
+                uint32 sleepTimeMs = std::abs(rDistr(rng)) * producerSleepTimeDisp * 1000;
+                std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMs));
+            }
             try {
                 if(n == 0 && outputNumber % LOG_FREQ == 0) {
                     getDefaultLogger()->log(
@@ -78,8 +88,15 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
         us4oems[i] = std::thread(callback, static_cast<Ordinal>(i));
     }
 
+    std::random_device rd{};
+    std::mt19937 rng{rd()};
+    std::normal_distribution<> rDistr{0.0, 1.0};
     uint16 frameNumber = 0;
     while(frameNumber < nFrames) {
+        if(consumerSleepTimeDisp > 0.0) {
+            uint32 sleepTimeMs = std::abs(rDistr(rng)) * consumerSleepTimeDisp * 1000;
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMs));
+        }
         uint16 *d = buffer.front();
         size_t size = buffer.getElementSize();
         if(frameNumber % LOG_FREQ == 0) {
@@ -101,10 +118,13 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
 }
 }
 #define TEST_CASE_PARAMETERS_SET1(nus4oems) \
+    TestCase(nus4oems, 20, 7, 0.1, 0), \
+    TestCase(nus4oems, 20, 7, 0, 0.1),       \
+    TestCase(nus4oems, 20, 7, 0.1, 0.1),  \
     TestCase(nus4oems, 1, 2, 0, 0), \
     TestCase(nus4oems, 100, 2, 0, 0), \
     TestCase(nus4oems, 10, 100, 0, 0), \
-    TestCase(nus4oems, 100, 10, 0, 0), \
+    TestCase(nus4oems, 100, 10, 0, 0),  \
     TestCase(nus4oems, 10000, 2, 0, 0)
 
 INSTANTIATE_TEST_CASE_P
