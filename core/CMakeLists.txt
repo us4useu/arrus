@@ -147,7 +147,7 @@ set(SRC_FILES
     api/ops/us4r/tgc.h
     api/examples.h
     devices/TxRxParameters.h
-    common/interpolate.h devices/us4r/Us4ROutputBuffer.h)
+    common/interpolate.h devices/us4r/Us4ROutputBuffer.h devices/us4r/Us4RImpl.cpp devices/us4r/common.h devices/TxRxParameters.cpp devices/us4r/common.cpp)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

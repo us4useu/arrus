@@ -14,11 +14,13 @@ namespace arrus::devices {
 
 class TxRxParameters {
 public:
+    static const TxRxParameters NOP;
+
     /**
      *
-     * tx aperture, tx delays and rx aperture should have the same size
+     * ** tx aperture, tx delays and rx aperture should have the same size
      * (tx delays is NOT limited to the tx aperture active elements -
-     * the whole array must be provided).
+     * the whole array must be provided).**
      *
      * @param txAperture
      * @param txDelays
@@ -67,6 +69,18 @@ public:
         return pri;
     }
 
+    bool isNOP() {
+        auto atLeastOneTxActive = std::reduce(
+            std::begin(txAperture),
+            std::end(txAperture),
+            false, [](auto a, auto b) {return a | b;});
+        auto atLeastOneRxActive = std::reduce(
+            std::begin(rxAperture),
+            std::end(rxAperture),
+            false, [](auto a, auto b) {return a | b;});
+        return atLeastOneTxActive || atLeastOneRxActive;
+    }
+
     friend std::ostream &
     operator<<(std::ostream &os, const TxRxParameters &parameters) {
         os << "Tx/Rx: ";
@@ -95,6 +109,7 @@ private:
     float pri;
 };
 
+using TxRxParamsSequence = std::vector<TxRxParameters>;
 }
 
 #endif //ARRUS_CORE_DEVICES_TXRXPARAMETERS_H

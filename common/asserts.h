@@ -25,6 +25,16 @@ do {                                                      \
     }                                                     \
 } while(0)
 
+#define ARRUS_REQUIRES_EQUAL_IAE(A, B) \
+    ARRUS_REQUIRES_EQUAL(A, B, IllegalArgumentException(#A " != " #B))
+
+#define ARRUS_REQUIRES_NON_EMPTY_IAE(coll)             \
+do {                                                      \
+    if (coll.empty()) {                                  \
+        throw IllegalArgumentException(#coll " cannot be empty"); \
+    }                                                     \
+} while(0)
+
 #define ARRUS_REQUIRES_TRUE_FOR_ARGUMENT(CONDITION, MSG) \
 do {                                                     \
     if (!(CONDITION)) {                                  \

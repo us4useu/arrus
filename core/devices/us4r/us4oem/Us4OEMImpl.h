@@ -44,6 +44,8 @@ public:
     static constexpr float RX_DELAY = 0.0;
     static constexpr float RX_TIME_EPSILON = static_cast<float>(10e-6);
 
+    static const TxRxParameters NOP;
+
 
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,
