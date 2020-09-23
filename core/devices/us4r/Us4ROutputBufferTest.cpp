@@ -155,13 +155,13 @@ INSTANTIATE_TEST_CASE_P
 (EightProducersCallback, Us4ROutputBufferTest,
  testing::Values(
      TEST_CASE_PARAMETERS_SET1(8)
- ));
+));
 
 INSTANTIATE_TEST_CASE_P
 (SixteenProducersCallback, Us4ROutputBufferTest,
  testing::Values(
      TEST_CASE_PARAMETERS_SET1(16)
- ));
+));
 
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG_LEVEL(arrus::Logging, LogSeverity::DEBUG);
