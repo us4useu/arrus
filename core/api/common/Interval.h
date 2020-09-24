@@ -27,6 +27,14 @@ public:
 
     std::pair<T, T> asPair() const {return interval;}
 
+    bool operator==(const Interval &rhs) const {
+        return interval == rhs.interval;
+    }
+
+    bool operator!=(const Interval &rhs) const {
+        return !(rhs == *this);
+    }
+
 private:
     std::pair<T, T> interval;
 };

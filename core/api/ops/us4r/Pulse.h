@@ -22,6 +22,16 @@ public:
         return inverse;
     }
 
+    bool operator==(const Pulse &rhs) const {
+        return centerFrequency == rhs.centerFrequency
+               && nPeriods == rhs.nPeriods
+               && inverse == rhs.inverse;
+    }
+
+    bool operator!=(const Pulse &rhs) const {
+        return !(rhs == *this);
+    }
+
 private:
     float centerFrequency;
     float nPeriods;

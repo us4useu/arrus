@@ -35,7 +35,7 @@ public:
                    const ops::us4r::Pulse &txPulse,
                    std::vector<bool> rxAperture,
                    const Interval<uint32> &rxSampleRange,
-                   int32 rxDecimationFactor, float pri)
+                   uint32 rxDecimationFactor, float pri)
         : txAperture(std::move(txAperture)), txDelays(txDelays),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(rxSampleRange),
@@ -99,6 +99,19 @@ public:
         return os;
     }
 
+    bool operator==(const TxRxParameters &rhs) const {
+        return txAperture == rhs.txAperture &&
+               txDelays == rhs.txDelays &&
+               txPulse == rhs.txPulse &&
+               rxAperture == rhs.rxAperture &&
+               rxSampleRange == rhs.rxSampleRange &&
+               rxDecimationFactor == rhs.rxDecimationFactor &&
+               pri == rhs.pri;
+    }
+
+    bool operator!=(const TxRxParameters &rhs) const {
+        return !(rhs == *this);
+    }
 private:
     ::std::vector<bool> txAperture;
     ::gsl::span<const float> txDelays;

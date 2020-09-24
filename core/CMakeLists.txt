@@ -66,6 +66,9 @@ set(SRC_FILES
     devices/DeviceId.cpp
     devices/DeviceId.h
     devices/SettingsValidator.h
+    devices/TxRxParameters.h
+    devices/TxRxParameters.cpp
+
 
     devices/us4r/us4oem/Us4OEMFactory.h
     devices/us4r/us4oem/Us4OEMFactoryImpl.h
@@ -128,10 +131,15 @@ set(SRC_FILES
     devices/us4r/external/ius4oem/Us4RLoggerWrapper.h
     devices/us4r/external/ius4oem/IUs4OEMInitializer.h
     devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
+    devices/us4r/Us4ROutputBuffer.h
+    devices/us4r/Us4RImpl.cpp
+    devices/us4r/common.h
+    devices/us4r/common.cpp
 
     session/SessionImpl.h
     session/SessionImpl.cpp
     common/tests.h
+    common/interpolate.h
     # TODO(pjarosik) cleanup below
     api/common/macros.h
     api/framework/Variable.h
@@ -145,9 +153,7 @@ set(SRC_FILES
     ops/us4r/TxRxSequence.h
     ops/us4r/TxRxSequence.cpp
     api/ops/us4r/tgc.h
-    api/examples.h
-    devices/TxRxParameters.h
-    common/interpolate.h devices/us4r/Us4ROutputBuffer.h devices/us4r/Us4RImpl.cpp devices/us4r/common.h devices/TxRxParameters.cpp devices/us4r/common.cpp)
+    api/examples.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -215,6 +221,7 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
     create_core_test(devices/us4r/Us4ROutputBufferTest.cpp "common/logging.cpp")
+    create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
     create_core_test(

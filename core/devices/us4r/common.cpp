@@ -10,7 +10,7 @@ std::vector<TxRxParamsSequence>
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
     // All sequences must have the same length.
     ARRUS_REQUIRES_NON_EMPTY_IAE(seqs);
-    size_t seqLength = seqs.size();
+    size_t seqLength = seqs[0].size();
     for(const auto &seq : seqs) {
         ARRUS_REQUIRES_EQUAL_IAE(seqLength, seq.size());
     }
@@ -65,7 +65,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
 
                     auto subapIdx = subapertureIdxs[ch];
                     if(subapIdx > 0) {
-                        rxSubapertures[subapIdx][ch] = true;
+                        rxSubapertures[subapIdx-1][ch] = true;
                     }
                 }
                 // generate ops from subapertures
