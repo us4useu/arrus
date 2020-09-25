@@ -24,7 +24,7 @@ public:
             ProbeModelId modelId,
             const Tuple<ElementIdxType> &numberOfElements,
             const Tuple<double> &pitch,
-            const Interval<double> &txFrequencyRange)
+            const Interval<float> &txFrequencyRange)
             : modelId(std::move(modelId)), numberOfElements(numberOfElements),
               pitch(pitch), txFrequencyRange(txFrequencyRange) {
         if(numberOfElements.size() != pitch.size()) {
@@ -45,7 +45,7 @@ public:
         return pitch;
     }
 
-    [[nodiscard]] const Interval<double> &getTxFrequencyRange() const {
+    [[nodiscard]] const Interval<float> &getTxFrequencyRange() const {
         return txFrequencyRange;
     }
 
@@ -55,7 +55,7 @@ private:
     ProbeModelId modelId;
     Tuple<ElementIdxType> numberOfElements;
     Tuple<double> pitch;
-    Interval<double> txFrequencyRange;
+    Interval<float> txFrequencyRange;
 };
 
 }

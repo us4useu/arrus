@@ -1,6 +1,7 @@
 #include "ProbeImpl.h"
 
 #include "arrus/common/asserts.h"
+#include "arrus/core/common/validation.h"
 
 namespace arrus::devices {
 
@@ -14,12 +15,44 @@ ProbeImpl::ProbeImpl(const DeviceId &id, ProbeModel model,
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
+class ProbeTxRxValidator : public Validator<TxRxParamsSequence> {
+public:
+    ProbeTxRxValidator(const std::string &componentName, const ProbeModel &modelRef)
+        : Validator(componentName), modelRef(modelRef) {}
+
+    void validate(const TxRxParamsSequence &txRxs) override {
+
+        auto numberOfChannels = modelRef.getNumberOfElements().product();
+        auto &txFrequencyRange = modelRef.getTxFrequencyRange();
+
+        for(size_t firing = 0; firing < txRxs.size(); ++firing) {
+            const auto &op = txRxs[firing];
+            auto firingStr = ::arrus::format("firing {}", firing);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
+                op.getTxAperture().size(), numberOfChannels, firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
+                op.getRxAperture().size(), numberOfChannels, firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
+                op.getTxDelays().size(), numberOfChannels, firingStr);
+            ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
+                op.getTxPulse().getCenterFrequency(),
+                txFrequencyRange.start(), txFrequencyRange.end(),
+                firingStr);
+        }
+    }
+
+private:
+    const ProbeModel &modelRef;
+};
+
 
 void ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                 const ops::us4r::TGCCurve &tgcSamples) {
-    // TODO validate:
-    // tx frequency should not exceed the maximum values
-    // the size of rx and tx apertures should not exceed the (flattened) number of elements
+    // Validate input sequence
+    ProbeTxRxValidator validator(
+        ::arrus::format("{} tx rx sequence", getDeviceId().toString()), model);
+    validator.validate(seq);
+    validator.throwOnErrors();
 
     // set tx rx sequence
     std::vector<TxRxParameters> adapterSeq;
