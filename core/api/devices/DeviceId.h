@@ -17,7 +17,8 @@ enum class DeviceType {
     ProbeAdapter,
     Probe,
     GPU,
-    CPU
+    CPU,
+    HV
 };
 
 /**

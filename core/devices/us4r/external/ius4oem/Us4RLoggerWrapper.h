@@ -2,6 +2,7 @@
 #define ARRUS_CORE_US4R_EXTERNAL_IUS4OEM_US4RLOGGERWRAPPER_H
 
 #include <unordered_map>
+#include <utility>
 
 // us4r
 #include <logging/Logger.h>
@@ -13,8 +14,8 @@ namespace arrus::devices {
 class Us4RLoggerWrapper : public us4r::Logger {
 public:
 
-    Us4RLoggerWrapper(const arrus::Logger::SharedHandle &logger)
-            : logger(logger) {}
+    Us4RLoggerWrapper(arrus::Logger::SharedHandle logger)
+            : logger(std::move(logger)) {}
 
     void
     log(const us4r::LogSeverity severity, const std::string &msg) override {

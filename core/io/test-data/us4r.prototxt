@@ -20,6 +20,13 @@ us4r: {
         active_termination: 200
     }
 
+    hv: {
+        model_id {
+            manufacturer: "us4us"
+            name "hv256"
+        }
+    }
+
 }
 
 

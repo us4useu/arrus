@@ -18,6 +18,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/devices/us4r/hv/HV256Factory.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 
 namespace arrus::devices {
@@ -29,13 +30,15 @@ public:
                     std::unique_ptr<ProbeFactory> probeFactory,
                     std::unique_ptr<IUs4OEMFactory> ius4oemFactory,
                     std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer,
-                    std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter)
+                    std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter,
+                    std::unique_ptr<HV256Factory> hvFactory)
         : ius4oemFactory(std::move(ius4oemFactory)),
           ius4oemInitializer(std::move(ius4oemInitializer)),
           us4oemFactory(std::move(us4oemFactory)),
           us4RSettingsConverter(std::move(us4RSettingsConverter)),
           probeAdapterFactory(std::move(adapterFactory)),
-          probeFactory(std::move(probeFactory)) {}
+          probeFactory(std::move(probeFactory)),
+          hvFactory(std::move(hvFactory)) {}
 
 
     Us4R::Handle
@@ -69,7 +72,7 @@ public:
             us4RSettingsConverter->convertToUs4OEMSettings(
                 probeAdapterSettings, probeSettings, rxSettings);
 
-            std::vector<Us4OEMImpl::Handle> us4oems = getUs4OEMs(us4OEMSettings);
+            auto [us4oems, masterIUs4OEM] = getUs4OEMs(us4OEMSettings);
             std::vector<Us4OEMImpl::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(
                 std::begin(us4oems), std::end(us4oems),
@@ -81,18 +84,23 @@ public:
                                                      us4oemPtrs);
             // Create probe.
             ProbeImpl::Handle probe = probeFactory->getProbe(probeSettings,
-                                                         adapter.get());
-            return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe);
+                                                             adapter.get());
+
+            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
+            return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe, std::move(hv));
         } else {
             // Custom Us4OEMs only
-            std::vector<Us4OEMImpl::Handle> us4oems = getUs4OEMs(
-                settings.getUs4OEMSettings());
-            return std::make_unique<Us4RImpl>(id, us4oems);
+            auto [us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings());
+            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
+            return std::make_unique<Us4RImpl>(id, us4oems, std::move(hv));
         }
     }
 
 private:
-    std::vector<Us4OEMImpl::Handle>
+    /**
+     * @return a pair: us4oems, master ius4oem
+     */
+    std::pair<std::vector<Us4OEMImpl::Handle>, IUs4OEM*>
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");
@@ -106,6 +114,7 @@ private:
         std::vector<IUs4OEMHandle> ius4oems =
             ius4oemFactory->getModules(nUs4oems);
 
+        // Modifies input list - sorts ius4oems by ID in ascending order.
         ius4oemInitializer->initModules(ius4oems);
 
         // Create Us4OEMs.
@@ -122,7 +131,23 @@ private:
                     ius4oems[i], us4oemCfgs[i])
             );
         }
-        return us4oems;
+        return {us4oems, ius4oems[0].get()};
+    }
+
+    std::optional<HV256Impl::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
+        if(settings.has_value()) {
+            const auto& hvSettings = settings.value();
+            auto &manufacturer = hvSettings.getModelId().getManufacturer();
+            auto &name = hvSettings.getModelId().getName();
+            ARRUS_REQUIRES_EQUAL(name, "hv256", IllegalArgumentException(
+                ::arrus::format("Only us4us HV256 is supported only (got {})", name)));
+            ARRUS_REQUIRES_EQUAL(manufacturer, "us4us", IllegalArgumentException(
+                ::arrus::format("Only us4us HV256 is supported only (got {})", name)));
+
+            return hvFactory->getHV256(hvSettings, master);
+        } else {
+            return nullptr;
+        }
     }
 
     std::unique_ptr<IUs4OEMFactory> ius4oemFactory;
@@ -131,6 +156,7 @@ private:
     std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter;
     std::unique_ptr<ProbeAdapterFactory> probeAdapterFactory;
     std::unique_ptr<ProbeFactory> probeFactory;
+    std::unique_ptr<HV256Factory> hvFactory;
 };
 
 }

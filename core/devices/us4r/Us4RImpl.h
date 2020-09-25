@@ -14,6 +14,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.h"
 #include "arrus/core/devices/probe/ProbeImpl.h"
+#include "arrus/core/devices/us4r/hv/HV256Impl.h"
 
 namespace arrus::devices {
 
@@ -25,27 +26,31 @@ public:
         getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
     }
 
-    Us4RImpl(const DeviceId &id, Us4OEMs &us4oems)
-            : Us4R(id), us4oems(std::move(us4oems)) {
+    Us4RImpl(const DeviceId &id, Us4OEMs &us4oems,
+             std::optional<HV256Impl::Handle> hv)
+        : Us4R(id), us4oems(std::move(us4oems)),
+          hv(std::move(hv)) {
     }
 
     Us4RImpl(const DeviceId &id,
              Us4OEMs &us4oems,
              ProbeAdapterImpl::Handle &probeAdapter,
-             ProbeImpl::Handle &probe)
-            : Us4R(id), us4oems(std::move(us4oems)),
-              probeAdapter(std::move(probeAdapter)),
-              probe(std::move(probe)) {}
+             ProbeImpl::Handle &probe,
+             std::optional<HV256Impl::Handle> hv)
+        : Us4R(id), us4oems(std::move(us4oems)),
+          probeAdapter(std::move(probeAdapter)),
+          probe(std::move(probe)),
+          hv(std::move(hv)) {}
 
     Device::RawHandle getDevice(const std::string &path) override {
-        auto [root, tail] = getPathRoot(path);
+        auto[root, tail] = getPathRoot(path);
         boost::algorithm::trim(root);
         boost::algorithm::trim(tail);
         if(!tail.empty()) {
             throw IllegalArgumentException(
                 arrus::format("Us4R devices allows access onl to the top-level "
                               "devices (got relative path: '{}')", path)
-           );
+            );
         }
         DeviceId componentId = DeviceId::parse(root);
         return getDevice(componentId);
@@ -68,7 +73,7 @@ public:
     Us4OEM::RawHandle getUs4OEM(Ordinal ordinal) override {
         if(ordinal >= us4oems.size()) {
             throw DeviceNotFoundException(
-                    DeviceId(DeviceType::Us4OEM, ordinal));
+                DeviceId(DeviceType::Us4OEM, ordinal));
         }
         return us4oems.at(ordinal).get();
     }
@@ -76,7 +81,7 @@ public:
     ProbeAdapter::RawHandle getProbeAdapter(Ordinal ordinal) override {
         if(ordinal > 0 || !probeAdapter.has_value()) {
             throw DeviceNotFoundException(
-                    DeviceId(DeviceType::ProbeAdapter, ordinal));
+                DeviceId(DeviceType::ProbeAdapter, ordinal));
         }
         return probeAdapter.value().get();
     }
@@ -84,12 +89,12 @@ public:
     Probe::RawHandle getProbe(Ordinal ordinal) override {
         if(ordinal > 0 || !probe.has_value()) {
             throw DeviceNotFoundException(
-                    DeviceId(DeviceType::Probe, ordinal));
+                DeviceId(DeviceType::Probe, ordinal));
         }
         return probe.value().get();
     }
 
-    void setVoltage(uint8_t voltage);
+    void setVoltage(Voltage voltage);
 
     void disableHV();
 
@@ -104,8 +109,9 @@ private:
     Us4OEMs us4oems;
     std::optional<ProbeAdapterImpl::Handle> probeAdapter;
     std::optional<ProbeImpl::Handle> probe;
+    std::optional<HV256Impl::Handle> hv;
 
-    UltrasoundDevice* getDefaultComponent();
+    UltrasoundDevice *getDefaultComponent();
 };
 
 }

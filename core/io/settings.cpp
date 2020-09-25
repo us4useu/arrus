@@ -273,6 +273,14 @@ ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r,
 
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                               const SettingsDictionary &dictionary) {
+    std::optional<HVSettings> hvSettings;
+    if(us4r.has_hv()) {
+        auto &manufacturer = us4r.hv().model_id().manufacturer();
+        auto &name = us4r.hv().model_id().name();
+        ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
+        ARRUS_REQUIRES_NON_EMPTY_IAE(name);
+        hvSettings = HVSettings(HVModelId(manufacturer, name));
+    }
     if(!us4r.us4oems().empty()) {
         // Us4OEMs are provided.
         std::vector<Us4OEMSettings> us4oemSettings;
@@ -287,7 +295,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
             us4oemSettings.emplace_back(
                 channelMapping, activeChannelGroups, rxSettings);
         }
-        return Us4RSettings(us4oemSettings);
+        return Us4RSettings(us4oemSettings, hvSettings);
     } else {
         ProbeAdapterSettings adapterSettings =
             readOrGetAdapterSettings(us4r, dictionary);
@@ -295,7 +303,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
             us4r, adapterSettings.getModelId(), dictionary);
         RxSettings rxSettings = readRxSettings(us4r.rx_settings());
 
-        return Us4RSettings(adapterSettings, probeSettings, rxSettings);
+        return Us4RSettings(adapterSettings, probeSettings, rxSettings,
+                            hvSettings);
     }
 }
 

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+message HVSettings {
+    message Id {
+        string manufacturer = 1;
+        string name = 2;
+    }
+    Id model_id = 1;
+}

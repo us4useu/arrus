@@ -8,6 +8,7 @@ void Us4RImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 }
 
 void Us4RImpl::setVoltage(Voltage voltage) {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
     // Validate.
     auto *device = getDefaultComponent();
     auto voltageRange = device->getAcceptedVoltageRange();
@@ -21,7 +22,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
                             "should be in range: [{}, {}]",
                             voltage, minVoltage, maxVoltage));
     }
-    // set TODO
+    hv.value()->setVoltage(voltage);
 }
 
 UltrasoundDevice *Us4RImpl::getDefaultComponent() {
@@ -38,6 +39,11 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
         return us4oems[0].get();
     }
 
+}
+
+void Us4RImpl::disableHV() {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    hv.value()->disable();
 }
 
 }

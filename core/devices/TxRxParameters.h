@@ -31,12 +31,12 @@ public:
      * @param pri
      */
     TxRxParameters(std::vector<bool> txAperture,
-                   const std::vector<float> &txDelays,
+                   std::vector<float> txDelays,
                    const ops::us4r::Pulse &txPulse,
                    std::vector<bool> rxAperture,
                    const Interval<uint32> &rxSampleRange,
                    uint32 rxDecimationFactor, float pri)
-        : txAperture(std::move(txAperture)), txDelays(txDelays),
+        : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(rxSampleRange),
           rxDecimationFactor(rxDecimationFactor), pri(pri) {}
@@ -118,7 +118,7 @@ public:
     }
 private:
     ::std::vector<bool> txAperture;
-    ::gsl::span<const float> txDelays;
+    ::std::vector<float> txDelays;
     ::arrus::ops::us4r::Pulse txPulse;
     ::std::vector<bool> rxAperture;
     Interval<uint32> rxSampleRange;

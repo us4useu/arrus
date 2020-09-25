@@ -7,6 +7,7 @@ import "io/proto/devices/us4r/ProbeAdapterModel.proto";
 import "io/proto/devices/us4r/ProbeToAdapterConnection.proto";
 import "io/proto/devices/us4r/RxSettings.proto";
 import "io/proto/devices/us4r/Us4OEMSettings.proto";
+import "io/proto/devices/us4r/HVSettings.proto";
 
 message Us4RSettings {
 
@@ -26,4 +27,5 @@ message Us4RSettings {
   ProbeToAdapterConnection probe_to_adapter_connection = 5;
   RxSettings rx_settings = 6;
   repeated Us4OEMSettings us4oems = 7;
+  HVSettings hv = 8;
 }

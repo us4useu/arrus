@@ -8,6 +8,7 @@
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/us4r/HVSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 
@@ -16,16 +17,20 @@ namespace arrus::devices {
 class Us4RSettings {
 public:
     explicit Us4RSettings(
-            std::vector<Us4OEMSettings> us4OemSettings)
-            : us4oemSettings(std::move(us4OemSettings)) {}
+        std::vector<Us4OEMSettings> us4OemSettings,
+        std::optional<HVSettings> hvSettings)
+        : us4oemSettings(std::move(us4OemSettings)),
+          hvSettings(std::move(hvSettings)) {}
 
     Us4RSettings(
-            ProbeAdapterSettings probeAdapterSettings,
-            ProbeSettings probeSettings,
-            RxSettings rxSettings)
-            : probeAdapterSettings(std::move(probeAdapterSettings)),
-              probeSettings(std::move(probeSettings)),
-              rxSettings(std::move(rxSettings)){}
+        ProbeAdapterSettings probeAdapterSettings,
+        ProbeSettings probeSettings,
+        RxSettings rxSettings,
+        std::optional<HVSettings> hvSettings)
+        : probeAdapterSettings(std::move(probeAdapterSettings)),
+          probeSettings(std::move(probeSettings)),
+          rxSettings(std::move(rxSettings)),
+          hvSettings(std::move(hvSettings)) {}
 
     [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
@@ -44,6 +49,10 @@ public:
         return rxSettings;
     }
 
+    [[nodiscard]] const std::optional<HVSettings> &getHVSettings() const {
+        return hvSettings;
+    }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -57,6 +66,8 @@ private:
     std::optional<ProbeSettings> probeSettings{};
     /** Required when no Us4OEM settings are set. */
     std::optional<RxSettings> rxSettings;
+    /** Optional (us4r devices may have externally controlled hv suppliers. */
+    std::optional<HVSettings> hvSettings;
 };
 
 }
