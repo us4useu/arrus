@@ -1,6 +1,7 @@
 #include "ProbeAdapterImpl.h"
 
 #include "arrus/core/devices/us4r/common.h"
+#include "arrus/core/common/validation.h"
 
 namespace arrus::devices {
 
@@ -20,14 +21,36 @@ ProbeAdapterImpl::ProbeAdapterImpl(DeviceId deviceId,
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
+class ProbeAdapterTxRxValidator : public Validator<TxRxParamsSequence> {
+public:
+    ProbeAdapterTxRxValidator(const std::string &componentName, ChannelIdx nChannels)
+        : Validator(componentName), nChannels(nChannels) {}
+
+    void validate(const TxRxParamsSequence &txRxs) override {
+        for(size_t firing = 0; firing < txRxs.size(); ++firing) {
+            const auto &op = txRxs[firing];
+            auto firingStr = ::arrus::format("firing {}", firing);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
+                op.getRxAperture().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
+                op.getTxAperture().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
+                op.getTxDelays().size(), size_t(nChannels), firingStr);
+        }
+    }
+
+private:
+    ChannelIdx nChannels;
+};
+
+
 void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                        const TGCCurve &tgcSamples) {
-
-    // TODO validation: tx and rx aperture should have exactly nchannels
-    // TODO number of active tx/rx channels: will be verified by us4oems
-    // (should not exceed the number of available channels)
-    // Tx/Rx aperture should have the equal number of elements
-    // Tx delays should contain exactly Tx aperture number of elements
+    // Validate input sequence
+    ProbeAdapterTxRxValidator validator(
+        ::arrus::format("{} tx rx sequence", getDeviceId().toString()), numberOfChannels);
+    validator.validate(seq);
+    validator.throwOnErrors();
 
     // Split into multiple arrays.
     // us4oem, op number -> aperture/delays
@@ -78,7 +101,7 @@ void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
     Ordinal us4oemOrdinal = 0;
     for(auto &us4oem : us4oems) {
-        auto& us4oemSeq = seqs[us4oemOrdinal];
+        auto &us4oemSeq = seqs[us4oemOrdinal];
 
         uint16 i = 0;
         for(const auto &op : seq) {
