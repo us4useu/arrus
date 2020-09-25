@@ -1,3 +1,0 @@
-classdef TxRxSequence
-
-end
