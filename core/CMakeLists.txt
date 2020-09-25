@@ -153,7 +153,8 @@ set(SRC_FILES
     ops/us4r/TxRxSequence.h
     ops/us4r/TxRxSequence.cpp
     api/ops/us4r/tgc.h
-    api/examples.h)
+    api/examples.h
+    devices/UltrasoundDevice.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

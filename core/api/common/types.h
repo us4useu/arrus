@@ -18,6 +18,7 @@ using float64 = double;
 
 using ChannelIdx = uint16;
 using BitMask = std::vector<bool>;
+using Voltage = uint8;
 
 template<typename T> using PtrHandle = T *;
 }

@@ -5,13 +5,14 @@
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/devices/TxRxParameters.h"
+#include "arrus/core/devices/UltrasoundDevice.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.h"
 
 namespace arrus::devices {
 
-class ProbeImpl : public Probe {
+class ProbeImpl : public Probe, public UltrasoundDevice {
 public:
     using Handle = std::unique_ptr<ProbeImpl>;
     using RawHandle = PtrHandle<ProbeImpl>;
@@ -27,7 +28,9 @@ public:
      * @param tgcSamples
      */
     void setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                         const ::arrus::ops::us4r::TGCCurve &tgcSamples);
+                         const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
+
+    Interval<Voltage> getAcceptedVoltageRange() override;
 
 private:
     Logger::Handle logger;

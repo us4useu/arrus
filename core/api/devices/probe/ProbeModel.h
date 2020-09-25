@@ -20,16 +20,17 @@ public:
 
     using ElementIdxType = ChannelIdx;
 
-    ProbeModel(
-            ProbeModelId modelId,
-            const Tuple<ElementIdxType> &numberOfElements,
-            const Tuple<double> &pitch,
-            const Interval<float> &txFrequencyRange)
-            : modelId(std::move(modelId)), numberOfElements(numberOfElements),
-              pitch(pitch), txFrequencyRange(txFrequencyRange) {
+    ProbeModel(ProbeModelId modelId,
+               const Tuple<ElementIdxType> &numberOfElements,
+               const Tuple<double> &pitch,
+               const Interval<float> &txFrequencyRange,
+               const Interval<Voltage> &voltageRange)
+        : modelId(std::move(modelId)), numberOfElements(numberOfElements),
+          pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange) {
+
         if(numberOfElements.size() != pitch.size()) {
             throw IllegalArgumentException(
-                    "Number of elements and pitch should have the same size.");
+                "Number of elements and pitch should have the same size.");
         }
     }
 
@@ -49,13 +50,16 @@ public:
         return txFrequencyRange;
     }
 
-
+    [[nodiscard]] const Interval<Voltage> &getVoltageRange() const {
+        return voltageRange;
+    }
 
 private:
     ProbeModelId modelId;
     Tuple<ElementIdxType> numberOfElements;
     Tuple<double> pitch;
     Interval<float> txFrequencyRange;
+    Interval<Voltage> voltageRange;
 };
 
 }

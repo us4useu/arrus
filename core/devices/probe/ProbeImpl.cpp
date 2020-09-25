@@ -86,7 +86,9 @@ void ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     }
 
     adapter->setTxRxSequence(adapterSeq, tgcSamples);
+}
 
-    // TODO call
+Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {
+    return model.getVoltageRange();
 }
 }

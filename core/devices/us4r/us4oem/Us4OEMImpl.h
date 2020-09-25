@@ -7,7 +7,9 @@
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "arrus/core/api/common/types.h"
 #include "arrus/core/devices/TxRxParameters.h"
+#include "arrus/core/devices/UltrasoundDevice.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 
@@ -19,12 +21,16 @@ namespace arrus::devices {
  *
  * This class stores reordered channels, as it is required in IUs4OEM docs.
  */
-class Us4OEMImpl : public Us4OEM {
+class Us4OEMImpl : public Us4OEM, public UltrasoundDevice {
 public:
     using Handle = std::unique_ptr<Us4OEMImpl>;
     using RawHandle = PtrHandle<Us4OEMImpl>;
 
     using OutputDType = int16;
+    // voltage, +/- [V] amplitude, (ref: technote)
+    static constexpr Voltage MIN_VOLTAGE = 0;
+    static constexpr Voltage MAX_VOLTAGE = 90; // 180 vpp
+
     // TGC constants.
     static constexpr float TGC_ATTENUATION_RANGE = 40.0f;
     static constexpr float TGC_SAMPLING_FREQUENCY = 1e6;
@@ -56,9 +62,13 @@ public:
     void stopTrigger() override;
 
     void setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                         const ::arrus::ops::us4r::TGCCurve &tgcSamples);
+                         const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
 
     double getSamplingFrequency() override;
+
+    Interval<Voltage> getAcceptedVoltageRange() override {
+        return Interval<Voltage>(MIN_VOLTAGE, MAX_VOLTAGE);
+    }
 
 
 private:
