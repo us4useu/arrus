@@ -7,7 +7,6 @@ void Us4RImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     getDefaultComponent()->setTxRxSequence(seq, tgcSamples);
 }
 
-
 void Us4RImpl::setVoltage(Voltage voltage) {
     // Validate.
     auto *device = getDefaultComponent();
@@ -29,8 +28,8 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     // NOTE! The implementation of this function determines
     // validation behaviour of SetVoltage function.
     // The safest option is to prefer using Probe only,
-    // with an option to ch (but the user has to specify it explicitly
-    // in settings).
+    // with an option to choose us4oem
+    // (but the user has to specify it explicitly in settings).
     // Currently there should be no option to set TxRxSequence
     // on an adapter directly.
     if(probe.has_value()) {
