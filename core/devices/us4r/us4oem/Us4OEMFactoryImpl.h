@@ -129,7 +129,7 @@ public:
         return std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, ordinal),
             std::move(ius4oem), cfg.getActiveChannelGroups(),
-            channelMapping);
+            channelMapping, pgaGain, lnaGain);
     }
 
 private:

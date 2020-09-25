@@ -15,7 +15,8 @@ class TxRxSequence {
 public:
     using TxRx = std::pair<Tx, Rx>;
 
-    TxRxSequence(DeviceId placement, std::vector<TxRx> sequence,
+    TxRxSequence(arrus::devices::DeviceId placement,
+                 std::vector<TxRx> sequence,
                  double pri, TGCCurve tgcCurve)
         : txrxs(std::move(sequence)), pri(pri),
           tgcCurve(std::move(tgcCurve)) {}

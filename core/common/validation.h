@@ -39,7 +39,7 @@ class Validator {
         return errors;
     }
 
-    const std::string &getComponentName() const {
+    [[nodiscard]] const std::string &getComponentName() const {
         return componentName;
     }
 
@@ -107,6 +107,8 @@ class Validator {
                            ));
         }
     }
+
+
 
     /**
      * Checks is given value is equal to 'expected'.
@@ -251,6 +253,8 @@ class Validator {
         }
     }
 
+
+
     /**
      * Checks if given value is in range [min, max].
      */
@@ -270,6 +274,8 @@ class Validator {
                            ));
         }
     }
+
+
 
     template<typename U, typename Container>
     void
@@ -327,6 +333,31 @@ class Validator {
     std::multimap<std::string, std::string> errors;
     std::string componentName;
 };
+
+// Macros
+#define ARRUS_VALIDATOR_EXPECT_IN_RANGE(value, min, max) \
+    expectInRange(#value, value, min, max)
+
+#define ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(value, min, max, msg) \
+    expectInRange(#value, value, min, max, msg);
+
+#define ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_V(vector, min, max) \
+    expectAllInRange(#vector, vector, min, max)
+
+#define ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_VM(vector, min, max, msg) \
+    expectAllInRange(#vector, vector, min, max, msg)
+
+#define ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_IM(coll, min, max, msg) \
+    expectAllInRange(#coll, std::begin(coll), std::end(coll), min, max, msg)
+
+#define ARRUS_VALIDATOR_EXPECT_EQUAL_M(value, expected, msg) \
+    expectEqual(#value, value, expected, msg)
+
+#define ARRUS_VALIDATOR_EXPECT_TRUE_M(condition, msg) \
+    expectTrue(#condition, condition, msg)
+
+#define ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(value, divider, msg) \
+    expectDivisible(#value, value, divider, msg)
 }
 
 #endif //ARRUS_CORE_COMMON_VALIDATION_H

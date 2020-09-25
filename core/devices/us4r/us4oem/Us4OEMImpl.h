@@ -44,12 +44,10 @@ public:
     static constexpr float RX_DELAY = 0.0;
     static constexpr float RX_TIME_EPSILON = static_cast<float>(10e-6);
 
-    static const TxRxParameters NOP;
-
-
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,
-               std::vector<uint8_t> channelMapping);
+               std::vector<uint8_t> channelMapping,
+               uint16 pgaGain, uint16 lnaGain);
 
     ~Us4OEMImpl() override;
 
@@ -70,6 +68,7 @@ private:
     IUs4OEMHandle ius4oem;
     std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
     std::vector<uint8_t> channelMapping;
+    uint16 pgaGain, lnaGain;
 
     std::pair<
         std::unordered_map<uint16, uint16>,

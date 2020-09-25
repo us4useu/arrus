@@ -31,7 +31,7 @@ public:
      * @param pri
      */
     TxRxParameters(std::vector<bool> txAperture,
-                   const gsl::span<const float> &txDelays,
+                   const std::vector<float> &txDelays,
                    const ops::us4r::Pulse &txPulse,
                    std::vector<bool> rxAperture,
                    const Interval<uint32> &rxSampleRange,
@@ -45,7 +45,7 @@ public:
         return txAperture;
     }
 
-    [[nodiscard]] const gsl::span<const float> &getTxDelays() const {
+    [[nodiscard]] const std::vector<float> &getTxDelays() const {
         return txDelays;
     }
 
@@ -61,6 +61,10 @@ public:
         return rxSampleRange;
     }
 
+    [[nodiscard]] uint32 getNumberOfSamples() const {
+        return rxSampleRange.end() - rxSampleRange.start() + 1;
+    }
+
     [[nodiscard]] int32 getRxDecimationFactor() const {
         return rxDecimationFactor;
     }
@@ -69,7 +73,7 @@ public:
         return pri;
     }
 
-    bool isNOP() {
+    [[nodiscard]] bool isNOP() const  {
         auto atLeastOneTxActive = std::reduce(
             std::begin(txAperture),
             std::end(txAperture),

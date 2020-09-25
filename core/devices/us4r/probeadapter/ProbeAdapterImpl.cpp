@@ -1,5 +1,7 @@
 #include "ProbeAdapterImpl.h"
 
+#include "arrus/core/devices/us4r/common.h"
+
 namespace arrus::devices {
 
 using namespace ::arrus::ops::us4r;
@@ -70,9 +72,13 @@ void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         ++opNumber;
     }
 
+
+    // Create operations for each of the us4oem module.
+    std::vector<TxRxParamsSequence> seqs(us4oems.size());
+
     Ordinal us4oemOrdinal = 0;
-    for(auto us4oem : us4oems) {
-        std::vector<TxRxParameters> us4oemSeq;
+    for(auto &us4oem : us4oems) {
+        auto& us4oemSeq = seqs[us4oemOrdinal];
 
         uint16 i = 0;
         for(const auto &op : seq) {
@@ -88,10 +94,18 @@ void ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                    op.getRxDecimationFactor(), op.getPri());
             ++i;
         }
-        us4oem->setTxRxSequence(us4oemSeq, tgcSamples);
-        // TODO What if tx aperture and rx aperture are empty?
-        // Should be set - the same number of operations should be put
-        // However, the data be ommitted if rx aperture is empty
+        // What if tx aperture and rx aperture are empty?
+        // Should be set - the same number of operations should be put for each module.
+        // However, the data should be omitted if rx aperture is empty
+        ++us4oemOrdinal;
+    }
+    // split operations if necessary
+    std::vector<TxRxParamsSequence> sanitizedSeqs = splitRxAperturesIfNecessary(seqs);
+
+    // set sequence on each us4oem
+    us4oemOrdinal = 0;
+    for(auto &us4oem : us4oems) {
+        us4oem->setTxRxSequence(sanitizedSeqs[us4oemOrdinal], tgcSamples);
         ++us4oemOrdinal;
     }
 }
