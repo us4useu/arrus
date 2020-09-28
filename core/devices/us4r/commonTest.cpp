@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "common.h"
 
+#include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 
 namespace {
@@ -15,6 +16,7 @@ const float PRI = 300e-6;
 const std::vector<bool> TX_APERTURE = getNTimes(true, 128);
 const std::vector<float> TX_DELAYS(128);
 
+constexpr int32 FCM_UNAVAILABLE_VALUE = static_cast<int32>(FrameChannelMapping::UNAVAILABLE);
 
 TxRxParameters getStdTxRxParameters(const std::vector<bool> &rxAperture) {
     return TxRxParameters(TX_APERTURE, TX_DELAYS, PULSE, rxAperture,
@@ -22,11 +24,16 @@ TxRxParameters getStdTxRxParameters(const std::vector<bool> &rxAperture) {
 }
 
 
-void verify(const std::vector<TxRxParamsSequence> &expected,
-            const std::vector<TxRxParamsSequence> &actual) {
+void verifyOps(const std::vector<TxRxParamsSequence> &expected,
+               const std::vector<TxRxParamsSequence> &actual) {
     ASSERT_EQ(expected.size(), actual.size());
     EXPECT_EQ(expected, actual);
 }
+
+#define ARRUS_SET_FCM(module, frame, channel, dstFrame, dstChannel) \
+    expectedDstFrame(module, frame, channel) = dstFrame;       \
+    expectedDstChannel(module, frame, channel) = dstChannel;        \
+
 
 TEST(SplitRxApertureIfNecessaryTest, SplitsSingleOperationCorrectly) {
     std::vector<bool> rxAperture(128);
@@ -37,7 +44,7 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsSingleOperationCorrectly) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    std::vector<TxRxParamsSequence> res = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
 
     std::vector<bool> expectedRxAperture0(128);
     expectedRxAperture0[1] = true;
@@ -53,7 +60,24 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsSingleOperationCorrectly) {
             getStdTxRxParameters(expectedRxAperture2)
         }
     };
-    verify(expected, res);
+    verifyOps(expected, res);
+
+    // FCM
+    Eigen::Tensor<int32, 3> expectedDstFrame(1, 1, 4);
+    Eigen::Tensor<int32, 3> expectedDstChannel(1, 1, 4);
+    expectedDstFrame(0, 0, 0) = 0;
+    expectedDstChannel(0, 0, 0) = 0;
+
+    expectedDstFrame(0, 0, 1) = 0;
+    expectedDstChannel(0, 0, 1) = 1;
+
+    expectedDstFrame(0, 0, 2) = 1;
+    expectedDstChannel(0, 0, 2) = 0;
+    expectedDstFrame(0, 0, 3) = 2;
+    expectedDstChannel(0, 0, 3) = 0;
+
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstFrame, expectedDstFrame);
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstChannel, expectedDstChannel);
 }
 
 TEST(SplitRxApertureIfNecessaryTest, DoesNotSplitOpIfNotNecessary) {
@@ -65,14 +89,29 @@ TEST(SplitRxApertureIfNecessaryTest, DoesNotSplitOpIfNotNecessary) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    std::vector<TxRxParamsSequence> res = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
 
     std::vector<TxRxParamsSequence> expected{
         {
             getStdTxRxParameters(rxAperture)
         }
     };
-    verify(expected, res);
+    verifyOps(expected, res);
+
+    // FCM
+    Eigen::Tensor<int32, 3> expectedDstFrame(1, 1, 3);
+    Eigen::Tensor<int32, 3> expectedDstChannel(1, 1, 3);
+
+    expectedDstFrame(0, 0, 0) = 0;
+    expectedDstChannel(0, 0, 0) = 0;
+
+    expectedDstFrame(0, 0, 1) = 0;
+    expectedDstChannel(0, 0, 1) = 1;
+
+    expectedDstFrame(0, 0, 2) = 0;
+    expectedDstChannel(0, 0, 2) = 2;
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstFrame, expectedDstFrame);
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstChannel, expectedDstChannel);
 }
 
 TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
@@ -97,7 +136,7 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
             getStdTxRxParameters(rxAperture3)
         }
     };
-    std::vector<TxRxParamsSequence> res = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
 
     // IN op 0
     std::vector<bool> expRxAperture0(128);
@@ -132,7 +171,49 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
             getStdTxRxParameters(expRxAperture7)
         }
     };
-    verify(expected, res);
+    verifyOps(expected, res);
+
+    // FCM
+    Eigen::Tensor<int32, 3> expectedDstFrame(1, 4, 4);
+    Eigen::Tensor<int32, 3> expectedDstChannel(1, 4, 4);
+
+    // frame 1.1:
+    ARRUS_SET_FCM(0, 0, 0, 0, 0);
+    ARRUS_SET_FCM(0, 0, 1, 0, 1);
+
+    // frame 1.2:
+    ARRUS_SET_FCM(0, 0, 2, 1, 0);
+    ARRUS_SET_FCM(0, 0, 3, 1, 1);
+
+    // frame 2.1:
+    ARRUS_SET_FCM(0, 1, 0, 2, 0);
+    ARRUS_SET_FCM(0, 1, 1, 2, 1);
+    // frame 2.2:
+    ARRUS_SET_FCM(0, 1, 2, 3, 0);
+    ARRUS_SET_FCM(0, 1, 3, 3, 1);
+
+    // frame 3:
+    ARRUS_SET_FCM(0, 2, 0, 4, 0);
+    // There is no rx channels > 0 for 3rd op.
+    ARRUS_SET_FCM(0, 2, 1, FCM_UNAVAILABLE_VALUE, FCM_UNAVAILABLE_VALUE);
+    ARRUS_SET_FCM(0, 2, 2, FCM_UNAVAILABLE_VALUE, FCM_UNAVAILABLE_VALUE);
+    ARRUS_SET_FCM(0, 2, 3, FCM_UNAVAILABLE_VALUE, FCM_UNAVAILABLE_VALUE);
+
+    // frame 4.1:
+    // 0
+    ARRUS_SET_FCM(0, 3, 0, 5, 0);
+    // 32
+    ARRUS_SET_FCM(0, 3, 1, 6, 0);
+    // frame 4.2:
+    // 48
+    // NOTE! 48 is assigned to frame 5, because 32 mod 32 is already covered
+    // by 0
+    ARRUS_SET_FCM(0, 3, 2, 5, 1);
+    // frame 4.3
+    // 96
+    ARRUS_SET_FCM(0, 3, 3, 7, 0);
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstFrame, expectedDstFrame);
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstChannel, expectedDstChannel);
 }
 
 TEST(SplitRxApertureIfNecessaryTest, SplitsFullRxApertureCorrectly) {
@@ -143,7 +224,7 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsFullRxApertureCorrectly) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    std::vector<TxRxParamsSequence> res = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
 
     std::vector<bool> expectedRxAperture0(128);
     for(size_t i = 0; i < 32; ++i) {
@@ -169,7 +250,26 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsFullRxApertureCorrectly) {
             getStdTxRxParameters(expectedRxAperture3)
         }
     };
-    verify(expected, res);
+    verifyOps(expected, res);
+
+    // FCM
+    Eigen::Tensor<int32, 3> expectedDstFrame(1, 1, 128);
+    Eigen::Tensor<int32, 3> expectedDstChannel(1, 1, 128);
+
+    for(int32 i = 0; i < 32; ++i) {
+        ARRUS_SET_FCM(0, 0, i, 0, i);
+    }
+    for(int32 i = 32; i < 64; ++i) {
+        ARRUS_SET_FCM(0, 0, i, 1, i%32);
+    }
+    for(int32 i = 64; i < 96; ++i) {
+        ARRUS_SET_FCM(0, 0, i, 2, i%32);
+    }
+    for(int32 i = 96; i < 128; ++i) {
+        ARRUS_SET_FCM(0, 0, i, 3, i%32);
+    }
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstFrame, expectedDstFrame);
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstChannel, expectedDstChannel);
 }
 
 // multiple sequences, each sequence should has the same size (padded with NOPs if necessary)
@@ -203,7 +303,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
     }
 
     std::vector<TxRxParamsSequence> in = {seq0, seq1};
-    std::vector<TxRxParamsSequence> res = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
 
     TxRxParamsSequence expectedSeq0;
     {
@@ -245,7 +345,40 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
     }
 
     std::vector<TxRxParamsSequence> expected{expectedSeq0, expectedSeq1};
-    verify(expected, res);
+    verifyOps(expected, res);
+
+    // FCM
+    Eigen::Tensor<int32, 3> expectedDstFrame(2, 3, 3);
+    Eigen::Tensor<int32, 3> expectedDstChannel(2, 3, 3);
+    expectedDstFrame.setConstant(FCM_UNAVAILABLE_VALUE);
+    expectedDstChannel.setConstant(FCM_UNAVAILABLE_VALUE);
+    // Module 0
+    // Frame 1.1
+    ARRUS_SET_FCM(0, 0, 0, 0, 0);
+    ARRUS_SET_FCM(0, 0, 1, 0, 1);
+    // Frame 1.2
+    ARRUS_SET_FCM(0, 0, 2, 1, 0);
+    // Frame 2
+    ARRUS_SET_FCM(0, 1, 0, 2, 0);
+    ARRUS_SET_FCM(0, 1, 1, 2, 1);
+    // Frame 3
+    ARRUS_SET_FCM(0, 2, 0, 3, 0);
+    ARRUS_SET_FCM(0, 2, 1, 3, 1);
+
+    // Module 1
+    // Frame 1
+    ARRUS_SET_FCM(1, 0, 0, 0, 0);
+    ARRUS_SET_FCM(1, 0, 1, 0, 1);
+    ARRUS_SET_FCM(1, 0, 2, 0, 2);
+    // Frame 2
+    ARRUS_SET_FCM(1, 1, 0, 1, 0);
+    ARRUS_SET_FCM(1, 1, 1, 1, 1);
+    // Frame 3.1
+    ARRUS_SET_FCM(1, 2, 0, 2, 0);
+    ARRUS_SET_FCM(1, 2, 1, 3, 0);
+
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstFrame, expectedDstFrame);
+    ARRUS_EXPECT_TENSORS_EQ(fcmDstChannel, expectedDstChannel);
 }
 
 }

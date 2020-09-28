@@ -9,7 +9,7 @@
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 
-#include <unsupported/Eigen/CXX11/Tensor>
+#include "arrus/core/external/eigen/Tensor.h"
 
 namespace arrus::devices {
 

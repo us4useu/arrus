@@ -163,7 +163,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     ius4oem->SetNTriggers(seq.size());
     ius4oem->SetNumberOfFirings(seq.size());
 
-    auto[rxMappings, rxApertures] = setRxMappings(seq);
+    auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 
     // helper data
     const std::bitset<N_ADDR_CHANNELS> emptyAperture;
@@ -240,6 +240,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
     ius4oem->EnableSequencer();
     ius4oem->EnableTransmit();
+    return std::move(fcm);
 }
 
 std::tuple<

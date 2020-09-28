@@ -7,11 +7,10 @@
 
 #include "arrus/core/common/aperture.h"
 
-
 namespace arrus::devices {
 
 static ChannelIdx getMaximumRxAperture(const std::vector<TxRxParamsSequence> &seqs) {
-    ChannelIdx maxElementSize = -1;
+    ChannelIdx maxElementSize = 0;
     for(const auto& seq: seqs) {
         for(const auto &op : seq) {
             ChannelIdx n = getNumberOfActiveChannels(op.getRxAperture());
@@ -31,6 +30,7 @@ getNumberOfFrames(const std::vector<TxRxParamsSequence> &seqs) {
         for(const auto & seq : seqs) {
             if(!seq[opIdx].isRxNOP()) {
                 ++numberOfFrames;
+                break;
             }
         }
     }
@@ -43,6 +43,7 @@ std::tuple<
     Eigen::Tensor<int32, 3>
 >
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
+    using FrameNumber = FrameChannelMapping::FrameNumber;
     // All sequences must have the same length.
     ARRUS_REQUIRES_NON_EMPTY_IAE(seqs);
     size_t seqLength = seqs[0].size();
@@ -54,7 +55,9 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
     // Find the maximum rx aperture size
     ChannelIdx maxRxApertureSize = getMaximumRxAperture(seqs);
     FrameChannelMapping::FrameNumber numberOfFrames = getNumberOfFrames(seqs);
+    // (module, logical frame, logical rx channel) -> physical frame
     Eigen::Tensor<int32, 3> opDestOp(seqs.size(), numberOfFrames, maxRxApertureSize);
+    // (module, logical frame, logical rx channel) -> physical rx channel
     Eigen::Tensor<int32, 3> opDestChannel(seqs.size(), numberOfFrames, maxRxApertureSize);
     opDestOp.setConstant(FrameChannelMapping::UNAVAILABLE);
     opDestChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
@@ -71,7 +74,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
     }
 
     // us4oem ordinal number -> current frame idx
-    std::vector<size_t> currentFrameIdx(seqs.size(), 0);
+    std::vector<FrameNumber> currentFrameIdx(seqs.size(), 0);
     for(size_t opIdx = 0; opIdx < seqLength; ++opIdx) {
         for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) {
             const auto &seq = seqs[seqIdx];
@@ -104,17 +107,17 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                 }
 
                 long long opActiveChannel = 0;
-                std::vector<size_t> subopActiveChannels(maxSubapertureIdx, 0);
+                std::vector<ChannelIdx> subopActiveChannels(maxSubapertureIdx, 0);
                 for(size_t ch = 0; ch < subapertureIdxs.size(); ++ch) {
                     auto subapIdx = subapertureIdxs[ch];
                     if(subapIdx > 0) {
                         rxSubapertures[subapIdx-1][ch] = true;
                         // FC mapping
                         // -1 because subapIdx starts from zero
-                        opDestOp(seqIdx, opIdx, opActiveChannel) = currentFrameIdx[seqIdx] + subapIdx - 1;
+                        opDestOp(seqIdx, opIdx, opActiveChannel) = FrameNumber(currentFrameIdx[seqIdx] + subapIdx - 1);
                         opDestChannel(seqIdx, opIdx, opActiveChannel) = subopActiveChannels[subapIdx-1];
                         ++opActiveChannel;
-                        ++subopActiveChannels[subapIdx];
+                        ++subopActiveChannels[subapIdx-1];
                     }
                 }
                 // generate ops from subapertures
@@ -124,13 +127,12 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                         subaperture, // Modified
                         op.getRxSampleRange(), op.getRxDecimationFactor(), op.getPri());
                 }
-
             } else {
                 // we have a single rx aperture, or all rx channels are empty,
                 // just pass the operator as is
                 result[seqIdx].push_back(op);
                 // FC mapping
-                long long opActiveChannel = 0;
+                ChannelIdx opActiveChannel = 0;
                 for(auto bit : op.getRxAperture()) {
                     if(bit) {
                         opDestOp(seqIdx, opIdx, opActiveChannel) = currentFrameIdx[seqIdx];

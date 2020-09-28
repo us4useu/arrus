@@ -9,7 +9,7 @@
 #include <bitset>
 
 #include <gsl/span>
-#include <range/v3/all.hpp>
+#include <boost/range/combine.hpp>
 
 namespace arrus {
 
@@ -44,11 +44,6 @@ inline std::vector<Out> castTo(const Iterator begin, const Iterator end) {
     return result;
 }
 
-template<typename T>
-inline std::vector<T> toVector(ranges::iota_view<T> values) {
-    return values;
-}
-
 /**
  * Returns an array that holds given value n times.
  */
@@ -74,9 +69,16 @@ setContains(const std::unordered_set<T> &set, const T &value) {
 
 template<typename T, typename U>
 inline std::vector<std::pair<T, U>>
-// TODO ranges as input might more efficient here
 zip(const std::vector<T> &a, const std::vector<U> &b) {
-    std::vector<std::pair<T, U>> res = ranges::view::zip(a, b);
+    if(a.size() != b.size()) {
+        throw IllegalArgumentException("Zipped vectors should "
+                                           "have the same size.");
+    }
+    std::vector<std::pair<T, U>> res;
+    res.reserve(a.size());
+    for(const auto &[x, y] : boost::combine(a, b)) {
+        res.emplace_back(x, y);
+    }
     return res;
 }
 
@@ -84,7 +86,8 @@ template<typename R>
 inline std::vector<R>
 generate(size_t nElements, std::function<R(size_t)> transformation) {
     std::vector<R> result;
-    for(auto i : ranges::view::ints((size_t) 0, nElements)) {
+    result.reserve(nElements);
+    for(size_t i = 0; i < nElements; ++i) {
         result.emplace_back(transformation(i));
     }
     return result;

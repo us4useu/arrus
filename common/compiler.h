@@ -7,8 +7,7 @@
 #define COMPILER_PUSH_DIAGNOSTIC_STATE  __pragma(warning(push))
 #define COMPILER_POP_DIAGNOSTIC_STATE __pragma(warning(pop))
 #define COMPILER_IGNORE_UNUSED  __pragma(warning(disable: 4100 4101))
-#define COMPILER_DISABLE_MSVC_WARNINGS(codes) \
-__pragma(warning(disable: codes))            \
+#define COMPILER_DISABLE_MSVC_WARNINGS(...) __pragma(warning(disable: __VA_ARGS__))
 
 #else
 #define COMPILER_PUSH_DIAGNOSTIC_STATE _Pragma("GCC diagnostic push")
