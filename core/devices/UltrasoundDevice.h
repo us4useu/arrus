@@ -7,6 +7,7 @@
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 
 namespace arrus::devices {
 
@@ -14,7 +15,8 @@ class UltrasoundDevice {
 public:
     virtual ~UltrasoundDevice() = default;
 
-    virtual void
+    virtual
+    FrameChannelMapping::Handle
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples) = 0;
 

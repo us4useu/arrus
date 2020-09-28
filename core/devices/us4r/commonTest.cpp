@@ -223,7 +223,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
         expectedSeq0.push_back(getStdTxRxParameters(rxAperture1));
         expectedSeq0.push_back(getStdTxRxParameters(rxAperture2));
         expectedSeq0.push_back(getStdTxRxParameters(rxAperture3));
-        expectedSeq0.push_back(TxRxParameters::NOP);
+        expectedSeq0.push_back(TxRxParameters::US4OEM_NOP);
     }
 
     TxRxParamsSequence expectedSeq1;
@@ -238,7 +238,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
         rxAperture4[48] = true;
 
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture0));
-        expectedSeq1.push_back(TxRxParameters::NOP);
+        expectedSeq1.push_back(TxRxParameters::US4OEM_NOP);
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture2));
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture3));
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture4));

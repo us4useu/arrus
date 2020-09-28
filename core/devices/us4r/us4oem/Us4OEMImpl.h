@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <iostream>
+#include <arrus/core/api/devices/us4r/FrameChannelMapping.h>
 
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
@@ -46,9 +47,12 @@ public:
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
-    static constexpr uint32 TRIGGER_DELAY = 240;
+    static constexpr uint32 SAMPLE_DELAY = 240;
     static constexpr float RX_DELAY = 0.0;
     static constexpr float RX_TIME_EPSILON = static_cast<float>(10e-6);
+
+    // Data
+    static constexpr size_t DDR_OFFSET_HOST = 0x1'0000'0000;
 
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,
@@ -61,8 +65,8 @@ public:
 
     void stopTrigger() override;
 
-    void setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                         const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
+    FrameChannelMapping::Handle setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                                                const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
 
     double getSamplingFrequency() override;
 
@@ -80,9 +84,10 @@ private:
     std::vector<uint8_t> channelMapping;
     uint16 pgaGain, lnaGain;
 
-    std::pair<
+    std::tuple<
         std::unordered_map<uint16, uint16>,
-        std::vector<Us4OEMImpl::Us4rBitMask>>
+        std::vector<Us4OEMImpl::Us4rBitMask>,
+        FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 
     static float getRxTime(size_t nSamples);

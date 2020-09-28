@@ -5,12 +5,22 @@
 
 namespace arrus::devices {
 
-const TxRxParameters TxRxParameters::NOP = TxRxParameters(
-    std::vector<bool>(),
-    std::vector<float>(),
-    ops::us4r::Pulse(0, 0, false),
-    std::vector<bool>(),
-    Interval<uint32>(0, 1),
+const TxRxParameters TxRxParameters::US4OEM_NOP = TxRxParameters(
+    std::vector<bool>(128, false),
+    std::vector<float>(128, 0),
+    ops::us4r::Pulse(1e6, 1, false),
+    std::vector<bool>(128, false),
+    Interval<uint32>(0, 64),
     0, 0);
+
+size_t getNumberOfNoRxNOPs(const TxRxParamsSequence &seq) {
+    size_t res = 0;
+    for(const auto &op : seq) {
+        if(!op.isRxNOP()) {
+            ++res;
+        }
+    }
+    return res;
+}
 
 }

@@ -3,10 +3,45 @@
 #include <algorithm>
 #include <execution>
 #include <numeric>
+#include <tuple>
+
+#include "arrus/core/common/aperture.h"
+
 
 namespace arrus::devices {
 
-std::vector<TxRxParamsSequence>
+static ChannelIdx getMaximumRxAperture(const std::vector<TxRxParamsSequence> &seqs) {
+    ChannelIdx maxElementSize = -1;
+    for(const auto& seq: seqs) {
+        for(const auto &op : seq) {
+            ChannelIdx n = getNumberOfActiveChannels(op.getRxAperture());
+            if(n > maxElementSize) {
+                maxElementSize = n;
+            }
+        }
+    }
+    return maxElementSize;
+}
+
+static FrameChannelMapping::FrameNumber
+getNumberOfFrames(const std::vector<TxRxParamsSequence> &seqs) {
+    FrameChannelMapping::FrameNumber numberOfFrames = 0;
+    auto numberOfOps = seqs[0].size();
+    for(size_t opIdx = 0; opIdx < numberOfOps; ++opIdx) {
+        for(const auto & seq : seqs) {
+            if(!seq[opIdx].isRxNOP()) {
+                ++numberOfFrames;
+            }
+        }
+    }
+    return numberOfFrames;
+}
+
+std::tuple<
+    std::vector<TxRxParamsSequence>,
+    Eigen::Tensor<int32, 3>,
+    Eigen::Tensor<int32, 3>
+>
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
     // All sequences must have the same length.
     ARRUS_REQUIRES_NON_EMPTY_IAE(seqs);
@@ -15,6 +50,14 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
         ARRUS_REQUIRES_EQUAL_IAE(seqLength, seq.size());
     }
     std::vector<TxRxParamsSequence> result;
+
+    // Find the maximum rx aperture size
+    ChannelIdx maxRxApertureSize = getMaximumRxAperture(seqs);
+    FrameChannelMapping::FrameNumber numberOfFrames = getNumberOfFrames(seqs);
+    Eigen::Tensor<int32, 3> opDestOp(seqs.size(), numberOfFrames, maxRxApertureSize);
+    Eigen::Tensor<int32, 3> opDestChannel(seqs.size(), numberOfFrames, maxRxApertureSize);
+    opDestOp.setConstant(FrameChannelMapping::UNAVAILABLE);
+    opDestChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
     constexpr ChannelIdx N_RX_CHANNELS = Us4OEMImpl::N_RX_CHANNELS;
     constexpr ChannelIdx N_GROUPS =
@@ -27,21 +70,20 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
         result.push_back(resSeq);
     }
 
-    for(size_t i = 0; i < seqLength; ++i) {
-
+    // us4oem ordinal number -> current frame idx
+    std::vector<size_t> currentFrameIdx(seqs.size(), 0);
+    for(size_t opIdx = 0; opIdx < seqLength; ++opIdx) {
         for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) {
             const auto &seq = seqs[seqIdx];
-            const auto &op = seq[i];
+            const auto &op = seq[opIdx];
 
             // Split rx aperture, if necessary.
             // subaperture number starts from 1, 0 means that the channel
             // should be inactive.
             std::vector<ChannelIdx> subapertureIdxs(op.getRxAperture().size());
             for(ChannelIdx ch = 0; ch < N_RX_CHANNELS; ++ch) {
-
                 ChannelIdx subaperture = 1;
                 for(ChannelIdx group = 0; group < N_GROUPS; ++group) {
-
                     ChannelIdx addrIdx = group * N_RX_CHANNELS + ch;
                     if(op.getRxAperture()[addrIdx]) {
                         // channel active
@@ -55,17 +97,24 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
             ChannelIdx maxSubapertureIdx = *std::max_element(
                 std::begin(subapertureIdxs), std::end(subapertureIdxs));
             if(maxSubapertureIdx > 1) {
-                // Generate rx subapertures - split aperture into smaller
-                // subapertures.
+                // Split aperture into smaller subapertures.
                 std::vector<BitMask> rxSubapertures(maxSubapertureIdx);
                 for(auto &subaperture : rxSubapertures) {
                     subaperture.resize(N_ADDR_CHANNELS);
                 }
-                for(size_t ch = 0; ch < subapertureIdxs.size(); ++ch) {
 
+                long long opActiveChannel = 0;
+                std::vector<size_t> subopActiveChannels(maxSubapertureIdx, 0);
+                for(size_t ch = 0; ch < subapertureIdxs.size(); ++ch) {
                     auto subapIdx = subapertureIdxs[ch];
                     if(subapIdx > 0) {
                         rxSubapertures[subapIdx-1][ch] = true;
+                        // FC mapping
+                        // -1 because subapIdx starts from zero
+                        opDestOp(seqIdx, opIdx, opActiveChannel) = currentFrameIdx[seqIdx] + subapIdx - 1;
+                        opDestChannel(seqIdx, opIdx, opActiveChannel) = subopActiveChannels[subapIdx-1];
+                        ++opActiveChannel;
+                        ++subopActiveChannels[subapIdx];
                     }
                 }
                 // generate ops from subapertures
@@ -79,12 +128,21 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
             } else {
                 // we have a single rx aperture, or all rx channels are empty,
                 // just pass the operator as is
-                // otherwise all rx channels are empty, just pass it as is
                 result[seqIdx].push_back(op);
+                // FC mapping
+                long long opActiveChannel = 0;
+                for(auto bit : op.getRxAperture()) {
+                    if(bit) {
+                        opDestOp(seqIdx, opIdx, opActiveChannel) = currentFrameIdx[seqIdx];
+                        opDestChannel(seqIdx, opIdx, opActiveChannel) = opActiveChannel;
+                        ++opActiveChannel;
+                    }
+                }
             }
+            currentFrameIdx[seqIdx] += maxSubapertureIdx;
         }
         // Check if all seqs have the same size.
-        // If not, pad them the NOP.
+        // If not, pad them with a NOP.
         std::vector<size_t> currentSeqSizes;
         std::transform(std::begin(result), std::end(result),
                        std::back_inserter(currentSeqSizes),
@@ -93,11 +151,11 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                                            std::end(currentSeqSizes));
         for(auto& resSeq : result) {
             if(resSeq.size() < maxSize) {
-                resSeq.resize(maxSize, TxRxParameters::NOP);
+                resSeq.resize(maxSize, TxRxParameters::US4OEM_NOP);
             }
         }
     }
-    return result;
+    return std::make_tuple(result, opDestOp, opDestChannel);
 }
 
 }

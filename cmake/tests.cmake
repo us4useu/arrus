@@ -32,6 +32,7 @@ function(create_core_test test_src)
         fmt::fmt
         range-v3::range-v3
         Microsoft.GSL::GSL
+        Eigen3::Eigen3
         ${other_deps})
     target_include_directories(
         ${target_name}

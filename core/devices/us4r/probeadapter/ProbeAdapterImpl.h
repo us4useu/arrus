@@ -31,8 +31,8 @@ public:
         return numberOfChannels;
     }
 
-    void setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                         const ::arrus::ops::us4r::TGCCurve &tgcSamples);
+    FrameChannelMapping::Handle setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                                                const ::arrus::ops::us4r::TGCCurve &tgcSamples);
 
 private:
     Logger::Handle logger;

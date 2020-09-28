@@ -14,7 +14,7 @@ namespace arrus::devices {
 
 class TxRxParameters {
 public:
-    static const TxRxParameters NOP;
+    static const TxRxParameters US4OEM_NOP;
 
     /**
      *
@@ -82,7 +82,15 @@ public:
             std::begin(rxAperture),
             std::end(rxAperture),
             false, [](auto a, auto b) {return a | b;});
-        return atLeastOneTxActive || atLeastOneRxActive;
+        return !atLeastOneTxActive && !atLeastOneRxActive;
+    }
+
+    [[nodiscard]] bool isRxNOP() const {
+        auto atLeastOneRxActive = std::reduce(
+            std::begin(rxAperture),
+            std::end(rxAperture),
+            false, [](auto a, auto b) {return a | b;});
+        return !atLeastOneRxActive;
     }
 
     friend std::ostream &
@@ -127,6 +135,13 @@ private:
 };
 
 using TxRxParamsSequence = std::vector<TxRxParameters>;
+
+
+/**
+ * Returns the number of actual ops, that is, a the number of ops excluding RxNOPs.
+ */
+size_t getNumberOfNoRxNOPs(const TxRxParamsSequence &seq);
+
 }
 
 #endif //ARRUS_CORE_DEVICES_TXRXPARAMETERS_H

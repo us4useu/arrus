@@ -8,6 +8,7 @@
 #include "arrus/core/common/hash.h"
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/common/validation.h"
+#include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 
 namespace arrus::devices {
 
@@ -104,6 +105,8 @@ public:
 
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     op.getRxDecimationFactor(), 0, 5, firingStr);
+                // TODO should be the same for all operations
+                // TODO start sample should the same for all operations in a sequence
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     op.getPri(), 50e-6f, 1.0f, firingStr);
             }
@@ -139,8 +142,9 @@ private:
     uint16 pgaGain, lnaGain;
 };
 
-void Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
-                                 const ::arrus::ops::us4r::TGCCurve &tgc) {
+FrameChannelMapping::Handle
+Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
+                            const ::arrus::ops::us4r::TGCCurve &tgc) {
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
     // This probably should be implemented in IUs4OEMInitializer
 
@@ -170,34 +174,30 @@ void Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     for(size_t firing = 0; firing < seq.size(); ++firing) {
         auto const &op = seq[firing];
         if(op.isNOP()) {
-            logger->log(LogSeverity::TRACE, format("Setting tx/rx {}: NOP", firing));
-
-            ius4oem->SetTxAperture(emptyAperture, firing);
-            ius4oem->SetRxAperture(emptyAperture, firing);
-            ius4oem->SetActiveChannelGroup(emptyChannelGroups, firing);
-            continue;
+            logger->log(LogSeverity::TRACE,
+                        format("Setting tx/rx {}: NOP {}", firing, op));
+        } else {
+            logger->log(LogSeverity::TRACE,
+                        arrus::format("Setting tx/rx {}: {}", firing, op));
         }
-        logger->log(
-            LogSeverity::TRACE,
-            arrus::format("Setting tx/rx {}: {}", firing, op));
-        // active channel groups already remapped in constructor
-        ius4oem->SetActiveChannelGroup(activeChannelGroups, firing);
-
-        // convert start rx sample and end rx sample to
-        // rx channel mapping
-        // Get number of unique channel mappings in this sequence
-        // compute rxTime for given number of samples
         auto[startSample, endSample] = op.getRxSampleRange().asPair();
         size_t nSamples = endSample - startSample + 1;
-
         float rxTime = getRxTime(nSamples);
-
         size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
         auto rxMapId = rxMappings.find(firing)->second;
 
-        // Tx
-        ius4oem->SetTxAperture(
-            ::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()), firing);
+        if(op.isNOP()) {
+            ius4oem->SetActiveChannelGroup(emptyChannelGroups, firing);
+            ius4oem->SetTxAperture(emptyAperture, firing);
+            ius4oem->SetRxAperture(emptyAperture, firing);
+        } else {
+            // active channel groups already remapped in constructor
+            ius4oem->SetActiveChannelGroup(activeChannelGroups, firing);
+            ius4oem->SetTxAperture(
+                ::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()), firing);
+            ius4oem->SetRxAperture(rxApertures[firing], firing);
+        }
+
         // Delays
         uint8 txChannel = 0;
         for(bool bit : op.getTxAperture()) {
@@ -215,10 +215,6 @@ void Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
         ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), false,
                             firing);
 
-        // Rx
-        ius4oem->SetActiveChannelGroup(activeChannelGroups, firing);
-        ius4oem->SetRxAperture(rxApertures[firing], firing);
-
         setTGC(tgc, firing);
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
         ius4oem->SetRxTime(rxTime, firing);
@@ -227,38 +223,37 @@ void Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                                ::arrus::format(
                                    "Total data size cannot exceed 4GiB (device {})",
                                    getDeviceId().toString()));
-
-        ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
-                                 TRIGGER_DELAY + startSample,
-                                 op.getRxDecimationFactor(),
-                                 rxMapId);
-        outputAddress += nBytes;
+        if(op.isRxNOP()) {
+            // Fake data acquisition
+            ius4oem->ScheduleReceive(firing, outputAddress, 64,
+                                     0, 0, rxMapId);
+            // Do not move outputAddress pointer, fake data should be overwritten
+            // by the next non-rx-nop (or ignored, if this is the last operation).
+        } else {
+            ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
+                                     SAMPLE_DELAY + startSample,
+                                     op.getRxDecimationFactor() + 1,
+                                     rxMapId);
+            outputAddress += nBytes;
+        }
     }
 
     ius4oem->EnableSequencer();
     ius4oem->EnableTransmit();
 }
 
-std::pair<
+std::tuple<
     std::unordered_map<uint16, uint16>,
-    std::vector<Us4OEMImpl::Us4rBitMask>>
+    std::vector<Us4OEMImpl::Us4rBitMask>,
+    FrameChannelMapping::Handle>
 Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
-    // TODO this function should also return a channel mapping for each of the operation
-    // TODO setTxRxAperture should return an object of type "FrameMapping"
-    // a FrameMapping will contain a method: expected frame -> expected channel -> actual frame, actual chnanel
-
-    // those frame mapping should be used by the adapter to convert
-
-    // the used by the probe to convert to appropriately
-
-    // so, for example, setting rx aperture to 0, 33, 66 should give rx mapping 0 -> 0, 33 -> 1, 66 -> 2
-    // if e.g channels 33 and 66 are conflicting, should be 0-> 0, 33 -> 1, 66 -> ???
-    // for all conflicting channels in the original rx aperture, set destination value to some "None", e.g. -1
-    // TODO log information, which channels will be turned off
-
     // a map: op ordinal number -> rx map id
     std::unordered_map<uint16, uint16> result;
     std::unordered_map<std::vector<uint8>, uint16, ContainerHash<uint8>> rxMappings;
+
+    // FC mapping
+    size_t numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
+    FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
 
     // Rx apertures after taking into account possible conflicts in Rx channel
     // mapping.
@@ -266,20 +261,26 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
     uint16 rxMapId = 0;
     uint16 opId = 0;
+    uint16 noRxNopId = 0;
     for(const auto &op: seq) {
+        // Considering rx nops: rx channel mapping will be equal [0, 1,.. 31].
         // uint8 is required by us4r API.
         std::vector<uint8> mapping;
         std::unordered_set<uint8> channelsUsed;
 
         // Convert rx aperture + channel mapping -> rx channel mapping
-        uint8 channel = 0;
 
         std::vector<uint8> conflictingChannels;
         std::bitset<N_ADDR_CHANNELS> outputRxAperture;
 
+        uint8 channel = 0;
+        uint8 onChannel = 0;
+        bool isRxNop = true; // Will be false, if at least one channel is on (no rxnop).
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
-                auto rxChannel = channel % N_RX_CHANNELS;
+                isRxNop = false;
+                auto rxChannel = channelMapping[channel];
+                rxChannel = rxChannel % N_RX_CHANNELS;
                 // set rx channel mapping, even if the channel is conflicting -
                 // this way we keep the expected shape of rx data as is
                 // (with some "bad data" gaps).
@@ -291,17 +292,23 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 // Turn off conflicting channels
                 if(setContains(channelsUsed, channel)) {
                     conflictingChannels.push_back(channel);
+                    ARRUS_REQUIRES_TRUE_E(
+                        onChannel < N_RX_CHANNELS,
+                        ArrusException("Up to 32 active rx channels can be set."));
+                    fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, onChannel);
                 } else {
                     outputRxAperture[channel] = true;
+                    fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, FrameChannelMapping::UNAVAILABLE);
                 }
-
+                ++onChannel;
             }
-            channel++;
+            ++channel;
         }
         outputRxApertures.push_back(outputRxAperture);
 
         auto mappingIt = rxMappings.find(mapping);
         if(mappingIt == std::end(rxMappings)) {
+            // Create new Rx channel mapping.
             rxMappings.emplace(mapping, rxMapId);
             result.emplace(opId, rxMapId);
 
@@ -323,16 +330,20 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                                     mapping.size()));
             ARRUS_REQUIRES_TRUE(
                 rxMapId < 128,
-                arrus::format("A maximum of 128 different rx mappings can be loaded "
+                arrus::format("128 different rx mappings can be loaded only"
                               ", deviceId: {}.", getDeviceId().toString()));
             ius4oem->SetRxChannelMapping(mapping, rxMapId);
             ++rxMapId;
         } else {
+            // Use the existing one.
             result.emplace(opId, mappingIt->second);
         }
         ++opId;
+        if(!isRxNop) {
+            ++noRxNopId;
+        }
     }
-    return {result, outputRxApertures};
+    return {result, outputRxApertures, fcmBuilder.build()};
 }
 
 double Us4OEMImpl::getSamplingFrequency() {

@@ -2,11 +2,14 @@
 #define ARRUS_CORE_DEVICES_US4R_COMMON_H
 
 #include <vector>
+#include <tuple>
 
-
+#include "arrus/core/api/common/types.h"
 #include "arrus/common/asserts.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+
+#include <unsupported/Eigen/CXX11/Tensor>
 
 namespace arrus::devices {
 
@@ -29,9 +32,15 @@ namespace arrus::devices {
  * the second sequence will extended by NOP TxRxParameters.
  *
  * @param seqs tx/rx sequences to recalculate
- * @return recalculated sequences
+ * @return recalculated sequences,
+ *         a mapping (module, input op index, rx channel) -> output op index,
+ *         a mapping (module, input op index, rx channel) -> output op rx channel
  */
-std::vector<TxRxParamsSequence>
+std::tuple<
+    std::vector<TxRxParamsSequence>,
+    Eigen::Tensor<int32, 3>,
+    Eigen::Tensor<int32, 3>
+>
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs);
 
 }
