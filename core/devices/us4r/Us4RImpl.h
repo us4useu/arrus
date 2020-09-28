@@ -11,16 +11,16 @@
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.h"
-#include "arrus/core/devices/probe/ProbeImpl.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
+#include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/hv/HV256Impl.h"
 
 namespace arrus::devices {
 
 class Us4RImpl : public Us4R {
 public:
-    using Us4OEMs = std::vector<Us4OEMImpl::Handle>;
+    using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
 
     ~Us4RImpl() override {
         getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
@@ -34,8 +34,8 @@ public:
 
     Us4RImpl(const DeviceId &id,
              Us4OEMs &us4oems,
-             ProbeAdapterImpl::Handle &probeAdapter,
-             ProbeImpl::Handle &probe,
+             ProbeAdapterImplBase::Handle &probeAdapter,
+             ProbeImplBase::Handle &probe,
              std::optional<HV256Impl::Handle> hv)
         : Us4R(id), us4oems(std::move(us4oems)),
           probeAdapter(std::move(probeAdapter)),
@@ -107,8 +107,8 @@ public:
 private:
     Logger::Handle logger;
     Us4OEMs us4oems;
-    std::optional<ProbeAdapterImpl::Handle> probeAdapter;
-    std::optional<ProbeImpl::Handle> probe;
+    std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
+    std::optional<ProbeImplBase::Handle> probe;
     std::optional<HV256Impl::Handle> hv;
 
     UltrasoundDevice *getDefaultComponent();

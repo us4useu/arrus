@@ -14,10 +14,10 @@ using namespace ::arrus::ops::us4r;
 
 ProbeAdapterImpl::ProbeAdapterImpl(DeviceId deviceId,
                                    ProbeAdapterModelId modelId,
-                                   std::vector<Us4OEMImpl::RawHandle> us4oems,
+                                   std::vector<Us4OEMImplBase::RawHandle> us4oems,
                                    ChannelIdx numberOfChannels,
                                    ChannelMapping channelMapping)
-    : ProbeAdapter(deviceId), logger(getLoggerFactory()->getLogger()),
+    : ProbeAdapterImplBase(deviceId), logger(getLoggerFactory()->getLogger()),
       modelId(std::move(modelId)),
       us4oems(std::move(us4oems)),
       numberOfChannels(numberOfChannels),

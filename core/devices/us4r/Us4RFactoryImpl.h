@@ -73,17 +73,17 @@ public:
                 probeAdapterSettings, probeSettings, rxSettings);
 
             auto [us4oems, masterIUs4OEM] = getUs4OEMs(us4OEMSettings);
-            std::vector<Us4OEMImpl::RawHandle> us4oemPtrs(us4oems.size());
+            std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(
                 std::begin(us4oems), std::end(us4oems),
                 std::begin(us4oemPtrs),
                 [](const Us4OEM::Handle &ptr) { return ptr.get(); });
             // Create adapter.
-            ProbeAdapterImpl::Handle adapter =
+            ProbeAdapterImplBase::Handle adapter =
                 probeAdapterFactory->getProbeAdapter(adapterSettings,
                                                      us4oemPtrs);
             // Create probe.
-            ProbeImpl::Handle probe = probeFactory->getProbe(probeSettings,
+            ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings,
                                                              adapter.get());
 
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
@@ -100,7 +100,7 @@ private:
     /**
      * @return a pair: us4oems, master ius4oem
      */
-    std::pair<std::vector<Us4OEMImpl::Handle>, IUs4OEM*>
+    std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM*>
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");

@@ -13,6 +13,7 @@
 #include "arrus/core/devices/UltrasoundDevice.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 
 
 namespace arrus::devices {
@@ -22,7 +23,7 @@ namespace arrus::devices {
  *
  * This class stores reordered channels, as it is required in IUs4OEM docs.
  */
-class Us4OEMImpl : public Us4OEM, public UltrasoundDevice {
+class Us4OEMImpl : public Us4OEMImplBase {
 public:
     using Handle = std::unique_ptr<Us4OEMImpl>;
     using RawHandle = PtrHandle<Us4OEMImpl>;
@@ -65,8 +66,9 @@ public:
 
     void stopTrigger() override;
 
-    FrameChannelMapping::Handle setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                                                const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
+    FrameChannelMapping::Handle setTxRxSequence(
+        const std::vector<TxRxParameters> &seq,
+        const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
 
     double getSamplingFrequency() override;
 

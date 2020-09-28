@@ -12,9 +12,9 @@ namespace arrus::devices {
 
 class ProbeAdapterFactoryImpl : public ProbeAdapterFactory {
 public:
-    ProbeAdapterImpl::Handle
+    ProbeAdapterImplBase::Handle
     getProbeAdapter(const ProbeAdapterSettings &settings,
-                    const std::vector<Us4OEMImpl::RawHandle> &us4oems) override {
+                    const std::vector<Us4OEMImplBase::RawHandle> &us4oems) override {
         const DeviceId id(DeviceType::ProbeAdapter, 0);
         ProbeAdapterSettingsValidator validator(id.getOrdinal());
         validator.validate(settings);
@@ -33,7 +33,7 @@ public:
 private:
     static void assertCorrectNumberOfUs4OEMs(
         const ProbeAdapterSettings &settings,
-        const std::vector<Us4OEM::RawHandle> &us4oems) {
+        const std::vector<Us4OEMImplBase::RawHandle> &us4oems) {
         std::unordered_set<Ordinal> ordinals;
         for(auto value : settings.getChannelMapping()) {
             ordinals.insert(value.first);

@@ -7,10 +7,7 @@ namespace arrus::devices {
 
 class Probe : public Device {
 public:
-
     using Handle = std::unique_ptr<Probe>;
-
-    explicit Probe(const DeviceId &id): Device(id) {}
 
     virtual ~Probe() = default;
 
@@ -18,6 +15,9 @@ public:
     Probe(Probe const&&) = delete;
     void operator=(Probe const&) = delete;
     void operator=(Probe const&&) = delete;
+protected:
+    explicit Probe(const DeviceId &id): Device(id) {}
+
 };
 
 }

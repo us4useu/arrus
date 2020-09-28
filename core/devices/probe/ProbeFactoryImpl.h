@@ -16,8 +16,8 @@ namespace arrus::devices {
 
 class ProbeFactoryImpl : public ProbeFactory {
 public:
-    ProbeImpl::Handle getProbe(const ProbeSettings &settings,
-                           ProbeAdapterImpl::RawHandle adapter) override {
+    ProbeImplBase::Handle getProbe(const ProbeSettings &settings,
+                           ProbeAdapterImplBase::RawHandle adapter) override {
         DeviceId id(DeviceType::Probe, 0);
         ProbeSettingsValidator validator(id.getOrdinal());
         validator.validate(settings);

@@ -6,9 +6,9 @@
 namespace arrus::devices {
 
 ProbeImpl::ProbeImpl(const DeviceId &id, ProbeModel model,
-                     ProbeAdapterImpl::RawHandle adapter,
+                     ProbeAdapterImplBase::RawHandle adapter,
                      std::vector<ChannelIdx> channelMapping)
-    : Probe(id), logger{getLoggerFactory()->getLogger()},
+    : ProbeImplBase(id), logger{getLoggerFactory()->getLogger()},
       model(std::move(model)), adapter(adapter),
       channelMapping(std::move(channelMapping)) {
 
@@ -45,9 +45,8 @@ private:
     const ProbeModel &modelRef;
 };
 
-
-void ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                                const ops::us4r::TGCCurve &tgcSamples) {
+FrameChannelMapping::Handle ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                                                       const ops::us4r::TGCCurve &tgcSamples) {
     // Validate input sequence
     ProbeTxRxValidator validator(
         ::arrus::format("{} tx rx sequence", getDeviceId().toString()), model);
@@ -85,7 +84,7 @@ void ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                 op.getRxDecimationFactor(), op.getPri());
     }
 
-    adapter->setTxRxSequence(adapterSeq, tgcSamples);
+    return adapter->setTxRxSequence(adapterSeq, tgcSamples);
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {

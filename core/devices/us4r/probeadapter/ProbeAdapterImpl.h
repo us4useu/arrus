@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
+#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/devices/TxRxParameters.h"
@@ -14,7 +14,7 @@
 
 namespace arrus::devices {
 
-class ProbeAdapterImpl : public ProbeAdapter {
+class ProbeAdapterImpl : public ProbeAdapterImplBase {
 public:
     using Handle = std::unique_ptr<ProbeAdapterImpl>;
     using RawHandle = PtrHandle<ProbeAdapterImpl>;
@@ -23,7 +23,7 @@ public:
     using ChannelMapping = ProbeAdapterSettings::ChannelMapping;
 
     ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,
-                     std::vector<Us4OEMImpl::RawHandle> us4oems,
+                     std::vector<Us4OEMImplBase::RawHandle> us4oems,
                      ChannelIdx numberOfChannels,
                      ChannelMapping channelMapping);
 
@@ -31,13 +31,14 @@ public:
         return numberOfChannels;
     }
 
-    FrameChannelMapping::Handle setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                                                const ::arrus::ops::us4r::TGCCurve &tgcSamples);
+    FrameChannelMapping::Handle setTxRxSequence(
+        const std::vector<TxRxParameters> &seq,
+        const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
 
 private:
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
-    std::vector<Us4OEMImpl::RawHandle> us4oems;
+    std::vector<Us4OEMImplBase::RawHandle> us4oems;
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
 };
