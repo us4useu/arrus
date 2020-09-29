@@ -81,6 +81,7 @@ classdef Us4R < handle
             obj.sys.angElem = probe.angElem;% [rad] (1 x nElem) orientation of probe elements
             obj.sys.zElem = probe.zElem;	% [m] (1 x nElem) z-position of probe elements
             obj.sys.xElem = probe.xElem;	% [m] (1 x nElem) x-position of probe elements
+            obj.sys.probeTxChannelsOff = probe.txChannelsOff;
 %             obj.sys.maxVpp = probe.maxVpp;
 
             if obj.sys.adapType == 0
@@ -484,11 +485,14 @@ classdef Us4R < handle
             else
                 iElem = [iElem, nan(1, obj.sys.nChTotal-length(iElem))];
             end
+            txChannelsMask = true(size(iElem));
+            txChannelsMask(obj.sys.probeMap(obj.sys.probeTxChannelsOff)) = false;
             
             obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
             
             obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
+            obj.seq.txApMask = obj.seq.txApMask & txChannelsMask;
             obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
             
             obj.seq.rxElemId = (iElem.' - obj.seq.rxApOrig + 1) .* obj.seq.rxApMask;

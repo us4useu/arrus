@@ -11,6 +11,8 @@ switch probeName
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
         probe.maxVpp = 100; 
+        % probe channels, that should be always turned off.
+        probe.txChannelOff = 1:32;
         
     case 'SP2430'
         probe.nElem	= 96;
