@@ -18,4 +18,3 @@ Welcome to ARRUS documentation!
 
     content/misc/acknowledgments
     content/misc/release_notes
-
