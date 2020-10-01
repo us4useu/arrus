@@ -7,9 +7,9 @@ Installation
 Requirements
 ============
 
-Microsoft® Windows 10 x64 operating system is supported.
+The Microsoft® Windows 10 x64 operating system is supported.
 
-Make sure that you have installed following dependencies:
+Make sure that you have installed the following dependencies:
 
 - `Microsoft Visual C++ Redistributable for Visual Studio 2017 <https://aka.ms/vs/16/release/vc_redist.x64.exe>`_
 
@@ -21,7 +21,7 @@ Startup
 
 .. caution::
 
-    If you use **MSI GS65 notebook** and connect with the device via Thunderbolt-3
+    If you use the **MSI GS65 notebook** and connect with the device via a Thunderbolt-3
     cable, you have to follow this extended startup procedure:
 
     1. Turn off the notebook and your device, plug off Thunderbolt-3 cable.
@@ -33,20 +33,20 @@ Startup
 Drivers
 -------
 
-Make sure, that your us4R-lite device is properly connected via Thunderbolt-3
+Make sure that your us4R-lite device is properly connected via a Thunderbolt-3
 cable and is enabled in your Thunderbolt software, e.g.:
 
 .. figure:: img/thunderbolt.png
     :scale: 80%
 
-The `Connection status` should be `Connected` (or something similar).
+The `Connection status` should read `Connected` (or something similar).
 
 Uninstall ARIUS drivers (if previously installed)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 If ARIUS drivers are installed on your computer, uninstall them first. ARIUS
-drivers are the legacy drivers that were required before 0.4.3 version.
+drivers are the legacy drivers that were required before the 0.4.3 version.
 
-1. Open Windows Device Manager, uninstall all ``ARIUS`` and ``WinDriver1290``
+1. Open the Windows Device Manager, uninstall all ``ARIUS`` and ``WinDriver1290``
    devices available in the "Jungo Connectivity" node. **Check
    "Delete the driver software for this device"**.
 
@@ -59,11 +59,11 @@ drivers are the legacy drivers that were required before 0.4.3 version.
 Install Us4OEM drivers
 ~~~~~~~~~~~~~~~~~~~~~~
 
-1. Download and extract ``us4oem-drivers-1290.zip`` (ask us4us support to get the newest version).
+1. Download and extract ``us4oem-drivers-1290.zip`` (contact us4us support to make sure you get the newest version).
 2. Run ``install.bat`` with **administrative privileges**. Confirm driver
    installation if necessary.
 
-As a result, ``us4oem`` and ``us4OEM`` nodes should be visible in the
+``us4oem`` and ``us4OEM`` nodes should now be visible in the
 Device Manager.
 
 .. figure:: img/dev_manager.png
@@ -73,10 +73,10 @@ Device Manager.
 ARRUS
 -----
 
-Before proceeding please make sure the device is properly connected to the computer.
+Before you proceed, please make sure the device is properly connected to the computer.
 
-1. Download and extract |arrus|_ package.
-2. Run ``install.exe`` file and follow provided instructions.
+1. Download and extract the |arrus|_ package.
+2. Run the ``install.exe`` file and follow the instructions provided.
 
 .. _fig-install_result:
 .. figure:: img/install_result.png
