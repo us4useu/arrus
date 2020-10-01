@@ -6,13 +6,13 @@ API Reference
 
 .. caution::
 
-    We will do our best to maintain backward compatibility, but please note
-    that ARRUS is under development and its API may be modified
+    We will do our best to maintain backward compatibility but please note
+    that ARRUS is currently under development and its API may be modified
     in the future.
 
 .. _arrus-Us4R:
 
-Handle to Us4R System
+Handle to the Us4R System
 =====================
 
 .. mat:autoclass:: arrus.Us4R
@@ -35,7 +35,7 @@ Each operation derives from the Operation class.
 TX/RX sequences
 ~~~~~~~~~~~~~~~
 
-All TX/RX sequence derives parameters from :class:`SimpleTxRxSequence` class.
+All TX/RX sequences derive parameters from the :class:`SimpleTxRxSequence` class.
 
 .. _arrus.SimpleTxRxSequence:
 
@@ -44,7 +44,7 @@ All TX/RX sequence derives parameters from :class:`SimpleTxRxSequence` class.
     :members:
 
 
-Following specific sequences are currently available in the system:
+Specific sequences currently available in the system are as follows:
 
 .. _arrus.PWISequence:
 
