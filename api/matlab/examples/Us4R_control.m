@@ -3,7 +3,7 @@
 % addpath('../arrus');
 
 nUs4OEM     = 2;
-probeName	= '5L128';
+probeName	= 'SL1543';
 adapterType = 'esaote3';
 
 txFrequency = 5e6;
