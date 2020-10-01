@@ -485,13 +485,14 @@ classdef Us4R < handle
             else
                 iElem = [iElem, nan(1, obj.sys.nChTotal-length(iElem))];
             end
-            systemChannelsMask = true(size(iElem));
-            systemChannelsMask(obj.sys.probeMap(obj.sys.probesChannelsMask)) = false;
+            
             
             obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
             
             obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
+            systemChannelsMask = true(size(obj.seq.txApMask));
+            systemChannelsMask(obj.sys.probeMap(obj.sys.probeChannelsMask), :) = false;
             obj.seq.txApMask = obj.seq.txApMask & systemChannelsMask;
             obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
             obj.seq.rxApMask = obj.seq.rxApMask & systemChannelsMask;
