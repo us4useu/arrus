@@ -6,15 +6,15 @@ API Reference
 
 .. caution::
 
-    We will do our best to maintain backward compatibility, but please note
-    that ARRUS is under development and its API may be modified in the future.
+    We will do our best to maintain backward compatibility but please note
+    that ARRUS is currently under development and its API may be modified in the future.
 
 
 Devices
 =======
 
 **Do not create instances of the below classes directly**. Use
-``session.get_device`` to acquire appropriate device, for example:
+``session.get_device`` to acquire the appropriate device, for example:
 ``session.get_device('Us4OEM:0')``.
 
 .. autoclass:: arrus.devices.us4oem.Us4OEM
@@ -85,7 +85,7 @@ Session
 Configuration
 =============
 
-Configuration to apply to each of the arrus components.
+The configuration to apply to each of the Arrus components.
 
 .. autoclass:: arrus.CustomUs4RCfg
     :members:
@@ -116,20 +116,20 @@ Legacy API Reference
 
 .. danger::
 
-    Below API is deprecated and it is discouraged to use it. Legacy API
-    will be removed in near future.
+    The API below is deprecated and we discourage using it. The legacy API
+    will be removed in the near future.
 
 Interface
 ---------
 
-An interface contains all information required to configure probe's adapter
-which is provided with us4OEM module. Use following function to obtain an
+An interface contains all the information required to configure the probe adapter
+provided with the us4OEM module. Use the following function to obtain the
 appropriate interface.
 
 
 .. autofunction:: arrus.interface.get_interface
 
-Currently, an ``esaote`` and ``ultrasonix`` interface are implemented.
+Currently, ``esaote`` and ``ultrasonix`` interfaces are implemented.
 
 .. autoclass:: arrus.interface.UltrasoundInterface
     :members:
@@ -137,7 +137,7 @@ Currently, an ``esaote`` and ``ultrasonix`` interface are implemented.
 Interactive session
 -------------------
 
-A session object allows you to obtain an appropriate device handler.
+A session object allows you to obtain the appropriate device handler.
 
 .. autoclass:: arrus.session.InteractiveSession
     :members:
