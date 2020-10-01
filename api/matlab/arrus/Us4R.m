@@ -12,8 +12,9 @@ classdef Us4R < handle
     % 
     % Available adapter types:
     %
-    % - 'esaote': legacy adapter for esaote probes,
-    % - 'esaote2': current version of the esaote adapter,
+    % - 'esaote': 1st esaote adapter (no alternation in element handling),
+    % - 'esaote2': 2nd esaote adapter (troublesome mapping),
+    % - 'esaote3': current version of the esaote adapter,
     % - 'ultrasonix': current version of the ultrasonix probe adapter. 
     % - 'atl/philips': current version of the ATL/PHILIPS probe adapter.
     % 
@@ -52,7 +53,7 @@ classdef Us4R < handle
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
-            obj.sys.curv = probe.curv;
+            obj.sys.curvRadius = probe.curvRadius;
             obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
@@ -280,7 +281,7 @@ classdef Us4R < handle
             end
             
             %% Warning: Convex & PWI/STA
-            if obj.sys.curv ~= 0 && ~strcmp(obj.seq.type,"lin")
+            if ~isnan(obj.sys.curvRadius) && ~strcmp(obj.seq.type,"lin")
                 warning('In this API version only LIN sequence is valid for convex arrays.');
             end
             
@@ -592,7 +593,7 @@ classdef Us4R < handle
         function validateSequence(obj)
             
             %% Validate number of firings
-            if obj.seq.nFire > 1024
+            if obj.seq.nFire > 2048
                 error("ARRUS:IllegalArgument", ...
                         ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
             end
@@ -604,9 +605,9 @@ classdef Us4R < handle
             end
             
             %% Validate number of samples
-            if obj.seq.nSamp > 2^13/obj.seq.fsDivider
+            if obj.seq.nSamp > 65536/obj.seq.fsDivider
                 error("ARRUS:IllegalArgument", ...
-                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(2^13/obj.seq.fsDivider) '.'])
+                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536/obj.seq.fsDivider) '.'])
             end
             
             if mod(obj.seq.nSamp,64) ~= 0
