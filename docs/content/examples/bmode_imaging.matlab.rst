@@ -2,13 +2,13 @@
 B-mode Imaging
 ==============
 
-In the following parts of this chapter we show how you can communicate with
+In the following parts of this chapter, we will show you how to communicate with
 the system in order to acquire RF data for B-mode image reconstruction using
-ARRUS software. The source code of the ready to run examples is in
+ARRUS software. The source code of the ready-to-run examples can be found in
 |api_language|/examples directory.
 
 For more information on the parameters of individual functions please refer
-to the section :ref:`arrus-api-main`.
+to section :ref:`arrus-api-main`.
 
 Coordinate system
 =================
@@ -19,20 +19,20 @@ The adopted coordinate system is shown in :numref:`fig-coordinate_system`.
 .. figure:: img/coordinate_system.jpeg
 
      Adopted coordinate system in the imaging plane (left) and taking into
-     account 3rd dimension (right).
+     account the 3rd dimension (right).
 
 Important notes:
 
 * point coordinates are written in (z,x) or (z,x,y) format
 * point (0,0,0) is at the center of the probe’s surface,
-* orientation of coordinates axes are shown in :numref:`fig-coordinate_system` ,
+* the orientation of the coordinates' axes are shown in :numref:`fig-coordinate_system` ,
 * angle :math:`\phi=0`  covers with the z-axis direction and positive
   :math:`\phi` direction is counter-clockwise.
 
 Operations
 ==========
 
-In ARRUS users can define and run **operations**  available for the
+In ARRUS, users can define and run the **operations**  available for the
 supported hardware. Transmission/reception (TX/RX) sequences and B-mode image
 reconstruction are examples of such operations.
 
@@ -45,7 +45,7 @@ The following sequences are currently available:
 * Plane Wave Imaging (PWI),
 * classical beamforming (LIN).
 
-To define an operation, user should create an instance of an appropriate
+To define an operation, the user should create an instance of an appropriate
 class.
 
 For example, to create a TX/RX sequence for Synthetic Transmit Aperture Imaging:
@@ -95,12 +95,12 @@ To create a TX/RX sequence for classical beamforming:
                          'tgcStart',        14, ...
                          'tgcSlope',        2e2);
 
-For more information check the documentation of available :ref:`arrus-api-sequences`.
+For more information, see the documentation of available :ref:`arrus-api-sequences`.
 
 Reconstruction
 ~~~~~~~~~~~~~~
 
-To perform B-mode image reconstruction, create an instance of
+To perform B-mode image reconstruction, create an instance of the
 :ref:`arrus.Reconstruction` class.
 
 .. code-block:: matlab
@@ -118,33 +118,33 @@ Running operations in the system
 =================================
 
 First, you should create a handle to the system on which you want to perform
-operations. For example, to communicate with Us4R system, create an instance of
+operations. For example, to communicate with the Us4R system, create an instance of the
 Us4R class.
 
 .. code-block:: matlab
 
-    % Create a handle to Us4R system with two modules and set voltage to 50
+    % Create a handle to the Us4R system with two modules and set voltage to 50
     us	= Us4R(2, 'AL2442', 50);
 
-Before running a specific operation, upload it on the system:
+Before running a specific operation, upload it onto the system:
 
 .. code-block:: matlab
 
     us.upload(seqPWI);
 
-If you want to run the uploaded operation only once (for example, to acquire
-single RF frame), use the ``run`` function.
+If you only want to run the uploaded operation once (for example, to acquire
+a single RF frame), use the ``run`` function.
 
 .. code-block:: matlab
 
     [rf,img] = us.run;
 
 If you want to run the uploaded operation in a loop (for example, to display
-B-mode image interactively), use the ``runLoop`` function.
+a B-mode image interactively), use the ``runLoop`` function.
 
 .. code-block:: matlab
 
     displayWindow = BModeDisplay((-20:0.10:20)*1e-3, (  0:0.10:50)*1e-3);
     us.runLoop(@displayWindow.isOpen, @displayWindow.updateImg);
 
-Check the :ref:`arrus-Us4R` docs for more information.
+See the :ref:`arrus-Us4R` docs for more information.
