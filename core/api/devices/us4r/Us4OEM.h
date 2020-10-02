@@ -13,8 +13,6 @@ public:
     using Handle = std::unique_ptr<Us4OEM>;
     using RawHandle = PtrHandle<Us4OEM>;
 
-    explicit Us4OEM(const DeviceId &id): Device(id) {}
-
     ~Us4OEM() override = default;
 
     virtual double getSamplingFrequency() = 0;
@@ -23,6 +21,8 @@ public:
     Us4OEM(Us4OEM const&&) = delete;
     void operator=(Us4OEM const&) = delete;
     void operator=(Us4OEM const&&) = delete;
+protected:
+    explicit Us4OEM(const DeviceId &id): Device(id) {}
 };
 
 
