@@ -25,7 +25,9 @@ FrameChannelMappingImpl::getChannel(FrameNumber frame, ChannelIdx channel) {
 }
 
 uint32 FrameChannelMappingImpl::getNumberOfFrames() {
-    return frameMapping.rows();
+    assert(frameMapping.rows() >= 0
+           && frameMapping.rows() <= std::numeric_limits<uint32>::max());
+    return static_cast<uint32>(frameMapping.rows());
 }
 
 void
@@ -43,7 +45,6 @@ FrameChannelMappingBuilder::FrameChannelMappingBuilder(FrameNumber nFrames, Chan
     : frameMapping(FrameChannelMappingImpl::FrameMapping(nFrames, nChannels)),
       channelMapping(FrameChannelMappingImpl::ChannelMapping(nFrames, nChannels)) {
 
-    frameMapping.fill(FrameChannelMapping::UNAVAILABLE);
     channelMapping.fill(FrameChannelMapping::UNAVAILABLE);
 }
 

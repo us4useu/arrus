@@ -72,7 +72,7 @@ inline std::vector<std::pair<T, U>>
 zip(const std::vector<T> &a, const std::vector<U> &b) {
     if(a.size() != b.size()) {
         throw IllegalArgumentException("Zipped vectors should "
-                                           "have the same size.");
+                                       "have the same size.");
     }
     std::vector<std::pair<T, U>> res;
     res.reserve(a.size());
@@ -121,9 +121,9 @@ concat(const std::vector<std::vector<T>> &a) {
 
 template<typename T>
 inline std::vector<T>
-permute(const std::vector<T> &input, const gsl::span<size_t> &perm) {
+permute(const std::vector<T> &input, const std::vector<ChannelIdx> &perm) {
     std::vector<T> output(perm.size());
-    for(size_t i = 0; i < perm.size(); ++i) {
+    for(size_t i = 0; i < static_cast<size_t>(perm.size()); ++i) {
         output[i] = input[perm[i]];
     }
     return output;
@@ -139,9 +139,38 @@ toBitset(const std::vector<bool> &in) {
     return result;
 }
 
-template <typename Map, typename K>
+template<typename Map, typename K>
 inline bool containsKey(Map map, const K &key) {
     return map.find(key) != std::end(map);
+}
+
+template<typename T>
+inline void setValuesInRange(std::vector<T> &container, size_t start, size_t end, const T &value) {
+    for(size_t i = start; i < end; ++i) {
+        container[i] = value;
+    }
+}
+
+template<typename T>
+inline void setValuesInRange(std::vector<T> &container, size_t start, size_t end,
+                             const std::function<T(size_t)> &generator) {
+    for(size_t i = start; i < end; ++i) {
+        container[i] = generator(i);
+    }
+}
+
+template<typename T>
+inline void setValuesInRange(std::vector<T> &container, size_t start, size_t end,
+                             const std::vector<T>& source) {
+    if(source.size != end-start) {
+        throw IllegalArgumentException(
+            arrus::format("Source vector should have exactly {} elements "
+                          "when assing it to the selected range.",
+                          end-start));
+    }
+    for(size_t i = start; i < end; ++i) {
+        container[i] = source[i-start];
+    }
 }
 
 }

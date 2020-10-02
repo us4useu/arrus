@@ -46,14 +46,25 @@ public:
     static constexpr ChannelIdx N_ACTIVE_CHANNEL_GROUPS =
         N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
 
+    static constexpr float MIN_TX_DELAY = 0.0f;
+    static constexpr float MAX_TX_DELAY = 19.96e-6f;
+
+    static constexpr float MIN_TX_FREQUENCY = 1e6f;
+    static constexpr float MAX_TX_FREQUENCY = 20e6f;
+
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32 SAMPLE_DELAY = 240;
     static constexpr float RX_DELAY = 0.0;
     static constexpr float RX_TIME_EPSILON = static_cast<float>(10e-6);
-
+    static constexpr uint32 MIN_NSAMPLES = 64;
+    static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
     static constexpr size_t DDR_OFFSET_HOST = 0x1'0000'0000;
+    static constexpr size_t DDR_SIZE = 1ull << 32u;
+    // Other
+    static constexpr float MIN_PRI = 50e-6f;
+    static constexpr float MAX_PRI = 1.0f;
 
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,

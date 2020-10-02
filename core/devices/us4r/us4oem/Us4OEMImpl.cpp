@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "arrus/common/format.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/common/asserts.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
@@ -16,7 +17,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                        const BitMask &activeChannelGroups,
                        std::vector<uint8_t> channelMapping,
                        uint16 pgaGain, uint16 lnaGain)
-    : Us4OEM(id), logger{getLoggerFactory()->getLogger()},
+    : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()},
       ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)),
       pgaGain(pgaGain), lnaGain(lnaGain) {
@@ -25,17 +26,17 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
 
     // This class stores reordered active groups of channels,
     // as presented in the IUs4OEM docs.
-    static const size_t acgRemap[] = {0, 4, 8, 12,
-                                      2, 6, 10, 14,
-                                      1, 5, 9, 13,
-                                      3, 7, 11, 15};
+    static const std::vector<ChannelIdx> acgRemap = {0, 4, 8, 12,
+                                                     2, 6, 10, 14,
+                                                     1, 5, 9, 13,
+                                                     3, 7, 11, 15};
     auto acg = ::arrus::permute(activeChannelGroups, acgRemap);
-    ARRUS_REQUIRES_TRUE(acg.size == activeChannelGroups.size(),
+    ARRUS_REQUIRES_TRUE(acg.size() == activeChannelGroups.size(),
                         arrus::format(
                             "Invalid number of active channels mask elements; "
-                            "the input has {}, expected: {}" acg.size(),
+                            "the input has {}, expected: {}", acg.size(),
                             activeChannelGroups.size()));
-    activeChannelGroups = ::arrus::toBitset<N_ACTIVE_CHANNEL_GROUPS>(acg);
+    this->activeChannelGroups = ::arrus::toBitset<N_ACTIVE_CHANNEL_GROUPS>(acg);
 }
 
 Us4OEMImpl::~Us4OEMImpl() {
@@ -64,22 +65,30 @@ public:
     void validate(const TxRxParamsSequence &txRxs) override {
         // Validation according to us4oem technote
         ARRUS_VALIDATOR_EXPECT_IN_RANGE(txRxs.size(), size_t(1), size_t(2048));
+        const auto decimationFactor = txRxs[0].getRxDecimationFactor();
+        const auto startSample = txRxs[0].getRxSampleRange().start();
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs[firing];
             if(!op.isNOP()) {
-                auto firingStr = ::arrus::format("firing {}", firing);
+                auto firingStr = ::arrus::format(" (firing {})", firing);
 
                 // Tx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getTxAperture().size(), size_t(128), firingStr);
+                    op.getTxAperture().size(), size_t(Us4OEMImpl::N_TX_CHANNELS),
+                    firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getTxDelays().size(), size_t(128), firingStr);
+                    op.getTxDelays().size(), size_t(Us4OEMImpl::N_TX_CHANNELS),
+                    firingStr);
                 ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_VM(
-                    op.getTxDelays(), 0.0f, 19.96e-6f, firingStr);
+                    op.getTxDelays(),
+                    Us4OEMImpl::MIN_TX_DELAY, Us4OEMImpl::MAX_TX_DELAY,
+                    firingStr);
 
                 // Tx - pulse
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                    op.getTxPulse().getCenterFrequency(), 1e6f, 20e6f, firingStr);
+                    op.getTxPulse().getCenterFrequency(),
+                    Us4OEMImpl::MIN_TX_FREQUENCY, Us4OEMImpl::MAX_TX_FREQUENCY,
+                    firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
@@ -90,25 +99,31 @@ public:
 
                 // Rx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getRxAperture().size(), size_t(128), firingStr);
+                    op.getRxAperture().size(), size_t(Us4OEMImpl::N_ADDR_CHANNELS), firingStr);
                 size_t numberOfActiveRxChannels = std::accumulate(
-                    std::begin(op.getRxAperture()), std::end(op.getRxAperture()),
-                    false);
+                    std::begin(op.getRxAperture()), std::end(op.getRxAperture()), 0);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     numberOfActiveRxChannels, size_t(0), size_t(32), firingStr);
                 uint32 numberOfSamples = op.getNumberOfSamples();
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                 // should be enough for condition rxTime < 4000 [us]
-                    numberOfSamples, 64, 16384, firingStr);
+                    numberOfSamples, Us4OEMImpl::MIN_NSAMPLES, Us4OEMImpl::MAX_NSAMPLES, firingStr);
                 ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(
                     numberOfSamples, 64, firingStr);
-
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     op.getRxDecimationFactor(), 0, 5, firingStr);
-                // TODO should be the same for all operations
-                // TODO start sample should the same for all operations in a sequence
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                    op.getPri(), 50e-6f, 1.0f, firingStr);
+                    op.getPri(),
+                    Us4OEMImpl::MIN_PRI, Us4OEMImpl::MAX_PRI,
+                    firingStr);
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(
+                    op.getRxDecimationFactor() == decimationFactor,
+                    "Decimation factor should be the same for all operations." + firingStr
+                );
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(
+                    op.getRxSampleRange().start() == startSample,
+                    "Start sample should be the same for all operations." + firingStr
+                );
             }
         }
     }
@@ -159,9 +174,10 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     tgcValidator.throwOnErrors();
 
     // General sequence parameters.
+    auto nOps = static_cast<uint16>(seq.size());
     ius4oem->ClearScheduledReceive();
-    ius4oem->SetNTriggers(seq.size());
-    ius4oem->SetNumberOfFirings(seq.size());
+    ius4oem->SetNTriggers(nOps);
+    ius4oem->SetNumberOfFirings(nOps);
 
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 
@@ -171,14 +187,16 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     // us4oem rxdma output address
     size_t outputAddress = 0;
 
-    for(size_t firing = 0; firing < seq.size(); ++firing) {
+    for(uint16 firing = 0; firing < seq.size(); ++firing) {
         auto const &op = seq[firing];
         if(op.isNOP()) {
             logger->log(LogSeverity::TRACE,
-                        format("Setting tx/rx {}: NOP {}", firing, op));
+                        format("Setting tx/rx {}: NOP {}",
+                               firing, ::arrus::toString(op)));
         } else {
             logger->log(LogSeverity::TRACE,
-                        arrus::format("Setting tx/rx {}: {}", firing, op));
+                        arrus::format("Setting tx/rx {}: {}",
+                                      firing, ::arrus::toString(op)));
         }
         auto[startSample, endSample] = op.getRxSampleRange().asPair();
         size_t nSamples = endSample - startSample + 1;
@@ -219,7 +237,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
         ius4oem->SetRxTime(rxTime, firing);
 
-        ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, (1ull << 32u),
+        ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, DDR_SIZE,
                                ::arrus::format(
                                    "Total data size cannot exceed 4GiB (device {})",
                                    getDeviceId().toString()));
@@ -250,10 +268,10 @@ std::tuple<
 Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     // a map: op ordinal number -> rx map id
     std::unordered_map<uint16, uint16> result;
-    std::unordered_map<std::vector<uint8>, uint16, ContainerHash<uint8>> rxMappings;
+    std::unordered_map<std::vector<uint8>, uint16, ContainerHash<std::vector<uint8>>> rxMappings;
 
     // FC mapping
-    size_t numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
+    FrameChannelMapping::FrameNumber numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
     FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
 
     // Rx apertures after taking into account possible conflicts in Rx channel
@@ -363,12 +381,12 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
         ius4oem->TGCEnable();
 
         static const std::vector<float> tgcChar =
-            {14.000, 14.001, 14.002, 14.003, 14.024, 14.168, 14.480, 14.825,
-             15.234, 15.770, 16.508, 17.382, 18.469, 19.796, 20.933, 21.862,
-             22.891, 24.099, 25.543, 26.596, 27.651, 28.837, 30.265, 31.690,
-             32.843, 34.045, 35.543, 37.184, 38.460, 39.680, 41.083, 42.740,
-             44.269, 45.540, 46.936, 48.474, 49.895, 50.966, 52.083, 53.256,
-             54};
+            {14.000f, 14.001f, 14.002f, 14.003f, 14.024f, 14.168f, 14.480f, 14.825f,
+             15.234f, 15.770f, 16.508f, 17.382f, 18.469f, 19.796f, 20.933f, 21.862f,
+             22.891f, 24.099f, 25.543f, 26.596f, 27.651f, 28.837f, 30.265f, 31.690f,
+             32.843f, 34.045f, 35.543f, 37.184f, 38.460f, 39.680f, 41.083f, 42.740f,
+             44.269f, 45.540f, 46.936f, 48.474f, 49.895f, 50.966f, 52.083f, 53.256f,
+             54.0f};
         auto actualTGC = ::arrus::interpolate1d(
             tgcChar,
             ::arrus::getRange<float>(14, 54),

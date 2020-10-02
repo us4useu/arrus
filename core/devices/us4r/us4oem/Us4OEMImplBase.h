@@ -14,6 +14,7 @@ class Us4OEMImplBase : public Us4OEM, public UltrasoundDevice {
 public:
     using Handle = std::unique_ptr<Us4OEMImplBase>;
     using RawHandle = PtrHandle<Us4OEMImplBase>;
+    using Us4OEM::Us4OEM;
 };
 
 }

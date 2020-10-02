@@ -81,7 +81,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned short timeToNextTrigger, bool syncReq, unsigned short idx),
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx),
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
@@ -99,6 +99,8 @@ public:
     MOCK_METHOD(void, LockDMABuffer, (unsigned char * address, size_t length),
     (override));
     MOCK_METHOD(void, ReleaseDMABuffer, (unsigned char * address), (override));
+    MOCK_METHOD(void, ScheduleTransferRXBufferToHost, (const size_t, unsigned char *, size_t, size_t,
+        const std::function<void (void)> &));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

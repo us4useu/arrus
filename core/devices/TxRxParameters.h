@@ -140,7 +140,7 @@ using TxRxParamsSequence = std::vector<TxRxParameters>;
 /**
  * Returns the number of actual ops, that is, a the number of ops excluding RxNOPs.
  */
-size_t getNumberOfNoRxNOPs(const TxRxParamsSequence &seq);
+uint16 getNumberOfNoRxNOPs(const TxRxParamsSequence &seq);
 
 }
 

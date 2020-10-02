@@ -4,7 +4,7 @@
 namespace arrus {
 
 #define ARRUS_STRUCT_INIT_LIST(Type, initList)             \
-    []() {                                      \
+    [&]() {                                      \
         Type x;                                 \
         (initList);                                  \
         return x;                               \
