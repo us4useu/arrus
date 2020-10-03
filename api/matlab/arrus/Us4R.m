@@ -18,12 +18,14 @@ classdef Us4R < handle
     % - 'ultrasonix': current version of the ultrasonix probe adapter. 
     % - 'atl/philips': current version of the ATL/PHILIPS probe adapter.
     % 
-    % :param nArius: number of Us4OEM modules available in the us4R system
-    % :param probeName: name of the probe to use
-    % :param adapterType: name of the adapter type to use
-    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]
-    % :param logTime: set to true if you want to display acquisition \
-    %    and reconstruction time (optional)
+    % Only one of the following parameters should be provided: 
+    % 
+    % :param nArius: number of Us4OEM modules available in the us4R system. Required.
+    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Required.
+    % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
+    % :param probeName: name of the probe to use. The parameter is required when ``probe`` is not provided.
+    % :param adapterType: name of the adapter type to use. The parameter is required when ``probe`` is not provided.
+    % :param probe: definition of the probe to use. The parameter is required when ``probeName`` and ``adapterType`` are not provided.
 
     properties(Access = private)
         sys
@@ -34,13 +36,10 @@ classdef Us4R < handle
     
     methods
 
-        function obj = Us4R(nArius, probeName, adapterType, voltage, logTime)
-            if nargin < 5
-                obj.logTime = false;
-            else
-                obj.logTime = logTime;
-            end
-
+        function obj = Us4R(varargin)
+            [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin);
+            
+            obj.logTime = logTime;
             % System parameters
             obj.sys.nArius = nArius; % number of Arius modules
             obj.sys.nChArius = 32;
@@ -49,7 +48,9 @@ classdef Us4R < handle
 
             obj.sys.voltage = voltage;
             
-            probe = probeParams(probeName,adapterType);
+            if(isempty(probe))
+                probe = probeParams(probeName,adapterType);
+            end
             
             % checking if voltage is safe
             isProperVoltageValue = @(x) ...
@@ -77,10 +78,20 @@ classdef Us4R < handle
             obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
-            obj.sys.posElem = probe.posElem;% [m] (1 x nElem) position of probe elements along the probes surface
-            obj.sys.angElem = probe.angElem;% [rad] (1 x nElem) orientation of probe elements
-            obj.sys.zElem = probe.zElem;	% [m] (1 x nElem) z-position of probe elements
-            obj.sys.xElem = probe.xElem;	% [m] (1 x nElem) x-position of probe elements
+            
+            % position (pos,x,z) and orientation (ang) of each probe element
+            obj.sys.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+            if isnan(probe.curvRadius)
+                obj.sys.angElem = zeros(1,probe.nElem); % [rad] (1 x nElem) orientation of probe elements
+                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                obj.sys.zElem = zeros(1,probe.nElem);% [m] (1 x nElem) x-position of probe elements
+            else
+                obj.sys.angElem = obj.sys.posElem / -probe.curvRadius;
+                obj.sys.xElem = -probe.curvRadius * sin(obj.sys.angElem);
+                obj.sys.zElem = -probe.curvRadius * cos(obj.sys.angElem);
+                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+            end
+            
 %             obj.sys.maxVpp = probe.maxVpp;
 
             if obj.sys.adapType == 0
@@ -262,7 +273,45 @@ classdef Us4R < handle
 
         % Priority=Lo; scanConversion after envelope detection, scanConversion coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
-
+        
+        function [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin)
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'nArius', []);
+            addParameter(paramsParser, 'voltage', []);
+            addParameter(paramsParser, 'logTime', false);
+            addParameter(paramsParser, 'probeName', []);
+            addParameter(paramsParser, 'adapterType', []);
+            addParameter(paramsParser, 'probe', []);
+            parse(paramsParser, varargin{:});
+            
+            nArius = paramsParser.Results.nArius;
+            if(~isscalar(nArius))
+                error("ARRUS:IllegalArgument", ...
+                "Parameter nArius is required and should be a scalar");
+            end
+            voltage = paramsParser.Results.voltage;
+            if(~isscalar(voltage))
+                error("ARRUS:IllegalArgument", ...
+                "Parameter voltage is required and should be a scalar");
+            end
+            logTime = paramsParser.Results.logTime;
+            
+            % First option
+            probeName = paramsParser.Results.probeName;
+            adapterType = paramsParser.Results.adapterType;
+            if xor(isempty(probeName), isempty(adapterType))
+                error("ARRUS:IllegalArgument", ...
+                "All or none of the following parameters are required: probeName, adapterType");
+            end
+            
+            % Second option
+            probe = paramsParser.Results.probe;
+            if ~xor(isempty(probe), isempty(probeName))
+                error("ARRUS:IllegalArgument", ...
+                  "Exactly one of the following parameter should be provided: probe, pair(probeName, adapterType)");
+            end
+            
+        end
 
         function setSeqParams(obj,varargin)
 

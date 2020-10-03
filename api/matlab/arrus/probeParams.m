@@ -81,18 +81,7 @@ if ~isfield(probe,'curvRadius')
     probe.curvRadius = nan;
 end
 
-% position (pos,x,z) and orientation (ang) of each probe element
-probe.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch;
-if isnan(probe.curvRadius)
-    probe.angElem = zeros(1,probe.nElem);
-    probe.xElem = probe.posElem;
-    probe.zElem = zeros(1,probe.nElem);
-else
-    probe.angElem = probe.posElem / -probe.curvRadius;
-    probe.xElem = -probe.curvRadius * sin(probe.angElem);
-    probe.zElem = -probe.curvRadius * cos(probe.angElem);
-    probe.zElem = probe.zElem - min(probe.zElem);
-end
+
 
 %% Adapter type & channel mapping
 switch probeName
