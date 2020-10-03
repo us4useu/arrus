@@ -1,6 +1,15 @@
 Release notes
 =============
 
+Version 0.4.6
+-------------
+
+- MATLAB API:
+
+    - The list of Us4R class constructor parameters has been changed from list of positional \
+      parameters to a list of pairs (name, value). E.g. use \
+      ``Us4R('nArius', 2, 'voltage', 20, 'probeName', 'SL1543', 'adapterType', 'esaote3')``.
+
 Version 0.4.5
 -------------
 
