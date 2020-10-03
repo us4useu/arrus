@@ -1,6 +1,13 @@
 Release notes
 =============
 
+Version 0.4.6
+-------------
+
+- MATLAB API:
+
+    - Added parameter ``channelsMask`` to structure ``probe``. The parameter disables selected channels from Tx/Rx. 
+
 Version 0.4.5
 -------------
 
