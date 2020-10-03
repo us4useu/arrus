@@ -25,7 +25,7 @@ classdef Us4R < handle
     % :param logTime: set to true if you want to display acquisition \
     %    and reconstruction time (optional)
 
-    properties %(Access = private)
+    properties(Access = private)
         sys
         seq
         rec
@@ -694,7 +694,6 @@ classdef Us4R < handle
                 Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
                 Us4MEX(iArius, "ClearScheduledReceive");
                 
-%                 class(obj.seq.txInvert)
                 for iFire=0:(obj.seq.nFire-1)    
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
