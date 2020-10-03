@@ -20,7 +20,7 @@ classdef Us4R < handle
     % 
     % Only one of the following parameters should be provided: 
     % 
-    % :param nArius: number of Us4OEM modules available in the us4R system. Required.
+    % :param nUs4OEM: number of Us4OEM modules available in the us4R system. Required.
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Required.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
     % :param probeName: name of the probe to use. The parameter is required when ``probe`` is not provided.
@@ -276,7 +276,7 @@ classdef Us4R < handle
         
         function [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin)
             paramsParser = inputParser;
-            addParameter(paramsParser, 'nArius', []);
+            addParameter(paramsParser, 'nUs4OEM', []);
             addParameter(paramsParser, 'voltage', []);
             addParameter(paramsParser, 'logTime', false);
             addParameter(paramsParser, 'probeName', []);
