@@ -30,7 +30,7 @@ classdef Tx
             addRequired(p, 'pulse', @(x) isscalar(x) && isa(x, 'arrus.ops.us4r.Pulse'));
             parse(p,varargin{:});
             obj.aperture = p.Results.aperture;
-            obj.delay = p.Results.delays;
+            obj.delays = p.Results.delays;
             obj.pulse = p.Results.pulse;
         end
     end

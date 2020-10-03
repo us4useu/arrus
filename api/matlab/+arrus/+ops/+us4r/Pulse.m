@@ -16,13 +16,14 @@ classdef Pulse
     methods
         function obj = Pulse(varargin)
             p = inputParser;
-            addRequired(p, 'centerFrequency', @(x) isscalar(x) && numeric(x) ...
-                                                   && isfinite(x) && (x > 0) && isreal(x));
-            addRequired(p, 'nPeriods', @(x) isscalar(x) && isinteger(x) && (x > 0));
+%             addRequired(p, 'centerFrequency', @(x) isscalar(x) && isnumeric(x) && isfinite(x) && (x > 0) && isreal(x));
+%             addRequired(p, 'nPeriods', @(x) isscalar(x) && isinteger(x) && (x > 0));
+            addRequired(p, 'centerFrequency',@(x) 1);
+            addRequired(p, 'nPeriods', @(x) isscalar(x) && mod(x,1)==0 && (x > 0));
             addOptional(p, 'inverse', false, @(x) isscalar(x) && islogical(x));
             parse(p,varargin{:})
 
-            obj.centerFrequency = p.Results.frequency;
+            obj.centerFrequency = p.Results.centerFrequency;
             obj.nPeriods = p.Results.nPeriods;
             obj.inverse = p.Results.inverse;
         end
