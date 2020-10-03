@@ -27,7 +27,8 @@ classdef SimpleTxRxSequence < Operation
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param fsDivider: sampling frequency divider. Should be positive int. \ 
     %   Default value is equal to 1, which means sampling with \
-    %   the highest possible frequency (no decimation).
+    %   the highest possible frequency (no decimation)
+    % :param txInvert: tx pulse polarity marker
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -53,6 +54,7 @@ classdef SimpleTxRxSequence < Operation
         tgcSlope (1,1)
         fsDivider(1,1) {mustBeInteger, mustBePositive, ...
             mustBeLessThan(fsDivider, 257)} = 1
+        txInvert (1,1) {mustBeLogical} = 0
     end
     
     methods
@@ -98,6 +100,8 @@ classdef SimpleTxRxSequence < Operation
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             
+            obj.txInvert = double(obj.txInvert);
+            
         end
     end
 end
@@ -108,6 +112,15 @@ function mustBeProperNumber(a)
     mustBeFinite(a)
     mustBeReal(a)
 end
+
+function mustBeLogical(a)
+    if ~islogical(a) && ~isequal(a,1) && ~isequal(a,0)
+        error('txInvert property must be equal one of the following: true, false, 1 or 0.')
+    end
+        
+end
+
+
 
 function mustBeXor(obj,fieldNames)
     
