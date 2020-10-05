@@ -32,10 +32,12 @@ public:
         : Validator(componentName), nChannels(nChannels) {}
 
     void validate(const TxRxParamsSequence &txRxs) override {
-        // TODO each rx aperture in the us4oem should have the same size
-        // TODO at least one operation in sequence is provided
-        // so the output frame has a regular shape
-        // the same applies to number of samples
+        ARRUS_VALIDATOR_EXPECT_IN_RANGE(txRxs.size(), size_t(1), size_t(2048));
+        throwOnErrors();
+
+        const auto nSamples = txRxs[0].getNumberOfSamples();
+        size_t nActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()),
+                                                   std::end(txRxs[0].getRxAperture()), 0);
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs[firing];
             auto firingStr = ::arrus::format("firing {}", firing);
@@ -45,9 +47,16 @@ public:
                 op.getTxAperture().size(), size_t(nChannels), firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(
                 op.getTxDelays().size(), size_t(nChannels), firingStr);
+
+            ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
+                                          "Each Rx should acquire the same number of samples.");
+            size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()),
+                                                          std::end(txRxs[0].getRxAperture()), 0);
+            ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
+                                          "Each rx aperture should have the same size.");
+
         }
     }
-
 private:
     ChannelIdx nChannels;
 };
