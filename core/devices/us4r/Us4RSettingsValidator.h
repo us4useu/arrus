@@ -15,8 +15,10 @@ public:
         if(obj.getUs4OEMSettings().empty()) {
             expectTrue("probe adapter settings",
                        obj.getProbeAdapterSettings().has_value(),
-                       "At least probe adapter settings is required.");
-            // TODO wymagaj tez podpietej glowicy
+                       "Probe adapter settings are required.");
+            expectTrue("probe settings",
+                       obj.getProbeSettings().has_value(),
+                       "Probe settings are required.");
             expectTrue("tgc settings",
                        obj.getRxSettings().has_value(),
                        "Us4R TGC settings must be provided.");
