@@ -26,9 +26,11 @@ public:
      * @param channel channel in the logical frame to acquire
      * @return frame and channel number of the physical signal data (the one returned by us4r device)
      */
-    std::pair<FrameNumber, int8> getChannel(FrameNumber frame, ChannelIdx channel) override;
+    std::pair<FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) override;
 
-    uint32 getNumberOfFrames() override;
+    uint32 getNumberOfLogicalFrames() override;
+
+    uint32 getNumberOfLogicalChannels() override;
 
 private:
     // logical (frame, number) -> physical (frame, number)

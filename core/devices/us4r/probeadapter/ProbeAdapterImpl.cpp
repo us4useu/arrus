@@ -170,7 +170,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(auto &us4oem : us4oems) {
         auto fcMapping = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
-        totalNumberOfFrames += fcMapping->getNumberOfFrames();
+        totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(fcMapping);
         ++us4oemOrdinal;
     }
@@ -193,7 +193,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                 auto destOp = opDestSplittedOp(destModule, frameIdx, destModuleChannel);
                 auto destChannel = opDestSplittedCh(destModule, frameIdx, destModuleChannel);
 
-                auto[destFrame, destFrameChannel] = fcMappings[destModule]->getChannel(destOp, destChannel);
+                auto[destFrame, destFrameChannel] = fcMappings[destModule]->getLogical(destOp, destChannel);
                 // TODO offset for frames us4oem:1, etc.
 
                 outFcBuilder.setChannelMapping(

@@ -14,6 +14,13 @@ using namespace arrus;
 using namespace arrus::devices;
 using namespace arrus::ops::us4r;
 using ::testing::_;
+using ::testing::Ge;
+using ::testing::FloatEq;
+using ::testing::Pointwise;
+
+MATCHER_P(FloatNearPointwise, tol, ""){
+    return std::abs(std::get<0>(arg) - std::get<1>(arg)) < tol;
+}
 
 
 constexpr uint16 DEFAULT_PGA_GAIN = 30;
@@ -33,7 +40,7 @@ struct TestTxRxParams {
     BitMask rxAperture = getNTimes(false, Us4OEMImpl::N_ADDR_CHANNELS);
     uint32 decimationFactor = 1;
     float pri = 100e-6f;
-    Interval<uint32> sampleRange{0, 4095};
+    Interval<uint32> sampleRange{0, 4096};
 
     [[nodiscard]] TxRxParameters getTxRxParameters() const {
         return TxRxParameters(txAperture, txDelays, pulse,
@@ -390,32 +397,259 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TurnsOffConflictingChannels) {
     us4oem->setTxRxSequence(seq, defaultTGCCurve);
 }
 
-//TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
-//    // Sample range -> rx delay
-//    // end-start / sampling frequency
-//    Interval<uint32> sampleRange(0, 1000);
-//
-//    std::vector<TxRxParameters> seq1 = {
-//        ARRUS_STRUCT_INIT_LIST(
-//            TestTxRxParams,
-//            (x.sampleRange = sampleRange))
-//            .getTxRxParameters()
-//    };
-//    EXPECT_CALL(*ius4oemPtr, SetRxDelay(Us4OEMImpl::RX_DELAY, 0));
-//    // > number of
-//    float minimumRxTime = (sampleRange.end() - sampleRange.start()) / Us4OEMImpl::SAMPLING_FREQUENCY;
-//    EXPECT_CALL(*ius4oemPtr, SetRxTime());
-//    // ScheduleReceive: starting sample
-//    us4oem->setTxRxSequence(seq1, defaultTGCCurve);
-//}
-
-// sample range, rx time
-// tx half periods
-// TGC, interpolation to the destination values
 // active channel groups! (NOP, no NOP)
-// Test NOP handling
-// Test generated FrameMapping
 
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
+    // Sample range -> rx delay
+    // end-start / sampling frequency
+    Interval<uint32> sampleRange(0, 1024);
+
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.sampleRange = sampleRange))
+            .getTxRxParameters()
+    };
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(Us4OEMImpl::RX_DELAY, 0));
+    uint32 nSamples = sampleRange.end() - sampleRange.start();
+    float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
+    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::SAMPLE_DELAY + sampleRange.start(), _, _, _));
+    // ScheduleReceive: starting sample
+    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
+    // Sample range -> rx delay
+    // end-start / sampling frequency
+    Interval<uint32> sampleRange(40, 1024+40);
+
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.sampleRange = sampleRange))
+            .getTxRxParameters()
+    };
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(Us4OEMImpl::RX_DELAY, 0));
+    uint32 nSamples = sampleRange.end() - sampleRange.start();
+    float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
+    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::SAMPLE_DELAY + sampleRange.start(), _, _, _));
+    // ScheduleReceive: starting sample
+    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(3e6f, 1.5, true)))
+            .getTxRxParameters()
+    };
+    EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(3, 0));
+    EXPECT_CALL(*ius4oemPtr, SetTxFreqency(3e6f, 0));
+    EXPECT_CALL(*ius4oemPtr, SetTxInvert(true, 0));
+    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(3e6, 3, false)))
+            .getTxRxParameters()
+    };
+    EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(6, 0));
+    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(3e6, 30.5, false)))
+            .getTxRxParameters()
+    };
+    EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(61, 0));
+    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
+    std::vector<TxRxParameters> seq = {
+            TestTxRxParams().getTxRxParameters()
+    };
+    EXPECT_CALL(*ius4oemPtr, TGCDisable);
+    us4oem->setTxRxSequence(seq, {});
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
+    std::vector<TxRxParameters> seq = {
+        TestTxRxParams().getTxRxParameters()
+    };
+    TGCCurve tgc = {14.000f, 14.001f, 14.002f};
+
+    EXPECT_CALL(*ius4oemPtr, TGCEnable);
+
+    TGCCurve expectedTgc = {14.0f, 15.0f, 16.0f};
+    // normalized
+    for(float & i : expectedTgc) {
+        i = (i-14.0f)/40.f;
+    }
+    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(expectedTgc, _));
+
+    us4oem->setTxRxSequence(seq, tgc);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
+    std::vector<TxRxParameters> seq = {
+        TestTxRxParams().getTxRxParameters()
+    };
+    TGCCurve tgc = {14.000f, 14.0005f, 14.001f};
+
+    EXPECT_CALL(*ius4oemPtr, TGCEnable);
+
+    TGCCurve expectedTgc = {14.0f, 14.5f, 15.0f};
+    // normalized
+    for(float & i : expectedTgc) {
+        i = (i-14.0f)/40.f;
+    }
+    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
+    us4oem->setTxRxSequence(seq, tgc);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
+    std::vector<TxRxParameters> seq = {
+        TestTxRxParams().getTxRxParameters()
+    };
+    TGCCurve tgc = {14.000f, 14.0002f, 14.0007f, 14.001f, 14.0015f};
+
+    EXPECT_CALL(*ius4oemPtr, TGCEnable);
+
+    TGCCurve expectedTgc = {14.0f, 14.2f, 14.7f, 15.0f, 15.5f};
+    // normalized
+    for(float & i : expectedTgc) {
+        i = (i-14.0f)/40.f;
+    }
+    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
+    us4oem->setTxRxSequence(seq, tgc);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
+    std::vector<TxRxParameters> seq = {
+        TxRxParameters::US4OEM_NOP
+    };
+    // empty
+    std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> rxAperture, txAperture;
+    // empty
+    std::bitset<Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS> activeChannelGroup;
+    EXPECT_CALL(*ius4oemPtr, SetRxAperture(rxAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, SetTxAperture(txAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(activeChannelGroup, 0));
+
+    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapping) {
+    BitMask rxAperture(128, false);
+    setValuesInRange(rxAperture, 0, 32, true);
+
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.rxAperture = rxAperture))
+            .getTxRxParameters()
+    };
+    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+
+    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
+
+    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
+        auto [dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(dstChannel, i);
+        EXPECT_EQ(dstFrame, 0);
+    }
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapping2) {
+    BitMask rxAperture(128, false);
+    setValuesInRange(rxAperture, 16, 48, true);
+
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.rxAperture = rxAperture))
+            .getTxRxParameters()
+    };
+    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+
+    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
+
+    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
+        auto [dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(dstChannel, i);
+        EXPECT_EQ(dstFrame, 0);
+    }
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingIncompleteRxAperture) {
+    BitMask rxAperture(128, false);
+    setValuesInRange(rxAperture, 0, 32, true);
+
+    rxAperture[31] = rxAperture[15] = false;
+
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.rxAperture = rxAperture))
+            .getTxRxParameters()
+    };
+    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+
+    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
+
+    for(size_t i = 0; i < 30; ++i) {
+        auto [dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(dstChannel, i);
+        EXPECT_EQ(dstFrame, 0);
+    }
+}
+
+TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingMapping) {
+    BitMask rxAperture(128, false);
+    // (11, 14, 30,  8, 12,  5, 10,  9,
+    //  31,  7,  3,  6,  0,  2,  4,  1,
+    //  24, 23, 22, 21, 25, 20, 19, 17,
+    //  18, 16, 15, 14, 12, 13, 26, 10)
+    setValuesInRange(rxAperture, 16, 48, true);
+
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.rxAperture = rxAperture))
+            .getTxRxParameters()
+    };
+    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+
+    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
+        auto [dstfr, dstch] = fcm->getLogical(0, i);
+        std::cerr << (int16)dstch << ", ";
+    }
+    std::cerr << std::endl;
+
+    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
+    std::vector<int8> expectedDstChannels = {
+         0,  1,  2,  3,  4,  5,  6,  7,
+         8,  9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23,
+        24, 25, 26, -1, -1, 27, 28, -1
+    };
+
+    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
+        auto [dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(dstChannel, expectedDstChannels[i]);
+        EXPECT_EQ(dstFrame, 0);
+    }
+}
 }
 
 int main(int argc, char **argv) {

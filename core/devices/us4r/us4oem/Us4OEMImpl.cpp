@@ -199,7 +199,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                                       firing, ::arrus::toString(op)));
         }
         auto[startSample, endSample] = op.getRxSampleRange().asPair();
-        size_t nSamples = endSample - startSample + 1;
+        size_t nSamples = endSample - startSample;
         float rxTime = getRxTime(nSamples);
         size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
         auto rxMapId = rxMappings.find(firing)->second;
@@ -306,7 +306,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     ARRUS_REQUIRES_TRUE_E(
                         onChannel < N_RX_CHANNELS,
                         ArrusException("Up to 32 active rx channels can be set."));
-                    fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, FrameChannelMapping::UNAVAILABLE);
+                    fcmBuilder.setChannelMapping(noRxNopId, onChannel,
+                                                 noRxNopId, FrameChannelMapping::UNAVAILABLE);
                 } else {
                     // STRATEGY: if there are conflicting rx channels, keep the
                     // first one (with the lowest channel number), turn off all
@@ -315,7 +316,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     outputRxAperture[channel] = true;
                     mapping.push_back(rxChannel);
                     channelsUsed.insert(rxChannel);
-                    fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, onChannel);
+                    fcmBuilder.setChannelMapping(noRxNopId, onChannel,
+                                                 noRxNopId, (int8)(mapping.size()-1));
                 }
                 ++onChannel;
             }
@@ -387,15 +389,12 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
              54.0f};
         auto actualTGC = ::arrus::interpolate1d(
             tgcChar,
-            ::arrus::getRange<float>(14, 54),
+            ::arrus::getRange<float>(14, 55, 1.0),
             tgc);
-
-        std::vector<float> tgcNormalized(actualTGC.size());
-        size_t i = 0;
-        for(auto val : actualTGC) {
-            tgcNormalized[i] = (val - 14) / 40;
+        for(auto &val: actualTGC) {
+            val = (val - 14.0f) / 40.0f;
         }
-        ius4oem->TGCSetSamples(tgcNormalized, firing);
+        ius4oem->TGCSetSamples(actualTGC, firing);
     }
 }
 

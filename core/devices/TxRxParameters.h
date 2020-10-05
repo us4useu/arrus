@@ -26,7 +26,7 @@ public:
      * @param txDelays
      * @param txPulse
      * @param rxAperture
-     * @param rxSampleRange
+     * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param rxDecimationFactor
      * @param pri
      */
@@ -62,7 +62,7 @@ public:
     }
 
     [[nodiscard]] uint32 getNumberOfSamples() const {
-        return rxSampleRange.end() - rxSampleRange.start() + 1;
+        return rxSampleRange.end() - rxSampleRange.start();
     }
 
     [[nodiscard]] int32 getRxDecimationFactor() const {

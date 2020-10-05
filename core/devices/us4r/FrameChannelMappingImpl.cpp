@@ -18,16 +18,22 @@ FrameChannelMappingImpl::FrameChannelMappingImpl(FrameMapping &frameMapping,
 }
 
 std::pair<FrameChannelMapping::FrameNumber, int8>
-FrameChannelMappingImpl::getChannel(FrameNumber frame, ChannelIdx channel) {
+FrameChannelMappingImpl::getLogical(FrameNumber frame, ChannelIdx channel) {
     auto physicalFrame = frameMapping(frame, channel);
     auto physicalChannel = channelMapping(frame, channel);
     return {physicalFrame, physicalChannel};
 }
 
-uint32 FrameChannelMappingImpl::getNumberOfFrames() {
+uint32 FrameChannelMappingImpl::getNumberOfLogicalFrames() {
     assert(frameMapping.rows() >= 0
            && frameMapping.rows() <= std::numeric_limits<uint32>::max());
     return static_cast<uint32>(frameMapping.rows());
+}
+
+uint32 FrameChannelMappingImpl::getNumberOfLogicalChannels() {
+    assert(frameMapping.cols() >= 0
+           && frameMapping.cols() <= std::numeric_limits<uint32>::max());
+    return static_cast<uint32>(frameMapping.cols());
 }
 
 void
