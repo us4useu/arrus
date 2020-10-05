@@ -23,11 +23,11 @@ classdef Rx
     methods
         function obj = Rx(varargin)
             p = inputParser;
-            isAllInteger =  @(x) issnumeric(x) && all(x == floor(x));
+            isAllInteger =  @(x) isnumeric(x) && all(x == floor(x));
             isAllPositiveInteger = @(x) isAllInteger(x) && all(x > 0);
             isAllNonnegativeInteger = @(x) isAllInteger(x) && all(x >= 0);
             addRequired(p, 'aperture', @(x) isvector(x) && ~isempty(x) && islogical(x));
-            addRequired(p, 'sampleRange', @(x) isvector(x) && size(x)(1) == 2 && isAllNonnegativeInteger(x));
+            addRequired(p, 'sampleRange', @(x) isvector(x) && length(x) == 2 && isAllNonnegativeInteger(x));
             addOptional(p, 'decimationFactor', 1, @(x) isscalar(x) && isAllPositiveInteger(x));
 
             parse(p,varargin{:});
