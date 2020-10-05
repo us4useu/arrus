@@ -151,6 +151,13 @@ inline void setValuesInRange(std::vector<T> &container, size_t start, size_t end
     }
 }
 
+template<size_t N>
+inline void setValuesInRange(std::bitset<N> &container, size_t start, size_t end, const bool &value) {
+    for(size_t i = start; i < end; ++i) {
+        container[i] = value;
+    }
+}
+
 template<typename T>
 inline void setValuesInRange(std::vector<T> &container, size_t start, size_t end,
                              const std::function<T(size_t)> &generator) {

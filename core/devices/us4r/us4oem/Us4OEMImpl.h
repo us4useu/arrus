@@ -66,6 +66,14 @@ public:
     static constexpr float MIN_PRI = 50e-6f;
     static constexpr float MAX_PRI = 1.0f;
 
+    /**
+     * Us4OEMImpl constructor.
+     *
+     * @param ius4oem
+     * @param activeChannelGroups must contain exactly N_ACTIVE_CHANNEL_GROUPS elements
+     * @param channelMapping a vector of N_TX_CHANNELS destination channels; must contain
+     *  exactly N_TX_CHANNELS numbers
+     */
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping,

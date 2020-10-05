@@ -288,8 +288,6 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         std::unordered_set<uint8> channelsUsed;
 
         // Convert rx aperture + channel mapping -> rx channel mapping
-
-        std::vector<uint8> conflictingChannels;
         std::bitset<N_ADDR_CHANNELS> outputRxAperture;
 
         uint8 channel = 0;
@@ -300,24 +298,24 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 isRxNop = false;
                 auto rxChannel = channelMapping[channel];
                 rxChannel = rxChannel % N_RX_CHANNELS;
+                // TODO alternative strategy:
                 // set rx channel mapping, even if the channel is conflicting -
                 // this way we keep the expected shape of rx data as is
                 // (with some "bad data" gaps).
-
-                // STRATEGY: if there are conflicting rx channels, keep the
-                // first one (with the lowest channel number), turn off all
-                // the rest.
-                mapping.push_back(rxChannel);
-                // Turn off conflicting channels
-                if(setContains(channelsUsed, channel)) {
-                    conflictingChannels.push_back(channel);
+                if(setContains(channelsUsed, rxChannel)) {
                     ARRUS_REQUIRES_TRUE_E(
                         onChannel < N_RX_CHANNELS,
                         ArrusException("Up to 32 active rx channels can be set."));
-                    fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, onChannel);
-                } else {
-                    outputRxAperture[channel] = true;
                     fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, FrameChannelMapping::UNAVAILABLE);
+                } else {
+                    // STRATEGY: if there are conflicting rx channels, keep the
+                    // first one (with the lowest channel number), turn off all
+                    // the rest.
+                    // Turn off conflicting channels
+                    outputRxAperture[channel] = true;
+                    mapping.push_back(rxChannel);
+                    channelsUsed.insert(rxChannel);
+                    fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, onChannel);
                 }
                 ++onChannel;
             }
@@ -332,9 +330,9 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             result.emplace(opId, rxMapId);
 
             // Fill the rx channel mapping with 32 elements.
-            for(auto ch: mapping) {
-                channelsUsed.insert(ch);
-            }
+//            for(auto ch: mapping) {
+//                channelsUsed.insert(ch);
+//            }
             // Move all the non active channels to the end of the mapping
             for(uint8 i = 0; i < N_RX_CHANNELS; ++i) {
                 if(!setContains(channelsUsed, i)) {
