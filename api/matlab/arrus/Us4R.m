@@ -57,10 +57,6 @@ classdef Us4R < handle
                 && isscalar(x) ...
                 && isfinite(x) ...
                 && x >= 0;
-            
-            if ~isProperVoltageValue(probe.maxVpp)
-                error('Invalid maxVpp value (check probeParams.m)')
-            end
 
             if ~isProperVoltageValue(voltage)
                 error('Invalid exctitation voltage value.')
@@ -69,7 +65,7 @@ classdef Us4R < handle
             if 2*voltage > probe.maxVpp
                 error(['The electrical excitation exceeds the safe limit. ', ...
                        'For the current probe the limit is ', ...
-                       num2str(probe.maxVpp), '[Vpp].' ...
+                       num2str(probe.maxVpp/2), '[V].' ...
                        ])
             end
             
