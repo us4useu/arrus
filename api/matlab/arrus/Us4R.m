@@ -670,7 +670,7 @@ classdef Us4R < handle
 
                 % init RX
                 Us4MEX(iArius, "SetPGAGain","30dB");
-                Us4MEX(iArius, "SetLPFCutoff","15MHz");
+                Us4MEX(iArius, "SetLPFCutoff","30MHz");
                 Us4MEX(iArius, "SetActiveTermination","EN", "200");
                 Us4MEX(iArius, "SetLNAGain","24dB");
                 Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
