@@ -6,6 +6,7 @@ Version 0.4.6
 
 - MATLAB API:
 
+    - Added parameter ``channelsMask`` to structure ``probe``. The parameter disables selected channels from Tx/Rx.
     - The list of Us4R class constructor parameters has been changed from list of positional \
       parameters to a list of pairs (name, value). E.g. use \
       ``Us4R('nArius', 2, 'voltage', 20, 'probeName', 'SL1543', 'adapterType', 'esaote3')``.
@@ -15,7 +16,7 @@ Version 0.4.5
 
 - MATLAB API:
 
-    - Support for Esaote SP2430 has been added. The new probe is identified by ``SP2430``. 
+    - Support for Esaote SP2430 has been added. The new probe is identified by ``SP2430``.
 
 Version 0.4.4
 -------------

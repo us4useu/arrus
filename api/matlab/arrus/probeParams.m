@@ -11,7 +11,10 @@ switch probeName
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
         probe.maxVpp = 100; 
-        
+        % probe channels, that should be always turned off.
+        % Channel numeration starts from one!
+        % probe.channelsMask = [1 23 24 120 180];
+
     case 'SP2430'
         probe.nElem	= 96;
         probe.pitch	= 0.22e-3;
@@ -80,8 +83,6 @@ end
 if ~isfield(probe,'curvRadius')
     probe.curvRadius = nan;
 end
-
-
 
 %% Adapter type & channel mapping
 switch probeName

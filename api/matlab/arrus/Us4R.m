@@ -18,8 +18,8 @@ classdef Us4R < handle
     % - 'ultrasonix': current version of the ultrasonix probe adapter. 
     % - 'atl/philips': current version of the ATL/PHILIPS probe adapter.
     % 
-    % Only one of the following parameters should be provided: 
-    % 
+    % Only one of the following parameters should be provided:
+    %
     % :param nUs4OEM: number of Us4OEM modules available in the us4R system. Required.
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Required.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
@@ -38,7 +38,7 @@ classdef Us4R < handle
 
         function obj = Us4R(varargin)
             [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin);
-            
+
             obj.logTime = logTime;
             % System parameters
             obj.sys.nArius = nArius; % number of Arius modules
@@ -78,20 +78,20 @@ classdef Us4R < handle
             obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
-            
-            % position (pos,x,z) and orientation (ang) of each probe element
-            obj.sys.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-            if isnan(probe.curvRadius)
-                obj.sys.angElem = zeros(1,probe.nElem); % [rad] (1 x nElem) orientation of probe elements
-                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                obj.sys.zElem = zeros(1,probe.nElem);% [m] (1 x nElem) x-position of probe elements
-            else
-                obj.sys.angElem = obj.sys.posElem / -probe.curvRadius;
-                obj.sys.xElem = -probe.curvRadius * sin(obj.sys.angElem);
-                obj.sys.zElem = -probe.curvRadius * cos(obj.sys.angElem);
-                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
-            end
-            
+
+             % position (pos,x,z) and orientation (ang) of each probe element
+             obj.sys.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+             if isnan(probe.curvRadius)
+                 obj.sys.angElem = zeros(1,probe.nElem); % [rad] (1 x nElem) orientation of probe elements
+                 obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                 obj.sys.zElem = zeros(1,probe.nElem);% [m] (1 x nElem) x-position of probe elements
+             else
+                 obj.sys.angElem = obj.sys.posElem / -probe.curvRadius;
+                 obj.sys.xElem = -probe.curvRadius * sin(obj.sys.angElem);
+                 obj.sys.zElem = -probe.curvRadius * cos(obj.sys.angElem);
+                 obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+             end
+             obj.sys.probeChannelsMask = probe.channelsMask;
 %             obj.sys.maxVpp = probe.maxVpp;
 
             if obj.sys.adapType == 0
@@ -273,7 +273,7 @@ classdef Us4R < handle
 
         % Priority=Lo; scanConversion after envelope detection, scanConversion coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
-        
+
         function [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin)
             paramsParser = inputParser;
             addParameter(paramsParser, 'nUs4OEM', []);
@@ -283,7 +283,7 @@ classdef Us4R < handle
             addParameter(paramsParser, 'adapterType', []);
             addParameter(paramsParser, 'probe', []);
             parse(paramsParser, varargin{:});
-            
+
             nArius = paramsParser.Results.nArius;
             if(~isscalar(nArius))
                 error("ARRUS:IllegalArgument", ...
@@ -295,7 +295,7 @@ classdef Us4R < handle
                 "Parameter voltage is required and should be a scalar");
             end
             logTime = paramsParser.Results.logTime;
-            
+
             % First option
             probeName = paramsParser.Results.probeName;
             adapterType = paramsParser.Results.adapterType;
@@ -303,14 +303,14 @@ classdef Us4R < handle
                 error("ARRUS:IllegalArgument", ...
                 "All or none of the following parameters are required: probeName, adapterType");
             end
-            
+
             % Second option
             probe = paramsParser.Results.probe;
             if ~xor(isempty(probe), isempty(probeName))
                 error("ARRUS:IllegalArgument", ...
                   "Exactly one of the following parameter should be provided: probe, pair(probeName, adapterType)");
             end
-            
+
         end
 
         function setSeqParams(obj,varargin)
@@ -536,12 +536,16 @@ classdef Us4R < handle
                 iElem = [iElem, nan(1, obj.sys.nChTotal-length(iElem))];
             end
             
+
             obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
             
             obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
+            systemChannelsMask = true(size(obj.seq.txApMask));
+            systemChannelsMask(obj.sys.probeMap(obj.sys.probeChannelsMask), :) = false;
+            obj.seq.txApMask = obj.seq.txApMask & systemChannelsMask;
             obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
-            
+            obj.seq.rxApMask = obj.seq.rxApMask & systemChannelsMask;
             obj.seq.rxElemId = (iElem.' - obj.seq.rxApOrig + 1) .* obj.seq.rxApMask;
             obj.seq.rxElemId(isnan(obj.seq.rxElemId)) = 0;
             
@@ -742,8 +746,8 @@ classdef Us4R < handle
             for iArius=0:(obj.sys.nArius-1)
                 Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
                 Us4MEX(iArius, "ClearScheduledReceive");
-                
-                for iFire=0:(obj.seq.nFire-1)    
+
+                for iFire=0:(obj.seq.nFire-1)
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
                     %% Tx
