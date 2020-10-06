@@ -37,7 +37,7 @@ classdef Us4R < handle
     methods
 
         function obj = Us4R(varargin)
-            [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin);
+            [nArius, voltage, probeName, adapterType, logTime, probe] = Us4R.parseUs4RParams(varargin{:});
 
             obj.logTime = logTime;
             % System parameters
@@ -258,6 +258,47 @@ classdef Us4R < handle
         end
 
     end
+    
+    methods(Access = private, Static)
+        
+       function [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin)
+           paramsParser = inputParser;
+           addParameter(paramsParser, 'nUs4OEM', []);
+           addParameter(paramsParser, 'voltage', []);
+           addParameter(paramsParser, 'logTime', false);
+           addParameter(paramsParser, 'probeName', []);
+           addParameter(paramsParser, 'adapterType', []);
+           addParameter(paramsParser, 'probe', []);
+           parse(paramsParser, varargin{:});
+
+           nArius = paramsParser.Results.nUs4OEM;
+           if(~isscalar(nArius))
+               error("ARRUS:IllegalArgument", ...
+               "Parameter nArius is required and should be a scalar");
+           end
+           voltage = paramsParser.Results.voltage;
+           if(~isscalar(voltage))
+               error("ARRUS:IllegalArgument", ...
+               "Parameter voltage is required and should be a scalar");
+           end
+           logTime = paramsParser.Results.logTime;
+
+           % First option
+           probeName = paramsParser.Results.probeName;
+           adapterType = paramsParser.Results.adapterType;
+           if xor(isempty(probeName), isempty(adapterType))
+               error("ARRUS:IllegalArgument", ...
+               "All or none of the following parameters are required: probeName, adapterType");
+           end
+
+           % Second option
+           probe = paramsParser.Results.probe;
+           if ~xor(isempty(probe), isempty(probeName))
+               error("ARRUS:IllegalArgument", ...
+                 "Exactly one of the following parameter should be provided: probe, pair(probeName, adapterType)");
+           end
+       end
+    end
 
     methods(Access = private)
         % TODO:
@@ -273,45 +314,6 @@ classdef Us4R < handle
 
         % Priority=Lo; scanConversion after envelope detection, scanConversion coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
-
-        function [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin)
-            paramsParser = inputParser;
-            addParameter(paramsParser, 'nUs4OEM', []);
-            addParameter(paramsParser, 'voltage', []);
-            addParameter(paramsParser, 'logTime', false);
-            addParameter(paramsParser, 'probeName', []);
-            addParameter(paramsParser, 'adapterType', []);
-            addParameter(paramsParser, 'probe', []);
-            parse(paramsParser, varargin{:});
-
-            nArius = paramsParser.Results.nArius;
-            if(~isscalar(nArius))
-                error("ARRUS:IllegalArgument", ...
-                "Parameter nArius is required and should be a scalar");
-            end
-            voltage = paramsParser.Results.voltage;
-            if(~isscalar(voltage))
-                error("ARRUS:IllegalArgument", ...
-                "Parameter voltage is required and should be a scalar");
-            end
-            logTime = paramsParser.Results.logTime;
-
-            % First option
-            probeName = paramsParser.Results.probeName;
-            adapterType = paramsParser.Results.adapterType;
-            if xor(isempty(probeName), isempty(adapterType))
-                error("ARRUS:IllegalArgument", ...
-                "All or none of the following parameters are required: probeName, adapterType");
-            end
-
-            % Second option
-            probe = paramsParser.Results.probe;
-            if ~xor(isempty(probe), isempty(probeName))
-                error("ARRUS:IllegalArgument", ...
-                  "Exactly one of the following parameter should be provided: probe, pair(probeName, adapterType)");
-            end
-
-        end
 
         function setSeqParams(obj,varargin)
 
