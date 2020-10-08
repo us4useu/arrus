@@ -195,6 +195,11 @@ classdef Us4R < handle
             
         end
         
+        function [sys, seq] = getImagingMetadata(obj)
+            sys = obj.sys;
+            seq = ob.seq;
+        end
+        
         function [rf,img] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
