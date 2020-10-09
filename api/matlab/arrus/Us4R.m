@@ -197,7 +197,7 @@ classdef Us4R < handle
         
         function [sys, seq] = getImagingMetadata(obj)
             sys = obj.sys;
-            seq = ob.seq;
+            seq = obj.seq;
         end
         
         function [rf,img] = run(obj)
