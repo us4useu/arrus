@@ -15,7 +15,7 @@ gpuEnable = license('test', 'Distrib_Computing_Toolbox') && ...
             ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
 
 % BP filter coefficients
-[filtB,filtA] = butter(2,[0.5 1.5]*seq.txFreq/(seq.rxSampFreq/seq.fsDivider/2),'bandpass');
+[filtB,filtA] = butter(2,[0.5 1.5]*seq.txFreq/(seq.rxSampFreq/2),'bandpass');
 
 % reconstruction (rec) parameters
 rec.xGrid = xGrid;
