@@ -6,6 +6,7 @@ classdef BModeDisplay < handle
     %
     % :param xGrid: (1, width) vector, x-coordinates of the image pixels [m]
     % :param zGrid: (1, depth) vector z-coordinates of the image pixels [m]
+    % :param dynamicRange: two-element vector [min, max], value lims to apply
 
     properties(Access = private)
         hFig
@@ -14,7 +15,15 @@ classdef BModeDisplay < handle
     end
     
     methods 
-        function obj = BModeDisplay(xGrid, zGrid)
+        function obj = BModeDisplay(xGrid, zGrid, dynamicRange)
+            if nargin < 3
+                dynamicRange = [20 80];
+            else 
+                if ~all(size(dynamicRange) == [1 2])
+                    error("ARRUS:IllegalArgument", ...
+                        "Invalid dimensions of dynamic range vector, should be: [min max]")
+                end
+            end
             % Create figure.
             obj.hFig = figure();
             obj.hImg = imagesc(xGrid*1e3, zGrid*1e3,[]);
@@ -23,7 +32,7 @@ classdef BModeDisplay < handle
             daspect([1 1 1]);
             set(gca, 'XLim', xGrid([1 end])*1e3);
             set(gca, 'YLim', zGrid([1 end])*1e3);
-            set(gca, 'CLim', [20 80]);
+            set(gca, 'CLim', dynamicRange);
             colormap(gray);
             colorbar;    
         end
