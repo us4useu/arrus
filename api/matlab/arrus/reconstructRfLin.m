@@ -33,15 +33,18 @@ quickRecEnable	= diff([acq.txAng; ...
                         acq.rxCentElem - acq.txCentElem],[],2) == 0;
 quickRecEnable	= all(quickRecEnable(:));
 
-if quickRecEnable
-    txAng	= acq.txAng(1);
-else
-    txAng	= reshape(acq.txAng,1,1,[]);
-end
+gpuEnable       = isa(rfRaw,'gpuArray');
 
 %% Reconstruction
 [nSamp,nRx,nTx]	= size(rfRaw);
-rfRaw       = reshape(rfRaw,[nSamp*nRx,nTx]);
+
+if quickRecEnable
+    nTx0	= 1;
+else
+    nTx0	= nTx;
+end
+
+txAng       = reshape(acq.txAng(1:nTx0),1,1,[]);
 
 fs          = acq.rxSampFreq/proc.dec;
 
@@ -75,13 +78,13 @@ txDist      = rVec;                                         % [mm] (nSamp,1) tx 
 rxDist      = sqrt((xVec-xElem).^2 + (zVec-zElem).^2);      % [mm] (nSamp,nRx,1 or nTx) rx distance (to each rx element)
 
 t           = (txDist + rxDist)/acq.c + dT;                 % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
-if isa(rfRaw,'gpuArray')
+if gpuEnable
     t       = gpuArray(t);
 end
 
 iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx,1 or nTx) sample numbers
 iSamp(iSamp<1 | iSamp>nSamp)	= inf;
-iSamp       = reshape(iSamp + (0:(nRx-1))*nSamp,nSamp*nRx,[]);	% [samp] (nSamp*nRx,1 or nTx)
+iSamp       = reshape(iSamp,nSamp,nRx*nTx0);
 
 rxTang      = abs(tan(atan2(xVec-xElem,zVec-zElem) - angElem)); % [] (nSamp,nRx,1 or nTx)
 rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
@@ -90,11 +93,15 @@ rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or
 % warning - does the apodization takes into account for the clipped aperture?
 
 % Delay & Sum
-if quickRecEnable
-    rfBfr	= interp1(1:(nSamp*nRx),rfRaw,iSamp,'linear',0);	% WARNING -> see the comment at the end of the script
-else
-    rfBfr	= interp2(1:nTx,(1:(nSamp*nRx)).',rfRaw,(1:nTx).*ones(nSamp*nRx,1),iSamp,'linear',0);
+nSamp0	= nSamp*nRx*nTx0;
+if gpuEnable
+    nSamp0	= gpuArray(nSamp0);
 end
+iSamp0	= 1:nSamp0;
+iSamp	= iSamp + (0:(nRx*nTx0-1))*nSamp;                   % [samp] (nSamp,nRx*nTx0)
+
+rfRaw	= reshape(rfRaw,nSamp0,[]);
+rfBfr	= interp1(iSamp0(:),rfRaw,iSamp(:),'linear',0);	% WARNING -> see the comment at the end of the script
 rfBfr	= reshape(rfBfr,[nSamp,nRx,nTx]);
 
 % modulate if iq signal is used
