@@ -1,6 +1,13 @@
 Release notes
 =============
 
+Version 0.4.6
+-------------
+
+- MATLAB API:
+
+    - Added ``dynamicRange`` to ``BModeDisplay`` class.
+
 Version 0.4.5
 -------------
 
