@@ -1,11 +1,6 @@
 
 % path to the MATLAB API files
 % addpath('../arrus');
-
-nUs4OEM     = 2;
-probeName	= '5L128';
-adapterType = 'esaote3';
-
 txFrequency = 5e6;
 samplingFrequency = 65e6;
 fsDivider = 1;
@@ -13,7 +8,12 @@ fsDivider = 1;
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
 
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM, probeName, adapterType, 50, true);
+nUs4OEM = 2;
+us	= Us4R('nUs4OEM',      nUs4OEM, ...
+           'probeName',   '5L128', ...
+           'adapterType', 'esaote3', ...
+           'voltage',      50, ...
+           'logTime',      true);
 
 seqSTA = STASequence(	'txApertureCenter', (-30:5:30)*1e-3, ...
                         'txApertureSize',   32, ...

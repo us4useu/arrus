@@ -6,64 +6,77 @@ switch probeName
         probe.nElem	= 192;
         probe.pitch	= 0.21e-3;
         probe.maxVpp = 100; % max safe voltage peak-to-peak [Vpp]
-        
+        % probe channels, that should be always turned off.
+        % Channel numeration starts from one!
+        probe.channelsMask = [];
+
     case 'SL1543'
         probe.nElem	= 192;
         probe.pitch	= 0.245e-3;
-        probe.maxVpp = 100; 
-        
+        probe.maxVpp = 100;
+        probe.channelsMask = [];
+
     case 'SP2430'
         probe.nElem	= 96;
         probe.pitch	= 0.22e-3;
         probe.probeMap = [1:48, 145:192];
-        probe.maxVpp = 100; 
-        
+        probe.maxVpp = 100;
+        probe.channelsMask = [];
+
     case 'AC2541'
         probe.nElem	= 192;
         probe.pitch	= 0.30e-3;
         probe.curvRadius = -50e-3;
-        probe.maxVpp = 100; 
-        
+        probe.maxVpp = 100;
+        probe.channelsMask = [];
+
     case 'L14-5/38'
         probe.nElem	= 128;
         probe.pitch	= 0.3048e-3;
-        probe.maxVpp = 100; 
-        
+        probe.maxVpp = 100;
+        probe.channelsMask = [];
+
     case 'L7-4'
         probe.nElem	= 128;
         probe.pitch	= 0.298e-3;
-        probe.maxVpp = 100; 
-        
+        probe.maxVpp = 100;
+        probe.channelsMask = [];
+
     case 'LA/20/128' % Vermon, linear, high frequency
         probe.nElem	= 128;
         probe.pitch	= 0.1e-3;
-        probe.maxVpp = 30; 
-        
+        probe.maxVpp = 30;
+        probe.channelsMask = [];
+
     case '5L128' % Olympus NDT, linear
         probe.nElem	= 128;
         probe.pitch	= 0.6e-3;
         probe.maxVpp = 100;
-        
+        probe.channelsMask = [];
+
     case '10L128' % Olympus NDT, linear
         probe.nElem	= 128;
         probe.pitch	= 0.5e-3;
         probe.maxVpp = 100;
-        
+        probe.channelsMask = [];
+
     case '5L64' % Olympus NDT, linear
         probe.nElem	= 64;
         probe.pitch	= 0.6e-3;
         probe.maxVpp = 100;
-        
+        probe.channelsMask = [];
+
     case '10L32' % Olympus NDT, linear
         probe.nElem	= 32;
         probe.pitch	= 0.31e-3;
         probe.maxVpp = 100;
-        
+        probe.channelsMask = [];
+
     otherwise
         error(['Unhandled probe model ', probeName]);
         probe = [];
         return;
-        
+
 end
 
 if ~isnumeric(probe.maxVpp) ...
@@ -79,19 +92,6 @@ end
 
 if ~isfield(probe,'curvRadius')
     probe.curvRadius = nan;
-end
-
-% position (pos,x,z) and orientation (ang) of each probe element
-probe.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch;
-if isnan(probe.curvRadius)
-    probe.angElem = zeros(1,probe.nElem);
-    probe.xElem = probe.posElem;
-    probe.zElem = zeros(1,probe.nElem);
-else
-    probe.angElem = probe.posElem / -probe.curvRadius;
-    probe.xElem = -probe.curvRadius * sin(probe.angElem);
-    probe.zElem = -probe.curvRadius * cos(probe.angElem);
-    probe.zElem = probe.zElem - min(probe.zElem);
 end
 
 %% Adapter type & channel mapping

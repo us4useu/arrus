@@ -2,20 +2,19 @@
 % path to the MATLAB API files
 % addpath('../arrus');
 
-nUs4OEM     = 2;
-probeName	= 'LA/20/128';
-adapterType = 'atl/philips';
-
 txFrequency = 19.8e6;
 samplingFrequency = 65e6;
 fsDivider = 1;
 
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
 
-
-
+nUs4OEM = 2;
 %% Initialize the system, sequence, and reconstruction
-us	= Us4R(nUs4OEM, probeName, adapterType, 10, true);
+us	= Us4R('nUs4OEM',      nUs4OEM, ...
+           'probeName',   'LA/20/128', ...
+           'adapterType', 'atl/philips', ...
+           'voltage',      10, ...
+           'logTime',      true);
 
 seqSTA = STASequence(	'txApertureCenter', (-10:3:10)*1e-3, ...
                         'txApertureSize',   1, ...
