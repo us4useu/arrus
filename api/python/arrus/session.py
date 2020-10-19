@@ -60,7 +60,7 @@ class MockSession(AbstractSession):
 
     def _load_devices(self, cfg):
         metadata = self._read_metadata(cfg)
-        data = cfg["rf"]
+        data = cfg["rf"].T
         return {
             "Us4R:0": arrus.devices.us4r.MockUs4R(data, metadata, "Us4R", 0)
         }
@@ -128,7 +128,7 @@ class MockSession(AbstractSession):
                                                                    "txApCentAng")
 
         # Data characteristic:
-        data_char = arrus.metadata.EchoSignalDataCharacteristic(
+        data_char = arrus.metadata.EchoSignalDataDescription(
             sampling_frequency=rx_samp_freq)
 
         # create context
@@ -136,4 +136,4 @@ class MockSession(AbstractSession):
             device=us4r, sequence=sequence, medium=medium,
             custom_data=custom_data)
         return arrus.metadata.Metadata(
-            context_descriptor=context, data_char=data_char, custom_data={})
+            context=context, data_desc=data_char, custom={})

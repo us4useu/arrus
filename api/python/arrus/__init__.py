@@ -41,24 +41,11 @@ def add_log_file(filename: str, level):
     _logger.addHandler(log_file_handler)
 
 
-import importlib
-import importlib.util
-is_ius4oem = importlib.util.find_spec("arrus.devices._ius4oem")
-is_ihv256 = importlib.util.find_spec("arrus.devices._ihv256")
-is_idbarlite = importlib.util.find_spec("arrus.devices._idbarlite")
-if is_ius4oem and is_ihv256 and is_idbarlite:
-    # Legacy support attributes.
-    import arrus.devices.device as device
-    import arrus.session as session
-    import arrus.beam as beam
-    from arrus.session import Session
-    from arrus.session import SessionCfg
-    from arrus.devices.us4oem import Us4OEMCfg
-    from arrus.devices.us4oem import ChannelMapping
-    from arrus.system import CustomUs4RCfg
-else:
-    _logger.warn("Low-level API libraries are currently not available, "
-                 "providing mocked version of the package.")
+# Legacy support attributes.
+import arrus.devices.device as device
+import arrus.session as session
+import arrus.beam as beam
+from arrus.session import MockSession
 
 from arrus.params import *
 import arrus.ops as ops

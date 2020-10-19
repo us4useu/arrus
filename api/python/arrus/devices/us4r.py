@@ -26,9 +26,9 @@ class MockFileBuffer:
         }
         self.pulseCounter += 1
         metadata = arrus.metadata.Metadata(
-            context_descriptor=self.metadata.get_context(),
-            data_char=self.metadata.get_data_characteristic(),
-            custom_data=custom_data
+            context=self.metadata.context,
+            data_desc=self.metadata.data_description,
+            custom=self.metadata.custom
         )
         return self.dataset[self.i], metadata
 
@@ -41,12 +41,12 @@ class MockUs4R(Device):
         self.buffer = None
 
     def upload(self, sequence):
-        self.log(logging.INFO, f"Uploading sequence: {sequence}")
+        self.log(logging.INFO, f"Loading sequence: {sequence}")
+        self.buffer = MockFileBuffer(self.dataset, self.metadata)
+        return self.buffer
 
     def start(self):
         self.log(logging.INFO, "Starting device.")
-        self.buffer = MockFileBuffer(self.dataset, self.metadata)
-        return self.buffer
 
     def stop(self):
         self.log(logging.INFO, "Stopping device.")

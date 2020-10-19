@@ -1,7 +1,10 @@
-import arrus.devices.device
-import arrus.medium
 import dataclasses
 import abc
+
+import arrus.ops
+import arrus.devices.device
+import arrus.medium
+
 
 
 @dataclasses.dataclass(frozen=True)
@@ -12,28 +15,36 @@ class FrameAcquisitionContext:
     custom_data: dict
 
 
-class DataCharacteristic(abc.ABC):
+class DataDescription(abc.ABC):
     pass
 
 
 @dataclasses.dataclass(frozen=True)
-class EchoSignalDataCharacteristic(DataCharacteristic):
+class EchoSignalDataDescription(DataDescription):
     sampling_frequency: float
 
 
 class Metadata:
-    def __init__(self, context_descriptor: FrameAcquisitionContext,
-                 data_char: DataCharacteristic, custom_data: dict):
-        self._context = context_descriptor
-        self._data_char = data_char
-        # TODO make _custom_data immutable
-        self._custom_data = custom_data
+    """
+    Metadata describing the acquired data.
 
-    def get_context(self):
+    This class is immutable.
+    """
+    def __init__(self, context: FrameAcquisitionContext,
+                 data_desc: DataDescription, custom: dict):
+        self._context = context
+        self._data_char = data_desc
+        # TODO make _custom_data immutable
+        self._custom_data = custom
+
+    @property
+    def context(self):
         return self._context
 
-    def get_data_characteristic(self):
-        return self.data_char
+    @property
+    def data_description(self):
+        return self._data_char
 
-    def get_custom_data(self):
+    @property
+    def custom(self):
         return self._custom_data
