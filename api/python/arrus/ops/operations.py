@@ -11,9 +11,7 @@ import arrus
 
 class Operation(ABC):
     """
-    A single operation to perform.
-
-    This class is abstract and should not be instantiated.
+    An operation to perform.
     """
     pass
 
@@ -26,11 +24,11 @@ class Tx(Operation):
     :param delays: an array of delays to set to active elements. Should have the \
         shape (n_a,), where n_a is a number of active elements determined by \
         tx aperture. When None, firings are performed with no delay (delays=0) [s].
-    :param excitation: an excitation to perform
+    :param pulse: an excitation to perform
     :param aperture: a set of TX channels that should be enabled
     :param pri: pulse repetition interval [s]
     """
-    excitation: arrus.params.Excitation
+    pulse: arrus.params.Pulse
     aperture: arrus.params.Aperture
     pri: float
     delays: typing.Optional[np.ndarray] = None
@@ -108,11 +106,35 @@ class Loop(Operation):
     """
     operation: Operation
 
+@dataclass(frozen=True)
+class LinSequence(Operation):
+    """
+    A sequence of Tx/Rx operations for classical beamforming (linear scanning).
+
+    :param tx_aperture_center_element: vector of tx aperture center elements [element]
+    :param tx_aperture_size: size of the tx aperture [element]
+    :param rx_aperture_center_element: vector of rx aperture center elements [element]
+    :param rx_aperture_size: size of the rx aperture [element]
+    :param tx_focus: tx focal length [m]
+    :param tx_angle: tx angle [rad]
+    :param pulse: an excitation to perform
+    :param sampling_frequency: a sampling frequency to apply,
+      currently can be equal 65e6/n (n=1,2,...) only [Hz]
+    """
+    tx_aperture_center_element: np.ndarray
+    tx_aperture_size: float
+    tx_focus: float
+    tx_angle: float
+    pulse: arrus.params.Pulse
+    rx_aperture_center_element: np.ndarray
+    rx_aperture_size: float
+    sampling_frequency: float
+
 
 @dataclass(frozen=True)
 class SetHVVoltage(Operation):
     """
-    Sets voltage on a given device. Returns no value.
+    Sets voltage [-voltage, +voltage] on a given device. Returns no value.
 
     :param voltage: voltage to set [0.5Vpp]
     """

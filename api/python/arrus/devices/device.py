@@ -32,3 +32,9 @@ class Device:
 
     def __repr__(self):
         return self.__str__()
+
+
+class UltrasoundDeviceDTO(abc.ABC):
+    @abc.abstractmethod
+    def get_id(self):
+        pass

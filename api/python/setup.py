@@ -1,8 +1,8 @@
 import setuptools
 
 setuptools.setup(
-    name="${PYTHON_PACKAGE_NAME}",
-    version="${PROJECT_VERSION}",
+    name="arrus",
+    version="0.5.0",
     author="us4us Ltd.",
     author_email="support@us4us.eu",
     description="API for Research/Remote Ultrasound",
@@ -25,11 +25,7 @@ setuptools.setup(
     ],
     install_requires=[
         "numpy>=1.17.4",
-        "PyYAML>=5.1.2",
         "scipy>=1.3.1"
     ],
-    package_data={
-        '${PYTHON_PACKAGE_NAME}': ['devices/*.pyd', 'devices/*.lib']
-    },
     python_requires='>=3.7',
 )

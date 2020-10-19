@@ -5,15 +5,12 @@ from logging import DEBUG, INFO, WARN
 from typing import List, Union, Optional
 import dataclasses
 
-
 import numpy as np
 
 import arrus.devices.device as _device
-import arrus.devices.ius4oem as _ius4oem
 import arrus.devices.callbacks as _callbacks
 import arrus.utils as _utils
 import arrus.validation as _validation
-import arrus.interface as _interface
 
 
 def assert_card_is_powered_up(f):

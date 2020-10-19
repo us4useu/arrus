@@ -41,8 +41,6 @@ def add_log_file(filename: str, level):
     _logger.addHandler(log_file_handler)
 
 
-# TODO temporary ommiting importing some of the modules here, when
-# low-level API is not available (for example currently on Unix systems).
 import importlib
 import importlib.util
 is_ius4oem = importlib.util.find_spec("arrus.devices._ius4oem")
@@ -52,7 +50,6 @@ if is_ius4oem and is_ihv256 and is_idbarlite:
     # Legacy support attributes.
     import arrus.devices.device as device
     import arrus.session as session
-    import arrus.interface as interface
     import arrus.beam as beam
     from arrus.session import Session
     from arrus.session import SessionCfg
@@ -61,7 +58,7 @@ if is_ius4oem and is_ihv256 and is_idbarlite:
     from arrus.system import CustomUs4RCfg
 else:
     _logger.warn("Low-level API libraries are currently not available, "
-                 "providing minimal version of the package.")
+                 "providing mocked version of the package.")
 
 from arrus.params import *
 import arrus.ops as ops
