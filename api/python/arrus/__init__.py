@@ -46,6 +46,7 @@ import arrus.devices.device as device
 import arrus.session as session
 import arrus.beam as beam
 from arrus.session import MockSession
+from arrus.medium import Medium
 
 from arrus.params import *
 import arrus.ops as ops

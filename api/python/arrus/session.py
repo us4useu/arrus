@@ -1,6 +1,7 @@
 import logging
 import abc
 import numpy as np
+import importlib
 
 _logger = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ class AbstractSession(abc.ABC):
         dev_id = dev_path[0]
         return self._devices[dev_id]
 
+    def set_current_medium(self, medium):
+        pass
+
     def get_devices(self):
         """
         Returns a list of all devices available in this session.
@@ -60,16 +64,23 @@ class MockSession(AbstractSession):
 
     def _load_devices(self, cfg):
         metadata = self._read_metadata(cfg)
-        data = cfg["rf"].T
-        return {
-            "Us4R:0": arrus.devices.us4r.MockUs4R(data, metadata, "Us4R", 0)
+        data = cfg["rf"]
+        devices = {
+            "Us4R:0": arrus.devices.us4r.MockUs4R(data, metadata, 0),
+            "CPU:0": arrus.devices.cpu.CPU(0),
         }
+        cupy_spec = importlib.util.find_spec("cupy")
+        if cupy_spec is not None:
+            import cupy
+            cupy.cuda.device.Device(0).use()
+            devices["GPU:0"] = arrus.devices.gpu.GPU(0)
+        return devices
 
     def _get_scalar(self, obj, key):
-        return obj[key][0][0].flatten()[0]
+        return obj[key][0][0]
 
     def _get_vector(self, obj, key):
-        return obj[key][0][0].flatten()
+        return np.array(obj[key]).flatten()
 
     def _read_metadata(self, data):
         sys = data["sys"]
@@ -128,7 +139,7 @@ class MockSession(AbstractSession):
                                                                    "txApCentAng")
 
         # Data characteristic:
-        data_char = arrus.metadata.EchoSignalDataDescription(
+        data_char = arrus.metadata.EchoDataDescription(
             sampling_frequency=rx_samp_freq)
 
         # create context

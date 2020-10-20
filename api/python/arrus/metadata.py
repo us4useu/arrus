@@ -20,7 +20,7 @@ class DataDescription(abc.ABC):
 
 
 @dataclasses.dataclass(frozen=True)
-class EchoSignalDataDescription(DataDescription):
+class EchoDataDescription(DataDescription):
     sampling_frequency: float
 
 
@@ -29,6 +29,10 @@ class Metadata:
     Metadata describing the acquired data.
 
     This class is immutable.
+
+    :param context: frame acquisition context
+    :param data_desc: data characteristic
+    :param custom: custom frame data (e.g. trigger counters, etc.)
     """
     def __init__(self, context: FrameAcquisitionContext,
                  data_desc: DataDescription, custom: dict):
@@ -38,13 +42,20 @@ class Metadata:
         self._custom_data = custom
 
     @property
-    def context(self):
+    def context(self) -> FrameAcquisitionContext:
         return self._context
 
     @property
-    def data_description(self):
+    def data_description(self) -> DataDescription:
         return self._data_char
 
     @property
     def custom(self):
         return self._custom_data
+
+    def copy(self, **kwargs):
+        # TODO validate kwargs
+        kw = dict(context=self.context, data_desc=self.data_description,
+                  custom=self.custom)
+        return Metadata(**{**kw, **kwargs})
+

@@ -120,6 +120,7 @@ class LinSequence(Operation):
     :param pulse: an excitation to perform
     :param sampling_frequency: a sampling frequency to apply,
       currently can be equal 65e6/n (n=1,2,...) only [Hz]
+    :param pri: pulse repetition interval
     """
     tx_aperture_center_element: np.ndarray
     tx_aperture_size: float
@@ -129,6 +130,7 @@ class LinSequence(Operation):
     rx_aperture_center_element: np.ndarray
     rx_aperture_size: float
     sampling_frequency: float
+    pri: float
 
 
 @dataclass(frozen=True)

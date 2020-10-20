@@ -1,31 +1,191 @@
-import scipy.io
 import numpy as np
 import arrus
+import cupy as cp
+import matplotlib.pyplot as plt
+import h5py
 
-dataset = scipy.io.loadmat(r"C:\Users\pjarosik\src\x-files\customers\nanoecho\dataset10.mat")
+from arrus.utils.imaging import (
+    Pipeline,
+    BandpassFilter,
+    QuadratureDemodulation,
+    Decimation,
+    RxBeamforming,
+    EnvelopeDetection,
+    Transpose,
+    ScanConversion,
+    LogCompression
+)
 
+# Read the dataset do display.
+print("Reading data...")
+dataset = h5py.File(r"C:\Users\pjarosik\Downloads\rf_esaote_ac2541_dansk_1525_20200109\data.mat",
+                    mode="r")
+
+dataset = {
+    "rf": np.array(dataset["rf"][:50, :, :, :]),
+    "sys": dataset["sys"],
+    "seq": dataset["seq"]
+}
+print("...done.")
+
+# Create new session to communicate with the system.
+# Session constructor configures all the necessary devices; in case of the mock,
+# that means to load data from the provided dataset only.
+# A non-mocked session will read a configuration file and create handles
+# to the actual devices that should be available to user.
 sess = arrus.MockSession(dataset)
+
+# Session provides handles to system devices. What devices are available
+# depends on the session configuration file.
+# We will send you an appropriate session configuration file once you receive
+# the us4r-lite hardware.
 us4r = sess.get_device("/Us4R:0")
+gpu = sess.get_device("/GPU:0")
 
+# Determine to what medium (e.g. a phantom) the probe is attached.
+phantom = arrus.Medium(name="my_tissue_mimicking_phantom", speed_of_sound=1540)
+# Assume given medium in this session.
+sess.set_current_medium(phantom)
+
+# Set HV voltage [0.5*Vpp];
+# maximum value: 90 (can be limited for specific probes in the session
+# configuration file).
+us4r.set_hv_voltage(30)
+
+# Tx/Rx sequence to perform on the us4r device.
 sequence = arrus.ops.LinSequence(
+    # Transmit a signal for an aperture centered in element 0, 1, ... 191
+    # Note: this should not exceed the number of probe elements.
     tx_aperture_center_element=np.arange(0, 192),
+    # The aperture should contain 64 elements.
     tx_aperture_size=64,
-    tx_focus=30e-3,
-    tx_angle=0,
+    # The beam should be focused on 30 mm depth.
+    tx_focus=30e-3,  # [m]
+    # No tx angle (aperture perpendicular to probe's plane).
+    tx_angle=0, # [rad]
+    # Transmit a sine wave with center frequency 4MHz, 2 periods, no inverse.
     pulse=arrus.SineWave(center_frequency=4e6, n_periods=2, inverse=False),
+    # Receive echo data with aperture centered in elements 0, 1, ..., 191
+    # Note: rx_aperture_center_element should have the length as
+    # the tx_aperture_center_element vector.
     rx_aperture_center_element=np.arange(0, 192),
+    # Record data using 64 elements
     rx_aperture_size=64,
-    sampling_frequency=32.5e6)
+    # Sampling frequency [Hz]; currently the available sampling frequency values
+    # are limited to 65e6/n, where n can be 1, 2, ..., 5
+    sampling_frequency=32.5e6,
+    # Pulse repetition interval - the time between successive signal transmits.
+    pri=200e-6
+)
 
+# Remember to upload th sequence on the us4r device.
+# The RF data will be pushed to the buffer
 buffer = us4r.upload(sequence)
+
+# Output image grid:
+x_grid = np.arange(-50, 50, 0.4)*1e-3
+z_grid = np.arange(0, 60, 0.4)*1e-3
+
+# Define bmode image reconstruction pipeline.
+# You can find source and docstrings of the each step in arrus.utils.imaging
+# module.
+bmode_imaging = Pipeline(
+    placement=gpu,
+    steps=(
+        # Filter the data using bandpass filter,
+        # default bandwidth: [0.5*fc, 1.5*fc], where fc is center frequency.
+        # Currently FIR filter is available only.
+        # The data is filtered along the last axis.
+        #
+        # input: nd array.
+        # output: nd array with the same shape and data type
+        BandpassFilter(),
+        # Converts to I/Q samples.
+        #
+        # input: nd array
+        # output: nd array with the same shape and dtype=xp.complex64
+        QuadratureDemodulation(),
+        # Decimate data (CIC filter is also used).
+        #
+        # input: nd array
+        # output: nd array with the last axis `decimation_factor`-times smaller
+        Decimation(decimation_factor=4, cic_order=2),
+        # Delay and sum; reconstruct scanlines from the provided echo data.
+        #
+        # input: nd array, shape: n_emissions, n_rx, n_samples
+        # output: nd array, shape: n_emissions, n_samples
+        RxBeamforming(),
+        # Extracts envelope from the RF data.
+        #
+        # input nd array, dtype=xp.complex64
+        # output: nd array, dtype=xp.float32
+        EnvelopeDetection(),
+        # Transpose the provided image.
+        #
+        # input: nd array
+        # output: nd array with the reversed axes
+        Transpose(),
+        # Interpolate the RF data to output b-mode image grid.
+        #
+        # Note! Currently implemented only for CPU.
+        #
+        # input: nd array, shape: n_samples, n_emissions
+        # output: nd array, shape: len(z_grid), len(x_grid)
+        ScanConversion(x_grid=x_grid, z_grid=z_grid),
+        # Convert to decibel scale.
+        LogCompression()
+    )
+)
+
+# Display data with matplotlib
+fig, ax = plt.subplots()
+fig.set_size_inches((7, 7))
+ax.set_xlabel("OX")
+ax.set_ylabel("OZ")
+image_w, image_h = len(x_grid), len(z_grid)
+canvas = plt.imshow(np.zeros((image_w, image_h)), vmin=20, vmax=80, cmap="gray")
+fig.show()
+
+# Here starts the data acquisition and processing.
+# Starts currently uploaded tx/rx sequence, the buffer is now populated with
+# RF data (and some additional metadata).
 us4r.start()
+# Get data from the buffer, process and display (100 frames).
+for i in range(100):
+    # Get data and metadata from the buffer.
+    # buffer.pop copies data from the buffer and returns new numpy nd array.
+    # The buffer.pop releases current buffer element.
+    # Note: Most likely we will add a target 'target_device' parameter which
+    # will allow to copy the RF data directly into GPU memory.
+    data, metadata = buffer.pop()
 
-data, metadata = buffer.pop()
+    # The metadata structure contains all the information necessary to
+    # reconstruct b-mode image from the RF data
+    # (e.g. probe's pitch, tx aperture position, etc.).
+    # You can find the source and docstrings of the metadata in
+    # arrus.metadata module.
+    if i == 0:
+        # Data acquisition context is constant after starting the us4r.device
+        # (you have to stop the device if you want e.g. change some lin sequence
+        # parameters), thus metadata.context
+        # is constant; it can be stored after acquiring the first frame
+        # and ignore those fields after that.
+        print(metadata.context)
+        print(metadata.data_description)
+    # process
+    gpu_data = cp.asarray(data)
 
-print(data)
-print(metadata.context)
-print(metadata.data_description)
-print(metadata.custom)
+    # Reconstruct bmode image.
+    # Note: metadata.data_description describes data produced at a given step;
+    # e.g. metadata.data_description.sampling_frequency can change after
+    # Decimation step.
+    bmode, metadata = bmode_imaging(gpu_data, metadata)
+    # display
+    canvas.set_data(bmode)
+    ax.set_aspect("auto")
+    fig.canvas.flush_events()
+    plt.draw()
+    print(f"Custom metadata: {metadata.custom}")
 
+# Stop the execution of the tx/rx sequence.
 us4r.stop()
-
