@@ -39,12 +39,13 @@ sess = arrus.MockSession(dataset)
 # depends on the session configuration file.
 # We will send you an appropriate session configuration file once you receive
 # the us4r-lite hardware.
+# The `Us4R` is an us4r lite device.
 us4r = sess.get_device("/Us4R:0")
 gpu = sess.get_device("/GPU:0")
 
-# Determine to what medium (e.g. a phantom) the probe is attached.
+# Determine the medium (e.g. a phantom) to which the probe is attached.
 phantom = arrus.Medium(name="my_tissue_mimicking_phantom", speed_of_sound=1540)
-# Assume given medium in this session.
+# Assume a given phantom for current session.
 sess.set_current_medium(phantom)
 
 # Set HV voltage [0.5*Vpp];
@@ -79,7 +80,9 @@ sequence = arrus.ops.LinSequence(
 )
 
 # Remember to upload th sequence on the us4r device.
-# The RF data will be pushed to the buffer
+# The provided buffer will contain acquired RF data.
+# The buffer is a read-only circular queue (only us4r device can write to this
+# buffer).
 buffer = us4r.upload(sequence)
 
 # Output image grid:
@@ -87,7 +90,7 @@ x_grid = np.arange(-50, 50, 0.4)*1e-3
 z_grid = np.arange(0, 60, 0.4)*1e-3
 
 # Define bmode image reconstruction pipeline.
-# You can find source and docstrings of the each step in arrus.utils.imaging
+# You can find source and docstrings of each step in arrus.utils.imaging
 # module.
 bmode_imaging = Pipeline(
     placement=gpu,
@@ -147,16 +150,17 @@ canvas = plt.imshow(np.zeros((image_w, image_h)), vmin=20, vmax=80, cmap="gray")
 fig.show()
 
 # Here starts the data acquisition and processing.
-# Starts currently uploaded tx/rx sequence, the buffer is now populated with
-# RF data (and some additional metadata).
+# Starts currently uploaded tx/rx sequence.
 us4r.start()
+# The buffer is now populated with RF data (and some additional metadata).
+
 # Get data from the buffer, process and display (100 frames).
 for i in range(100):
     # Get data and metadata from the buffer.
-    # buffer.pop copies data from the buffer and returns new numpy nd array.
+    # buffer.pop copies data from the buffer and returns new numpy ndarray.
     # The buffer.pop releases current buffer element.
-    # Note: Most likely we will add a target 'target_device' parameter which
-    # will allow to copy the RF data directly into GPU memory.
+    # Note: Most likely in the futurewe will add a target 'target_device'
+    # parameter which will allow to copy the RF data directly into GPU memory.
     data, metadata = buffer.pop()
 
     # The metadata structure contains all the information necessary to
@@ -167,18 +171,21 @@ for i in range(100):
     if i == 0:
         # Data acquisition context is constant after starting the us4r.device
         # (you have to stop the device if you want e.g. change some lin sequence
-        # parameters), thus metadata.context
-        # is constant; it can be stored after acquiring the first frame
-        # and ignore those fields after that.
+        # parameters), thus metadata.context field
+        # is constant;
+        #
+        # The metadata.context can be saved after acquiring the first frame;
+        # then you can ignore this field for consecutive fields.
         print(metadata.context)
         print(metadata.data_description)
+
     # process
     gpu_data = cp.asarray(data)
 
     # Reconstruct bmode image.
     # Note: metadata.data_description describes data produced at a given step;
     # e.g. metadata.data_description.sampling_frequency can change after
-    # Decimation step.
+    # `Decimation` operation.
     bmode, metadata = bmode_imaging(gpu_data, metadata)
     # display
     canvas.set_data(bmode)
