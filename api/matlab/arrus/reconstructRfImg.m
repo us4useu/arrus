@@ -93,8 +93,13 @@ end
 %% Delay & Sum
 for iTx=1:acq.nTx
     rxDist	= sqrt((proc.xGrid-xElemRx(1,iTx,:)).^2 + proc.zGrid'.^2);
-    rxTang	=  abs((proc.xGrid-xElemRx(1,iTx,:))   ./ proc.zGrid');
-    rxApod	= double(rxTang < maxTang);
+    if isfield(proc,'rxAngLim')
+        rxAng	= atan((proc.xGrid-xElemRx(1,iTx,:))./ proc.zGrid');
+        rxApod	= double(rxAng >= proc.rxAngLim(1,iTx) & rxAng <= proc.rxAngLim(2,iTx));
+    else
+        rxTang	=  abs((proc.xGrid-xElemRx(1,iTx,:))   ./ proc.zGrid');
+        rxApod	= double(rxTang < maxTang);
+    end
     
     % calculate total delays
     delTot	= (txDist(:,:,iTx) + rxDist)/acq.c + initDel;	% [s]
