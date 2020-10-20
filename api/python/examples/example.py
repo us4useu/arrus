@@ -83,6 +83,7 @@ sequence = arrus.ops.LinSequence(
 # The provided buffer will contain acquired RF data.
 # The buffer is a read-only circular queue (only us4r device can write to this
 # buffer).
+# Currently `us4r.upload` is just a nop.
 buffer = us4r.upload(sequence)
 
 # Output image grid:
