@@ -21,6 +21,10 @@ function[rfOut] = downConversion(rfIn,acq,proc)
 %% Quadrature demodulation
 if proc.iqEnable
     nSample = size(rfIn,1);
+    if isa(rfIn,'gpuArray')
+        nSample = gpuArray(nSample);
+    end
+    
     t = (0:nSample-1)'/acq.rxSampFreq;
     
     rfOut = 2*rfIn.*cos(-2*pi*acq.txFreq*t) ...
