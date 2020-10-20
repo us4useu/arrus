@@ -114,6 +114,7 @@ class MockSession(AbstractSession):
         rx_ap_center_element = self._get_vector(seq, "rxCentElem") - 1
         rx_ap_size = self._get_scalar(seq, "rxApSize")
         rx_samp_freq = self._get_scalar(seq, "rxSampFreq")
+        pri = self._get_scalar(seq, "txPri")
 
         sequence = arrus.ops.LinSequence(
             tx_aperture_center_element=tx_ap_center_element,
@@ -123,7 +124,8 @@ class MockSession(AbstractSession):
             pulse=pulse,
             rx_aperture_center_element=rx_ap_center_element,
             rx_aperture_size=rx_ap_size,
-            sampling_frequency=rx_samp_freq
+            sampling_frequency=rx_samp_freq,
+            pri=pri
         )
 
         # Medium
