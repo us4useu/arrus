@@ -115,11 +115,13 @@ for iTx=1:acq.nTx
     
     % modulate if iq signal is used
     if proc.iqEnable
-        rfRx	= rfRx.*exp(1i*2*pi*acq.txFreq*delTot);
+        modSig	= exp(1i*2*pi*acq.txFreq*delTot);
+        rfRx	= rfRx.*modSig;
     end
     
     % calculate rf and weights for single tx
-    rfTx(:,:,iTx)	= sum(rfRx.*wghRx,3);
+    rfRx            = rfRx.*wghRx;
+    rfTx(:,:,iTx)	= sum(rfRx,3);
     wghTx(:,:,iTx)	= sum(wghRx,3);
 end
 
