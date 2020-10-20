@@ -196,6 +196,7 @@ classdef Us4R < handle
             obj.closeSequence;
             
             if obj.rec.enable
+                obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
                 img = obj.execReconstr(rf(:,:,:,1));
             else
                 img = [];
@@ -213,6 +214,10 @@ classdef Us4R < handle
             % :param callback: a function to call after executing the \
             %   operation. Should take one parameter, which will be feed with \
             %   the output of the executed op.
+            
+            if obj.rec.enable
+                obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
+            end
             
             obj.openSequence;
             i = 0;
@@ -869,7 +874,11 @@ classdef Us4R < handle
             if strcmp(obj.seq.type,'lin')
                 rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
             else
-                rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
+                if isfield(obj.rec,'recPre')
+                    rfBfr = reconstructRfImgPart2(rfRaw,obj.rec.recPre);
+                else
+                    rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
+                end
             end
 
             %% Postprocessing
