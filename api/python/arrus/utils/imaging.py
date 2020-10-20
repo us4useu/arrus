@@ -10,6 +10,9 @@ import arrus.devices.gpu
 class Pipeline:
     """
     Imaging pipeline.
+
+    Processes given data,metadata using a given sequence of steps.
+    The processing will be performed on a given device ('placement').
     """
 
     def __init__(self, steps, placement: arrus.device.Device):
@@ -37,6 +40,10 @@ class Pipeline:
 class BandpassFilter:
     """
     Bandpass filtering to apply to signal data.
+
+    A bandwidth [0.5, 1.5]*center_frequency is currently used.
+
+    The filtering is performed along the last axis.
 
     Currently only FIR filter is available.
     """
@@ -89,7 +96,7 @@ class BandpassFilter:
 
 class QuadratureDemodulation:
     """
-    Quadrature demodulation (I/Q decompostion).
+    Quadrature demodulation (I/Q decomposition).
     """
 
     def __init__(self, num_pkg=None):
@@ -170,6 +177,8 @@ class Decimation:
 class RxBeamforming:
     """
     Rx beamforming.
+
+    Expected input data shape: n_emissions, n_rx, n_samples
 
     Currently the beamforming op works only for LIN sequence output data.
     """
@@ -421,6 +430,9 @@ class ScanConversion:
 
 
 class LogCompression:
+    """
+    Converts to decibel scale.
+    """
     def __init__(self):
         pass
 
