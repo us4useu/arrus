@@ -31,14 +31,12 @@ function[rfBfr,rfTx] = reconstructRfImg(rfRaw,sys,acq,proc)
 % TODO
 % apodization, STA step/focus/angle
 
-[nSamp,nRx,nTx] = size(rfRaw);
-zSize	= length(proc.zGrid);
-xSize	= length(proc.xGrid);
+fs      = acq.rxSampFreq/proc.dec;
+nSamp	= acq.nSamp/proc.dec;
 
 xElem	= reshape(sys.xElem,1,1,[]);
-xElemRx = (acq.rxApOrig - 1 + reshape(1:nRx,1,1,[]) - (sys.nElem-1)/2 - 1) * sys.pitch;
-
-fs      = acq.rxSampFreq/proc.dec;
+iRx     = reshape(1:acq.rxApSize,1,1,[]);
+xElemRx = (acq.rxApOrig - 1 + iRx - (sys.nElem-1)/2 - 1) * sys.pitch;
 
 maxTang	= tan(asin(min(1,(acq.c/acq.txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
 
@@ -49,16 +47,17 @@ initDel     = - fstSampDel + acq.txDelCent + burstFactor;	% [s] total init delay
 
 %% GPU memory allocation
 if isa(rfRaw,'gpuArray')
+    iRx         = gpuArray(iRx);
     xElem       = gpuArray(xElem);
     xElemRx     = gpuArray(xElemRx);
     proc.zGrid	= gpuArray(proc.zGrid);
     proc.xGrid	= gpuArray(proc.xGrid);
     
-    rfTx	= zeros(zSize,xSize,nTx,'gpuArray');
-    wghTx	= zeros(zSize,xSize,nTx,'gpuArray');
+    rfTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'gpuArray');
+    wghTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'gpuArray');
 else
-    rfTx	= zeros(zSize,xSize,nTx);
-    wghTx	= zeros(zSize,xSize,nTx);
+    rfTx	= zeros(proc.zSize,proc.xSize,acq.nTx);
+    wghTx	= zeros(proc.zSize,proc.xSize,acq.nTx);
 end
 
 %% Precalculate tx delays and apodization
@@ -91,20 +90,8 @@ switch acq.type
         
 end
 
-%% Precalculate rx delays and apodization
-% rxDist	= sqrt((proc.xGrid-xElem).^2 + proc.zGrid'.^2);
-% rxTang	=  abs((proc.xGrid-xElem)   ./ proc.zGrid');
-% rxApod	= double(rxTang < maxTang);
-% % rxApod	= double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
-
-iRx     = 1:nRx;
-if isa(rfRaw,'gpuArray')
-    iRx	= gpuArray(iRx);
-end
-iRx     = reshape(iRx,1,1,[]);
-
 %% Delay & Sum
-for iTx=1:nTx
+for iTx=1:acq.nTx
     rxDist	= sqrt((proc.xGrid-xElemRx(1,iTx,:)).^2 + proc.zGrid'.^2);
     rxTang	=  abs((proc.xGrid-xElemRx(1,iTx,:))   ./ proc.zGrid');
     rxApod	= double(rxTang < maxTang);
