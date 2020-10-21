@@ -35,25 +35,27 @@ quickRecEnable	= all(quickRecEnable(:));
 
 gpuEnable       = isa(rfRaw,'gpuArray');
 
-%% Reconstruction
-[nSamp,nRx,nTx]	= size(rfRaw);
-
+fs          = acq.rxSampFreq/proc.dec;
+nSamp       = acq.nSamp/proc.dec;
+nRx         = acq.rxApSize;
+nTx         = acq.nTx;
 if quickRecEnable
     nTx0	= 1;
 else
     nTx0	= nTx;
 end
 
-txAng       = reshape(acq.txAng(1:nTx0),1,1,[]);
 
-fs          = acq.rxSampFreq/proc.dec;
+txAng       = reshape(acq.txAng(1:nTx0),1,1,[]);
 
 maxTang     = tan(asin(min(1,(acq.c/acq.txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
 
-dT          = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with respect to start of tx
+%% initial delays
+initDel     = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with respect to start of tx
               + acq.txDelCent ...                           % [s] tx delay of the tx aperture center
               + acq.txNPer/(2*acq.txFreq);                  % [s] half the pulse length
 
+%% Precalculate tx/rx delays and apodization
 rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * acq.c/2;              % [mm] (nSamp,1) radial distance from the line origin
 
@@ -77,7 +79,14 @@ end
 txDist      = rVec;                                         % [mm] (nSamp,1) tx distance (from the line origin)
 rxDist      = sqrt((xVec-xElem).^2 + (zVec-zElem).^2);      % [mm] (nSamp,nRx,1 or nTx) rx distance (to each rx element)
 
-t           = (txDist + rxDist)/acq.c + dT;                 % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
+rxTang      = abs(tan(atan2(xVec-xElem,zVec-zElem) - angElem)); % [] (nSamp,nRx,1 or nTx)
+rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
+% rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
+rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or nTx) normalized rx apodization vector
+% warning - does the apodization takes into account for the clipped aperture?
+
+%% Delay & Sum
+t           = (txDist + rxDist)/acq.c + initDel;            % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
 if gpuEnable
     t       = gpuArray(t);
 end
@@ -85,12 +94,6 @@ end
 iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx,1 or nTx) sample numbers
 iSamp(iSamp<1 | iSamp>nSamp)	= inf;
 iSamp       = reshape(iSamp,nSamp,nRx*nTx0);
-
-rxTang      = abs(tan(atan2(xVec-xElem,zVec-zElem) - angElem)); % [] (nSamp,nRx,1 or nTx)
-rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
-% rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
-rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or nTx) normalized rx apodization vector
-% warning - does the apodization takes into account for the clipped aperture?
 
 % Delay & Sum
 nSamp0	= nSamp*nRx*nTx0;

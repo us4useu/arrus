@@ -44,9 +44,9 @@ xElemRx = (reshape(acq.rxApOrig,1,1,1,[]) - 1 + iRx - (sys.nElem-1)/2 - 1) * sys
 maxTang	= tan(asin(min(1,(acq.c/acq.txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
 
 %% initial delays
-fstSampDel	= acq.startSample/acq.rxSampFreq;	% [s] rx delay with respect to start of tx
-burstFactor	= acq.txNPer/(2*acq.txFreq);     % [s] burst factor
-initDel     = - fstSampDel + acq.txDelCent + burstFactor;	% [s] total init delay
+initDel     = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with respect to start of tx
+              + acq.txDelCent ...                           % [s] tx delay of the tx aperture center
+              + acq.txNPer/(2*acq.txFreq);                  % [s] half the pulse length
 
 %% GPU memory allocation
 if proc.gpuEnable
