@@ -4,7 +4,7 @@ import abc
 import numpy as np
 
 
-class Excitation(abc.ABC):
+class Pulse(abc.ABC):
     """
     An excitation (a signal pulse) to transmit.
     """
@@ -12,7 +12,7 @@ class Excitation(abc.ABC):
 
 
 @dataclass(frozen=True)
-class SineWave(Excitation):
+class SineWave(Pulse):
     """
     Sine wave excitation.
 
@@ -20,7 +20,7 @@ class SineWave(Excitation):
     :param n_periods: number of sine periods in the transmitted burst, can be fractional
     :param inverse: whether the resulting wave should be inverted
     """
-    frequency: float
+    center_frequency: float
     n_periods: float
     inverse: bool
 

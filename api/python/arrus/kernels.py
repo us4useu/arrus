@@ -135,7 +135,7 @@ class TxRxModuleKernel(LoadableKernel):
             tx_delays[np.where(self._tx_aperture_mask)] = op.tx.delays
         device.set_tx_delays(delays=tx_delays, firing=firing)
         # Excitation
-        wave = op.tx.excitation
+        wave = op.tx.pulse
         device.set_tx_frequency(frequency=wave.frequency, firing=firing)
         device.set_tx_half_periods(n_half_periods=int(wave.n_periods*2),
                                    firing=firing)
@@ -197,7 +197,7 @@ class TxRxModuleKernel(LoadableKernel):
                                      parameter_name="tx.delays")
 
         # Excitation:
-        excitation = self.op.tx.excitation
+        excitation = self.op.tx.pulse
         _validation.assert_type(excitation, _params.SineWave, "tx.excitation")
         _validation.assert_in_range(excitation.frequency, (1e6, 10e6),
                                     "tx.excitation.frequency")
