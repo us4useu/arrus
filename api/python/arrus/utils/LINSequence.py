@@ -37,12 +37,12 @@ def simple_aperture_scan(n_elem, subaperture_delays):
     Function generate array which describes which elements are turn on during
     classic' txrx scheme scan. The supaberture step is equal 1.  
     
-    :param nElem: number of elements in the array, i.e. full aperture length,
-    :param subApLen: subaperture length,
-    :param apMasks: output array of subsequent aperture masks 
-            (nLines x nElements size),
-    :param apDelays: output array of subsequent aperture delays
-            (nLines x nElements size).
+    :param n_elem: number of elements in the array, i.e. full aperture length,
+    :param subaperture_delays: subaperture length,
+    :param ap_masks: output array of subsequent aperture masks 
+            (n_lines x n_elem size),
+    :param ap_delays: output array of subsequent aperture delays
+            (n_lines x n_elem size).
     """
     
 
