@@ -45,6 +45,9 @@ else
     nTx0	= nTx;
 end
 
+nSamp       = single(nSamp);
+nRx         = single(nRx);
+nTx0        = single(nTx0);
 
 txAng       = reshape(acq.txAng(1:nTx0),1,1,[]);
 
@@ -64,9 +67,9 @@ zVec        = rVec.*cos(txAng);                             % [mm] (nSamp,1,1 or
 
 posElem     = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;	% [mm] (1,nRx) position of the rx aperture elements along probes curvature
 if isnan(sys.curvRadius)
-    angElem	= zeros(1,nRx);
+    angElem	= zeros(1,nRx,'single');
     xElem	= posElem;
-    zElem	= zeros(1,nRx);
+    zElem	= zeros(1,nRx,'single');
 else
     angElem	= posElem / -sys.curvRadius;
     xElem	= -sys.curvRadius * sin(angElem);
@@ -80,8 +83,8 @@ txDist      = rVec;                                         % [mm] (nSamp,1) tx 
 rxDist      = sqrt((xVec-xElem).^2 + (zVec-zElem).^2);      % [mm] (nSamp,nRx,1 or nTx) rx distance (to each rx element)
 
 rxTang      = abs(tan(atan2(xVec-xElem,zVec-zElem) - angElem)); % [] (nSamp,nRx,1 or nTx)
-rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
-% rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
+rxApod      = single(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
+% rxApod      = single(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
 rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or nTx) normalized rx apodization vector
 % warning - does the apodization takes into account for the clipped aperture?
 

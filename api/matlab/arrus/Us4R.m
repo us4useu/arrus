@@ -851,11 +851,14 @@ classdef Us4R < handle
         
         function img = execReconstr(obj,rfRaw)
 
-            %% Move data to GPU if possible
+            %% Change data type, move to GPU if possible
             if obj.rec.gpuEnable
                 rfRaw = gpuArray(rfRaw);
             end
             
+            % Due to a temporary problem with the filter function 
+            % (crashes when rfRaw is single), the rfRaw is
+            % converted to double just for filtration. 
             rfRaw = double(rfRaw);
 
             %% Preprocessing
@@ -863,6 +866,7 @@ classdef Us4R < handle
             if obj.rec.filtEnable
                 rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
             end
+            rfRaw = single(rfRaw);
 
             % Digital Down Conversion
             rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
@@ -905,8 +909,9 @@ classdef Us4R < handle
             if obj.rec.gpuEnable
                 img = gather(img);
             end
-
-
+            
+            img = double(img);
+            
         end
 
         function maskString = maskFormat(obj,maskLogical)

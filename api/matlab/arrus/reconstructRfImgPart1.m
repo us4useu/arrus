@@ -48,7 +48,14 @@ initDel     = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with 
               + acq.txDelCent ...                           % [s] tx delay of the tx aperture center
               + acq.txNPer/(2*acq.txFreq);                  % [s] half the pulse length
 
-%% GPU memory allocation
+%% Convertion to single & GPU memory allocation
+iRx         = single(iRx);
+iTx         = single(iTx);
+xElem       = single(xElem);
+xElemRx     = single(xElemRx);
+proc.zGrid	= single(proc.zGrid);
+proc.xGrid	= single(proc.xGrid);
+
 if proc.gpuEnable
     iRx         = gpuArray(iRx);
     iTx         = gpuArray(iTx);
@@ -70,8 +77,8 @@ switch acq.type
         txDist	= txDist.*sign(proc.zGrid' - zFoc) + txFoc;          % WARNING: sign()=0 => invalid txDist value
         
         txTang	= abs((proc.xGrid - xFoc)) ./ max(abs(proc.zGrid' - zFoc),1e-12);
-        txApod	= double(txTang < maxTang);
-%         txApod	= double(txTang < maxTang).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
+        txApod	= single(txTang < maxTang);
+%         txApod	= single(txTang < maxTang).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
         
     case 'pwi'
         % plane wave imaging method
@@ -82,7 +89,7 @@ switch acq.type
         % xElem: put the actual txAperture edges here
         r1      = (proc.xGrid-xElem(   1)).*cos(txAng) - proc.zGrid'.*sin(txAng);
         r2      = (proc.xGrid-xElem( end)).*cos(txAng) - proc.zGrid'.*sin(txAng);
-        txApod	= double(r1 >= 0 & r2 <= 0);
+        txApod	= single(r1 >= 0 & r2 <= 0);
         
 end
 
@@ -91,10 +98,10 @@ rxDist	= sqrt((proc.xGrid-xElemRx).^2 + proc.zGrid'.^2);
 if isfield(proc,'rxAngLim')
     proc.rxAngLim	= reshape(proc.rxAngLim,2,1,1,[]);
     rxAng	= atan((proc.xGrid-xElemRx)./ proc.zGrid');
-    rxApod	= double(rxAng >= proc.rxAngLim(1,1,1,:) & rxAng <= proc.rxAngLim(2,1,1,:));
+    rxApod	= single(rxAng >= proc.rxAngLim(1,1,1,:) & rxAng <= proc.rxAngLim(2,1,1,:));
 else
     rxTang	=  abs((proc.xGrid-xElemRx)   ./ proc.zGrid');
-    rxApod	= double(rxTang < maxTang);
+    rxApod	= single(rxTang < maxTang);
 end
 
 % calculate total delays

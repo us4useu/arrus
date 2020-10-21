@@ -21,6 +21,7 @@ function[rfOut] = downConversion(rfIn,acq,proc)
 %% Quadrature demodulation
 if proc.iqEnable
     nSample = size(rfIn,1);
+    nSample = single(nSample);
     if isa(rfIn,'gpuArray')
         nSample = gpuArray(nSample);
     end

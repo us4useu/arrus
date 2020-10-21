@@ -45,7 +45,13 @@ initDel     = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with 
               + acq.txDelCent ...                           % [s] tx delay of the tx aperture center
               + acq.txNPer/(2*acq.txFreq);                  % [s] half the pulse length
 
-%% GPU memory allocation
+%% Convertion to single & GPU memory allocation
+iRx         = single(iRx);
+xElem       = single(xElem);
+xElemRx     = single(xElemRx);
+proc.zGrid	= single(proc.zGrid);
+proc.xGrid	= single(proc.xGrid);
+
 if isa(rfRaw,'gpuArray')
     iRx         = gpuArray(iRx);
     xElem       = gpuArray(xElem);
@@ -53,11 +59,11 @@ if isa(rfRaw,'gpuArray')
     proc.zGrid	= gpuArray(proc.zGrid);
     proc.xGrid	= gpuArray(proc.xGrid);
     
-    rfTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'gpuArray');
-    wghTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'gpuArray');
+    rfTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'single','gpuArray');
+    wghTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'single','gpuArray');
 else
-    rfTx	= zeros(proc.zSize,proc.xSize,acq.nTx);
-    wghTx	= zeros(proc.zSize,proc.xSize,acq.nTx);
+    rfTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'single');
+    wghTx	= zeros(proc.zSize,proc.xSize,acq.nTx,'single');
 end
 
 %% Precalculate tx delays and apodization
@@ -72,8 +78,8 @@ switch acq.type
         txDist	= txDist.*sign(proc.zGrid' - zFoc) + txFoc;          % WARNING: sign()=0 => invalid txDist value
         
         txTang	= abs((proc.xGrid - xFoc)) ./ max(abs(proc.zGrid' - zFoc),1e-12);
-        txApod	= double(txTang < maxTang);
-%         txApod	= double(txTang < maxTang).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
+        txApod	= single(txTang < maxTang);
+%         txApod	= single(txTang < maxTang).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
         
     case 'pwi'
         % plane wave imaging method
@@ -84,9 +90,9 @@ switch acq.type
         % xElem: put the actual txAperture edges here
         r1      = (proc.xGrid-xElem(   1)).*cos(txAng) - proc.zGrid'.*sin(txAng);
         r2      = (proc.xGrid-xElem( end)).*cos(txAng) - proc.zGrid'.*sin(txAng);
-        txApod	= double(r1 >= 0 & r2 <= 0);
+        txApod	= single(r1 >= 0 & r2 <= 0);
 %         txTang	= tan(txAng);
-%         txApod	= double(r1 >= 0 & r2 <= 0).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
+%         txApod	= single(r1 >= 0 & r2 <= 0).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
         
 end
 
@@ -95,10 +101,10 @@ for iTx=1:acq.nTx
     rxDist	= sqrt((proc.xGrid-xElemRx(1,iTx,:)).^2 + proc.zGrid'.^2);
     if isfield(proc,'rxAngLim')
         rxAng	= atan((proc.xGrid-xElemRx(1,iTx,:))./ proc.zGrid');
-        rxApod	= double(rxAng >= proc.rxAngLim(1,iTx) & rxAng <= proc.rxAngLim(2,iTx));
+        rxApod	= single(rxAng >= proc.rxAngLim(1,iTx) & rxAng <= proc.rxAngLim(2,iTx));
     else
         rxTang	=  abs((proc.xGrid-xElemRx(1,iTx,:))   ./ proc.zGrid');
-        rxApod	= double(rxTang < maxTang);
+        rxApod	= single(rxTang < maxTang);
     end
     
     % calculate total delays
