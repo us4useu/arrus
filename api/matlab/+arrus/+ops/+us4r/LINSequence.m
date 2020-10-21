@@ -40,8 +40,8 @@ function [apMasks,apDelays] = simpleApertureScan(nElem, subApertureDelays)
 % 'classic' txrx scheme scan. The supaberture step is equal 1.  
 % 
 % :param nElem: number of elements in the array, i.e. full aperture length,
-% :param subApLen: subaperture length,
-% :param apMasks: output array of subsequent aperture masks 
+% :param subApertureDelays: vector of delays for subaperture,
+% :param apMasks: output array of subsequent aperture masks,
 %           (nLines x nElements size),
 % :param apDelays: output array of subsequent aperture delays
 %           (nLines x nElements size).
