@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_COMMON_VALIDATION_H
 #define ARRUS_CORE_COMMON_VALIDATION_H
 
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -8,7 +9,6 @@
 #include <unordered_map>
 #include <map>
 #include <sstream>
-#include <limits>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -153,8 +153,8 @@ class Validator {
     void
     expectAllDataType(const std::string &parameter, const Container &container,
                       const std::string &msg = "") {
-        constexpr auto min = std::numeric_limits<V>::min();
-        constexpr auto max = std::numeric_limits<V>::max();
+        constexpr auto min = (std::numeric_limits<V>::min)();
+        constexpr auto max = (std::numeric_limits<V>::max)();
         std::set<typename Container::value_type> invalidValues;
 
         for(auto const &value : container) {
@@ -242,8 +242,8 @@ class Validator {
     void
     expectDataType(const std::string &parameter, const U &value,
                    const std::string &msg = "") {
-        constexpr auto min = std::numeric_limits<V>::min();
-        constexpr auto max = std::numeric_limits<V>::max();
+        constexpr auto min = (std::numeric_limits<V>::min)();
+        constexpr auto max = (std::numeric_limits<V>::max)();
         if(!(value >= min && value <= max)) {
             errors.emplace(
                 parameter,

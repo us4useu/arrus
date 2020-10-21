@@ -22,7 +22,6 @@ MATCHER_P(FloatNearPointwise, tol, ""){
     return std::abs(std::get<0>(arg) - std::get<1>(arg)) < tol;
 }
 
-
 constexpr uint16 DEFAULT_PGA_GAIN = 30;
 constexpr uint16 DEFAULT_LNA_GAIN = 24;
 

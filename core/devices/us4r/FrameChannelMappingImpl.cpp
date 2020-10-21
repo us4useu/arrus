@@ -24,16 +24,16 @@ FrameChannelMappingImpl::getLogical(FrameNumber frame, ChannelIdx channel) {
     return {physicalFrame, physicalChannel};
 }
 
-uint32 FrameChannelMappingImpl::getNumberOfLogicalFrames() {
+FrameChannelMapping::FrameNumber FrameChannelMappingImpl::getNumberOfLogicalFrames() {
     assert(frameMapping.rows() >= 0
            && frameMapping.rows() <= std::numeric_limits<uint32>::max());
-    return static_cast<uint32>(frameMapping.rows());
+    return static_cast<FrameChannelMapping::FrameNumber>(frameMapping.rows());
 }
 
-uint32 FrameChannelMappingImpl::getNumberOfLogicalChannels() {
+ChannelIdx FrameChannelMappingImpl::getNumberOfLogicalChannels() {
     assert(frameMapping.cols() >= 0
            && frameMapping.cols() <= std::numeric_limits<uint32>::max());
-    return static_cast<uint32>(frameMapping.cols());
+    return static_cast<ChannelIdx>(frameMapping.cols());
 }
 
 void
@@ -50,7 +50,8 @@ FrameChannelMappingImpl::Handle FrameChannelMappingBuilder::build() {
 FrameChannelMappingBuilder::FrameChannelMappingBuilder(FrameNumber nFrames, ChannelIdx nChannels)
     : frameMapping(FrameChannelMappingImpl::FrameMapping(nFrames, nChannels)),
       channelMapping(FrameChannelMappingImpl::ChannelMapping(nFrames, nChannels)) {
-
+    // Creates empty frame mapping.
+    frameMapping.fill(0);
     channelMapping.fill(FrameChannelMapping::UNAVAILABLE);
 }
 

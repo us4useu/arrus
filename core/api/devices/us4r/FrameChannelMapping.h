@@ -22,8 +22,12 @@ public:
      */
     virtual std::pair<FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) = 0;
 
-    virtual uint32 getNumberOfLogicalFrames() = 0;
-    virtual uint32 getNumberOfLogicalChannels() = 0;
+    virtual FrameNumber getNumberOfLogicalFrames() = 0;
+    virtual ChannelIdx getNumberOfLogicalChannels() = 0;
+
+    static bool isChannelUnavailable(int8 channelNumber) {
+        return channelNumber == UNAVAILABLE;
+    }
 };
 
 }

@@ -28,9 +28,9 @@ public:
      */
     std::pair<FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) override;
 
-    uint32 getNumberOfLogicalFrames() override;
+    FrameNumber getNumberOfLogicalFrames() override;
 
-    uint32 getNumberOfLogicalChannels() override;
+    ChannelIdx getNumberOfLogicalChannels() override;
 
 private:
     // logical (frame, number) -> physical (frame, number)

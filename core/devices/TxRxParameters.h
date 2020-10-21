@@ -16,6 +16,18 @@ class TxRxParameters {
 public:
     static const TxRxParameters US4OEM_NOP;
 
+    static TxRxParameters createRxNOPCopy(const TxRxParameters& op) {
+        return TxRxParameters(
+            op.txAperture,
+            op.txDelays,
+            op.txPulse,
+            BitMask(op.rxAperture.size(), false),
+            op.rxSampleRange,
+            op.rxDecimationFactor,
+            op.pri
+        );
+    }
+
     /**
      *
      * ** tx aperture, tx delays and rx aperture should have the same size
@@ -129,6 +141,7 @@ private:
     ::std::vector<float> txDelays;
     ::arrus::ops::us4r::Pulse txPulse;
     ::std::vector<bool> rxAperture;
+    // TODO change to a simple pair
     Interval<uint32> rxSampleRange;
     int32 rxDecimationFactor;
     float pri;

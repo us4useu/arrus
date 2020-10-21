@@ -26,20 +26,20 @@ namespace arrus::devices {
  *
  * `Seqs` input parameter is a vector of sequences that will be loaded on
  * us4oem:0, us4oem:1, etc. This function outputs updated sequences so that
- * there are not conflicting rx channels. All of the output sequences have the
+ * there are no conflicting rx channels. All of the output sequences have the
  * same length - e.g. if seqs[0] first tx/rx operation must be split into
  * 4 tx/rx ops, and seqs[1] first op must be split into 2 tx/rx ops only,
  * the second sequence will extended by NOP TxRxParameters.
  *
  * @param seqs tx/rx sequences to recalculate
  * @return recalculated sequences,
- *         a mapping (module, input op index, rx channel) -> output op index,
- *         a mapping (module, input op index, rx channel) -> output op rx channel
+ *         a mapping (module, input op index, rx channel) -> output frame number,
+ *         a mapping (module, input op index, rx channel) -> output frame rx channel
  */
 std::tuple<
     std::vector<TxRxParamsSequence>,
-    Eigen::Tensor<int32, 3>,
-    Eigen::Tensor<int32, 3>
+    Eigen::Tensor<FrameChannelMapping::FrameNumber, 3>,
+    Eigen::Tensor<int8, 3>
 >
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs);
 
