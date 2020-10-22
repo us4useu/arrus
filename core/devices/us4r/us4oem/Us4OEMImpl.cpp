@@ -16,10 +16,12 @@ namespace arrus::devices {
 Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                        const BitMask &activeChannelGroups,
                        std::vector<uint8_t> channelMapping,
+                       std::unordered_set<uint8_t> channelsMask,
                        uint16 pgaGain, uint16 lnaGain)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()},
       ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)),
+      channelsMask(std::move(channelsMask)),
       pgaGain(pgaGain), lnaGain(lnaGain) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
@@ -37,6 +39,16 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                             "the input has {}, expected: {}", acg.size(),
                             activeChannelGroups.size()));
     this->activeChannelGroups = ::arrus::toBitset<N_ACTIVE_CHANNEL_GROUPS>(acg);
+
+    if(this->channelsMask.empty()) {
+        this->logger->log(LogSeverity::INFO, ::arrus::format(
+            "No channel masking will be applied for {}", ::arrus::toString(id)));
+    }
+    else {
+        this->logger->log(LogSeverity::INFO, ::arrus::format(
+            "Following us4oem channels will be turned off: {}",
+            ::arrus::toString(this->channelsMask)));
+    }
 }
 
 Us4OEMImpl::~Us4OEMImpl() {
@@ -206,21 +218,35 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
         if(op.isNOP()) {
             ius4oem->SetActiveChannelGroup(emptyChannelGroups, firing);
-            ius4oem->SetTxAperture(emptyAperture, firing);
-            ius4oem->SetRxAperture(emptyAperture, firing);
+            // Intentionally filtering empty aperture to reduce possibility of a mistake.
+            auto txAperture = filterAperture(emptyAperture);
+            auto rxAperture = filterAperture(emptyAperture);
+
+            // Intentionally validating the apertures, to reduce possibility of mistake.
+            validateAperture(txAperture);
+            ius4oem->SetTxAperture(txAperture, firing);
+            validateAperture(rxAperture);
+            ius4oem->SetRxAperture(rxAperture, firing);
         } else {
             // active channel groups already remapped in constructor
             ius4oem->SetActiveChannelGroup(activeChannelGroups, firing);
-            ius4oem->SetTxAperture(
-                ::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()), firing);
-            ius4oem->SetRxAperture(rxApertures[firing], firing);
+
+            auto txAperture = filterAperture(::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()));
+            auto rxAperture = filterAperture(rxApertures[firing]);
+
+            // Intentionally validating tx apertures, to reduce the risk of mistake channel actviation
+            // (e.g. the masked one).
+            validateAperture(txAperture);
+            ius4oem->SetTxAperture(txAperture, firing);
+            validateAperture(rxAperture);
+            ius4oem->SetRxAperture(rxAperture, firing);
         }
 
         // Delays
         uint8 txChannel = 0;
         for(bool bit : op.getTxAperture()) {
             float txDelay = 0;
-            if(bit) {
+            if(bit && ! ::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];
             }
             ius4oem->SetTxDelay(txChannel, txDelay, firing);
@@ -295,6 +321,10 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         bool isRxNop = true; // Will be false, if at least one channel is on (no rxnop).
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
+                ARRUS_REQUIRES_TRUE_E(
+                    onChannel < N_RX_CHANNELS,
+                    ArrusException("Up to 32 active rx channels can be set."));
+
                 isRxNop = false;
                 auto rxChannel = channelMapping[channel];
                 rxChannel = rxChannel % N_RX_CHANNELS;
@@ -302,10 +332,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 // set rx channel mapping, even if the channel is conflicting -
                 // this way we keep the expected shape of rx data as is
                 // (with some "bad data" gaps).
-                if(setContains(channelsUsed, rxChannel)) {
-                    ARRUS_REQUIRES_TRUE_E(
-                        onChannel < N_RX_CHANNELS,
-                        ArrusException("Up to 32 active rx channels can be set."));
+                if(setContains(channelsUsed, rxChannel)
+                    || setContains(this->channelsMask, channel)) {
                     fcmBuilder.setChannelMapping(noRxNopId, onChannel,
                                                  noRxNopId, FrameChannelMapping::UNAVAILABLE);
                 } else {
@@ -317,7 +345,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     mapping.push_back(rxChannel);
                     channelsUsed.insert(rxChannel);
                     fcmBuilder.setChannelMapping(noRxNopId, onChannel,
-                                                 noRxNopId, (int8)(mapping.size()-1));
+                                                 noRxNopId, (int8) (mapping.size() - 1));
                 }
                 ++onChannel;
             }
@@ -395,6 +423,25 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
             val = (val - 14.0f) / 40.0f;
         }
         ius4oem->TGCSetSamples(actualTGC, firing);
+    }
+}
+
+std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>
+Us4OEMImpl::filterAperture(std::bitset<N_ADDR_CHANNELS> aperture) {
+    for(auto channel : this->channelsMask) {
+        aperture[channel] = false;
+    }
+    return aperture;
+}
+
+void
+Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
+    for(auto channel : this->channelsMask) {
+        if(aperture[channel]) {
+            throw ArrusException(
+                ::arrus::format("Attempted to set masked channel: {}", channel)
+            );
+        }
     }
 }
 

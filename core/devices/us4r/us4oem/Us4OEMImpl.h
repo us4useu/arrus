@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <iostream>
+#include <unordered_set>
 
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
@@ -77,6 +78,7 @@ public:
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping,
+               std::unordered_set<uint8_t> channelsMask,
                uint16 pgaGain, uint16 lnaGain);
 
     ~Us4OEMImpl() override;
@@ -103,6 +105,7 @@ private:
     IUs4OEMHandle ius4oem;
     std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
     std::vector<uint8_t> channelMapping;
+    std::unordered_set<uint8_t> channelsMask;
     uint16 pgaGain, lnaGain;
 
     std::tuple<
@@ -114,6 +117,9 @@ private:
     static float getRxTime(size_t nSamples);
 
     void setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing);
+
+    std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
+    void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
 };
 
 }

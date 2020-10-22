@@ -8,6 +8,7 @@
 #include <cctype>
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <optional>
 #include <sstream>
 #include <gsl/span>
@@ -74,6 +75,14 @@ inline std::string toStringTransform(
 
 template<typename T>
 inline std::string toString(const ::std::set<T> &values) {
+    std::vector<std::string> vStr(values.size());
+    std::transform(std::begin(values), std::end(values), std::begin(vStr),
+                   [](auto v) { return std::to_string(v); });
+    return boost::algorithm::join(vStr, ", ");
+}
+
+template<typename T>
+inline std::string toString(const ::std::unordered_set<T> &values) {
     std::vector<std::string> vStr(values.size());
     std::transform(std::begin(values), std::end(values), std::begin(vStr),
                    [](auto v) { return std::to_string(v); });

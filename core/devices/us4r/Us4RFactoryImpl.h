@@ -67,10 +67,13 @@ public:
             // Rx settings will be validated by a specific device
             // (Us4OEMs validator)
 
+
             // Convert to Us4OEM settings
             auto[us4OEMSettings, adapterSettings] =
             us4RSettingsConverter->convertToUs4OEMSettings(
                 probeAdapterSettings, probeSettings, rxSettings);
+
+            // TODO verify if the provided us4oemSettings.channelsMask is equal to us4oemChannelsMask field
 
             auto [us4oems, masterIUs4OEM] = getUs4OEMs(us4OEMSettings);
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
@@ -101,7 +104,7 @@ private:
      * @return a pair: us4oems, master ius4oem
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM*>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, ) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");
         auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
