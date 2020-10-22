@@ -12,7 +12,8 @@ public:
     std::pair<std::vector<Us4OEMSettings>, ProbeAdapterSettings>
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
                             const ProbeSettings &probeSettings,
-                            const RxSettings &rxSettings) override {
+                            const RxSettings &rxSettings,
+                            const std::vector<ChannelIdx> channelsMask) override {
 
         // Assumption:
         // for each module there is N_RX_CHANNELS*k elements in mapping
@@ -91,11 +92,39 @@ public:
             activeChannelGroups[module][us4oemChannel / actChSize] = true;
         }
 
+        // CHANNELS MASKS PRODUCTION
+        // convert probe channels masks to adapter channels mask:
+        // - for each masked channel find the adapter's channel
+        // convert adapter channels mask to us4oem channels mask
+        // - for each masked channel n the adapter find module, channel
+        // (note that we need use here logical channels of the us4oem
+        // because we set tx apertures with logical channel (the physical channel is mapped by the IUs4OEM)
+
+        std::vector<std::unordered_set<uint8>> channelsMasks(nUs4OEMs);
+
+        // probe channel -> adapter channel -> [module, us4oem LOGICAL channel]
+        for(const auto offProbeChannel : channelsMask) {
+            ARRUS_REQUIRES_TRUE_E(offProbeChannel < probeSettings.getModel().getNumberOfElements().product(),
+                                  ::arrus::IllegalArgumentException(
+                                      ::arrus::format("Channels mask element {} cannot exceed "
+                                                      "the number of probe elements {}",
+                                                      offProbeChannel, probeSettings.getModel().
+                                              getNumberOfElements().product())
+                                  ));
+            auto offAdapterChannel = probeSettingsMapping[offProbeChannel];
+            auto[module, offUs4OEMLogicalChannel] = adapterChannelMapping[offAdapterChannel];
+            channelsMasks[module].emplace(offUs4OEMLogicalChannel);
+        }
+        // END OF THE MASKS PRODUCTION
+
+
         for(int i = 0; i < nUs4OEMs; ++i) {
-            result.emplace_back(
-                us4oemChannelMapping[i],
-                activeChannelGroups[i],
-                rxSettings
+            result.push_back(
+                Us4OEMSettings(
+                    us4oemChannelMapping[i],
+                    activeChannelGroups[i],
+                    rxSettings,
+                    channelsMasks[i])
             );
         }
         return {result, ProbeAdapterSettings(

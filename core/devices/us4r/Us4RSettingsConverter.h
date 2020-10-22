@@ -16,12 +16,17 @@ public:
      *
      * Use the returned settings when us4oems are connected in the us4r
      * to given adapter and probe.
+     *
+     * Channels mask - a list of PROBE channels that has to be masked.
+     * Channel numbers starts from 0!
+     * This function converts the probe channels mask to us4oem channels masks.
      */
     virtual
     std::pair<std::vector<Us4OEMSettings>, ProbeAdapterSettings>
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
                             const ProbeSettings &probeSettings,
-                            const RxSettings &rxSettings) = 0;
+                            const RxSettings &rxSettings,
+                            const std::vector<ChannelIdx> channelsMask) = 0;
 };
 
 }

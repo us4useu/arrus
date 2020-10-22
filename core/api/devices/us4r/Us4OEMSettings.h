@@ -6,6 +6,7 @@
 #include <bitset>
 #include <optional>
 #include <ostream>
+#include <unordered_set>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
@@ -36,15 +37,18 @@ public:
      * @param channelMapping channel permutation to apply on a given Us4OEM.
      *  channelMapping[i] = j, where `i` is the virtual(logical) channel number,
      *  `j` is the physical channel number.
-     * @param rxSettings
-     * @param tgcSamples tgc curve to apply, empty list means to turn off TGC
+     * @param rxSettings initial rx settings to apply
+     * @param channelMask channels that should be always turned off,
+     *   CHANNEL NUMBERS STARTS FROM 0
      */
     Us4OEMSettings(ChannelMapping channelMapping,
                    BitMask activeChannelGroups,
-                   RxSettings rxSettings)
+                   RxSettings rxSettings,
+                   std::unordered_set<uint8> channelsMask)
             : channelMapping(std::move(channelMapping)),
               activeChannelGroups(std::move(activeChannelGroups)),
-              rxSettings(std::move(rxSettings)) {}
+              rxSettings(std::move(rxSettings)),
+              channelsMask(std::move(channelsMask)){}
 
 
     [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
@@ -59,12 +63,15 @@ public:
         return rxSettings;
     }
 
-
+    [[nodiscard]] const std::unordered_set<uint8> &getChannelsMask() const {
+        return channelsMask;
+    }
 
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
     RxSettings rxSettings;
+    std::unordered_set<uint8> channelsMask;
 };
 
 }
