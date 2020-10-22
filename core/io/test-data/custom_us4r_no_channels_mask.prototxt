@@ -46,19 +46,4 @@ us4r: {
         tgc_samples: [20, 21, 22]
         lpf_cutoff: 1000000
     }
-
-    channels_mask: {
-        channels: [0, 15, 30]
-    }
-
-    us4oem_channels_mask: [
-        {
-            channels: [0, 15, 30]
-        },
-        {
-            channels: []
-        }
-    ]
 }
-
-

@@ -24,7 +24,8 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
 
     EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({5, 10, 15}));
-    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<ChannelIdx>>({{5, 10}, {15}}));
+    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<ChannelIdx>>({{5, 10},
+                                                                                          {15}}));
 
     // Probe settings
     // Probe model
@@ -95,6 +96,9 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
+
+    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({0, 15, 30}));
+    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<ChannelIdx>>({{0, 15, 30},{}}));
 
     // Probe settings
     // Probe model
@@ -197,6 +201,12 @@ TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
               std::vector<TGCSampleValue>({14.5, 15.5, 16.5, 17.5}));
     EXPECT_EQ(rxSettings1.getLPFCutoff(), 1000000);
     EXPECT_EQ(rxSettings1.getActiveTermination(), 500);
+}
+
+TEST(ReadingProtoTxtFile, throwsExceptionOnNoChannelsMask) {
+    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
+                    std::filesystem::path("custom_us4r_no_channels_mask.prototxt");
+    EXPECT_THROW(arrus::io::readSessionSettings(filepath.string()), IllegalArgumentException);
 }
 
 int main(int argc, char **argv) {
