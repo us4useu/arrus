@@ -78,8 +78,8 @@ public:
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping,
-               std::unordered_set<uint8_t> channelsMask,
-               uint16 pgaGain, uint16 lnaGain);
+               uint16 pgaGain, uint16 lnaGain,
+               std::unordered_set<uint8_t> channelsMask);
 
     ~Us4OEMImpl() override;
 

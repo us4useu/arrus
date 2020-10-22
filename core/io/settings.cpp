@@ -272,20 +272,20 @@ ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r,
     }
 }
 
-std::vector<ChannelIdx> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
+template<typename T>
+std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
     auto &channels = mask.channels();
 
     // validate
     for(auto channel : channels) {
-        ARRUS_REQUIRES_DATA_TYPE(channel, ChannelIdx, arrus::format(
+        ARRUS_REQUIRES_DATA_TYPE(channel, T, arrus::format(
             "Channel mask should contain only values from uint16 range "
             "(found: '{}')", channel));
     }
-    std::vector<ChannelIdx> result;
+    std::vector<T> result;
 
     for(auto channel : channels) {
-        std::cerr << "Channel mask: "  << channel << std::endl;
-        result.push_back(static_cast<ChannelIdx>(channel));
+        result.push_back(static_cast<T>(channel));
     }
     return result;
 }
@@ -339,10 +339,10 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         }
 
         std::vector<ChannelIdx> channelsMask =
-            readChannelsMask(us4r.channels_mask());
-        std::vector<std::vector<ChannelIdx>> us4oemChannelsMask;
+            readChannelsMask<ChannelIdx>(us4r.channels_mask());
+        std::vector<std::vector<uint8>> us4oemChannelsMask;
         for(auto &mask: us4r.us4oem_channels_mask()) {
-            us4oemChannelsMask.push_back(readChannelsMask(mask));
+            us4oemChannelsMask.push_back(readChannelsMask<uint8>(mask));
         }
 
         return Us4RSettings(adapterSettings, probeSettings, rxSettings,

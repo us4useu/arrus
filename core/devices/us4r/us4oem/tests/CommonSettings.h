@@ -24,7 +24,8 @@ struct TestUs4OEMSettings {
                               RxSettings(
                                       dtgcAttenuation, pgaGain,
                                       lnaGain, tgcSamples,
-                                      lpfCutoff, activeTermination));
+                                      lpfCutoff, activeTermination),
+                              std::unordered_set<uint8>());
     }
 
     friend std::ostream &

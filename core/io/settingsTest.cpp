@@ -24,8 +24,7 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
 
     EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({5, 10, 15}));
-    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<ChannelIdx>>({{5, 10},
-                                                                                          {15}}));
+    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<uint8>>({{5, 10}, {15}}));
 
     // Probe settings
     // Probe model
@@ -98,7 +97,7 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
 
     EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({0, 15, 30}));
-    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<ChannelIdx>>({{0, 15, 30},{}}));
+    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<uint8>>({{0, 15, 30},{}}));
 
     // Probe settings
     // Probe model

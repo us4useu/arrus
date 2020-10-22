@@ -28,13 +28,13 @@ public:
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
         std::vector<ChannelIdx> channelsMask,
-        std::vector<std::vector<ChannelIdx>> us4oemChannelsMask)
+        std::vector<std::vector<uint8>> us4oemChannelsMask)
         : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
           hvSettings(std::move(hvSettings)),
-          channelsMask(channelsMask),
-          us4oemChannelsMask(us4oemChannelsMask){}
+          channelsMask(std::move(channelsMask)),
+          us4oemChannelsMask(std::move(us4oemChannelsMask)){}
 
     [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
@@ -61,7 +61,7 @@ public:
         return channelsMask;
     }
 
-    [[nodiscard]] const std::vector<std::vector<ChannelIdx>> &getUs4OEMChannelsMask() const {
+    [[nodiscard]] const std::vector<std::vector<uint8>> &getUs4OEMChannelsMask() const {
         return us4oemChannelsMask;
     }
 
@@ -87,7 +87,7 @@ private:
      * Currently us4oem channels are used for double check only.
      * The administrator has to provide us4oem channels masks that confirms to
      * the system us4r channels, and this way we reduce the chance of mistake. */
-    std::vector<std::vector<ChannelIdx>> us4oemChannelsMask;
+    std::vector<std::vector<uint8>> us4oemChannelsMask;
 };
 
 }

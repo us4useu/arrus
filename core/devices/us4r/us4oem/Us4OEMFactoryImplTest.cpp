@@ -267,7 +267,6 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
 }
 
 int main(int argc, char **argv) {
-    std::cerr << "Starting" << std::endl;
     ARRUS_INIT_TEST_LOG(arrus::Logging);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

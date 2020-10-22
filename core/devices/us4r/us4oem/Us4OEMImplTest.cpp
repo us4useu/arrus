@@ -64,8 +64,9 @@ protected:
         us4oem = std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             std::move(ius4oem), activeChannelGroups,
-            channelMapping, std::unordered_set<uint8>(),
-            pgaGain, lnaGain
+            channelMapping,
+            pgaGain, lnaGain,
+            std::unordered_set<uint8>()
         );
     }
 
@@ -350,8 +351,9 @@ protected:
         us4oem = std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             std::move(ius4oem), activeChannelGroups,
-            channelMapping, std::unordered_set<uint8>(),
-            pgaGain, lnaGain
+            channelMapping,
+            pgaGain, lnaGain,
+            std::unordered_set<uint8>()
         );
     }
 
@@ -675,8 +677,9 @@ protected:
             DeviceId(DeviceType::Us4OEM, 0),
             // NOTE: due to the below move this function can be called only once
             std::move(ius4oem), activeChannelGroups,
-            channelMapping, channelsMask,
-            pgaGain, lnaGain
+            channelMapping,
+            pgaGain, lnaGain,
+            channelsMask
         );
 
     }

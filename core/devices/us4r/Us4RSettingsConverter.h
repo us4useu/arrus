@@ -26,7 +26,7 @@ public:
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
                             const ProbeSettings &probeSettings,
                             const RxSettings &rxSettings,
-                            const std::vector<ChannelIdx> channelsMask) = 0;
+                            const std::vector<ChannelIdx> &channelsMask) = 0;
 };
 
 }

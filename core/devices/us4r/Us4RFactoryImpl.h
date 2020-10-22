@@ -71,11 +71,13 @@ public:
             // Convert to Us4OEM settings
             auto[us4OEMSettings, adapterSettings] =
             us4RSettingsConverter->convertToUs4OEMSettings(
-                probeAdapterSettings, probeSettings, rxSettings);
+                probeAdapterSettings, probeSettings, rxSettings,
+                settings.getChannelsMask());
 
-            // TODO verify if the provided us4oemSettings.channelsMask is equal to us4oemChannelsMask field
+            // verify if the generated us4oemSettings.channelsMask is equal to us4oemChannelsMask field
+            validateChannelsMasks(us4OEMSettings, settings.getUs4OEMChannelsMask());
 
-            auto [us4oems, masterIUs4OEM] = getUs4OEMs(us4OEMSettings);
+            auto[us4oems, masterIUs4OEM] = getUs4OEMs(us4OEMSettings);
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(
                 std::begin(us4oems), std::end(us4oems),
@@ -87,24 +89,52 @@ public:
                                                      us4oemPtrs);
             // Create probe.
             ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings,
-                                                             adapter.get());
+                                                                 adapter.get());
 
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv));
         } else {
             // Custom Us4OEMs only
-            auto [us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings());
+            auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings());
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv));
         }
     }
 
 private:
+
+    void validateChannelsMasks(const std::vector<Us4OEMSettings> &us4oemSettings,
+                               const std::vector<std::vector<uint8>> &us4oemChannelsMasks) {
+        ARRUS_REQUIRES_TRUE_E(
+            us4oemSettings.size() == us4oemChannelsMasks.size(),
+            ::arrus::IllegalArgumentException(
+                ::arrus::format("There should be exactly {} us4oem channels masks "
+                                "in the system configuration.", us4oemChannelsMasks)
+            )
+        );
+
+        for(int i = 0; i < us4oemSettings.size(); ++i) {
+            auto &setting = us4oemSettings[i];
+
+            std::unordered_set<uint8> us4oemMask(
+                std::begin(us4oemChannelsMasks[i]), std::end(us4oemChannelsMasks[i]));
+
+            ARRUS_REQUIRES_TRUE_E(
+                setting.getChannelsMask() == us4oemMask,
+                ::arrus::IllegalArgumentException(
+                    ::arrus::format(
+                    "The provided us4r channels masks does not match the provided us4oem channels masks, "
+                    "for us4oem {}", i))
+            );
+        }
+    }
+
+
     /**
      * @return a pair: us4oems, master ius4oem
      */
-    std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM*>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, ) {
+    std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");
         auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
@@ -139,7 +169,7 @@ private:
 
     std::optional<HV256Impl::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
         if(settings.has_value()) {
-            const auto& hvSettings = settings.value();
+            const auto &hvSettings = settings.value();
             auto &manufacturer = hvSettings.getModelId().getManufacturer();
             auto &name = hvSettings.getModelId().getName();
             ARRUS_REQUIRES_EQUAL(name, "hv256", IllegalArgumentException(
