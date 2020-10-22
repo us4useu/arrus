@@ -11,6 +11,7 @@ namespace arrus::devices {
 // Device path
 constexpr char PATH_DELIMITER = '/';
 
+inline
 std::pair<std::string, std::string> getPathRoot(const std::string &path) {
     if(path.empty() || path[0] != PATH_DELIMITER) {
         throw IllegalArgumentException(

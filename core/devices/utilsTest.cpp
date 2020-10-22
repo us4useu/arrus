@@ -26,7 +26,7 @@ class GetPathRootTest
 
 TEST_P(GetPathRootTest, CorrectlyExtractsRootAndTail) {
     GetPathRootTestCase tc = GetParam();
-    auto[root, tail] = ::arrus::getPathRoot(tc.path);
+    auto[root, tail] = ::arrus::devices::getPathRoot(tc.path);
 
     EXPECT_EQ(root, tc.expectedRootTail.first);
     EXPECT_EQ(tail, tc.expectedRootTail.second);
@@ -61,7 +61,7 @@ class GetPathRootInvalidInputTest
 
 TEST_P(GetPathRootInvalidInputTest, GetPathRootInvalidInputTest) {
     GetPathRootTestCase tc = GetParam();
-    EXPECT_THROW(::arrus::getPathRoot(tc.path),
+    EXPECT_THROW(::arrus::devices::getPathRoot(tc.path),
                  ::arrus::IllegalArgumentException);
 }
 

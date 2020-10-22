@@ -15,6 +15,13 @@ public:
     using Handle = std::unique_ptr<Us4OEMImplBase>;
     using RawHandle = PtrHandle<Us4OEMImplBase>;
 
+    ~Us4OEMImplBase() override = default;
+
+    Us4OEMImplBase(Us4OEMImplBase const&) = delete;
+    Us4OEMImplBase(Us4OEMImplBase const&&) = delete;
+    void operator=(Us4OEMImplBase const&) = delete;
+    void operator=(Us4OEMImplBase const&&) = delete;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

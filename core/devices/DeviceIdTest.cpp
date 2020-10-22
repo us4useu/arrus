@@ -75,7 +75,7 @@ class DeviceIdIncorrectParseTest
 
 TEST_P(DeviceIdIncorrectParseTest, DeclineIncorrectIds) {
     EXPECT_THROW(DeviceId::parse(GetParam().idString),
-                 IllegalArgumentException);
+                 ::arrus::IllegalArgumentException);
 }
 
 INSTANTIATE_TEST_CASE_P

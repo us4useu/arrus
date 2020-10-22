@@ -81,6 +81,12 @@ do {                                                      \
     }                                                     \
 } while(0)
 
+#define ARRUS_REQUIRES_DATA_TYPE(value, dtype, MSG) \
+    ARRUS_REQUIRES_IN_CLOSED_INTERVAL(value,        \
+        (std::numeric_limits<ChannelIdx>::min)(),   \
+        (std::numeric_limits<ChannelIdx>::max)(),   \
+        MSG)
+
 #define ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(cv, lock, timeout, exceptionMsg) \
     if(timeout.has_value()) { \
         auto status = cv.wait_for(lock,                                     \

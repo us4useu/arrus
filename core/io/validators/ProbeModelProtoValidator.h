@@ -21,6 +21,16 @@ public:
     void validate(const arrus::proto::ProbeModel &obj) override {
         // Data type
         expectAllDataType<ChannelIdx>("n_elements", obj.n_elements());
+        auto &freqRange = obj.tx_frequency_range();
+        expectTrue("tx_frequency_range", freqRange.begin() <= freqRange.end(),
+                   "tx freq range begin should be <= tx freq range end.");
+
+        auto &voltageRange = obj.voltage_range();
+        expectTrue("voltage_range", voltageRange.begin() <= voltageRange.end(),
+                   "voltage range begin should be <= voltage range end.");
+
+        expectDataType<uint8>("voltage_range.begin", voltageRange.begin());
+        expectDataType<uint8>("voltage_range.end", voltageRange.end());
     }
 };
 

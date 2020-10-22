@@ -1,23 +1,30 @@
 #include <gtest/gtest.h>
 #include <csignal>
 #include <filesystem>
+#include <range/v3/all.hpp>
 
 #include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/common/collections.h"
 
-using namespace arrus;
+using namespace ::arrus;
+using namespace ::arrus::session;
+using namespace ::arrus::devices;
+using namespace arrus::ops::us4r;
 
 // ARRUS_TEST_DATA_PATH is defined in cmake.
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
                     std::filesystem::path("us4r.prototxt");
-    SessionSettings settings = arrus::io::readSessionSettings(
+    ::arrus::session::SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
+
+    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({5, 10, 15}));
+    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<ChannelIdx>>({{5, 10}, {15}}));
 
     // Probe settings
     // Probe model

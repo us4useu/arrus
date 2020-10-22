@@ -72,7 +72,7 @@ TEST_P(MappingsTest, CorrectlyConvertsMappingsToUs4OEMSettings) {
     ProbeSettings probeSettings(
             ProbeModel(ProbeModelId("test", "test"),
                        {32},
-                       {0.3e-3}, {1e6, 10e6}),
+                       {0.3e-3}, {1e6, 10e6}, {0, 90}),
             getRange<ChannelIdx>(0, 32)
     );
 
@@ -451,7 +451,7 @@ TEST_P(ActiveChannelsTest, CorrectlyGeneratesActiveChannelGroups) {
     ProbeSettings probeSettings(
             ProbeModel(ProbeModelId("test", "test"),
                        {32},
-                       {0.3e-3}, {1e6, 10e6}),
+                       {0.3e-3}, {1e6, 10e6}, {0, 90}),
             testCase.probeMapping
     );
 

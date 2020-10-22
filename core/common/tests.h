@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_COMMON_TESTS_H
 #define ARRUS_CORE_COMMON_TESTS_H
 
+#include <iostream>
+
 namespace arrus {
 
 #define ARRUS_STRUCT_INIT_LIST(Type, initList)             \
@@ -16,6 +18,10 @@ namespace arrus {
         EXPECT_TRUE(eq(0)); \
     } while(0)
 
+# define ARRUS_PRINT_DIFFERENCES(a, b) \
+    do {                               \
+        a.                                   \
+    } while(0)
 }
 
 #endif //ARRUS_CORE_COMMON_TESTS_H

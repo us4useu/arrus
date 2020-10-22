@@ -3,6 +3,7 @@ syntax  = "proto3";
 package arrus.proto;
 
 import "io/proto/common/IntervalDouble.proto";
+import "io/proto/common/IntervalInteger.proto";
 
 
 message ProbeModel {
@@ -14,4 +15,6 @@ message ProbeModel {
   repeated uint32 n_elements = 2;
   repeated double pitch = 3;
   IntervalDouble tx_frequency_range = 4;
+  // Acceptable voltage range +/-, [0.5*Vpp]
+  IntervalInteger voltage_range = 5;
 }

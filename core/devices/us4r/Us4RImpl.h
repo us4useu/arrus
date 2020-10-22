@@ -6,12 +6,13 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "arrus/common/asserts.h"
 #include "arrus/core/devices/utils.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/hv/HV256Impl.h"
@@ -26,14 +27,14 @@ public:
         getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
     }
 
-    Us4RImpl(const DeviceId &id, Us4OEMs &us4oems,
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
              std::optional<HV256Impl::Handle> hv)
-        : Us4R(id), us4oems(std::move(us4oems)),
+        : Us4R(id),  us4oems(std::move(us4oems)),
           hv(std::move(hv)) {
     }
 
     Us4RImpl(const DeviceId &id,
-             Us4OEMs &us4oems,
+             Us4OEMs us4oems,
              ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe,
              std::optional<HV256Impl::Handle> hv)
@@ -41,6 +42,9 @@ public:
           probeAdapter(std::move(probeAdapter)),
           probe(std::move(probe)),
           hv(std::move(hv)) {}
+
+    Us4RImpl(Us4RImpl const&) = delete;
+    Us4RImpl(Us4RImpl const&&) = delete;
 
     Device::RawHandle getDevice(const std::string &path) override {
         auto[root, tail] = getPathRoot(path);
@@ -77,6 +81,7 @@ public:
         }
         return us4oems.at(ordinal).get();
     }
+
 
     ProbeAdapter::RawHandle getProbeAdapter(Ordinal ordinal) override {
         if(ordinal > 0 || !probeAdapter.has_value()) {

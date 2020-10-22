@@ -24,8 +24,18 @@ message Us4RSettings {
     ProbeAdapterModel adapter = 4;
   }
 
-  ProbeToAdapterConnection probe_to_adapter_connection = 5;
-  RxSettings rx_settings = 6;
-  repeated Us4OEMSettings us4oems = 7;
-  HVSettings hv = 8;
+
+  message ChannelsMask {
+    // The channel number of the probe that should be turned of.
+    // The number refers to
+    repeated uint32 channels = 1;
+  }
+
+  ChannelsMask channels_mask = 5;
+  ProbeToAdapterConnection probe_to_adapter_connection = 6;
+  RxSettings rx_settings = 7;
+  repeated Us4OEMSettings us4oems = 8;
+  HVSettings hv = 9;
+
+  repeated ChannelsMask us4oem_channels_mask = 10;
 }

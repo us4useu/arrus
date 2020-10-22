@@ -7,19 +7,21 @@
 #include "arrus/core/devices/probe/ProbeSettingsValidator.h"
 
 namespace {
+using namespace arrus;
 using namespace arrus::devices;
 
 struct TestProbeSettings {
     ProbeModelId modelId{"test", "test"};
     Tuple<ProbeModel::ElementIdxType> numberOfElements{192};
     Tuple<double> pitch{0.3e-3};
-    Interval<double> txFrequencyRange = {1e6, 10e6};
+    Interval<float> txFrequencyRange = {1e6, 10e6};
+    Interval<uint8> voltageRange = {0, 90};
     std::vector<ChannelIdx> channelMapping =
         arrus::getRange<ChannelIdx>(0, 192);
 
     [[nodiscard]] ProbeSettings toProbeSettings() const {
         return ProbeSettings{
-            ProbeModel{modelId, numberOfElements, pitch, txFrequencyRange},
+            ProbeModel{modelId, numberOfElements, pitch, txFrequencyRange, voltageRange},
             channelMapping};
     }
 
@@ -86,7 +88,7 @@ TEST_P(IncorrectProbeSettingsTest, RejectsIncorrect) {
     ProbeSettingsValidator validator(0);
     TestProbeSettings val = GetParam();
     validator.validate(val.toProbeSettings());
-    EXPECT_THROW(validator.throwOnErrors(), IllegalArgumentException);
+    EXPECT_THROW(validator.throwOnErrors(), ::arrus::IllegalArgumentException);
 }
 
 INSTANTIATE_TEST_CASE_P

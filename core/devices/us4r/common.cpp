@@ -60,6 +60,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
     Eigen::Tensor<FrameChannelMapping::FrameNumber, 3> opDestOp(seqs.size(), numberOfFrames, maxRxApertureSize);
     // (module, logical frame, logical rx channel) -> physical rx channel
     Eigen::Tensor<int8, 3> opDestChannel(seqs.size(), numberOfFrames, maxRxApertureSize);
+    opDestOp.setZero();
     opDestChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
     constexpr ChannelIdx N_RX_CHANNELS = Us4OEMImpl::N_RX_CHANNELS;
@@ -113,7 +114,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                     if(subapIdx > 0) {
                         rxSubapertures[subapIdx-1][ch] = true;
                         // FC mapping
-                        // -1 because subapIdx starts from zero
+                        // -1 because subapIdx starts from one
                         opDestOp(seqIdx, opIdx, opActiveChannel) = FrameNumber(currentFrameIdx[seqIdx] + subapIdx - 1);
                         ARRUS_REQUIRES_TRUE_E(
                             opActiveChannel <= (std::numeric_limits<int8>::max)(),

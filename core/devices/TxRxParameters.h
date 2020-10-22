@@ -118,7 +118,7 @@ public:
         os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
         os << "sample range: " << parameters.getRxSampleRange().start() << ", "
            << parameters.getRxSampleRange().end();
-        os << "fs divider: " << parameters.getRxDecimationFactor();
+        os << ", fs divider: " << parameters.getRxDecimationFactor();
         os << std::endl;
         return os;
     }

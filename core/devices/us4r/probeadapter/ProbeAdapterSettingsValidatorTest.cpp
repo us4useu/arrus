@@ -9,13 +9,14 @@
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h"
 
-namespace {
+namespace xyz {
 
-using namespace arrus::devices;
-using ChannelAddress = ::arrus::ProbeAdapterSettings::ChannelAddress;
+using namespace ::arrus;
+using namespace ::arrus::devices;
+using ChannelAddress = ::arrus::devices::ProbeAdapterSettings::ChannelAddress;
 
 struct TestAdapterSettings {
-    arrus::ProbeAdapterModelId modelId{"test", "test"};
+    ::arrus::devices::ProbeAdapterModelId modelId{"test", "test"};
     ChannelIdx nChannels = 64;
     ProbeAdapterSettings::ChannelMapping channelMapping;
 
@@ -34,7 +35,8 @@ struct TestAdapterSettings {
         };
         os << " nChannels: " << settings.nChannels
            << " channelMapping: " <<
-           (arrus::toStringTransform(settings.channelMapping, func));
+           (arrus::toStringTransform<ProbeAdapterSettings::ChannelAddress>(
+               settings.channelMapping, func));
         return os;
     }
 

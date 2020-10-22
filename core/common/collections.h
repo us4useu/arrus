@@ -71,7 +71,7 @@ template<typename T, typename U>
 inline std::vector<std::pair<T, U>>
 zip(const std::vector<T> &a, const std::vector<U> &b) {
     if(a.size() != b.size()) {
-        throw IllegalArgumentException("Zipped vectors should "
+        throw ::arrus::IllegalArgumentException("Zipped vectors should "
                                        "have the same size.");
     }
     std::vector<std::pair<T, U>> res;
@@ -121,7 +121,7 @@ concat(const std::vector<std::vector<T>> &a) {
 
 template<typename T>
 inline std::vector<T>
-permute(const std::vector<T> &input, const std::vector<ChannelIdx> &perm) {
+permute(const std::vector<T> &input, const std::vector<unsigned short> &perm) {
     std::vector<T> output(perm.size());
     for(size_t i = 0; i < static_cast<size_t>(perm.size()); ++i) {
         output[i] = input[perm[i]];

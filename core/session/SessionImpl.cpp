@@ -17,6 +17,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
+#include "arrus/core/devices/us4r/hv/HV256FactoryImpl.h"
 #include "arrus/core/session/SessionSettings.h"
 
 namespace arrus::session {
@@ -32,7 +33,8 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
             std::make_unique<ProbeFactoryImpl>(),
             std::make_unique<IUs4OEMFactoryImpl>(),
             std::make_unique<IUs4OEMInitializerImpl>(),
-            std::make_unique<Us4RSettingsConverterImpl>()
+            std::make_unique<Us4RSettingsConverterImpl>(),
+            std::make_unique<HV256FactoryImpl>()
         )
     );
 }

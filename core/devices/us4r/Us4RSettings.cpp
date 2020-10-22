@@ -9,7 +9,7 @@ namespace arrus::devices {
 
 template<typename T>
 static inline void printOptionalValue(const std::optional<T> value,
-                                 std::ostream &os) {
+                                      std::ostream &os) {
     if(value.has_value()) {
         os << value.value();
     } else {
@@ -21,7 +21,7 @@ std::ostream &
 operator<<(std::ostream &os, const Us4RSettings &settings) {
     os << "us4oemSettings: ";
     int i = 0;
-    for(auto us4oemSetting : settings.getUs4OEMSettings()) {
+    for(const auto &us4oemSetting : settings.getUs4OEMSettings()) {
         os << "Us4OEM:" << i++ << ": ";
         os << us4oemSetting << "; ";
     }
@@ -29,6 +29,8 @@ operator<<(std::ostream &os, const Us4RSettings &settings) {
     auto &probeAdapterSettings = settings.getProbeAdapterSettings();
     auto &probeSettings = settings.getProbeSettings();
     auto &rxSettings = settings.getRxSettings();
+    auto &channelsMask = settings.getChannelsMask();
+    auto &us4oemChannelsMasks = settings.getUs4OEMChannelsMask();
 
     os << " probeAdapterSettings: ";
     printOptionalValue(probeAdapterSettings, os);
@@ -36,6 +38,18 @@ operator<<(std::ostream &os, const Us4RSettings &settings) {
     printOptionalValue(probeSettings, os);
     os << " rxSettings: ";
     printOptionalValue(rxSettings, os);
+
+    os << " channels mask: ";
+    for(auto channel : channelsMask) {
+        os << channel << ", ";
+    }
+
+    os << " us4oem channels mask: ";
+    for(const auto& vec : us4oemChannelsMasks) {
+        for(auto channel : vec) {
+            os << channel << ", ";
+        }
+    }
     return os;
 }
 

@@ -26,11 +26,15 @@ public:
         ProbeAdapterSettings probeAdapterSettings,
         ProbeSettings probeSettings,
         RxSettings rxSettings,
-        std::optional<HVSettings> hvSettings)
+        std::optional<HVSettings> hvSettings,
+        std::vector<ChannelIdx> channelsMask,
+        std::vector<std::vector<ChannelIdx>> us4oemChannelsMask)
         : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
-          hvSettings(std::move(hvSettings)) {}
+          hvSettings(std::move(hvSettings)),
+          channelsMask(channelsMask),
+          us4oemChannelsMask(us4oemChannelsMask){}
 
     [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
@@ -53,6 +57,14 @@ public:
         return hvSettings;
     }
 
+    [[nodiscard]] const std::vector<ChannelIdx> &getChannelsMask() const {
+        return channelsMask;
+    }
+
+    [[nodiscard]] const std::vector<std::vector<ChannelIdx>> &getUs4OEMChannelsMask() const {
+        return us4oemChannelsMask;
+    }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -68,6 +80,14 @@ private:
     std::optional<RxSettings> rxSettings;
     /** Optional (us4r devices may have externally controlled hv suppliers. */
     std::optional<HVSettings> hvSettings;
+    /** A list of channels that should be turned off in the us4r system.
+     * Note that the **channel numbers start from 0**.*/
+    std::vector<ChannelIdx> channelsMask;
+    /** A list of channels masks to apply on given us4oems.
+     * Currently us4oem channels are used for double check only.
+     * The administrator has to provide us4oem channels masks that confirms to
+     * the system us4r channels, and this way we reduce the chance of mistake. */
+    std::vector<std::vector<ChannelIdx>> us4oemChannelsMask;
 };
 
 }

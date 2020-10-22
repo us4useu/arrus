@@ -59,7 +59,8 @@ FrameChannelMapping::Handle ProbeImpl::setTxRxSequence(const std::vector<TxRxPar
     auto probeNumberOfElements = model.getNumberOfElements().product();
 
     for(const auto &op: seq) {
-        logger->log(LogSeverity::TRACE, arrus::format("Setting tx/rx {}", op));
+        logger->log(LogSeverity::TRACE, arrus::format(
+            "Setting tx/rx {}", ::arrus::toString(op)));
 
         BitMask txAperture(adapter->getNumberOfChannels());
         BitMask rxAperture(adapter->getNumberOfChannels());

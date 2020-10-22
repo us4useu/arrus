@@ -77,7 +77,7 @@ public:
             std::transform(
                 std::begin(us4oems), std::end(us4oems),
                 std::begin(us4oemPtrs),
-                [](const Us4OEM::Handle &ptr) { return ptr.get(); });
+                [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
             // Create adapter.
             ProbeAdapterImplBase::Handle adapter =
                 probeAdapterFactory->getProbeAdapter(adapterSettings,
@@ -87,12 +87,12 @@ public:
                                                              adapter.get());
 
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
-            return std::make_unique<Us4RImpl>(id, us4oems, adapter, probe, std::move(hv));
+            return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv));
         } else {
             // Custom Us4OEMs only
             auto [us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings());
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
-            return std::make_unique<Us4RImpl>(id, us4oems, std::move(hv));
+            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv));
         }
     }
 
@@ -131,7 +131,7 @@ private:
                     ius4oems[i], us4oemCfgs[i])
             );
         }
-        return {us4oems, ius4oems[0].get()};
+        return {std::move(us4oems), ius4oems[0].get()};
     }
 
     std::optional<HV256Impl::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {

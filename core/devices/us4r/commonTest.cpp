@@ -195,9 +195,9 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
     // frame 3:
     ARRUS_SET_FCM(0, 2, 0, 4, 0);
     // There is no rx channels > 0 for 3rd op.
-    ARRUS_SET_FCM(0, 2, 1, FCM_UNAVAILABLE_VALUE, FCM_UNAVAILABLE_VALUE);
-    ARRUS_SET_FCM(0, 2, 2, FCM_UNAVAILABLE_VALUE, FCM_UNAVAILABLE_VALUE);
-    ARRUS_SET_FCM(0, 2, 3, FCM_UNAVAILABLE_VALUE, FCM_UNAVAILABLE_VALUE);
+    ARRUS_SET_FCM(0, 2, 1, 0, FCM_UNAVAILABLE_VALUE);
+    ARRUS_SET_FCM(0, 2, 2, 0, FCM_UNAVAILABLE_VALUE);
+    ARRUS_SET_FCM(0, 2, 3, 0, FCM_UNAVAILABLE_VALUE);
 
     // frame 4.1:
     // 0
@@ -212,6 +212,7 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
     // frame 4.3
     // 96
     ARRUS_SET_FCM(0, 3, 3, 7, 0);
+
     ARRUS_EXPECT_TENSORS_EQ(fcmDstFrame, expectedDstFrame);
     ARRUS_EXPECT_TENSORS_EQ(fcmDstChannel, expectedDstChannel);
 }
@@ -323,7 +324,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
         expectedSeq0.push_back(getStdTxRxParameters(rxAperture1));
         expectedSeq0.push_back(getStdTxRxParameters(rxAperture2));
         expectedSeq0.push_back(getStdTxRxParameters(rxAperture3));
-        expectedSeq0.push_back(TxRxParameters::US4OEM_NOP);
+        expectedSeq0.push_back(TxRxParameters::createRxNOPCopy(getStdTxRxParameters(rxAperture3)));
     }
 
     TxRxParamsSequence expectedSeq1;
@@ -338,7 +339,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
         rxAperture4[48] = true;
 
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture0));
-        expectedSeq1.push_back(TxRxParameters::US4OEM_NOP);
+        expectedSeq1.push_back(TxRxParameters::createRxNOPCopy(getStdTxRxParameters(rxAperture0)));
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture2));
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture3));
         expectedSeq1.push_back(getStdTxRxParameters(rxAperture4));
@@ -350,7 +351,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
     // FCM
     Eigen::Tensor<int32, 3> expectedDstFrame(2, 3, 3);
     Eigen::Tensor<int32, 3> expectedDstChannel(2, 3, 3);
-    expectedDstFrame.setConstant(FCM_UNAVAILABLE_VALUE);
+    expectedDstFrame.setZero();
     expectedDstChannel.setConstant(FCM_UNAVAILABLE_VALUE);
     // Module 0
     // Frame 1.1

@@ -7,6 +7,8 @@
 namespace arrus::devices {
 
 class ProbeImplBase : public Probe, public UltrasoundDevice {
+public:
+    using Handle = std::unique_ptr<ProbeImplBase>;
     using Probe::Probe;
 };
 

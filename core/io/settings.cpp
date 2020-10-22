@@ -115,10 +115,11 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
               std::begin(pitchVec));
     Tuple<double> pitch{pitchVec};
 
-    ::arrus::Interval<double> txFreqRange{proto.tx_frequency_range().begin(),
-                                          proto.tx_frequency_range().end()};
-
-    return ProbeModel(id, nElements, pitch, txFreqRange);
+    ::arrus::Interval<float> txFreqRange{static_cast<float>(proto.tx_frequency_range().begin()),
+                                         static_cast<float>(proto.tx_frequency_range().end())};
+    ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
+                                          static_cast<uint8>(proto.voltage_range().end())};
+    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange);
 }
 
 
@@ -271,6 +272,25 @@ ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r,
     }
 }
 
+std::vector<ChannelIdx> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
+    auto &channels = mask.channels();
+
+    // validate
+    for(auto channel : channels) {
+        ARRUS_REQUIRES_DATA_TYPE(channel, ChannelIdx, arrus::format(
+            "Channel mask should contain only values from uint16 range "
+            "(found: '{}')", channel));
+    }
+    std::vector<ChannelIdx> result;
+
+    for(auto channel : channels) {
+        std::cerr << "Channel mask: "  << channel << std::endl;
+        result.push_back(static_cast<ChannelIdx>(channel));
+    }
+    return result;
+}
+
+
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                               const SettingsDictionary &dictionary) {
     std::optional<HVSettings> hvSettings;
@@ -303,10 +323,33 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
             us4r, adapterSettings.getModelId(), dictionary);
         RxSettings rxSettings = readRxSettings(us4r.rx_settings());
 
+        // ensure that user provided channels mask
+        // TODO(pjarosik) consider removing this check in the future
+        if(!us4r.has_channels_mask()) {
+            throw IllegalArgumentException(
+                "Us4r settings field 'channels_mask' is required. "
+                "Set empty array of channels if you want to turn off channel masking.");
+        }
+
+        if(us4r.us4oem_channels_mask().empty()) {
+            throw IllegalArgumentException(
+                "Us4r settings field 'us4oem_channels_mask is required. "
+                "Set empty array of channels for each of the module explicitly if you want "
+                "to turn of channel masking.");
+        }
+
+        std::vector<ChannelIdx> channelsMask =
+            readChannelsMask(us4r.channels_mask());
+        std::vector<std::vector<ChannelIdx>> us4oemChannelsMask;
+        for(auto &mask: us4r.us4oem_channels_mask()) {
+            us4oemChannelsMask.push_back(readChannelsMask(mask));
+        }
+
         return Us4RSettings(adapterSettings, probeSettings, rxSettings,
-                            hvSettings);
+                            hvSettings, channelsMask, us4oemChannelsMask);
     }
 }
+
 
 
 SessionSettings readSessionSettings(const std::string &filepath) {
@@ -368,7 +411,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
 
     logger->log(LogSeverity::DEBUG,
                 arrus::format("Read settings from {}: {}",
-                              filepath, toString(sessionSettings)));
+                              filepath, ::arrus::toString(sessionSettings)));
 
     return sessionSettings;
 }
