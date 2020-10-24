@@ -29,7 +29,7 @@ public:
         return values;
     }
 
-    size_t product() const {
+    [[nodiscard]] size_t product() const {
         return std::reduce(
                 std::begin(values), std::end(values), size_t(1),
                 [](auto v1, auto v2) -> size_t {
@@ -37,6 +37,24 @@ public:
                 }
         );
     }
+
+    [[nodiscard]] size_t sum() const {
+        return std::reduce(
+            std::begin(values), std::end(values), size_t(0),
+            [](auto v1, auto v2) -> size_t {
+                return v1 + v2;
+            }
+        );
+    }
+
+    bool operator==(const Tuple &rhs) const {
+        return values == rhs.values;
+    }
+
+    bool operator!=(const Tuple &rhs) const {
+        return !(rhs == *this);
+    }
+
 private:
     std::vector<T> values;
 };

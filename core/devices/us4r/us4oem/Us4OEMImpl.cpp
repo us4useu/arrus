@@ -43,8 +43,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
     if(this->channelsMask.empty()) {
         this->logger->log(LogSeverity::INFO, ::arrus::format(
             "No channel masking will be applied for {}", ::arrus::toString(id)));
-    }
-    else {
+    } else {
         this->logger->log(LogSeverity::INFO, ::arrus::format(
             "Following us4oem channels will be turned off: {}",
             ::arrus::toString(this->channelsMask)));
@@ -135,6 +134,10 @@ public:
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(
                     op.getRxSampleRange().start() == startSample,
                     "Start sample should be the same for all operations." + firingStr
+                );
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(
+                 (op.getRxPadding() == ::arrus::Tuple<ChannelIdx>{0, 0}),
+                    ("Rx padding is not allowed for us4oems. " + firingStr)
                 );
             }
         }
@@ -246,7 +249,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
         uint8 txChannel = 0;
         for(bool bit : op.getTxAperture()) {
             float txDelay = 0;
-            if(bit && ! ::arrus::setContains(this->channelsMask, txChannel)) {
+            if(bit && !::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];
             }
             ius4oem->SetTxDelay(txChannel, txDelay, firing);
@@ -333,7 +336,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 // this way we keep the expected shape of rx data as is
                 // (with some "bad data" gaps).
                 if(setContains(channelsUsed, rxChannel)
-                    || setContains(this->channelsMask, channel)) {
+                   || setContains(this->channelsMask, channel)) {
                     fcmBuilder.setChannelMapping(noRxNopId, onChannel,
                                                  noRxNopId, FrameChannelMapping::UNAVAILABLE);
                 } else {

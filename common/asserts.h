@@ -77,15 +77,25 @@ do {                                                      \
 #define ARRUS_REQUIRES_IN_CLOSED_INTERVAL(value, min, max, MSG) \
 do {                                                      \
     if (!(((value) >= (min) && (value) <= (max)))) {      \
-        throw ::arrus::IllegalArgumentException((MSG));     \
+        throw ::arrus::IllegalArgumentException((MSG));   \
     }                                                     \
 } while(0)
 
-#define ARRUS_REQUIRES_DATA_TYPE(value, dtype, MSG) \
-    ARRUS_REQUIRES_IN_CLOSED_INTERVAL(value,        \
-        (std::numeric_limits<ChannelIdx>::min)(),   \
-        (std::numeric_limits<ChannelIdx>::max)(),   \
-        MSG)
+#define ARRUS_REQUIRES_IN_CLOSED_INTERVAL_E(value, min, max, exception) \
+do {                                                      \
+    if (!(((value) >= (min) && (value) <= (max)))) {      \
+        throw exception;                                  \
+    }                                                     \
+} while(0)
+
+#define ARRUS_REQUIRES_DATA_TYPE_E(value, dtype, exception) \
+    ARRUS_REQUIRES_IN_CLOSED_INTERVAL_E(value,        \
+        (std::numeric_limits<dtype>::min)(),   \
+        (std::numeric_limits<dtype>::max)(),   \
+        exception)
+
+#define ARRUS_REQUIRES_DATA_TYPE(value, dtype, msg) \
+     ARRUS_REQUIRES_DATA_TYPE_E(value, dtype, ::arrus::IllegalArgumentException(msg)) \
 
 #define ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(cv, lock, timeout, exceptionMsg) \
     if(timeout.has_value()) { \

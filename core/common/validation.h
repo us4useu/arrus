@@ -355,7 +355,7 @@ class Validator {
     expectEqual(#value, value, expected, msg)
 
 #define ARRUS_VALIDATOR_EXPECT_TRUE_M(condition, msg) \
-    expectTrue(#condition, condition, msg)
+    expectTrue((#condition), (condition), msg)
 
 #define ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(value, divider, msg) \
     expectDivisible(#value, value, divider, msg)

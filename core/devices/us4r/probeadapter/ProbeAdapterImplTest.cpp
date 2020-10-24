@@ -41,11 +41,12 @@ struct TestTxRxParams {
     uint32 decimationFactor = 1;
     float pri = 100e-6f;
     Interval<uint32> sampleRange{0, 4096};
+    Tuple<ChannelIdx> rxPadding{0, 0};
 
     [[nodiscard]] TxRxParameters getTxRxParameters() const {
         return TxRxParameters(txAperture, txDelays, pulse,
                               rxAperture, sampleRange,
-                              decimationFactor, pri);
+                              decimationFactor, pri, rxPadding);
     }
 };
 
@@ -878,22 +879,170 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
         EXPECT_EQ(expectedChannels[i], channel);
     }
 }
-// TODO padding
+
+// Currently padding impacts the output frame channel mapping
+TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
+    BitMask rxAperture(getNChannels(), false);
+    ::arrus::setValuesInRange(rxAperture, 0, 16, true);
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = getDefaultTxAperture(getNChannels()),
+                x.rxAperture = rxAperture,
+                x.txDelays = getDefaultTxDelays(getNChannels()),
+                x.rxPadding = {16, 0}
+            ))
+            .getTxRxParameters()
+    };
+    FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
+    for(int i = 0; i < 32; ++i) {
+        if(i < 16) {
+            builder0.setChannelMapping(0, i, 0, i);
+        } else {
+            builder0.setChannelMapping(0, i, 0, -1);
+        }
+    }
+    auto fcm0 = builder0.build();
+
+    FrameChannelMappingBuilder builder1(1, Us4OEMImpl::N_RX_CHANNELS);
+    // No active channels
+    auto fcm1 = builder1.build();
+
+    EXPECT_CALL(*(us4oems[0].get()), setTxRxSequence(_, _))
+        .WillOnce(Return(ByMove(std::move(fcm0))));
+    EXPECT_CALL(*(us4oems[1].get()), setTxRxSequence(_, _))
+        .WillOnce(Return(ByMove(std::move(fcm1))));
+
+    auto fcm = probeAdapter->setTxRxSequence(seq, defaultTGCCurve);
+
+    EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
+    EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding
+
+    for(int i = 0; i < 16; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(0, frame);
+        ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
+    }
+
+    for(int i = 16; i < 32; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(0, frame);
+        ASSERT_EQ(channel, i-16);
+    }
+}
+
+// The same as above, but with aperture using two modules
+TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxApertureUsingTwoModules) {
+    BitMask rxAperture(getNChannels(), false);
+    ::arrus::setValuesInRange(rxAperture, 0, 49, true);
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = getDefaultTxAperture(getNChannels()),
+                x.rxAperture = rxAperture,
+                x.txDelays = getDefaultTxDelays(getNChannels()),
+                x.rxPadding = {15, 0}
+            ))
+            .getTxRxParameters()
+    };
+    FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
+    for(int i = 0; i < 32; ++i) {
+        builder0.setChannelMapping(0, i, 0, i);
+    }
+    auto fcm0 = builder0.build();
+
+    FrameChannelMappingBuilder builder1(1, Us4OEMImpl::N_RX_CHANNELS);
+    for(int i = 0; i < 32; ++i) {
+        if(i < 17) {
+            builder1.setChannelMapping(0, i, 0, i);
+        }
+        else {
+            builder1.setChannelMapping(0, i, 0, FrameChannelMapping::UNAVAILABLE);
+        }
+    }
+    auto fcm1 = builder1.build();
+
+    EXPECT_CALL(*(us4oems[0].get()), setTxRxSequence(_, _))
+        .WillOnce(Return(ByMove(std::move(fcm0))));
+    EXPECT_CALL(*(us4oems[1].get()), setTxRxSequence(_, _))
+        .WillOnce(Return(ByMove(std::move(fcm1))));
+
+    auto fcm = probeAdapter->setTxRxSequence(seq, defaultTGCCurve);
+
+    EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
+    EXPECT_EQ(64, fcm->getNumberOfLogicalChannels()); // 49 active + 15 rx padding
+
+    for(int i = 0; i < 15; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
+    }
+    for(int i = 15; i < 15+32; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(0, frame);
+        ASSERT_EQ(channel, i - 15);
+    }
+    for(int i = 15+32; i < 64; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(1, frame);
+        ASSERT_EQ(channel, i-(15+32));
+    }
+}
+
+TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightSide) {
+    BitMask rxAperture(getNChannels(), false);
+    ::arrus::setValuesInRange(rxAperture, 176, 192, true);
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = getDefaultTxAperture(getNChannels()),
+                x.rxAperture = rxAperture,
+                x.txDelays = getDefaultTxDelays(getNChannels()),
+                x.rxPadding = {0, 16}
+            ))
+            .getTxRxParameters()
+    };
+    FrameChannelMappingBuilder builder0(0, Us4OEMImpl::N_RX_CHANNELS);
+    // No output
+    auto fcm0 = builder0.build();
+
+    FrameChannelMappingBuilder builder1(1, Us4OEMImpl::N_RX_CHANNELS);
+    for(int i = 0; i < 32; ++i) {
+        if(i < 16) {
+            builder1.setChannelMapping(0, i, 0, i);
+        }
+        else {
+            builder1.setChannelMapping(0, i, 0, FrameChannelMapping::UNAVAILABLE);
+        }
+    }
+    auto fcm1 = builder1.build();
+
+    EXPECT_CALL(*(us4oems[0].get()), setTxRxSequence(_, _))
+        .WillOnce(Return(ByMove(std::move(fcm0))));
+    EXPECT_CALL(*(us4oems[1].get()), setTxRxSequence(_, _))
+        .WillOnce(Return(ByMove(std::move(fcm1))));
+
+    auto fcm = probeAdapter->setTxRxSequence(seq, defaultTGCCurve);
+
+    EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
+    EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding
+
+    for(int i = 0; i < 16; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(0, frame);
+        ASSERT_EQ(channel, i);
+    }
+    for(int i = 16; i < 32; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
+    }
+}
 
 // ------------------------------------------ TODO Test that all other parameters are passed unmodified
-};
+}
 
-//class ProbeAdapterImplTestOneByOne : public AbstractProbeAdapterImplTest {
-//    // odd channels to us4oem:0
-//    // even channels to us4oem:1
-//    ProbeAdapterImpl::ChannelMapping getChannelMapping() override {
-//        ProbeAdapterImpl::ChannelMapping mapping(NCHANNELS);
-//        for(ChannelIdx ch = 0; ch < NCHANNELS; ++ch) {
-//            mapping[ch] = {ch % 2, ch / 2};
-//        }
-//        return mapping;
-//    }
-//};
 
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG(arrus::Logging);

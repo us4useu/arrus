@@ -150,7 +150,7 @@ set(SRC_FILES
     api/framework.h
     api/ops/us4r/tgc.h
     api/examples.h
-    devices/UltrasoundDevice.h api/devices/us4r/HVSettings.h api/devices/us4r/HVModelId.h devices/us4r/hv/HV256Impl.h devices/us4r/hv/HV256Factory.h devices/us4r/hv/HV256Impl.cpp devices/us4r/hv/HV256FactoryImpl.h devices/us4r/hv/HV256FactoryImpl.cpp api/devices/us4r/FrameChannelMapping.h devices/us4r/FrameChannelMappingImpl.cpp devices/us4r/FrameChannelMappingImpl.h common/aperture.h external/eigen/Tensor.h devices/us4r/us4oem/Us4OEMImplBase.h devices/us4r/probeadapter/ProbeAdapterImplBase.h devices/probe/ProbeImplBase.h external/eigen/Dense.h)
+    devices/UltrasoundDevice.h api/devices/us4r/HVSettings.h api/devices/us4r/HVModelId.h devices/us4r/hv/HV256Impl.h devices/us4r/hv/HV256Factory.h devices/us4r/hv/HV256Impl.cpp devices/us4r/hv/HV256FactoryImpl.h devices/us4r/hv/HV256FactoryImpl.cpp api/devices/us4r/FrameChannelMapping.h devices/us4r/FrameChannelMappingImpl.cpp devices/us4r/FrameChannelMappingImpl.h common/aperture.h external/eigen/Tensor.h devices/us4r/us4oem/Us4OEMImplBase.h devices/us4r/probeadapter/ProbeAdapterImplBase.h devices/probe/ProbeImplBase.h external/eigen/Dense.h ../common/utils.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

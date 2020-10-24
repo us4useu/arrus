@@ -6,6 +6,7 @@
 #include <ostream>
 
 #include "arrus/core/api/common/Interval.h"
+#include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
@@ -24,7 +25,8 @@ public:
             BitMask(op.rxAperture.size(), false),
             op.rxSampleRange,
             op.rxDecimationFactor,
-            op.pri
+            op.pri,
+            op.rxPadding
         );
     }
 
@@ -41,17 +43,20 @@ public:
      * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param rxDecimationFactor
      * @param pri
+     * @param rxPadding how many 0-channels padd from the left and right
      */
     TxRxParameters(std::vector<bool> txAperture,
                    std::vector<float> txDelays,
                    const ops::us4r::Pulse &txPulse,
                    std::vector<bool> rxAperture,
                    const Interval<uint32> &rxSampleRange,
-                   uint32 rxDecimationFactor, float pri)
+                   uint32 rxDecimationFactor, float pri,
+                   const Tuple<ChannelIdx> rxPadding = {0, 0})
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(rxSampleRange),
-          rxDecimationFactor(rxDecimationFactor), pri(pri) {}
+          rxDecimationFactor(rxDecimationFactor), pri(pri),
+          rxPadding(rxPadding) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const {
         return txAperture;
@@ -83,6 +88,10 @@ public:
 
     [[nodiscard]] float getPri() const {
         return pri;
+    }
+
+    [[nodiscard]] const Tuple<ChannelIdx> &getRxPadding() const {
+        return rxPadding;
     }
 
     [[nodiscard]] bool isNOP() const  {
@@ -145,10 +154,10 @@ private:
     Interval<uint32> rxSampleRange;
     int32 rxDecimationFactor;
     float pri;
+    Tuple<ChannelIdx> rxPadding;
 };
 
 using TxRxParamsSequence = std::vector<TxRxParameters>;
-
 
 /**
  * Returns the number of actual ops, that is, a the number of ops excluding RxNOPs.

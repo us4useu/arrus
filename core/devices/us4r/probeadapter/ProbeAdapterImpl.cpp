@@ -5,6 +5,7 @@
 #include "arrus/core/common/validation.h"
 #include "arrus/core/common/aperture.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
+#include "arrus/common/utils.h"
 
 namespace arrus::devices {
 
@@ -35,7 +36,8 @@ public:
 
         const auto nSamples = txRxs[0].getNumberOfSamples();
         size_t nActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()),
-                                                   std::end(txRxs[0].getRxAperture()), 0);
+                                                   std::end(txRxs[0].getRxAperture()), 0)
+                                   + txRxs[0].getRxPadding().sum();
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs[firing];
             auto firingStr = ::arrus::format("firing {}", firing);
@@ -48,12 +50,14 @@ public:
 
             ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
                                           "Each Rx should acquire the same number of samples.");
-            size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()),
-                                                          std::end(txRxs[0].getRxAperture()), 0);
+            size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[firing].getRxAperture()),
+                                                          std::end(txRxs[firing].getRxAperture()), 0)
+                                          + txRxs[firing].getRxPadding().sum();
             ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
                                           "Each rx aperture should have the same size.");
         }
     }
+
 private:
     ChannelIdx nChannels;
 };
@@ -73,7 +77,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     std::unordered_map<Ordinal, std::vector<std::vector<float>>> txDelaysList;
 
     // Here is an assumption, that each operation has the same size rx aperture.
-    auto rxApertureSize = getNumberOfActiveChannels(seq[0].getRxAperture());
+    auto paddingSize = seq[0].getRxPadding().sum();
+    auto rxApertureSize = getNumberOfActiveChannels(seq[0].getRxAperture()) + paddingSize;
     auto nFrames = getNumberOfNoRxNOPs(seq);
 
     // -- Frame channel mapping stuff related to splitting each operation between available
@@ -108,6 +113,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         const auto &txAperture = op.getTxAperture();
         const auto &rxAperture = op.getRxAperture();
         const auto &txDelays = op.getTxDelays();
+
+        // TODO change to below to an 'assert'
         ARRUS_REQUIRES_TRUE(txAperture.size() == rxAperture.size()
                             && txAperture.size() == numberOfChannels,
                             arrus::format(
@@ -138,8 +145,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
             // FC Mapping stuff
             if(op.getRxAperture()[ach]) {
                 isRxNop = false;
-                frameModule(frameNumber, activeAdapterCh) = dstModule;
-                frameChannel(frameNumber, activeAdapterCh) =
+                frameModule(frameNumber, activeAdapterCh+op.getRxPadding()[0]) = dstModule;
+                frameChannel(frameNumber, activeAdapterCh+op.getRxPadding()[0]) =
                     static_cast<int32>(activeUs4oemCh[dstModule]);
                 ++activeAdapterCh;
                 ++activeUs4oemCh[dstModule];
@@ -164,6 +171,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
             const auto &rxAperture = rxApertures[us4oemOrdinal][i];
             const auto &txDelays = txDelaysList[us4oemOrdinal][i];
 
+            // Intentionally not copying rx padding - us4oem do not allow rx padding.
             us4oemSeq.emplace_back(txAperture, txDelays, op.getTxPulse(),
                                    rxAperture, op.getRxSampleRange(),
                                    op.getRxDecimationFactor(), op.getPri());
@@ -173,7 +181,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     }
     // split operations if necessary
 
-    auto[splittedOps, opDestSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(seqs);
+    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(seqs);
 
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;
@@ -181,7 +189,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     std::vector<FrameChannelMapping::FrameNumber> frameOffsets(seqs.size(), 0);
 
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
-        auto& us4oem = us4oems[us4oemOrdinal];
+        auto &us4oem = us4oems[us4oemOrdinal];
         auto fcMapping = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
@@ -190,39 +198,54 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     }
 
     // generate FrameChannelMapping for the adapter output.
-    FrameChannelMappingBuilder outFcBuilder(nFrames, rxApertureSize);
+    FrameChannelMappingBuilder outFcBuilder(nFrames, ARRUS_SAFE_CAST(rxApertureSize, ChannelIdx));
     FrameChannelMappingBuilder::FrameNumber frameIdx = 0;
     for(const auto &op: seq) {
         if(op.isRxNOP()) {
             continue;
         }
-
         uint16 activeRxChIdx = 0;
         for(auto bit : op.getRxAperture()) {
             if(bit) {
                 // Frame channel mapping determined by distributing op on multiple devices
-                auto dstModule = frameModule(frameIdx, activeRxChIdx);
-                auto dstModuleChannel = frameChannel(frameIdx, activeRxChIdx);
-                ARRUS_REQUIRES_TRUE_E(
-                    dstModule >= 0 && dstModuleChannel >= 0,
-                    arrus::ArrusException("Dst module and dst channel "
-                                          "should be non-negative")
-                );
+                auto dstModule = frameModule(frameIdx, activeRxChIdx+op.getRxPadding()[0]);
+                auto dstModuleChannel = frameChannel(frameIdx, activeRxChIdx+op.getRxPadding()[0]);
 
-                auto destOp = opDestSplittedOp(dstModule, frameIdx, dstModuleChannel);
-                auto destChannel = opDestSplittedCh(dstModule, frameIdx, dstModuleChannel);
-                FrameChannelMapping::FrameNumber destFrame = 0;
-                int8 destFrameChannel = -1;
-                if(!FrameChannelMapping::isChannelUnavailable(destChannel)) {
-                    auto res = fcMappings[dstModule]->getLogical(destOp, destChannel);
-                    destFrame = res.first;
-                    destFrameChannel = res.second;
+                // if dstModuleChannel is unavailable, set channel mapping to -1 and continue
+                // unavailable dstModuleChannel means, that the given channel was virtual
+                // and has no assigned value.
+                ARRUS_REQUIRES_DATA_TYPE_E(
+                    dstModuleChannel, int8,
+                    ::arrus::ArrusException(
+                        "Invalid dstModuleChannel data type, "
+                        "rx aperture is outise."));
+                if(FrameChannelMapping::isChannelUnavailable((int8)dstModuleChannel)) {
+                    outFcBuilder.setChannelMapping(
+                        frameIdx, activeRxChIdx+op.getRxPadding()[0],
+                        0, FrameChannelMapping::UNAVAILABLE);
                 }
-                outFcBuilder.setChannelMapping(
-                    frameIdx, activeRxChIdx,
-                    destFrame + frameOffsets[dstModule],
-                    destFrameChannel);
+                else {
+                    // Otherwise, we have an actual channel.
+                    ARRUS_REQUIRES_TRUE_E(
+                        dstModule >= 0 && dstModuleChannel >= 0,
+                        arrus::ArrusException("Dst module and dst channel "
+                                              "should be non-negative")
+                    );
 
+                    auto dstOp = opDstSplittedOp(dstModule, frameIdx, dstModuleChannel);
+                    auto dstChannel = opDestSplittedCh(dstModule, frameIdx, dstModuleChannel);
+                    FrameChannelMapping::FrameNumber destFrame = 0;
+                    int8 destFrameChannel = -1;
+                    if(!FrameChannelMapping::isChannelUnavailable(dstChannel)) {
+                        auto res = fcMappings[dstModule]->getLogical(dstOp, dstChannel);
+                        destFrame = res.first;
+                        destFrameChannel = res.second;
+                    }
+                    outFcBuilder.setChannelMapping(
+                        frameIdx, activeRxChIdx+op.getRxPadding()[0],
+                        destFrame + frameOffsets[dstModule],
+                        destFrameChannel);
+                }
                 ++activeRxChIdx;
             }
         }
