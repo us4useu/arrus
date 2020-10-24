@@ -196,7 +196,10 @@ classdef Us4R < handle
             obj.closeSequence;
             
             if obj.rec.enable
-                obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
+                if any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
+                    obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
+                end
+                
                 img = obj.execReconstr(rf(:,:,:,1));
             else
                 img = [];
@@ -215,7 +218,7 @@ classdef Us4R < handle
             %   operation. Should take one parameter, which will be feed with \
             %   the output of the executed op.
             
-            if obj.rec.enable
+            if obj.rec.enable && any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
                 obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
             end
             
@@ -929,6 +932,33 @@ classdef Us4R < handle
             
             maskString = join(string(double(maskLogical.')),"").';
             maskString = reverse(maskString);
+            
+        end
+        
+        function isMemSufficient = checkMemory(obj)
+            
+            if obj.rec.gpuEnable
+                gpuDev = gpuDevice;
+                memAvailable = gpuDev.AvailableMemory;
+            else
+                [~,pcDev] = memory;
+                memAvailable = pcDev.PhysicalMemory.Available;
+            end
+            
+            memReqPart1 = obj.rec.xSize * obj.rec.zSize * obj.seq.rxApSize * obj.seq.nTx ...
+                        * 8 ...             % number of matrices
+                        * 4 ...             % single precision
+                        * 1.1;              % safety coefficient
+            memReqPart2 = (obj.rec.xSize * obj.rec.zSize * obj.seq.rxApSize * obj.seq.nTx * 8 ...	% number of matrices
+                        +  obj.seq.nSamp * obj.seq.rxApSize * obj.seq.nTx * 3) ...
+                        * 4 ...             % single precision
+                        * 1.1;              % safety coefficient
+            
+            isMemSufficient = memAvailable >= max(memReqPart1,memReqPart2);
+            
+            disp(['required: ' num2str(max(memReqPart1,memReqPart2)/2^30) 'GB']);
+            disp(['available: ' num2str(memAvailable/2^30) 'GB']);
+            disp(['is sufficient?: ' num2str(isMemSufficient)]);
             
         end
         
