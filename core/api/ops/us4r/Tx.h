@@ -8,6 +8,9 @@
 
 namespace arrus::ops::us4r {
 
+/**
+ * A single pulse transmission.
+ */
 class Tx {
 public:
     Tx(BitMask aperture, std::vector<float> delays,

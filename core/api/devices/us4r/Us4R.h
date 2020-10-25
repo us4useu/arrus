@@ -8,6 +8,7 @@
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
 
 
 namespace arrus::devices {
@@ -46,6 +47,11 @@ public:
      * @return a handle to the probe
      */
     virtual Probe::RawHandle getProbe(Ordinal ordinal) = 0;
+
+    virtual void upload(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
+
+    virtual void start() = 0;
+    virtual void stop() = 0;
 
     Us4R(Us4R const&) = delete;
     Us4R(Us4R const&&) = delete;

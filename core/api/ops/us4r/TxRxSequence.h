@@ -15,9 +15,9 @@ class TxRxSequence {
 public:
     using TxRx = std::pair<Tx, Rx>;
 
-    TxRxSequence(arrus::devices::DeviceId placement,
-                 std::vector<TxRx> sequence,
-                 double pri, TGCCurve tgcCurve)
+    TxRxSequence(
+        std::vector<TxRx> sequence,
+        float pri, TGCCurve tgcCurve)
         : txrxs(std::move(sequence)), pri(pri),
           tgcCurve(std::move(tgcCurve)) {}
 
@@ -25,7 +25,7 @@ public:
         return txrxs;
     }
 
-    [[nodiscard]] double getPri() const {
+    [[nodiscard]] float getPri() const {
         return pri;
     }
 
@@ -33,23 +33,9 @@ public:
         return tgcCurve;
     }
 
-    /**
-     * Actually it will return circular queue element data.
-     * Consider replacing CircularQueue::Element with Tensor
-     * @return
-     */
-    CircularQueue::Element getData() const;
-
-    /**
-     * When there is no metadata with given id - throw a Runtime exception.
-     *
-     * @param key
-     * @return
-     */
-    CircularQueue::Element getMetadata(const std::string &key) const;
 private:
     std::vector<TxRx> txrxs;
-    double pri;
+    float pri;
     TGCCurve tgcCurve;
 };
 

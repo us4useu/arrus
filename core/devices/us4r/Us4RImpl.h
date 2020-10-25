@@ -99,6 +99,12 @@ public:
         return probe.value().get();
     }
 
+    void upload(const ops::us4r::TxRxSequence &seq) override;
+
+    void start() override;
+
+    void stop() override;
+
     void setVoltage(Voltage voltage);
 
     void disableHV();

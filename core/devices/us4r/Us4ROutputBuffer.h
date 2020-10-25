@@ -18,9 +18,12 @@ namespace arrus::devices {
 /**
  * Us4R system's output circular FIFO buffer.
  *
- * The buffer represents following relationships:
+ * The buffer has the following relationships:
  * - buffer contains **elements**
  * - the **element** is filled by many us4oems (with given ordinal)
+ *
+ * An example of the element is a single RF frame required to reconstruct
+ * a single b-mode image.
  */
 class Us4ROutputBuffer {
 public:
