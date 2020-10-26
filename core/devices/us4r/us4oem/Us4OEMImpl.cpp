@@ -61,12 +61,20 @@ Us4OEMImpl::~Us4OEMImpl() {
     }
 }
 
-void Us4OEMImpl::startTrigger() {
+bool Us4OEMImpl::isMaster() {
+    return getDeviceId().getOrdinal() == 0;
+}
 
+void Us4OEMImpl::startTrigger() {
+    if(isMaster()) {
+        ius4oem->TriggerStart();
+    }
 }
 
 void Us4OEMImpl::stopTrigger() {
-
+    if(isMaster()) {
+        ius4oem->TriggerStop();
+    }
 }
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
@@ -136,7 +144,7 @@ public:
                     "Start sample should be the same for all operations." + firingStr
                 );
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(
-                 (op.getRxPadding() == ::arrus::Tuple<ChannelIdx>{0, 0}),
+                    (op.getRxPadding() == ::arrus::Tuple<ChannelIdx>{0, 0}),
                     ("Rx padding is not allowed for us4oems. " + firingStr)
                 );
             }
@@ -172,11 +180,16 @@ private:
     uint16 pgaGain, lnaGain;
 };
 
-FrameChannelMapping::Handle
+std::tuple<
+    FrameChannelMapping::Handle,
+    std::vector<std::vector<DataTransfer>>
+>
 Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                             const ::arrus::ops::us4r::TGCCurve &tgc) {
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
     // This probably should be implemented in IUs4OEMInitializer
+
+    std::vector<std::vector<DataTransfer>> dataTransfers;
 
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
@@ -202,8 +215,13 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     // us4oem rxdma output address
     size_t outputAddress = 0;
 
+    uint16 transferFiringStart = 0;
+    uint16 transferAddressStart = 0;
+
     for(uint16 firing = 0; firing < seq.size(); ++firing) {
         auto const &op = seq[firing];
+        bool checkpoint = op.getCallback().has_value();
+
         if(op.isNOP()) {
             logger->log(LogSeverity::TRACE,
                         format("Setting tx/rx {}: NOP {}",
@@ -237,7 +255,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             auto txAperture = filterAperture(::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()));
             auto rxAperture = filterAperture(rxApertures[firing]);
 
-            // Intentionally validating tx apertures, to reduce the risk of mistake channel actviation
+            // Intentionally validating tx apertures, to reduce the risk of mistake channel activation
             // (e.g. the masked one).
             validateAperture(txAperture);
             ius4oem->SetTxAperture(txAperture, firing);
@@ -259,8 +277,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
         ius4oem->SetTxHalfPeriods(
             static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), firing);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firing);
-        ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), false,
-                            firing);
+        ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), checkpoint, firing);
 
         setTGC(tgc, firing);
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
@@ -270,24 +287,59 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                                ::arrus::format(
                                    "Total data size cannot exceed 4GiB (device {})",
                                    getDeviceId().toString()));
+
+        std::optional<std::function<void()>> callback = nullptr;
+
+        // Handling checkpoints for data transfers
+        if(checkpoint) {
+            callback = [this, &op, firing, transferFiringStart]() {
+                op.getCallback().value()(getDeviceId().getOrdinal());
+                // Here callback should do everything is needed with data
+                // located in the current section and proceed.
+                this->ius4oem->MarkEntriesAsReadyForReceive(
+                    static_cast<unsigned short>(transferFiringStart),
+                    static_cast<unsigned short>(firing));
+                // Start the next section.
+                if(this->isMaster()) {
+                    this->ius4oem->TriggerSync();
+                }
+            };
+        }
+
         if(op.isRxNOP()) {
             // Fake data acquisition
             ius4oem->ScheduleReceive(firing, outputAddress, 64,
-                                     0, 0, rxMapId);
+                                     0, 0, rxMapId,
+                                     callback.value_or(nullptr));
             // Do not move outputAddress pointer, fake data should be overwritten
             // by the next non-rx-nop (or ignored, if this is the last operation).
         } else {
             ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
                                      SAMPLE_DELAY + startSample,
                                      op.getRxDecimationFactor() + 1,
-                                     rxMapId);
+                                     rxMapId, callback.value_or(nullptr));
             outputAddress += nBytes;
+        }
+
+        if(checkpoint) {
+            auto size = outputAddress - transferAddressStart;
+            auto srcAddress = transferAddressStart;
+
+            std::vector<DataTransfer> dataTransferSection = {
+                DataTransfer(
+                    // TODO(pjarosik) cleanup (size, srcAddress should be the same)
+                    [=](uint8_t *dstAddress) { this->transferData(dstAddress, size, srcAddress); },
+                    size, srcAddress)
+            };
+            dataTransfers.push_back(dataTransferSection);
+            transferAddressStart = outputAddress;
+            transferFiringStart = firing + 1;
         }
     }
 
     ius4oem->EnableSequencer();
     ius4oem->EnableTransmit();
-    return std::move(fcm);
+    return {std::move(fcm), std::move(dataTransfers)};
 }
 
 std::tuple<
@@ -447,5 +499,18 @@ Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
         }
     }
 }
+
+void Us4OEMImpl::transferData(uint8_t *dstAddress, size_t size, size_t srcAddress) {
+    ius4oem->TransferRXBufferToHost(dstAddress, size, srcAddress);
+}
+
+void Us4OEMImpl::start() {
+    this->startTrigger();
+}
+
+void Us4OEMImpl::stop() {
+    this->stopTrigger();
+}
+
 
 }

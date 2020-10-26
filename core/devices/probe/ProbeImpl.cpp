@@ -45,7 +45,11 @@ private:
     const ProbeModel &modelRef;
 };
 
-FrameChannelMapping::Handle ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
+std::tuple<
+    FrameChannelMapping::Handle,
+    std::vector<std::vector<DataTransfer>>
+>
+ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                                        const ops::us4r::TGCCurve &tgcSamples) {
     // Validate input sequence
     ProbeTxRxValidator validator(
@@ -90,5 +94,13 @@ FrameChannelMapping::Handle ProbeImpl::setTxRxSequence(const std::vector<TxRxPar
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {
     return model.getVoltageRange();
+}
+
+void ProbeImpl::start() {
+    adapter->
+}
+
+void ProbeImpl::stop() {
+
 }
 }

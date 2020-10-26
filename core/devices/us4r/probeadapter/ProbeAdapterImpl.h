@@ -31,9 +31,19 @@ public:
         return numberOfChannels;
     }
 
-    FrameChannelMapping::Handle setTxRxSequence(
+    std::tuple<
+        FrameChannelMapping::Handle,
+        std::vector<std::vector<DataTransfer>>
+    >
+    setTxRxSequence(
         const std::vector<TxRxParameters> &seq,
         const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
+
+    Ordinal getNumberOfUs4OEMs() override;
+
+    void start() override;
+
+    void stop() override;
 
 private:
     Logger::Handle logger;

@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <boost/algorithm/string.hpp>
+#include <arrus/core/api/ops/us4r/HostBuffer.h>
 
 #include "arrus/common/asserts.h"
 #include "arrus/core/devices/utils.h"
@@ -16,6 +17,9 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/hv/HV256Impl.h"
+#include "arrus/core/devices/us4r/RxBuffer.h"
+#include "arrus/core/devices/us4r/HostBufferWorker.h"
+#include "arrus/core/devices/us4r/Us4RHostBuffer.h"
 
 namespace arrus::devices {
 
@@ -23,9 +27,9 @@ class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
 
-    ~Us4RImpl() override {
-        getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
-    }
+    enum class State {STARTED, STOPPED};
+
+    ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
              std::optional<HV256Impl::Handle> hv)
@@ -99,7 +103,7 @@ public:
         return probe.value().get();
     }
 
-    void upload(const ops::us4r::TxRxSequence &seq) override;
+    void upload(const ops::us4r::TxRxSequence &us4oemOrdinal) override;
 
     void start() override;
 
@@ -121,8 +125,15 @@ private:
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
     std::optional<HV256Impl::Handle> hv;
+    std::unique_ptr<RxBuffer> currentRxBuffer;
+    std::unique_ptr<HostBufferWorker> dataCarrier;
+    // will be used outside
+    std::shared_ptr<Us4RHostBuffer> hostBuffer;
+    State state{State::STOPPED};
 
     UltrasoundDevice *getDefaultComponent();
+
+    static size_t countBufferElementSize(const std::vector<std::vector<DataTransfer>>& transfers);
 };
 
 }

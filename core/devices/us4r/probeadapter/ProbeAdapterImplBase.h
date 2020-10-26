@@ -5,6 +5,7 @@
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/TxRxParameters.h"
+#include "arrus/core/devices/us4r/DataTransfer.h"
 
 namespace arrus::devices {
 
@@ -15,9 +16,19 @@ public:
     using Handle = std::unique_ptr<ProbeAdapterImplBase>;
     using RawHandle = PtrHandle<ProbeAdapterImplBase>;
 
-    virtual FrameChannelMapping::Handle setTxRxSequence(
+    virtual
+    std::tuple<
+        FrameChannelMapping::Handle,
+        std::vector<std::vector<DataTransfer>>
+    >
+    setTxRxSequence(
         const std::vector<TxRxParameters> &seq,
         const ::arrus::ops::us4r::TGCCurve &tgcSamples) = 0;
+
+    virtual Ordinal getNumberOfUs4OEMs() = 0;
+
+    virtual void start() = 0;
+    virtual void stop() = 0;
 };
 
 }

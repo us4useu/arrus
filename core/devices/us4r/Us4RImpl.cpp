@@ -1,5 +1,9 @@
 #include "Us4RImpl.h"
 
+#include <memory>
+#include <chrono>
+#include <thread>
+
 namespace arrus::devices {
 
 using ::arrus::ops::us4r::TxRxSequence;
@@ -53,35 +57,104 @@ void Us4RImpl::disableHV() {
 }
 
 void Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
-
-
-    // translate the sequence to a double TxRxSequence
-    // The first part of the sequence gathers data to the first buffer
-    // the second one to the second buffer.
+    ARRUS_REQUIRES_EQUAL(
+        getDefaultComponent(), probe.value().get(),
+        ::arrus::IllegalArgumentException(
+            "Currently TxRx sequence upload is available for system with probes only.")
+    );
     std::vector<TxRxParameters> actualSeq;
 
-    for(const auto& [tx, rx] : seq.getOps()) {
-        actualSeq.emplace_back(
-            tx.getAperture(),
-            tx.getDelays(),
-            tx.getExcitation(),
-            rx.getAperture(),
-            rx.getSampleRange(),
-            rx.getDownsamplingFactor(),
-            seq.getPri(),
-            rx.getPadding()
-        );
+    constexpr uint16_t N_ELEMENTS = 2;
+
+    auto nus4oems = probeAdapter.value()->getNumberOfUs4OEMs();
+    this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, N_ELEMENTS);
+
+    // Load n-times, each time for subsequent seq. element.
+
+    auto nOps = seq.getOps().size();
+    for(int i = 0; i < N_ELEMENTS; ++i) {
+
+        size_t opIdx = 0;
+        for(const auto&[tx, rx] : seq.getOps()) {
+            std::optional<TxRxParameters::SequenceCallback> callback = nullptr;
+
+            // Set checkpoint callback for the last tx/rx.
+            if(opIdx == nOps-1) {
+                callback = [this, i](Ordinal us4oemOrdinal) {
+                    this->currentRxBuffer->notify(us4oemOrdinal, i);
+                    this->currentRxBuffer->reserveElement((i + 1) % N_ELEMENTS);
+                };
+            }
+            actualSeq.emplace_back(
+                tx.getAperture(),
+                tx.getDelays(),
+                tx.getExcitation(),
+                rx.getAperture(),
+                rx.getSampleRange(),
+                rx.getDownsamplingFactor(),
+                seq.getPri(),
+                rx.getPadding(),
+                callback
+            );
+            ++opIdx;
+        }
     }
-    getDefaultComponent()->setTxRxSequence(actualSeq);
-    // TODO return the created buffer
+    auto [fcm, transfers] = getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve());
+
+    // transfers[i][j] = transfer to perform
+    // where i is the section (buffer element), j is the us4oem (a part of the buffer element)
+    // Currently we assume that each buffer element has the same size.
+    size_t bufferElementSize = countBufferElementSize(transfers);
+
+    this->hostBuffer = std::make_shared<Us4RHostBuffer>(
+        bufferElementSize, N_ELEMENTS);
+    this->dataCarrier = std::make_unique<HostBufferWorker>(
+        this->currentRxBuffer, this->hostBuffer, transfers);
+    return {fcm, hostBuffer};
 }
 
 void Us4RImpl::start() {
-
+    if(this->dataCarrier == nullptr) {
+        throw ::arrus::IllegalArgumentException("Call upload function first.");
+    }
+    this->dataCarrier->start();
+    this->getDefaultComponent()->start();
 }
 
+/**
+ * When the device is stopped, the buffer is destroyed.
+ */
 void Us4RImpl::stop() {
+    if(this->state != State::STARTED) {
+        throw IllegalArgumentException("Device is not running.");
+    }
+    this->getDefaultComponent()->stop();
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    if(this->dataCarrier != nullptr) {
+        this->dataCarrier->stop();
+        // TODO remove the data carrier
+        // TODO remove host buffer
+    }
+}
 
+Us4RImpl::~Us4RImpl() {
+    getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
+    // TODO clean up buffer and
+}
+
+size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransfer>>& transfers) {
+    std::unordered_set<size_t> transferSizes;
+    for(auto &bufferElement : transfers) {
+        size_t size = 0;
+        for(auto &us4oemTransfer : bufferElement) {
+            size += us4oemTransfer.getSize();
+        }
+        transferSizes.insert(size);
+    }
+    if(transferSizes.size() > 1) {
+        throw ArrusException("A buffer elements with different sizes.");
+    }
+    return *std::begin(transferSizes);
 }
 
 }

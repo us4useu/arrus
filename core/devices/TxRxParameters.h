@@ -15,6 +15,8 @@ namespace arrus::devices {
 
 class TxRxParameters {
 public:
+    using SequenceCallback = std::function<void(Ordinal)>;
+
     static const TxRxParameters US4OEM_NOP;
 
     static TxRxParameters createRxNOPCopy(const TxRxParameters& op) {
@@ -44,19 +46,24 @@ public:
      * @param rxDecimationFactor
      * @param pri
      * @param rxPadding how many 0-channels padd from the left and right
+     * @param callback a callback that should be called when the data acquisition
+     *  at this point ends. When set to  != nullptr, the event will be set to syncReq=true,
+     *  and, after calling the callback function; master module will require TriggerSync
+     *  TODO consider naming it a checkpointCallback
      */
     TxRxParameters(std::vector<bool> txAperture,
                    std::vector<float> txDelays,
                    const ops::us4r::Pulse &txPulse,
                    std::vector<bool> rxAperture,
-                   const Interval<uint32> &rxSampleRange,
+                   Interval<uint32> rxSampleRange,
                    uint32 rxDecimationFactor, float pri,
-                   const Tuple<ChannelIdx> rxPadding = {0, 0})
+                   Tuple<ChannelIdx> rxPadding = {0, 0},
+                   std::optional<SequenceCallback> callback = nullptr)
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
-          rxAperture(std::move(rxAperture)), rxSampleRange(rxSampleRange),
+          rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri),
-          rxPadding(rxPadding) {}
+          rxPadding(std::move(rxPadding)), callback(std::move(callback)) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const {
         return txAperture;
@@ -92,6 +99,10 @@ public:
 
     [[nodiscard]] const Tuple<ChannelIdx> &getRxPadding() const {
         return rxPadding;
+    }
+
+    [[nodiscard]] const std::optional<SequenceCallback> &getCallback() const {
+        return callback;
     }
 
     [[nodiscard]] bool isNOP() const  {
@@ -155,6 +166,7 @@ private:
     int32 rxDecimationFactor;
     float pri;
     Tuple<ChannelIdx> rxPadding;
+    std::optional<SequenceCallback> callback;
 };
 
 using TxRxParamsSequence = std::vector<TxRxParameters>;

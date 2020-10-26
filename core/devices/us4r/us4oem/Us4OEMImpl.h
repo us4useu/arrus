@@ -15,6 +15,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include "arrus/core/devices/us4r/DataTransfer.h"
 
 
 namespace arrus::devices {
@@ -83,13 +84,18 @@ public:
 
     ~Us4OEMImpl() override;
 
+    bool isMaster();
+
     void startTrigger() override;
 
     void stopTrigger() override;
 
-    FrameChannelMapping::Handle setTxRxSequence(
-        const std::vector<TxRxParameters> &seq,
-        const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
+    std::tuple<
+        FrameChannelMapping::Handle,
+        std::vector<std::vector<DataTransfer>>
+    >
+    setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                    const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
 
     double getSamplingFrequency() override;
 
@@ -97,6 +103,11 @@ public:
         return Interval<Voltage>(MIN_VOLTAGE, MAX_VOLTAGE);
     }
 
+    void transferData(uint8_t *dstAddress, size_t size, size_t srcAddress) override;
+
+    void start() override;
+
+    void stop() override;
 
 private:
     using Us4rBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
@@ -119,6 +130,7 @@ private:
     void setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing);
 
     std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
+
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
 };
 

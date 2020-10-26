@@ -62,7 +62,10 @@ private:
     ChannelIdx nChannels;
 };
 
-FrameChannelMapping::Handle
+std::tuple<
+    FrameChannelMapping::Handle,
+    std::vector<std::vector<DataTransfer>>
+>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const TGCCurve &tgcSamples) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
@@ -188,13 +191,22 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     FrameChannelMapping::FrameNumber totalNumberOfFrames = 0;
     std::vector<FrameChannelMapping::FrameNumber> frameOffsets(seqs.size(), 0);
 
+    // section -> us4oem -> transfer
+    std::vector<std::vector<DataTransfer>> outputTransfers;
+
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto fcMapping = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples);
+        auto [fcMapping, us4oemTransfers] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));
         // fcMapping is not valid anymore here
+        if(outputTransfers.empty()) {
+            outputTransfers.resize(us4oemTransfers.size());
+        }
+        for(int i = 0; i < us4oemTransfers.size(); ++i) {
+            outputTransfers[i].push_back(us4oemTransfers[i][0]);
+        }
     }
 
     // generate FrameChannelMapping for the adapter output.
@@ -251,7 +263,19 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         }
         ++frameIdx;
     }
-    return outFcBuilder.build();
+    return {outFcBuilder.build(), outputTransfers};
+}
+
+Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() {
+    return ARRUS_SAFE_CAST(this->us4oems.size(), Ordinal);
+}
+
+void ProbeAdapterImpl::start() {
+    this->us4oems[0]->start();
+}
+
+void ProbeAdapterImpl::stop() {
+    this->us4oems[0]->stop();
 }
 
 }

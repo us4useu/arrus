@@ -28,11 +28,19 @@ public:
      * @param seq
      * @param tgcSamples
      */
-    FrameChannelMapping::Handle setTxRxSequence(
+    std::tuple<
+        FrameChannelMapping::Handle,
+        std::vector<std::vector<DataTransfer>>
+    >
+    setTxRxSequence(
         const std::vector<TxRxParameters> &seq,
         const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
 
     Interval<Voltage> getAcceptedVoltageRange() override;
+
+    void start() override;
+
+    void stop() override;
 
 private:
     Logger::Handle logger;

@@ -21,6 +21,7 @@ public:
     Us4OEMImplBase(Us4OEMImplBase const&&) = delete;
     void operator=(Us4OEMImplBase const&) = delete;
     void operator=(Us4OEMImplBase const&&) = delete;
+    virtual void transferData(uint8_t* dstAddress, size_t size, size_t srcAddress) = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

@@ -13,6 +13,8 @@ const TxRxParameters TxRxParameters::US4OEM_NOP = TxRxParameters(
     Interval<uint32>(0, 64),
     0, 0);
 
+
+
 uint16 getNumberOfNoRxNOPs(const TxRxParamsSequence &seq) {
     uint16 res = 0;
     for(const auto &op : seq) {
