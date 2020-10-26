@@ -76,15 +76,19 @@ void ScheduleReceiveWithCallback(IUs4OEM* that, const size_t address,
 		}
 		PyGILState_Release(gstate);
     };
-    that->ScheduleReceive(address, length, start, decimation, fn);
+    throw std::runtime_error("Schedule receive function is not implemented in this release.");
+//    that->ScheduleReceive(address, length, start, decimation, fn);
 }
 
-void ScheduleReceiveWithoutCallback(IUs4OEM* that, const size_t address,
+void ScheduleReceiveWithoutCallback(IUs4OEM* that,
+                                    const size_t address,
                                     const size_t length,
                                     const size_t start,
                                     const size_t decimation) {
-    that->ScheduleReceive(address, length, start, decimation);
+    throw std::runtime_error("Schedule receive function is not implemented in this release.");
+//    that->ScheduleReceive(firing, address, length, start, decimation);
 }
+
 
 // TODO(pjarosik) fix below in more elegant way
 void TransferRXBufferToHostLocation(IUs4OEM* that, unsigned long long dstAddress, size_t length, size_t srcAddress) {
@@ -100,8 +104,9 @@ std::shared_ptr<IUs4OEM> getUs4OEMPtr(unsigned idx) {
 }
 
 void EnableReceiveDelayed(IUs4OEM* ptr) {
-    ptr->EnableReceive();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    throw std::runtime_error("Enable receive function is not implemented in this release.");
+//    ptr->EnableReceive();
+//    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 
 void setTxApertureCustom(IUs4OEM* that, const unsigned short* enabled, const size_t length, const unsigned short firing) {
