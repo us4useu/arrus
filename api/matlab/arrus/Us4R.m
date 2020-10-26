@@ -867,8 +867,8 @@ classdef Us4R < handle
                         int8(obj.logTime) ...
             );
             %% Get metadata
-            metadata = zeros(nChan, 1, 'int16');
-            metadata(:, 1) = rf(:, 1);
+            metadata = zeros(nChan, nTrig, 'int16');
+            metadata(:, :) = rf(:, 1:nSamp:nTrig*nSamp);
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
