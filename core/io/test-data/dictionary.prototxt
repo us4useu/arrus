@@ -89,6 +89,58 @@ probe_adapter_models: [
             }
         ]
     },
+
+    {
+        id: {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+            n_channels: 192
+            channel_mapping_regions: [
+                {
+                    us4oem: 0
+                    region: {
+                        begin: 0,
+                        end: 31
+                    }
+                },
+                {
+                    us4oem: 1
+                    region: {
+                        begin: 0,
+                        end: 31
+                    }
+                },
+                {
+                    us4oem: 0
+                    region: {
+                        begin: 32,
+                        end: 63
+                    }
+                },
+                {
+                    us4oem: 1
+                    region: {
+                        begin: 32,
+                        end: 63
+                    }
+                },
+                {
+                    us4oem: 0
+                    region: {
+                        begin: 64,
+                        end: 95
+                    }
+                },
+                {
+                    us4oem: 1
+                    region: {
+                        begin: 64,
+                        end: 95
+                    }
+                }
+            ]
+        },
     {
         id: {
             manufacturer: "us4us"

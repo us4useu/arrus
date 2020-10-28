@@ -131,12 +131,13 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                     result[seqIdx].emplace_back(
                         op.getTxAperture(), op.getTxDelays(), op.getTxPulse(),
                         subaperture, // Modified
-                        op.getRxSampleRange(), op.getRxDecimationFactor(), op.getPri());
+                        op.getRxSampleRange(), op.getRxDecimationFactor(), op.getPri(),
+                        op.getRxPadding());
                 }
             } else {
                 // we have a single rx aperture, or all rx channels are empty,
                 // just pass the operator as is
-                // NOTE: we add even if the op is rx nop
+                // NOTE: we push_back even if the op is rx nop
                 result[seqIdx].push_back(op);
                 // FC mapping
                 ChannelIdx opActiveChannel = 0;
@@ -164,6 +165,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                        [](auto &v) { return v.size(); });
         size_t maxSize = *std::max_element(std::begin(currentSeqSizes),
                                            std::end(currentSeqSizes));
+
         for(auto& resSeq : result) {
             if(resSeq.size() < maxSize) {
                 // create rxnop copy from the last element of this sequence
@@ -171,6 +173,15 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                 // in this method in some of the code above.
                 resSeq.resize(maxSize, TxRxParameters::createRxNOPCopy(resSeq[resSeq.size()-1]));
             }
+        }
+
+        // Copy callbacks to the last op in the result sequence
+        for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) {
+            const auto &seq = seqs[seqIdx];
+            auto &resSeq = result[seqIdx];
+            const auto &op = seq[opIdx];
+
+            resSeq[resSeq.size()-1].setCallback(op.getCallback());
         }
     }
     return std::make_tuple(result, opDestOp, opDestChannel);

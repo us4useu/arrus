@@ -20,12 +20,12 @@ class ProbeAdapterModelProtoValidator
 
     void validate(const arrus::proto::ProbeAdapterModel &obj) override {
         using namespace arrus::devices;
-        bool hasChannelMappings = obj.has_channel_mapping();
+        bool hasChannelMapping = obj.has_channel_mapping();
         bool hasChannelMappingsRegions = !obj.channel_mapping_regions().empty();
 
         // Data types
         expectDataType<ChannelIdx>("n_channels", obj.n_channels());
-        if(hasChannelMappings) {
+        if(hasChannelMapping) {
             auto const &ordinals = obj.channel_mapping().us4oems();
             auto const &channels = obj.channel_mapping().channels();
             expectAllDataType<Ordinal>(
@@ -35,16 +35,35 @@ class ProbeAdapterModelProtoValidator
         }
         if(hasChannelMappingsRegions) {
             for(auto const &region: obj.channel_mapping_regions()) {
+                expectTrue(
+                    "channel_mapping_regions",
+                    region.has_region() ^ !region.channels().empty(),
+                    "Exactly one of the following should be provided: region, channels"
+                );
+
                 expectDataType<Ordinal>("channel_mapping_regions.us4oem",
                                         region.us4oem());
-                expectAllDataType<ChannelIdx>(
-                    "channel_mapping_regions.channels", region.channels());
+                if(region.has_region()) {
+
+                    expectDataType<ChannelIdx>(
+                        "channel_mapping_regions.region.begin",
+                        region.region().begin());
+
+                    expectDataType<ChannelIdx>(
+                        "channel_mapping_regions.region.end",
+                        region.region().end());
+
+                } else {
+                    expectAllDataType<ChannelIdx>(
+                        "channel_mapping_regions.channels", region.channels());
+                }
+
             }
         }
 
         // Semantic
         expectTrue("channel mapping",
-                   hasChannelMappings ^ hasChannelMappingsRegions,
+                   hasChannelMapping ^ hasChannelMappingsRegions,
                    "Exactly one of the following should be set for "
                    "probe adapter model: (channel mappings, channel "
                    "mapping regions)");

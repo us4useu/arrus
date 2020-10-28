@@ -109,7 +109,7 @@ private:
             us4oemSettings.size() == us4oemChannelsMasks.size(),
             ::arrus::IllegalArgumentException(
                 ::arrus::format("There should be exactly {} us4oem channels masks "
-                                "in the system configuration.", us4oemChannelsMasks)
+                                "in the system configuration.", us4oemSettings.size())
             )
         );
 

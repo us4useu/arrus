@@ -20,6 +20,7 @@ public:
 
         // Validate settings.
         Us4OEMSettingsValidator validator(ordinal);
+        validator.validate(cfg);
         validator.throwOnErrors();
 
         // We assume here, that the ius4oem is already initialized.

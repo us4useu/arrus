@@ -27,7 +27,7 @@ public:
 
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs[firing];
-            auto firingStr = ::arrus::format("firing {}", firing);
+            auto firingStr = ::arrus::format(" (firing {})", firing);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(
                 op.getTxAperture().size(), numberOfChannels, firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(
@@ -53,7 +53,7 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                                        const ops::us4r::TGCCurve &tgcSamples) {
     // Validate input sequence
     ProbeTxRxValidator validator(
-        ::arrus::format("{} tx rx sequence", getDeviceId().toString()), model);
+        ::arrus::format("tx rx sequence for {}", getDeviceId().toString()), model);
     validator.validate(seq);
     validator.throwOnErrors();
 
@@ -86,7 +86,8 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         }
         adapterSeq.emplace_back(txAperture, txDelays, op.getTxPulse(),
                                 rxAperture, op.getRxSampleRange(),
-                                op.getRxDecimationFactor(), op.getPri());
+                                op.getRxDecimationFactor(), op.getPri(),
+                                op.getRxPadding(), op.getCallback());
     }
 
     return adapter->setTxRxSequence(adapterSeq, tgcSamples);
@@ -97,10 +98,11 @@ Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {
 }
 
 void ProbeImpl::start() {
-    adapter->
+    adapter->start();
 }
 
 void ProbeImpl::stop() {
-
+    adapter->stop();
 }
+
 }

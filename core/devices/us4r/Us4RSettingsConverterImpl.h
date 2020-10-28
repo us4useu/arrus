@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_US4SETTINGSCONVERTERIMPL_H
 
 #include "arrus/common/asserts.h"
+#include "arrus/common/utils.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 
@@ -13,7 +14,7 @@ public:
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
                             const ProbeSettings &probeSettings,
                             const RxSettings &rxSettings,
-                            const std::vector<ChannelIdx> channelsMask) override {
+                            const std::vector<ChannelIdx> &channelsMask) override {
 
         // Assumption:
         // for each module there is N_RX_CHANNELS*k elements in mapping
@@ -113,7 +114,7 @@ public:
                                   ));
             auto offAdapterChannel = probeSettingsMapping[offProbeChannel];
             auto[module, offUs4OEMLogicalChannel] = adapterChannelMapping[offAdapterChannel];
-            channelsMasks[module].emplace(offUs4OEMLogicalChannel);
+            channelsMasks[module].emplace(ARRUS_SAFE_CAST(offUs4OEMLogicalChannel, uint8));
         }
         // END OF THE MASKS PRODUCTION
 

@@ -560,7 +560,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
@@ -581,7 +581,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
@@ -604,7 +604,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingIncompleteRxAperture) {
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
@@ -629,7 +629,7 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingM
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
         auto[dstfr, dstch] = fcm->getLogical(0, i);
@@ -765,7 +765,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
         EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0));
     }
 
-    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
     ASSERT_EQ(fcm->getNumberOfLogicalChannels(), Us4OEMImpl::N_RX_CHANNELS);
@@ -888,7 +888,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
         EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxApertures[i], i));
     }
 
-    auto fcm = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
 
     // Validate generated FCM
     ASSERT_EQ(fcm->getNumberOfLogicalFrames(), 3);

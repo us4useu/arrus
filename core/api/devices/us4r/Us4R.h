@@ -9,6 +9,8 @@
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "FrameChannelMapping.h"
+#include "HostBuffer.h"
 
 
 namespace arrus::devices {
@@ -48,7 +50,11 @@ public:
      */
     virtual Probe::RawHandle getProbe(Ordinal ordinal) = 0;
 
-    virtual void upload(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
+    virtual std::tuple<
+        FrameChannelMapping::Handle,
+        HostBuffer::SharedHandle
+    >
+    upload(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;

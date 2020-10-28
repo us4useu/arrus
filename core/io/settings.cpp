@@ -7,6 +7,7 @@
 
 #include "arrus/core/common/logging.h"
 #include "arrus/core/session/SessionSettings.h"
+#include "arrus/common/utils.h"
 
 #ifdef _MSC_VER
 
@@ -91,10 +92,24 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
         std::vector<ChannelIdx> channels;
         for(auto const &region : proto.channel_mapping_regions()) {
             auto module = static_cast<Ordinal>(region.us4oem());
-            for(auto channel : region.channels()) {
-                channelMapping.emplace_back(
-                    module, static_cast<ChannelIdx>(channel));
+
+            if(region.has_region()) {
+
+                ChannelIdx begin = ARRUS_SAFE_CAST(region.region().begin(), ChannelIdx);
+                ChannelIdx end = ARRUS_SAFE_CAST(region.region().end(), ChannelIdx);
+
+                for(ChannelIdx ch = begin; ch <= end; ++ch) {
+                    channelMapping.emplace_back(module, ch);
+                }
             }
+            else {
+                // Just channels.
+                for(auto channel : region.channels()) {
+                    channelMapping.emplace_back(
+                        module, static_cast<ChannelIdx>(channel));
+                }
+            }
+
         }
     }
     return ProbeAdapterSettings(id, nChannels, channelMapping);
@@ -304,6 +319,26 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
     if(!us4r.us4oems().empty()) {
         // Us4OEMs are provided.
         std::vector<Us4OEMSettings> us4oemSettings;
+
+        std::vector<std::unordered_set<uint8>> us4oemChannelsMask;
+        us4oemChannelsMask.resize(us4r.us4oems().size());
+
+        if(!us4r.us4oem_channels_mask().empty()
+            && us4r.us4oems().size() != us4r.us4oem_channels_mask().size()) {
+            throw ::arrus::IllegalArgumentException(
+                "The number of us4oem channels "
+                "masks should be the same as the number of us4oems.");
+        }
+
+        int i = 0;
+        for(auto &mask: us4r.us4oem_channels_mask()) {
+            auto channelsMask = readChannelsMask<uint8>(mask);
+
+            us4oemChannelsMask[i] = std::unordered_set(
+                std::begin(channelsMask), std::end(channelsMask));
+            ++i;
+        }
+
         for(auto const &us4oem : us4r.us4oems()) {
             auto rxSettings = readRxSettings(us4oem.rx_settings());
             auto channelMapping = castTo<ChannelIdx>(
@@ -313,7 +348,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                 std::begin(us4oem.active_channel_groups()),
                 std::end(us4oem.active_channel_groups()));
             us4oemSettings.emplace_back(
-                channelMapping, activeChannelGroups, rxSettings);
+                channelMapping, activeChannelGroups, rxSettings,
+                us4oemChannelsMask[i]);
         }
         return Us4RSettings(us4oemSettings, hvSettings);
     } else {
@@ -410,7 +446,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     SessionSettings sessionSettings(us4rSettings);
 
     logger->log(LogSeverity::DEBUG,
-                arrus::format("Read settings from {}: {}",
+                arrus::format("Read settings from '{}': {}",
                               filepath, ::arrus::toString(sessionSettings)));
 
     return sessionSettings;

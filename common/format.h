@@ -93,7 +93,7 @@ template<typename T>
 inline std::string toString(const std::optional<T> value) {
     if(value.has_value()) {
         return std::to_string(value.value());
-    } else return "(novalue)";
+    } else return "(no value)";
 }
 
 template<typename T>

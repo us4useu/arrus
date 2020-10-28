@@ -101,6 +101,17 @@ public:
     MOCK_METHOD(void, ReleaseDMABuffer, (unsigned char * address), (override));
     MOCK_METHOD(void, ScheduleTransferRXBufferToHost, (const size_t, unsigned char *, size_t, size_t,
         const std::function<void (void)> &));
+    MOCK_METHOD(void, SyncTransfer, (), (override));
+    MOCK_METHOD(void, ScheduleTransferRXBufferToHost, (const size_t,const size_t,const std::function<void (void)> &), (override));
+    MOCK_METHOD(void, PrepareTransferRXBufferToHost, (const size_t,unsigned char *,size_t,size_t), (override));
+    MOCK_METHOD(void, PrepareHostBuffer, (unsigned char *,size_t,size_t), (override));
+    MOCK_METHOD(void, MarkEntriesAsReadyForReceive, (unsigned short,unsigned short), (override));
+    MOCK_METHOD(void, MarkEntriesAsReadyForTransfer, (unsigned short,unsigned short), (override));
+    MOCK_METHOD(void, RegisterReceiveOverflowCallback, (const std::function<void (void)> &), (override));
+    MOCK_METHOD(void, RegisterTransferOverflowCallback, (const std::function<void (void)> &), (override));
+    MOCK_METHOD(void, EnableWaitOnReceiveOverflow, (), (override));
+    MOCK_METHOD(void, EnableWaitOnTransferOverflow, (), (override));
+    MOCK_METHOD(void, SyncReceive, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

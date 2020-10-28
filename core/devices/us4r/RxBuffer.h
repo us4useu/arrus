@@ -19,6 +19,9 @@ public:
 
     using AccumulatorType = uint16_t;
 
+    /**
+     * Notifies consumers, that new data arrived.
+     */
     void notify(unsigned ordinal, unsigned bufferElement) {
         std::unique_lock<std::mutex> guard(mutex);
         auto &accumulator = accumulators[bufferElement];
@@ -34,32 +37,76 @@ public:
         }
     }
 
-    void reserveElement(int bufferElement) {
+    /**
+     * Reservers access to i-th buffer element.
+     *
+     * @return true, if the thread was able to access the element,
+     *   false otherwise (e.g. queue shutdown).
+     *   TODO(pjarosik) return status object instead of boolean value
+     */
+    bool reserveElement(int bufferElement) {
         std::unique_lock<std::mutex> guard(mutex);
+
         auto &accumulator = accumulators[bufferElement];
         while(accumulator > 0) {
             isAccuClear[bufferElement].wait(guard);
+            if(this->isShutdown) {
+                return false;
+            }
         }
+        return true;
     }
 
-    uint16_t tail() {
+    /**
+     * Returns an index to the first element in the buffer that is ready for processing.
+     *
+     * @return value >= 0 if the thread was able to access tail, negative number otherwise
+     *  (e.g. when the queue is shutted down).
+     */
+    int16_t tail() {
         std::unique_lock<std::mutex> guard(mutex);
-        while(accumulators[headIdx] != filledAccumulator) {
+        while(accumulators[tailIdx] != filledAccumulator) {
             bufferEmpty.wait(guard);
+            if(this->isShutdown) {
+                return -1;
+
+            }
         }
-        return headIdx;
+        return tailIdx;
     }
 
-    void releaseTail() {
+    /**
+     * Moves forward of the tail and marks the element as ready for further acquisition.
+     */
+    bool releaseTail() {
         std::unique_lock<std::mutex> guard(mutex);
-        auto releasedIdx = headIdx;
+        auto releasedIdx = tailIdx;
         while(accumulators[releasedIdx] != filledAccumulator) {
             bufferEmpty.wait(guard);
+            if(this->isShutdown) {
+                return false;
+            }
         }
         accumulators[releasedIdx] = 0;
-        headIdx = (headIdx + 1) % nElements;
+        tailIdx = (tailIdx + 1) % nElements;
         guard.unlock();
         isAccuClear[releasedIdx].notify_all();
+        return true;
+    }
+
+    /**
+     * The object of this class should not be used anymore after the shutdown
+     * was called.
+     */
+    void shutdown() {
+        std::unique_lock<std::mutex> guard(mutex);
+        isShutdown = true;
+        guard.unlock();
+
+        bufferEmpty.notify_all();
+        for(auto &cv : isAccuClear) {
+            cv.notify_all();
+        }
     }
 
 private:
@@ -68,8 +115,9 @@ private:
     std::vector<AccumulatorType> accumulators;
     std::vector<std::condition_variable> isAccuClear;
     AccumulatorType filledAccumulator;
-    uint16_t headIdx{0};
+    uint16_t tailIdx{0};
     unsigned nElements;
+    bool isShutdown{false};
 };
 
 }

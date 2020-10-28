@@ -5,7 +5,7 @@
 #include <utility>
 
 #include <boost/algorithm/string.hpp>
-#include <arrus/core/api/ops/us4r/HostBuffer.h>
+#include <arrus/core/api/devices/us4r/HostBuffer.h>
 
 #include "arrus/common/asserts.h"
 #include "arrus/core/devices/utils.h"
@@ -41,11 +41,7 @@ public:
              Us4OEMs us4oems,
              ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe,
-             std::optional<HV256Impl::Handle> hv)
-        : Us4R(id), us4oems(std::move(us4oems)),
-          probeAdapter(std::move(probeAdapter)),
-          probe(std::move(probe)),
-          hv(std::move(hv)) {}
+             std::optional<HV256Impl::Handle> hv);
 
     Us4RImpl(Us4RImpl const&) = delete;
     Us4RImpl(Us4RImpl const&&) = delete;
@@ -103,7 +99,11 @@ public:
         return probe.value().get();
     }
 
-    void upload(const ops::us4r::TxRxSequence &us4oemOrdinal) override;
+    std::tuple<
+        FrameChannelMapping::Handle,
+        HostBuffer::SharedHandle
+    >
+    upload(const ops::us4r::TxRxSequence &us4oemOrdinal) override;
 
     void start() override;
 
@@ -125,7 +125,7 @@ private:
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
     std::optional<HV256Impl::Handle> hv;
-    std::unique_ptr<RxBuffer> currentRxBuffer;
+    std::shared_ptr<RxBuffer> currentRxBuffer;
     std::unique_ptr<HostBufferWorker> dataCarrier;
     // will be used outside
     std::shared_ptr<Us4RHostBuffer> hostBuffer;
@@ -134,6 +134,8 @@ private:
     UltrasoundDevice *getDefaultComponent();
 
     static size_t countBufferElementSize(const std::vector<std::vector<DataTransfer>>& transfers);
+
+    void stopDevice();
 };
 
 }

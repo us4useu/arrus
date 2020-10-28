@@ -41,14 +41,17 @@ operator<<(std::ostream &os, const Us4RSettings &settings) {
 
     os << " channels mask: ";
     for(auto channel : channelsMask) {
-        os << channel << ", ";
+        os << (int)channel << ", ";
     }
 
     os << " us4oem channels mask: ";
+    i = 0;
     for(const auto& vec : us4oemChannelsMasks) {
+        os << "us4oem " << i << ": ";
         for(auto channel : vec) {
-            os << channel << ", ";
+            os << (int)channel << ", ";
         }
+        ++i;
     }
     return os;
 }

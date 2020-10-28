@@ -1,6 +1,8 @@
 #include "Us4OEMImpl.h"
 
 #include <cmath>
+#include <thread>
+#include <chrono>
 
 #include "arrus/common/format.h"
 #include "arrus/core/common/collections.h"
@@ -216,7 +218,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     size_t outputAddress = 0;
 
     uint16 transferFiringStart = 0;
-    uint16 transferAddressStart = 0;
+    size_t transferAddressStart = 0;
 
     for(uint16 firing = 0; firing < seq.size(); ++firing) {
         auto const &op = seq[firing];
@@ -227,7 +229,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                         format("Setting tx/rx {}: NOP {}",
                                firing, ::arrus::toString(op)));
         } else {
-            logger->log(LogSeverity::TRACE,
+            logger->log(LogSeverity::DEBUG,
                         arrus::format("Setting tx/rx {}: {}",
                                       firing, ::arrus::toString(op)));
         }
@@ -292,21 +294,25 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
         // Handling checkpoints for data transfers
         if(checkpoint) {
-            callback = [this, &op, firing, transferFiringStart]() {
-                op.getCallback().value()(getDeviceId().getOrdinal());
+            callback = [this, op, firing, transferFiringStart]() {
+                bool canContinue = op.getCallback().value()(getDeviceId().getOrdinal());
                 // Here callback should do everything is needed with data
                 // located in the current section and proceed.
                 this->ius4oem->MarkEntriesAsReadyForReceive(
                     static_cast<unsigned short>(transferFiringStart),
                     static_cast<unsigned short>(firing));
                 // Start the next section.
-                if(this->isMaster()) {
+                if(canContinue && this->isMaster()) {
                     this->ius4oem->TriggerSync();
                 }
             };
         }
 
-        if(op.isRxNOP()) {
+        // Allow rx nops for master module.
+        // Master module gathers frame metadata, so we cannot miss any
+        // TODO(pjarosik): transfer a smaller size frame
+        // TODO(pjarosik): add an option to omit empty frames for master module (bool isMetadata?)
+        if(op.isRxNOP() && !this->isMaster()) {
             // Fake data acquisition
             ius4oem->ScheduleReceive(firing, outputAddress, 64,
                                      0, 0, rxMapId,
@@ -441,7 +447,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             result.emplace(opId, mappingIt->second);
         }
         ++opId;
-        if(!isRxNop) {
+        // Allow empty frames for metadata
+        if(!isRxNop || this->isMaster()) {
             ++noRxNopId;
         }
     }
@@ -510,6 +517,7 @@ void Us4OEMImpl::start() {
 
 void Us4OEMImpl::stop() {
     this->stopTrigger();
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 }
 
 

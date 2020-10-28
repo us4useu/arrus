@@ -3,13 +3,18 @@
 
 #include "arrus/core/api/common/types.h"
 
-namespace arrus::ops::us4r {
+namespace arrus::devices {
 
 class HostBuffer {
 public:
+    using Handle = std::unique_ptr<HostBuffer>;
+    using SharedHandle = std::shared_ptr<HostBuffer>;
+
     virtual ~HostBuffer() = default;
+
     virtual int16* tail() = 0;
-    virtual void releaseTail() = 0;
+
+    virtual bool releaseTail() = 0;
 };
 
 }

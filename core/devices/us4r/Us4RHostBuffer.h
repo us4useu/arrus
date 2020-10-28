@@ -3,11 +3,11 @@
 
 #include <mutex>
 
-#include "arrus/core/api/ops/us4r/HostBuffer.h"
+#include "arrus/core/api/devices/us4r/HostBuffer.h"
 
 namespace arrus::devices {
 
-class Us4RHostBuffer: public ::arrus::ops::us4r::HostBuffer {
+class Us4RHostBuffer: public HostBuffer {
 public:
 
     Us4RHostBuffer(size_t elementSize, uint16 nElements): nElements(nElements) {
@@ -30,38 +30,57 @@ public:
         {
             std::unique_lock<std::mutex> guard(mutex);
             while(currentSize == elements.size()) {
-                // TODO Shutdown option
                 canPush.wait(guard);
+                if(this->isShutdown) {
+                    return false;
+                }
             }
             pushFunc(elements[headIdx]);
             headIdx = (headIdx + 1) % nElements;
             ++currentSize;
         }
         canPop.notify_one();
+        return true;
     }
 
+    /**
+     * @return a pointer when the access was possible, nullptr otherwise (e.g. queue shutdown).
+     */
     int16 *tail() override {
         {
             std::unique_lock<std::mutex> guard(mutex);
             while(currentSize == 0) {
-                // TODO shutdown option.
                 canPop.wait(guard);
+                if(this->isShutdown) {
+                    return nullptr;
+                }
             }
             return elements[tailIdx];
         }
     }
 
-    void releaseTail() override {
+    bool releaseTail() override {
         {
             std::unique_lock<std::mutex> guard(mutex);
             while(currentSize == 0) {
-                // TODO shutdown option.
                 canPop.wait(guard);
+                if(this->isShutdown) {
+                    return false;
+                }
             }
             tailIdx = (tailIdx + 1) % nElements;
             --currentSize;
         }
         canPush.notify_one();
+        return true;
+    }
+
+    void shutdown() {
+        std::unique_lock<std::mutex> guard(mutex);
+        this->isShutdown = false;
+        guard.unlock();
+        this->canPush.notify_all();
+        this->canPop.notify_all();
     }
 
 private:
@@ -75,6 +94,7 @@ private:
     // Head - the first free buffer element space available for new data.
     uint16 headIdx{0};
     size_t currentSize{0};
+    bool isShutdown{false};
 };
 }
 

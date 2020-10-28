@@ -15,7 +15,8 @@ namespace arrus::devices {
 
 class TxRxParameters {
 public:
-    using SequenceCallback = std::function<void(Ordinal)>;
+    /** us4oem module -> can continue data acquisition */
+    using SequenceCallback = std::function<bool(Ordinal)>;
 
     static const TxRxParameters US4OEM_NOP;
 
@@ -103,6 +104,11 @@ public:
 
     [[nodiscard]] const std::optional<SequenceCallback> &getCallback() const {
         return callback;
+    }
+
+    // TODO try keeping this class immutable
+    void setCallback(const std::optional<SequenceCallback> &callback) {
+        this->callback = callback;
     }
 
     [[nodiscard]] bool isNOP() const  {
