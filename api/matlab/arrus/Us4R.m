@@ -468,7 +468,7 @@ classdef Us4R < handle
             %% Active channels group mask
             if obj.sys.adapType == -1
                 [~,I] = sort(obj.sys.rxChannelMap.');
-                obj.seq.actChanGroupMask = reshape(any(reshape(obj.sys.actChan(I + (0:(nArius-1))*128), 8, 16, [])), 16, []);
+                obj.seq.actChanGroupMask = reshape(any(reshape(obj.sys.actChan(I + (0:(obj.sys.nArius-1))*128), 8, 16, [])), 16, []);
                 % for future: some other adapters (esaote, atl/philips)
                 % can have a similar problem as esaote2 but on a much smaller scale
             else
