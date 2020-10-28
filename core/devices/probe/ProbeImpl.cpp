@@ -50,7 +50,8 @@ std::tuple<
     std::vector<std::vector<DataTransfer>>
 >
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                                                       const ops::us4r::TGCCurve &tgcSamples) {
+                           const ops::us4r::TGCCurve &tgcSamples,
+                           uint16 nRepeats) {
     // Validate input sequence
     ProbeTxRxValidator validator(
         ::arrus::format("tx rx sequence for {}", getDeviceId().toString()), model);

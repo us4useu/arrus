@@ -26,11 +26,6 @@ Us4RImpl::Us4RImpl(const DeviceId &id,
 
 }
 
-void Us4RImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                               const ::arrus::ops::us4r::TGCCurve &tgcSamples) {
-    getDefaultComponent()->setTxRxSequence(seq, tgcSamples);
-}
-
 void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Setting voltage {}", voltage));
@@ -85,48 +80,43 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
     );
     std::vector<TxRxParameters> actualSeq;
 
-    constexpr uint16_t N_ELEMENTS = 2;
-
+    constexpr uint16_t BUFFER_SIZE = 2;
     auto nus4oems = probeAdapter.value()->getNumberOfUs4OEMs();
-    this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, N_ELEMENTS);
+    this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, BUFFER_SIZE);
 
     // Load n-times, each time for subsequent seq. element.
-
     auto nOps = seq.getOps().size();
-    for(int i = 0; i < N_ELEMENTS; ++i) {
+    size_t opIdx = 0;
+    for(const auto&[tx, rx] : seq.getOps()) {
+        std::optional<TxRxParameters::SequenceCallback> callback = nullptr;
 
-        size_t opIdx = 0;
-        for(const auto&[tx, rx] : seq.getOps()) {
-            std::optional<TxRxParameters::SequenceCallback> callback = nullptr;
-
-            // Set checkpoint callback for the last tx/rx.
-            if(opIdx == nOps - 1) {
-                callback = [&, this, i](Ordinal us4oemOrdinal) {
-                    logger->log(LogSeverity::DEBUG,
-                                ::arrus::format("Notifying about new buffer element {}.", i));
-                    this->currentRxBuffer->notify(us4oemOrdinal, i);
-                    logger->log(LogSeverity::DEBUG,
-                                ::arrus::format("Reserving element {}.", i));
-                    bool isReservationPossible =
-                        this->currentRxBuffer->reserveElement((i + 1) % N_ELEMENTS);
-                    logger->log(LogSeverity::DEBUG,
-                                ::arrus::format("Element {} reserved.", i));
-                    return isReservationPossible;
-                };
-            }
-            actualSeq.emplace_back(
-                tx.getAperture(),
-                tx.getDelays(),
-                tx.getExcitation(),
-                rx.getAperture(),
-                rx.getSampleRange(),
-                rx.getDownsamplingFactor(),
-                seq.getPri(),
-                rx.getPadding(),
-                callback
-            );
-            ++opIdx;
+        // Set checkpoint callback for the last tx/rx.
+        if(opIdx == nOps - 1) {
+            callback = [&, this](Ordinal us4oemOrdinal, uint16 i) {
+                logger->log(LogSeverity::DEBUG,
+                            ::arrus::format("Notifying about new buffer element {}.", i));
+                this->currentRxBuffer->notify(us4oemOrdinal, i);
+                logger->log(LogSeverity::DEBUG,
+                            ::arrus::format("Reserving element {}.", i));
+                bool isReservationPossible =
+                    this->currentRxBuffer->reserveElement((i + 1) % BUFFER_SIZE);
+                logger->log(LogSeverity::DEBUG,
+                            ::arrus::format("Element {} reserved.", i));
+                return isReservationPossible;
+            };
         }
+        actualSeq.emplace_back(
+            tx.getAperture(),
+            tx.getDelays(),
+            tx.getExcitation(),
+            rx.getAperture(),
+            rx.getSampleRange(),
+            rx.getDownsamplingFactor(),
+            seq.getPri(),
+            rx.getPadding(),
+            callback
+        );
+        ++opIdx;
     }
     auto[fcm, transfers] = getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve());
 
@@ -135,10 +125,8 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
     // Currently we assume that each buffer element has the same size.
     size_t bufferElementSize = countBufferElementSize(transfers);
 
-    this->hostBuffer = std::make_shared<Us4RHostBuffer>(
-        bufferElementSize, N_ELEMENTS);
+    this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, BUFFER_SIZE);
     this->dataCarrier = std::make_unique<HostBufferWorker>(
-
         this->currentRxBuffer, this->hostBuffer, transfers);
     return std::make_tuple(std::move(fcm), hostBuffer);
 }
@@ -159,7 +147,6 @@ void Us4RImpl::start() {
 void Us4RImpl::stop() {
     logger->log(LogSeverity::DEBUG, "Stopping us4r.");
     this->stopDevice();
-
 }
 
 void Us4RImpl::stopDevice() {
@@ -199,8 +186,6 @@ size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransf
     }
     return *std::begin(transferSizes);
 }
-
-
 
 
 }

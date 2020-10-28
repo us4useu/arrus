@@ -15,8 +15,8 @@ namespace arrus::devices {
 
 class TxRxParameters {
 public:
-    /** us4oem module -> can continue data acquisition */
-    using SequenceCallback = std::function<bool(Ordinal)>;
+    /** (us4oem module, iteration) -> return true if can continue data acquisition */
+    using SequenceCallback = std::function<bool(Ordinal, uint16)>;
 
     static const TxRxParameters US4OEM_NOP;
 

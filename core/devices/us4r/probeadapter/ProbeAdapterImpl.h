@@ -35,9 +35,8 @@ public:
         FrameChannelMapping::Handle,
         std::vector<std::vector<DataTransfer>>
     >
-    setTxRxSequence(
-        const std::vector<TxRxParameters> &seq,
-        const ::arrus::ops::us4r::TGCCurve &tgcSamples) override;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ::arrus::ops::us4r::TGCCurve &tgcSamples,
+                    uint16 nRepeats = 1) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 

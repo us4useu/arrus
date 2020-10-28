@@ -16,13 +16,20 @@ class UltrasoundDevice {
 public:
     virtual ~UltrasoundDevice() = default;
 
+    /**
+     * @param seq
+     * @param tgcSamples
+     * @param nRepeats how many times repeat the sequence of tx/rxs
+     * @return
+     */
     virtual
     std::tuple<
         FrameChannelMapping::Handle,
         std::vector<std::vector<DataTransfer>>
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ::arrus::ops::us4r::TGCCurve &tgcSamples) = 0;
+                    const ::arrus::ops::us4r::TGCCurve &tgcSamples,
+                    uint16 nRepeats = 1) = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;

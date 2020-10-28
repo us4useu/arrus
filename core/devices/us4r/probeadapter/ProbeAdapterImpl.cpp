@@ -66,7 +66,8 @@ std::tuple<
     FrameChannelMapping::Handle,
     std::vector<std::vector<DataTransfer>>
 >
-ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const TGCCurve &tgcSamples) {
+ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const TGCCurve &tgcSamples,
+                                  uint16 nRepeats) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
         ::arrus::format("{} tx rx sequence", getDeviceId().toString()),

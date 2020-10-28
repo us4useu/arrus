@@ -113,12 +113,6 @@ public:
 
     void disableHV();
 
-    /**
-     * tx and rx aperture, and tx delays are expected to be provided in flattened format.
-     */
-    void setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                         const ::arrus::ops::us4r::TGCCurve &tgcSamples);
-
 private:
     Logger::Handle logger;
     Us4OEMs us4oems;

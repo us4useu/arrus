@@ -85,7 +85,6 @@ public:
 
     void validate(const TxRxParamsSequence &txRxs) override {
         // Validation according to us4oem technote
-        ARRUS_VALIDATOR_EXPECT_IN_RANGE(txRxs.size(), size_t(1), size_t(2048));
         const auto decimationFactor = txRxs[0].getRxDecimationFactor();
         const auto startSample = txRxs[0].getRxSampleRange().start();
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
@@ -187,7 +186,8 @@ std::tuple<
     std::vector<std::vector<DataTransfer>>
 >
 Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
-                            const ::arrus::ops::us4r::TGCCurve &tgc) {
+                            const ::arrus::ops::us4r::TGCCurve &tgc,
+                            const uint16 nRepeats) {
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
     // This probably should be implemented in IUs4OEMInitializer
 
@@ -206,8 +206,13 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
     ius4oem->ClearScheduledReceive();
-    ius4oem->SetNTriggers(nOps);
-    ius4oem->SetNumberOfFirings(nOps);
+    ARRUS_REQUIRES_AT_MOST(nOps * nRepeats, 16384,
+                           ::arrus::format(
+                               "Exceeded the maximum ({}) number of firings: {}",
+                               16384, nOps * nRepeats));
+
+    ius4oem->SetNTriggers(nOps * nRepeats);
+    ius4oem->SetNumberOfFirings(nOps * nRepeats);
 
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 
@@ -220,126 +225,134 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     uint16 transferFiringStart = 0;
     size_t transferAddressStart = 0;
 
-    for(uint16 firing = 0; firing < seq.size(); ++firing) {
-        auto const &op = seq[firing];
-        bool checkpoint = op.getCallback().has_value();
+    for(int seqIdx = 0; seqIdx < nRepeats; ++seqIdx) {
 
-        if(op.isNOP()) {
-            logger->log(LogSeverity::TRACE,
-                        format("Setting tx/rx {}: NOP {}",
-                               firing, ::arrus::toString(op)));
-        } else {
-            logger->log(LogSeverity::DEBUG,
-                        arrus::format("Setting tx/rx {}: {}",
-                                      firing, ::arrus::toString(op)));
-        }
-        auto[startSample, endSample] = op.getRxSampleRange().asPair();
-        size_t nSamples = endSample - startSample;
-        float rxTime = getRxTime(nSamples);
-        size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
-        auto rxMapId = rxMappings.find(firing)->second;
+        logger->log(LogSeverity::TRACE, format("Setting tx/rx sequence {} of {}", seqIdx + 1, nRepeats));
 
-        if(op.isNOP()) {
-            ius4oem->SetActiveChannelGroup(emptyChannelGroups, firing);
-            // Intentionally filtering empty aperture to reduce possibility of a mistake.
-            auto txAperture = filterAperture(emptyAperture);
-            auto rxAperture = filterAperture(emptyAperture);
+        for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
 
-            // Intentionally validating the apertures, to reduce possibility of mistake.
-            validateAperture(txAperture);
-            ius4oem->SetTxAperture(txAperture, firing);
-            validateAperture(rxAperture);
-            ius4oem->SetRxAperture(rxAperture, firing);
-        } else {
-            // active channel groups already remapped in constructor
-            ius4oem->SetActiveChannelGroup(activeChannelGroups, firing);
+            auto firing = seqIdx * seq.size() + opIdx;
+            auto const &op = seq[opIdx];
+            bool checkpoint = op.getCallback().has_value();
 
-            auto txAperture = filterAperture(::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()));
-            auto rxAperture = filterAperture(rxApertures[firing]);
-
-            // Intentionally validating tx apertures, to reduce the risk of mistake channel activation
-            // (e.g. the masked one).
-            validateAperture(txAperture);
-            ius4oem->SetTxAperture(txAperture, firing);
-            validateAperture(rxAperture);
-            ius4oem->SetRxAperture(rxAperture, firing);
-        }
-
-        // Delays
-        uint8 txChannel = 0;
-        for(bool bit : op.getTxAperture()) {
-            float txDelay = 0;
-            if(bit && !::arrus::setContains(this->channelsMask, txChannel)) {
-                txDelay = op.getTxDelays()[txChannel];
+            if(op.isNOP()) {
+                logger->log(LogSeverity::TRACE,
+                            format("Setting tx/rx {}: NOP {}", opIdx, ::arrus::toString(op)));
+            } else {
+                logger->log(LogSeverity::DEBUG,
+                            arrus::format("Setting tx/rx {}: {}", opIdx, ::arrus::toString(op)));
             }
-            ius4oem->SetTxDelay(txChannel, txDelay, firing);
-            ++txChannel;
-        }
-        ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firing);
-        ius4oem->SetTxHalfPeriods(
-            static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), firing);
-        ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firing);
-        ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), checkpoint, firing);
+            auto[startSample, endSample] = op.getRxSampleRange().asPair();
+            size_t nSamples = endSample - startSample;
+            float rxTime = getRxTime(nSamples);
+            size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
+            auto rxMapId = rxMappings.find(opIdx)->second;
 
-        setTGC(tgc, firing);
-        ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
-        ius4oem->SetRxTime(rxTime, firing);
+            if(op.isNOP()) {
+                ius4oem->SetActiveChannelGroup(emptyChannelGroups, firing);
+                // Intentionally filtering empty aperture to reduce possibility of a mistake.
+                auto txAperture = filterAperture(emptyAperture);
+                auto rxAperture = filterAperture(emptyAperture);
 
-        ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, DDR_SIZE,
-                               ::arrus::format(
-                                   "Total data size cannot exceed 4GiB (device {})",
-                                   getDeviceId().toString()));
+                // Intentionally validating the apertures, to reduce possibility of mistake.
+                validateAperture(txAperture);
+                ius4oem->SetTxAperture(txAperture, firing);
+                validateAperture(rxAperture);
+                ius4oem->SetRxAperture(rxAperture, firing);
+            } else {
+                // active channel groups already remapped in constructor
+                ius4oem->SetActiveChannelGroup(activeChannelGroups, firing);
 
-        std::optional<std::function<void()>> callback = nullptr;
+                auto txAperture = filterAperture(::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()));
+                auto rxAperture = filterAperture(rxApertures[opIdx]);
 
-        // Handling checkpoints for data transfers
-        if(checkpoint) {
-            callback = [this, op, firing, transferFiringStart]() {
-                bool canContinue = op.getCallback().value()(getDeviceId().getOrdinal());
-                // Here callback should do everything is needed with data
-                // located in the current section and proceed.
-                this->ius4oem->MarkEntriesAsReadyForReceive(
-                    static_cast<unsigned short>(transferFiringStart),
-                    static_cast<unsigned short>(firing));
-                // Start the next section.
-                if(canContinue && this->isMaster()) {
-                    this->ius4oem->TriggerSync();
+                // Intentionally validating tx apertures, to reduce the risk of mistake channel activation
+                // (e.g. the masked one).
+                validateAperture(txAperture);
+                ius4oem->SetTxAperture(txAperture, firing);
+                validateAperture(rxAperture);
+                ius4oem->SetRxAperture(rxAperture, firing);
+            }
+
+            // Delays
+            uint8 txChannel = 0;
+            for(bool bit : op.getTxAperture()) {
+                float txDelay = 0;
+                if(bit && !::arrus::setContains(this->channelsMask, txChannel)) {
+                    txDelay = op.getTxDelays()[txChannel];
                 }
-            };
-        }
+                ius4oem->SetTxDelay(txChannel, txDelay, firing);
+                ++txChannel;
+            }
+            ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firing);
+            ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), firing);
+            ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firing);
+            ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), checkpoint, firing);
 
-        // Allow rx nops for master module.
-        // Master module gathers frame metadata, so we cannot miss any
-        // TODO(pjarosik): transfer a smaller size frame
-        // TODO(pjarosik): add an option to omit empty frames for master module (bool isMetadata?)
-        if(op.isRxNOP() && !this->isMaster()) {
-            // Fake data acquisition
-            ius4oem->ScheduleReceive(firing, outputAddress, 64,
-                                     0, 0, rxMapId,
-                                     callback.value_or(nullptr));
-            // Do not move outputAddress pointer, fake data should be overwritten
-            // by the next non-rx-nop (or ignored, if this is the last operation).
-        } else {
-            ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
-                                     SAMPLE_DELAY + startSample,
-                                     op.getRxDecimationFactor() + 1,
-                                     rxMapId, callback.value_or(nullptr));
-            outputAddress += nBytes;
-        }
+            setTGC(tgc, firing);
+            ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
+            ius4oem->SetRxTime(rxTime, firing);
 
-        if(checkpoint) {
-            auto size = outputAddress - transferAddressStart;
-            auto srcAddress = transferAddressStart;
+            ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, DDR_SIZE,
+                                   ::arrus::format("Total data size cannot exceed 4GiB (device {})",
+                                                   getDeviceId().toString()));
 
-            std::vector<DataTransfer> dataTransferSection = {
-                DataTransfer(
-                    // TODO(pjarosik) cleanup (size, srcAddress should be the same)
-                    [=](uint8_t *dstAddress) { this->transferData(dstAddress, size, srcAddress); },
-                    size, srcAddress)
-            };
-            dataTransfers.push_back(dataTransferSection);
-            transferAddressStart = outputAddress;
-            transferFiringStart = firing + 1;
+            std::optional<std::function<void()>> callback = nullptr;
+
+            // Handling checkpoints for data transfers
+            // TODO consider removing checkpoints and using only repeated sequence
+            // (the end of the sequence can be treated as only checkpoint).
+            if(checkpoint) {
+                callback = [this, op, seqIdx, firing, transferFiringStart]() {
+                    bool canContinue = op.getCallback().value()(getDeviceId().getOrdinal(), seqIdx);
+                    // Here callback should do everything is needed with data
+                    // located in the current section and proceed.
+                    this->ius4oem->MarkEntriesAsReadyForReceive(
+                        static_cast<unsigned short>(transferFiringStart),
+                        static_cast<unsigned short>(firing));
+                    // Start the next section.
+                    if(canContinue && this->isMaster()) {
+                        this->ius4oem->TriggerSync();
+                    }
+                };
+            }
+
+            // Allow rx nops for master module.
+            // Master module gathers frame metadata, so we cannot miss any of them
+            // TODO(pjarosik): transfer a smaller size frame
+            // TODO(pjarosik): add an option to omit empty frames for master module (bool isMetadata?)
+            if(op.isRxNOP() && !this->isMaster()) {
+                // Fake data acquisition
+                ius4oem->ScheduleReceive(firing, outputAddress, 64,
+                                         0, 0, rxMapId,
+                                         callback.value_or(nullptr));
+                // Do not move outputAddress pointer, fake data should be overwritten
+                // by the next non-rx-nop (or ignored, if this is the last operation).
+            } else {
+                ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
+                                         SAMPLE_DELAY + startSample,
+                                         op.getRxDecimationFactor() + 1,
+                                         rxMapId, callback.value_or(nullptr));
+                outputAddress += nBytes;
+            }
+
+            if(checkpoint) {
+                // The size of the chunk.
+                auto size = outputAddress - transferAddressStart;
+                // Where the chunk starts.
+                auto srcAddress = transferAddressStart;
+
+                // TODO replace "DataTransfer" With a "Variable" in the Us4OEM memory
+                std::vector<DataTransfer> dataTransferSection = {
+                    DataTransfer(
+                        // TODO(pjarosik) cleanup (size, srcAddress should be the same)
+                        [=](uint8_t *dstAddress) { this->transferData(dstAddress, size, srcAddress); },
+                        size, srcAddress)
+                };
+                dataTransfers.push_back(dataTransferSection);
+                transferAddressStart = outputAddress;
+                transferFiringStart = firing + 1;
+            }
         }
     }
 
