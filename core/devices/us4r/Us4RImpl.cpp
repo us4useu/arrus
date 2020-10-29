@@ -88,20 +88,23 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
     auto nOps = seq.getOps().size();
     size_t opIdx = 0;
     for(const auto&[tx, rx] : seq.getOps()) {
-        std::optional<TxRxParameters::SequenceCallback> callback = nullptr;
+        std::optional<TxRxParameters::SequenceCallback> callback = std::nullopt;
 
         // Set checkpoint callback for the last tx/rx.
         if(opIdx == nOps - 1) {
-            callback = [&, this](Ordinal us4oemOrdinal, uint16 i) {
+            callback = [this, BUFFER_SIZE] (Ordinal us4oemOrdinal, uint16 i) {
                 logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Notifying about new buffer element {}.", i));
-                this->currentRxBuffer->notify(us4oemOrdinal, i);
+                            ::arrus::format("Notify rx {}:{}.", us4oemOrdinal, i));
+                bool canContinue = this->currentRxBuffer->notify(us4oemOrdinal, i);
+                if(!canContinue) {
+                    return false;
+                }
                 logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Reserving element {}.", i));
+                            ::arrus::format("Reserve rx {}:{}.", us4oemOrdinal, (i + 1) % BUFFER_SIZE));
                 bool isReservationPossible =
                     this->currentRxBuffer->reserveElement((i + 1) % BUFFER_SIZE);
                 logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Element {} reserved.", i));
+                            ::arrus::format("Rx Reserved {}:{}.", us4oemOrdinal, (i + 1) % BUFFER_SIZE));
                 return isReservationPossible;
             };
         }
@@ -118,7 +121,8 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
         );
         ++opIdx;
     }
-    auto[fcm, transfers] = getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve());
+    auto[fcm, transfers] = getDefaultComponent()->setTxRxSequence(
+        actualSeq, seq.getTgcCurve(), BUFFER_SIZE);
 
     // transfers[i][j] = transfer to perform
     // where i is the section (buffer element), j is the us4oem (a part of the buffer element)
@@ -153,6 +157,8 @@ void Us4RImpl::stopDevice() {
     if(this->state != State::STARTED) {
         throw IllegalArgumentException("Device is not running.");
     }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     this->getDefaultComponent()->stop();
     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     if(this->currentRxBuffer) {
@@ -162,14 +168,16 @@ void Us4RImpl::stopDevice() {
         this->hostBuffer->shutdown();
     }
     this->state = State::STOPPED;
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 }
 
 Us4RImpl::~Us4RImpl() {
     getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
-    // TODO mutex
     if(this->state == State::STARTED) {
         this->stopDevice();
     }
+    getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
+    this->dataCarrier->join();
 }
 
 size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransfer>> &transfers) {

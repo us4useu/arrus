@@ -96,7 +96,7 @@ public:
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    uint16 nRepeats = 1) override;
+                    uint16 nRepeats) override;
 
     double getSamplingFrequency() override;
 

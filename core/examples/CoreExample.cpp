@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
@@ -30,20 +31,24 @@ int main() noexcept {
         Pulse pulse(4e6, 3.5, false);
         ::arrus::Interval<::arrus::uint32> sampleRange{0, 4096};
 
-        TxRxSequence seq(
-            {
-                {Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange)}
-            },
-            1000e-6f, {});
+        std::vector<TxRxSequence::TxRx> txrxs;
+
+        for(int i = 0; i < 11; ++i) {
+            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange));
+        }
+
+        TxRxSequence seq(txrxs, 1000e-6f, {});
 
         auto[fcm, buffer] = us4r->upload(seq);
         us4r->start();
 
-        int16_t* data = buffer->tail();
-        std::cout << "Waiting for user input" << std::endl;
-        std::string str;
-        std::cin >> str;
-        std::cout << "Done, releasing buffer" << std::endl;
+        for(int i = 0; i < 100; ++i) {
+            int16_t* data = buffer->tail();
+            std::cout << i << std::endl;
+            std::cout << "GOT POINTER: " << std::hex << (size_t)(data) << std::dec << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            buffer->releaseTail();
+        }
 
         us4r->stop();
 

@@ -22,7 +22,7 @@ public:
         std::vector<std::vector<DataTransfer>>
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    int16 nRepeats = 1) = 0;
+                    uint16 nRepeats) = 0;
 
     virtual Ordinal getNumberOfUs4OEMs() = 0;
 

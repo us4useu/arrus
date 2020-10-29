@@ -77,10 +77,10 @@ public:
 
     void shutdown() {
         std::unique_lock<std::mutex> guard(mutex);
-        this->isShutdown = false;
-        guard.unlock();
+        this->isShutdown = true;
         this->canPush.notify_all();
         this->canPop.notify_all();
+        guard.unlock();
     }
 
 private:

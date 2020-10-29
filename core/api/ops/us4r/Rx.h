@@ -23,7 +23,7 @@ public:
      * @param downsamplingFactor the factor by which the sampling frequency should be divided, an integer
      */
     Rx(BitMask aperture, Interval<uint32> sampleRange,
-       uint32 downsamplingFactor = 0, Tuple<ChannelIdx> padding = {0, 0})
+       uint32 downsamplingFactor = 1, Tuple<ChannelIdx> padding = {0, 0})
         : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)),
           downsamplingFactor(downsamplingFactor),
           padding(std::move(padding)) {}

@@ -225,13 +225,13 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     uint16 transferFiringStart = 0;
     size_t transferAddressStart = 0;
 
-    for(int seqIdx = 0; seqIdx < nRepeats; ++seqIdx) {
+    for(uint16 seqIdx = 0; seqIdx < nRepeats; ++seqIdx) {
 
         logger->log(LogSeverity::TRACE, format("Setting tx/rx sequence {} of {}", seqIdx + 1, nRepeats));
 
         for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
 
-            auto firing = seqIdx * seq.size() + opIdx;
+            uint16 firing = (uint16)(seqIdx * seq.size() + opIdx);
             auto const &op = seq[opIdx];
             bool checkpoint = op.getCallback().has_value();
 
@@ -297,13 +297,17 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                                    ::arrus::format("Total data size cannot exceed 4GiB (device {})",
                                                    getDeviceId().toString()));
 
-            std::optional<std::function<void()>> callback = nullptr;
+            std::optional<std::function<void()>> callback = std::nullopt;
 
             // Handling checkpoints for data transfers
             // TODO consider removing checkpoints and using only repeated sequence
-            // (the end of the sequence can be treated as only checkpoint).
+            // (the end of the iteration can be treated as the only checkpoint).
             if(checkpoint) {
                 callback = [this, op, seqIdx, firing, transferFiringStart]() {
+                    this->logger->log(LogSeverity::DEBUG,
+                                      ::arrus::format(
+                                      "Schedule receive callback for us4oem {}, iteration {}",
+                                      this->getDeviceId().getOrdinal(), seqIdx));
                     bool canContinue = op.getCallback().value()(getDeviceId().getOrdinal(), seqIdx);
                     // Here callback should do everything is needed with data
                     // located in the current section and proceed.
@@ -331,7 +335,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             } else {
                 ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
                                          SAMPLE_DELAY + startSample,
-                                         op.getRxDecimationFactor() + 1,
+                                         op.getRxDecimationFactor() - 1,
                                          rxMapId, callback.value_or(nullptr));
                 outputAddress += nBytes;
             }
@@ -530,7 +534,6 @@ void Us4OEMImpl::start() {
 
 void Us4OEMImpl::stop() {
     this->stopTrigger();
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 }
 
 

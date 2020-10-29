@@ -29,7 +29,7 @@ public:
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    uint16 nRepeats = 1) = 0;
+                    uint16 nRepeats) = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;

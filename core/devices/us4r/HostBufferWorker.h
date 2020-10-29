@@ -34,7 +34,7 @@ public:
 
     void process() {
         while(this->state == State::STARTED){
-            logger->log(LogSeverity::DEBUG, "Waiting for queue element.");
+            logger->log(LogSeverity::DEBUG, "Waiting for rx.");
             auto idx = inputBuffer->tail();
             if(idx < 0) {
                 this->state = State::STOPPED;
@@ -42,29 +42,36 @@ public:
             }
             auto &ts = transfers[idx];
 
-            logger->log(LogSeverity::DEBUG, "Pushing data to the output buffer.");
+            logger->log(LogSeverity::DEBUG, ::arrus::format("Push rx {}.", idx));
             bool pushResult = outputBuffer->push([&ts, idx] (int16* dstAddress) {
+                size_t offset = 0;
                 for(auto &t : ts) {
-                    t.getTransferFunc()((uint8_t*)dstAddress);
+                    t.getTransferFunc()((uint8_t*)dstAddress + offset);
+                    offset += t.getSize();
                 }
             });
-            logger->log(LogSeverity::DEBUG, "Data transferred.");
+            logger->log(LogSeverity::DEBUG, ::arrus::format("Push rx finished {}.", idx));
             if(!pushResult) {
                 this->state = State::STOPPED;
                 break;
             }
-            logger->log(LogSeverity::DEBUG, "Releasing buffer tail.");
+            logger->log(LogSeverity::DEBUG, ::arrus::format("Releasing rx {}.", idx));
             bool releaseTail = inputBuffer->releaseTail();
-            logger->log(LogSeverity::DEBUG, "Released buffer tail.");
+            logger->log(LogSeverity::DEBUG, ::arrus::format("Released rx {}.", idx));
             if(!releaseTail) {
                 this->state = State::STOPPED;
                 break;
             }
         }
+        logger->log(LogSeverity::DEBUG, "Host buffer finished all work.");
+    }
+
+    void join() {
+        this->processingThread.join();
     }
 
 private:
-    enum class State{STARTED, STOPPED};
+    enum class State{NEW, STARTED, STOPPED};
 
     Logger::Handle logger;
     std::thread processingThread;
@@ -73,7 +80,7 @@ private:
     std::shared_ptr<Us4RHostBuffer> outputBuffer;
     // Element -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> transfers;
-    State state{State::STOPPED};
+    State state{State::NEW};
 };
 
 }

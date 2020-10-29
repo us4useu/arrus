@@ -91,7 +91,7 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                 op.getRxPadding(), op.getCallback());
     }
 
-    return adapter->setTxRxSequence(adapterSeq, tgcSamples);
+    return adapter->setTxRxSequence(adapterSeq, tgcSamples, nRepeats);
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {

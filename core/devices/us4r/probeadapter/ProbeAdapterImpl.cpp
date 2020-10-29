@@ -198,7 +198,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
 
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto [fcMapping, us4oemTransfers] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples);
+        auto [fcMapping, us4oemTransfers] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples,
+                                                                    nRepeats);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));

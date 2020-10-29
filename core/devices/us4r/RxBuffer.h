@@ -22,7 +22,11 @@ public:
     /**
      * Notifies consumers, that new data arrived.
      */
-    void notify(unsigned ordinal, unsigned bufferElement) {
+    bool notify(unsigned ordinal, unsigned bufferElement) {
+        if(this->isShutdown) {
+            // Nothing to notify about, the connection is closed.
+            return false;
+        }
         std::unique_lock<std::mutex> guard(mutex);
         auto &accumulator = accumulators[bufferElement];
         if(accumulator & (1ul << ordinal)) {
@@ -35,6 +39,7 @@ public:
             guard.unlock();
             bufferEmpty.notify_one();
         }
+        return true;
     }
 
     /**
@@ -107,6 +112,9 @@ public:
         for(auto &cv : isAccuClear) {
             cv.notify_all();
         }
+
+        std::string msg = "rx buffer shutdown\n";
+        std::cout << msg;
     }
 
 private:

@@ -59,7 +59,7 @@ public:
                    Interval<uint32> rxSampleRange,
                    uint32 rxDecimationFactor, float pri,
                    Tuple<ChannelIdx> rxPadding = {0, 0},
-                   std::optional<SequenceCallback> callback = nullptr)
+                   std::optional<SequenceCallback> callback = std::nullopt)
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
@@ -107,8 +107,8 @@ public:
     }
 
     // TODO try keeping this class immutable
-    void setCallback(const std::optional<SequenceCallback> &callback) {
-        this->callback = callback;
+    void setCallback(const std::optional<SequenceCallback> &clbk) {
+        this->callback = clbk;
     }
 
     [[nodiscard]] bool isNOP() const  {
