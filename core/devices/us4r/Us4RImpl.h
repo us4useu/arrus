@@ -52,7 +52,7 @@ public:
         boost::algorithm::trim(tail);
         if(!tail.empty()) {
             throw IllegalArgumentException(
-                arrus::format("Us4R devices allows access onl to the top-level "
+                arrus::format("Us4R devices allows access only to the top-level "
                               "devices (got relative path: '{}')", path)
             );
         }
@@ -99,8 +99,8 @@ public:
         return probe.value().get();
     }
 
-    std::tuple<
-        FrameChannelMapping::Handle,
+    std::pair<
+        FrameChannelMapping::SharedHandle,
         HostBuffer::SharedHandle
     >
     upload(const ops::us4r::TxRxSequence &us4oemOrdinal) override;

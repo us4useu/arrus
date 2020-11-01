@@ -73,37 +73,37 @@ public:
             }
         }
         // TGC samples
-        if(obj.getRxSettings().getDTGCAttenuation().has_value()) {
+        if(obj.getRxSettings().getDtgcAttenuation().has_value()) {
             expectOneOf(
                     "dtgc attenuation",
-                    obj.getRxSettings().getDTGCAttenuation().value(),
+                    obj.getRxSettings().getDtgcAttenuation().value(),
                     DTGCAttenuationValueMap::getInstance().getAvailableValues()
             );
         }
         expectOneOf(
                 "pga gain",
-                obj.getRxSettings().getPGAGain(),
+                obj.getRxSettings().getPgaGain(),
                 PGAGainValueMap::getInstance().getAvailableValues());
         expectOneOf(
                 "lna gain",
-                obj.getRxSettings().getLNAGain(),
+                obj.getRxSettings().getLnaGain(),
                 LNAGainValueMap::getInstance().getAvailableValues());
 
-        if(!obj.getRxSettings().getTGCSamples().empty()) {
+        if(!obj.getRxSettings().getTgcSamples().empty()) {
             // Maximum/minimum number of samples.
             expectInRange(
                     "tgc samples",
-                    obj.getRxSettings().getTGCSamples().size(),
+                    obj.getRxSettings().getTgcSamples().size(),
 					(size_t)1, (size_t)Us4OEMImpl::TGC_N_SAMPLES,
                     "(size)"
             );
 
             // Maximum/minimum value of a TGC sample.
-            auto tgcMax = float(obj.getRxSettings().getPGAGain()
-                                + obj.getRxSettings().getLNAGain());
+            auto tgcMax = float(obj.getRxSettings().getPgaGain()
+                                + obj.getRxSettings().getLnaGain());
             auto tgcMin = std::max(0.0f, float(tgcMax - Us4OEMImpl::TGC_ATTENUATION_RANGE));
             expectAllInRange("tgc samples",
-                             obj.getRxSettings().getTGCSamples(), tgcMin,
+                             obj.getRxSettings().getTgcSamples(), tgcMin,
                              tgcMax);
         }
 
@@ -119,7 +119,7 @@ public:
         // LPF cutoff.
         expectOneOf(
                 "lpf cutoff",
-                obj.getRxSettings().getLPFCutoff(),
+                obj.getRxSettings().getLpfCutoff(),
                 LPFCutoffValueMap::getInstance().getAvailableValues()
         );
     }

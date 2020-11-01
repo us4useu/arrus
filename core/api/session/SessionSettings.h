@@ -12,7 +12,7 @@ public:
     explicit SessionSettings(arrus::devices::Us4RSettings us4RSettings) :
         us4RSettings(std::move(us4RSettings)) {}
 
-    [[nodiscard]] const arrus::devices::Us4RSettings &getUs4RSettings() const {
+    const arrus::devices::Us4RSettings &getUs4RSettings() const {
         return us4RSettings;
     }
 

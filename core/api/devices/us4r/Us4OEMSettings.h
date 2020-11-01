@@ -51,19 +51,19 @@ public:
               channelsMask(std::move(channelsMask)){}
 
 
-    [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
+    const std::vector<ChannelIdx> &getChannelMapping() const {
         return channelMapping;
     }
 
-    [[nodiscard]] const BitMask &getActiveChannelGroups() const {
+    const BitMask &getActiveChannelGroups() const {
         return activeChannelGroups;
     }
 
-    [[nodiscard]] const RxSettings &getRxSettings() const {
+    const RxSettings &getRxSettings() const {
         return rxSettings;
     }
 
-    [[nodiscard]] const std::unordered_set<uint8> &getChannelsMask() const {
+    const std::unordered_set<uint8> &getChannelsMask() const {
         return channelsMask;
     }
 

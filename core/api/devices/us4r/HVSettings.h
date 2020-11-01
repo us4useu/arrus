@@ -12,7 +12,7 @@ public:
     explicit HVSettings(HVModelId modelId)
     : modelId(std::move(modelId)) {}
 
-    [[nodiscard]] const HVModelId &getModelId() const {
+    const HVModelId &getModelId() const {
         return modelId;
     }
 

@@ -76,20 +76,20 @@ public:
 
         // Other parameters
         // TGC
-        const auto pgaGain = cfg.getRxSettings().getPGAGain();
-        const auto lnaGain = cfg.getRxSettings().getLNAGain();
+        const auto pgaGain = cfg.getRxSettings().getPgaGain();
+        const auto lnaGain = cfg.getRxSettings().getLnaGain();
         ius4oem->SetPGAGain(
             PGAGainValueMap::getInstance().getEnumValue(pgaGain));
         ius4oem->SetLNAGain(
             LNAGainValueMap::getInstance().getEnumValue(lnaGain));
         // Convert TGC values to [0, 1] range
-        if(cfg.getRxSettings().getTGCSamples().empty()) {
+        if(cfg.getRxSettings().getTgcSamples().empty()) {
             ius4oem->TGCDisable();
         } else {
             const auto maxGain = pgaGain + lnaGain;
             // TODO(pjarosik) extract a common function to compute normalized tgc samples
             const RxSettings::TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
-                cfg.getRxSettings().getTGCSamples(),
+                cfg.getRxSettings().getTgcSamples(),
                 maxGain - Us4OEMImpl::TGC_ATTENUATION_RANGE,
                 static_cast<RxSettings::TGCSample>(maxGain));
 
@@ -99,10 +99,10 @@ public:
         }
 
         // DTGC
-        if(cfg.getRxSettings().getDTGCAttenuation().has_value()) {
+        if(cfg.getRxSettings().getDtgcAttenuation().has_value()) {
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
                              DTGCAttenuationValueMap::getInstance().getEnumValue(
-                                 cfg.getRxSettings().getDTGCAttenuation().value()));
+                                 cfg.getRxSettings().getDtgcAttenuation().value()));
         } else {
             // DTGC value does not matter
             ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
@@ -112,7 +112,7 @@ public:
 
         // Filtering
         ius4oem->SetLPFCutoff(LPFCutoffValueMap::getInstance().getEnumValue(
-            cfg.getRxSettings().getLPFCutoff()));
+            cfg.getRxSettings().getLpfCutoff()));
 
         // Active termination
         if(cfg.getRxSettings().getActiveTermination().has_value()) {

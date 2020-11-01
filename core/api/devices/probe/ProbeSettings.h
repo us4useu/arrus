@@ -21,11 +21,11 @@ public:
             : model(std::move(model)),
               channelMapping(std::move(channelMapping)) {}
 
-    [[nodiscard]] const std::vector<ChannelIdx> &getChannelMapping() const {
+    const std::vector<ChannelIdx> &getChannelMapping() const {
         return channelMapping;
     }
 
-    [[nodiscard]] const ProbeModel &getModel() const {
+    const ProbeModel &getModel() const {
         return model;
     }
 

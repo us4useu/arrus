@@ -50,8 +50,10 @@ public:
      */
     virtual Probe::RawHandle getProbe(Ordinal ordinal) = 0;
 
-    virtual std::tuple<
-        FrameChannelMapping::Handle,
+    // TODO(pjarosik) return unique_ptr<FrameChannelMapping>
+    // Currently shared_ptr is necessary for python swig wrappers only
+    virtual std::pair<
+        FrameChannelMapping::SharedHandle,
         HostBuffer::SharedHandle
     >
     upload(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;

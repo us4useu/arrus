@@ -1,13 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <boost/core/null_deleter.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/sinks/sync_frontend.hpp>
-#include <boost/log/sinks/text_ostream_backend.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/support/date_time.hpp>
+
 
 #include "arrus/core/api/common/LogSeverity.h"
 #include "arrus/common/logging/impl/Logging.h"
@@ -18,11 +12,13 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(deviceIdLogAttr, "DeviceId", std::string)
 
 namespace arrus {
 
-static void
+typedef boost::log::sinks::synchronous_sink<
+    boost::log::sinks::text_ostream_backend> textSink;
+
+static boost::shared_ptr<textSink>
 addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
                     LogSeverity minSeverity, bool autoFlush) {
-    typedef boost::log::sinks::synchronous_sink<
-        boost::log::sinks::text_ostream_backend> textSink;
+
     boost::shared_ptr<textSink> sink = boost::make_shared<textSink>();
 
     sink->locked_backend()->add_stream(ostream);
@@ -45,6 +41,7 @@ addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
         << expr::smessage;
     sink->set_formatter(formatter);
     boost::log::core::get()->add_sink(sink);
+    return sink;
 }
 
 Logging::Logging() {
@@ -62,7 +59,15 @@ Logging::addTextSink(std::shared_ptr<std::ostream> &ostream,
 
 void Logging::addClog(LogSeverity severity) {
     boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
-    addTextSinkBoostPtr(stream, severity, false);
+    this->clogSink = addTextSinkBoostPtr(stream, severity, false);
+}
+
+void Logging::setClogLevel(LogSeverity level) {
+    if(this->clogSink == nullptr) {
+        this->addClog(level);
+    } else {
+        this->clogSink->set_filter(severity >= level);
+    }
 }
 
 Logger::Handle Logging::getLogger() {

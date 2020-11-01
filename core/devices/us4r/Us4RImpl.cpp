@@ -68,8 +68,8 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::tuple<
-    FrameChannelMapping::Handle,
+std::pair<
+    FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
 >
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
@@ -132,7 +132,7 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
     this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, BUFFER_SIZE);
     this->dataCarrier = std::make_unique<HostBufferWorker>(
         this->currentRxBuffer, this->hostBuffer, transfers);
-    return std::make_tuple(std::move(fcm), hostBuffer);
+    return std::make_pair(std::move(fcm), hostBuffer);
 }
 
 void Us4RImpl::start() {

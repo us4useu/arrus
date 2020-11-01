@@ -311,9 +311,9 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                     bool canContinue = op.getCallback().value()(getDeviceId().getOrdinal(), seqIdx);
                     // Here callback should do everything is needed with data
                     // located in the current section and proceed.
-                    this->ius4oem->MarkEntriesAsReadyForReceive(
-                        static_cast<unsigned short>(transferFiringStart),
-                        static_cast<unsigned short>(firing));
+//                    this->ius4oem->MarkEntriesAsReadyForReceive(
+//                        static_cast<unsigned short>(transferFiringStart),
+//                        static_cast<unsigned short>(firing));
                     // Start the next section.
                     if(canContinue && this->isMaster()) {
                         this->ius4oem->TriggerSync();

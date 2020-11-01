@@ -21,7 +21,11 @@ public:
         return values[i];
     }
 
-    [[nodiscard]] size_t size() const {
+    const T &get(size_t i) const {
+        return this[i];
+    }
+
+    size_t size() const {
         return values.size();
     }
 
@@ -29,7 +33,7 @@ public:
         return values;
     }
 
-    [[nodiscard]] size_t product() const {
+    size_t product() const {
         return std::reduce(
                 std::begin(values), std::end(values), size_t(1),
                 [](auto v1, auto v2) -> size_t {
@@ -38,7 +42,7 @@ public:
         );
     }
 
-    [[nodiscard]] size_t sum() const {
+    size_t sum() const {
         return std::reduce(
             std::begin(values), std::end(values), size_t(0),
             [](auto v1, auto v2) -> size_t {

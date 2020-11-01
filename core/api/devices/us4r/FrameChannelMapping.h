@@ -10,6 +10,7 @@ namespace arrus::devices {
 class FrameChannelMapping {
 public:
     using Handle = std::unique_ptr<FrameChannelMapping>;
+    using SharedHandle = std::shared_ptr<FrameChannelMapping>;
     using FrameNumber = uint16;
     constexpr static int8 UNAVAILABLE = -1;
     /**

@@ -4,6 +4,14 @@
 #include <memory>
 #include <string>
 
+#include <boost/core/null_deleter.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/support/date_time.hpp>
+
 #include "arrus/core/api/common/LogSeverity.h"
 #include "arrus/core/api/common/LoggerFactory.h"
 #include "arrus/common/logging/impl/LoggerImpl.h"
@@ -33,6 +41,14 @@ public:
      */
     void addClog(LogSeverity severity);
 
+    /**
+     * Sets logging level for clog.
+     *
+     * Adds clog if necessary.
+     *
+     * @param level level to set
+     */
+    void setClogLevel(LogSeverity level);
 
     Logger::Handle getLogger() override;
 
@@ -45,6 +61,8 @@ public:
     Logging(Logging const &&) = delete;
     void operator=(Logging const &&) = delete;
 private:
+    boost::shared_ptr<boost::log::sinks::synchronous_sink<
+        boost::log::sinks::text_ostream_backend>> clogSink;
 };
 }
 

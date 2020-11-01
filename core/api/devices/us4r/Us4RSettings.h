@@ -36,32 +36,32 @@ public:
           channelsMask(std::move(channelsMask)),
           us4oemChannelsMask(std::move(us4oemChannelsMask)){}
 
-    [[nodiscard]] const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
+    const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
     }
 
-    [[nodiscard]] const std::optional<ProbeAdapterSettings> &
+    const std::optional<ProbeAdapterSettings> &
     getProbeAdapterSettings() const {
         return probeAdapterSettings;
     }
 
-    [[nodiscard]] const std::optional<ProbeSettings> &getProbeSettings() const {
+    const std::optional<ProbeSettings> &getProbeSettings() const {
         return probeSettings;
     }
 
-    [[nodiscard]] const std::optional<RxSettings> &getRxSettings() const {
+    const std::optional<RxSettings> &getRxSettings() const {
         return rxSettings;
     }
 
-    [[nodiscard]] const std::optional<HVSettings> &getHVSettings() const {
+    const std::optional<HVSettings> &getHVSettings() const {
         return hvSettings;
     }
 
-    [[nodiscard]] const std::vector<ChannelIdx> &getChannelsMask() const {
+    const std::vector<ChannelIdx> &getChannelsMask() const {
         return channelsMask;
     }
 
-    [[nodiscard]] const std::vector<std::vector<uint8>> &getUs4OEMChannelsMask() const {
+    const std::vector<std::vector<uint8>> &getUs4OEMChannelsMask() const {
         return us4oemChannelsMask;
     }
 

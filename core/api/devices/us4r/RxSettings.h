@@ -23,27 +23,27 @@ public:
               lnaGain(lnaGain), tgcSamples(std::move(tgcSamples)),
               lpfCutoff(lpfCutoff), activeTermination(activeTermination) {}
 
-    [[nodiscard]] const std::optional<uint16> &getDTGCAttenuation() const {
+    const std::optional<uint16> &getDtgcAttenuation() const {
         return dtgcAttenuation;
     }
 
-    [[nodiscard]] uint16 getPGAGain() const {
+    uint16 getPgaGain() const {
         return pgaGain;
     }
 
-    [[nodiscard]] uint16 getLNAGain() const {
+    uint16 getLnaGain() const {
         return lnaGain;
     }
 
-    [[nodiscard]] const TGCCurve &getTGCSamples() const {
+    const TGCCurve &getTgcSamples() const {
         return tgcSamples;
     }
 
-    [[nodiscard]] uint32 getLPFCutoff() const {
+    uint32 getLpfCutoff() const {
         return lpfCutoff;
     }
 
-    [[nodiscard]] const std::optional<uint16> &getActiveTermination() const {
+    const std::optional<uint16> &getActiveTermination() const {
         return activeTermination;
     }
 

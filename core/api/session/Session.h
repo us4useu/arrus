@@ -41,6 +41,15 @@ public:
 */
 ARRUS_CPP_EXPORT
 Session::Handle createSession(const SessionSettings &sessionSettings);
+
+/**
+* Reads given configuration file and returns a handle to new session.
+*
+* @param filepath a path to session settings
+* @return a unique handle to session
+*/
+ARRUS_CPP_EXPORT
+Session::Handle createSession(const std::string& filepath);
 }
 
 

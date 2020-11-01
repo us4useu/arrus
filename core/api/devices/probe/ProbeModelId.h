@@ -13,11 +13,11 @@ public:
     explicit ProbeModelId(std::string manufacturer, std::string name)
     : manufacturer(std::move(manufacturer)), name(std::move(name)) {}
 
-    [[nodiscard]] const std::string &getName() const {
+    const std::string &getName() const {
         return name;
     }
 
-    [[nodiscard]] const std::string &getManufacturer() const {
+    const std::string &getManufacturer() const {
         return manufacturer;
     }
 
@@ -29,7 +29,7 @@ public:
         return os;
     }
 
-    [[nodiscard]] std::string toString() const {
+    std::string toString() const {
         std::stringstream sstr;
         sstr << *this;
         return sstr.str();

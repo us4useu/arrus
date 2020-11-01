@@ -79,12 +79,12 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
               ));
     // Rx settings
     auto const &rxSettings = us4rSettings.getRxSettings();
-    EXPECT_FALSE(rxSettings->getDTGCAttenuation().has_value());
-    EXPECT_EQ(rxSettings->getPGAGain(), 30);
-    EXPECT_EQ(rxSettings->getLNAGain(), 24);
-    EXPECT_EQ(rxSettings->getTGCSamples(),
+    EXPECT_FALSE(rxSettings->getDtgcAttenuation().has_value());
+    EXPECT_EQ(rxSettings->getPgaGain(), 30);
+    EXPECT_EQ(rxSettings->getLnaGain(), 24);
+    EXPECT_EQ(rxSettings->getTgcSamples(),
               std::vector<TGCSampleValue>({14, 15, 16}));
-    EXPECT_EQ(rxSettings->getLPFCutoff(), 10000000);
+    EXPECT_EQ(rxSettings->getLpfCutoff(), 10000000);
     EXPECT_EQ(rxSettings->getActiveTermination(), 200);
 }
 
@@ -138,12 +138,12 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
               ));
     // Rx settings
     auto const &rxSettings = us4rSettings.getRxSettings();
-    EXPECT_EQ(rxSettings->getDTGCAttenuation(), 0);
-    EXPECT_EQ(rxSettings->getPGAGain(), 24);
-    EXPECT_EQ(rxSettings->getLNAGain(), 12);
-    EXPECT_EQ(rxSettings->getTGCSamples(),
+    EXPECT_EQ(rxSettings->getDtgcAttenuation(), 0);
+    EXPECT_EQ(rxSettings->getPgaGain(), 24);
+    EXPECT_EQ(rxSettings->getLnaGain(), 12);
+    EXPECT_EQ(rxSettings->getTgcSamples(),
               std::vector<TGCSampleValue>({20, 21, 22}));
-    EXPECT_EQ(rxSettings->getLPFCutoff(), 1000000);
+    EXPECT_EQ(rxSettings->getLpfCutoff(), 1000000);
     EXPECT_FALSE(rxSettings->getActiveTermination().has_value());
 }
 
@@ -170,11 +170,11 @@ TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
         }));
     // Rx settings
     auto const &rxSettings0 = us4oem0.getRxSettings();
-    EXPECT_EQ(rxSettings0.getDTGCAttenuation(), 24);
-    EXPECT_EQ(rxSettings0.getLNAGain(), 12);
-    EXPECT_EQ(rxSettings0.getPGAGain(), 24);
-    EXPECT_TRUE(rxSettings0.getTGCSamples().empty());
-    EXPECT_EQ(rxSettings0.getLPFCutoff(), 10000000);
+    EXPECT_EQ(rxSettings0.getDtgcAttenuation(), 24);
+    EXPECT_EQ(rxSettings0.getLnaGain(), 12);
+    EXPECT_EQ(rxSettings0.getPgaGain(), 24);
+    EXPECT_TRUE(rxSettings0.getTgcSamples().empty());
+    EXPECT_EQ(rxSettings0.getLpfCutoff(), 10000000);
     EXPECT_FALSE(rxSettings0.getActiveTermination().has_value());
 
     // us4oem:1
@@ -193,12 +193,12 @@ TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
         }));
     // Rx settings
     auto const &rxSettings1 = us4oem1.getRxSettings();
-    EXPECT_FALSE(rxSettings1.getDTGCAttenuation().has_value());
-    EXPECT_EQ(rxSettings1.getLNAGain(), 30);
-    EXPECT_EQ(rxSettings1.getPGAGain(), 24);
-    EXPECT_EQ(rxSettings1.getTGCSamples(),
+    EXPECT_FALSE(rxSettings1.getDtgcAttenuation().has_value());
+    EXPECT_EQ(rxSettings1.getLnaGain(), 30);
+    EXPECT_EQ(rxSettings1.getPgaGain(), 24);
+    EXPECT_EQ(rxSettings1.getTgcSamples(),
               std::vector<TGCSampleValue>({14.5, 15.5, 16.5, 17.5}));
-    EXPECT_EQ(rxSettings1.getLPFCutoff(), 1000000);
+    EXPECT_EQ(rxSettings1.getLpfCutoff(), 1000000);
     EXPECT_EQ(rxSettings1.getActiveTermination(), 500);
 }
 

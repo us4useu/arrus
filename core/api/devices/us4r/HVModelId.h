@@ -14,11 +14,11 @@ public:
         : manufacturer(std::move(manufacturer)),
           name(std::move(name)) {}
 
-    [[nodiscard]] const std::string &getManufacturer() const {
+    const std::string &getManufacturer() const {
         return manufacturer;
     }
 
-    [[nodiscard]] const std::string &getName() const {
+    const std::string &getName() const {
         return name;
     }
 
@@ -30,7 +30,7 @@ public:
         return os;
     }
 
-    [[nodiscard]] std::string toString() const {
+    std::string toString() const {
         std::stringstream sstr;
         sstr << *this;
         return sstr.str();

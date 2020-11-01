@@ -19,6 +19,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/devices/us4r/hv/HV256FactoryImpl.h"
 #include "arrus/core/session/SessionSettings.h"
+#include "arrus/core/api/io/settings.h"
 
 namespace arrus::session {
 
@@ -37,6 +38,11 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
             std::make_unique<HV256FactoryImpl>()
         )
     );
+}
+
+Session::Handle createSession(const std::string& filepath) {
+    auto settings = arrus::io::readSessionSettings(filepath);
+    return createSession(settings);
 }
 
 SessionImpl::SessionImpl(const SessionSettings &sessionSettings,

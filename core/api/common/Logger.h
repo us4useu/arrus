@@ -38,6 +38,8 @@ public:
      */
     virtual void
     setAttribute(const std::string &key, const std::string &value) = 0;
+
+    virtual ~Logger() = default;
 };
 
 }

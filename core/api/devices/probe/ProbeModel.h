@@ -34,23 +34,23 @@ public:
         }
     }
 
-    [[nodiscard]] const ProbeModelId &getModelId() const {
+    const ProbeModelId &getModelId() const {
         return modelId;
     }
 
-    [[nodiscard]] const Tuple<ElementIdxType> &getNumberOfElements() const {
+    const Tuple<ElementIdxType> &getNumberOfElements() const {
         return numberOfElements;
     }
 
-    [[nodiscard]] const Tuple<double> &getPitch() const {
+    const Tuple<double> &getPitch() const {
         return pitch;
     }
 
-    [[nodiscard]] const Interval<float> &getTxFrequencyRange() const {
+    const Interval<float> &getTxFrequencyRange() const {
         return txFrequencyRange;
     }
 
-    [[nodiscard]] const Interval<Voltage> &getVoltageRange() const {
+    const Interval<Voltage> &getVoltageRange() const {
         return voltageRange;
     }
 

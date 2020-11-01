@@ -21,15 +21,15 @@ public:
             : modelId(std::move(modelId)), nChannels(numberOfChannels),
               mapping(std::move(mapping)) {}
 
-    [[nodiscard]] const ProbeAdapterModelId &getModelId() const {
+    const ProbeAdapterModelId &getModelId() const {
         return modelId;
     }
 
-    [[nodiscard]] ChannelIdx getNumberOfChannels() const {
+    ChannelIdx getNumberOfChannels() const {
         return nChannels;
     }
 
-    [[nodiscard]] const ChannelMapping &getChannelMapping() const {
+    const ChannelMapping &getChannelMapping() const {
         return mapping;
     }
 

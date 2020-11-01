@@ -3,57 +3,48 @@
 ################################################################################
 # - Targets
 ################################################################################
-
 if(ARRUS_BUILD_SWIG)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 find_package(PythonInterp REQUIRED)
 find_package(PythonLibs REQUIRED)
-set(Us4Components
-    US4OEM
-    HV256
-    DBARLite
+set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
+if(MSVC)
+    set_property(
+        SOURCE wrappers/core.i
+        PROPERTY
+        GENERATED_COMPILE_OPTIONS /Od /EHsc
+    )
+endif()
+swig_add_library(py_core
+    TYPE SHARED
+    LANGUAGE PYTHON
+    OUTPUT_DIR arrus
+    OUTFILE_DIR wrappers
+    SOURCES
+		wrappers/core.i
+		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
+		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
 )
-set(Us4Wrappers
-    ius4oem
-    ihv256
-    idbarlite
+set_target_properties(py_core
+    PROPERTIES
+        SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
+)
+target_include_directories(py_core
+    PRIVATE
+    ${PYTHON_INCLUDE_DIRS}
+    ${ARRUS_ROOT_DIR}
 )
 
-foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
-    set_property(SOURCE wrappers/${wrapper}.i PROPERTY CPLUSPLUS ON)
-    if(MSVC)
-        set_property(
-            SOURCE wrappers/${wrapper}.i
-            PROPERTY
-                GENERATED_COMPILE_OPTIONS /Od /EHsc
-        )
-    endif()
-    swig_add_library(${wrapper}
-        TYPE SHARED
-        LANGUAGE PYTHON
-        OUTPUT_DIR arrus/devices
-        OUTFILE_DIR wrappers
-        SOURCES wrappers/${wrapper}.i
-    )
-    set_target_properties(${wrapper}
-        PROPERTIES
-            SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
-            RUNTIME_OUTPUT_DIRECTORY
-            "${CMAKE_CURRENT_BINARY_DIR}/arrus/devices/$<$<CONFIG:Debug>:>"
-    )
-    target_include_directories(${wrapper}
-        PRIVATE
-        ${PYTHON_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-    target_link_libraries(${wrapper}
-       PRIVATE
-       core
-       Us4::${component}
-        ${PYTHON_LIBRARIES}
-    )
-endforeach()
+target_link_libraries(py_core
+    PRIVATE
+    arrus-core
+	Boost::Boost
+	fmt::fmt
+	${PYTHON_LIBRARIES}
+)
 
 endif()
 ################################################################################
@@ -64,6 +55,7 @@ set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
     "arrus/__init__.py"
+	"arrus/logging.py"
     "arrus/beam.py"
     "arrus/interface.py"
     "arrus/kernels.py"
@@ -107,7 +99,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
         ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
-    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} ${Us4Wrappers}
+    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} py_core
 )
 
 add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})
