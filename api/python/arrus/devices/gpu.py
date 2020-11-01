@@ -1,7 +1,14 @@
-from arrus.devices.device import Device
+import arrus.core
+from arrus.devices.device import Device, DeviceId, DeviceType
+
+DEVICE_TYPE = DeviceType("GPU", arrus.core.DeviceType_GPU)
 
 
 class GPU(Device):
+    def __init__(self, index):
+        super().__init__()
+        self._index = index
 
-    def __init__(self, index: int):
-        super().__init__("CPU", index)
+    def get_device_id(self):
+        return DeviceId(DEVICE_TYPE, self._index)
+

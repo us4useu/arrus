@@ -1,34 +1,39 @@
-""" ARRUS Devices. """
-import logging
+""" Arrus device handle. """
 import abc
-
-_logger = logging.getLogger(__name__)
-
-
-class DeviceCfg(abc.ABC):
-    pass
+import dataclasses
+import arrus.core
 
 
-class Device:
-    def __init__(self, name: str, index: int):
-        self.name = name
-        self.index = index
+@dataclasses.dataclass(frozen=True)
+class DeviceType:
+    type: str
+    core_repr: object
 
-    @staticmethod
-    def get_device_id(name, index):
-        if index is None:
-            return name
-        else:
-            return "%s:%d" % (name, index)
 
-    def get_id(self):
-        return Device.get_device_id(self.name, self.index)
+# Currently available python devices.
+CPU = DeviceType("CPU", arrus.core.DeviceType_CPU)
+Us4R = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
 
-    def log(self, level, msg):
-        _logger.log(level, "%s: %s" % (self.get_id(), msg))
+
+@dataclasses.dataclass(frozen=True)
+class DeviceId:
+    device_type: object
+    ordinal: int
+
+
+class Device(abc.ABC):
+    """
+    A handle to device.
+
+    This is an abstract class and should not be instantiated.
+    """
+
+    @abc.abstractmethod
+    def get_device_id(self) -> DeviceId:
+        pass
 
     def __str__(self):
-        return self.get_id()
+        return self.get_device_id()
 
     def __repr__(self):
         return self.__str__()

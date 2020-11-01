@@ -1,10 +1,8 @@
 import dataclasses
 import abc
 
-import arrus.ops
 import arrus.devices.device
 import arrus.medium
-
 
 
 @dataclasses.dataclass(frozen=True)

@@ -3,13 +3,96 @@ import logging
 import numpy as np
 import time
 
-from arrus.devices.device import Device
+import arrus.core
+from arrus.devices.device import Device, DeviceId, DeviceType
+from arrus.ops.us4r import TxRxSequence, Tx, Rx, Pulse
+import arrus.exceptions
 import arrus.devices.probe
 import arrus.metadata
 
-_logger = logging.getLogger(__name__)
+
+DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
 
 
+class FrameChannelMapping:
+    pass
+
+
+class HostBuffer:
+
+    def __init__(
+            self,
+            buffer_handle,
+            fac: arrus.metadata.FrameAcquisitionContext,
+            fcm: FrameChannelMapping,
+            data_description: arrus.metadata.EchoDataDescription):
+        self.buffer_handle = buffer_handle
+        self.fac = fac
+        self.fcm = fcm
+        self.data_description = data_description
+
+    def tail(self):
+        # TODO buffer_handle.tail()
+        # TODO wrap into numpy array
+        # TODO wrap Context into Metadata class
+        pass
+
+    def release_tail(self):
+        pass
+
+class Us4R(Device):
+    """
+    A handle to Us4R device.
+    """
+
+    def __init__(self, handle, parent_session:arrus.session.Session):
+        super().__init__()
+        self._handle = handle
+        self._session = parent_session
+        self._device_id = DeviceId(
+            DEVICE_TYPE,
+            self._handle.get_device_id().get_ordinal())
+
+    def get_device_id(self):
+        return self._device_id
+
+    def upload(self, op):
+        if not isinstance(op, TxRxSequence):
+            raise arrus.exceptions.IllegalArgumentError(
+                f"Unhandled operation: {type(op)}")
+        # if ops is not instance of TxRxSequence:
+        # - run an appropriate kernel (op, session_context), which returns a TxRxSequence + ExecutionContext
+        # extract from the execution context: sampling frequency,
+        # convert TxRxSeqeuence to core objects
+        # -- keep in mind, that the TxRxSequence should takes delays limited to active aperture (and core api dont)
+
+        fac = arrus.metadata.FrameAcquisitionContext(
+            # convert handle.get_probe().probeModel to ProbeDTO
+            device=self.get_dto(),
+            sequence=op,
+            medium=self._session.get_session_context()
+            # TODO raw sequence
+        )
+
+        # upload sequence
+        # wrap frame channel mapping
+        # add fcm to context, add context to constant metadata, return buffer
+        pass
+
+    def start(self):
+        self._handle.start()
+
+    def stop(self):
+        self._handle.stop()
+
+    def set_voltage(self, voltage):
+        self._handle.set_voltage(voltage)
+
+    def disable_hv(self):
+        self._handle.disable_hv()
+
+
+# ------------------------------------------ LEGACY MOCK
 class MockFileBuffer:
     def __init__(self, dataset: np.ndarray, metadata):
         self.dataset = dataset
@@ -43,21 +126,20 @@ class MockUs4R(Device):
         self.buffer = None
 
     def upload(self, sequence):
-        self.log(logging.DEBUG, f"Loading sequence: {sequence}")
         self.buffer = MockFileBuffer(self.dataset, self.metadata)
         return self.buffer
 
     def start(self):
-        self.log(logging.DEBUG, "Starting device.")
+        pass
 
     def stop(self):
-        self.log(logging.DEBUG, "Stopping device.")
+        pass
 
     def set_hv_voltage(self, voltage):
-        self.log(logging.DEBUG, f"Setting HV voltage {voltage}")
+        pass
 
     def disable_hv(self):
-        self.log(logging.DEBUG, f"Disabling HV.")
+        pass
 
 @dataclasses.dataclass(frozen=True)
 class Us4RDTO:

@@ -130,6 +130,17 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/devices/us4r/HostBuffer.h"
 
+%inline %{
+
+arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
+    auto ptr = dynamic_cast<Us4R*>(device);
+    if(!ptr) {
+        throw std::runtime_error("Given device is not an us4r handle.");
+    }
+    return ptr;
+}
+%};
+
 // ------------------------------------------ COMMON
 // Turn on globally value wrappers
 %feature("valuewrapper");

@@ -1,22 +1,20 @@
 import numpy as np
 
+class LinSequenceKernel:
+
+    def process(self, op) -> TxRxSequence:
+        # TODO implement
+        pass
+
 
 def LINSequence(n_elem, n_elem_sub, fc,pitch, c, focal_depth, sample_range,pri):
-
-
     if np.mod(n_elem,2):
         focus = [-pitch/2,focal_depth]
     else:
         focus = [0,focal_depth]
 
-
-
-
     subaperture_delays = enum_classic_delays(n_elem_sub, pitch, c, focus)
     ap_masks, ap_delays = simple_aperture_scan(n_elem, subaperture_delays)
-
-
-    # 
     n_periods = 2
     pulse = Pulse(fc, n_periods)
 
@@ -35,16 +33,16 @@ def LINSequence(n_elem, n_elem_sub, fc,pitch, c, focal_depth, sample_range,pri):
 def simple_aperture_scan(n_elem, subaperture_delays):
     """
     Function generate array which describes which elements are turn on during
-    classic' txrx scheme scan. The supaberture step is equal 1.  
-    
+    classic' txrx scheme scan. The supaberture step is equal 1.
+
     :param n_elem: number of elements in the array, i.e. full aperture length,
     :param subaperture_delays: subaperture length,
-    :param ap_masks: output array of subsequent aperture masks 
+    :param ap_masks: output array of subsequent aperture masks
             (n_lines x n_elem size),
     :param ap_delays: output array of subsequent aperture delays
             (n_lines x n_elem size).
     """
-    
+
 
     subap_len = int(np.shape(subaperture_delays)[0])
     big_half = int(np.ceil(subap_len/2))
@@ -67,19 +65,16 @@ def simple_aperture_scan(n_elem, subaperture_delays):
 
 def enum_classic_delays(n_elem, pitch, c, focus):
     """
-        The function enumerates classical focusing delays for linear array. 
+        The function enumerates classical focusing delays for linear array.
         It assumes that the 0 is in the center of the aperture.
-        
+
         :param n_elem: number of elements in aperture,
         :param pitch: distance between two adjacent probe elements [m],
         :param c: speed of sound [m/s],
-        :param focus: coordinates of the focal point ([xf,zf]), 
+        :param focus: coordinates of the focal point ([xf,zf]),
             or focal length only (then xf = 0 is assumed) [m],
         :param delays: output delays vector.
-
-
     """
-
     if np.isscalar(focus):
         xf = 0
         zf = focus
@@ -87,7 +82,7 @@ def enum_classic_delays(n_elem, pitch, c, focus):
         xf = focus[0]
         zf = focus[1]
     else:
-        raise ValueError("Bad focus - should be scalar, 1-dimensional ndarray, or 2-dimensional ndarra")
+        raise ValueError("Bad focus - should be scalar, 1-dimensional ndarray, or 2-dimensional ndarray")
 
     probe_width = (n_elem-1)*pitch
     el_coord_x = np.linspace(-probe_width/2, probe_width/2, n_elem)
@@ -102,3 +97,4 @@ def enum_classic_delays(n_elem, pitch, c, focus):
 # ap_masks, ap_delays = simple_aperture_scan(10, [1,2,3,4])
 # print(ap_masks)
 # print(ap_delays)
+
