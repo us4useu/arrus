@@ -21,15 +21,15 @@ public:
         : txrxs(std::move(sequence)), pri(pri),
           tgcCurve(std::move(tgcCurve)) {}
 
-    [[nodiscard]] const std::vector<TxRx> &getOps() const {
+    const std::vector<TxRx> &getOps() const {
         return txrxs;
     }
 
-    [[nodiscard]] float getPri() const {
+    float getPri() const {
         return pri;
     }
 
-    [[nodiscard]] const TGCCurve &getTgcCurve() const {
+    const TGCCurve &getTgcCurve() const {
         return tgcCurve;
     }
 

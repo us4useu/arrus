@@ -10,15 +10,15 @@ public:
         centerFrequency(centerFrequency), nPeriods(nPeriods),
         inverse(inverse) {}
 
-    [[nodiscard]] float getCenterFrequency() const {
+    float getCenterFrequency() const {
         return centerFrequency;
     }
 
-    [[nodiscard]] float getNPeriods() const {
+    float getNPeriods() const {
         return nPeriods;
     }
 
-    [[nodiscard]] bool isInverse() const {
+    bool isInverse() const {
         return inverse;
     }
 

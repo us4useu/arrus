@@ -139,6 +139,25 @@ using namespace arrus::devices;
 %include "arrus/core/api/common/Tuple.h"
 %include "arrus/core/api/common/Interval.h"
 
+// ------------------------------------------ OPERATIONS
+// Us4R
+%feature("valuewrapper");
+%{
+#include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/core/api/ops/us4r/Rx.h"
+#include "arrus/core/api/ops/us4r/Tx.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
+using namespace arrus::ops::us4r;
+%};
+
+%include "arrus/core/api/ops/us4r/tgc.h"
+%include "arrus/core/api/ops/us4r/Pulse.h"
+%include "arrus/core/api/ops/us4r/Rx.h"
+%include "arrus/core/api/ops/us4r/Tx.h"
+%include "arrus/core/api/ops/us4r/TxRxSequence.h"
+
+
 // ------------------------------------------ SETTINGS
 // TODO wrap std optional
 // TODO test creating settings

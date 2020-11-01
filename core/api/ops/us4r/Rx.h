@@ -28,19 +28,19 @@ public:
           downsamplingFactor(downsamplingFactor),
           padding(std::move(padding)) {}
 
-    [[nodiscard]] const BitMask &getAperture() const {
+    const BitMask &getAperture() const {
         return aperture;
     }
 
-    [[nodiscard]] const Interval<uint32> &getSampleRange() const {
+    const Interval<uint32> &getSampleRange() const {
         return sampleRange;
     }
 
-    [[nodiscard]] uint32 getDownsamplingFactor() const {
+    uint32 getDownsamplingFactor() const {
         return downsamplingFactor;
     }
 
-    [[nodiscard]] const Tuple<ChannelIdx> &getPadding() const {
+    const Tuple<ChannelIdx> &getPadding() const {
         return padding;
     }
 
