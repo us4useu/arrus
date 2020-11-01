@@ -16,6 +16,8 @@ public:
         const SessionSettings &sessionSettings,
         arrus::devices::Us4RFactory::Handle us4RFactory);
 
+    virtual ~SessionImpl();
+
     arrus::devices::Device::RawHandle
     getDevice(const std::string &deviceId) override;
 

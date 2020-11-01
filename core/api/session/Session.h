@@ -12,8 +12,6 @@ class Session {
 public:
     using Handle = std::unique_ptr<Session>;
 
-    virtual ~Session() = default;
-
     /**
      * Returns a handle to device with given Id.
      *
@@ -31,6 +29,8 @@ public:
      */
     virtual arrus::devices::Device::RawHandle
     getDevice(const arrus::devices::DeviceId &deviceId) = 0;
+
+    virtual ~Session() = default;
 };
 
 /**

@@ -53,11 +53,11 @@ public:
              const Ordinal ordinal)
             : deviceType(dt), ordinal(ordinal) {}
 
-    [[nodiscard]] DeviceType getDeviceType() const {
+    DeviceType getDeviceType() const {
         return deviceType;
     }
 
-    [[nodiscard]] Ordinal getOrdinal() const {
+    Ordinal getOrdinal() const {
         return ordinal;
     }
 
@@ -73,12 +73,13 @@ public:
     ARRUS_CPP_EXPORT
     friend std::ostream &operator<<(std::ostream &os, const DeviceId &id);
 
-    [[nodiscard]] std::string toString() const {
+    std::string toString() const {
         std::ostringstream ss;
         ss << *this;
         return ss.str();
     }
 
+    ARRUS_CPP_EXPORT
     static DeviceId parse(const std::string &deviceId);
 
 private:

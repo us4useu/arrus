@@ -51,10 +51,11 @@ using namespace ::arrus;
 
 // Naive assumption that only classes starts with capital letter.
 %rename("%(undercase)s", notregexmatch$name="^[A-Z].*$") "";
-//%rename("%(undercase)s", %$isfunction) "";
-//%rename("%(undercase)s", %$isvariable) "";
 
 %nodefaultctor;
+
+// TO let know swig about any DLL export macros.
+%include "arrus/core/api/common/macros.h"
 
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)
@@ -89,21 +90,62 @@ using namespace ::arrus;
     }
 %}
 
+// ------------------------------------------ SESSION
+%{
+#include "arrus/core/api/session/Session.h"
+using namespace ::arrus::session;
+
+%};
+// TODO consider using unique_ptr anyway (https://stackoverflow.com/questions/27693812/how-to-handle-unique-ptrs-with-swig)
+
+%shared_ptr(arrus::session::Session);
+%ignore createSession;
+%include "arrus/core/api/session/Session.h"
+
+%inline %{
+
+std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::string& filepath) {
+    std::shared_ptr<Session> res = createSession(filepath);
+    return res;
+}
+%};
+
+// ------------------------------------------ DEVICES
+// Us4R
+%{
+#include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/devices/Device.h"
+#include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/us4r/Us4R.h"
+#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/HostBuffer.h"
+using namespace arrus::devices;
+%};
+
+%ignore operator<<(std::ostream &os, const DeviceId &id);
+%include "arrus/core/api/devices/DeviceId.h"
+%include "arrus/core/api/devices/Device.h"
+%include "arrus/core/api/devices/DeviceWithComponents.h"
+%include "arrus/core/api/devices/us4r/Us4R.h"
+%include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+%include "arrus/core/api/devices/us4r/HostBuffer.h"
+
 // ------------------------------------------ COMMON
+// Turn on globally value wrappers
 %feature("valuewrapper");
 
 %ignore arrus::Tuple::operator[];
-// TO let know swig about any DLL export macros.
-%include "arrus/core/api/common/macros.h"
+
 %include "arrus/core/api/common/Tuple.h"
 %include "arrus/core/api/common/Interval.h"
-
 
 // ------------------------------------------ SETTINGS
 // TODO wrap std optional
 // TODO test creating settings
-// TODO test reading settiongs
+// TODO test reading settings
 // TODO feature autodoc
+// Turn on globally value wrappers
+%feature("valuewrapper");
 %{
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
@@ -137,40 +179,3 @@ using namespace ::arrus::devices;
 
 // ------------------------------------------ IO
 %include "arrus/core/api/io/settings.h"
-
-
-// ------------------------------------------ SESSION
-
-%{
-#include "arrus/core/api/session/Session.h"
-using namespace ::arrus::session;
-%};
-
-// TODO consider using unique_ptr anyway
-//%feature("novaluewrapper");
-//%include "std_unique_ptr.i"
-//wrap_unique_ptr(SessionHandle, arrus::session::Session);
-%ignore createSession;
-%include "arrus/core/api/session/Session.h"
-%inline %{
-    std::shared_ptr<Session> createSessionSharedHandle(const std::string& filepath) {
-        std::shared_ptr<Session> res = createSession(filepath);
-        return res;
-    }
-%};
-
-// ------------------------------------------ DEVICES
-// Us4R
-%{
-#include "arrus/core/api/devices/us4r/Us4R.h"
-#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-#include "arrus/core/api/devices/us4r/HostBuffer.h"
-using namespace arrus::devices;
-%};
-
-%include "arrus/core/api/devices/us4r/Us4R.h"
-%include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-%include "arrus/core/api/devices/us4r/HostBuffer.h"
-
-
-

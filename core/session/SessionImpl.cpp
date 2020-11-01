@@ -99,5 +99,9 @@ SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     return result;
 }
 
+SessionImpl::~SessionImpl() {
+    ::arrus::getDefaultLogger()->log(LogSeverity::INFO, "Closing session.");
+}
+
 
 }

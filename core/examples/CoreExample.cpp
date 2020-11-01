@@ -20,7 +20,7 @@ int main() noexcept {
 
         auto settings =
             ::arrus::io::readSessionSettings(
-                "C:\\Users\\pjarosik\\src\\x-files\\customers\\nanoecho\\nanoecho_magprobe_002.prototxt");
+                R"(C:\Users\pjarosik\src\x-files\customers\nanoecho\nanoecho_magprobe_002.prototxt)");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
 
@@ -42,7 +42,7 @@ int main() noexcept {
         auto[fcm, buffer] = us4r->upload(seq);
         us4r->start();
 
-        for(int i = 0; i < 100; ++i) {
+        for(int i = 0; i < 10; ++i) {
             int16_t* data = buffer->tail();
             std::cout << i << std::endl;
             std::cout << "GOT POINTER: " << std::hex << (size_t)(data) << std::dec << std::endl;

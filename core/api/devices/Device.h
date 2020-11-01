@@ -12,7 +12,7 @@ public:
     using Handle = std::unique_ptr<Device>;
     using RawHandle = PtrHandle<Device>;
 
-    [[nodiscard]] DeviceId getDeviceId() const {
+    DeviceId getDeviceId() const {
         return id;
     }
 

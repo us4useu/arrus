@@ -6,12 +6,12 @@ implemented in c++ using boost::log library.
 import arrus.core
 
 # Wrap arrus core logging levels.
-TRACE = arrus.core.LogSeverity_trace
-DEBUG = arrus.core.LogSeverity_debug
-INFO = arrus.core.LogSeverity_info
-WARNING = arrus.core.LogSeverity_warning
-ERROR = arrus.core.LogSeverity_error
-FATAL = arrus.core.LogSeverity_fatal
+TRACE = arrus.core.LogSeverity_TRACE
+DEBUG = arrus.core.LogSeverity_DEBUG
+INFO = arrus.core.LogSeverity_INFO
+WARNING = arrus.core.LogSeverity_WARNING
+ERROR = arrus.core.LogSeverity_ERROR
+FATAL = arrus.core.LogSeverity_FATAL
 
 DEFAULT_LEVEL = INFO
 
@@ -25,7 +25,7 @@ def set_clog_level(level):
 
 def add_log_file(filepath, level):
     """
-    Adds logging to given file.
+    Adds message logging to given file.
 
     :param filepath: path to output log file
     :param level: severity level

@@ -172,12 +172,12 @@ void Us4RImpl::stopDevice() {
 }
 
 Us4RImpl::~Us4RImpl() {
-    getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
+    getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
     if(this->state == State::STARTED) {
         this->stopDevice();
+        this->dataCarrier->join();
     }
-    getDefaultLogger()->log(LogSeverity::DEBUG, "Destroying Us4R instance");
-    this->dataCarrier->join();
+    getDefaultLogger()->log(LogSeverity::DEBUG, "Connection to Us4R closed.");
 }
 
 size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransfer>> &transfers) {

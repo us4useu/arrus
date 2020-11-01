@@ -43,7 +43,7 @@ public:
     }
 
     /**
-     * Reservers access to i-th buffer element.
+     * Reserves access to i-th buffer element.
      *
      * @return true, if the thread was able to access the element,
      *   false otherwise (e.g. queue shutdown).
