@@ -29,9 +29,9 @@ int main() noexcept {
         std::vector<float> delays(192, 0.0f);
 
         Pulse pulse(4e6, 3.5, false);
-        ::arrus::Interval<::arrus::uint32> sampleRange{0, 4096};
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 4096};
 
-        std::vector<TxRxSequence::TxRx> txrxs;
+        std::vector<TxRx> txrxs;
 
         for(int i = 0; i < 11; ++i) {
             txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange));

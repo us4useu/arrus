@@ -22,33 +22,34 @@ public:
      * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param downsamplingFactor the factor by which the sampling frequency should be divided, an integer
      */
-    Rx(BitMask aperture, Interval<uint32> sampleRange,
-       uint32 downsamplingFactor = 1, Tuple<ChannelIdx> padding = {0, 0})
+    Rx(std::vector<bool> aperture, std::pair<unsigned int, unsigned int> sampleRange,
+       unsigned int downsamplingFactor = 1,
+       std::pair<unsigned short, unsigned short> padding = {(ChannelIdx)0, (ChannelIdx) 0})
         : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)),
           downsamplingFactor(downsamplingFactor),
           padding(std::move(padding)) {}
 
-    const BitMask &getAperture() const {
+    const std::vector<bool> &getAperture() const {
         return aperture;
     }
 
-    const Interval<uint32> &getSampleRange() const {
+    const std::pair<unsigned, unsigned> &getSampleRange() const {
         return sampleRange;
     }
 
-    uint32 getDownsamplingFactor() const {
+    unsigned getDownsamplingFactor() const {
         return downsamplingFactor;
     }
 
-    const Tuple<ChannelIdx> &getPadding() const {
+    const std::pair<unsigned short, unsigned short> &getPadding() const {
         return padding;
     }
 
 private:
-    BitMask aperture;
-    Interval<uint32> sampleRange;
-    uint32 downsamplingFactor;
-    Tuple<ChannelIdx> padding;
+    std::vector<bool> aperture;
+    std::pair<unsigned, unsigned> sampleRange;
+    unsigned downsamplingFactor;
+    std::pair<unsigned short, unsigned short> padding;
 };
 
 }

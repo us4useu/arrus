@@ -29,6 +29,8 @@ public:
     static bool isChannelUnavailable(int8 channelNumber) {
         return channelNumber == UNAVAILABLE;
     }
+
+    virtual ~FrameChannelMapping() = default;
 };
 
 }

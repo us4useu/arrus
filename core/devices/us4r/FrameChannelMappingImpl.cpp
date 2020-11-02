@@ -36,6 +36,8 @@ ChannelIdx FrameChannelMappingImpl::getNumberOfLogicalChannels() {
     return static_cast<ChannelIdx>(frameMapping.cols());
 }
 
+FrameChannelMappingImpl::~FrameChannelMappingImpl() = default;
+
 void
 FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel,
                                               FrameNumber physicalFrame, int8 physicalChannel) {

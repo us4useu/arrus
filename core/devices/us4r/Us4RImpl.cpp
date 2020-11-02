@@ -87,7 +87,9 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
     // Load n-times, each time for subsequent seq. element.
     auto nOps = seq.getOps().size();
     size_t opIdx = 0;
-    for(const auto&[tx, rx] : seq.getOps()) {
+    for(const auto& txrx : seq.getOps()) {
+        auto &tx = txrx.getTx();
+        auto &rx = txrx.getRx();
         std::optional<TxRxParameters::SequenceCallback> callback = std::nullopt;
 
         // Set checkpoint callback for the last tx/rx.
@@ -108,16 +110,22 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
                 return isReservationPossible;
             };
         }
-        actualSeq.emplace_back(
-            tx.getAperture(),
-            tx.getDelays(),
-            tx.getExcitation(),
-            rx.getAperture(),
-            rx.getSampleRange(),
-            rx.getDownsamplingFactor(),
-            seq.getPri(),
-            rx.getPadding(),
-            callback
+
+        Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
+        Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
+
+        actualSeq.push_back(
+            TxRxParameters(
+                tx.getAperture(),
+                tx.getDelays(),
+                tx.getExcitation(),
+                rx.getAperture(),
+                sampleRange,
+                rx.getDownsamplingFactor(),
+                seq.getPri(),
+                padding,
+                callback
+            )
         );
         ++opIdx;
     }

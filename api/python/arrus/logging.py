@@ -16,11 +16,11 @@ FATAL = arrus.core.LogSeverity_FATAL
 DEFAULT_LEVEL = INFO
 
 # Init default level logging.
-arrus.core.init_logging_mechanism(DEFAULT_LEVEL)
+arrus.core.initLoggingMechanism(DEFAULT_LEVEL)
 
 
 def set_clog_level(level):
-    return arrus.core.set_clog_level(level)
+    return arrus.core.setClogLevel(level)
 
 
 def add_log_file(filepath, level):
@@ -30,7 +30,7 @@ def add_log_file(filepath, level):
     :param filepath: path to output log file
     :param level: severity level
     """
-    return arrus.core.add_log_file(filepath, level)
+    return arrus.core.addLogFile(filepath, level)
 
 
 def get_logger():
@@ -39,7 +39,7 @@ def get_logger():
 
     :return:
     """
-    return arrus.core.get_logger()
+    return arrus.core.getLogger()
 
 
 DEFAULT_LOGGER = get_logger()

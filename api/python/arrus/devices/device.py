@@ -33,7 +33,7 @@ class Device(abc.ABC):
         pass
 
     def __str__(self):
-        return self.get_device_id()
+        return str(self.get_device_id())
 
     def __repr__(self):
         return self.__str__()

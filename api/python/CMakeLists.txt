@@ -54,21 +54,32 @@ include(python)
 set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
-    "arrus/__init__.py"
-	"arrus/logging.py"
-	"arrus/interface.py"
-    "arrus/session.py"
-    "arrus/params.py"
-    "arrus/system.py"
-    "arrus/validation.py"
-    "arrus/ops/__init__.py"
-	"arrus/devices/__init__.py"
-	"arrus/devices/device.py"
-	"arrus/utils/__init__.py"
-    "arrus/utils/imaging.py"
-    "arrus/utils/parameters.py"
-    "arrus/tests/tools.py"
+
+    arrus/__init__.py
+	arrus/logging.py
+    arrus/session.py
+    arrus/validation.py
+	arrus/metadata.py
+	arrus/exceptions.py
+	arrus/medium.py
+	arrus/params.py
+    arrus/ops/__init__.py
+	arrus/ops/imaging.py
+	arrus/ops/operation.py
+	arrus/ops/us4r.py
+	arrus/devices/__init__.py
+	arrus/devices/cpu.py
+	arrus/devices/gpu.py
+	arrus/devices/us4r.py
+	arrus/devices/probe.py
+	arrus/devices/device.py
+	arrus/utils/__init__.py
+    arrus/utils/imaging.py
+    arrus/utils/parameters.py
+    arrus/tests/tools.py
 )
+
+# TODO(pjarosik) revise the below list
 set(TEST_FILES
     "arrus/tests/beam_test.py"
     "arrus/tests/session_test.py"

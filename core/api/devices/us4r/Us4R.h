@@ -53,10 +53,14 @@ public:
     // TODO(pjarosik) return unique_ptr<FrameChannelMapping>
     // Currently shared_ptr is necessary for python swig wrappers only
     virtual std::pair<
-        FrameChannelMapping::SharedHandle,
-        HostBuffer::SharedHandle
+        std::shared_ptr<FrameChannelMapping>,
+        std::shared_ptr<HostBuffer>
     >
     upload(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
+
+    virtual void setVoltage(Voltage voltage) = 0;
+
+    virtual void disableHV() = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;

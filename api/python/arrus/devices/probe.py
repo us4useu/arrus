@@ -1,0 +1,3 @@
+
+class ProbeDTO:
+    pass

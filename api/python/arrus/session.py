@@ -52,7 +52,7 @@ class Session(AbstractSession):
     Currently, only localhost session is available.
     """
 
-    def __init__(self, cfg_path: str, medium: arrus.medium.Medium=None):
+    def __init__(self, cfg_path: str, medium: arrus.medium.Medium = None):
         """
         Session constructor.
 
@@ -60,7 +60,7 @@ class Session(AbstractSession):
         :param medium: medium description to set in context
         """
         super().__init__()
-        self._session_handle = arrus.core.create_session_shared_handle(cfg_path)
+        self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._py_devices = {}
         self._context = SessionContext(medium=medium)
 
@@ -80,26 +80,30 @@ class Session(AbstractSession):
         if path in self._py_devices:
             return self._py_devices[path]
         # Then try finding a device using arrus core implementation.
-        device_handle = self._session_handle.get_device(path)
+        device_handle = self._session_handle.getDevice(path)
+        print(device_handle)
+        print(dir(device_handle))
         # Cast device to its type class.
-        device_id = device_handle.get_device_id()
-        device_type = device_id.get_device_type()
+        device_id = device_handle.getDeviceId()
+        device_type = device_id.getDeviceType()
         specific_device_cast = {
             # Currently only us4r is supported.
             arrus.core.DeviceType_Us4R:
-                arrus.devices.us4r.Us4R(self._session_handle.cast_to_us4r)
+                lambda handle: arrus.devices.us4r.Us4R(
+                    arrus.core.castToUs4r(handle),
+                    self)
 
         }.get(device_type, None)
         if specific_device_cast is None:
             raise arrus.exceptions.DeviceNotFoundError(path)
         specific_device = specific_device_cast(device_handle)
+        print(specific_device)
         # TODO(pjarosik) key should be an id, not the whole path
         self._py_devices[path] = specific_device
         return specific_device
 
     def get_session_context(self):
         return self._context
-
 
     def set_current_medium(self, medium: arrus.medium.Medium):
         # TODO mutex, forbid when context is frozen (e.g. when us4r is running)

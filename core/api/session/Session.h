@@ -18,7 +18,7 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    virtual arrus::devices::Device::RawHandle
+    virtual arrus::devices::Device *
     getDevice(const std::string &deviceId) = 0;
 
     /**
@@ -27,7 +27,7 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    virtual arrus::devices::Device::RawHandle
+    virtual arrus::devices::Device *
     getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 
     virtual ~Session() = default;

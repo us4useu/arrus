@@ -32,6 +32,8 @@ public:
 
     ChannelIdx getNumberOfLogicalChannels() override;
 
+    ~FrameChannelMappingImpl() override;
+
 private:
     // logical (frame, number) -> physical (frame, number)
     FrameMapping frameMapping;

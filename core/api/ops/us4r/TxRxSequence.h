@@ -11,10 +11,32 @@
 
 namespace arrus::ops::us4r {
 
+// TODO use pair instead
+class TxRx {
+public:
+    // TODO(pjarosik) remove default constructor!!! Currently required by py swig wrapper
+    TxRx()
+    :tx(std::vector<bool>{}, std::vector<float>{}, Pulse(0, 0, false)),
+     rx(std::vector<bool>{}, std::make_pair<unsigned int, unsigned int>((unsigned int)0, (unsigned int)0))
+    {}
+
+    TxRx(Tx tx, Rx rx) : tx(std::move(tx)), rx(std::move(rx)) {}
+
+    const Tx &getTx() const {
+        return tx;
+    }
+
+    const Rx &getRx() const {
+        return rx;
+    }
+
+private:
+    Tx tx;
+    Rx rx;
+};
+
 class TxRxSequence {
 public:
-    using TxRx = std::pair<Tx, Rx>;
-
     TxRxSequence(
         std::vector<TxRx> sequence,
         float pri, TGCCurve tgcCurve)

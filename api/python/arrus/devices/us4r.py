@@ -44,40 +44,69 @@ class Us4R(Device):
     """
     A handle to Us4R device.
     """
-
-    def __init__(self, handle, parent_session:arrus.session.Session):
+    def __init__(self, handle, parent_session):
         super().__init__()
         self._handle = handle
         self._session = parent_session
         self._device_id = DeviceId(
             DEVICE_TYPE,
-            self._handle.get_device_id().get_ordinal())
+            self._handle.getDeviceId().getOrdinal())
 
     def get_device_id(self):
         return self._device_id
 
-    def upload(self, op):
-        if not isinstance(op, TxRxSequence):
+    def upload(self, seq):
+        if not isinstance(seq, TxRxSequence):
+            # TODO run an appropriate kernel to get a sequence of tx/rx operations
             raise arrus.exceptions.IllegalArgumentError(
-                f"Unhandled operation: {type(op)}")
-        # if ops is not instance of TxRxSequence:
-        # - run an appropriate kernel (op, session_context), which returns a TxRxSequence + ExecutionContext
-        # extract from the execution context: sampling frequency,
-        # convert TxRxSeqeuence to core objects
-        # -- keep in mind, that the TxRxSequence should takes delays limited to active aperture (and core api dont)
+                f"Unhandled operation: {type(seq)}")
+        # Transfer TxRxSequence -> arrus.core.TxRxSequence
 
-        fac = arrus.metadata.FrameAcquisitionContext(
-            # convert handle.get_probe().probeModel to ProbeDTO
-            device=self.get_dto(),
-            sequence=op,
-            medium=self._session.get_session_context()
-            # TODO raw sequence
+        core_seq = arrus.core.TxRxVector()
+        for op in seq.operations:
+            tx, rx = op.tx, op.rx
+            # TODO validate shape
+
+            # TX
+            core_delays = np.zeros(tx.aperture.shape, dtype=np.float32)
+            core_delays[tx.aperture] = tx.delays
+            core_excitation = arrus.core.Pulse(
+                centerFrequency=tx.excitation.center_frequency,
+                nPeriods=tx.excitation.n_periods,
+                inverse=tx.excitation.inverse
+            )
+            core_tx = arrus.core.Tx(
+                aperture=arrus.core.VectorBool(tx.aperture.tolist()),
+                delays=arrus.core.VectorFloat(core_delays.tolist()),
+                excitation=core_excitation
+            )
+            # RX
+            core_rx = arrus.core.Rx(
+                arrus.core.VectorBool(rx.aperture.tolist()),
+                arrus.core.PairUint32(rx.sample_range[0], rx.sample_range[1]),
+                rx.downsampling_factor,
+                arrus.core.PairChannelIdx(rx.padding[0], rx.padding[1])
+            )
+            core_txrx = arrus.core.TxRx(core_tx, core_rx)
+            arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
+
+        core_seq = arrus.core.TxRxSequence(
+            sequence=core_seq,
+            pri=seq.pri,
+            tgcCurve=seq.tgc_curve.tolist()
         )
+        self._handle.upload(core_seq)
+
+        # fac = arrus.metadata.FrameAcquisitionContext(
+        #     # convert handle.get_probe().probeModel to ProbeDTO
+        #     device=self.get_dto(),
+        #     sequence=seq,
+        #     medium=self._session.get_session_context(),
+        #     custom_data={})
 
         # upload sequence
         # wrap frame channel mapping
         # add fcm to context, add context to constant metadata, return buffer
-        pass
 
     def start(self):
         self._handle.start()

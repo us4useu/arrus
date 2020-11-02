@@ -6,6 +6,23 @@
 %include std_vector.i
 %include std_pair.i
 
+%{
+#include "arrus/core/api/ops/us4r/Rx.h"
+#include "arrus/core/api/ops/us4r/Tx.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "arrus/core/api/common/types.h"
+using namespace ::arrus;
+%};
+
+// TODO try not declaring explicitly the below types
+namespace std {
+%template(VectorBool) vector<bool>;
+%template(VectorFloat) vector<float>;
+%template(PairUint32) pair<unsigned, unsigned>;
+%template(PairChannelIdx) pair<unsigned short, unsigned short>;
+
+};
+
 // ------------------------------------------ EXCEPTION HANDLING
 %exception {
     try {
@@ -50,12 +67,15 @@ using namespace ::arrus;
 %}
 
 // Naive assumption that only classes starts with capital letter.
-%rename("%(undercase)s", notregexmatch$name="^[A-Z].*$") "";
+// TODO try enabling underscore option
+// However, it is interferring with other swig features, like %template
+//%rename("%(undercase)s", notregexmatch$name="^[A-Z].*$") "";
 
 %nodefaultctor;
 
 // TO let know swig about any DLL export macros.
 %include "arrus/core/api/common/macros.h"
+%include "arrus/core/api/common/types.h"
 
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)
@@ -130,6 +150,10 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/devices/us4r/HostBuffer.h"
 
+namespace std {
+    %template(UploadResult) pair<shared_ptr<FrameChannelMapping>, shared_ptr<HostBuffer>>;
+};
+
 %inline %{
 
 arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
@@ -151,6 +175,8 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
 %include "arrus/core/api/common/Interval.h"
 
 // ------------------------------------------ OPERATIONS
+
+
 // Us4R
 %feature("valuewrapper");
 %{
@@ -159,14 +185,34 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include <vector>
 using namespace arrus::ops::us4r;
 %};
 
+
+%feature("valuewrapper") TxRx;
 %include "arrus/core/api/ops/us4r/tgc.h"
 %include "arrus/core/api/ops/us4r/Pulse.h"
 %include "arrus/core/api/ops/us4r/Rx.h"
 %include "arrus/core/api/ops/us4r/Tx.h"
 %include "arrus/core/api/ops/us4r/TxRxSequence.h"
+
+
+%include "std_vector.i"
+%include "typemaps.i"
+
+namespace std {
+%template(TxRxVector) vector<arrus::ops::us4r::TxRx>;
+};
+
+%inline %{
+
+void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs,
+                        arrus::ops::us4r::TxRx &txrx) {
+    txrxs.push_back(txrx);
+}
+
+%};
 
 
 // ------------------------------------------ SETTINGS

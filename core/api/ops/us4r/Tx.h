@@ -13,12 +13,12 @@ namespace arrus::ops::us4r {
  */
 class Tx {
 public:
-    Tx(BitMask aperture, std::vector<float> delays, const Pulse &excitation)
+    Tx(std::vector<bool> aperture, std::vector<float> delays, const Pulse &excitation)
         : aperture(std::move(aperture)),
           delays(std::move(delays)),
           excitation(excitation) {}
 
-    const BitMask &getAperture() const {
+    const std::vector<bool> &getAperture() const {
         return aperture;
     }
 
@@ -31,7 +31,7 @@ public:
     }
 
 private:
-    BitMask aperture;
+    std::vector<bool> aperture;
     std::vector<float> delays;
     Pulse excitation;
 };
