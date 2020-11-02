@@ -23,10 +23,13 @@ public:
     ProbeModel(ProbeModelId modelId,
                const Tuple<ElementIdxType> &numberOfElements,
                const Tuple<double> &pitch,
+               // Float, beceause carrier frequency can be set only to specific values
                const Interval<float> &txFrequencyRange,
-               const Interval<Voltage> &voltageRange)
+               const Interval<Voltage> &voltageRange,
+               const double curvatureRadius)
         : modelId(std::move(modelId)), numberOfElements(numberOfElements),
-          pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange) {
+          pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange),
+          curvatureRadius(curvatureRadius) {
 
         if(numberOfElements.size() != pitch.size()) {
             throw IllegalArgumentException(
@@ -54,12 +57,17 @@ public:
         return voltageRange;
     }
 
+    double getCurvatureRadius() const {
+        return curvatureRadius;
+    }
+
 private:
     ProbeModelId modelId;
     Tuple<ElementIdxType> numberOfElements;
     Tuple<double> pitch;
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
+    double curvatureRadius;
 };
 
 }

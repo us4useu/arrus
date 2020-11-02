@@ -21,7 +21,8 @@ public:
      * @param channel logical channel number
      * @return actual frame number and channel number
      */
-    virtual std::pair<FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) = 0;
+     // TODO use FrameNumber typedef (simplified current implementation for swig)
+    virtual std::pair<unsigned short, arrus::int8> getLogical(FrameNumber frame, ChannelIdx channel) = 0;
 
     virtual FrameNumber getNumberOfLogicalFrames() = 0;
     virtual ChannelIdx getNumberOfLogicalChannels() = 0;

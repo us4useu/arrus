@@ -22,16 +22,17 @@ public:
               ProbeAdapterImplBase::RawHandle adapter,
               std::vector<ChannelIdx> channelMapping);
 
+    const ProbeModel &getModel() const override {
+        return model;
+    }
+
     /**
      * tx and rx aperture are expected to be provided in flattened format.
      *
      * @param seq
      * @param tgcSamples
      */
-    std::tuple<
-        FrameChannelMapping::Handle,
-        std::vector<std::vector<DataTransfer>>
-    >
+    std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>>
     setTxRxSequence(
         const std::vector<TxRxParameters> &seq,
         const ::arrus::ops::us4r::TGCCurve &tgcSamples,

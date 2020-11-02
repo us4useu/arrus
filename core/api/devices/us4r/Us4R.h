@@ -48,13 +48,13 @@ public:
      * @param ordinal ordinal number of the probe to get
      * @return a handle to the probe
      */
-    virtual Probe::RawHandle getProbe(Ordinal ordinal) = 0;
+    virtual arrus::devices::Probe* getProbe(Ordinal ordinal) = 0;
 
     // TODO(pjarosik) return unique_ptr<FrameChannelMapping>
     // Currently shared_ptr is necessary for python swig wrappers only
     virtual std::pair<
-        std::shared_ptr<FrameChannelMapping>,
-        std::shared_ptr<HostBuffer>
+        std::shared_ptr<arrus::devices::FrameChannelMapping>,
+        std::shared_ptr<arrus::devices::HostBuffer>
     >
     upload(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
 

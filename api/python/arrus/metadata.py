@@ -20,6 +20,7 @@ class DataDescription(abc.ABC):
 @dataclasses.dataclass(frozen=True)
 class EchoDataDescription(DataDescription):
     sampling_frequency: float
+    custom: dict = dataclasses.field(default_factory=dict)
 
 
 class Metadata:
@@ -32,8 +33,10 @@ class Metadata:
     :param data_desc: data characteristic
     :param custom: custom frame data (e.g. trigger counters, etc.)
     """
-    def __init__(self, context: FrameAcquisitionContext,
-                 data_desc: DataDescription, custom: dict):
+    def __init__(self,
+                 context: FrameAcquisitionContext,
+                 data_desc: DataDescription,
+                 custom: dict):
         self._context = context
         self._data_char = data_desc
         # TODO make _custom_data immutable

@@ -1,8 +1,8 @@
 import dataclasses
-import logging
 import numpy as np
 import time
 
+import arrus.logging
 import arrus.core
 from arrus.devices.device import Device, DeviceId, DeviceType
 from arrus.ops.us4r import TxRxSequence, Tx, Rx, Pulse
@@ -15,30 +15,56 @@ DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
 
 
 class FrameChannelMapping:
-    pass
+
+    def __init__(self, fcm):
+        self._fcm_frame = np.zeros(
+            (fcm.getNumberOfLogicalFrames(), fcm.getNumberOfLogicalChannels()),
+            dtype=np.uint16)
+        self._fcm_channel = np.zeros(
+            (fcm.getNumberOfLogicalFrames(),fcm.getNumberOfLogicalChannels()),
+            dtype=np.int8)
+        for frame in range(fcm.getNumberOfLogicalFrames()):
+            for channel in range(fcm.getNumberOfLogicalChannels()):
+                frame_channel = fcm.getLogical(frame, channel)
+                src_frame = frame_channel[0]
+                src_channel = frame_channel[1]
+                self._fcm_frame[frame, channel] = src_frame
+                self._fcm_frame[frame, channel] = src_channel
+
+    @property
+    def fcm_frame(self):
+        return self._fcm_frame
+
+    @property
+    def fcm_channel(self):
+        return self._fcm_channel
 
 
 class HostBuffer:
-
     def __init__(
             self,
             buffer_handle,
             fac: arrus.metadata.FrameAcquisitionContext,
-            fcm: FrameChannelMapping,
             data_description: arrus.metadata.EchoDataDescription):
         self.buffer_handle = buffer_handle
+        # TODO determine output data shape
         self.fac = fac
-        self.fcm = fcm
         self.data_description = data_description
 
     def tail(self):
-        # TODO buffer_handle.tail()
-        # TODO wrap into numpy array
-        # TODO wrap Context into Metadata class
-        pass
+        data_ptr = self.buffer_handle.tail()
+        # TODO convert data pointer to np.array
+        # This should be done lazely, in order to avoid object creation every time
+        metadata = arrus.metadata.Metadata(
+            context=self.fac,
+            data_desc=self.data_description,
+            custom={}
+        )
+        return data_ptr, metadata
 
     def release_tail(self):
-        pass
+        self.buffer_handle.releaseTail()
+
 
 class Us4R(Device):
     """
@@ -55,18 +81,25 @@ class Us4R(Device):
     def get_device_id(self):
         return self._device_id
 
-    def upload(self, seq):
+    def upload(self, seq) -> HostBuffer:
+        """
+        Uploads a given sequence of operations to perform on the device.
+
+        The host buffer returns Frame Channel Mapping in frame
+        acquisition context custom data dictionary.
+
+        :param seq: sequence to set
+        :return: a data buffer
+        """
         if not isinstance(seq, TxRxSequence):
             # TODO run an appropriate kernel to get a sequence of tx/rx operations
-            raise arrus.exceptions.IllegalArgumentError(
-                f"Unhandled operation: {type(seq)}")
-        # Transfer TxRxSequence -> arrus.core.TxRxSequence
+            raise arrus.exceptions.IllegalArgumentError(f"Unhandled operation: {type(seq)}")
 
+        # Convert arrus.ops.us4r.TxRxSequence -> arrus.core.TxRxSequence
         core_seq = arrus.core.TxRxVector()
         for op in seq.operations:
             tx, rx = op.tx, op.rx
             # TODO validate shape
-
             # TX
             core_delays = np.zeros(tx.aperture.shape, dtype=np.float32)
             core_delays[tx.aperture] = tx.delays
@@ -89,29 +122,62 @@ class Us4R(Device):
             )
             core_txrx = arrus.core.TxRx(core_tx, core_rx)
             arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
-
         core_seq = arrus.core.TxRxSequence(
             sequence=core_seq,
             pri=seq.pri,
-            tgcCurve=seq.tgc_curve.tolist()
+            tgcCurve=seq.tgc_curve.tolist())
+
+        arrus.logging.log(arrus.logging.DEBUG, "Uploading operation")
+        upload_result = self._handle.upload(core_seq)
+
+        fcm, buffer_handle = upload_result[0], upload_result[1]
+        arrus.logging.log(arrus.logging.DEBUG, "producing fcm")
+        fcm = FrameChannelMapping(fcm)
+
+        arrus.logging.log(arrus.logging.DEBUG, "producing fac")
+        fac = arrus.metadata.FrameAcquisitionContext(
+            device=self.get_dto(),
+            sequence=seq,
+            medium=self._session.get_session_context().medium,
+            custom_data={})
+
+        arrus.logging.log(arrus.logging.DEBUG, "producing edd")
+        echo_data_description = arrus.metadata.EchoDataDescription(
+            # TODO get fs from device
+            # TODO get an array of sampling frequencies for all operations
+            sampling_frequency=65e6/seq.operations[0].rx.downsampling_factor,
+            custom={
+                "frame_channel_mapping": fcm
+            }
         )
-        self._handle.upload(core_seq)
+        return HostBuffer(
+            buffer_handle=buffer_handle,
+            fac=fac, data_description=echo_data_description)
 
-        # fac = arrus.metadata.FrameAcquisitionContext(
-        #     # convert handle.get_probe().probeModel to ProbeDTO
-        #     device=self.get_dto(),
-        #     sequence=seq,
-        #     medium=self._session.get_session_context(),
-        #     custom_data={})
-
-        # upload sequence
-        # wrap frame channel mapping
-        # add fcm to context, add context to constant metadata, return buffer
+    def get_dto(self):
+        arrus.logging.log(arrus.logging.DEBUG, "producing dto")
+        print(self._handle.getProbe(0))
+        print("Now we try to get probe model")
+        print(self._handle.getProbe(0).getModel())
+        n_elements = arrus.core.getNumberOfElements(self._handle.getProbe(0).getModel())
+        print(f"n_elements: {n_elements}")
+        arrus.logging.log(arrus.logging.DEBUG, "getting a pitch")
+        pitch = arrus.core.getPitch(self._handle.getProbe(0).getModel())
+        curvature_radius = self._handle.getProbe(0).getModel().getCurvatureRadius()
+        arrus.logging.log(arrus.logging.DEBUG, "After getting probe data")
+        probe_model = arrus.devices.probe.ProbeModel(
+            n_elements=n_elements,
+            pitch=pitch,
+            curvature_radius=curvature_radius)
+        probe_dto = arrus.devices.probe.ProbeDTO(model=probe_model)
+        return Us4RDTO(probe=probe_dto)
 
     def start(self):
+        arrus.logging.log(arrus.logging.DEBUG, "Starting device")
         self._handle.start()
 
     def stop(self):
+        arrus.logging.log(arrus.logging.DEBUG, "Stopping device")
         self._handle.stop()
 
     def set_voltage(self, voltage):

@@ -126,15 +126,16 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     Tuple<ElementIdxType> nElements{nElementsVec};
 
     std::vector<double> pitchVec(proto.pitch().size());
-    std::copy(std::begin(proto.pitch()), std::end(proto.pitch()),
-              std::begin(pitchVec));
+    std::copy(std::begin(proto.pitch()), std::end(proto.pitch()), std::begin(pitchVec));
     Tuple<double> pitch{pitchVec};
+
+    double curvatureRadius = proto.curvature_radius();
 
     ::arrus::Interval<float> txFreqRange{static_cast<float>(proto.tx_frequency_range().begin()),
                                          static_cast<float>(proto.tx_frequency_range().end())};
     ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
                                           static_cast<uint8>(proto.voltage_range().end())};
-    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange);
+    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius);
 }
 
 

@@ -100,8 +100,8 @@ public:
     }
 
     std::pair<
-        FrameChannelMapping::SharedHandle,
-        HostBuffer::SharedHandle
+        std::shared_ptr<arrus::devices::FrameChannelMapping>,
+        std::shared_ptr<arrus::devices::HostBuffer>
     >
     upload(const ops::us4r::TxRxSequence &us4oemOrdinal) override;
 

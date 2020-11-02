@@ -349,8 +349,10 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                 // TODO replace "DataTransfer" With a "Variable" in the Us4OEM memory
                 std::vector<DataTransfer> dataTransferSection = {
                     DataTransfer(
-                        // TODO(pjarosik) cleanup (size, srcAddress should be the same)
-                        [=](uint8_t *dstAddress) { this->transferData(dstAddress, size, srcAddress); },
+                        [=](uint8_t *dstAddress) {
+                            // TODO split th
+                            this->transferData(dstAddress, size, srcAddress);
+                        },
                         size, srcAddress)
                 };
                 dataTransfers.push_back(dataTransferSection);
@@ -525,6 +527,8 @@ Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
 }
 
 void Us4OEMImpl::transferData(uint8_t *dstAddress, size_t size, size_t srcAddress) {
+    // TODO split the transfer into multiple parts
+
     ius4oem->TransferRXBufferToHost(dstAddress, size, srcAddress);
 }
 

@@ -71,7 +71,7 @@ TEST_P(MappingsTest, CorrectlyConvertsMappingsToUs4OEMSettings) {
     ProbeSettings probeSettings(
             ProbeModel(ProbeModelId("test", "test"),
                        {32},
-                       {0.3e-3}, {1e6, 10e6}, {0, 90}),
+                       {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
             getRange<ChannelIdx>(0, 32)
     );
 
@@ -450,7 +450,7 @@ TEST_P(ActiveChannelsTest, CorrectlyGeneratesActiveChannelGroups) {
     ProbeSettings probeSettings(
             ProbeModel(ProbeModelId("test", "test"),
                        {32},
-                       {0.3e-3}, {1e6, 10e6}, {0, 90}),
+                       {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
             testCase.probeMapping
     );
 
@@ -648,7 +648,7 @@ TEST_P(ChannelMaskingTest, CorrectlyMasksChannels) {
         ProbeModel(
             ProbeModelId("test", "test"),
             {(ChannelIdx)mappings.probeMapping.size()},
-            {0.3e-3}, {1e6, 10e6}, {0, 90}),
+            {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
         mappings.probeMapping
     );
 
@@ -754,7 +754,7 @@ TEST(ChannelsMaskingTest, ChecksIfChannelMaskElementsDoNotExceedNumberOfProbeEle
         ProbeModel(
             ProbeModelId("test", "test"),
             {32},
-            {0.3e-3}, {1e6, 10e6}, {0, 90}),
+            {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
             probeMapping
     );
 

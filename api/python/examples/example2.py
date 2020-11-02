@@ -38,4 +38,14 @@ seq = TxRxSequence(
 )
 
 us4r = session.get_device("/Us4R:0")
-us4r.upload(seq)
+buffer = us4r.upload(seq)
+
+print("Starting the device.")
+us4r.start()
+
+data, metadata = buffer.tail()
+print(f"Acquired data: {data}")
+buffer.release_tail()
+
+print("Stopping the device.")
+us4r.stop()
