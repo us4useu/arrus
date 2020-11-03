@@ -182,6 +182,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
             const auto &op = seq[opIdx];
 
             resSeq[resSeq.size()-1].setCallback(op.getCallback());
+            resSeq[resSeq.size()-1].setCheckpoint(op.isCheckpoint());
         }
     }
     return std::make_tuple(result, opDestOp, opDestChannel);

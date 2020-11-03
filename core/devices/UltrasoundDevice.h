@@ -22,10 +22,12 @@ public:
      * @param nRepeats how many times repeat the sequence of tx/rxs
      * @return
      */
+     // TODO(pjarosik) wrap the below tuple in some meaning class
     virtual
     std::tuple<
         FrameChannelMapping::Handle,
-        std::vector<std::vector<DataTransfer>>
+        std::vector<std::vector<DataTransfer>>,
+        uint16_t // ntriggers
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples,

@@ -13,12 +13,13 @@ class HostBufferWorker {
 public:
     HostBufferWorker(std::shared_ptr<RxBuffer> inputBuffer,
                      std::shared_ptr<Us4RHostBuffer> outputBuffer,
-                     std::vector<std::vector<DataTransfer>> transfers)
+                     std::vector<std::vector<DataTransfer>> transfers,
+                     long long rxdmaTimeout)
         : logger{getLoggerFactory()->getLogger()},
           inputBuffer(std::move(inputBuffer)),
           outputBuffer(std::move(outputBuffer)),
-          transfers(std::move(transfers)) {
-
+          transfers(std::move(transfers)),
+          rxdmaTimeout(rxdmaTimeout) {
         INIT_ARRUS_DEVICE_LOGGER(logger, "HostBufferRunner");
     }
 
@@ -33,12 +34,19 @@ public:
     }
 
     void process() {
+        int16_t i = 0;
         while(this->state == State::STARTED){
             logger->log(LogSeverity::DEBUG, "Waiting for rx.");
-            auto idx = inputBuffer->tail();
-            if(idx < 0) {
+            auto idx = inputBuffer->tail(rxdmaTimeout);
+            if(idx == -1) {
                 this->state = State::STOPPED;
                 break;
+            } else if (idx == -2) {
+                logger->log(LogSeverity::INFO, "A timeout while waiting for rx dma response.");
+                // anyway, continue processing
+                // TODO the rx buffer and the host buffer current positions may misalign here
+                // move the position of the buffer
+                idx = i;
             }
             auto &ts = transfers[idx];
 
@@ -62,6 +70,8 @@ public:
                 this->state = State::STOPPED;
                 break;
             }
+
+            i = (i+1) % (inputBuffer->size());
         }
         logger->log(LogSeverity::DEBUG, "Host buffer finished all work.");
     }
@@ -81,6 +91,7 @@ private:
     // Element -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> transfers;
     State state{State::NEW};
+    long long rxdmaTimeout;
 };
 
 }

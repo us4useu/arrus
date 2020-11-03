@@ -81,10 +81,9 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
     std::vector<TxRxParameters> actualSeq;
 
     constexpr uint16_t BUFFER_SIZE = 2;
-    auto nus4oems = probeAdapter.value()->getNumberOfUs4OEMs();
+    auto nus4oems = (Ordinal)1;// probeAdapter.value()->getNumberOfUs4OEMs();
     this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, BUFFER_SIZE);
 
-    // Load n-times, each time for subsequent seq. element.
     auto nOps = seq.getOps().size();
     size_t opIdx = 0;
     for(const auto& txrx : seq.getOps()) {
@@ -124,12 +123,13 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
                 rx.getDownsamplingFactor(),
                 seq.getPri(),
                 padding,
+                callback != std::nullopt,
                 callback
             )
         );
         ++opIdx;
     }
-    auto[fcm, transfers] = getDefaultComponent()->setTxRxSequence(
+    auto[fcm, transfers, nTriggers] = getDefaultComponent()->setTxRxSequence(
         actualSeq, seq.getTgcCurve(), BUFFER_SIZE);
 
     // transfers[i][j] = transfer to perform
@@ -138,8 +138,13 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
     size_t bufferElementSize = countBufferElementSize(transfers);
 
     this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, BUFFER_SIZE);
+
+
+    // Rx DMA timeout - to avoid situation, where rx irq is missing.
+    // 1.5 - sleep time multiplier
+    auto timeout = (long long) ((float)nTriggers*seq.getPri()*1e6*1.5);
     this->dataCarrier = std::make_unique<HostBufferWorker>(
-        this->currentRxBuffer, this->hostBuffer, transfers);
+        this->currentRxBuffer, this->hostBuffer, transfers, timeout);
     return std::make_pair(std::move(fcm), hostBuffer);
 }
 
@@ -198,6 +203,7 @@ size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransf
         transferSizes.insert(size);
     }
     if(transferSizes.size() > 1) {
+        std::cout << ::arrus::toString(transferSizes) << std::endl;
         throw ArrusException("A buffer elements with different sizes.");
     }
     return *std::begin(transferSizes);

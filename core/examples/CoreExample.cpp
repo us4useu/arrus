@@ -14,7 +14,7 @@ int main() noexcept {
         auto loggingMechanism = std::make_shared<::arrus::Logging>();
         std::shared_ptr<std::ostream> ostream{
             std::shared_ptr<std::ostream>(&std::cout, [](std::ostream *) {})};
-        loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::TRACE);
+        loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::DEBUG);
 
         ::arrus::setLoggerFactory(loggingMechanism);
 

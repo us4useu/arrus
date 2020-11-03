@@ -65,23 +65,29 @@ public:
     /**
      * Returns an index to the first element in the buffer that is ready for processing.
      *
-     * @return value >= 0 if the thread was able to access tail, negative number otherwise
+     * @timeout number of microseconds to wait till the timeout
+     * @return value >= 0 if the thread was able to access tail, -1 if the queue is shutted down, -2 if timeout
      *  (e.g. when the queue is shutted down).
      */
-    int16_t tail() {
+    int16_t tail(long long timeout) {
         std::unique_lock<std::mutex> guard(mutex);
         while(accumulators[tailIdx] != filledAccumulator) {
-            bufferEmpty.wait(guard);
-            if(this->isShutdown) {
+            auto res = bufferEmpty.wait_for(guard, std::chrono::microseconds(timeout));
+            if(res == std::cv_status::timeout) {
+                // Just mark the element as ready and try proceeding.
+                // Probably the rx dma irq is missing.
+                accumulators[tailIdx] = filledAccumulator;
+                return -2;
+            }
+            else if(this->isShutdown) {
                 return -1;
-
             }
         }
         return tailIdx;
     }
 
     /**
-     * Moves forward of the tail and marks the element as ready for further acquisition.
+     * Moves forward the tail and marks the element as ready for further acquisition.
      */
     bool releaseTail() {
         std::unique_lock<std::mutex> guard(mutex);
@@ -95,6 +101,7 @@ public:
         accumulators[releasedIdx] = 0;
         tailIdx = (tailIdx + 1) % nElements;
         guard.unlock();
+        // TODO block the thread till all produces call "reserveElement"
         isAccuClear[releasedIdx].notify_all();
         return true;
     }
@@ -112,9 +119,10 @@ public:
         for(auto &cv : isAccuClear) {
             cv.notify_all();
         }
+    }
 
-        std::string msg = "rx buffer shutdown\n";
-        std::cout << msg;
+    unsigned size() {
+        return nElements;
     }
 
 private:

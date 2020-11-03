@@ -47,7 +47,8 @@ private:
 
 std::tuple<
     FrameChannelMapping::Handle,
-    std::vector<std::vector<DataTransfer>>
+    std::vector<std::vector<DataTransfer>>,
+    uint16_t
 >
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                            const ops::us4r::TGCCurve &tgcSamples,
@@ -88,7 +89,8 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         adapterSeq.emplace_back(txAperture, txDelays, op.getTxPulse(),
                                 rxAperture, op.getRxSampleRange(),
                                 op.getRxDecimationFactor(), op.getPri(),
-                                op.getRxPadding(), op.getCallback());
+                                op.getRxPadding(), op.isCheckpoint(),
+                                op.getCallback());
     }
 
     return adapter->setTxRxSequence(adapterSeq, tgcSamples, nRepeats);

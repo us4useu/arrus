@@ -32,7 +32,11 @@ public:
      * @param seq
      * @param tgcSamples
      */
-    std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>>
+    std::tuple<
+        FrameChannelMapping::Handle,
+        std::vector<std::vector<DataTransfer>>,
+        uint16_t
+    >
     setTxRxSequence(
         const std::vector<TxRxParameters> &seq,
         const ::arrus::ops::us4r::TGCCurve &tgcSamples,

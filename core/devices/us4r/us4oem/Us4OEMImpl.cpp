@@ -183,7 +183,8 @@ private:
 
 std::tuple<
     FrameChannelMapping::Handle,
-    std::vector<std::vector<DataTransfer>>
+    std::vector<std::vector<DataTransfer>>,
+    uint16_t
 >
 Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                             const ::arrus::ops::us4r::TGCCurve &tgc,
@@ -233,7 +234,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
             uint16 firing = (uint16)(seqIdx * seq.size() + opIdx);
             auto const &op = seq[opIdx];
-            bool checkpoint = op.getCallback().has_value();
+            bool checkpoint = op.isCheckpoint() && this->isMaster();
 
             if(op.isNOP()) {
                 logger->log(LogSeverity::TRACE,
@@ -287,7 +288,9 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firing);
             ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), firing);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firing);
-            ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), checkpoint, firing);
+            if(this->isMaster()) {
+                ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), checkpoint, firing);
+            }
 
             setTGC(tgc, firing);
             ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
@@ -311,10 +314,10 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                     bool canContinue = op.getCallback().value()(getDeviceId().getOrdinal(), seqIdx);
                     // Here callback should do everything is needed with data
                     // located in the current section and proceed.
-//                    this->ius4oem->MarkEntriesAsReadyForReceive(
-//                        static_cast<unsigned short>(transferFiringStart),
-//                        static_cast<unsigned short>(firing));
-                    // Start the next section.
+                    this->ius4oem->MarkEntriesAsReadyForReceive(
+                        static_cast<unsigned short>(transferFiringStart),
+                        static_cast<unsigned short>(firing));
+//                     Start the next section.
                     if(canContinue && this->isMaster()) {
                         this->ius4oem->TriggerSync();
                     }
@@ -364,7 +367,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
     ius4oem->EnableSequencer();
     ius4oem->EnableTransmit();
-    return {std::move(fcm), std::move(dataTransfers)};
+    return {std::move(fcm), std::move(dataTransfers), (uint16_t)seq.size()};
 }
 
 std::tuple<
@@ -527,9 +530,14 @@ Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
 }
 
 void Us4OEMImpl::transferData(uint8_t *dstAddress, size_t size, size_t srcAddress) {
-    // TODO split the transfer into multiple parts
-
-    ius4oem->TransferRXBufferToHost(dstAddress, size, srcAddress);
+    // Maximum transfer part: 64 MB TODO (MB or MiB?)
+    constexpr size_t MAX_TRANSFER_SIZE = 64*1000*1000;
+    size_t transferredSize = 0;
+    while(transferredSize < size) {
+        size_t chunkSize = std::min(MAX_TRANSFER_SIZE, size - transferredSize);
+        ius4oem->TransferRXBufferToHost(dstAddress, chunkSize, srcAddress);
+        transferredSize += chunkSize;
+    }
 }
 
 void Us4OEMImpl::start() {

@@ -64,7 +64,8 @@ private:
 
 std::tuple<
     FrameChannelMapping::Handle,
-    std::vector<std::vector<DataTransfer>>
+    std::vector<std::vector<DataTransfer>>,
+    uint16_t
 >
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const TGCCurve &tgcSamples,
                                   uint16 nRepeats) {
@@ -118,7 +119,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         const auto &rxAperture = op.getRxAperture();
         const auto &txDelays = op.getTxDelays();
 
-        // TODO change to below to an 'assert'
+        // TODO change the below to an 'assert'
         ARRUS_REQUIRES_TRUE(txAperture.size() == rxAperture.size()
                             && txAperture.size() == numberOfChannels,
                             arrus::format(
@@ -179,7 +180,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
             us4oemSeq.emplace_back(txAperture, txDelays, op.getTxPulse(),
                                    rxAperture, op.getRxSampleRange(),
                                    op.getRxDecimationFactor(), op.getPri(),
-                                   Tuple<ChannelIdx>({0, 0}), op.getCallback());
+                                   Tuple<ChannelIdx>({0, 0}),
+                                   op.isCheckpoint(), op.getCallback());
             ++i;
         }
         // keep operations with empty tx or rx aperture - they are still a part of the larger operation
@@ -196,10 +198,11 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     // section -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> outputTransfers;
 
+    int16_t maxTriggers = 0;
+
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto [fcMapping, us4oemTransfers] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples,
-                                                                    nRepeats);
+        auto [fcMapping, us4oemTransfers, nTriggers] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, nRepeats);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));
@@ -209,6 +212,11 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         }
         for(int i = 0; i < us4oemTransfers.size(); ++i) {
             outputTransfers[i].push_back(us4oemTransfers[i][0]);
+        }
+
+        // ntriggers
+        if(nTriggers > maxTriggers) {
+            maxTriggers = nTriggers;
         }
     }
 
@@ -266,7 +274,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         }
         ++frameIdx;
     }
-    return {outFcBuilder.build(), outputTransfers};
+    return {outFcBuilder.build(), outputTransfers, maxTriggers};
 }
 
 Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() {
