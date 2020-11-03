@@ -305,22 +305,9 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             // Handling checkpoints for data transfers
             // TODO consider removing checkpoints and using only repeated sequence
             // (the end of the iteration can be treated as the only checkpoint).
-            if(checkpoint) {
-                callback = [this, op, seqIdx, firing, transferFiringStart]() {
-                    this->logger->log(LogSeverity::DEBUG,
-                                      ::arrus::format(
-                                      "Schedule receive callback for us4oem {}, iteration {}",
-                                      this->getDeviceId().getOrdinal(), seqIdx));
-                    bool canContinue = op.getCallback().value()(getDeviceId().getOrdinal(), seqIdx);
-                    // Here callback should do everything is needed with data
-                    // located in the current section and proceed.
-                    this->ius4oem->MarkEntriesAsReadyForReceive(
-                        static_cast<unsigned short>(transferFiringStart),
-                        static_cast<unsigned short>(firing));
-//                     Start the next section.
-                    if(canContinue && this->isMaster()) {
-                        this->ius4oem->TriggerSync();
-                    }
+            if(checkpoint && op.getCallback().has_value()) {
+                callback = [this, seqIdx, op]() {
+                    op.getCallback().value()(this, this->getDeviceId().getOrdinal(), seqIdx);
                 };
             }
 
@@ -546,6 +533,10 @@ void Us4OEMImpl::start() {
 
 void Us4OEMImpl::stop() {
     this->stopTrigger();
+}
+
+void Us4OEMImpl::syncTrigger() {
+    this->ius4oem->TriggerSync();
 }
 
 

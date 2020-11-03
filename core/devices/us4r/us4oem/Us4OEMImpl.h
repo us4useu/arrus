@@ -84,11 +84,13 @@ public:
 
     ~Us4OEMImpl() override;
 
-    bool isMaster();
+    bool isMaster() override;
 
     void startTrigger() override;
 
     void stopTrigger() override;
+
+    void syncTrigger() override;
 
     std::tuple<
         FrameChannelMapping::Handle,

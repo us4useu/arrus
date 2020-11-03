@@ -20,6 +20,7 @@
 #include "arrus/core/devices/us4r/RxBuffer.h"
 #include "arrus/core/devices/us4r/HostBufferWorker.h"
 #include "arrus/core/devices/us4r/Us4RHostBuffer.h"
+#include "arrus/core/devices/us4r/Watchdog.h"
 
 namespace arrus::devices {
 
@@ -120,16 +121,20 @@ private:
     std::optional<ProbeImplBase::Handle> probe;
     std::optional<HV256Impl::Handle> hv;
     std::shared_ptr<RxBuffer> currentRxBuffer;
-    std::unique_ptr<HostBufferWorker> dataCarrier;
+    std::unique_ptr<HostBufferWorker> hostBufferWorker;
+    std::unique_ptr<Watchdog> watchdog;
     // will be used outside
     std::shared_ptr<Us4RHostBuffer> hostBuffer;
+    std::mutex deviceStateMutex;
     State state{State::STOPPED};
 
     UltrasoundDevice *getDefaultComponent();
 
     static size_t countBufferElementSize(const std::vector<std::vector<DataTransfer>>& transfers);
 
-    void stopDevice();
+    void stopDevice(bool stopGently = true);
+
+    void rxDmaCallback(Us4OEMImplBase* us4oem, Ordinal us4oemOrdinal, uint16 i, uint16_t bufferSize);
 };
 
 }
