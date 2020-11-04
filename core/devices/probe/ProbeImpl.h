@@ -48,6 +48,8 @@ public:
 
     void stop() override;
 
+    void syncTrigger() override;
+
 private:
     Logger::Handle logger;
     ProbeModel model;

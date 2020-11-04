@@ -108,4 +108,8 @@ void ProbeImpl::stop() {
     adapter->stop();
 }
 
+void ProbeImpl::syncTrigger() {
+    adapter->syncTrigger();
+}
+
 }

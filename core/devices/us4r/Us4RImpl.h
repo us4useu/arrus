@@ -134,7 +134,9 @@ private:
 
     void stopDevice(bool stopGently = true);
 
-    void rxDmaCallback(Us4OEMImplBase* us4oem, Ordinal us4oemOrdinal, uint16 i, uint16_t bufferSize);
+    void rxDmaCallback();
+
+    void syncTrigger();
 };
 
 }

@@ -289,4 +289,8 @@ void ProbeAdapterImpl::stop() {
     this->us4oems[0]->stop();
 }
 
+void ProbeAdapterImpl::syncTrigger() {
+    this->us4oems[0]->syncTrigger();
+}
+
 }

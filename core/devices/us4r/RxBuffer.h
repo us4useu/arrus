@@ -12,8 +12,8 @@ public:
     RxBuffer(Ordinal n, uint16_t nElements)
         : nElements(nElements),
           accumulators(nElements, 0),
-          isAccuClear(nElements) {
-
+          isAccuClear(nElements),
+          heads(n, 0) {
         filledAccumulator = (1ul << n) - 1;
     }
 
@@ -22,17 +22,18 @@ public:
     /**
      * Notifies consumers, that new data arrived.
      */
-    bool notify(unsigned ordinal, unsigned bufferElement) {
+    bool notify(unsigned ordinal) {
+        std::unique_lock<std::mutex> guard(mutex);
         if(this->isShutdown) {
             // Nothing to notify about, the connection is closed.
             return false;
         }
-        std::unique_lock<std::mutex> guard(mutex);
-        auto &accumulator = accumulators[bufferElement];
+        auto &accumulator = accumulators[heads[ordinal]];
         if(accumulator & (1ul << ordinal)) {
             throw std::runtime_error("Tried to overwrite not released buffer.");
         }
         accumulator |= 1ul << ordinal;
+        heads[ordinal] = (heads[ordinal] + 1) % nElements;
         bool isElementDone =
             (accumulator & filledAccumulator) == filledAccumulator;
         if(isElementDone) {
@@ -43,18 +44,17 @@ public:
     }
 
     /**
-     * Reserves access to i-th buffer element.
+     * Reserves access to buffer's head.
      *
      * @return true, if the thread was able to access the element,
      *   false otherwise (e.g. queue shutdown).
-     *   TODO(pjarosik) return status object instead of boolean value
      */
-    bool reserveElement(int bufferElement) {
+    bool reserveElement(Ordinal ordinal) {
         std::unique_lock<std::mutex> guard(mutex);
-
-        auto &accumulator = accumulators[bufferElement];
+        auto headIdx = heads[ordinal];
+        auto &accumulator = accumulators[headIdx];
         while(accumulator > 0) {
-            isAccuClear[bufferElement].wait(guard);
+            isAccuClear[headIdx].wait(guard);
             if(this->isShutdown) {
                 return false;
             }
@@ -126,6 +126,7 @@ private:
     std::vector<std::condition_variable> isAccuClear;
     AccumulatorType filledAccumulator;
     uint16_t tailIdx{0};
+    std::vector<uint16_t> heads;
     unsigned nElements;
     bool isShutdown{false};
 };
