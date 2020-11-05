@@ -46,7 +46,6 @@ public:
     void process() {
         int16_t i = 0;
         while(this->state == State::STARTED) {
-            logger->log(LogSeverity::DEBUG, "Waiting for rx.");
             auto idx = inputBuffer->tail();
             if(idx == -1) {
                 this->state = State::STOPPED;
@@ -54,7 +53,6 @@ public:
             }
             auto &ts = transfers[idx];
 
-            logger->log(LogSeverity::DEBUG, ::arrus::format("Push rx {}.", idx));
             bool pushResult = outputBuffer->push([&ts, idx] (int16* dstAddress) {
                 size_t offset = 0;
                 for(auto &t : ts) {
@@ -62,14 +60,11 @@ public:
                     offset += t.getSize();
                 }
             });
-            logger->log(LogSeverity::DEBUG, ::arrus::format("Push rx finished {}.", idx));
             if(!pushResult) {
                 this->state = State::STOPPED;
                 break;
             }
-            logger->log(LogSeverity::DEBUG, ::arrus::format("Releasing rx {}.", idx));
             bool releaseTail = inputBuffer->releaseTail();
-            logger->log(LogSeverity::DEBUG, ::arrus::format("Released rx {}.", idx));
             if(!releaseTail) {
                 this->state = State::STOPPED;
                 break;

@@ -64,14 +64,18 @@ std::vector<float> getDefaultTxDelays(ChannelIdx nchannels) {
     return getNTimes(0.0f, nchannels);
 }
 
-FrameChannelMapping::Handle createEmptyFCM(FrameChannelMapping::FrameNumber nFrames, ChannelIdx nChannels) {
+std::tuple<
+FrameChannelMapping::Handle,
+std::vector<std::vector<DataTransfer>>,
+uint16_t>
+createEmptySetTxRxResult(FrameChannelMapping::FrameNumber nFrames, ChannelIdx nChannels) {
     FrameChannelMappingBuilder builder(nFrames, nChannels);
     for(int i = 0; i < nFrames; ++i) {
         for(int j = 0; j < nChannels; ++j) {
             builder.setChannelMapping(i, j, i, j);
         }
     }
-    return builder.build();
+    return std::make_tuple(builder.build(), std::vector<std::vector<DataTransfer>>(), uint16_t(0));
 }
 
 class MockUs4OEM : public Us4OEMImplBase {
@@ -79,9 +83,11 @@ public:
     explicit MockUs4OEM(Ordinal id)
         : Us4OEMImplBase(DeviceId(DeviceType::Us4OEM, id)) {}
 
-    MOCK_METHOD(FrameChannelMapping::Handle,
-                setTxRxSequence, (const std::vector<TxRxParameters> &seq, const TGCCurve &tgcSamples),
-                (override));
+    MOCK_METHOD(
+        (std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, uint16_t>),
+        setTxRxSequence,
+        (const TxRxParamsSequence &seq, const ::arrus::ops::us4r::TGCCurve &tgc, const uint16 nRepeats),
+        (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
     MOCK_METHOD(double, getSamplingFrequency, (), (override));
     MOCK_METHOD(void, startTrigger, (), (override));
@@ -188,13 +194,13 @@ class ProbeAdapterChannelMapping1Test : public AbstractProbeAdapterImplTest {
     }
 };
 
-# define EXPECT_SEQUENCE_PROPERTY_NFRAMES(deviceId, matcher, nFrames) \
+#define EXPECT_SEQUENCE_PROPERTY_NFRAMES(deviceId, matcher, nFrames) \
         do {                                          \
             EXPECT_CALL(*(us4oems[deviceId].get()), setTxRxSequence(matcher, _)) \
-                .WillOnce(Return(ByMove(createEmptyFCM(nFrames, 32)))); \
+                .WillOnce(Return(ByMove(createEmptySetTxRxResult(nFrames, 32)))); \
         } while(0)
 
-# define EXPECT_SEQUENCE_PROPERTY(deviceId, matcher) \
+#define EXPECT_SEQUENCE_PROPERTY(deviceId, matcher) \
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(deviceId, matcher, 1)
 
 TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectly) {
@@ -208,13 +214,11 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectly) {
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 20, 32, true);
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
 
     BitMask expectedTxAp1(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp1, 0, 8, true);
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
 
     probeAdapter->setTxRxSequence(seq, defaultTGCCurve);
 }
