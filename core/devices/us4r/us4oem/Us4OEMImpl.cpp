@@ -311,24 +311,17 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                 };
             }
 
-            // Allow rx nops for master module.
-            // Master module gathers frame metadata, so we cannot miss any of them
+
+            // TODO Avoid transferring rx nop data
             // TODO(pjarosik): transfer a smaller size frame
             // TODO(pjarosik): add an option to omit empty frames for master module (bool isMetadata?)
-            if(op.isRxNOP() && !this->isMaster()) {
-                // Fake data acquisition
-                ius4oem->ScheduleReceive(firing, outputAddress, 64,
-                                         0, 0, rxMapId,
-                                         callback.value_or(nullptr));
-                // Do not move outputAddress pointer, fake data should be overwritten
-                // by the next non-rx-nop (or ignored, if this is the last operation).
-            } else {
-                ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
-                                         SAMPLE_DELAY + startSample,
-                                         op.getRxDecimationFactor() - 1,
-                                         rxMapId, callback.value_or(nullptr));
-                outputAddress += nBytes;
-            }
+            // Also, allows rx nops for master module.
+            // Master module gathers frame metadata, so we cannot miss any of them
+            ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
+                                     SAMPLE_DELAY + startSample,
+                                     op.getRxDecimationFactor() - 1,
+                                     rxMapId, callback.value_or(nullptr));
+            outputAddress += nBytes;
 
             if(checkpoint) {
                 // The size of the chunk.
@@ -367,7 +360,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     std::unordered_map<std::vector<uint8>, uint16, ContainerHash<std::vector<uint8>>> rxMappings;
 
     // FC mapping
-    FrameChannelMapping::FrameNumber numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
+    // TODO (pjarosik) reduce the size of the number to non-rxnops
+    FrameChannelMapping::FrameNumber numberOfOutputFrames = seq.size();
     FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
 
     // Rx apertures after taking into account possible conflicts in Rx channel
@@ -388,14 +382,12 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
         uint8 channel = 0;
         uint8 onChannel = 0;
-        bool isRxNop = true; // Will be false, if at least one channel is on (no rxnop).
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
                 ARRUS_REQUIRES_TRUE_E(
                     onChannel < N_RX_CHANNELS,
                     ArrusException("Up to 32 active rx channels can be set."));
 
-                isRxNop = false;
                 auto rxChannel = channelMapping[channel];
                 rxChannel = rxChannel % N_RX_CHANNELS;
                 // TODO alternative strategy:
@@ -456,10 +448,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             result.emplace(opId, mappingIt->second);
         }
         ++opId;
-        // Allow empty frames for metadata
-        if(!isRxNop || this->isMaster()) {
-            ++noRxNopId;
-        }
+        ++noRxNopId;
     }
     return {result, outputRxApertures, fcmBuilder.build()};
 }
