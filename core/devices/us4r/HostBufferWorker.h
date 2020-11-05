@@ -13,40 +13,44 @@ class HostBufferWorker {
 public:
     HostBufferWorker(std::shared_ptr<RxBuffer> inputBuffer,
                      std::shared_ptr<Us4RHostBuffer> outputBuffer,
-                     std::vector<std::vector<DataTransfer>> transfers,
-                     long long rxdmaTimeout)
+                     std::vector<std::vector<DataTransfer>> transfers)
         : logger{getLoggerFactory()->getLogger()},
           inputBuffer(std::move(inputBuffer)),
           outputBuffer(std::move(outputBuffer)),
-          transfers(std::move(transfers)),
-          rxdmaTimeout(rxdmaTimeout) {
+          transfers(std::move(transfers)) {
         INIT_ARRUS_DEVICE_LOGGER(logger, "HostBufferRunner");
     }
 
     void start() {
         std::unique_lock<std::mutex> guard(mutex);
-        if(state == State::STARTED) {
-            throw IllegalArgumentException("Worker already started.");
+        if(state != State::NEW) {
+            throw ::arrus::IllegalStateException(
+                "Only new host buffer worker threads can be started.");
         }
         state = State::STARTED;
-        logger->log(LogSeverity::DEBUG, "Starting host buffer runner.");
+        logger->log(LogSeverity::DEBUG, "Starting worker.");
         this->processingThread = std::thread(&HostBufferWorker::process, this);
+    }
+
+    void stop() {
+        {
+            std::unique_lock<std::mutex> guard(mutex);
+            logger->log(LogSeverity::DEBUG, "Stopping worker.");
+            state = State::STOPPED;
+        }
+        logger->log(LogSeverity::DEBUG, "Waiting for worker to stop.");
+        this->processingThread.join();
+        logger->log(LogSeverity::DEBUG, "Worker stopped.");
     }
 
     void process() {
         int16_t i = 0;
-        while(this->state == State::STARTED){
+        while(this->state == State::STARTED) {
             logger->log(LogSeverity::DEBUG, "Waiting for rx.");
-            auto idx = inputBuffer->tail(rxdmaTimeout);
+            auto idx = inputBuffer->tail();
             if(idx == -1) {
                 this->state = State::STOPPED;
                 break;
-            } else if (idx == -2) {
-                logger->log(LogSeverity::INFO, "A timeout while waiting for rx dma response.");
-                // anyway, continue processing
-                // TODO the rx buffer and the host buffer current positions may misalign here
-                // move the position of the buffer
-                idx = i;
             }
             auto &ts = transfers[idx];
 
@@ -91,7 +95,6 @@ private:
     // Element -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> transfers;
     State state{State::NEW};
-    long long rxdmaTimeout;
 };
 
 }

@@ -56,7 +56,7 @@ public:
         std::shared_ptr<arrus::devices::FrameChannelMapping>,
         std::shared_ptr<arrus::devices::HostBuffer>
     >
-    upload(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
+    uploadSync(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
 
     virtual void setVoltage(Voltage voltage) = 0;
 

@@ -14,7 +14,7 @@ int main() noexcept {
         auto loggingMechanism = std::make_shared<::arrus::Logging>();
         std::shared_ptr<std::ostream> ostream{
             std::shared_ptr<std::ostream>(&std::cout, [](std::ostream *) {})};
-        loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::DEBUG);
+        loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::TRACE);
 
         ::arrus::setLoggerFactory(loggingMechanism);
 
@@ -39,10 +39,10 @@ int main() noexcept {
 
         TxRxSequence seq(txrxs, 1000e-6f, {});
 
-        auto[fcm, buffer] = us4r->upload(seq);
+        auto[fcm, buffer] = us4r->uploadSync(seq);
         us4r->start();
 
-        for(int i = 0; i < 10; ++i) {
+        for(int i = 0; i < 100; ++i) {
             int16_t* data = buffer->tail();
             std::cout << i << std::endl;
             std::cout << "GOT POINTER: " << std::hex << (size_t)(data) << std::dec << std::endl;

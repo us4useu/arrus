@@ -11,6 +11,22 @@ using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
 
+UltrasoundDevice *Us4RImpl::getDefaultComponent() {
+    // NOTE! The implementation of this function determines
+    // validation behaviour of SetVoltage function.
+    // The safest option is to prefer using Probe only,
+    // with an option to choose us4oem
+    // (but the user has to specify it explicitly in settings).
+    // Currently there should be no option to set TxRxSequence
+    // on an adapter directly.
+    if(probe.has_value()) {
+        return probe.value().get();
+    } else {
+        return us4oems[0].get();
+    }
+
+}
+
 Us4RImpl::Us4RImpl(const DeviceId &id,
                    Us4RImpl::Us4OEMs us4oems,
                    ProbeAdapterImplBase::Handle &probeAdapter,
@@ -46,21 +62,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     hv.value()->setVoltage(voltage);
 }
 
-UltrasoundDevice *Us4RImpl::getDefaultComponent() {
-    // NOTE! The implementation of this function determines
-    // validation behaviour of SetVoltage function.
-    // The safest option is to prefer using Probe only,
-    // with an option to choose us4oem
-    // (but the user has to specify it explicitly in settings).
-    // Currently there should be no option to set TxRxSequence
-    // on an adapter directly.
-    if(probe.has_value()) {
-        return probe.value().get();
-    } else {
-        return us4oems[0].get();
-    }
 
-}
 
 void Us4RImpl::disableHV() {
     logger->log(LogSeverity::DEBUG, "Disabling HV");
@@ -72,17 +74,23 @@ std::pair<
     FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
 >
-Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
+Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
             "Currently TxRx sequence upload is available for system with probes only.")
     );
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+
+    if(this->state == State::STARTED) {
+        throw ::arrus::IllegalStateException("The device is running, uploading sequence is forbidden.");
+    }
     std::vector<TxRxParameters> actualSeq;
 
     constexpr uint16_t BUFFER_SIZE = 2;
     auto nus4oems = (Ordinal)1;// probeAdapter.value()->getNumberOfUs4OEMs();
     this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, BUFFER_SIZE);
+    this->watchdog = std::make_unique<Watchdog>();
 
     auto nOps = seq.getOps().size();
     size_t opIdx = 0;
@@ -93,20 +101,9 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
 
         // Set checkpoint callback for the last tx/rx.
         if(opIdx == nOps - 1) {
-            callback = [this, BUFFER_SIZE] (Ordinal us4oemOrdinal, uint16 i) {
-                logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Notify rx {}:{}.", us4oemOrdinal, i));
-                bool canContinue = this->currentRxBuffer->notify(us4oemOrdinal, i);
-                if(!canContinue) {
-                    return false;
-                }
-                logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Reserve rx {}:{}.", us4oemOrdinal, (i + 1) % BUFFER_SIZE));
-                bool isReservationPossible =
-                    this->currentRxBuffer->reserveElement((i + 1) % BUFFER_SIZE);
-                logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Rx Reserved {}:{}.", us4oemOrdinal, (i + 1) % BUFFER_SIZE));
-                return isReservationPossible;
+            callback = [this, BUFFER_SIZE] (Us4OEMImplBase* us4oem, Ordinal us4oemOrdinal, uint16 i) {
+                this->watchdog->notifyResponse();
+                this->rxDmaCallback(us4oem, us4oemOrdinal, i, BUFFER_SIZE);
             };
         }
 
@@ -142,55 +139,78 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq) {
 
     // Rx DMA timeout - to avoid situation, where rx irq is missing.
     // 1.5 - sleep time multiplier
-    auto timeout = (long long) ((float)nTriggers*seq.getPri()*1e6*1.5);
-    this->dataCarrier = std::make_unique<HostBufferWorker>(
+    auto timeout = (long long) ((float)nTriggers*seq.getPri()*1e6*100);
+    logger->log(LogSeverity::DEBUG,
+                ::arrus::format("Host buffer worker timeout: {}", timeout));
+    this->hostBufferWorker = std::make_unique<HostBufferWorker>(
         this->currentRxBuffer, this->hostBuffer, transfers, timeout);
+    this->watchdog->setTimeout(timeout);
+    this->watchdog->setCallback([this]() {
+        // TODO
+        this->rxDmaCallback()
+
+    });
     return std::make_pair(std::move(fcm), hostBuffer);
 }
 
 void Us4RImpl::start() {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
     logger->log(LogSeverity::DEBUG, "Starting us4r.");
-    if(this->dataCarrier == nullptr) {
+    if(this->hostBufferWorker == nullptr) {
         throw ::arrus::IllegalArgumentException("Call upload function first.");
     }
-    this->dataCarrier->start();
+    if(this->state == State::STARTED) {
+        throw ::arrus::IllegalStateException("Device is already running.");
+    }
+    this->hostBufferWorker->start();
     this->getDefaultComponent()->start();
+    this->watchdog->start();
     this->state = State::STARTED;
 }
 
 /**
- * When the device is stopped, the buffer is destroyed.
+ * When the device is stopped, the buffer should be destroyed.
  */
 void Us4RImpl::stop() {
     logger->log(LogSeverity::DEBUG, "Stopping us4r.");
     this->stopDevice();
 }
 
-void Us4RImpl::stopDevice() {
+void Us4RImpl::stopDevice(bool stopGently) {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
     if(this->state != State::STARTED) {
-        throw IllegalArgumentException("Device is not running.");
+        if(stopGently) {
+            logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
+            return;
+        } else {
+            throw IllegalArgumentException("Device was not started.");
+        }
     }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    this->watchdog->stop();
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     this->getDefaultComponent()->stop();
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     if(this->currentRxBuffer) {
         this->currentRxBuffer->shutdown();
     }
     if(this->hostBuffer) {
         this->hostBuffer->shutdown();
     }
-    this->state = State::STOPPED;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    this->hostBufferWorker->stop();
     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    // Delete all data.
+    this->currentRxBuffer.reset();
+    this->hostBuffer.reset();
+    this->hostBufferWorker.reset();
+
+    this->state = State::STOPPED;
 }
 
 Us4RImpl::~Us4RImpl() {
     getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
-    if(this->state == State::STARTED) {
-        this->stopDevice();
-        this->dataCarrier->join();
-    }
-    getDefaultLogger()->log(LogSeverity::DEBUG, "Connection to Us4R closed.");
+    this->stopDevice();
+    getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
 }
 
 size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransfer>> &transfers) {
@@ -207,6 +227,28 @@ size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransf
         throw ArrusException("A buffer elements with different sizes.");
     }
     return *std::begin(transferSizes);
+}
+
+void Us4RImpl::rxDmaCallback(Us4OEMImplBase* us4oem, Ordinal us4oemOrdinal, uint16 i, uint16_t bufferSize) {
+    this->logger->log(LogSeverity::DEBUG,
+                      ::arrus::format("Schedule receive callback for us4oem {}, iteration {}", this->getDeviceId().getOrdinal(), i));
+    this->logger->log(LogSeverity::DEBUG,
+                      ::arrus::format("Notify rx {}:{}.", us4oemOrdinal, i));
+    bool canContinue = this->currentRxBuffer->notify(us4oemOrdinal, i);
+    if(!canContinue) {
+        return;
+    }
+    this->logger->log(LogSeverity::DEBUG,
+                      ::arrus::format("Reserve rx {}:{}.", us4oemOrdinal, (i + 1) % bufferSize));
+    bool isReservationPossible = this->currentRxBuffer->reserveElement((i + 1) % bufferSize);
+    this->logger->log(LogSeverity::DEBUG,
+                      ::arrus::format("Rx Reserved {}:{}.", us4oemOrdinal, (i + 1) % bufferSize));
+
+    if(isReservationPossible && us4oem->isMaster()) {
+        us4oem->syncTrigger();
+        this->watchdog->notifyStart();
+    }
+
 }
 
 

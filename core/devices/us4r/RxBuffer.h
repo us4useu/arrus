@@ -69,17 +69,11 @@ public:
      * @return value >= 0 if the thread was able to access tail, -1 if the queue is shutted down, -2 if timeout
      *  (e.g. when the queue is shutted down).
      */
-    int16_t tail(long long timeout) {
+    int16_t tail() {
         std::unique_lock<std::mutex> guard(mutex);
         while(accumulators[tailIdx] != filledAccumulator) {
-            auto res = bufferEmpty.wait_for(guard, std::chrono::microseconds(timeout));
-            if(res == std::cv_status::timeout) {
-                // Just mark the element as ready and try proceeding.
-                // Probably the rx dma irq is missing.
-                accumulators[tailIdx] = filledAccumulator;
-                return -2;
-            }
-            else if(this->isShutdown) {
+            bufferEmpty.wait(guard);
+            if(this->isShutdown) {
                 return -1;
             }
         }
