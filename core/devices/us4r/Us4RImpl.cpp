@@ -62,7 +62,21 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     hv.value()->setVoltage(voltage);
 }
 
+UltrasoundDevice *Us4RImpl::getDefaultComponent() {
+    // NOTE! The implementation of this function determines
+    // validation behaviour of SetVoltage function.
+    // The safest option is to prefer using Probe only,
+    // with an option to choose us4oem
+    // (but the user has to specify it explicitly in settings).
+    // Currently there should be no option to set TxRxSequence
+    // on an adapter directly.
+    if(probe.has_value()) {
+        return probe.value().get();
+    } else {
+        return us4oems[0].get();
+    }
 
+}
 
 void Us4RImpl::disableHV() {
     logger->log(LogSeverity::DEBUG, "Disabling HV");
@@ -101,9 +115,9 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
 
         // Set checkpoint callback for the last tx/rx.
         if(opIdx == nOps - 1) {
-            callback = [this, BUFFER_SIZE] (Us4OEMImplBase* us4oem, Ordinal us4oemOrdinal, uint16 i) {
+            callback = [this] (Ordinal ordinal, uint16 i) {
                 this->watchdog->notifyResponse();
-                this->rxDmaCallback(us4oem, us4oemOrdinal, i, BUFFER_SIZE);
+                this->rxDmaCallback();
             };
         }
 
@@ -144,11 +158,10 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
                 ::arrus::format("Host buffer worker timeout: {}", timeout));
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
         this->currentRxBuffer, this->hostBuffer, transfers, timeout);
+
     this->watchdog->setTimeout(timeout);
     this->watchdog->setCallback([this]() {
-        // TODO
-        this->rxDmaCallback()
-
+        this->rxDmaCallback();
     });
     return std::make_pair(std::move(fcm), hostBuffer);
 }
@@ -163,8 +176,9 @@ void Us4RImpl::start() {
         throw ::arrus::IllegalStateException("Device is already running.");
     }
     this->hostBufferWorker->start();
-    this->getDefaultComponent()->start();
     this->watchdog->start();
+    this->getDefaultComponent()->start();
+    this->watchdog->notifyStart();
     this->state = State::STARTED;
 }
 
@@ -229,26 +243,24 @@ size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransf
     return *std::begin(transferSizes);
 }
 
-void Us4RImpl::rxDmaCallback(Us4OEMImplBase* us4oem, Ordinal us4oemOrdinal, uint16 i, uint16_t bufferSize) {
-    this->logger->log(LogSeverity::DEBUG,
-                      ::arrus::format("Schedule receive callback for us4oem {}, iteration {}", this->getDeviceId().getOrdinal(), i));
-    this->logger->log(LogSeverity::DEBUG,
-                      ::arrus::format("Notify rx {}:{}.", us4oemOrdinal, i));
-    bool canContinue = this->currentRxBuffer->notify(us4oemOrdinal, i);
+void Us4RImpl::rxDmaCallback() {
+    // Notify the new buffer element is available.
+    bool canContinue = this->currentRxBuffer->notify(0);
     if(!canContinue) {
         return;
     }
-    this->logger->log(LogSeverity::DEBUG,
-                      ::arrus::format("Reserve rx {}:{}.", us4oemOrdinal, (i + 1) % bufferSize));
-    bool isReservationPossible = this->currentRxBuffer->reserveElement((i + 1) % bufferSize);
-    this->logger->log(LogSeverity::DEBUG,
-                      ::arrus::format("Rx Reserved {}:{}.", us4oemOrdinal, (i + 1) % bufferSize));
+    // Reserve access to next element.
+    bool isReservationPossible = this->currentRxBuffer->reserveElement(0);
 
-    if(isReservationPossible && us4oem->isMaster()) {
-        us4oem->syncTrigger();
+    if(isReservationPossible) {
+        // TODO access us4oem:0 directly (performance)?
+        this->syncTrigger();
         this->watchdog->notifyStart();
     }
+}
 
+void Us4RImpl::syncTrigger() {
+    this->getDefaultComponent()->syncTrigger();
 }
 
 

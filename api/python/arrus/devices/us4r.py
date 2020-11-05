@@ -10,7 +10,6 @@ import arrus.exceptions
 import arrus.devices.probe
 import arrus.metadata
 
-
 DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
 
 
@@ -21,7 +20,7 @@ class FrameChannelMapping:
             (fcm.getNumberOfLogicalFrames(), fcm.getNumberOfLogicalChannels()),
             dtype=np.uint16)
         self._fcm_channel = np.zeros(
-            (fcm.getNumberOfLogicalFrames(),fcm.getNumberOfLogicalChannels()),
+            (fcm.getNumberOfLogicalFrames(), fcm.getNumberOfLogicalChannels()),
             dtype=np.int8)
         for frame in range(fcm.getNumberOfLogicalFrames()):
             for channel in range(fcm.getNumberOfLogicalChannels()):
@@ -32,11 +31,11 @@ class FrameChannelMapping:
                 self._fcm_frame[frame, channel] = src_channel
 
     @property
-    def fcm_frame(self):
+    def frames(self):
         return self._fcm_frame
 
     @property
-    def fcm_channel(self):
+    def channels(self):
         return self._fcm_channel
 
 
@@ -45,11 +44,19 @@ class HostBuffer:
             self,
             buffer_handle,
             fac: arrus.metadata.FrameAcquisitionContext,
-            data_description: arrus.metadata.EchoDataDescription):
+            data_description: arrus.metadata.EchoDataDescription,
+            frame_shape: tuple
+    ):
+        """
+        :param buffer_handle:
+        :param fac:
+        :param data_description:
+        :param frame_shape: raw frame shape
+        """
         self.buffer_handle = buffer_handle
-        # TODO determine output data shape
         self.fac = fac
         self.data_description = data_description
+        self.frame_shape = frame_shape
 
     def tail(self):
         data_ptr = self.buffer_handle.tail()
@@ -70,6 +77,7 @@ class Us4R(Device):
     """
     A handle to Us4R device.
     """
+
     def __init__(self, handle, parent_session):
         super().__init__()
         self._handle = handle
@@ -97,6 +105,10 @@ class Us4R(Device):
 
         # Convert arrus.ops.us4r.TxRxSequence -> arrus.core.TxRxSequence
         core_seq = arrus.core.TxRxVector()
+
+        # Note: currently only only tx/rx all with the same number of frames is supported.
+        n_samples = None
+
         for op in seq.operations:
             tx, rx = op.tx, op.rx
             # TODO validate shape
@@ -122,6 +134,14 @@ class Us4R(Device):
             )
             core_txrx = arrus.core.TxRx(core_tx, core_rx)
             arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
+
+            start_sample, end_sample = rx.sample_range
+            if n_samples is None:
+                n_samples = end_sample - start_sample
+            elif n_samples != end_sample - start_sample:
+                raise arrus.exception.IllegalArgumentException(
+                    "Sequences with the constant number of samples are supported only.")
+
         core_seq = arrus.core.TxRxSequence(
             sequence=core_seq,
             pri=seq.pri,
@@ -136,7 +156,7 @@ class Us4R(Device):
 
         arrus.logging.log(arrus.logging.DEBUG, "producing fac")
         fac = arrus.metadata.FrameAcquisitionContext(
-            device=self.get_dto(),
+            device=self._get_dto(),
             sequence=seq,
             medium=self._session.get_session_context().medium,
             custom_data={})
@@ -145,16 +165,23 @@ class Us4R(Device):
         echo_data_description = arrus.metadata.EchoDataDescription(
             # TODO get fs from device
             # TODO get an array of sampling frequencies for all operations
-            sampling_frequency=65e6/seq.operations[0].rx.downsampling_factor,
+            sampling_frequency=65e6 / seq.operations[0].rx.downsampling_factor,
             custom={
                 "frame_channel_mapping": fcm
             }
         )
         return HostBuffer(
             buffer_handle=buffer_handle,
-            fac=fac, data_description=echo_data_description)
+            fac=fac, data_description=echo_data_description,
+            frame_shape=self._get_physical_frame_shape(fcm, n_samples))
 
-    def get_dto(self):
+    def _get_physical_frame_shape(self, fcm, n_samples, n_channels=32):
+        # NOTE: We assume here, that each frame has the same number of samples!
+        # This might not be case in further improvements.
+        n_frames = np.max(fcm.frames)
+        return n_frames * n_samples, n_channels
+
+    def _get_dto(self):
         arrus.logging.log(arrus.logging.DEBUG, "producing dto")
         print(self._handle.getProbe(0))
         print("Now we try to get probe model")
@@ -186,59 +213,57 @@ class Us4R(Device):
     def disable_hv(self):
         self._handle.disable_hv()
 
+    # ------------------------------------------ LEGACY MOCK
+    class MockFileBuffer:
+        def __init__(self, dataset: np.ndarray, metadata):
+            self.dataset = dataset
+            self.n_frames, _, _, _ = dataset.shape
+            self.i = 0
+            self.counter = 0
+            self.metadata = metadata
 
-# ------------------------------------------ LEGACY MOCK
-class MockFileBuffer:
-    def __init__(self, dataset: np.ndarray, metadata):
-        self.dataset = dataset
-        self.n_frames, _, _, _ = dataset.shape
-        self.i = 0
-        self.counter = 0
-        self.metadata = metadata
+        def pop(self):
+            i = self.i
+            self.i = (i + 1) % self.n_frames
+            custom_data = {
+                "pulse_counter": self.counter,
+                "trigger_counter": self.counter,
+                "timestamp": time.time_ns() // 1000000
+            }
+            self.counter += 1
 
-    def pop(self):
-        i = self.i
-        self.i = (i+1) % self.n_frames
-        custom_data = {
-            "pulse_counter": self.counter,
-            "trigger_counter": self.counter,
-            "timestamp": time.time_ns() // 1000000
-        }
-        self.counter += 1
+            metadata = arrus.metadata.Metadata(
+                context=self.metadata.context,
+                data_desc=self.metadata.data_description,
+                custom=custom_data)
+            return np.array(self.dataset[self.i, :, :, :]), metadata
 
-        metadata = arrus.metadata.Metadata(
-            context=self.metadata.context,
-            data_desc=self.metadata.data_description,
-            custom=custom_data)
-        return np.array(self.dataset[self.i, :, :, :]), metadata
+    class MockUs4R(Device):
+        def __init__(self, dataset: np.ndarray, metadata, index: int):
+            super().__init__("Us4R", index)
+            self.dataset = dataset
+            self.metadata = metadata
+            self.buffer = None
 
+        def upload(self, sequence):
+            self.buffer = MockFileBuffer(self.dataset, self.metadata)
+            return self.buffer
 
-class MockUs4R(Device):
-    def __init__(self, dataset: np.ndarray, metadata, index: int):
-        super().__init__("Us4R", index)
-        self.dataset = dataset
-        self.metadata = metadata
-        self.buffer = None
+        def start(self):
+            pass
 
-    def upload(self, sequence):
-        self.buffer = MockFileBuffer(self.dataset, self.metadata)
-        return self.buffer
+        def stop(self):
+            pass
 
-    def start(self):
-        pass
+        def set_hv_voltage(self, voltage):
+            pass
 
-    def stop(self):
-        pass
+        def disable_hv(self):
+            pass
 
-    def set_hv_voltage(self, voltage):
-        pass
+    @dataclasses.dataclass(frozen=True)
+    class Us4RDTO:
+        probe: arrus.devices.probe.ProbeDTO
 
-    def disable_hv(self):
-        pass
-
-@dataclasses.dataclass(frozen=True)
-class Us4RDTO:
-    probe: arrus.devices.probe.ProbeDTO
-
-    def get_id(self):
-        return "Us4R:0"
+        def get_id(self):
+            return "Us4R:0"

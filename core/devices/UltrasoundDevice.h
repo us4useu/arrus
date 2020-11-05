@@ -37,6 +37,8 @@ public:
     virtual void stop() = 0;
 
     virtual Interval<Voltage> getAcceptedVoltageRange() = 0;
+
+    virtual void syncTrigger() = 0;
 };
 
 }
