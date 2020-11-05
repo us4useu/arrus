@@ -89,15 +89,9 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     auto nus4oems = (Ordinal) 1;// probeAdapter.value()->getNumberOfUs4OEMs();
     this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, BUFFER_SIZE);
     this->watchdog = std::make_unique<Watchdog>();
-//    std::optional<TxRxParameters::SequenceCallback> callback =
-//        [this](Ordinal, uint16) {
-//            this->watchdog->notifyResponse();
-//            bool result = this->rxDmaCallback();
-//            if(result) this->watchdog->notifyStart();
-//        };
+
     auto[fcm, transfers, nTriggers] = uploadSequence(
         seq, BUFFER_SIZE, true,
-//        callback,
         std::optional<TxRxParameters::SequenceCallback>(),
         std::optional<TxRxParameters::SequenceCallback>());
 
