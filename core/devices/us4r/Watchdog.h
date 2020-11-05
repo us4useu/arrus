@@ -14,19 +14,22 @@ namespace arrus::devices {
 class Watchdog {
 public:
 
-    Watchdog() = default;
-
-    Watchdog(long long int timeout, std::function<void()> callback)
-        : logger{getLoggerFactory()->getLogger()},
-        timeout(timeout), callback(std::move(callback)) {
+    Watchdog()
+        : logger{getLoggerFactory()->getLogger()} {
         INIT_ARRUS_DEVICE_LOGGER(logger, "Watchdog");
     }
 
-    void setTimeout(long long timeout) {
-        this->timeout = std::chrono::duration<long long, std::micro>(timeout);
+    Watchdog(long long int timeout, std::function<bool()> callback)
+        : logger{getLoggerFactory()->getLogger()},
+          timeout(timeout), callback(std::move(callback)) {
+        INIT_ARRUS_DEVICE_LOGGER(logger, "Watchdog");
     }
 
-    void setCallback(std::function<void()> clbk) {
+    void setTimeout(long long t) {
+        this->timeout = std::chrono::duration<long long, std::micro>(t);
+    }
+
+    void setCallback(std::function<bool()> clbk) {
         this->callback = clbk;
     }
 
@@ -44,20 +47,38 @@ public:
     void process() {
         logger->log(LogSeverity::DEBUG, "Started.");
         std::unique_lock<std::mutex> guard(mutex);
-        // for start
+        bool internalStart = false;
         while(this->state == STARTED) {
-            cvStart.wait(guard);
+            if(!internalStart) {
+                logger->log(LogSeverity::DEBUG, "Waiting for the start.");
+                cvStart.wait(guard, [this] {return this->startIndicator;});
+                this->startIndicator = false;
+                this->responseIndicator = false;
+                logger->log(LogSeverity::DEBUG, "After the start.");
+            }
             if(this->state == STOPPED) {
                 break;
             }
+            bool status = cvResponse.wait_for(guard, timeout, [this] {
+                return this->responseIndicator;
+            });
 
-            auto status = cvResponse.wait_for(guard, timeout);
             if(this->state == STOPPED) {
                 break;
             }
-            if(status == std::cv_status::timeout) {
+            if(!status) {
                 logger->log(LogSeverity::DEBUG, "Timeout.");
-                callback();
+                bool res = callback();
+                internalStart = true;
+                if(!res) {
+                    // Queues closed.
+                    this->state = STOPPED;
+                    break;
+                }
+            }
+            else {
+                logger->log(LogSeverity::DEBUG, "No timeout.");
+                internalStart = false;
             }
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
@@ -77,25 +98,40 @@ public:
     }
 
     void notifyStart() {
+        {
+            std::unique_lock<std::mutex> guard(mutex);
+            logger->log(LogSeverity::DEBUG, "Start notification.");
+            startIndicator = true;
+        }
         cvStart.notify_one();
     }
 
     void notifyResponse() {
+        {
+            std::unique_lock<std::mutex> guard(mutex);
+            logger->log(LogSeverity::DEBUG, "Notify response.");
+            responseIndicator = true;
+        }
         cvResponse.notify_one();
     }
+
 private:
 
-    enum State {NEW, STARTED, STOPPED};
+    enum State {
+        NEW, STARTED, STOPPED
+    };
 
     Logger::Handle logger;
     // Number of microseconds to wait for the device.
     std::chrono::duration<long long, std::micro> timeout;
-    std::function<void()> callback;
+    std::function<bool()> callback;
     std::mutex mutex;
     std::condition_variable cvStart;
     std::condition_variable cvResponse;
     State state{NEW};
     std::thread thread;
+    bool responseIndicator{false};
+    bool startIndicator{false};
 };
 
 }

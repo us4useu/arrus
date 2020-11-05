@@ -10,7 +10,6 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 
 namespace arrus::devices {
 
@@ -62,14 +61,16 @@ public:
                    uint32 rxDecimationFactor, float pri,
                    Tuple<ChannelIdx> rxPadding = {0, 0},
                    bool checkpoint = false,
-                   std::optional<SequenceCallback> callback = std::nullopt)
+                   std::optional<SequenceCallback> callback = std::nullopt,
+                   std::optional<SequenceCallback> pciCallback = std::nullopt)
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri),
           rxPadding(std::move(rxPadding)),
           checkpoint(checkpoint),
-          callback(std::move(callback)) {}
+          callback(std::move(callback)),
+          pciCallback(std::move(pciCallback)) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const {
         return txAperture;
@@ -187,6 +188,7 @@ private:
     Tuple<ChannelIdx> rxPadding;
     bool checkpoint;
     std::optional<SequenceCallback> callback;
+    std::optional<SequenceCallback> pciCallback;
 };
 
 using TxRxParamsSequence = std::vector<TxRxParameters>;

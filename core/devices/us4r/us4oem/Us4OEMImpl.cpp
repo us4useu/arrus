@@ -307,7 +307,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             // (the end of the iteration can be treated as the only checkpoint).
             if(checkpoint && op.getCallback().has_value()) {
                 callback = [this, seqIdx, op]() {
-                    op.getCallback().value()(this, this->getDeviceId().getOrdinal(), seqIdx);
+                    op.getCallback().value()(this->getDeviceId().getOrdinal(), seqIdx);
                 };
             }
 

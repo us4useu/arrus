@@ -21,7 +21,7 @@ struct TestProbeSettings {
 
     [[nodiscard]] ProbeSettings toProbeSettings() const {
         return ProbeSettings{
-            ProbeModel{modelId, numberOfElements, pitch, txFrequencyRange, voltageRange},
+            ProbeModel{modelId, numberOfElements, pitch, txFrequencyRange, voltageRange, 0.0},
             channelMapping};
     }
 

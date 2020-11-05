@@ -28,13 +28,15 @@ class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
 
-    enum class State {STARTED, STOPPED};
+    enum class State {
+        STARTED, STOPPED
+    };
 
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
              std::optional<HV256Impl::Handle> hv)
-        : Us4R(id),  us4oems(std::move(us4oems)),
+        : Us4R(id), us4oems(std::move(us4oems)),
           hv(std::move(hv)) {
     }
 
@@ -44,8 +46,9 @@ public:
              ProbeImplBase::Handle &probe,
              std::optional<HV256Impl::Handle> hv);
 
-    Us4RImpl(Us4RImpl const&) = delete;
-    Us4RImpl(Us4RImpl const&&) = delete;
+    Us4RImpl(Us4RImpl const &) = delete;
+
+    Us4RImpl(Us4RImpl const &&) = delete;
 
     Device::RawHandle getDevice(const std::string &path) override {
         auto[root, tail] = getPathRoot(path);
@@ -53,8 +56,9 @@ public:
         boost::algorithm::trim(tail);
         if(!tail.empty()) {
             throw IllegalArgumentException(
-                arrus::format("Us4R devices allows access only to the top-level "
-                              "devices (got relative path: '{}')", path)
+                arrus::format(
+                    "Us4R devices allows access only to the top-level "
+                    "devices (got relative path: '{}')", path)
             );
         }
         DeviceId componentId = DeviceId::parse(root);
@@ -130,13 +134,26 @@ private:
 
     UltrasoundDevice *getDefaultComponent();
 
-    static size_t countBufferElementSize(const std::vector<std::vector<DataTransfer>>& transfers);
+    static size_t countBufferElementSize(
+        const std::vector<std::vector<DataTransfer>> &transfers);
 
     void stopDevice(bool stopGently = true);
 
-    void rxDmaCallback();
+    bool rxDmaCallback();
 
     void syncTrigger();
+
+    std::tuple<
+        FrameChannelMapping::Handle,
+        std::vector<std::vector<DataTransfer>>,
+        uint16_t // ntriggers
+    >
+    uploadSequence(
+        const ops::us4r::TxRxSequence &seq,
+        uint16_t nRepeats,
+        bool checkpoint,
+        std::optional<TxRxParameters::SequenceCallback> rxCallback,
+        std::optional<TxRxParameters::SequenceCallback> pcidmaCallback);
 };
 
 }

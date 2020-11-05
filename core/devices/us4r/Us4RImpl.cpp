@@ -62,22 +62,6 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     hv.value()->setVoltage(voltage);
 }
 
-UltrasoundDevice *Us4RImpl::getDefaultComponent() {
-    // NOTE! The implementation of this function determines
-    // validation behaviour of SetVoltage function.
-    // The safest option is to prefer using Probe only,
-    // with an option to choose us4oem
-    // (but the user has to specify it explicitly in settings).
-    // Currently there should be no option to set TxRxSequence
-    // on an adapter directly.
-    if(probe.has_value()) {
-        return probe.value().get();
-    } else {
-        return us4oems[0].get();
-    }
-
-}
-
 void Us4RImpl::disableHV() {
     logger->log(LogSeverity::DEBUG, "Disabling HV");
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
@@ -97,71 +81,42 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
 
     if(this->state == State::STARTED) {
-        throw ::arrus::IllegalStateException("The device is running, uploading sequence is forbidden.");
+        throw ::arrus::IllegalStateException(
+            "The device is running, uploading sequence is forbidden.");
     }
-    std::vector<TxRxParameters> actualSeq;
 
     constexpr uint16_t BUFFER_SIZE = 2;
-    auto nus4oems = (Ordinal)1;// probeAdapter.value()->getNumberOfUs4OEMs();
+    auto nus4oems = (Ordinal) 1;// probeAdapter.value()->getNumberOfUs4OEMs();
     this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, BUFFER_SIZE);
     this->watchdog = std::make_unique<Watchdog>();
-
-    auto nOps = seq.getOps().size();
-    size_t opIdx = 0;
-    for(const auto& txrx : seq.getOps()) {
-        auto &tx = txrx.getTx();
-        auto &rx = txrx.getRx();
-        std::optional<TxRxParameters::SequenceCallback> callback = std::nullopt;
-
-        // Set checkpoint callback for the last tx/rx.
-        if(opIdx == nOps - 1) {
-            callback = [this] (Ordinal ordinal, uint16 i) {
-                this->watchdog->notifyResponse();
-                this->rxDmaCallback();
-            };
-        }
-
-        Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
-        Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
-
-        actualSeq.push_back(
-            TxRxParameters(
-                tx.getAperture(),
-                tx.getDelays(),
-                tx.getExcitation(),
-                rx.getAperture(),
-                sampleRange,
-                rx.getDownsamplingFactor(),
-                seq.getPri(),
-                padding,
-                callback != std::nullopt,
-                callback
-            )
-        );
-        ++opIdx;
-    }
-    auto[fcm, transfers, nTriggers] = getDefaultComponent()->setTxRxSequence(
-        actualSeq, seq.getTgcCurve(), BUFFER_SIZE);
+//    std::optional<TxRxParameters::SequenceCallback> callback =
+//        [this](Ordinal, uint16) {
+//            this->watchdog->notifyResponse();
+//            bool result = this->rxDmaCallback();
+//            if(result) this->watchdog->notifyStart();
+//        };
+    auto[fcm, transfers, nTriggers] = uploadSequence(
+        seq, BUFFER_SIZE, true,
+//        callback,
+        std::optional<TxRxParameters::SequenceCallback>(),
+        std::optional<TxRxParameters::SequenceCallback>());
 
     // transfers[i][j] = transfer to perform
     // where i is the section (buffer element), j is the us4oem (a part of the buffer element)
     // Currently we assume that each buffer element has the same size.
     size_t bufferElementSize = countBufferElementSize(transfers);
-
     this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, BUFFER_SIZE);
-
-
     // Rx DMA timeout - to avoid situation, where rx irq is missing.
     // 1.5 - sleep time multiplier
-    auto timeout = (long long) ((float)nTriggers*seq.getPri()*1e6*100);
+    auto timeout = (long long) ((float) nTriggers * seq.getPri() * 1e6 * 1.5);
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Host buffer worker timeout: {}", timeout));
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
-        this->currentRxBuffer, this->hostBuffer, transfers, timeout);
+        this->currentRxBuffer, this->hostBuffer, transfers);
 
     this->watchdog->setTimeout(timeout);
     this->watchdog->setCallback([this]() {
-        this->rxDmaCallback();
+        return this->rxDmaCallback();
     });
     return std::make_pair(std::move(fcm), hostBuffer);
 }
@@ -222,12 +177,59 @@ void Us4RImpl::stopDevice(bool stopGently) {
 }
 
 Us4RImpl::~Us4RImpl() {
-    getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
+    getDefaultLogger()->log(LogSeverity::DEBUG,
+                            "Closing connection with Us4R.");
     this->stopDevice();
     getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
 }
 
-size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransfer>> &transfers) {
+std::tuple<
+    FrameChannelMapping::Handle,
+    std::vector<std::vector<DataTransfer>>,
+    uint16_t // ntriggers
+>
+Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
+                         uint16_t nRepeats,
+                         bool checkpoint,
+                         std::optional<TxRxParameters::SequenceCallback> rxCallback,
+                         std::optional<TxRxParameters::SequenceCallback> pcidmaCallback) {
+    std::vector<TxRxParameters> actualSeq;
+    auto nOps = seq.getOps().size();
+    size_t opIdx = 0;
+    for(const auto &txrx : seq.getOps()) {
+        auto &tx = txrx.getTx();
+        auto &rx = txrx.getRx();
+        std::optional<TxRxParameters::SequenceCallback> callback = std::nullopt;
+
+
+        Interval<uint32> sampleRange(rx.getSampleRange().first,
+                                     rx.getSampleRange().second);
+        Tuple<ChannelIdx> padding(
+            {rx.getPadding().first, rx.getPadding().second});
+
+        actualSeq.push_back(
+            TxRxParameters(
+                tx.getAperture(),
+                tx.getDelays(),
+                tx.getExcitation(),
+                rx.getAperture(),
+                sampleRange,
+                rx.getDownsamplingFactor(),
+                seq.getPri(),
+                padding,
+                (opIdx == nOps - 1 && checkpoint),
+                (opIdx == nOps - 1) ? rxCallback : std::nullopt,
+                (opIdx == nOps - 1) ? pcidmaCallback : std::nullopt
+            )
+        );
+        ++opIdx;
+    }
+    return getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve(), nRepeats);
+
+}
+
+size_t Us4RImpl::countBufferElementSize(
+    const std::vector<std::vector<DataTransfer>> &transfers) {
     std::unordered_set<size_t> transferSizes;
     for(auto &bufferElement : transfers) {
         size_t size = 0;
@@ -243,11 +245,11 @@ size_t Us4RImpl::countBufferElementSize(const std::vector<std::vector<DataTransf
     return *std::begin(transferSizes);
 }
 
-void Us4RImpl::rxDmaCallback() {
+bool Us4RImpl::rxDmaCallback() {
     // Notify the new buffer element is available.
     bool canContinue = this->currentRxBuffer->notify(0);
     if(!canContinue) {
-        return;
+        return false;
     }
     // Reserve access to next element.
     bool isReservationPossible = this->currentRxBuffer->reserveElement(0);
@@ -255,8 +257,8 @@ void Us4RImpl::rxDmaCallback() {
     if(isReservationPossible) {
         // TODO access us4oem:0 directly (performance)?
         this->syncTrigger();
-        this->watchdog->notifyStart();
     }
+    return isReservationPossible;
 }
 
 void Us4RImpl::syncTrigger() {
