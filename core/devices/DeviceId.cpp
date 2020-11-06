@@ -16,7 +16,8 @@ static const std::unordered_map<DeviceType, std::string>
         {DeviceType::ProbeAdapter,"ProbeAdapter"},
         {DeviceType::Probe,       "Probe"},
         {DeviceType::GPU,         "GPU"},
-        {DeviceType::CPU,         "CPU"}
+        {DeviceType::CPU,         "CPU"},
+        {DeviceType::HV,         "HV"}
 };
 
 /**

@@ -5,6 +5,7 @@
 #include <chrono>
 
 #include "arrus/common/format.h"
+#include "arrus/common/utils.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/common/asserts.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
@@ -361,7 +362,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
     // FC mapping
     // TODO (pjarosik) reduce the size of the number to non-rxnops
-    FrameChannelMapping::FrameNumber numberOfOutputFrames = seq.size();
+    FrameChannelMapping::FrameNumber numberOfOutputFrames = ARRUS_SAFE_CAST(seq.size(), ChannelIdx);
     FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
 
     // Rx apertures after taking into account possible conflicts in Rx channel

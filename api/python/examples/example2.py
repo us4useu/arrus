@@ -10,6 +10,7 @@ from arrus.ops.us4r import (
 import arrus.logging
 
 arrus.logging.set_clog_level(arrus.logging.DEBUG)
+arrus.logging.add_log_file("test.log", arrus.logging.TRACE)
 
 session = arrus.session.Session(
     r"C:\Users\pjarosik\src\x-files\customers\nanoecho\nanoecho_magprobe_002.prototxt")
@@ -33,19 +34,23 @@ seq = TxRxSequence(
             )
         )
     ],
-    pri=200e-6,
+    pri=1000e-6,
     tgc_curve=np.array([])
 )
 
 us4r = session.get_device("/Us4R:0")
+us4r.set_voltage(30)
 buffer = us4r.upload(seq)
 
 print("Starting the device.")
 us4r.start()
 
-data, metadata = buffer.tail()
-print(f"Acquired data: {data}")
-buffer.release_tail()
-
-print("Stopping the device.")
-us4r.stop()
+# data, metadata = buffer.tail()
+# print("Saving data")
+# np.save("test.npy", data)
+# print("Data saved")
+#
+# buffer.release_tail()
+#
+# print("Stopping the device.")
+# us4r.stop()

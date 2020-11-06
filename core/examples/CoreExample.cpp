@@ -38,6 +38,7 @@ int main() noexcept {
         }
 
         TxRxSequence seq(txrxs, 1000e-6f, {});
+        us4r->setVoltage(30);
 
         auto[fcm, buffer] = us4r->uploadSync(seq);
         us4r->start();
