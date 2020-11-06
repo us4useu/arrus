@@ -34,10 +34,10 @@ int main() noexcept {
         std::vector<TxRx> txrxs;
 
         for(int i = 0; i < 11; ++i) {
-            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange));
+            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 1000e-6);
         }
 
-        TxRxSequence seq(txrxs, 1000e-6f, {});
+        TxRxSequence seq(txrxs, {});
         us4r->setVoltage(30);
 
         auto[fcm, buffer] = us4r->uploadSync(seq);

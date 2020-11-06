@@ -235,7 +235,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
             uint16 firing = (uint16)(seqIdx * seq.size() + opIdx);
             auto const &op = seq[opIdx];
-            bool checkpoint = op.isCheckpoint() && this->isMaster();
+            bool checkpoint = op.isCheckpoint();
 
             if(op.isNOP()) {
                 logger->log(LogSeverity::TRACE,
@@ -303,9 +303,6 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
             std::optional<std::function<void()>> callback = std::nullopt;
 
-            // Handling checkpoints for data transfers
-            // TODO consider removing checkpoints and using only repeated sequence
-            // (the end of the iteration can be treated as the only checkpoint).
             if(checkpoint && op.getCallback().has_value()) {
                 callback = [this, seqIdx, op]() {
                     op.getCallback().value()(this->getDeviceId().getOrdinal(), seqIdx);

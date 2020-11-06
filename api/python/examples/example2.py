@@ -9,7 +9,7 @@ from arrus.ops.us4r import (
 )
 import arrus.logging
 
-arrus.logging.set_clog_level(arrus.logging.DEBUG)
+arrus.logging.set_clog_level(arrus.logging.TRACE)
 arrus.logging.add_log_file("test.log", arrus.logging.TRACE)
 
 session = arrus.session.Session(
@@ -31,10 +31,9 @@ seq = TxRxSequence(
                 aperture=np.ones((192, ), dtype=np.bool),
                 sample_range=(0, 4096),
                 downsampling_factor=1
-            )
-        )
+            ),
+            pri=1000e-6)
     ],
-    pri=1000e-6,
     tgc_curve=np.array([])
 )
 

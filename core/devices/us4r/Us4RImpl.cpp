@@ -102,7 +102,13 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, BUFFER_SIZE);
     // Rx DMA timeout - to avoid situation, where rx irq is missing.
     // 1.5 - sleep time multiplier
-    auto timeout = (long long) ((float) nTriggers * seq.getPri() * 1e6 * 1.5);
+
+    float totalPri = 0.0f;
+    for(auto &op : seq.getOps()) {
+        totalPri += op.getPri();
+    }
+
+    auto timeout = (long long) ((float) nTriggers * totalPri * 1e6 * 1.5);
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Host buffer worker timeout: {}", timeout));
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
@@ -209,7 +215,7 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
                 rx.getAperture(),
                 sampleRange,
                 rx.getDownsamplingFactor(),
-                seq.getPri(),
+                txrx.getPri(),
                 padding,
                 (opIdx == nOps - 1 && checkpoint),
                 (opIdx == nOps - 1) ? rxCallback : std::nullopt,

@@ -149,7 +149,7 @@ class Us4R(Device):
                 rx.downsampling_factor,
                 arrus.core.PairChannelIdx(rx.padding[0], rx.padding[1])
             )
-            core_txrx = arrus.core.TxRx(core_tx, core_rx)
+            core_txrx = arrus.core.TxRx(core_tx, core_rx, op.pri)
             arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
 
             start_sample, end_sample = rx.sample_range
@@ -161,7 +161,6 @@ class Us4R(Device):
 
         core_seq = arrus.core.TxRxSequence(
             sequence=core_seq,
-            pri=seq.pri,
             tgcCurve=seq.tgc_curve.tolist())
 
         upload_result = self._handle.uploadSync(core_seq)

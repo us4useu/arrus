@@ -9,6 +9,7 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/us4r/HVModelId.h"
+#include "arrus/common/format.h"
 
 namespace arrus::devices {
 
@@ -17,15 +18,37 @@ public:
     using Handle = std::unique_ptr<HV256Impl>;
 
     HV256Impl(const DeviceId &id, HVModelId modelId,
-              std::unique_ptr<IDBARLite> dbarLite, std::unique_ptr<IHV256> hv256);
+              std::unique_ptr<IDBARLite> dbarLite,
+              std::unique_ptr<IHV256> hv256);
 
     void setVoltage(Voltage voltage) {
-        hv256->EnableHV();
-        hv256->SetHVVoltage(voltage);
+        try {
+            hv256->EnableHV();
+            hv256->SetHVVoltage(voltage);
+        } catch(std::exception &e) {
+            // TODO catch a specific exception
+            logger->log(
+                LogSeverity::INFO,
+                ::arrus::format(
+                    "First attempt to set HV voltage failed with "
+                    "message: '{}', trying once more.",
+                    e.what()));
+            hv256->EnableHV();
+            hv256->SetHVVoltage(voltage);
+        }
     }
 
     void disable() {
-        hv256->DisableHV();
+        try {
+            hv256->DisableHV();
+        } catch(std::exception &e) {
+            logger->log(LogSeverity::INFO,
+                        ::arrus::format(
+                            "First attempt to disable high voltage failed with "
+                            "message: '{}', trying once more.",
+                            e.what()));
+            hv256->DisableHV();
+        }
     }
 
 private:

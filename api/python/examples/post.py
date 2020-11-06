@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-x = np.load('test.npy', allow_pickle=True)
+x = np.load('test2.npy', allow_pickle=True)
 y = np.zeros((4096, 192), dtype=np.int16)
 
 y[:, :32] = x[:4096, :]

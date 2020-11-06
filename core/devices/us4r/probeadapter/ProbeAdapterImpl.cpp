@@ -210,6 +210,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         if(outputTransfers.empty()) {
             outputTransfers.resize(us4oemTransfers.size());
         }
+
         for(int i = 0; i < us4oemTransfers.size(); ++i) {
             outputTransfers[i].push_back(us4oemTransfers[i][0]);
         }
