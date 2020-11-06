@@ -71,10 +71,11 @@ class TxRx:
 
     :param tx: signal transmit to perform
     :param rx: signal reception to perform
+    :param pri: pulse repetition interval [s] - time to next event
     """
     tx: Tx
     rx: Rx
-
+    pri: float
 
 @dataclass(frozen=True)
 class TxRxSequence:
@@ -82,11 +83,9 @@ class TxRxSequence:
     A sequence of tx/rx operations to perform.
 
     :param operations: sequence of TX/RX operations to perform
-    :param pri: pulse repetition interval [s]
     :param tgc_curve: TGC curve samples [dB]
     """
     operations: typing.List[TxRx]
-    pri: float
     tgc_curve: np.ndarray
 
 
