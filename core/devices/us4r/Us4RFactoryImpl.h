@@ -149,6 +149,7 @@ private:
 
         // Modifies input list - sorts ius4oems by ID in ascending order.
         ius4oemInitializer->initModules(ius4oems);
+        auto master = ius4oems[0].get();
 
         // Create Us4OEMs.
         Us4RImpl::Us4OEMs us4oems;
@@ -164,7 +165,7 @@ private:
                     ius4oems[i], us4oemCfgs[i])
             );
         }
-        return {std::move(us4oems), ius4oems[0].get()};
+        return {std::move(us4oems), master};
     }
 
     std::optional<HV256Impl::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
@@ -179,7 +180,7 @@ private:
 
             return hvFactory->getHV256(hvSettings, master);
         } else {
-            return nullptr;
+            return std::nullopt;
         }
     }
 

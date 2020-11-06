@@ -14,6 +14,10 @@ public:
 
     virtual int16* tail() = 0;
 
+    virtual size_t tailAddress() {
+        return (size_t)tail();
+    }
+
     virtual bool releaseTail() = 0;
 };
 

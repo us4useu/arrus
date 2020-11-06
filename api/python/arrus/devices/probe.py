@@ -31,7 +31,8 @@ class ProbeModel:
         return (x_pos, z_pos)
 
     def is_convex_array(self):
-        return not math.isnan(self.curvature_radius)
+        return not math.isnan(self.curvature_radius) \
+               or self.curvature_radius != 0.0
 
 
 @dataclasses.dataclass(frozen=True)
