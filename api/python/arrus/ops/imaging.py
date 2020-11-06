@@ -10,9 +10,10 @@ class LinSequence(Operation):
     :param tx_focus: tx focal length [m]
     :param tx_angle: tx angle [rad]
     :param pulse: an excitation to perform
-    :param sampling_frequency: a sampling frequency to apply,
+    :param sampling_frequency: a sampling frequency to apply
       currently can be equal 65e6/n (n=1,2,...) only [Hz]
     :param pri: pulse repetition interval
+    :param downsampling_factor: downsampling factor (decimation) , integer factor for decreasing sampling frequency of the output signal
     """
     tx_aperture_center_element: np.ndarray
     tx_aperture_size: float
@@ -23,3 +24,4 @@ class LinSequence(Operation):
     rx_aperture_size: float
     sampling_frequency: float
     pri: float
+    downsampling_factor: int
