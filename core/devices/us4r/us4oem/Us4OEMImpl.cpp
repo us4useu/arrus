@@ -207,14 +207,13 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
-    ius4oem->ClearScheduledReceive();
     ARRUS_REQUIRES_AT_MOST(nOps * nRepeats, 16384,
                            ::arrus::format(
                                "Exceeded the maximum ({}) number of firings: {}",
                                16384, nOps * nRepeats));
 
-    ius4oem->SetNTriggers(nOps * nRepeats);
     ius4oem->SetNumberOfFirings(nOps * nRepeats);
+    ius4oem->ClearScheduledReceive();
 
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 
@@ -227,16 +226,13 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
     uint16 transferFiringStart = 0;
     size_t transferAddressStart = 0;
 
+    // Program Tx/rx sequence
     for(uint16 seqIdx = 0; seqIdx < nRepeats; ++seqIdx) {
-
         logger->log(LogSeverity::TRACE, format("Setting tx/rx sequence {} of {}", seqIdx + 1, nRepeats));
-
         for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-
             uint16 firing = (uint16)(seqIdx * seq.size() + opIdx);
             auto const &op = seq[opIdx];
             bool checkpoint = op.isCheckpoint();
-
             if(op.isNOP()) {
                 logger->log(LogSeverity::TRACE,
                             format("Setting tx/rx {}: NOP {}", opIdx, ::arrus::toString(op)));
@@ -246,7 +242,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             }
             auto[startSample, endSample] = op.getRxSampleRange().asPair();
             size_t nSamples = endSample - startSample;
-            float rxTime = getRxTime(nSamples);
+//            float rxTime = getRxTime(nSamples);
             size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
             auto rxMapId = rxMappings.find(opIdx)->second;
 
@@ -289,13 +285,9 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firing);
             ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), firing);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firing);
-            if(this->isMaster()) {
-                ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6), checkpoint, firing);
-            }
-
-            setTGC(tgc, firing);
+            ius4oem->SetRxTime(160e-6f, firing);
             ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
-            ius4oem->SetRxTime(rxTime, firing);
+            setTGC(tgc, firing);
 
             ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, DDR_SIZE,
                                    ::arrus::format("Total data size cannot exceed 4GiB (device {})",
@@ -309,7 +301,6 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                 };
             }
 
-
             // TODO Avoid transferring rx nop data
             // TODO(pjarosik): transfer a smaller size frame
             // TODO(pjarosik): add an option to omit empty frames for master module (bool isMetadata?)
@@ -320,13 +311,11 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                                      op.getRxDecimationFactor() - 1,
                                      rxMapId, callback.value_or(nullptr));
             outputAddress += nBytes;
-
             if(checkpoint) {
                 // The size of the chunk.
                 auto size = outputAddress - transferAddressStart;
                 // Where the chunk starts.
                 auto srcAddress = transferAddressStart;
-
                 // TODO replace "DataTransfer" With a "Variable" in the Us4OEM memory
                 std::vector<DataTransfer> dataTransferSection = {
                     DataTransfer(
@@ -342,9 +331,21 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             }
         }
     }
-
-    ius4oem->EnableSequencer();
     ius4oem->EnableTransmit();
+
+    // Program triggers
+    ius4oem->SetNTriggers(nOps * nRepeats);
+    for(uint16 seqIdx = 0; seqIdx < nRepeats; ++seqIdx) {
+        logger->log(LogSeverity::TRACE, format("Programming triggers {} of {}", seqIdx + 1, nRepeats));
+        for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
+            uint16 firing = (uint16) (seqIdx * seq.size() + opIdx);
+            auto const &op = seq[opIdx];
+            bool checkpoint = op.isCheckpoint();
+            ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6),
+                                checkpoint, firing);
+        }
+    }
+    ius4oem->EnableSequencer();
     return {std::move(fcm), std::move(dataTransfers), (uint16_t)seq.size()};
 }
 
