@@ -20,13 +20,8 @@ function[rfBfr,rfTx] = reconstructRfImgPart2(rfRaw,recPre)
 % calculate the rf samples (interpolated)
 rfRx	= interp1(reshape(rfRaw,[],1),recPre.iSamp,'linear',0);
 
-% modulate if iq signal is used
-if recPre.iqEnable
-    rfRx	= rfRx.*recPre.modSig;
-end
-
 % calculate rf for single tx
-rfRx	= rfRx.*recPre.wghRx;
+rfRx	= rfRx.*recPre.modNWghRx;
 rfTx	= reshape(sum(rfRx,3),size(recPre.wghTx));
 
 % calculate the final rf image

@@ -118,6 +118,8 @@ wghRx	= txApod.*rxApod;
 % modulate if iq signal is used
 if proc.iqEnable
     modSig	= exp(1i*2*pi*acq.txFreq*delTot);
+else
+    modSig	= 1;
 end
 
 % calculate weights for single tx
@@ -126,8 +128,7 @@ wghTx	= reshape(sum(wghRx,3),proc.zSize,proc.xSize,acq.nTx);
 %% Output
 recPre.iqEnable = proc.iqEnable;
 recPre.iSamp	= iSamp;
-recPre.modSig	= modSig;
-recPre.wghRx	= wghRx;
+recPre.modNWghRx= modSig .* wghRx;
 recPre.wghTx	= wghTx;
 
 end
