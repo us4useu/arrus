@@ -27,9 +27,8 @@ if proc.iqEnable
     end
     
     t = (0:nSample-1)'/acq.rxSampFreq;
-    
-    rfOut = 2*rfIn.*cos(-2*pi*acq.txFreq*t) ...
-          + 2*rfIn.*sin(-2*pi*acq.txFreq*t)*1i;
+    demodSignal = 2.*exp(-1i*2*pi*acq.txFreq*t);
+    rfOut = rfIn.*demodSignal;
 else
     rfOut = rfIn;
 end
