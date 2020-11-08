@@ -34,17 +34,27 @@ else
 end
 
 %% Downsampling (CIC filtration + decimation)
-% Integrator
+% Initially there was an ordinary CIC filter here. CIC is fast & simple in 
+% hardware implementations. Here it needed for-loops and cumsum-function 
+% (relatively slow). So, the present implementation is a FIR filter which:
+% - gives same results
+% - can run much faster (especially on GPU)
+
+% Prepare the filter vector
+cicFir	= single(1);
+cicFir1	= ones(proc.dec,1,'single');
+if isa(rfIn,'gpuArray')
+    cicFir	= gpuArray(cicFir);
+    cicFir1 = gpuArray(cicFir1);
+end
 for ord=1:proc.cicOrd
-    rfOut = cumsum(rfOut);
+    cicFir = conv(cicFir,cicFir1,'full');
 end
 
-% Decimator
-rfOut = rfOut(proc.dec:proc.dec:end,:,:);
-
-% Comb
-for ord=1:proc.cicOrd
-    rfOut = [rfOut(1,:,:); diff(rfOut)];
-end
+% Filter & decimate
+rfOut = reshape(rfOut,acq.nSamp,acq.rxApSize*acq.nTx*acq.nRep);
+rfOut = conv2(rfOut,cicFir,'same');
+rfOut = rfOut(proc.dec:proc.dec:end,:);
+rfOut = reshape(rfOut,[],acq.rxApSize,acq.nTx,acq.nRep);
 
 end
