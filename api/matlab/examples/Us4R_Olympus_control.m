@@ -10,7 +10,9 @@ txFrequency = 5e6;
 samplingFrequency = 65e6;
 fsDivider = 1;
 
-[filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
+% [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
+filtB       = fir1(65,[0.5 1.5]*txFrequency/(samplingFrequency/fsDivider/2),'bandpass');
+filtA       = 1;
 
 %% Initialize the system, sequence, and reconstruction
 us	= Us4R(nUs4OEM, probeName, adapterType, 50, true);

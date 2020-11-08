@@ -858,18 +858,25 @@ classdef Us4R < handle
             if obj.rec.gpuEnable
                 rfRaw = gpuArray(rfRaw);
             end
-            
-            % Due to a temporary problem with the filter function 
-            % (crashes when rfRaw is single), the rfRaw is
-            % converted to double just for filtration. 
-            rfRaw = double(rfRaw);
+            rfRaw = single(rfRaw);
 
             %% Preprocessing
             % Raw rf data filtration
             if obj.rec.filtEnable
-                rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
+                if isscalar(obj.rec.filtA) && obj.rec.filtA==1
+                    % Conv2 is faster than convn, hence the reshapes 
+                    rfRaw = reshape(rfRaw,obj.seq.nSamp,obj.seq.rxApSize*obj.seq.nTx*obj.seq.nRep);
+                    rfRaw = conv2(rfRaw,obj.rec.filtB.','same');
+                    rfRaw = reshape(rfRaw,obj.seq.nSamp,obj.seq.rxApSize,obj.seq.nTx,obj.seq.nRep);
+                else
+                    % Due to a temporary problem with the filter function 
+                    % (crashes when rfRaw is single), the rfRaw is
+                    % converted to double just for filtration. 
+                    rfRaw = double(rfRaw);
+                    rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
+                    rfRaw = single(rfRaw);
+                end
             end
-            rfRaw = single(rfRaw);
 
             % Digital Down Conversion
             rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
