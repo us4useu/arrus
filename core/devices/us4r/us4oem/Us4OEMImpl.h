@@ -49,7 +49,7 @@ public:
         N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
 
     static constexpr float MIN_TX_DELAY = 0.0f;
-    static constexpr float MAX_TX_DELAY = 19.96e-6f;
+    static constexpr float MAX_TX_DELAY = 16.96e-6f;
 
     static constexpr float MIN_TX_FREQUENCY = 1e6f;
     static constexpr float MAX_TX_FREQUENCY = 20e6f;

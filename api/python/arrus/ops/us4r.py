@@ -63,6 +63,10 @@ class Rx(Operation):
     downsampling_factor: int = 1
     padding: tuple = (0, 0)
 
+    def get_n_samples(self):
+        start, end = self.sample_range
+        return end-start
+
 
 @dataclass(frozen=True)
 class TxRx:
@@ -85,7 +89,7 @@ class TxRxSequence:
     :param operations: sequence of TX/RX operations to perform
     :param tgc_curve: TGC curve samples [dB]
     """
-    operations: typing.List[TxRx]
+    ops: typing.List[TxRx]
     tgc_curve: np.ndarray
 
 

@@ -108,7 +108,7 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
         totalPri += op.getPri();
     }
 
-    auto timeout = (long long) ((float) nTriggers * totalPri * 1e6 * 1.5);
+    auto timeout = (long long) (totalPri * 1e6 * 1.5);
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Host buffer worker timeout: {}", timeout));
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
@@ -155,10 +155,7 @@ void Us4RImpl::stopDevice(bool stopGently) {
             throw IllegalArgumentException("Device was not started.");
         }
     }
-    this->watchdog->stop();
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    this->getDefaultComponent()->stop();
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    logger->log(LogSeverity::DEBUG, "Queue shutdown.");
     if(this->currentRxBuffer) {
         this->currentRxBuffer->shutdown();
     }
@@ -166,6 +163,13 @@ void Us4RImpl::stopDevice(bool stopGently) {
         this->hostBuffer->shutdown();
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    logger->log(LogSeverity::DEBUG, "Stopping watchdog.");
+    this->watchdog->stop();
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    logger->log(LogSeverity::DEBUG, "Stopping system.");
+    this->getDefaultComponent()->stop();
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    logger->log(LogSeverity::DEBUG, "Stopping host buffer worker.");
     this->hostBufferWorker->stop();
     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     // Delete all data.

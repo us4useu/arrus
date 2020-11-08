@@ -76,6 +76,8 @@ set(SOURCE_FILES
 	arrus/utils/__init__.py
     arrus/utils/imaging.py
     arrus/utils/parameters.py
+	arrus/utils/us4r.py
+	arrus/utils/interpolate.py
     arrus/tests/tools.py
 )
 

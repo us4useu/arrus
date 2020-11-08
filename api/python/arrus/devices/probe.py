@@ -22,7 +22,7 @@ class ProbeModel:
 
         if not self.is_convex_array():
             x_pos = element_position
-            z_pos = np.zeros(self.n_elements, 1)
+            z_pos = np.zeros((self.n_elements, 1))
         else:
             angle = element_position / self.curvature_radius
             x_pos = self.curvature_radius * np.sin(angle)
@@ -31,8 +31,8 @@ class ProbeModel:
         return (x_pos, z_pos)
 
     def is_convex_array(self):
-        return not math.isnan(self.curvature_radius) \
-               or self.curvature_radius != 0.0
+        return not (math.isnan(self.curvature_radius)
+                    or self.curvature_radius == 0.0)
 
 
 @dataclasses.dataclass(frozen=True)

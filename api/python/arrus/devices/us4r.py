@@ -15,7 +15,6 @@ DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
 
 
 class FrameChannelMapping:
-
     def __init__(self, fcm):
         self._fcm_frame = np.zeros(
             (fcm.getNumberOfLogicalFrames(), fcm.getNumberOfLogicalChannels()),
@@ -86,11 +85,11 @@ class HostBuffer:
         arr = np.ctypeslib.as_array(ctypes_ptr, shape=self.frame_shape)
         return arr
 
+
 class Us4R(Device):
     """
     A handle to Us4R device.
     """
-
     def __init__(self, handle, parent_session):
         super().__init__()
         self._handle = handle
@@ -123,10 +122,10 @@ class Us4R(Device):
         # Convert arrus.ops.us4r.TxRxSequence -> arrus.core.TxRxSequence
         core_seq = arrus.core.TxRxVector()
 
-        # Note: currently only only tx/rx all with the same number of frames is supported.
+        # Note: currently only only tx/rx all with the same number of samples is supported.
         n_samples = None
 
-        for op in seq.operations:
+        for op in seq.ops:
             tx, rx = op.tx, op.rx
             # TODO validate shape
             # TX
@@ -156,7 +155,7 @@ class Us4R(Device):
             if n_samples is None:
                 n_samples = end_sample - start_sample
             elif n_samples != end_sample - start_sample:
-                raise arrus.exception.IllegalArgumentException(
+                raise arrus.exceptions.IllegalArgumentError(
                     "Sequences with the constant number of samples are supported only.")
 
         core_seq = arrus.core.TxRxSequence(
@@ -172,13 +171,14 @@ class Us4R(Device):
         fac = arrus.metadata.FrameAcquisitionContext(
             device=self._get_dto(),
             sequence=seq,
+            raw_sequence=seq,
             medium=self._session.get_session_context().medium,
             custom_data={})
 
         echo_data_description = arrus.metadata.EchoDataDescription(
             # TODO get fs from device
             # TODO get an array of sampling frequencies for all operations
-            sampling_frequency=65e6 / seq.operations[0].rx.downsampling_factor,
+            sampling_frequency=65e6 / seq.ops[0].rx.downsampling_factor,
             custom={
                 "frame_channel_mapping": py_fcm
             }
@@ -244,6 +244,7 @@ class MockFileBuffer:
             custom=custom_data)
         return np.array(self.dataset[self.i, :, :, :]), metadata
 
+
 class MockUs4R(Device):
     def __init__(self, dataset: np.ndarray, metadata, index: int):
         super().__init__("Us4R", index)
@@ -266,6 +267,7 @@ class MockUs4R(Device):
 
     def disable_hv(self):
         pass
+
 
 @dataclasses.dataclass(frozen=True)
 class Us4RDTO:

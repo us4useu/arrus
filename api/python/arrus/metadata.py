@@ -9,6 +9,7 @@ import arrus.medium
 class FrameAcquisitionContext:
     device: arrus.devices.device.UltrasoundDeviceDTO
     sequence: arrus.ops.Operation
+    raw_sequence: arrus.ops.us4r.TxRxSequence
     medium: arrus.medium.MediumDTO
     custom_data: dict
 
