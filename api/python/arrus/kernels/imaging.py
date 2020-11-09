@@ -35,7 +35,8 @@ def create_lin_sequence(context):
     c = context.medium.speed_of_sound
 
     if np.mod(n_elem_sub, 2) == 0:
-        focus = [pitch/2, focal_depth]
+        # Move focal position to the center of the floor(n_sub_elem/2) element
+        focus = [-pitch/2, focal_depth]
     else:
         focus = [0, focal_depth]
 
