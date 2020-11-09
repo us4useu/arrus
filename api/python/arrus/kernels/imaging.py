@@ -5,21 +5,20 @@ from arrus.ops.us4r import (
 )
 
 
-def LINSequence(context):
+def create_lin_sequence(context):
     """
-    The function creates list of TxRx objects describing classic scheme
+    The function creates list of TxRx objects describing classic scheme.
 
     :param context: KernelExecutionContext object
     """
     # device parameters
     n_elem = context.device.probe.n_elements
     pitch = context.device.probe.pitch
-    
     # sequence parameters
     op = context.op
     n_elem_sub = op.tx_aperture_size
     focal_depth = op.tx_focus
-    sample_range = op.sample_range
+    sample_range = op.rx_sample_range
     pulse = op.pulse
     downsampling_factor = op.downsampling_factor
     pri = op.pri
@@ -35,14 +34,12 @@ def LINSequence(context):
     # medium parameters
     c = context.medium.speed_of_sound
 
-    # When the number of elements in subaperture is odd,
-    #   the focal point is shifted to be above central element of subaperture
-    if np.mod(n_elem_sub, 2):
-        focus = [-pitch/2, focal_depth]
+    if np.mod(n_elem_sub, 2) == 0:
+        focus = [pitch/2, focal_depth]
     else:
         focus = [0, focal_depth]
 
-    # enumerate delays mask and padding for each txrx event
+    # enumerate delays mask and padding for each tx/rx event
     subaperture_delays = enum_classic_delays(n_elem_sub, pitch, c, focus)
 
     def get_ap(center_element, size):
@@ -56,9 +53,9 @@ def LINSequence(context):
         # aperture last element, e.g. center 0, size 32 -> 16
         end = center_element+right_half_size
         actual_end = min(n_elem-1, end)
-        right_padding = abs(min(end-n_elem, 0))
+        right_padding = abs(min(actual_end-end, 0))
         aperture = np.zeros((n_elem, ), dtype=np.bool)
-        aperture[actual_origin:(actual_end-1)] = True
+        aperture[actual_origin:(actual_end+1)] = True
         return aperture, (left_padding, right_padding)
 
     # create tx/rx objects list
@@ -69,16 +66,15 @@ def LINSequence(context):
         actual_ap_size = tx_ap_size-(tx_pad_l+tx_pad_r)
         tx_delays = np.zeros(actual_ap_size, dtype=np.float32)
         if tx_pad_r > 0:
-            tx_delays = subaperture_delays[tx_pad_l:]
-        else:
             tx_delays = subaperture_delays[tx_pad_l:-tx_pad_r]
+        else:
+            tx_delays = subaperture_delays[tx_pad_l:]
         # Rx
         rx_aperture, rx_padding = get_ap(rx_center_element, rx_ap_size)
         tx = Tx(tx_aperture, pulse, tx_delays)
         rx = Rx(rx_aperture, sample_range, downsampling_factor, rx_padding)
         return TxRx(tx, rx, pri)
-
-    txrxlist = [create_tx_rx(centers) for centers in zip(tx_centers, rx_centers)]
+    txrxlist = [create_tx_rx(*c) for c in zip(tx_centers, rx_centers)]
     return TxRxSequence(txrxlist, tgc_curve=np.ndarray([]))
 
 
@@ -104,7 +100,6 @@ def enum_classic_delays(n_elem, pitch, c, focus):
                          "or 2-dimensional ndarray")
 
     aperture_width = (n_elem-1)*pitch
-    # TODO czy na pewno?
     el_coord_x = np.linspace(-aperture_width/2, aperture_width/2, n_elem)
     element2focus_distance = np.sqrt((el_coord_x - xf)**2 + zf**2)
     dist_max = np.amax(element2focus_distance)

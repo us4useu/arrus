@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import typing
 import numpy as np
-import arrus
 from arrus.ops.operation import Operation
 
 
@@ -35,7 +34,7 @@ class Tx(Operation):
             raise ValueError("The array of delays should be a vector of "
                              "shape (number of active elements,)")
         if self.delays is not None \
-                and self.delays.shape[0] != self.aperture.shape[0]:
+                and self.delays.shape[0] != np.sum(self.aperture):
             raise ValueError(f"The array of delays should have the size equal "
                              f"to the number of active elements of aperture "
                              f"({self.aperture.shape})")
