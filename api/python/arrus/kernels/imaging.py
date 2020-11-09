@@ -1,14 +1,8 @@
 import numpy as np
+import arrus.exceptions
 from arrus.ops.us4r import (
     Tx, Rx, TxRx, TxRxSequence, Pulse
 )
-
-class LinSequenceKernel:
-
-    def process(self, op) -> TxRxSequence:
-        # TODO implement
-        pass
-
 
 
 def LINSequence(context):
@@ -29,12 +23,14 @@ def LINSequence(context):
     pulse = op.pulse
     downsampling_factor = op.downsampling_factor
     pri = op.pri
-    tx_ap_center_element = op.tx_aperture_center_element
+    tx_centers = op.tx_aperture_center_element
     tx_ap_size = op.tx_aperture_size
-    rx_ap_center_element = op.rx_aperture_center_element
+    rx_centers = op.rx_aperture_center_element
     rx_ap_size = op.rx_aperture_size
-    # TODO validate: check if aperture center element size is the same as center element
-    # TODO validate check if aperture size is not greater than the number of probe elements
+    if tx_centers.shape != rx_centers.shape:
+        raise arrus.exceptions.IllegalArgumentError(
+            "Tx and rx aperture center elements list should have the "
+            "same length")
 
     # medium parameters
     c = context.medium.speed_of_sound
@@ -49,61 +45,41 @@ def LINSequence(context):
     # enumerate delays mask and padding for each txrx event
     subaperture_delays = enum_classic_delays(n_elem_sub, pitch, c, focus)
 
-    # create txrx objects list
-    def create_tx_rx(tx_center_element, rx_center_element, tx_size, rx_size):
-        mask = ap_masks[i, :]
-        padding = ap_padding[i]
+    def get_ap(center_element, size):
+        left_half_size = (size-1)//2  # e.g. size 32 -> 15, size 33 -> 16
+        right_half_size = size//2  # e.g. size 32 -> 16, size 33 -> 16
+        # left side:
+        origin = center_element-left_half_size  # e.g. center 0 -> origin -15
+        actual_origin = max(0, origin)
+        left_padding = abs(min(origin, 0))  # origin -15 -> left padding 15
+        # right side
+        # aperture last element, e.g. center 0, size 32 -> 16
+        end = center_element+right_half_size
+        actual_end = min(n_elem-1, end)
+        right_padding = abs(min(end-n_elem, 0))
+        aperture = np.zeros((n_elem, ), dtype=np.bool)
+        aperture[actual_origin:(actual_end-1)] = True
+        return aperture, (left_padding, right_padding)
 
+    # create tx/rx objects list
+    def create_tx_rx(tx_center_element, rx_center_element):
+        # Tx
+        tx_aperture, tx_padding = get_ap(tx_center_element, tx_ap_size)
+        tx_pad_l, tx_pad_r = tx_padding
+        actual_ap_size = tx_ap_size-(tx_pad_l+tx_pad_r)
+        tx_delays = np.zeros(actual_ap_size, dtype=np.float32)
+        if tx_pad_r > 0:
+            tx_delays = subaperture_delays[tx_pad_l:]
+        else:
+            tx_delays = subaperture_delays[tx_pad_l:-tx_pad_r]
+        # Rx
+        rx_aperture, rx_padding = get_ap(rx_center_element, rx_ap_size)
+        tx = Tx(tx_aperture, pulse, tx_delays)
+        rx = Rx(rx_aperture, sample_range, downsampling_factor, rx_padding)
+        return TxRx(tx, rx, pri)
 
-    txrxlist = [create_tx_rx(i) for i in range(n_elem)]
+    txrxlist = [create_tx_rx(centers) for centers in zip(tx_centers, rx_centers)]
     return TxRxSequence(txrxlist, tgc_curve=np.ndarray([]))
-
-
-def create_tx_rx(tx_center_element, rx_center_element, tx_size, rx_size,
-                 pulse, sample_range, downsampling_factor, pri):
-
-    tx = Tx(tx_mask, pulse, delays)
-    rx = Rx(rx_mask, sample_range, downsampling_factor, padding)
-    return TxRx(tx, rx, pri)
-
-def simple_aperture_scan(n_elem, subaperture_delays):
-    """
-    Function generates array which describes which elements should be turned
-    on during classical scan.
-
-    :param n_elem: number of elements in the aperture
-    :param subaperture_delays: subaperture delays
-    :return: tuple: masks(array of subsequent aperture masks, (n_lines, n_elem))
-      , delays (array of subsequent aperture delays (n_lines, n_elem)), padding
-    """
-    subap_len = int(np.shape(subaperture_delays)[0])
-    right_half = int(np.ceil(subap_len/2))
-    left_half = int(np.floor(subap_len/2))
-    ap_masks = np.zeros((n_elem, n_elem), dtype=bool)
-    ap_delays = np.zeros((n_elem, n_elem))
-    ap_padding = [None]*n_elem
-
-    if np.mod(subap_len, 2):
-        some_one = 0
-    else:
-        some_one = 1
-
-    # TODO iteracja po elementach srodkowych
-    for i_element in range(0, n_elem):
-        # masks
-        v_aperture = np.zeros(left_half + n_elem + right_half, dtype=bool)
-        # TODO tutaj powinno byc liczone wzgledem elementu srodkowego (przesunac element srodkowy do uzycia w aperturze wirtualnej)
-        v_aperture[i_element:i_element+subap_len] = True
-        ap_masks[i_element, :] = v_aperture[left_half:-right_half]
-        # padding
-        left_padding = (left_half - i_element - some_one)*np.heaviside(left_half - i_element - some_one,0)
-        right_padding = (i_element-n_elem + right_half + some_one)*np.heaviside(i_element-n_elem + right_half + some_one, 0)
-        ap_padding[i_element] = (left_padding.astype(int), right_padding.astype(int))
-        # delays
-        v_delays = np.zeros(left_half + n_elem + right_half)
-        v_delays[i_element:i_element+subap_len] = subaperture_delays
-        ap_delays[i_element, :] = v_delays[(right_half-1):-left_half-1]
-    return ap_masks, ap_delays, ap_padding
 
 
 def enum_classic_delays(n_elem, pitch, c, focus):
@@ -128,6 +104,7 @@ def enum_classic_delays(n_elem, pitch, c, focus):
                          "or 2-dimensional ndarray")
 
     aperture_width = (n_elem-1)*pitch
+    # TODO czy na pewno?
     el_coord_x = np.linspace(-aperture_width/2, aperture_width/2, n_elem)
     element2focus_distance = np.sqrt((el_coord_x - xf)**2 + zf**2)
     dist_max = np.amax(element2focus_distance)
