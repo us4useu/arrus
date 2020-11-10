@@ -381,6 +381,9 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
         uint8 channel = 0;
         uint8 onChannel = 0;
+
+
+
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
                 ARRUS_REQUIRES_TRUE_E(
@@ -399,12 +402,20 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 }
                 mapping.push_back(rxChannel);
                 channelsUsed.insert(rxChannel);
-                fcmBuilder.setChannelMapping(noRxNopId, onChannel, noRxNopId, (int8) (mapping.size() - 1));
+                fcmBuilder.setChannelMapping(opId, onChannel, opId, (int8) (mapping.size() - 1));
 
                 ++onChannel;
             }
             ++channel;
         }
+
+        // Fill the mapping by setting appropriate physical frame number.
+        for(auto ch=(ChannelIdx)mapping.size(); ch < N_RX_CHANNELS; ++ch) {
+            fcmBuilder.setChannelMapping(opId, onChannel,
+                                         opId,
+                                         (int8) (mapping.size() - 1));
+        }
+
         outputRxApertures.push_back(outputRxAperture);
 
         auto mappingIt = rxMappings.find(mapping);
