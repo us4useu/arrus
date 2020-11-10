@@ -1,15 +1,16 @@
-% Reconstructs rf image lines from raw rf for 'lin' mode and scanning rx aperture
-function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
-% Image reconstruction: delay & sum algorithm.
+% Prepares rf-independent data needed for classical reconstruction
+function[recPre] = reconstructRfLinPart1(sys,acq,proc)
 % 
 % Outputs:
-% rfBfr         - (nSamp,nTx)  output beamformed rf
 % 
+% recPre            - precalculated parameters needed for reconstruction:
+% recPre.iSamp0     - [sample] (zSize,xSize,nRx,nTx) samples to pick
+% recPre.iSamp      - [sample] (zSize,xSize,nRx,nTx) samples to pick
+% recPre.modSig     - [] (zSize,xSize,nRx,nTx) re-modulation signal
+% recPre.rxApod     - [] (zSize,xSize,nTx) receive weights
+% recPre.iqEnable
+%
 % Inputs:
-% rfRaw         - (nSamp,nRx,nTx) raw rf data;
-%                   tx & rx apertures must be centered at the intersection of imaging line & probe surface;
-%                   tx time delay of the tx aperture center element (txCentDel) must be constant for all tx's;
-%                   if rfRaw is gpuArray then calculations are done on GPU;
 % 
 % sys                       - system-related parameters
 % sys.pitch                 - [m] probe's pitch
@@ -21,7 +22,6 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 % acq.txAng         - [rad] tx angle
 % acq.txDelCent     - [s] (1,1) time delay between 1st rx sample and tx with the center of the tx aperture (line origin)
 % 
-% 
 % proc.dec          - [] decimation factor
 % proc.iqEnable     - [logical] 
 % proc.rxApod       - [] number of sigmas in the gaussian window used in rx apodization (0 -> rect. window)
@@ -32,8 +32,6 @@ quickRecEnable	= diff([acq.txAng; ...
                         mod(acq.rxCentElem,1); ...
                         acq.rxCentElem - acq.txCentElem],[],2) == 0;
 quickRecEnable	= all(quickRecEnable(:));
-
-gpuEnable       = isa(rfRaw,'gpuArray');
 
 fs          = acq.rxSampFreq/proc.dec;
 nSamp       = acq.nSamp/proc.dec;
@@ -90,7 +88,7 @@ rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or
 
 %% Delay & Sum
 t           = (txDist + rxDist)/acq.c + initDel;            % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
-if gpuEnable
+if proc.gpuEnable
     t       = gpuArray(t);
 end
 
@@ -100,28 +98,22 @@ iSamp       = reshape(iSamp,nSamp,nRx*nTx0);
 
 % Delay & Sum
 nSamp0	= nSamp*nRx*nTx0;
-if gpuEnable
+if proc.gpuEnable
     nSamp0	= gpuArray(nSamp0);
 end
 iSamp0	= 1:nSamp0;
 iSamp	= iSamp + (0:(nRx*nTx0-1))*nSamp;                   % [samp] (nSamp,nRx*nTx0)
 
-rfRaw	= reshape(rfRaw,nSamp0,[]);
-rfBfr	= interp1(iSamp0(:),rfRaw,iSamp(:),'linear',0);	% WARNING -> see the comment at the end of the script
-rfBfr	= reshape(rfBfr,[nSamp,nRx,nTx]);
-
 % modulate if iq signal is used
 if proc.iqEnable
-    rfBfr	= rfBfr.*exp(1i*2*pi*acq.txFreq*t);
+    modSig	= exp(1i*2*pi*acq.txFreq*t);
 end
 
-rfBfr = reshape(sum(rfBfr.*rxApod,2),[nSamp,nTx]);
-
-% WARNING
-% The first argument in interp1 function is optional, code could be: rfBfr	= interp1(rfRaw,iSamp,'linear',0);
-% However, if interp1 is executed on GPU (rfRaw is gpuArray), then interp1 contains a bug which results in CUDA error.
-% The solution is to keep the first argument of the interp1 function.
-% Solution found here: https://uk.mathworks.com/matlabcentral/answers/462545-interp1-gpuarray-bug
+recPre.iSamp0 = iSamp0;
+recPre.iSamp  = iSamp;
+recPre.modSig = modSig;
+recPre.rxApod = rxApod;
+recPre.iqEnable = proc.iqEnable;
 
 end
 

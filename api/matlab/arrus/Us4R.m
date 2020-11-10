@@ -196,7 +196,9 @@ classdef Us4R < handle
             obj.closeSequence;
             
             if obj.rec.enable
-                if any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
+                if strcmp(obj.seq.type,'lin')
+                    obj.rec.recPre = reconstructRfLinPart1(obj.sys,obj.seq,obj.rec);
+                elseif any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
                     obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
                 end
                 
@@ -218,8 +220,12 @@ classdef Us4R < handle
             %   operation. Should take one parameter, which will be feed with \
             %   the output of the executed op.
             
-            if obj.rec.enable && any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
-                obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
+            if obj.rec.enable
+                if strcmp(obj.seq.type,'lin')
+                    obj.rec.recPre = reconstructRfLinPart1(obj.sys,obj.seq,obj.rec);
+                elseif any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
+                    obj.rec.recPre = reconstructRfImgPart1(obj.sys,obj.seq,obj.rec);
+                end
             end
             
             obj.openSequence;
@@ -886,7 +892,7 @@ classdef Us4R < handle
 
             %% Reconstruction
             if strcmp(obj.seq.type,'lin')
-                rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
+                rfBfr = reconstructRfLinPart2(rfRaw,obj.rec.recPre);
             else
                 if isfield(obj.rec,'recPre')
                     rfBfr = reconstructRfImgPart2(rfRaw,obj.rec.recPre);
