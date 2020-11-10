@@ -14,24 +14,20 @@ function[rfBfr] = reconstructRfLinPart2(rfRaw,recPre)
 % recPre            - precalculated parameters needed for reconstruction:
 % recPre.iSamp0     - [sample] (zSize,xSize,nRx,nTx) samples to pick
 % recPre.iSamp      - [sample] (zSize,xSize,nRx,nTx) samples to pick
-% recPre.modSig     - [] (zSize,xSize,nRx,nTx) re-modulation signal
-% recPre.rxApod     - [] (zSize,xSize,nTx) receive weights
-% recPre.iqEnable
+% recPre.modNWghRx	- [] (zSize,xSize,nRx,nTx) re-modulation signal * receive weights
 
 %% Delay & Sum
-[nSamp,nRx,~] = size(recPre.rxApod);
+[nSamp,nRx,~] = size(recPre.modNWghRx);
 nTx     = numel(rfRaw)/nSamp/nRx;
 
+% calculate the rf samples (interpolated)
 rfRaw	= reshape(rfRaw,length(recPre.iSamp0),[]);
 rfBfr	= interp1(recPre.iSamp0(:),rfRaw,recPre.iSamp(:),'linear',0);	% WARNING -> see the comment at the end of the script
 rfBfr	= reshape(rfBfr,[nSamp,nRx,nTx]);
 
-% modulate if iq signal is used
-if recPre.iqEnable
-    rfBfr	= rfBfr.*recPre.modSig;
-end
-
-rfBfr = reshape(sum(rfBfr.*recPre.rxApod,2),[nSamp,nTx]);
+% calculate rf for each single line
+rfBfr	= rfBfr.*recPre.modNWghRx;
+rfBfr	= reshape(sum(rfBfr,2),[nSamp,nTx]);
 
 % WARNING
 % The first argument in interp1 function is optional, code could be: rfBfr	= interp1(rfRaw,iSamp,'linear',0);

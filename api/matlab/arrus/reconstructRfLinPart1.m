@@ -6,10 +6,8 @@ function[recPre] = reconstructRfLinPart1(sys,acq,proc)
 % recPre            - precalculated parameters needed for reconstruction:
 % recPre.iSamp0     - [sample] (zSize,xSize,nRx,nTx) samples to pick
 % recPre.iSamp      - [sample] (zSize,xSize,nRx,nTx) samples to pick
-% recPre.modSig     - [] (zSize,xSize,nRx,nTx) re-modulation signal
-% recPre.rxApod     - [] (zSize,xSize,nTx) receive weights
-% recPre.iqEnable
-%
+% recPre.modNWghRx	- [] (zSize,xSize,nRx,nTx) re-modulation signal * receive weights
+% 
 % Inputs:
 % 
 % sys                       - system-related parameters
@@ -107,13 +105,13 @@ iSamp	= iSamp + (0:(nRx*nTx0-1))*nSamp;                   % [samp] (nSamp,nRx*nT
 % modulate if iq signal is used
 if proc.iqEnable
     modSig	= exp(1i*2*pi*acq.txFreq*t);
+else
+    modSig	= 1;
 end
 
-recPre.iSamp0 = iSamp0;
-recPre.iSamp  = iSamp;
-recPre.modSig = modSig;
-recPre.rxApod = rxApod;
-recPre.iqEnable = proc.iqEnable;
+recPre.iSamp0	= iSamp0;
+recPre.iSamp	= iSamp;
+recPre.modNWghRx= modSig .* rxApod;
 
 end
 
