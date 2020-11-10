@@ -73,11 +73,15 @@ set(SOURCE_FILES
 	arrus/devices/us4r.py
 	arrus/devices/probe.py
 	arrus/devices/device.py
+	arrus/kernels/__init__.py
+	arrus/kernels/kernel.py
+	arrus/kernels/imaging.py
 	arrus/utils/__init__.py
     arrus/utils/imaging.py
     arrus/utils/parameters.py
 	arrus/utils/us4r.py
 	arrus/utils/interpolate.py
+	arrus/utils/core.py
     arrus/tests/tools.py
 )
 

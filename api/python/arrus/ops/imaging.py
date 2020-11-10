@@ -15,7 +15,10 @@ class LinSequence(arrus.ops.Operation):
     :param tx_focus: tx focal length [m]
     :param pulse: an excitation to perform
     :param pri: pulse repetition interval
-    :param downsampling_factor: downsampling factor (decimation) , integer factor for decreasing sampling frequency of the output signal
+    :param downsampling_factor: downsampling factor (decimation), integer factor for decreasing sampling frequency of the output signal
+    :param speed_of_sound: assumed speed of sound; can be None, in this case a medium in current context will be used to determine speed of sound
+    :param tgc_start: tgc starting gain [dB]
+    :param tgc_slope: tgc gain slope [dB/m]
     """
     tx_aperture_center_element: np.ndarray
     tx_aperture_size: float
@@ -26,3 +29,6 @@ class LinSequence(arrus.ops.Operation):
     pri: float
     downsampling_factor: int
     rx_sample_range: tuple
+    tgc_start: float
+    tgc_slope: float
+    speed_of_sound: float = None

@@ -4,7 +4,14 @@ import math
 
 
 @dataclasses.dataclass(frozen=True)
+class ProbeModelId:
+    manufacturer: str
+    name: str
+
+
+@dataclasses.dataclass(frozen=True)
 class ProbeModel:
+    model_id: ProbeModelId
     n_elements: int
     pitch: float
     curvature_radius: float

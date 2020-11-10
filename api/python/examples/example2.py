@@ -19,6 +19,12 @@ session = arrus.session.Session(
 
 rx_aperture = np.zeros((192,), dtype=np.bool)
 rx_aperture[:192] = True
+
+distance = np.arange(start=round(400/1),
+                     stop=4096,
+                     step=round(150/1))/65e6*1490
+tgc_curve = 14 + distance*2e2
+
 seq = TxRxSequence(
     ops=[
         TxRx(
@@ -70,7 +76,7 @@ seq = TxRxSequence(
             ),
             pri=1000e-6),
     ],
-    tgc_curve=np.array([])
+    tgc_curve=np.array(tgc_curve)
 )
 
 us4r = session.get_device("/Us4R:0")
@@ -78,15 +84,6 @@ us4r.set_voltage(30)
 buffer = us4r.upload(seq)
 
 print("Starting the device.")
-
-
-def display_data(data, frame):
-    fig, ax = plt.subplots()
-    fig.set_size_inches((7, 7))
-    ax.imshow(data[frame, :, :])
-    ax.set_aspect('auto')
-    fig.show()
-
 
 def display_data(data):
     fig, ax = plt.subplots()

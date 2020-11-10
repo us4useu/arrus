@@ -91,6 +91,12 @@ class TxRxSequence:
     ops: typing.List[TxRx]
     tgc_curve: np.ndarray
 
+    def get_n_samples(self):
+        """
+        Returns a set of number of samples that the Tx/Rx sequence defines.
+        """
+        return {op.rx.get_n_samples() for op in self.ops}
+
 
 
 

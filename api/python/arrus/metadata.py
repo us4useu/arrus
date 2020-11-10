@@ -3,6 +3,8 @@ import abc
 
 import arrus.devices.device
 import arrus.medium
+import arrus.ops
+import arrus.ops.us4r
 
 
 @dataclasses.dataclass(frozen=True)

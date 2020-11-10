@@ -12,16 +12,19 @@ def create_lin_sequence(context):
     :param context: KernelExecutionContext object
     """
     # device parameters
-    n_elem = context.device.probe.n_elements
-    pitch = context.device.probe.pitch
+    n_elem = context.device.probe.model.n_elements
+    pitch = context.device.probe.model.pitch
     # sequence parameters
     op = context.op
     n_elem_sub = op.tx_aperture_size
     focal_depth = op.tx_focus
     sample_range = op.rx_sample_range
+    start_sample, end_sample = sample_range
     pulse = op.pulse
     downsampling_factor = op.downsampling_factor
     pri = op.pri
+    fs = context.device.sampling_frequency/op.downsampling_factor
+
     tx_centers = op.tx_aperture_center_element
     tx_ap_size = op.tx_aperture_size
     rx_centers = op.rx_aperture_center_element
@@ -30,10 +33,21 @@ def create_lin_sequence(context):
         raise arrus.exceptions.IllegalArgumentError(
             "Tx and rx aperture center elements list should have the "
             "same length")
+    tgc_start = op.tgc_start
+    tgc_slope = op.tgc_slope
 
     # medium parameters
-    c = context.medium.speed_of_sound
+    c = op.speed_of_sound
+    if c is None:
+        c = context.medium.speed_of_sound
 
+    distance = np.arange(start=round(400/downsampling_factor),
+                         stop=end_sample,
+                         step=round(150/downsampling_factor))/fs*c
+
+    tgc_curve = tgc_start + distance*tgc_slope
+
+    # tx/rx aperture, tx delays
     if np.mod(n_elem_sub, 2) == 0:
         # Move focal position to the center of the floor(n_sub_elem/2) element
         focus = [-pitch/2, focal_depth]
@@ -76,7 +90,7 @@ def create_lin_sequence(context):
         rx = Rx(rx_aperture, sample_range, downsampling_factor, rx_padding)
         return TxRx(tx, rx, pri)
     txrxlist = [create_tx_rx(*c) for c in zip(tx_centers, rx_centers)]
-    return TxRxSequence(txrxlist, tgc_curve=np.ndarray([]))
+    return TxRxSequence(txrxlist, tgc_curve=tgc_curve)
 
 
 def enum_classic_delays(n_elem, pitch, c, focus):

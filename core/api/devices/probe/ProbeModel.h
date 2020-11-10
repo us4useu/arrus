@@ -23,7 +23,7 @@ public:
     ProbeModel(ProbeModelId modelId,
                const Tuple<ElementIdxType> &numberOfElements,
                const Tuple<double> &pitch,
-               // Float, beceause carrier frequency can be set only to specific values
+               // Float, because carrier frequency can be set only to specific values
                const Interval<float> &txFrequencyRange,
                const Interval<Voltage> &voltageRange,
                const double curvatureRadius)

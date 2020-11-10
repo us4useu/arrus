@@ -81,8 +81,6 @@ class Session(AbstractSession):
             return self._py_devices[path]
         # Then try finding a device using arrus core implementation.
         device_handle = self._session_handle.getDevice(path)
-        print(device_handle)
-        print(dir(device_handle))
         # Cast device to its type class.
         device_id = device_handle.getDeviceId()
         device_type = device_id.getDeviceType()
@@ -97,7 +95,6 @@ class Session(AbstractSession):
         if specific_device_cast is None:
             raise arrus.exceptions.DeviceNotFoundError(path)
         specific_device = specific_device_cast(device_handle)
-        print(specific_device)
         # TODO(pjarosik) key should be an id, not the whole path
         self._py_devices[path] = specific_device
         return specific_device
