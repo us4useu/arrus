@@ -196,6 +196,8 @@ classdef Us4R < handle
             obj.closeSequence;
             
             if obj.rec.enable
+                obj.rec.ddcPre = downConversionPre(obj.seq,obj.rec);
+                
                 if strcmp(obj.seq.type,'lin')
                     obj.rec.recPre = reconstructRfLinPart1(obj.sys,obj.seq,obj.rec);
                 elseif any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
@@ -221,6 +223,8 @@ classdef Us4R < handle
             %   the output of the executed op.
             
             if obj.rec.enable
+                obj.rec.ddcPre = downConversionPre(obj.seq,obj.rec);
+                
                 if strcmp(obj.seq.type,'lin')
                     obj.rec.recPre = reconstructRfLinPart1(obj.sys,obj.seq,obj.rec);
                 elseif any(strcmp(obj.seq.type,{'sta','pwi'})) && obj.checkMemory
@@ -885,7 +889,7 @@ classdef Us4R < handle
             end
 
             % Digital Down Conversion
-            rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
+            rfRaw = downConversion(rfRaw,obj.rec.ddcPre);
 
             % warning: both filtration and decimation introduce phase delay!
             % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
