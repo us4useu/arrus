@@ -32,6 +32,10 @@ public:
         STARTED, STOPPED
     };
 
+    enum Mode {
+        SYNC, ASYNC
+    };
+
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
@@ -110,6 +114,15 @@ public:
     >
     uploadSync(const ops::us4r::TxRxSequence &seq) override;
 
+    virtual std::pair<
+        std::shared_ptr<arrus::devices::FrameChannelMapping>,
+        std::shared_ptr<arrus::devices::HostBuffer>
+    >
+    uploadAsync(const ::arrus::ops::us4r::TxRxSequence &seq,
+                unsigned short rxBufferSize,
+                unsigned short hostBufferSize,
+                float frameRepetitionInterval) override;
+
     void start() override;
 
     void stop() override;
@@ -131,6 +144,7 @@ private:
     std::shared_ptr<Us4RHostBuffer> hostBuffer;
     std::mutex deviceStateMutex;
     State state{State::STOPPED};
+    std::optional<Mode> mode;
 
     UltrasoundDevice *getDefaultComponent();
 
@@ -146,7 +160,7 @@ private:
     std::tuple<
         FrameChannelMapping::Handle,
         std::vector<std::vector<DataTransfer>>,
-        uint16_t // ntriggers
+        float // total PRI
     >
     uploadSequence(
         const ops::us4r::TxRxSequence &seq,

@@ -198,11 +198,11 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     // section -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> outputTransfers;
 
-    int16_t maxTriggers = 0;
+    float maxTotalPri = 0;
 
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto [fcMapping, us4oemTransfers, nTriggers] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, nRepeats);
+        auto [fcMapping, us4oemTransfers, totalPri] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, nRepeats);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));
@@ -215,9 +215,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
             outputTransfers[i].push_back(us4oemTransfers[i][0]);
         }
 
-        // ntriggers
-        if(nTriggers > maxTriggers) {
-            maxTriggers = nTriggers;
+        if(totalPri > maxTotalPri) {
+            maxTotalPri = totalPri;
         }
     }
 
@@ -275,7 +274,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         }
         ++frameIdx;
     }
-    return {outFcBuilder.build(), outputTransfers, maxTriggers};
+    return {outFcBuilder.build(), outputTransfers, maxTotalPri};
 }
 
 Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() {

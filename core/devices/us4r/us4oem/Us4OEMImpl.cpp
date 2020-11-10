@@ -185,7 +185,7 @@ private:
 std::tuple<
     FrameChannelMapping::Handle,
     std::vector<std::vector<DataTransfer>>,
-    uint16_t
+    float
 >
 Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                             const ::arrus::ops::us4r::TGCCurve &tgc,
@@ -225,6 +225,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
 
     uint16 transferFiringStart = 0;
     size_t transferAddressStart = 0;
+    float totalPri = 0.0f;
 
     // Program Tx/rx sequence
     for(uint16 seqIdx = 0; seqIdx < nRepeats; ++seqIdx) {
@@ -352,10 +353,14 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             bool checkpoint = op.isCheckpoint();
             ius4oem->SetTrigger(static_cast<short>(op.getPri() * 1e6),
                                 checkpoint, firing);
+
+            if(seqIdx == 0) {
+                totalPri += op.getPri();
+            }
         }
     }
     ius4oem->EnableSequencer();
-    return {std::move(fcm), std::move(dataTransfers), (uint16_t)seq.size()};
+    return {std::move(fcm), std::move(dataTransfers), totalPri};
 }
 
 std::tuple<

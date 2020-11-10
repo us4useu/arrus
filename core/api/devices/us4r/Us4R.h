@@ -52,11 +52,21 @@ public:
 
     // TODO(pjarosik) return unique_ptr<FrameChannelMapping>
     // Currently shared_ptr is necessary for python swig wrappers only
+    // TODO rxBufferSize, hostBufferSize
     virtual std::pair<
         std::shared_ptr<arrus::devices::FrameChannelMapping>,
         std::shared_ptr<arrus::devices::HostBuffer>
     >
     uploadSync(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
+
+    virtual std::pair<
+        std::shared_ptr<arrus::devices::FrameChannelMapping>,
+        std::shared_ptr<arrus::devices::HostBuffer>
+    >
+    uploadAsync(const ::arrus::ops::us4r::TxRxSequence &seq,
+                unsigned short rxBufferSize,
+                unsigned short hostBufferSize,
+                float frameRepetitionInterval) = 0;
 
     virtual void setVoltage(Voltage voltage) = 0;
 

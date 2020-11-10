@@ -72,7 +72,11 @@ std::pair<
     FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
 >
-Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
+Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
+                      unsigned short rxBufferSize,
+                      unsigned short hostBufferSize,
+                      float frameRepetitionInterval) {
+
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
@@ -85,12 +89,41 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
             "The device is running, uploading sequence is forbidden.");
     }
 
+    // TODO prepare host buffer data (check the implementation)
+    // TODO ScheduleTransferRxBufferToHost callback: signal that the data is ready
+    // if the callback is set, us4oemimpl.cpp should perform the approach as presented
+    // in the
+    // TODO register overflow callback
+    auto[fcm, transfers, totalTime] = uploadSequence(
+        seq, BUFFER_SIZE, true,
+        std::optional<TxRxParameters::SequenceCallback>(),
+        std::optional<TxRxParameters::SequenceCallback>());
+}
+
+
+std::pair<
+    FrameChannelMapping::SharedHandle,
+    HostBuffer::SharedHandle
+>
+Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
+    ARRUS_REQUIRES_EQUAL(
+        getDefaultComponent(), probe.value().get(),
+        ::arrus::IllegalArgumentException(
+            "Currently TxRx sequence upload is available for system with probes only.")
+    );
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+
+    if(this->state == State::STARTED) {
+        throw ::arrus::IllegalStateException(
+            "The device is already started, uploading sequence is forbidden.");
+    }
+
     constexpr uint16_t BUFFER_SIZE = 2;
     auto nus4oems = (Ordinal) 1;// probeAdapter.value()->getNumberOfUs4OEMs();
     this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, BUFFER_SIZE);
     this->watchdog = std::make_unique<Watchdog>();
 
-    auto[fcm, transfers, nTriggers] = uploadSequence(
+    auto[fcm, transfers, totalTime] = uploadSequence(
         seq, BUFFER_SIZE, true,
         std::optional<TxRxParameters::SequenceCallback>(),
         std::optional<TxRxParameters::SequenceCallback>());
@@ -103,11 +136,8 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     // Rx DMA timeout - to avoid situation, where rx irq is missing.
     // 1.5 - sleep time multiplier
 
-    float totalPri = 0.0f;
-    for(auto &op : seq.getOps()) {
-        totalPri += op.getPri();
-    }
-
+    logger->log(LogSeverity::DEBUG,
+                ::arrus::format("Total PRI: {}", totalTime));
     auto timeout = (long long) (totalPri * 1e6 * 1.5);
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Host buffer worker timeout: {}", timeout));
@@ -118,6 +148,8 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     this->watchdog->setCallback([this]() {
         return this->rxDmaCallback();
     });
+
+    this->mode = SYNC;
     return std::make_pair(std::move(fcm), hostBuffer);
 }
 

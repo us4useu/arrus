@@ -20,7 +20,7 @@ public:
     std::tuple<
         FrameChannelMapping::Handle,
         std::vector<std::vector<DataTransfer>>,
-        uint16_t
+        float // total PRI
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ::arrus::ops::us4r::TGCCurve &tgcSamples,
                     uint16 nRepeats) = 0;
