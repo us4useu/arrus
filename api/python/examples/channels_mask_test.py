@@ -23,29 +23,35 @@ def check_channels_mask(rf, channel_mask, threshold):
     (The threshold 500 was ok on tests with mabprobe).
     """
     # skip first n samples
-    n_skipped = 5
-    rf = rf[:, n_skipped:, :]
+    n_skipped = 10
     n_frames, n_samples, n_channels = rf.shape
+    mid = int(np.ceil(n_channels/2)-1)
+    stripped_rf = rf[:, n_skipped:, :]
 
     # mid is a channel number from subaperture corresponding to tested channel
-    mid = int(np.ceil(n_channels/2)-1)
 
-    for channel in channel_mask:
+    for i, channel in enumerate(channel_mask):
         logging.log(INFO, f"Checking channel {channel}")
         nonmasked = False
 
-        # check if in acquired rf masked channel are zeros only
-        masked_channel = rf[channel, :, mid]
-        if np.count_nonzero(masked_channel):
-            logging.log(ERROR, f"Non-zero samples in channel #{channel}.")
+        # All samples (also the first 10 samples) should be smaller than the
+        # given threshold
+        # We try to detect a peak that occurs in the first of couple samples.
+        masked_line_max = np.max(rf[i, :, mid])
+        if masked_line_max >= threshold:
+            logging.log(ERROR,
+                        f"Too high signal ({masked_line_max}) detected in the "
+                        f"masked channel.")
             nonmasked = True
 
         # check if neighboring elements did not receive high signal
-        mx = np.amax(np.absolute(rf[channel, :, :]))
+        # (ommit first couple of samples which usually contains a large peak)
+        mx = np.amax(np.absolute(stripped_rf[i, :, :]))
         if mx >= threshold:
             logging.log(ERROR,
                         f"Too high signal ({mx}) detected in one of "
                         f"neighboring channels of channel #{channel}.")
+            nonmasked = True
 
         if nonmasked:
             logging.log(ERROR, f"The channel {channel} is not masked!")
@@ -68,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument("--threshold", dest="threshold",
                         help="A sample value threshold that determines if the "
                              "given channel is turned off.",
-                        required=False, type=float, default=500)
+                        required=False, type=float, default=550)
     parser.add_argument("--dump_file", dest="dump_file",
                         help="A file to which the examined data should "
                              "be saved.",
@@ -83,11 +89,11 @@ if __name__ == "__main__":
     dump_file = args.dump_file
 
     seq = LinSequence(
-        tx_aperture_center_element=np.arange(0, 192),
+        tx_aperture_center_element=np.array(expected_channels_off),
         tx_aperture_size=1,
         tx_focus=20e-3,
         pulse=Pulse(center_frequency=5e6, n_periods=1, inverse=False),
-        rx_aperture_center_element=np.arange(0, 192),
+        rx_aperture_center_element=np.array(expected_channels_off),
         rx_aperture_size=32,
         rx_sample_range=(0, 256),
         pri=2000e-6,
