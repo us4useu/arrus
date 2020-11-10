@@ -72,10 +72,10 @@ std::pair<
     FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
 >
-Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
-                      unsigned short rxBufferSize,
-                      unsigned short hostBufferSize,
-                      float frameRepetitionInterval) {
+Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence&,
+                      unsigned short,
+                      unsigned short,
+                      float) {
 
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
@@ -88,16 +88,17 @@ Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
         throw ::arrus::IllegalStateException(
             "The device is running, uploading sequence is forbidden.");
     }
+    return {nullptr, nullptr};
 
     // TODO prepare host buffer data (check the implementation)
     // TODO ScheduleTransferRxBufferToHost callback: signal that the data is ready
     // if the callback is set, us4oemimpl.cpp should perform the approach as presented
     // in the
     // TODO register overflow callback
-    auto[fcm, transfers, totalTime] = uploadSequence(
-        seq, BUFFER_SIZE, true,
-        std::optional<TxRxParameters::SequenceCallback>(),
-        std::optional<TxRxParameters::SequenceCallback>());
+//    auto[fcm, transfers, totalTime] = uploadSequence(
+//        seq, BUFFER_SIZE, true,
+//        std::optional<TxRxParameters::SequenceCallback>(),
+//        std::optional<TxRxParameters::SequenceCallback>());
 }
 
 
@@ -138,7 +139,7 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
 
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Total PRI: {}", totalTime));
-    auto timeout = (long long) (totalPri * 1e6 * 1.5);
+    auto timeout = (long long) (totalTime * 1e6 * 1.5);
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Host buffer worker timeout: {}", timeout));
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
@@ -222,7 +223,7 @@ Us4RImpl::~Us4RImpl() {
 std::tuple<
     FrameChannelMapping::Handle,
     std::vector<std::vector<DataTransfer>>,
-    uint16_t // ntriggers
+    float // ntriggers
 >
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
                          uint16_t nRepeats,
