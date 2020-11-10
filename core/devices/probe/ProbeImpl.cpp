@@ -48,7 +48,7 @@ private:
 std::tuple<
     FrameChannelMapping::Handle,
     std::vector<std::vector<DataTransfer>>,
-    uint16_t
+    float
 >
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                            const ops::us4r::TGCCurve &tgcSamples,
