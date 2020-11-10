@@ -242,7 +242,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             }
             auto[startSample, endSample] = op.getRxSampleRange().asPair();
             size_t nSamples = endSample - startSample;
-//            float rxTime = getRxTime(nSamples);
+            float rxTime = getRxTime(nSamples);
             size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
             auto rxMapId = rxMappings.find(opIdx)->second;
 
@@ -285,7 +285,7 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
             ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firing);
             ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), firing);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firing);
-            ius4oem->SetRxTime(160e-6f, firing);
+            ius4oem->SetRxTime(rxTime, firing);
             ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, firing);
             setTGC(tgc, firing);
 
@@ -300,17 +300,25 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                     op.getCallback().value()(this->getDeviceId().getOrdinal(), seqIdx);
                 };
             }
+            if(op.isRxNOP() && !this->isMaster()) {
+                // TODO reduce the size of data acquired for master  the rx nop to small number of samples
+                // (e.g. 64)
+                // TODO add optional configuration "is metadata"
+                ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
+                                         SAMPLE_DELAY + startSample,
+                                         op.getRxDecimationFactor() - 1,
+                                         rxMapId, callback.value_or(nullptr));
+            }
+            else {
+                // Also, allows rx nops for master module.
+                // Master module gathers frame metadata, so we cannot miss any of them
+                ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
+                                         SAMPLE_DELAY + startSample,
+                                         op.getRxDecimationFactor() - 1,
+                                         rxMapId, callback.value_or(nullptr));
+                outputAddress += nBytes;
+            }
 
-            // TODO Avoid transferring rx nop data
-            // TODO(pjarosik): transfer a smaller size frame
-            // TODO(pjarosik): add an option to omit empty frames for master module (bool isMetadata?)
-            // Also, allows rx nops for master module.
-            // Master module gathers frame metadata, so we cannot miss any of them
-            ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
-                                     SAMPLE_DELAY + startSample,
-                                     op.getRxDecimationFactor() - 1,
-                                     rxMapId, callback.value_or(nullptr));
-            outputAddress += nBytes;
             if(checkpoint) {
                 // The size of the chunk.
                 auto size = outputAddress - transferAddressStart;
@@ -320,8 +328,9 @@ Us4OEMImpl::setTxRxSequence(const TxRxParamsSequence &seq,
                 std::vector<DataTransfer> dataTransferSection = {
                     DataTransfer(
                         [=](uint8_t *dstAddress) {
-                            // TODO split th
-                            this->transferData(dstAddress, size, srcAddress);
+                            if(size > 0) {
+                                this->transferData(dstAddress, size, srcAddress);
+                            }
                         },
                         size, srcAddress)
                 };
@@ -359,8 +368,10 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     std::unordered_map<std::vector<uint8>, uint16, ContainerHash<std::vector<uint8>>> rxMappings;
 
     // FC mapping
-    // TODO (pjarosik) reduce the number of frames by the number of rxnops
-    auto numberOfOutputFrames = ARRUS_SAFE_CAST(seq.size(), ChannelIdx);
+    auto numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
+    if(this->isMaster()) {
+        numberOfOutputFrames = ARRUS_SAFE_CAST(seq.size(), ChannelIdx);
+    }
     FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
 
     // Rx apertures after taking into account possible conflicts in Rx channel
@@ -381,8 +392,6 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
         uint8 channel = 0;
         uint8 onChannel = 0;
-
-
 
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
@@ -408,14 +417,6 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             }
             ++channel;
         }
-
-        // Fill the mapping by setting appropriate physical frame number.
-        for(auto ch=(ChannelIdx)mapping.size(); ch < N_RX_CHANNELS; ++ch) {
-            fcmBuilder.setChannelMapping(opId, onChannel,
-                                         opId,
-                                         (int8) (mapping.size() - 1));
-        }
-
         outputRxApertures.push_back(outputRxAperture);
 
         auto mappingIt = rxMappings.find(mapping);
