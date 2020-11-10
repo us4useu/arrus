@@ -370,6 +370,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     // FC mapping
     auto numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
     if(this->isMaster()) {
+        // We transfer all master module frames due to possible metadata stored in the frame.
         numberOfOutputFrames = ARRUS_SAFE_CAST(seq.size(), ChannelIdx);
     }
     FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
@@ -381,6 +382,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     uint16 rxMapId = 0;
     uint16 opId = 0;
     uint16 noRxNopId = 0;
+
     for(const auto &op: seq) {
         // Considering rx nops: rx channel mapping will be equal [0, 1,.. 31].
         // uint8 is required by us4r API.
@@ -393,8 +395,10 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         uint8 channel = 0;
         uint8 onChannel = 0;
 
+        bool isRxNop = true;
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
+                isRxNop = false;
                 ARRUS_REQUIRES_TRUE_E(
                     onChannel < N_RX_CHANNELS,
                     ArrusException("Up to 32 active rx channels can be set."));
@@ -411,7 +415,12 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 }
                 mapping.push_back(rxChannel);
                 channelsUsed.insert(rxChannel);
-                fcmBuilder.setChannelMapping(opId, onChannel, opId, (int8) (mapping.size() - 1));
+
+                auto frameNumber = noRxNopId;
+                if(this->isMaster()) {
+                    frameNumber = opId;
+                }
+                fcmBuilder.setChannelMapping(frameNumber, onChannel, frameNumber, (int8) (mapping.size() - 1));
 
                 ++onChannel;
             }
@@ -448,7 +457,9 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             result.emplace(opId, mappingIt->second);
         }
         ++opId;
-        ++noRxNopId;
+        if(!isRxNop) {
+            ++noRxNopId;
+        }
     }
     return {result, outputRxApertures, fcmBuilder.build()};
 }
