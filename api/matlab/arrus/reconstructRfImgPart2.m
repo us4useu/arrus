@@ -1,4 +1,4 @@
-% Reconstructs rf image from raw rf and for rx aperture covering all the probe elements
+% Reconstructs rf image from raw rf data using precalculated parameters
 function[rfBfr,rfTx] = reconstructRfImgPart2(rfRaw,recPre)
 % Image reconstruction: delay & sum algorithm.
 % 
@@ -10,11 +10,9 @@ function[rfBfr,rfTx] = reconstructRfImgPart2(rfRaw,recPre)
 % rfRaw             - (nSamp,nRx,nTx) raw rf data
 % 
 % recPre            - precalculated parameters needed for reconstruction:
-% recPre.iqEnable	- [logical] is the rf signal iq demodulated?
 % recPre.iSamp      - [sample] (zSize,xSize,nRx,nTx) samples to pick
-% recPre.modSig     - [] (zSize,xSize,nRx,nTx) re-modulation signal
-% recPre.wghRx      - [] (zSize,xSize,nRx) transmit weights
-% recPre.wghTx      - [] (zSize,xSize,nTx) receive weights
+% recPre.modNWghRx	- [] (zSize,xSize,nRx,nTx) re-modulation signal * receive weights
+% recPre.wghTx      - [] (zSize,xSize,nTx) transmit weights
 
 %% Delay & Sum
 % calculate the rf samples (interpolated)
