@@ -588,8 +588,9 @@ void Us4OEMImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std:
     while(hostElement < hostBufferSize) {
         auto dstAddress = outputBuffer->getAddress(hostElement, ordinal);
         auto srcAddress = us4oemTransfers[rxElement].getSrcAddress();
-        this->ius4oem->PrepareHostBuffer(
-            reinterpret_cast<unsigned char*>(dstAddress), elementSize, srcAddress);
+        logger->log(LogSeverity::DEBUG, ::arrus::format("Preparing host buffer to {} from {}, size {}",
+                                                        (size_t)dstAddress, (size_t)srcAddress, elementSize));
+        this->ius4oem->PrepareHostBuffer(dstAddress, elementSize, srcAddress);
         ++hostElement;
         rxElement = (rxElement+1) % rxBufferSize;
     }
@@ -603,10 +604,9 @@ void Us4OEMImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std:
         auto srcAddress = transfer.getSrcAddress();
         auto endFiring = transfer.getFiring();
 
-        logger->log(LogSeverity::DEBUG, ::arrus::format("Preparing transfer {} to {0:#x} from {0:#x}", dstAddress));
+
         this->ius4oem->PrepareTransferRXBufferToHost(
-            transferIdx,
-            reinterpret_cast<unsigned char*>(dstAddress), elementSize, srcAddress);
+            transferIdx, dstAddress, elementSize, srcAddress);
 
         this->ius4oem->ScheduleTransferRXBufferToHost(
             endFiring, transferIdx,
@@ -616,16 +616,26 @@ void Us4OEMImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std:
                     element = transferIdx] () mutable {
                 auto dstAddress = outputBuffer->getAddress((uint16)element, ordinal);
                 this->ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                logger->log(LogSeverity::DEBUG, ::arrus::format("Rx Released: {}, {}", startFiring, endFiring));
 
                 // Prepare transfer for the next iteration.
                 this->ius4oem->PrepareTransferRXBufferToHost(
-                    transferIdx,
-                    reinterpret_cast<unsigned char*>(dstAddress), elementSize, srcAddress);
+                    transferIdx, dstAddress, elementSize, srcAddress);
                 this->ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
-                outputBuffer->signal(ordinal, element, 0); // Also a callback function can be used here.
-                outputBuffer->waitForRelease(ordinal, element, 0);
+                bool cont = outputBuffer->signal(ordinal, element, 0); // Also a callback function can be used here.
+                if(!cont) {
+                    logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
+                    return;
+                }
+                cont = outputBuffer->waitForRelease(ordinal, element, 0);
+
+                if(!cont) {
+                    logger->log(LogSeverity::DEBUG, "Output buffer shut down");
+                    return;
+                }
                 this->ius4oem->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                logger->log(LogSeverity::DEBUG, ::arrus::format("Host Released: {}, {}", startFiring, endFiring));
                 element = (element + rxBufferSize) % hostBufferSize;
             }
         );

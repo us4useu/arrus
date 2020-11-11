@@ -158,7 +158,11 @@ void Us4RImpl::stopAsync() {
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
-    this->asyncBuffer.reset();
+    if(this->asyncBuffer != nullptr) {
+        this->asyncBuffer->shutdown();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        this->asyncBuffer.reset();
+    }
     this->state = State::STOPPED;
 }
 

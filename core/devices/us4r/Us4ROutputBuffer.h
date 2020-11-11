@@ -66,7 +66,9 @@ public:
             ++us4oemOrdinal;
         }
         elementSize = us4oemOffset;
-        dataBuffer = static_cast<int16 *>(operator new[](elementSize * nElements, std::align_val_t(DATA_ALIGNMENT)));
+        dataBuffer = reinterpret_cast<int16*>(operator new[](elementSize * nElements, std::align_val_t(DATA_ALIGNMENT)));
+        getDefaultLogger()->log(LogSeverity::DEBUG, ::arrus::format("Allocated {} ({}, {}) bytes of memory, address: {}",
+                                                                    elementSize*nElements, elementSize, nElements, (size_t)dataBuffer));
     }
 
     ~Us4ROutputBuffer() override {
@@ -78,8 +80,8 @@ public:
         return nElements;
     }
 
-    int16 *getAddress(uint16 elementNumber, Ordinal us4oem) {
-        return dataBuffer + elementNumber * elementSize + us4oemOffsets[us4oem];
+    uint8 *getAddress(uint16 elementNumber, Ordinal us4oem) {
+        return reinterpret_cast<uint8*>(dataBuffer) + elementNumber * elementSize + us4oemOffsets[us4oem];
     }
 
     /**
@@ -135,8 +137,12 @@ public:
     /**
      * This function just waits till the given element will be cleared by a consumer.
      */
-    void waitForRelease(Ordinal n, int firing, long long timeout) {
+    bool waitForRelease(Ordinal n, int firing, long long timeout) {
         std::unique_lock<std::mutex> guard(mutex);
+        if(this->state != State::RUNNING) {
+            return false;
+        }
+
         auto &accumulator = accumulators[firing];
 
         while(accumulator != 0) {
@@ -147,7 +153,11 @@ public:
             ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
                 isAccuClear[firing], guard, timeout,
                 ::arrus::format("Us4OEM:{} Timeout while waiting for queue element clearance.", n))
+            if(this->state != State::RUNNING) {
+                return false;
+            }
         }
+        return true;
     }
 
     /**

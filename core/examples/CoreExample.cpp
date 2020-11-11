@@ -43,7 +43,7 @@ int main() noexcept {
         TxRxSequence seq(txrxs, {});
         us4r->setVoltage(30);
 
-        auto[fcm, buffer] = us4r->uploadAsync(seq, 2, 2, 0.0);
+        auto[fcm, buffer] = us4r->uploadAsync(seq, 5, 5, 0.0);
 
         us4r->start();
         for(int i = 0; i < 100; ++i) {
