@@ -59,6 +59,14 @@ public:
     >
     uploadSync(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
 
+    /**
+     *
+     * @param seq
+     * @param rxBufferSize
+     * @param hostBufferSize
+     * @param frameRepetitionInterval 0 means to not extend sequence interval time
+     * @return
+     */
     virtual std::pair<
         std::shared_ptr<arrus::devices::FrameChannelMapping>,
         std::shared_ptr<arrus::devices::HostBuffer>

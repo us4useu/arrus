@@ -67,8 +67,10 @@ std::tuple<
     std::vector<std::vector<DataTransfer>>,
     float
 >
-ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const TGCCurve &tgcSamples,
-                                  uint16 nRepeats) {
+ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                                  const TGCCurve &tgcSamples,
+                                  uint16 nRepeats,
+                                  std::optional<float> frameRepetitionInterval) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
         ::arrus::format("{} tx rx sequence", getDeviceId().toString()),
@@ -202,7 +204,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
 
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto [fcMapping, us4oemTransfers, totalPri] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, nRepeats);
+        auto [fcMapping, us4oemTransfers, totalPri] = us4oem->setTxRxSequence(
+            splittedOps[us4oemOrdinal], tgcSamples, nRepeats,
+            frameRepetitionInterval);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));
@@ -291,6 +295,23 @@ void ProbeAdapterImpl::stop() {
 
 void ProbeAdapterImpl::syncTrigger() {
     this->us4oems[0]->syncTrigger();
+}
+
+void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
+                                          const std::vector<std::vector<DataTransfer>> &transfers) {
+    Ordinal us4oemOrdinal = 0;
+    for(auto &us4oem: us4oems) {
+        std::vector<std::vector<DataTransfer>> us4oemTransfers(transfers.size());
+
+        size_t transferIdx = 0;
+        for(auto &transfer : transfers) {
+            us4oemTransfers[transferIdx].push_back(transfer[us4oemOrdinal]);
+            ++transferIdx;
+        }
+
+        us4oem->registerOutputBuffer(buffer, us4oemTransfers);
+        ++us4oemOrdinal;
+    }
 }
 
 }

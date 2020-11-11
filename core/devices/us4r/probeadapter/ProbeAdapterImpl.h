@@ -37,7 +37,7 @@ public:
         float // total PRI
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    uint16 nRepeats = 1) override;
+                    uint16 nRepeats = 1, std::optional<float> frameRepetitionInterval = std::nullopt) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 
@@ -46,6 +46,9 @@ public:
     void stop() override;
 
     void syncTrigger() override;
+
+    void registerOutputBuffer(Us4ROutputBuffer *buffer,
+                            const std::vector<std::vector<DataTransfer>> &transfers) override;
 
 private:
     Logger::Handle logger;

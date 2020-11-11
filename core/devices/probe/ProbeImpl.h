@@ -32,15 +32,10 @@ public:
      * @param seq
      * @param tgcSamples
      */
-    std::tuple<
-        FrameChannelMapping::Handle,
-        std::vector<std::vector<DataTransfer>>,
-        float // total PRI
-    >
-    setTxRxSequence(
-        const std::vector<TxRxParameters> &seq,
-        const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-        uint16 nRepeats) override;
+    std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
+    setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 nRepeats,
+                    std::optional<float> frameRepetitionInterval) override;
 
     Interval<Voltage> getAcceptedVoltageRange() override;
 
@@ -49,6 +44,8 @@ public:
     void stop() override;
 
     void syncTrigger() override;
+
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const std::vector<std::vector<DataTransfer>> &transfers) override;
 
 private:
     Logger::Handle logger;

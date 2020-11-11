@@ -46,11 +46,13 @@ public:
     /**
      * @return a pointer when the access was possible, nullptr otherwise (e.g. queue shutdown).
      */
-    int16 *tail() override {
+    int16 *tail(long long timeout) override {
         {
             std::unique_lock<std::mutex> guard(mutex);
             while(currentSize == 0) {
-                canPop.wait(guard);
+                ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
+                    canPop, guard, timeout,
+                    "Timeout while waiting for new data queue.")
                 if(this->isShutdown) {
                     return nullptr;
                 }
@@ -59,20 +61,21 @@ public:
         }
     }
 
-    bool releaseTail() override {
+    void releaseTail(long long timeout) override {
         {
             std::unique_lock<std::mutex> guard(mutex);
             while(currentSize == 0) {
-                canPop.wait(guard);
+                ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
+                    canPop, guard, timeout,
+                    "Timeout while waiting for new data queue.")
                 if(this->isShutdown) {
-                    return false;
+                    throw IllegalStateException("The access to us4r buffer is closed.");
                 }
             }
             tailIdx = (tailIdx + 1) % nElements;
             --currentSize;
         }
         canPush.notify_one();
-        return true;
     }
 
     void shutdown() {

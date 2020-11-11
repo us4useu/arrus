@@ -8,9 +8,11 @@ namespace arrus::devices {
 class DataTransfer {
 public:
     DataTransfer(std::function<void(uint8_t *)> transferFunc,
-                 size_t size, size_t srcAddress)
+                 size_t size, size_t srcAddress,
+                 uint16 firing)
         : transferFunc(std::move(transferFunc)),
-          size(size), srcAddress(srcAddress) {}
+          size(size), srcAddress(srcAddress),
+          firing(firing) {}
 
     [[nodiscard]] const std::function<void(uint8_t *)> &getTransferFunc() const {
         return transferFunc;
@@ -24,10 +26,15 @@ public:
         return srcAddress;
     }
 
+    [[nodiscard]] uint16 getFiring() const {
+        return firing;
+    }
+
 private:
     std::function<void(uint8_t *)> transferFunc;
     size_t size;
     size_t srcAddress;
+    uint16 firing;
 };
 
 }

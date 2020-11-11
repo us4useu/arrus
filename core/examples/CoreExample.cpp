@@ -2,6 +2,7 @@
 #include <thread>
 #include <fstream>
 #include <cstdio>
+#include <string>
 
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
@@ -27,10 +28,7 @@ int main() noexcept {
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
 
         ::arrus::BitMask txAperture(192, true);
-        ::arrus::BitMask rxAperture(192, false);
-        for(int i = 0; i < 128; ++i) {
-            rxAperture[i] = true;
-        }
+        ::arrus::BitMask rxAperture(192, true);
         std::vector<float> delays(192, 0.0f);
 
         Pulse pulse(4e6, 2, false);
@@ -38,28 +36,23 @@ int main() noexcept {
 
         std::vector<TxRx> txrxs;
 
-//        for(int i = 0; i < 11; ++i) {
-            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 1000e-6);
-//        }
+        for(int i = 0; i < 11; ++i) {
+            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 2000e-6);
+        }
 
         TxRxSequence seq(txrxs, {});
         us4r->setVoltage(30);
 
-        auto[fcm, buffer] = us4r->uploadSync(seq);
+        auto[fcm, buffer] = us4r->uploadAsync(seq, 2, 2, 0.0);
+
         us4r->start();
-
-//        for(int i = 0; i < 100; ++i) {
-            int16_t* data = buffer->tail();
-            std::fstream file;
-            std::remove(R"(C:\Users\pjarosik\test.bin)");
-            file.open(R"(C:\Users\pjarosik\test.bin)", std::ios::app | std::ios::binary);
-
-            // sample, channels, events, byte size, n us4oems
-            file.write((char*)data, 4096*32*2*2*2);
+        for(int i = 0; i < 100; ++i) {
+            std::string msg = "i: " + std::to_string(i) + "\n";
+            std::cout << msg;
+            int16_t* data = buffer->tail(0);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            buffer->releaseTail();
-//        }
-
+            buffer->releaseTail(0);
+        }
         us4r->stop();
 
     } catch(const std::exception &e) {

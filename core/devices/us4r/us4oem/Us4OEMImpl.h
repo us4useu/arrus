@@ -92,14 +92,10 @@ public:
 
     void syncTrigger() override;
 
-    std::tuple<
-        FrameChannelMapping::Handle,
-        std::vector<std::vector<DataTransfer>>,
-        float
-    >
+    std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    uint16 nRepeats) override;
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 nRepeats,
+                    std::optional<float> anOptional) override;
 
     double getSamplingFrequency() override;
 
@@ -112,6 +108,8 @@ public:
     void start() override;
 
     void stop() override;
+
+    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<std::vector<DataTransfer>> &transfers) override;
 
 private:
     using Us4rBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;

@@ -21,6 +21,7 @@
 #include "arrus/core/devices/us4r/HostBufferWorker.h"
 #include "arrus/core/devices/us4r/Us4RHostBuffer.h"
 #include "arrus/core/devices/us4r/Watchdog.h"
+#include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
 
 namespace arrus::devices {
 
@@ -114,7 +115,7 @@ public:
     >
     uploadSync(const ops::us4r::TxRxSequence &seq) override;
 
-    virtual std::pair<
+    std::pair<
         std::shared_ptr<arrus::devices::FrameChannelMapping>,
         std::shared_ptr<arrus::devices::HostBuffer>
     >
@@ -142,6 +143,7 @@ private:
     std::unique_ptr<Watchdog> watchdog;
     // will be used outside
     std::shared_ptr<Us4RHostBuffer> hostBuffer;
+    std::shared_ptr<Us4ROutputBuffer> asyncBuffer;
     std::mutex deviceStateMutex;
     State state{State::STOPPED};
     std::optional<Mode> mode;
@@ -166,8 +168,13 @@ private:
         const ops::us4r::TxRxSequence &seq,
         uint16_t nRepeats,
         bool checkpoint,
-        std::optional<TxRxParameters::SequenceCallback> rxCallback,
-        std::optional<TxRxParameters::SequenceCallback> pcidmaCallback);
+        std::optional<float> frameRepetitionInterval);
+
+    void startAsync();
+    void stopAsync();
+
+    void startSync();
+    void stopSync();
 };
 
 }

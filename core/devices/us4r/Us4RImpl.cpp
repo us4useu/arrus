@@ -24,7 +24,6 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     } else {
         return us4oems[0].get();
     }
-
 }
 
 Us4RImpl::Us4RImpl(const DeviceId &id,
@@ -68,40 +67,103 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
+void Us4RImpl::start() {
+    if(this->mode == ASYNC) {
+        this->startAsync();
+    }
+    else {
+        this->startSync();
+    }
+}
+
+void Us4RImpl::stop() {
+    if(this->mode == ASYNC) {
+        this->stopAsync();
+    }
+    else {
+        this->stopSync();
+    }
+}
+
+// ------------------------------------------ Async version (i.e. using streaming firmware features).
 std::pair<
     FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
 >
-Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence&,
-                      unsigned short,
-                      unsigned short,
-                      float) {
+Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
+                      unsigned short rxBufferSize,
+                      unsigned short hostBufferSize,
+                      float frameRepetitionInterval) {
 
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
-            "Currently TxRx sequence upload is available for system with probes only.")
-    );
+            "Currently TxRx sequence upload is available for system with probes only."));
+    if((hostBufferSize % rxBufferSize) != 0) {
+        throw ::arrus::IllegalArgumentException(
+            "The size of the host buffer must be a multiple of the size "
+            "of the rx buffer.");
+    }
     std::unique_lock<std::mutex> guard(deviceStateMutex);
 
     if(this->state == State::STARTED) {
         throw ::arrus::IllegalStateException(
             "The device is running, uploading sequence is forbidden.");
     }
-    return {nullptr, nullptr};
 
-    // TODO prepare host buffer data (check the implementation)
-    // TODO ScheduleTransferRxBufferToHost callback: signal that the data is ready
-    // if the callback is set, us4oemimpl.cpp should perform the approach as presented
-    // in the
-    // TODO register overflow callback
-//    auto[fcm, transfers, totalTime] = uploadSequence(
-//        seq, BUFFER_SIZE, true,
-//        std::optional<TxRxParameters::SequenceCallback>(),
-//        std::optional<TxRxParameters::SequenceCallback>());
+    std::optional<float> fri = std::nullopt;
+    if(frameRepetitionInterval != 0.0) {
+        fri = frameRepetitionInterval;
+    }
+    auto[fcm, transfers, totalTime] = uploadSequence(
+        seq, rxBufferSize, false, fri);
+
+    ARRUS_REQUIRES_TRUE(!transfers.empty(),
+                        "The transfers list cannot be empty");
+    auto &elementTransfers = transfers[0];
+    std::vector<size_t> us4oemSizes(elementTransfers.size(), 0);
+    std::transform(
+        std::begin(elementTransfers), std::end(elementTransfers),
+        std::begin(us4oemSizes),
+        [](DataTransfer& transfer) {
+            return transfer.getSize();
+        });
+    this->asyncBuffer = std::make_shared<Us4ROutputBuffer>(us4oemSizes, hostBufferSize);
+    getDefaultComponent()->registerOutputBuffer(this->asyncBuffer.get(), transfers);
+    this->mode = ASYNC;
+    return {std::move(fcm), this->asyncBuffer};
+}
+
+void Us4RImpl::startAsync() {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    logger->log(LogSeverity::INFO, "Starting us4r.");
+    if(this->asyncBuffer == nullptr) {
+        throw ::arrus::IllegalArgumentException("Call upload function first.");
+    }
+    if(this->state == State::STARTED) {
+        throw ::arrus::IllegalStateException("Device is already running.");
+    }
+    this->getDefaultComponent()->start();
+    this->state = State::STARTED;
+}
+
+void Us4RImpl::stopAsync() {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if(this->state != State::STARTED) {
+        logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
+    }
+    else {
+        logger->log(LogSeverity::DEBUG, "Stopping system.");
+        this->getDefaultComponent()->stop();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        logger->log(LogSeverity::DEBUG, "Stopped.");
+    }
+    this->asyncBuffer.reset();
+    this->state = State::STOPPED;
 }
 
 
+// ------------------------------------------ Sync version.
 std::pair<
     FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
@@ -125,23 +187,21 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     this->watchdog = std::make_unique<Watchdog>();
 
     auto[fcm, transfers, totalTime] = uploadSequence(
-        seq, BUFFER_SIZE, true,
-        std::optional<TxRxParameters::SequenceCallback>(),
-        std::optional<TxRxParameters::SequenceCallback>());
+        seq, BUFFER_SIZE, true, std::nullopt);
 
     // transfers[i][j] = transfer to perform
     // where i is the section (buffer element), j is the us4oem (a part of the buffer element)
     // Currently we assume that each buffer element has the same size.
     size_t bufferElementSize = countBufferElementSize(transfers);
-    this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, BUFFER_SIZE);
+    this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize,
+                                                        BUFFER_SIZE);
     // Rx DMA timeout - to avoid situation, where rx irq is missing.
     // 1.5 - sleep time multiplier
 
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Total PRI: {}", totalTime));
     auto timeout = (long long) (totalTime * 1e6 * 1.5);
-    logger->log(LogSeverity::DEBUG,
-                ::arrus::format("Host buffer worker timeout: {}", timeout));
+
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
         this->currentRxBuffer, this->hostBuffer, transfers);
 
@@ -154,7 +214,8 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
     return std::make_pair(std::move(fcm), hostBuffer);
 }
 
-void Us4RImpl::start() {
+
+void Us4RImpl::startSync() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     logger->log(LogSeverity::DEBUG, "Starting us4r.");
     if(this->hostBufferWorker == nullptr) {
@@ -173,7 +234,7 @@ void Us4RImpl::start() {
 /**
  * When the device is stopped, the buffer should be destroyed.
  */
-void Us4RImpl::stop() {
+void Us4RImpl::stopSync() {
     logger->log(LogSeverity::DEBUG, "Stopping us4r.");
     this->stopDevice();
 }
@@ -216,7 +277,12 @@ void Us4RImpl::stopDevice(bool stopGently) {
 Us4RImpl::~Us4RImpl() {
     getDefaultLogger()->log(LogSeverity::DEBUG,
                             "Closing connection with Us4R.");
-    this->stopDevice();
+    if(this->mode == ASYNC) {
+        this->stopAsync();
+    }
+    else {
+        this->stopSync();
+    }
     getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
 }
 
@@ -228,10 +294,10 @@ std::tuple<
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
                          uint16_t nRepeats,
                          bool checkpoint,
-                         std::optional<TxRxParameters::SequenceCallback> rxCallback,
-                         std::optional<TxRxParameters::SequenceCallback> pcidmaCallback) {
+                         std::optional<float> frameRepetitionInterval) {
     std::vector<TxRxParameters> actualSeq;
     auto nOps = seq.getOps().size();
+    // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
     for(const auto &txrx : seq.getOps()) {
         auto &tx = txrx.getTx();
@@ -255,13 +321,15 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
                 txrx.getPri(),
                 padding,
                 (opIdx == nOps - 1 && checkpoint),
-                (opIdx == nOps - 1) ? rxCallback : std::nullopt,
-                (opIdx == nOps - 1) ? pcidmaCallback : std::nullopt
+                std::nullopt,
+                std::nullopt
             )
         );
         ++opIdx;
     }
-    return getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve(), nRepeats);
+    return getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve(),
+                                                  nRepeats,
+                                                  frameRepetitionInterval);
 
 }
 

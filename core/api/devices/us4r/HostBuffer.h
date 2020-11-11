@@ -12,13 +12,13 @@ public:
 
     virtual ~HostBuffer() = default;
 
-    virtual int16* tail() = 0;
+    virtual int16* tail(long long timeout) = 0;
 
-    virtual size_t tailAddress() {
-        return (size_t)tail();
+    virtual size_t tailAddress(long long timeout) {
+        return (size_t)tail(timeout);
     }
 
-    virtual bool releaseTail() = 0;
+    virtual void releaseTail(long long timeout) = 0;
 };
 
 }

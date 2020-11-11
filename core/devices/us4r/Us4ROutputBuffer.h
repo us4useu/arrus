@@ -6,11 +6,12 @@
 #include <gsl/span>
 #include <chrono>
 
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+#include "arrus/core/api/devices/us4r/HostBuffer.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
+#include "arrus/core/common/logging.h"
 
 
 namespace arrus::devices {
@@ -24,8 +25,13 @@ namespace arrus::devices {
  *
  * An example of the element is a single RF frame required to reconstruct
  * a single b-mode image.
+ *
+ * The state of each buffer element is determined by the field `accumulators:
+ * - accumulators[element] == 0 means that the buffer element was processed and is ready for new data from the producer.
+ * - accumulators[element] > 0 && accumulators[element] != filledAccumulator means that the buffer element is partially confirmed by some of us4oems
+ * - accumulators[element] == filledAccumulator means that the buffer element is ready to be processed by a consumer.
  */
-class Us4ROutputBuffer {
+class Us4ROutputBuffer: public HostBuffer {
 public:
     static constexpr size_t DATA_ALIGNMENT = 4096;
     using AccumulatorType = uint16;
@@ -37,8 +43,8 @@ public:
      *  us4oem output. That is, the i-th element describes how many samples will
      *  be written by i-th us4oem.
      */
-    Us4ROutputBuffer(gsl::span<size_t> us4oemOutputSizes, uint16 nElements)
-        : elementSize(0), nElements(nElements), headIdx(0),
+    Us4ROutputBuffer(const std::vector<size_t> &us4oemOutputSizes, uint16 nElements)
+        : elementSize(0), nElements(nElements), tailIdx(0),
           currentNumberOfElements(0),
           accumulators(nElements), isAccuClear(nElements),
           us4oemPositions(us4oemOutputSizes.size()),
@@ -46,34 +52,34 @@ public:
 
         // Buffer allocation.
         ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
-                            "Currently Us4R buffer supports up "
-                            "to 16 us4oem modules.");
+                            "Currently Us4R data buffer supports up to 16 us4oem modules.");
         size_t us4oemOffset = 0;
+
+        Ordinal us4oemOrdinal = 0;
         for(auto s : us4oemOutputSizes) {
-            ARRUS_REQUIRES_TRUE(
-                s % 64 == 0,
-                format("Each element of buffer should have number of "
-                       "samples divisible by 64 (actual: {}", s));
             this->us4oemOffsets.emplace_back(us4oemOffset);
-            // Each 's' is in the number of samples per line.
-            us4oemOffset += s * Us4OEMImpl::N_RX_CHANNELS;
+            us4oemOffset += s;
+            if(s == 0) {
+                // We should not expect any response from modules, that do not acquire any data.
+                filledAccumulator &= ~(1ul << us4oemOrdinal);
+            }
+            ++us4oemOrdinal;
         }
-        // element size in number of uint16 elements
         elementSize = us4oemOffset;
-        dataBuffer = static_cast<uint16 *>(
-            operator new[](
-                elementSize * nElements * sizeof(Us4OEMImpl::OutputDType),
-                std::align_val_t(DATA_ALIGNMENT)));
+        dataBuffer = static_cast<int16 *>(operator new[](elementSize * nElements, std::align_val_t(DATA_ALIGNMENT)));
     }
 
-    virtual ~Us4ROutputBuffer() {
+    ~Us4ROutputBuffer() override {
         ::operator delete(dataBuffer, std::align_val_t(DATA_ALIGNMENT));
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
-    uint16 *getAddress(uint16 elementNumber, Ordinal us4oem) {
-        return dataBuffer + elementNumber * elementSize
-               + us4oemOffsets[us4oem];
+    [[nodiscard]] uint16 getNumberOfElements() const {
+        return nElements;
+    }
+
+    int16 *getAddress(uint16 elementNumber, Ordinal us4oem) {
+        return dataBuffer + elementNumber * elementSize + us4oemOffsets[us4oem];
     }
 
     /**
@@ -90,51 +96,57 @@ public:
      *
      * @param n us4oem ordinal number
      * @param timeout number of milliseconds the thread will wait for
-     *   accumulator or queue clearance (each separately), nullptr means not
-     *   timeout
+     *   accumulator or queue clearance (each separately), 0 means no timeout
      *
      *  @throws TimeoutException when accumulator clearance of push operation
      *   reaches the timeout
+     *  @return true if the buffer signal was successful, false otherwise (e.g. the queue was shut down).
      */
-    void signal(Ordinal n,
-                std::optional<unsigned> timeout = 10000,
-                const std::optional<std::function<void()>> &function = nullptr) {
+    bool signal(Ordinal n, int firing, long long timeout) {
         std::unique_lock<std::mutex> guard(mutex);
-
-        auto &us4oemPosition = us4oemPositions[n];
-        auto &accumulator = accumulators[us4oemPosition];
-
+        if(this->state != State::RUNNING) {
+            return false;
+        }
+        auto &accumulator = accumulators[firing];
         getDefaultLogger()->log(LogSeverity::TRACE,
-                                ::arrus::format(
-                                    "Signal, position: {}, accumulator: {}",
-                                    us4oemPosition, accumulator));
+                                ::arrus::format("Signal, position: {}, accumulator: {}", firing, accumulator));
 
         while(accumulator & (1ul << n)) {
             // wait till the bit will be cleared
             getDefaultLogger()->log(
                 LogSeverity::TRACE,
-                arrus::format("Us4OEM:{} signal thread is "
-                              "waiting for accumulator clearance: {}", n,
-                              us4oemPosition));
+                arrus::format("Us4OEM:{} signal thread is waiting for accumulator clearance: {}", n, firing));
             ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
-                isAccuClear[us4oemPosition], guard, timeout,
-                ::arrus::format(
-                    "Us4OEM: {} Timeout while waiting for queue element clearance.",
-                    n))
-        }
-
-        if(function.has_value()) {
-            function.value()();
+                isAccuClear[firing], guard, timeout,
+                ::arrus::format("Us4OEM:{} Timeout while waiting for queue element clearance.", n))
+            if(this->state != State::RUNNING) {
+                return false;
+            }
         }
         accumulator |= 1ul << n;
-
-        bool isElementDone =
-            (accumulator & filledAccumulator) == filledAccumulator;
-        us4oemPosition = (us4oemPosition + 1) % nElements;
-
-        if(isElementDone) {
+        bool isElementReady = (accumulator & filledAccumulator) == filledAccumulator;
+        if(isElementReady) {
             guard.unlock();
             queueEmpty.notify_one();
+        }
+        return true;
+    }
+
+    /**
+     * This function just waits till the given element will be cleared by a consumer.
+     */
+    void waitForRelease(Ordinal n, int firing, long long timeout) {
+        std::unique_lock<std::mutex> guard(mutex);
+        auto &accumulator = accumulators[firing];
+
+        while(accumulator != 0) {
+            // wait till the bit will be cleared
+            getDefaultLogger()->log(
+                LogSeverity::TRACE,
+                arrus::format("Us4OEM:{} signal thread is waiting for accumulator clearance: {}", n, firing));
+            ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
+                isAccuClear[firing], guard, timeout,
+                ::arrus::format("Us4OEM:{} Timeout while waiting for queue element clearance.", n))
         }
     }
 
@@ -147,17 +159,18 @@ public:
      * @param timeout a number of milliseconds the thread will wait when
      * the queue is empty; nullptr means no timeout.
      */
-    void releaseFront(std::optional<unsigned> timeout = 100000) {
+    void releaseTail(long long timeout) override {
         std::unique_lock<std::mutex> guard(mutex);
-        auto releasedIdx = headIdx;
-
+        validateState();
+        auto releasedIdx = tailIdx;
         while(accumulators[releasedIdx] != filledAccumulator) {
             ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
                 queueEmpty, guard, timeout,
                 "Timeout while waiting for new data queue.")
+            validateState();
         }
         accumulators[releasedIdx] = 0;
-        headIdx = (headIdx + 1) % nElements;
+        tailIdx = (tailIdx + 1) % nElements;
         guard.unlock();
         isAccuClear[releasedIdx].notify_all();
     }
@@ -171,27 +184,47 @@ public:
      * the input queue is empty; nullptr means no timeout.
      * @return a pointer to the front of the queue
      */
-    unsigned short *front(std::optional<unsigned> timeout = 100000) {
+    short *tail(long long timeout) override {
         std::unique_lock<std::mutex> guard(mutex);
-        while(accumulators[headIdx] != filledAccumulator) {
+        validateState();
+        while(accumulators[tailIdx] != filledAccumulator) {
             ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
                 queueEmpty, guard, timeout,
                 "Timeout while waiting for new data queue.")
+            validateState();
         }
-        return dataBuffer + headIdx * elementSize;
+        return dataBuffer + tailIdx * elementSize;
+    }
+
+    void markAsInvalid() {
+        // TODO this function should have the "highest priority" possible
+        std::unique_lock<std::mutex> guard(mutex);
+        this->state = State::INVALID;
+        guard.unlock();
+        queueEmpty.notify_all();
+        for(auto &cv: isAccuClear) {
+            cv.notify_all();
+        }
+    }
+
+    void shutdown() {
+        std::unique_lock<std::mutex> guard(mutex);
+        this->state = State::SHUTDOWN;
+        guard.unlock();
+        queueEmpty.notify_all();
+        for(auto &cv: isAccuClear) {
+            cv.notify_all();
+        }
     }
 
 private:
-    /** The number of uint16 values that each element of the buffer contains.
-     * A single element consists of all the frame data collected from
-     * all us4oem modules. */
     size_t elementSize;
     /** Us4OEM output address relative to the data buffer element address. */
     std::vector<size_t> us4oemOffsets;
     /**  Total size in the number of elements. */
     uint16 nElements;
-    uint16 *dataBuffer;
-    uint16 headIdx;
+    int16 *dataBuffer;
+    uint16 tailIdx;
     /** Currently occupied size of the buffer. */
     uint16 currentNumberOfElements;
 
@@ -208,7 +241,26 @@ private:
     // us4oem module id -> current writing position for this us4oem
     std::vector<int> us4oemPositions;
 
+    // State management
+    enum class State {RUNNING, SHUTDOWN, INVALID};
+    State state{State::RUNNING};
 
+    /**
+     * Throws IllegalStateException when the buffer is in invalid state.
+     *
+     * @return true if the queue execution should continue, false otherwise.
+     */
+    void validateState() {
+        if(this->state == State::INVALID) {
+            throw ::arrus::IllegalStateException(
+                "The buffer is in invalid state "
+                "(probably some data transfer overflow happened).");
+        }
+        else if(this->state == State::SHUTDOWN) {
+            throw ::arrus::IllegalStateException(
+                "The data buffer has been turned off.");
+        }
+    }
 };
 
 }
