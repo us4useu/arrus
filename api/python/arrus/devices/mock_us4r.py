@@ -1,119 +1,65 @@
-import dataclasses
-import numpy as np
 import time
-import ctypes
-
-import arrus.utils.core
-import arrus.logging
-import arrus.core
-from arrus.devices.device import Device, DeviceId, DeviceType
-import arrus.exceptions
-import arrus.devices.probe
 import arrus.metadata
-import arrus.kernels
-import arrus.kernels.kernel
+import arrus
+import numpy as np
+from arrus.devices.device import Device
 
 
-DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
+class MockFileBuffer:
 
+    def __init__(self, dataset: np.ndarray, metadata):
+        self.dataset = dataset
+        self.n_frames, _, _, _ = dataset.shape
+        self.i = 0
+        self.counter = 0
+        self.metadata = metadata
 
-@dataclasses.dataclass(frozen=True)
-class FrameChannelMapping:
-    """
-    Stores information how to get logical order of the data from
-    the physical order provided by the us4r device.
-
-    :param frames: a mapping: (logical frame, logical channel) -> physical frame
-    :param channels: a mapping: (logical frame, logical channel) -> physical channel
-    """
-    frames: np.ndarray
-    channels: np.ndarray
-
-
-class HostBuffer:
-    """
-    Buffer storing data that comes from the us4r device.
-
-    The buffer is implemented as a circular queue. The consumer gets data from
-    the queue's tails (end), the producer puts new data at the queue's head
-    (firt element of the queue).
-
-    This class provides an access to the queue's tail only. The user
-    can access the latest data produced by the device by accessing `tail()`
-    function. To release the tail data that is not needed anymore the user
-    can call `release_tail()` function.
-    """
-
-    def __init__(self, buffer_handle,
-                 fac: arrus.metadata.FrameAcquisitionContext,
-                 data_description: arrus.metadata.EchoDataDescription,
-                 frame_shape: tuple):
-        self.buffer_handle = buffer_handle
-        self.fac = fac
-        self.data_description = data_description
-        self.frame_shape = frame_shape
-        self.buffer_cache = {}
 
     def tail(self, timeout=None):
-        """
-        Returns data available at the tail of the buffer.
-
-        :param timeout: timeout in milliseconds, None means infinite timeout
-        :return: a pair: RF data, metadata
-        """
-        data_addr = self.buffer_handle.tailAddress(
-            -1 if timeout is None else timeout)
-        if data_addr not in self.buffer_cache:
-            array = self._create_array(data_addr)
-            self.buffer_cache[data_addr] = array
-        else:
-            array = self.buffer_cache[data_addr]
-        # TODO extract first lines from each frame lazily
+        custom_data = {
+            "pulse_counter": self.counter,
+            "trigger_counter": self.counter,
+            "timestamp": time.time_ns() // 1000000
+        }
         metadata = arrus.metadata.Metadata(
-            context=self.fac,
-            data_desc=self.data_description,
-            custom={}
-        )
-        return array, metadata
+            context=self.metadata.context,
+            data_desc=self.metadata.data_description,
+            custom=custom_data)
+        return np.array(self.dataset[self.i, :, :, :]), metadata
+
 
     def release_tail(self, timeout=None):
-        """
-        Marks the tail data as no longer needed.
+        i = self.i
+        self.i = (i + 1) % self.n_frames
 
-        :param timeout: timeout in milliseconds, None means infinite timeout
-        """
-        self.buffer_handle.releaseTail(-1 if timeout is None else timeout)
+    def pop(self):
+        i = self.i
+        self.i = (i + 1) % self.n_frames
+        custom_data = {
+            "pulse_counter": self.counter,
+            "trigger_counter": self.counter,
+            "timestamp": time.time_ns() // 1000000
+        }
+        self.counter += 1
 
-    def _create_array(self, addr):
-        ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
-        arr = np.ctypeslib.as_array(ctypes_ptr, shape=self.frame_shape)
-        return arr
+        metadata = arrus.metadata.Metadata(
+            context=self.metadata.context,
+            data_desc=self.metadata.data_description,
+            custom=custom_data)
+        return np.array(self.dataset[self.i, :, :, :]), metadata
 
 
-class Us4R(Device):
-    """
-    A handle to Us4R device.
-
-    Wraps an access to arrus.core.Us4R object.
-    """
-
-    def __init__(self, handle, parent_session):
-        super().__init__()
-        self._handle = handle
-        self._session = parent_session
-        self._device_id = DeviceId(DEVICE_TYPE,
-                                   self._handle.getDeviceId().getOrdinal())
+class MockUs4R(Device):
+    def __init__(self, dataset: np.ndarray, metadata, index: int):
+        super().__init__("Us4R", index)
+        self.dataset = dataset
+        self.metadata = metadata
+        self.buffer = None
 
     def get_device_id(self):
-        return self._device_id
+        return Device
 
     def set_voltage(self, voltage):
-        """
-        Enables HV and sets a given voltage.
-
-        :param voltage: voltage to set
-        """
-        self._handle.setVoltage(voltage)
 
     def disable_hv(self):
         """
@@ -143,7 +89,7 @@ class Us4R(Device):
 
     def upload(self, seq: arrus.ops.Operation, mode="sync",
                rx_buffer_size=None, host_buffer_size=None,
-               frame_repetition_interval=None) -> HostBuffer:
+               frame_repetition_interval=None) -> MockFileBuffer:
         """
         Uploads a given sequence of operations to perform on the device.
 
@@ -244,15 +190,18 @@ class Us4R(Device):
         probe_dto = arrus.devices.probe.ProbeDTO(model=probe_model)
         return Us4RDTO(probe=probe_dto, sampling_frequency=65e6)
 
+    def upload(self, sequence):
+        self.buffer = MockFileBuffer(self.dataset, self.metadata)
+        return self.buffer
 
-# ------------------------------------------ LEGACY MOCK
+    def start(self):
+        pass
 
+    def stop(self):
+        pass
 
+    def set_hv_voltage(self, voltage):
+        pass
 
-@dataclasses.dataclass(frozen=True)
-class Us4RDTO(arrus.devices.device.UltrasoundDeviceDTO):
-    probe: arrus.devices.probe.ProbeDTO
-    sampling_frequency: float
-
-    def get_id(self):
-        return "Us4R:0"
+    def disable_hv(self):
+        pass

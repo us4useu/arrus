@@ -98,7 +98,7 @@ do {                                                      \
      ARRUS_REQUIRES_DATA_TYPE_E(value, dtype, ::arrus::IllegalArgumentException(msg)) \
 
 #define ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(cv, lock, timeout, exceptionMsg) \
-    if(timeout != 0) { \
+    if(timeout > -1) { \
         auto status = cv.wait_for(lock ,std::chrono::milliseconds(timeout)); \
         if(status == std::cv_status::timeout) { \
             throw TimeoutException(exceptionMsg); \

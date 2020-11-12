@@ -12,6 +12,10 @@ public:
 
     virtual ~HostBuffer() = default;
 
+    /**
+     * @param timeout -1 means infinity timeout
+     * @return
+     */
     virtual int16* tail(long long timeout) = 0;
 
     virtual size_t tailAddress(long long timeout) {

@@ -5,6 +5,7 @@ from arrus.ops.imaging import LinSequence
 from arrus.ops.us4r import Pulse
 import arrus.logging
 import arrus.utils.us4r
+import time
 
 arrus.logging.set_clog_level(arrus.logging.INFO)
 arrus.logging.add_log_file("test.log", arrus.logging.TRACE)
@@ -20,7 +21,7 @@ seq = LinSequence(
     rx_aperture_center_element=np.arange(8, 182),
     rx_aperture_size=64,
     rx_sample_range=(0, 4096),
-    pri=1000e-6,
+    pri=100e-6,
     downsampling_factor=1,
     tgc_start=14,
     tgc_slope=2e2,
@@ -28,9 +29,10 @@ seq = LinSequence(
 
 us4r = session.get_device("/Us4R:0")
 us4r.set_voltage(30)
-buffer = us4r.upload(seq)
+buffer = us4r.upload(seq, mode="sync")
 
 print("Starting the device.")
+
 
 def display_data(data):
     fig, ax = plt.subplots()
@@ -39,11 +41,28 @@ def display_data(data):
     ax.set_aspect('auto')
     fig.show()
 
+
 us4r.start()
-data, metadata = buffer.tail()
-remap_step = arrus.utils.us4r.RemapToLogicalOrder()
-remap_step.set_pkgs(num_pkg=np)
-remapped_data, metadata = remap_step(data, metadata)
+
+times = []
+
+print("Starting")
+
+for i in range(100):
+    print(i)
+    start = time.time()
+    data, metadata = buffer.tail()
+    buffer.release_tail()
+    times.append(time.time()-start)
+
+print("Done")
+print(f"Average time: {np.mean(times)}")
+
+us4r.stop()
+
+# remap_step = arrus.utils.us4r.RemapToLogicalOrder()
+# remap_step.set_pkgs(num_pkg=np)
+# remapped_data, metadata = remap_step(data, metadata)
 
 # print("Saving data")
 # np.save("test.npy", data)
