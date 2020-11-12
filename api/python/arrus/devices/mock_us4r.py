@@ -49,15 +49,23 @@ class MockFileBuffer:
 
 class MockUs4R(Device):
     def __init__(self, dataset: np.ndarray, metadata, index: int):
-        super().__init__("Us4R", index)
+        super().__init__()
         self.dataset = dataset
         self.metadata = metadata
         self.buffer = None
 
     def get_device_id(self):
-        return Device
+        return arrus.devices.device.DeviceId("Us4R", 0)
 
-    def set_voltage(self, voltage):
+    def set_hv_voltage(self, voltage):
+        """
+        Enables high voltage supplier and sets a given voltage value.
+
+        The voltage is determined by the probe specification;
+        Us4R can maximally accept 90 Vpp.
+
+        :param voltage: voltage to set [0.5*Vpp]
+        """
         arrus.logging.log(DEBUG, f"Set voltage {voltage}")
 
     def disable_hv(self):
@@ -118,5 +126,6 @@ class MockUs4R(Device):
                              "frame_repetition_interval should be None "
                              "for 'sync' mode.")
 
-        arrus.logging.log(f"Uploaded sequence: {seq}")
+        arrus.logging.log(arrus.logging.DEBUG, f"Uploaded sequence: {seq}")
+        return MockFileBuffer(self.dataset, self.metadata)
 

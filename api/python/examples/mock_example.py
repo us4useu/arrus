@@ -25,8 +25,7 @@ from arrus.utils.imaging import (
 
 # Read the dataset do display.
 print("Reading data...")
-dataset = h5py.File(r"C:\Users\pjarosik\Downloads\rf_esaote_ac2541_dansk_1525_20200109\data.mat",
-                    mode="r")
+dataset = h5py.File("data.mat", mode="r")
 
 dataset = {
     "rf": np.array(dataset["rf"][:5, :, :, :]),
@@ -40,7 +39,9 @@ print("...done.")
 # that means to load data from the provided dataset only.
 # A non-mocked session will read a configuration file and create handles
 # to the actual devices that should be available to user.
-sess = arrus.MockSession(dataset)
+sess = arrus.Session(mock={
+    "Us4R:0": dataset
+})
 
 # Session provides handles to system devices. What devices are available
 # depends on the session configuration file.
@@ -169,7 +170,14 @@ for i in range(100):
     # The buffer.pop releases current buffer element.
     # Note: Most likely in the futurewe will add a target 'target_device'
     # parameter which will allow to copy the RF data directly into GPU memory.
-    data, metadata = buffer.pop()
+
+    # To avoid data copying the user can use a pair of instructions:
+    # - buffer.tail() (returns a numpy array that wraps a pointer to the memory
+    #   area with data acquired by the the us4r-lite device)
+    # - buffer.release_tail() (notify the us4r-lite device that the
+    #   data is not needed anymore and memory area can be reused by the
+    #   us4r-lite device for the next acquisitions)
+    data, metadata = buffer.tail()
 
     # The metadata structure contains all the information necessary to
     # reconstruct b-mode image from the RF data
@@ -189,6 +197,9 @@ for i in range(100):
 
     # process
     gpu_data = cp.asarray(data)
+    # We've just copied the data from the us4r-lite buffer, we can release
+    # the current buffer element.
+    buffer.release_tail()
 
     # Reconstruct bmode image.
     # Note: metadata.data_description describes data produced at a given step;

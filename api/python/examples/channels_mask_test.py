@@ -105,7 +105,7 @@ if __name__ == "__main__":
     session = arrus.Session(cfg_path)
 
     us4r = session.get_device("/Us4R:0")
-    us4r.set_voltage(1)
+    us4r.set_hv_voltage(1)
     buffer = us4r.upload(seq)
 
     us4r.start()

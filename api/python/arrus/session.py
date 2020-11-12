@@ -6,6 +6,7 @@ import dataclasses
 import arrus.core
 import arrus.exceptions
 import arrus.devices.us4r
+import arrus.devices.mock_us4r
 import arrus.medium
 import arrus.metadata
 import arrus.params
@@ -71,7 +72,8 @@ class Session(AbstractSession):
         if not (bool(cfg_path is None) ^ bool(mock is None)):
             raise ValueError("Exactly one of the following parameters should "
                              "be provided: cfg_path, mock.")
-        self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
+        if cfg_path is not None:
+            self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._py_devices = self._create_py_devices(mock)
         self._context = SessionContext(medium=medium)
 
@@ -91,6 +93,12 @@ class Session(AbstractSession):
         if path in self._py_devices:
             return self._py_devices[path]
         # Then try finding a device using arrus core implementation.
+
+        if self._session_handle is None:
+            # We have no handle to session (mock session),
+            # so we wont find any new device.
+            raise arrus.exceptions.DeviceNotFoundError(path)
+
         device_handle = self._session_handle.getDevice(path)
         # Cast device to its type class.
         device_id = device_handle.getDeviceId()

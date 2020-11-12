@@ -114,7 +114,7 @@ def main():
     # Set the pipeline to be executed on the GPU
     bmode_imaging.set_placement(gpu)
     # Set initial voltage on the us4r-lite device.
-    us4r.set_voltage(30)
+    us4r.set_hv_voltage(30)
     # Upload sequence on the us4r-lite device.
     buffer = us4r.upload(seq, mode="sync")
 

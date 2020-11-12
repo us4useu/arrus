@@ -80,7 +80,7 @@ seq = TxRxSequence(
 )
 
 us4r = session.get_device("/Us4R:0")
-us4r.set_voltage(30)
+us4r.set_hv_voltage(30)
 buffer = us4r.upload(seq)
 
 print("Starting the device.")

@@ -120,7 +120,7 @@ class QuadratureDemodulation:
 
     def _prepare(self, data, metadata):
         xp = self.xp
-        fs = metadata.context.data_description.sampling_frequency
+        fs = metadata.data_description.sampling_frequency
         fc = metadata.context.sequence.pulse.center_frequency
         _, _, n_samples = data.shape
         t = (xp.arange(0, n_samples) / fs).reshape(1, 1, -1)
