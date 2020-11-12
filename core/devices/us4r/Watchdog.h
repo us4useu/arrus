@@ -40,7 +40,7 @@ public:
                 "Only new watchdog object can be started.");
         }
         state = State::STARTED;
-        logger->log(LogSeverity::DEBUG, "Starting.");
+        logger->log(LogSeverity::DEBUG, ::arrus::format("Starting watchdog with timeout {} [us].", timeout.count()));
         this->thread = std::thread(&Watchdog::process, this);
     }
 

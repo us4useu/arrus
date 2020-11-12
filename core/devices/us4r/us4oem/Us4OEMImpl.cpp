@@ -445,18 +445,18 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         }
         outputRxApertures.push_back(outputRxAperture);
 
+        // Move all the non active channels to the end of the mapping
+        for(uint8 i = 0; i < N_RX_CHANNELS; ++i) {
+            if(!setContains(channelsUsed, i)) {
+                mapping.push_back(i);
+            }
+        }
+
         auto mappingIt = rxMappings.find(mapping);
         if(mappingIt == std::end(rxMappings)) {
             // Create new Rx channel mapping.
             rxMappings.emplace(mapping, rxMapId);
             result.emplace(opId, rxMapId);
-
-            // Move all the non active channels to the end of the mapping
-            for(uint8 i = 0; i < N_RX_CHANNELS; ++i) {
-                if(!setContains(channelsUsed, i)) {
-                    mapping.push_back(i);
-                }
-            }
             // Set channel mapping
             ARRUS_REQUIRES_TRUE(mapping.size() == N_RX_CHANNELS,
                                 arrus::format(

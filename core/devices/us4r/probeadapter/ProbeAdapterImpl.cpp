@@ -55,6 +55,9 @@ public:
                                           + txRxs[firing].getRxPadding().sum();
             ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
                                           "Each rx aperture should have the same size.");
+            if(hasErrors()) {
+                return;
+            }
         }
     }
 
