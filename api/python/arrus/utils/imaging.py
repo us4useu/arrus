@@ -120,7 +120,7 @@ class QuadratureDemodulation:
 
     def _prepare(self, data, metadata):
         xp = self.xp
-        fs = metadata.context.sequence.sampling_frequency
+        fs = metadata.context.data_description.sampling_frequency
         fc = metadata.context.sequence.pulse.center_frequency
         _, _, n_samples = data.shape
         t = (xp.arange(0, n_samples) / fs).reshape(1, 1, -1)
@@ -249,12 +249,16 @@ class RxBeamforming:
         tx_delay_center = context.custom_data["tx_delay_center"]
         rx_aperture_origin = context.custom_data["rx_aperture_origin"]
         # TODO(pjarosik) Make sure that we use echo data.
-        acq_fs = seq.sampling_frequency
+        acq_fs = (metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
         fs = metadata.data_description.sampling_frequency
         fc = seq.pulse.center_frequency
         n_periods = seq.pulse.n_periods
-        c = medium.speed_of_sound
-        tx_angle = seq.tx_angle
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+        tx_angle = 0 # TODO use appropriate tx angle
 
         burst_factor = n_periods / (2 * fc)
         initial_delay = (- start_sample / acq_fs

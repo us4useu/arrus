@@ -11,6 +11,8 @@ import arrus.metadata
 import arrus.params
 import arrus.devices.cpu
 import arrus.devices.gpu
+import arrus.ops.us4r
+import arrus.ops.imaging
 
 
 class AbstractSession(abc.ABC):
@@ -54,16 +56,23 @@ class Session(AbstractSession):
     Currently, only localhost session is available.
     """
 
-    def __init__(self, cfg_path: str, medium: arrus.medium.Medium = None):
+    def __init__(self, cfg_path: str = None,
+                 medium: arrus.medium.Medium = None,
+                 mock: dict = None):
         """
         Session constructor.
 
         :param cfg_path: a path to configuration file
+        :param mock: a map device id -> a file that should be used to
+          mock the device
         :param medium: medium description to set in context
         """
         super().__init__()
+        if not (bool(cfg_path is None) ^ bool(mock is None)):
+            raise ValueError("Exactly one of the following parameters should "
+                             "be provided: cfg_path, mock.")
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
-        self._py_devices = self._create_py_devices()
+        self._py_devices = self._create_py_devices(mock)
         self._context = SessionContext(medium=medium)
 
     def get_device(self, path: str):
@@ -78,7 +87,7 @@ class Session(AbstractSession):
         :param path: a path to the device
         :return: a handle to device
         """
-        # First, try getting device defined in python language.
+        # First, try getting initially available devices.
         if path in self._py_devices:
             return self._py_devices[path]
         # Then try finding a device using arrus core implementation.
@@ -108,10 +117,15 @@ class Session(AbstractSession):
         # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
         raise RuntimeError("NYI")
 
-    def _create_py_devices(self):
-        devices = {
-            "/CPU:0": arrus.devices.cpu.CPU(0),
-        }
+    def _create_py_devices(self, mock):
+        # Create mock devices
+
+        devices = {}
+        for k, v in mock.items():
+            devices["/" + k] = MockMatlab045.load_device(v)
+
+        # Create CPU and GPU devices
+        devices["/CPU:0"] = arrus.devices.cpu.CPU(0)
         cupy_spec = importlib.util.find_spec("cupy")
         if cupy_spec is not None:
             import cupy
@@ -120,108 +134,90 @@ class Session(AbstractSession):
         return devices
 
 
-# ------------------------------------------ LEGACY MOCK
-class MockSession(AbstractSession):
+# ------------------------------------------ MATLAB 0.4.5 LEGACY MOCK DATA
+class MockMatlab045:
 
-    def __init__(self, dataset):
-        super().__init__()
-        self._devices = self._load_devices(dataset)
-
-    def get_device(self, id: str):
-        """
-        Returns a device located at given path.
-
-        :param id: a path to a device, for example '/Us4R:0'
-        :return: a device located in a given path.
-        """
-        dev_path = id.split("/")[1:]
-        if len(dev_path) != 1:
-            raise ValueError(
-                "Invalid path, top-level devices can be accessed only.")
-        dev_id = dev_path[0]
-        return self._devices[dev_id]
-
-    def set_current_medium(self, medium):
-        pass
-
-    def _load_devices(self, cfg):
-        metadata = self._read_metadata(cfg)
+    @staticmethod
+    def load_device(cfg):
+        metadata = MockMatlab045._read_metadata(cfg)
         data = cfg["rf"]
-        devices = {
-            "Us4R:0": arrus.devices.us4r.MockUs4R(data, metadata, 0),
-            "CPU:0": arrus.devices.cpu.CPU(0),
-        }
-        cupy_spec = importlib.util.find_spec("cupy")
-        if cupy_spec is not None:
-            import cupy
-            cupy.cuda.device.Device(0).use()
-            devices["GPU:0"] = arrus.devices.gpu.GPU(0)
-        return devices
+        return arrus.devices.mock_us4r.MockUs4R(data, metadata, 0)
 
-    def _get_scalar(self, obj, key):
+    @staticmethod
+    def _get_scalar(obj, key):
         return obj[key][0][0]
 
-    def _get_vector(self, obj, key):
+    @staticmethod
+    def _get_vector(obj, key):
         return np.array(obj[key]).flatten()
 
-    def _read_metadata(self, data):
+    @staticmethod
+    def _read_metadata(data):
         sys = data["sys"]
         seq = data["seq"]
 
         # Device
-        pitch = self._get_scalar(sys, "pitch")
-        curv_radius = - self._get_scalar(sys, "curvRadius")
+        pitch = MockMatlab045._get_scalar(sys, "pitch")
+        curv_radius = - MockMatlab045._get_scalar(sys, "curvRadius")
 
         probe_model = arrus.devices.probe.ProbeModel(
-            arrus.devices.probe.ProbeModelId(
+            model_id=arrus.devices.probe.ProbeModelId(
                 manufacturer="nanoecho", name="magprobe"),
-            self._get_scalar(sys, "nElem"), pitch, curv_radius)
+            n_elements=MockMatlab045._get_scalar(sys, "nElem"),
+            pitch=pitch,
+            curvature_radius=curv_radius)
         probe = arrus.devices.probe.ProbeDTO(model=probe_model)
-        us4r = arrus.devices.us4r.Us4RDTO(probe=probe)
+        us4r = arrus.devices.us4r.Us4RDTO(probe=probe, sampling_frequency=65e6)
 
         # Sequence
-        tx_freq = self._get_scalar(seq, "txFreq")
-        n_periods = self._get_scalar(seq, "txNPer")
-        inverse = self._get_scalar(seq, "txInvert").astype(np.bool)
+        tx_freq = MockMatlab045._get_scalar(seq, "txFreq")
+        n_periods = MockMatlab045._get_scalar(seq, "txNPer")
+        inverse = MockMatlab045._get_scalar(seq, "txInvert").astype(np.bool)
 
-        pulse = arrus.params.SineWave(
+        pulse = arrus.ops.us4r.Pulse(
             center_frequency=tx_freq, n_periods=n_periods,
             inverse=inverse)
 
         # In matlab API the element numbering starts from 1
-        tx_ap_center_element = self._get_vector(seq, "txCentElem") - 1
-        tx_ap_size = self._get_scalar(seq, "txApSize")
-        tx_angle = self._get_scalar(seq, "txAng")
-        tx_focus = self._get_scalar(seq, "txFoc")
-        tx_ap_cent_ang = self._get_vector(seq, "txApCentAng")
+        tx_ap_center_element = MockMatlab045._get_vector(seq, "txCentElem") - 1
+        tx_ap_size = MockMatlab045._get_scalar(seq, "txApSize")
+        tx_angle = MockMatlab045._get_scalar(seq, "txAng")
+        tx_focus = MockMatlab045._get_scalar(seq, "txFoc")
+        tx_ap_cent_ang = MockMatlab045._get_vector(seq, "txApCentAng")
 
-        rx_ap_center_element = self._get_vector(seq, "rxCentElem") - 1
-        rx_ap_size = self._get_scalar(seq, "rxApSize")
-        rx_samp_freq = self._get_scalar(seq, "rxSampFreq")
-        pri = self._get_scalar(seq, "txPri")
+        rx_ap_center_element = MockMatlab045._get_vector(seq, "rxCentElem") - 1
+        rx_ap_size = MockMatlab045._get_scalar(seq, "rxApSize")
+        rx_samp_freq = MockMatlab045._get_scalar(seq, "rxSampFreq")
+        pri = MockMatlab045._get_scalar(seq, "txPri")
+        fsDivider = MockMatlab045._get_scalar(seq, "fsDivider")
+        start_sample = MockMatlab045._get_scalar(seq, "startSample") -1
+        end_sample = MockMatlab045._get_scalar(seq, "nSamp")
+        tgc_start = MockMatlab045._get_scalar(seq, "tgcStart")
+        tgc_slope = MockMatlab045._get_scalar(seq, "tgcSlope")
 
-        sequence = arrus.ops.LinSequence(
+        sequence = arrus.ops.imaging.LinSequence(
             tx_aperture_center_element=tx_ap_center_element,
             tx_aperture_size=tx_ap_size,
             tx_focus=tx_focus,
-            tx_angle=tx_angle,
             pulse=pulse,
             rx_aperture_center_element=rx_ap_center_element,
             rx_aperture_size=rx_ap_size,
-            sampling_frequency=rx_samp_freq,
-            pri=pri
-        )
+            downsampling_factor=fsDivider,
+            rx_sample_range=(start_sample, end_sample),
+            pri=pri,
+            tgc_start=tgc_start,
+            tgc_slope=tgc_slope)
 
         # Medium
-        c = self._get_scalar(seq, "c")
+        c = MockMatlab045._get_scalar(seq, "c")
         medium = arrus.medium.MediumDTO("dansk_phantom_1525_us4us",
                                         speed_of_sound=c)
 
         custom_data = dict()
-        custom_data["start_sample"] = self._get_scalar(seq, "startSample") - 1
-        custom_data["tx_delay_center"] = self._get_scalar(seq, "txDelCent")
-        custom_data["rx_aperture_origin"] = self._get_vector(seq, "rxApOrig")
-        custom_data["tx_aperture_center_angle"] = self._get_vector(seq,
+        custom_data["start_sample"] = MockMatlab045._get_scalar(seq, "startSample") - 1
+        custom_data["tx_delay_center"] = MockMatlab045._get_scalar(seq, "txDelCent")
+        custom_data["rx_aperture_origin"] = MockMatlab045._get_vector(seq, "rxApOrig")
+        custom_data["tx_aperture_center_angle"] = MockMatlab045._get_vector(seq,
                                                                    "txApCentAng")
 
         # Data characteristic:
@@ -231,6 +227,7 @@ class MockSession(AbstractSession):
         # create context
         context = arrus.metadata.FrameAcquisitionContext(
             device=us4r, sequence=sequence, medium=medium,
+            raw_sequence=None,
             custom_data=custom_data)
         return arrus.metadata.Metadata(
             context=context, data_desc=data_char, custom={})

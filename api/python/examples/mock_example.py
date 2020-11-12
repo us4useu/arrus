@@ -4,6 +4,13 @@ import cupy as cp
 import matplotlib.pyplot as plt
 import h5py
 
+from arrus.ops.imaging import (
+    LinSequence
+)
+from arrus.ops.us4r import (
+    Pulse
+)
+
 from arrus.utils.imaging import (
     Pipeline,
     BandpassFilter,
@@ -22,7 +29,7 @@ dataset = h5py.File(r"C:\Users\pjarosik\Downloads\rf_esaote_ac2541_dansk_1525_20
                     mode="r")
 
 dataset = {
-    "rf": np.array(dataset["rf"][:50, :, :, :]),
+    "rf": np.array(dataset["rf"][:5, :, :, :]),
     "sys": dataset["sys"],
     "seq": dataset["seq"]
 }
@@ -43,18 +50,13 @@ sess = arrus.MockSession(dataset)
 us4r = sess.get_device("/Us4R:0")
 gpu = sess.get_device("/GPU:0")
 
-# Determine the medium (e.g. a phantom) to which the probe is attached.
-phantom = arrus.Medium(name="my_tissue_mimicking_phantom", speed_of_sound=1540)
-# Assume a given phantom for current session.
-sess.set_current_medium(phantom)
-
 # Set HV voltage [0.5*Vpp];
 # maximum value: 90 (can be limited for specific probes in the session
 # configuration file).
 us4r.set_hv_voltage(30)
 
 # Tx/Rx sequence to perform on the us4r device.
-sequence = arrus.ops.LinSequence(
+sequence = LinSequence(
     # Transmit a signal for an aperture centered in element 0, 1, ... 191
     # Note: this should not exceed the number of probe elements.
     tx_aperture_center_element=np.arange(0, 192),
@@ -62,21 +64,26 @@ sequence = arrus.ops.LinSequence(
     tx_aperture_size=64,
     # The beam should be focused on 30 mm depth.
     tx_focus=30e-3,  # [m]
-    # No tx angle (aperture perpendicular to probe's plane).
-    tx_angle=0, # [rad]
     # Transmit a sine wave with center frequency 4MHz, 2 periods, no inverse.
-    pulse=arrus.SineWave(center_frequency=4e6, n_periods=2, inverse=False),
+    pulse=Pulse(center_frequency=4e6, n_periods=2, inverse=False),
     # Receive echo data with aperture centered in elements 0, 1, ..., 191
     # Note: rx_aperture_center_element should have the length as
     # the tx_aperture_center_element vector.
     rx_aperture_center_element=np.arange(0, 192),
     # Record data using 64 elements
     rx_aperture_size=64,
-    # Sampling frequency [Hz]; currently the available sampling frequency values
-    # are limited to 65e6/n, where n can be 1, 2, ..., 5
-    sampling_frequency=32.5e6,
+    # Downsampling factor: an integers that divides the output data sampling
+    # frequency, i.e. the output sampling frequency is
+    # 65e6/n, where n can be 1, 2, ..., 5. One means no downsampling.
+    downsampling_factor=1,
     # Pulse repetition interval - the time between successive signal transmits.
-    pri=200e-6
+    pri=200e-6,
+    # Sample range: [start, end) sample
+    rx_sample_range=(0, 4096),
+    # Linear TGC curve start value.
+    tgc_start=14,
+    # Linear TGC curve slope.
+    tgc_slope=2e2
 )
 
 # Remember to upload th sequence on the us4r device.
