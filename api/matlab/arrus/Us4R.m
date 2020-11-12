@@ -6,41 +6,40 @@ classdef Us4R < handle
     % 
     % Available probe names:
     % 
-    % - Esaote: 'AL2442', 'SL1543', 'AC2541',
+    % - Esaote: 'AL2442', 'SL1543', 'AC2541', 'SP2430'
     % - Ultrasonix: 'L14-5/38'.
     % - ATL: 'L7-4'
     % 
     % Available adapter types:
     %
-    % - 'esaote': legacy adapter for esaote probes,
-    % - 'esaote2': current version of the esaote adapter,
+    % - 'esaote': 1st esaote adapter (no alternation in element handling),
+    % - 'esaote2': 2nd esaote adapter (troublesome mapping),
+    % - 'esaote3': current version of the esaote adapter,
     % - 'ultrasonix': current version of the ultrasonix probe adapter. 
     % - 'atl/philips': current version of the ATL/PHILIPS probe adapter.
     % 
-    % :param nArius: number of Us4OEM modules available in the us4R system
-    % :param probeName: name of the probe to use
-    % :param adapterType: name of the adapter type to use
-    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]
-    % :param logTime: set to true if you want to display acquisition \
-    %    and reconstruction time (optional)
+    % Only one of the following parameters should be provided:
+    %
+    % :param nUs4OEM: number of Us4OEM modules available in the us4R system. Required.
+    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Required.
+    % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
+    % :param probeName: name of the probe to use. The parameter is required when ``probe`` is not provided.
+    % :param adapterType: name of the adapter type to use. The parameter is required when ``probe`` is not provided.
+    % :param probe: definition of the probe to use. The parameter is required when ``probeName`` and ``adapterType`` are not provided.
 
-    properties
+    properties(Access = private)
         sys
         seq
         rec
         logTime
-        kernel = []
     end
     
     methods
 
-        function obj = Us4R(nArius, probeName, adapterType, voltage, logTime)
-            if nargin < 5
-                obj.logTime = false;
-            else
-                obj.logTime = logTime;
-            end
+        function obj = Us4R(varargin)
+            [nArius, voltage, probeName, adapterType, logTime, probe] = Us4R.parseUs4RParams(varargin{:});
 
+            obj.logTime = logTime;
             % System parameters
             obj.sys.nArius = nArius; % number of Arius modules
             obj.sys.nChArius = 32;
@@ -49,14 +48,51 @@ classdef Us4R < handle
 
             obj.sys.voltage = voltage;
             
-            probe = probeParams(probeName,adapterType);
+            if(isempty(probe))
+                probe = probeParams(probeName,adapterType);
+            end
+            
+            % checking if voltage is safe
+            isProperVoltageValue = @(x) ...
+                   isnumeric(x) ...
+                && isscalar(x) ...
+                && isfinite(x) ...
+                && x >= 0;
+
+            if ~isProperVoltageValue(voltage)
+                error('Invalid exctitation voltage value.')
+            end
+            
+            if 2*voltage > probe.maxVpp
+                error(['The electrical excitation exceeds the safe limit. ', ...
+                       'For the current probe the limit is ', ...
+                       num2str(probe.maxVpp/2), '[V].' ...
+                       ])
+            end
+            
+            
             obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
+            obj.sys.curvRadius = probe.curvRadius;
+            obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
-            obj.sys.xElem = (-(obj.sys.nElem-1)/2 : ...
-                            (obj.sys.nElem-1)/2) * obj.sys.pitch;	% [m] (1 x nElem) x-position of probe elements
+
+             % position (pos,x,z) and orientation (ang) of each probe element
+             obj.sys.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+             if isnan(probe.curvRadius)
+                 obj.sys.angElem = zeros(1,probe.nElem); % [rad] (1 x nElem) orientation of probe elements
+                 obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                 obj.sys.zElem = zeros(1,probe.nElem);% [m] (1 x nElem) x-position of probe elements
+             else
+                 obj.sys.angElem = obj.sys.posElem / -probe.curvRadius;
+                 obj.sys.xElem = -probe.curvRadius * sin(obj.sys.angElem);
+                 obj.sys.zElem = -probe.curvRadius * cos(obj.sys.angElem);
+                 obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+             end
+             obj.sys.probeChannelsMask = probe.channelsMask;
+%             obj.sys.maxVpp = probe.maxVpp;
 
             if obj.sys.adapType == 0
                 % old adapter type (00001111)
@@ -65,7 +101,7 @@ classdef Us4R < handle
                 
                 obj.sys.selElem = (1:128).' + (0:(nArius-1))*128;
                 obj.sys.actChan = true(128,nArius);
-            elseif obj.sys.adapType == -1
+            elseif obj.sys.adapType == 1 || obj.sys.adapType == -1
                 % place for new adapter support
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/abs(obj.sys.adapType);
@@ -85,7 +121,7 @@ classdef Us4R < handle
                 obj.sys.selElem = repmat((1:128).',[1 nArius]);
                 obj.sys.actChan = mod(ceil((1:128)' / obj.sys.nChArius) - 1, nArius) == (0:(nArius-1));
             end
-            obj.sys.actChan = obj.sys.actChan & (obj.sys.selElem <= obj.sys.nElem);
+            obj.sys.actChan = obj.sys.actChan & any(obj.sys.selElem == reshape(obj.sys.probeMap,1,1,[]),3);
 
         end
 
@@ -99,23 +135,13 @@ classdef Us4R < handle
             % :param reconstructOperation: reconstruction to perform with the collected data
             % :returns: updated Us4R object
             
-        if isa(sequenceOperation,'TxRxSequence')
-            kernel = TxRxKernel('sequence', sequenceOperation, ...
-                                'usSystem', obj.sys) ...
-                                ;
-            kernel.programHW();
-            obj.rec.enable = false;
-            obj.kernel = kernel;
-            
-        else
-            
             switch(class(sequenceOperation))
                 case 'PWISequence'
                     sequenceType = "pwi";
                 case 'STASequence'
                     sequenceType = "sta";
                 case "LINSequence"
-                    sequenceType = 'lin';
+                    sequenceType = "lin";
                 otherwise
                     error("ARRUS:IllegalArgument", ...
                         ['Unrecognized operation type ', class(sequenceOperation)])
@@ -140,7 +166,8 @@ classdef Us4R < handle
                 'txPri', sequenceOperation.txPri, ...
                 'tgcStart', sequenceOperation.tgcStart, ...
                 'tgcSlope', sequenceOperation.tgcSlope, ...
-                'fsDivider', sequenceOperation.fsDivider);
+                'fsDivider', sequenceOperation.fsDivider, ...
+                'txInvert', sequenceOperation.txInvert);
             
             % Validate compatibility of the sequence & the hardware
             obj.validateSequence;
@@ -165,7 +192,12 @@ classdef Us4R < handle
                 'zGrid', reconstructOperation.zGrid);
             
             obj.rec.enable = true;
-        end 
+            
+        end
+        
+        function [sys, seq] = getImagingMetadata(obj)
+            sys = obj.sys;
+            seq = obj.seq;
         end
         
         function [rf,img] = run(obj)
@@ -175,21 +207,33 @@ classdef Us4R < handle
             % implementations.
             %
             % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
-
             
-            if ~isempty(obj.kernel)
-                rf = obj.kernel.run();
+            obj.openSequence;
+            [rf, ~] = obj.execSequence;
+            obj.closeSequence;
+            
+            if obj.rec.enable
+                img = obj.execReconstr(rf(:,:,:,1));
             else
-                
-                obj.openSequence;
-                rf = obj.execSequence;
-                obj.closeSequence;
-
-                if obj.rec.enable
-                    img = obj.execReconstr(rf(:,:,:,1));
-                else
-                    img = [];
-                end
+                img = [];
+            end
+        end
+        
+        function [rf, img, metadata] = runWithMetadata(obj)
+            % Runs uploaded operations in the us4R system.
+            %
+            % Currently, only supports :class:`SimpleTxRxSequence` and :class:`Reconstruction`
+            % implementations.
+            %
+            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
+            obj.openSequence;
+            [rf, metadata] = obj.execSequence;
+            obj.closeSequence;
+            
+            if obj.rec.enable
+                img = obj.execReconstr(rf(:,:,:,1));
+            else
+                img = [];
             end
         end
         
@@ -237,6 +281,47 @@ classdef Us4R < handle
         end
 
     end
+    
+    methods(Access = private, Static)
+        
+       function [nArius, voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin)
+           paramsParser = inputParser;
+           addParameter(paramsParser, 'nUs4OEM', []);
+           addParameter(paramsParser, 'voltage', []);
+           addParameter(paramsParser, 'logTime', false);
+           addParameter(paramsParser, 'probeName', []);
+           addParameter(paramsParser, 'adapterType', []);
+           addParameter(paramsParser, 'probe', []);
+           parse(paramsParser, varargin{:});
+
+           nArius = paramsParser.Results.nUs4OEM;
+           if(~isscalar(nArius))
+               error("ARRUS:IllegalArgument", ...
+               "Parameter nArius is required and should be a scalar");
+           end
+           voltage = paramsParser.Results.voltage;
+           if(~isscalar(voltage))
+               error("ARRUS:IllegalArgument", ...
+               "Parameter voltage is required and should be a scalar");
+           end
+           logTime = paramsParser.Results.logTime;
+
+           % First option
+           probeName = paramsParser.Results.probeName;
+           adapterType = paramsParser.Results.adapterType;
+           if xor(isempty(probeName), isempty(adapterType))
+               error("ARRUS:IllegalArgument", ...
+               "All or none of the following parameters are required: probeName, adapterType");
+           end
+
+           % Second option
+           probe = paramsParser.Results.probe;
+           if ~xor(isempty(probe), isempty(probeName))
+               error("ARRUS:IllegalArgument", ...
+                 "Exactly one of the following parameter should be provided: probe, pair(probeName, adapterType)");
+           end
+       end
+    end
 
     methods(Access = private)
         % TODO:
@@ -252,7 +337,6 @@ classdef Us4R < handle
 
         % Priority=Lo; scanConversion after envelope detection, scanConversion coordinates
         % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
-
 
         function setSeqParams(obj,varargin)
 
@@ -278,7 +362,8 @@ classdef Us4R < handle
                                 'txPri',            'txPri'; ...
                                 'tgcStart',         'tgcStart'; ...
                                 'tgcSlope',         'tgcSlope'; ...
-                                'fsDivider'         'fsDivider'};
+                                'fsDivider'         'fsDivider'; ...
+                                'txInvert'          'txInvert'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -288,6 +373,11 @@ classdef Us4R < handle
             for iPar=1:nPar
                 idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
+            end
+            
+            %% Warning: Convex & PWI/STA
+            if ~isnan(obj.sys.curvRadius) && ~strcmp(obj.seq.type,"lin")
+                warning('In this API version only LIN sequence is valid for convex arrays.');
             end
             
             %% Fixed parameters
@@ -350,23 +440,36 @@ classdef Us4R < handle
                 disp(['rxApertureSize set to ' num2str(obj.seq.rxApSize) '.']);
             end
             
+            % delete: txApCent & rxApCent
             if isempty(obj.seq.txApCent)
-                obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.txCentElem);
+                obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.txCentElem);
             else
-                obj.seq.txCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.txApCent);
+                obj.seq.txCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.txApCent);
             end
+            obj.seq.txApCentAng	= interp1(1:obj.sys.nElem, obj.sys.angElem, obj.seq.txCentElem);
+            obj.seq.txApCentZ	= interp1(1:obj.sys.nElem, obj.sys.zElem,   obj.seq.txCentElem);
+            obj.seq.txApCentX	= interp1(1:obj.sys.nElem, obj.sys.xElem,   obj.seq.txCentElem);
 
             if isempty(obj.seq.rxApCent)
-                obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.xElem, obj.seq.rxCentElem);
+                obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.rxCentElem);
             else
-                obj.seq.rxCentElem	= interp1(obj.sys.xElem, 1:obj.sys.nElem, obj.seq.rxApCent);
+                obj.seq.rxCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
-            
-            obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2);
 
+            %% Aperture masks & delays
+            obj.calcTxRxApMask;
+            obj.calcTxDelays;
+            
             %% Number of: Tx, SubTx, Firings, Triggers
             obj.seq.nTx	= length(obj.seq.txAng);
-            obj.seq.nSubTx = min(4, ceil(obj.seq.rxApSize / obj.sys.nChCont));
+            
+            nSubTx = zeros(1,obj.sys.nArius);
+            for iArius=0:(obj.sys.nArius-1)
+                rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
+                iSubTx = cumsum(reshape(rxApMaskSelect,obj.sys.nChArius,4,obj.seq.nTx),2);
+                nSubTx(iArius+1) = max(iSubTx(:));
+            end
+            obj.seq.nSubTx = max(nSubTx);
             obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
             
             if isstring(obj.seq.nRep) && obj.seq.nRep == "max"
@@ -376,53 +479,19 @@ classdef Us4R < handle
                 disp(['nRepetitions set to ' num2str(obj.seq.nRep) '.']);
             end
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
-
-            %% Aperture masks & delays
-            obj.calcTxRxApMask;
-            obj.calcTxDelays;
             
-            %% Piece of code moved from programHW
-            nArius	= obj.sys.nArius;
-            nChan	= obj.sys.nChArius;
-            nSubTx	= obj.seq.nSubTx;
-            nTx     = obj.seq.nTx;
-            nFire	= obj.seq.nFire;
+            %% Sub-sequence parameters
+            obj.calcTxRxSubParams;
             
-            txSubApDel = cell(nArius,nTx);
-            txSubApMask = false(128,nTx,nArius);
-            rxSubApMask = false(128,nFire,nArius);
-            iSubTx = permute(1:nSubTx,[1 3 2]);
-            for iArius=0:(nArius-1)
-                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
-                txSubApMask(:,:,iArius+1) = obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
-
-                % ponizsze linie sa do rozbicia Rx maski > 32 na kilka strzałów
-                rxSubApSelect = ceil(cumsum(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1)) / nChan) == iSubTx;
-                rxSubApSelect = rxSubApSelect & obj.sys.actChan(:,iArius+1);
-                % rxSubaApSelect ma wymiar (liczba kanalow, nTx, nSubTx) i zawiera maske, ktora nalezy zastosowac w danym Tx i subTx
-                rxSubApMask(:,:,iArius+1) = reshape(permute(obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & rxSubApSelect,[1 3 2]),[],nFire);
-                
-%                 % rxSubApMask correction for the new esaote adapter
-%                 if obj.sys.adapType == -1
-%                     for iFire=0:(nFire-1)
-%                         rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
-%                         elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
-%                         rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
-%                         if ~isempty(rejElem)
-%                             rejElem = any(elemIdx == rejElem.', 2);
-%                             rxSubApMask(rejElem,iFire+1,iArius+1) = false;
-%                         end
-%                     end
-%                 end
+            %% Active channels group mask
+            if obj.sys.adapType == -1
+                [~,I] = sort(obj.sys.rxChannelMap.');
+                obj.seq.actChanGroupMask = reshape(any(reshape(obj.sys.actChan(I + (0:(nArius-1))*128), 8, 16, [])), 16, []);
+                % for future: some other adapters (esaote, atl/philips)
+                % can have a similar problem as esaote2 but on a much smaller scale
+            else
+                obj.seq.actChanGroupMask = reshape(any(reshape(obj.sys.actChan, 8, 16, [])), 16, []);
             end
-            
-            actChanGroupMask = obj.sys.selElem(8:8:end,:) <= obj.sys.nElem;
-            actChanGroupMask = actChanGroupMask & obj.sys.actChan(8:8:end,:);
-            
-            obj.seq.actChanGroupMask = actChanGroupMask;
-            obj.seq.txSubApMask = txSubApMask;
-            obj.seq.txSubApDel = txSubApDel;
-            obj.seq.rxSubApMask = rxSubApMask;
 
         end
 
@@ -455,7 +524,7 @@ classdef Us4R < handle
             obj.rec.xSize	= length(obj.rec.xGrid);
 
             %% Fixed parameters
-            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp'));
+            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
         end
         
         function val = get(obj,paramName)
@@ -478,27 +547,33 @@ classdef Us4R < handle
         
         function calcTxRxApMask(obj)
             % calcTxRxApMask appends the following fields to the in/out obj:
-            % obj.seq.txApMask      - [logical] (nArius*128 x nTx) is element active in tx?
-            % obj.seq.rxApMask      - [logical] (nArius*128 x nTx) is element active in rx?
+            % obj.seq.txApOrig      - [element] (1 x nTx) number of probe element being the first in the tx aperture
+            % obj.seq.rxApOrig      - [element] (1 x nTx) number of probe element being the first in the rx aperture
+            % obj.seq.txApMask      - [logical] (nChTotal x nTx) tx aperture mask
+            % obj.seq.rxApMask      - [logical] (nChTotal x nTx) rx aperture mask
+            % obj.seq.rxElemId      - [element] (nChTotal x nTx) element numbering in the rx aperture
             
-%             txApMask = abs(obj.sys.xElem' - obj.seq.txApCent) <= (obj.seq.txApSize-1)/2*obj.sys.pitch;
-%             rxApMask = abs(obj.sys.xElem' - obj.seq.rxApCent) <= (obj.seq.rxApSize-1)/2*obj.sys.pitch;
-            
-            txApMask = round(abs((1:obj.sys.nElem).' - obj.seq.txCentElem)*2) <= (obj.seq.txApSize-1);
-            rxApMask = round(abs((1:obj.sys.nElem).' - obj.seq.rxCentElem)*2) <= (obj.seq.rxApSize-1);
-            
-            % Make the mask fit the number of channels
-            if obj.sys.nElem >= obj.sys.nChTotal
-                txApMask = txApMask(1:obj.sys.nChTotal,:);
-                rxApMask = rxApMask(1:obj.sys.nChTotal,:);
+            iElem = nan(1,max(obj.sys.probeMap));
+            iElem(obj.sys.probeMap) = 1:obj.sys.nElem;
+            if length(iElem) >= obj.sys.nChTotal
+                iElem = iElem(1:obj.sys.nChTotal);
             else
-                txApMask = [txApMask; false(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
-                rxApMask = [rxApMask; false(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
+                iElem = [iElem, nan(1, obj.sys.nChTotal-length(iElem))];
             end
             
-            % Save the mask to the obj
-            obj.seq.txApMask = txApMask;
-            obj.seq.rxApMask = rxApMask;
+
+            obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
+            obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
+            
+            obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
+            systemChannelsMask = true(size(obj.seq.txApMask));
+            systemChannelsMask(obj.sys.probeMap(obj.sys.probeChannelsMask), :) = false;
+            obj.seq.txApMask = obj.seq.txApMask & systemChannelsMask;
+            obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
+            obj.seq.rxApMask = obj.seq.rxApMask & systemChannelsMask;
+            obj.seq.rxElemId = (iElem.' - obj.seq.rxApOrig + 1) .* obj.seq.rxApMask;
+            obj.seq.rxElemId(isnan(obj.seq.rxElemId)) = 0;
+            
         end
 
         function calcTxDelays(obj)
@@ -506,32 +581,48 @@ classdef Us4R < handle
             % obj.seq.txDel         - [s] (nArius*128 x nTx) tx delays for each element
             % obj.seq.txDelCent     - [s] (1 x nTx) tx delays for tx aperture centers
             
+            nElem = max(obj.sys.probeMap);
+            xElem = nan(1,nElem);
+            zElem = nan(1,nElem);
+            xElem(obj.sys.probeMap) = obj.sys.xElem;
+            zElem(obj.sys.probeMap) = obj.sys.zElem;
+            if nElem >= obj.sys.nChTotal
+                xElem = xElem(1:obj.sys.nChTotal);
+                zElem = zElem(1:obj.sys.nChTotal);
+            else
+                xElem = [xElem, nan(1, obj.sys.nChTotal-nElem)];
+                zElem = [zElem, nan(1, obj.sys.nChTotal-nElem)];
+            end
+            
             %% CALCULATE DELAYS
+            txAngCart	= obj.seq.txApCentAng + obj.seq.txAng;
+            
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
-                txDel       = (obj.sys.xElem.'  .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
-                txDelCent	= (obj.seq.txApCent .* sin(obj.seq.txAng) ) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
-
+                txDel       = (xElem.'           .* sin(txAngCart) + ...
+                               zElem.'           .* cos(txAngCart)) / obj.seq.c;    % [s] (nElem x nTx) delays for tx elements
+                txDelCent	= (obj.seq.txApCentX .* sin(txAngCart) + ...
+                               obj.seq.txApCentZ .* cos(txAngCart)) / obj.seq.c;    % [s] (1 x nTx) delays for tx aperture center
             else
                 % Focal point positions
-                xFoc        = obj.seq.txFoc .* sin(obj.seq.txAng) + obj.seq.txApCent;	% [m] (1 x nTx) x-position of the focal point
-                zFoc        = obj.seq.txFoc .* cos(obj.seq.txAng);                      % [m] (1 x nTx) z-position of the focal point
-
+                xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(txAngCart);	% [m] (1 x nTx) x-position of the focal point
+                zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(txAngCart);	% [m] (1 x nTx) z-position of the focal point
+                
+                
                 % Delays due to the element - focal point distances
-                txDel       = sqrt((xFoc - obj.sys.xElem.' ).^2 + zFoc.^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
-                txDelCent	= sqrt((xFoc - obj.seq.txApCent).^2 + zFoc.^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
-
-                % Inverse the delays for the 'focusing' option (zFoc>0)
+                txDel       = sqrt((xFoc -         xElem.'  ).^2 + ...
+                                   (zFoc -         zElem.'  ).^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
+                txDelCent	= sqrt((xFoc - obj.seq.txApCentX).^2 + ...
+                                   (zFoc - obj.seq.txApCentZ).^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
+                
+                % Inverse the delays for the 'focusing' option (txFoc>0)
                 % For 'defocusing' the delays remain unchanged
-                focDefoc	= 1 - 2*max(0,sign(zFoc));
+                focDefoc	= 1 - 2 * double(obj.seq.txFoc>0);
                 txDel       = txDel     .* focDefoc;
                 txDelCent	= txDelCent .* focDefoc;
             end
 
             %% Postprocess the delays
-            % Make the delays fit the number of channels
-            txDel       = [txDel;	 zeros(obj.sys.nChTotal-obj.sys.nElem, obj.seq.nTx)];
-            
             % Make delays = nan outside the tx aperture
             txDel(~obj.seq.txApMask)	= nan;
 
@@ -540,7 +631,7 @@ classdef Us4R < handle
             txDel       = txDel     + txDelShift;       % [s] (nElem x nTx)
             txDelCent	= txDelCent + txDelShift;       % [s] (1 x nTx)
 
-            % Equalize the txCentDel
+            % Equalize the txDelCent
             txDel       = txDel - txDelCent + max(txDelCent);
             txDelCent	= max(txDelCent);
 
@@ -553,10 +644,55 @@ classdef Us4R < handle
 
         end
         
+        function calcTxRxSubParams(obj)
+            nArius	= obj.sys.nArius;
+            nChan	= obj.sys.nChArius;
+            nSubTx	= obj.seq.nSubTx;
+            nTx     = obj.seq.nTx;
+            nFire	= obj.seq.nFire;
+            
+            txSubApDel = cell(nArius,nTx);
+            txSubApMask = false(128,nTx,nArius);
+            rxSubApMask = false(128,nFire,nArius);
+            rxSubElemId = zeros(128,nFire,nArius);
+            for iArius=0:(nArius-1)
+                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
+                txSubApMask(:,:,iArius+1) = obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
+                
+                rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
+                rxApMaskSelect = reshape(rxApMaskSelect,nChan,4,nTx);
+                iSubTx = cumsum(rxApMaskSelect,2) .* rxApMaskSelect;
+                iSubTx = reshape(iSubTx,[],1,nTx);
+                rxSubApMask(:,:,iArius+1) = reshape(iSubTx == (1:nSubTx),[],nFire);
+                
+                % rxSubApMask correction for the new esaote adapter
+                if obj.sys.adapType == -1
+                    for iFire=0:(nFire-1)
+                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
+                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
+                        if ~isempty(rejElem)
+                            elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
+                            rejElem = any(elemIdx == rejElem.', 2);
+                            rxSubApMask(rejElem,iFire+1,iArius+1) = false;
+                        end
+                    end
+                end
+                
+                rxElemIdSelect = obj.seq.rxElemId(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1);
+                rxSubElemId(:,:,iArius+1) = reshape(reshape(rxElemIdSelect,[],1,nTx) .* ...
+                                                    reshape(rxSubApMask(:,:,iArius+1),[],nSubTx,nTx), [],nFire);
+            end
+            
+            obj.seq.txSubApMask = txSubApMask;
+            obj.seq.txSubApDel = txSubApDel;
+            obj.seq.rxSubApMask = rxSubApMask;
+            obj.seq.rxSubElemId = rxSubElemId;
+        end
+        
         function validateSequence(obj)
             
             %% Validate number of firings
-            if obj.seq.nFire > 1024
+            if obj.seq.nFire > 2048
                 error("ARRUS:IllegalArgument", ...
                         ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
             end
@@ -568,9 +704,9 @@ classdef Us4R < handle
             end
             
             %% Validate number of samples
-            if obj.seq.nSamp > 2^13/obj.seq.fsDivider
+            if obj.seq.nSamp > 65536/obj.seq.fsDivider
                 error("ARRUS:IllegalArgument", ...
-                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(2^13/obj.seq.fsDivider) '.'])
+                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536/obj.seq.fsDivider) '.'])
             end
             
             if mod(obj.seq.nSamp,64) ~= 0
@@ -635,7 +771,8 @@ classdef Us4R < handle
             for iArius=0:(obj.sys.nArius-1)
                 Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
                 Us4MEX(iArius, "ClearScheduledReceive");
-                for iFire=0:(obj.seq.nFire-1)    
+
+                for iFire=0:(obj.seq.nFire-1)
                     Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
                     
                     %% Tx
@@ -644,7 +781,7 @@ classdef Us4R < handle
                     Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
                     Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
                     Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
-                    Us4MEX(iArius, "SetTxInvert", 0, iFire);
+                    Us4MEX(iArius, "SetTxInvert", obj.seq.txInvert, iFire);
                     
                     %% Rx
                     % SetRxChannelMapping for the new esaote adapter
@@ -708,7 +845,7 @@ classdef Us4R < handle
 
         end
 
-        function rf = execSequence(obj)
+        function [rf, metadata] = execSequence(obj)
 
             nArius	= obj.sys.nArius;
             nChan	= obj.sys.nChArius;
@@ -729,7 +866,9 @@ classdef Us4R < handle
                         repmat(nSamp * nTrig, [nArius 1]), ...
                         int8(obj.logTime) ...
             );
-
+            %% Get metadata
+            metadata = zeros(nChan, nTrig, 'int16');
+            metadata(:, :) = rf(:, 1:nSamp:nTrig*nSamp);
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
@@ -769,23 +908,20 @@ classdef Us4R < handle
                 end
                 rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
                 
-            elseif obj.sys.adapType == 2 || obj.sys.adapType == -1
+            elseif obj.sys.adapType == 2 || obj.sys.adapType == 1 || obj.sys.adapType == -1
                 % "ultrasonix" or "new esaote" adapter type
+                rf0	= permute(rf,[2 1 3 4 6 5]);
+                rf0	= reshape(rf0,nSamp,nChan*nSubTx*nTx*nArius,nRep);
+                rf	= zeros(nSamp,obj.seq.rxApSize*nTx,nRep,'int16');
                 
-                % new esaote probe: clear the unsupported channels
-                if obj.sys.adapType == -1
-                    mask = any(reshape(obj.seq.rxSubApMask,nChan,4,nSubTx,nTx,1,nArius),2);
-                    rf  = rf .* int16(mask);
-                end
+                addressFrom = reshape(any(reshape(obj.seq.rxSubApMask,nChan,4,[]),2),[],1);
+                addressTo   = reshape(sum(reshape(obj.seq.rxSubElemId,nChan,4,[]),2),[],1);
+                addressTo   = addressTo + reshape((0:(nTx-1)).*ones(nChan*nSubTx,1,nArius),[],1)*obj.seq.rxApSize;
+                addressTo   = addressTo(addressFrom);
                 
-                rf	= permute(rf,[2 1 6 3 4 5]);
-                rf	= reshape(rf,nSamp,nChan*nArius,nSubTx,nTx,nRep);
+                rf(:,addressTo,:) = rf0(:,addressFrom,:);
+                rf	= reshape(rf,nSamp,obj.seq.rxApSize,nTx,nRep);
                 
-                for iTx=1:nTx
-                    rf(:,:,:,iTx,:)	= circshift(rf(:,:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan*nArius),2);
-                end
-                rf	= reshape(rf,nSamp,nChan*nArius*nSubTx,nTx,nRep);
-                rf	= rf(:,1:obj.seq.rxApSize,:,:);
             end
 
         end
@@ -832,7 +968,7 @@ classdef Us4R < handle
             
             % Scan conversion (for 'lin' mode)
             if strcmp(obj.seq.type,'lin')
-                envImg = scanConversion(envImg,obj.seq,obj.rec);
+                envImg = scanConversion(envImg,obj.sys,obj.seq,obj.rec);
             end
             
             % Compression

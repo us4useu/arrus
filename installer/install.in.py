@@ -181,7 +181,7 @@ class WelcomeStage(Stage):
                            f"tx firmware version: {TX_FIRMWARE_VERSION}")
 
         context.workspace_dir = tempfile.TemporaryDirectory()
-        _logger.log(DEBUG, f"Workspace directory: {context.workspace_dir}")
+        _logger.log(DEBUG, f"Workspace directory: {context.workspace_dir.name}")
         return True
 
 

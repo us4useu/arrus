@@ -1,26 +1,26 @@
-Communicating with Us4OEM
+Communicating with the Us4OEM
 =========================
 
-Acquiring echo signal data requires three steps:
+Acquiring echo signal data requires these three steps:
 
-1. configure a `session` with Us4OEM device,
+1. configure a `session` with the Us4OEM device,
 2. define operations (ops) that should be executed by the device,
 3. execute operations within the session.
 
-All these three steps are described below.
+All three steps are described below.
 
 Configuring session
 -------------------
 
 User communicates with the Us4OEM device in a single `session`.
-Session is an abstract object that represents connection between client's
+Session is an abstract object that represents a connection between client's
 programming interface and the device. The session should be configured before
-starting. In particular it is required to provide:
+starting. In particular, it is essential to provide:
 
-- description of the system to which the user wants to connect to,
+- a description of the system which the user wants to connect to,
 - Us4OEM device initialization parameters.
 
-System description should be provided as an instance of
+The system description should be provided as an instance of the
 :class:`arrus.CustomUs4RCfg` class.
 
 .. code-block:: python
@@ -31,7 +31,7 @@ System description should be provided as an instance of
         is_hv256=True
     )
 
-Us4OEM initialization parameters should be set using :class:`arrus.Us4OEMCfg`
+Us4OEM initialization parameters should be set using the :class:`arrus.Us4OEMCfg`
 class, e.g:
 
 .. code-block:: python
@@ -59,20 +59,20 @@ Finally, you can prepare a :class:`arrus.SessionCfg`:
 Defining operations to perform
 ------------------------------
 
-In ARRUS, user defines **operations** that will be executed on a particular
+In ARRUS, the user defines the **operations** that will be executed on a particular
 **device**.
 
-Us4OEM modules implements :class:`arrus.ops.TxRx` operation,
+Us4OEM modules implement the :class:`arrus.ops.TxRx` operation,
 that is, a single transmit and echo signal reception. The result of this
-operation is stored directly in the module's DDR memory, and then is transferred
+operation is stored directly in the module's DDR memory, and then transferred
 to the PC for further processing. A single ``TxRx`` allows to transmit a signal
-impulse using at most 128 channels and to receive echo data using at most 32
+impulse using 128 channels at most and to receive echo data using a maximum of 32
 channels.
 
-A single ``TxRx`` operation is limited by module's maximum number of Rx channels.
+A single ``TxRx`` operation is limited by the module's maximum number of Rx channels.
 In most cases a :class:`arrus.ops.Sequence` of ``TxRx`` operations will be
 desired. A single ``Sequence`` allows to execute a given collection of
-``TxRx`` operations, store all acquired data in module's DDR memory,
+``TxRx`` operations, store all acquired data in the module's DDR memory,
 then transfer it to the computer's memory. For example, a ``Sequence`` of 4
 ``TxRx`` operations with a shifted Rx aperture (stride 32) allows to acquire
 data using 128 Rx channels:
@@ -91,12 +91,12 @@ data using 128 Rx channels:
         operations.append(tx_rx)
     tx_rx_sequence = Sequence(operations)
 
-In real-time imaging user probably would like to execute a given operation
+In real-time imaging, the user would likely wish to execute a given operation
 in a loop, until the system is explicitly stopped. In this case
-:class:`arrus.ops.Loop` is advised to be used. This operations repeats given
+:class:`arrus.ops.Loop` should be used. This operation repeats a given
 ``Sequence`` of ``TxRx`` ops, until the loop is explicitly stopped.
-After each execution of the ``Sequence``, a ``callback`` function is called
-with the rf data provided as an input. If the acquisition should be continued,
+After each execution of the ``Sequence``, a ``callback`` function is called,
+with the RF data provided as input. If the acquisition is to continue,
 the ``callback`` function should return ``True``, ``False`` otherwise.
 
 .. code-block:: python
@@ -108,7 +108,7 @@ the ``callback`` function should return ``True``, ``False`` otherwise.
     sequence_loop = Loop(tx_rx_sequence)
 
 
-Running operation
+Running operations
 -----------------
 
 Operations can be executed within a :class:`arrus.Session`.
@@ -126,9 +126,9 @@ following semantic: when the context (an indented block of code) ends, all
 running devices are stopped and the session is closed.
 
 A parameter ``feed_dict`` allows to fill the executed operation placeholders
-with specific values. An example of such placeholder is a ``device``, on which
-the operation should be executed. ``Loop`` operation requires an additional
-feed value, a ``callback`` function, that should be called when the data
+with specific values. An example of such a placeholder is a ``device`` on which
+the operation should be executed. The ``Loop`` operation requires an additional
+feed value, the ``callback`` function, that should be called when data
 acquisition is finished.
 
 .. code-block:: python
@@ -142,14 +142,14 @@ acquisition is finished.
 Examples
 --------
 
-Following examples are available in ``python\examples\us4oem`` directory:
+The following examples are available in the ``python\examples\us4oem`` directory:
 
 - ``us4oem_x1_pwi_single.py``: using Us4OEM to transmit a single plane \
   wave and acquire echo data.
 - ``us4oem_x1_sta_single.py``: using Us4OEM to perform a single STA sequence \
-- ``us4oem_x1_sta_multiple.py``: using Us4OEM to perform STA sequence multiple\
-  times; saves acquired RF data to ``numpy`` file with given frequency.
+- ``us4oem_x1_sta_multiple.py``: using Us4OEM to perform the STA sequence multiple\
+  times; saves acquired RF data to a ``numpy`` file with a given frequency.
 - ``us4oem_x1_sta_old_api.py``: an example using the old, legacy API.
 
-All examples require ``matplotlib`` package to be installed.
+All examples require the ``matplotlib`` package to be installed.
 
