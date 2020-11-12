@@ -9,6 +9,8 @@ import arrus.devices.us4r
 import arrus.medium
 import arrus.metadata
 import arrus.params
+import arrus.devices.cpu
+import arrus.devices.gpu
 
 
 class AbstractSession(abc.ABC):
@@ -61,7 +63,7 @@ class Session(AbstractSession):
         """
         super().__init__()
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
-        self._py_devices = {}
+        self._py_devices = self._create_py_devices()
         self._context = SessionContext(medium=medium)
 
     def get_device(self, path: str):
@@ -105,6 +107,17 @@ class Session(AbstractSession):
     def set_current_medium(self, medium: arrus.medium.Medium):
         # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
         raise RuntimeError("NYI")
+
+    def _create_py_devices(self):
+        devices = {
+            "/CPU:0": arrus.devices.cpu.CPU(0),
+        }
+        cupy_spec = importlib.util.find_spec("cupy")
+        if cupy_spec is not None:
+            import cupy
+            cupy.cuda.device.Device(0).use()
+            devices["/GPU:0"] = arrus.devices.gpu.GPU(0)
+        return devices
 
 
 # ------------------------------------------ LEGACY MOCK

@@ -42,7 +42,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id,
 }
 
 void Us4RImpl::setVoltage(Voltage voltage) {
-    logger->log(LogSeverity::DEBUG,
+    logger->log(LogSeverity::INFO,
                 ::arrus::format("Setting voltage {}", voltage));
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
     // Validate.
@@ -62,7 +62,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 }
 
 void Us4RImpl::disableHV() {
-    logger->log(LogSeverity::DEBUG, "Disabling HV");
+    logger->log(LogSeverity::INFO, "Disabling HV");
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
     hv.value()->disable();
 }

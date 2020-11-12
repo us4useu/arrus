@@ -14,10 +14,23 @@ class Pipeline:
     Processes given data,metadata using a given sequence of steps.
     The processing will be performed on a given device ('placement').
     """
-
-    def __init__(self, steps, placement: arrus.device.Device):
+    def __init__(self, steps, placement=None):
         self.steps = steps
-        self.placement = placement
+        if placement is not None:
+            self.set_placement(placement)
+
+    def __call__(self, data, metadata):
+        for step in self.steps:
+            data, metadata = step(data, metadata)
+        return data, metadata
+
+    def set_placement(self, device):
+        """
+        Sets the pipeline to be executed on a particular device.
+
+        :param device: device on which the pipeline should be executed
+        """
+        self.placement = device
         # Initialize steps with a proper library.
         if isinstance(self.placement, arrus.devices.gpu.GPU):
             import cupy as cp
@@ -27,14 +40,10 @@ class Pipeline:
             import scipy.ndimage
             pkgs = dict(num_pkg=np, filter_pkg=scipy.ndimage)
         else:
-            raise ValueError(f"Unsupported device: {placement}")
+            raise ValueError(f"Unsupported device: {device}")
         for step in self.steps:
             step.set_pkgs(**pkgs)
 
-    def __call__(self, data, metadata):
-        for step in self.steps:
-            data, metadata = step(data, metadata)
-        return data, metadata
 
 
 class BandpassFilter:
