@@ -18,6 +18,10 @@ int main() noexcept {
         std::shared_ptr<std::ostream> ostream{
             std::shared_ptr<std::ostream>(&std::cout, [](std::ostream *) {})};
         loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::TRACE);
+        std::shared_ptr<std::ostream> logFileStream =
+            // append to the end of the file
+            std::make_shared<std::ofstream>(R"(C:\Users\pjarosik\cpplog.txt)", std::ios_base::app);
+        loggingMechanism->addTextSink(logFileStream, arrus::LogSeverity::TRACE);
 
         ::arrus::setLoggerFactory(loggingMechanism);
 
@@ -36,17 +40,33 @@ int main() noexcept {
 
         std::vector<TxRx> txrxs;
 
-        for(int i = 0; i < 11; ++i) {
-            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 2000e-6);
+        for(int i = 0; i < 175; ++i) {
+            arrus::BitMask aperture(192, false);
+
+            auto origin = i-32;
+
+            unsigned short leftPadding = 0, rightPadding = 0;
+            for(int j = 0; j < 64; ++j) {
+                auto idx = origin + j;
+                aperture[std::min(std::max(idx, 0), 191)] = true;
+                if(idx < 0) {
+                    ++leftPadding;
+                }
+                if(idx > 191) {
+                    ++rightPadding;
+                }
+            }
+
+            txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange, 1, {leftPadding, rightPadding}), 1000e-6);
         }
 
         TxRxSequence seq(txrxs, {});
         us4r->setVoltage(30);
 
-        auto[fcm, buffer] = us4r->uploadAsync(seq, 5, 5, 0.0);
+        auto[fcm, buffer] = us4r->uploadSync(seq);
 
         us4r->start();
-        for(int i = 0; i < 100; ++i) {
+        for(int i = 0; i < 10; ++i) {
             std::string msg = "i: " + std::to_string(i) + "\n";
             std::cout << msg;
             int16_t* data = buffer->tail(0);
