@@ -121,7 +121,6 @@ class Session(AbstractSession):
 
 
 # ------------------------------------------ LEGACY MOCK
-
 class MockSession(AbstractSession):
 
     def __init__(self, dataset):
@@ -174,6 +173,8 @@ class MockSession(AbstractSession):
         curv_radius = - self._get_scalar(sys, "curvRadius")
 
         probe_model = arrus.devices.probe.ProbeModel(
+            arrus.devices.probe.ProbeModelId(
+                manufacturer="nanoecho", name="magprobe"),
             self._get_scalar(sys, "nElem"), pitch, curv_radius)
         probe = arrus.devices.probe.ProbeDTO(model=probe_model)
         us4r = arrus.devices.us4r.Us4RDTO(probe=probe)
