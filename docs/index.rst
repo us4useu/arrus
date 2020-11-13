@@ -9,6 +9,7 @@ Welcome to ARRUS documentation!
     content/introduction
     content/installation/index
     content/examples/bmode_imaging
+    content/examples/mock_session_example
     content/api
 
 .. toctree::
