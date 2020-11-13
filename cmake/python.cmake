@@ -74,7 +74,7 @@ function(install_arrus_package TARGET_NAME VENV_TARGET PACKAGE_TARGET INSTALLATI
         COMMAND
             ${INSTALL_VENV_EXECUTABLE} -m pip install
             #TODO(pjarosik) consider appending timestamp to project version
-            # in order to avoid unecessary reinstallation of arius dependencies
+            # in order to avoid unnecessary reinstallation of arius dependencies
             ${INSTALL_ARRUS_OPTIONS}
         DEPENDS
             ${VENV_TARGET} ${PACKAGE_TARGET} ${ARRUS_PACKAGE_STAMP}

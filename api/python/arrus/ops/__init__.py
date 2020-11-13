@@ -1,1 +1,1 @@
-from arrus.ops.operations import *
+from arrus.ops.operation import *

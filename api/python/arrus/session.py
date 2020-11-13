@@ -1,272 +1,241 @@
-import logging
-import os
-from logging import DEBUG, INFO
 import abc
+import numpy as np
+import importlib
 import dataclasses
-import typing
 
-import yaml
-
-_logger = logging.getLogger(__name__)
-
-import arrus.devices.probe as _probe
-import arrus.devices.us4oem as _us4oem
-import arrus.devices.device as _device
-import arrus.interface as _interface
-import arrus.utils as _utils
-import arrus.devices.ius4oem as _ius4oem
-import arrus.system as _system
-import arrus.kernels
-import arrus.validation
-
-_ARRUS_PATH_ENV = "ARRUS_PATH"
-
-
-@dataclasses.dataclass(frozen=True)
-class SessionCfg:
-    """
-    Configuration of the communication session with devices.
-
-    This configuration allows to specify parameters that has to
-    applied when user starts a new session.
-
-    :param system: description of a system with which the user wants to
-        communicate
-    :param devices: configuration of the devices with which the user wants
-        communicate; a map: device id → device configuration
-    """
-    system: _system.SystemCfg
-    devices: typing.Mapping[str, _device.DeviceCfg]
-
-    def __post_init__(self):
-        arrus.validation.assert_not_none(self.devices, "devices")
-        arrus.validation.assert_not_none(self.devices, "system")
+import arrus.core
+import arrus.exceptions
+import arrus.devices.us4r
+import arrus.devices.mock_us4r
+import arrus.medium
+import arrus.metadata
+import arrus.params
+import arrus.devices.cpu
+import arrus.devices.gpu
+import arrus.ops.us4r
+import arrus.ops.imaging
 
 
 class AbstractSession(abc.ABC):
+    """
+    An abstract class of session.
 
-    def __init__(self, cfg):
-        self._devices = self._load_devices(cfg)
+    This class is not intended to be instantiated.
+    """
 
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
     def get_device(self, id: str):
         """
         Returns a device located at given path.
 
-        :param id: a path to a device, for example '/Us4OEM:0'
-        :return: a device located in given path.
+        :param id: a path to a device, for example '/Us4R:0'
+        :return: a device located in a given path.
         """
-        dev_path = id.split("/")[1:]
-        if len(dev_path) != 1:
-            raise ValueError(
-              "Invalid path, top-level devices can be accessed only.")
-        dev_id = dev_path[0]
-        return self._devices[dev_id]
-
-    def get_devices(self):
-        """
-        Returns a list of all devices available in this session.
-
-        :return: a list of available devices
-        """
-        return self._devices
+        raise ValueError("Tried to access an abstract method.")
 
     @abc.abstractmethod
-    def run(self, operation: arrus.ops.Operation, feed_dict: dict):
-        raise ValueError("This type of session cannot run operations.")
+    def set_current_medium(self, medium: arrus.medium.Medium):
+        """
+        Sets a medium in the current session context.
 
-    @abc.abstractmethod
-    def _load_devices(self, cfg):
-        pass
+        :param medium: medium description to set
+        """
+        raise ValueError("Tried to access an abstract method.")
+
+
+@dataclasses.dataclass(frozen=True)
+class SessionContext:
+    medium: arrus.medium.Medium
 
 
 class Session(AbstractSession):
     """
-    A communication session with the available devices.
+    A communication session with the ultrasound system.
+    Currently, only localhost session is available.
     """
 
-    def __init__(self, cfg: SessionCfg):
+    def __init__(self, cfg_path: str = None,
+                 medium: arrus.medium.Medium = None,
+                 mock: dict = None):
         """
-        :param cfg: configuration parameters for the new session
+        Session constructor.
+
+        :param cfg_path: a path to configuration file
+        :param mock: a map device id -> a file that should be used to
+          mock the device
+        :param medium: medium description to set in context
         """
-        super().__init__(cfg)
-        self._async_kernels = {}
+        super().__init__()
+        if not (bool(cfg_path is None) ^ bool(mock is None)):
+            raise ValueError("Exactly one of the following parameters should "
+                             "be provided: cfg_path, mock.")
+        if cfg_path is not None:
+            self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
+        self._py_devices = self._create_py_devices(mock)
+        self._context = SessionContext(medium=medium)
 
-    def run(self, operation: arrus.ops.Operation, feed_dict: dict):
+    def get_device(self, path: str):
         """
-        Runs a given operation in the system. Returns the result of operation
-        (if any).
+        Returns a device identified by a given id.
 
-        :param operation: operation to run
-        :param feed_dict: values to pass to the operation. All operations
-            requires `device`; check documentation of a particular documentation
-            if it requires any additional session values.
+        The available devices are determined by the initial session settings.
+
+        The handle to device is invalid after the session is closed
+        (i.e. the session object is disposed).
+
+        :param path: a path to the device
+        :return: a handle to device
         """
-        _logger.log(DEBUG, f"Session run: {str(operation)}")
+        # First, try getting initially available devices.
+        if path in self._py_devices:
+            return self._py_devices[path]
+        # Then try finding a device using arrus core implementation.
 
-        kernel = arrus.kernels.get_kernel(operation, feed_dict)
-        device = feed_dict.get("device", None)
-        arrus.validation.assert_not_none(device, "device")
-        current_async_kernel = self._async_kernels.get(device.get_id(), None)
-        if current_async_kernel is not None:
-            device_id = device.get_id()
-            current_op = current_async_kernel.op
-            raise ValueError(f"An operation {current_op} is already running on "
-                             f"the device {device_id}. Stop the device first.")
-        device.start_if_necessary()
-        result = kernel.run()
-        if kernel is arrus.kernels.AsyncKernel:
-            self._async_kernels[device.get_id()] = kernel
-        return result
+        if self._session_handle is None:
+            # We have no handle to session (mock session),
+            # so we wont find any new device.
+            raise arrus.exceptions.DeviceNotFoundError(path)
 
-    def stop_device(self, device: _device.Device):
-        """
-        Stops executing any operations that run on a specific device.
-        """
-        current_kernel = self._async_kernels.get(device.get_id(), None)
-        if current_kernel is not None:
-            op = current_kernel.op
-            current_kernel.stop()
-            _logger.info(f"Stopped operation {op} running on "
-                         f"device {device.get_id()}")
+        device_handle = self._session_handle.getDevice(path)
+        # Cast device to its type class.
+        device_id = device_handle.getDeviceId()
+        device_type = device_id.getDeviceType()
+        specific_device_cast = {
+            # Currently only us4r is supported.
+            arrus.core.DeviceType_Us4R:
+                lambda handle: arrus.devices.us4r.Us4R(
+                    arrus.core.castToUs4r(handle),
+                    self)
 
-    def stop(self):
-        for key, kernel in self._async_kernels:
-            _logger.debug(INFO, "Stopping device %s (operation %s)" %
-                          (key, kernel.op))
-            kernel.stop()
+        }.get(device_type, None)
+        if specific_device_cast is None:
+            raise arrus.exceptions.DeviceNotFoundError(path)
+        specific_device = specific_device_cast(device_handle)
+        # TODO(pjarosik) key should be an id, not the whole path
+        self._py_devices[path] = specific_device
+        return specific_device
 
-    def __enter__(self):
-        return self
+    def get_session_context(self):
+        return self._context
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop()
+    def set_current_medium(self, medium: arrus.medium.Medium):
+        # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
+        raise RuntimeError("NYI")
 
-    def _load_devices(self, cfg: SessionCfg):
-        result = {}
-        system_cfg = cfg.system
+    def _create_py_devices(self, mock):
+        # Create mock devices
 
-        if not isinstance(system_cfg, _system.CustomUs4RCfg):
-            raise ValueError("Only custom us4r configuration is currently "
-                             "supported.")
+        devices = {}
+        for k, v in mock.items():
+            devices["/" + k] = MockMatlab045.load_device(v)
 
-        n_us4oems = system_cfg.n_us4oems
-        arrus.validation.assert_not_none(n_us4oems, "number of us4oems")
-
-        us4oem_handles = []
-        for i in range(n_us4oems):
-            us4oem_handle = _ius4oem.getUs4OEMPtr(i)
-            _logger.log(DEBUG,
-                        f"Discovered Us4OEM handle "
-                        f"with id {us4oem_handle.GetID()}")
-            us4oem_handles.append(us4oem_handle)
-
-        us4oem_handles = sorted(us4oem_handles, key=lambda a: a.GetID())
-
-        for device_id, device_cfg in cfg.devices.items():
-            if device_id.strip().upper().startswith("US4OEM"):
-                # parse id
-                device_type, index = device_id.split(":")
-                index = int(index.strip())
-                arrus.validation.assert_type(device_cfg, _us4oem.Us4OEMCfg,
-                                             f"{device_id} configuration")
-                # validate and use configuration to create device
-                us4oem = _us4oem.Us4OEM(index,card_handle=us4oem_handles[index],
-                                        cfg=device_cfg)
-                us4oem.start_if_necessary()
-                if us4oem.get_id() in result.keys():
-                    raise ValueError(f"Found duplicated configuration for "
-                                     f"{us4oem.get_id()}")
-                result[us4oem.get_id()] = us4oem
-                _logger.log(INFO, f"Discovered module: {str(us4oem)}")
-            else:
-                raise ValueError(f"This device cannot be configured: "
-                                 f"{device_id}")
-
-        # Below is a workaround for the following issue:
-        # - turn off us4r-lite, turn on us4r-lite
-        # - run script, which uses only us4oem:0
-        # - run again - PCIDeviceException
-        # If only one module is initialized after the restart, the second
-        # call will fail.
-        for i in range(n_us4oems):
-            if _us4oem.Us4OEM.get_card_id(i) not in result:
-                unused_device = _us4oem.Us4OEM(i, card_handle=us4oem_handles[i])
-                unused_device.start_if_necessary()
-                result[unused_device.get_id()] = unused_device
-
-        if system_cfg.is_hv256:
-            module_id = system_cfg.master_us4oem
-            master_module = result[_us4oem.Us4OEM.get_card_id(module_id)]
-
-            # Intentionally loading modules only when the HV256 is used.
-            import arrus.devices.idbarlite as _dbarlite
-            import arrus.devices.ihv256 as _ihv256
-            import arrus.devices.hv256 as _hv256
-
-            dbar = _dbarlite.GetDBARLite(
-                _ius4oem.castToII2CMaster(master_module.card_handle))
-            hv_handle = _ihv256.GetHV256(dbar.GetI2CHV())
-            hv = _hv256.HV256(hv_handle)
-            result[hv.get_id()] = hv
-        return result
+        # Create CPU and GPU devices
+        devices["/CPU:0"] = arrus.devices.cpu.CPU(0)
+        cupy_spec = importlib.util.find_spec("cupy")
+        if cupy_spec is not None:
+            import cupy
+            cupy.cuda.device.Device(0).use()
+            devices["/GPU:0"] = arrus.devices.gpu.GPU(0)
+        return devices
 
 
-class InteractiveSession(AbstractSession):
-    """
-    **THIS CLASS IS DEPRECATED AND WILL BE REMOVED IN THE NEAR FUTURE. Please
-    use** ``arrus.Session``.
+# ------------------------------------------ MATLAB 0.4.5 LEGACY MOCK DATA
+class MockMatlab045:
 
-    An user interactive session with available devices.
+    @staticmethod
+    def load_device(cfg):
+        metadata = MockMatlab045._read_metadata(cfg)
+        data = cfg["rf"]
+        return arrus.devices.mock_us4r.MockUs4R(data, metadata, 0)
 
-    If cfg_path is None, session looks for a file ``$ARRUS_PATH/default.yaml``,
-    where ARRUS_PATH is an user-defined environment variable.
+    @staticmethod
+    def _get_scalar(obj, key):
+        return obj[key][0][0]
 
-    :param cfg_path: path to the configuration file, can be None
-    """
-    def __init__(self, cfg_path: str = None):
-        if cfg_path is None:
-            cfg_path = os.path.join(os.environ.get(_ARRUS_PATH_ENV, ""), "default.yaml")
+    @staticmethod
+    def _get_vector(obj, key):
+        return np.array(obj[key]).flatten()
 
-        with open(cfg_path, "r") as f:
-            cfg = yaml.safe_load(f)
-            super().__init__(cfg)
+    @staticmethod
+    def _read_metadata(data):
+        sys = data["sys"]
+        seq = data["seq"]
 
-    def run(self, operation: arrus.ops.Operation, feed_dict: dict):
-        raise ValueError("This type of session cannot run operations.")
+        # Device
+        pitch = MockMatlab045._get_scalar(sys, "pitch")
+        curv_radius = - MockMatlab045._get_scalar(sys, "curvRadius")
 
-    def _load_devices(self, cfg):
-        """
-        Reads configuration from given file and returns a map of top-level
-        devices.
+        probe_model = arrus.devices.probe.ProbeModel(
+            model_id=arrus.devices.probe.ProbeModelId(
+                manufacturer="nanoecho", name="magprobe"),
+            n_elements=MockMatlab045._get_scalar(sys, "nElem"),
+            pitch=pitch,
+            curvature_radius=curv_radius)
+        probe = arrus.devices.probe.ProbeDTO(model=probe_model)
+        us4r = arrus.devices.us4r.Us4RDTO(probe=probe, sampling_frequency=65e6)
 
-        Currently Us4OEM modules are supported.
+        # Sequence
+        tx_freq = MockMatlab045._get_scalar(seq, "txFreq")
+        n_periods = MockMatlab045._get_scalar(seq, "txNPer")
+        inverse = MockMatlab045._get_scalar(seq, "txInvert").astype(np.bool)
 
-        :param cfg: configuration to read
-        :return: a map: device id -> Device
-        """
-        result = {}
-        # --- Cards
-        n_us4oems = cfg["nModules"]
-        us4oem_handles = (_ius4oem.getUs4OEMPtr(i) for i in range(n_us4oems))
-        us4oem_handles = sorted(us4oem_handles, key=lambda a: a.GetID())
-        us4oems = [_us4oem.Us4OEM(i, h) for i, h in enumerate(us4oem_handles)]
-        _logger.log(INFO, "Discovered modules: %s"%str(us4oems))
-        for us4oem in us4oems:
-            result[us4oem.get_id()] = us4oem
+        pulse = arrus.ops.us4r.Pulse(
+            center_frequency=tx_freq, n_periods=n_periods,
+            inverse=inverse)
 
-        is_hv256 = cfg.get("HV256", None)
-        if is_hv256:
-            module_id = cfg["masterModule"]
-            master_module = result[_us4oem.Us4OEM.get_card_id(module_id)]
+        # In matlab API the element numbering starts from 1
+        tx_ap_center_element = MockMatlab045._get_vector(seq, "txCentElem") - 1
+        tx_ap_size = MockMatlab045._get_scalar(seq, "txApSize")
+        tx_angle = MockMatlab045._get_scalar(seq, "txAng")
+        tx_focus = MockMatlab045._get_scalar(seq, "txFoc")
+        tx_ap_cent_ang = MockMatlab045._get_vector(seq, "txApCentAng")
 
-            # Intentionally loading modules only when the HV256 is used.
-            import arrus.devices.idbarlite as _dbarlite
-            import arrus.devices.ihv256 as _ihv256
-            import arrus.devices.hv256 as _hv256
+        rx_ap_center_element = MockMatlab045._get_vector(seq, "rxCentElem") - 1
+        rx_ap_size = MockMatlab045._get_scalar(seq, "rxApSize")
+        rx_samp_freq = MockMatlab045._get_scalar(seq, "rxSampFreq")
+        pri = MockMatlab045._get_scalar(seq, "txPri")
+        fsDivider = MockMatlab045._get_scalar(seq, "fsDivider")
+        start_sample = MockMatlab045._get_scalar(seq, "startSample") -1
+        end_sample = MockMatlab045._get_scalar(seq, "nSamp")
+        tgc_start = MockMatlab045._get_scalar(seq, "tgcStart")
+        tgc_slope = MockMatlab045._get_scalar(seq, "tgcSlope")
 
-            dbar = _dbarlite.GetDBARLite(
-                _ius4oem.castToII2CMaster(master_module.card_handle))
-            hv_handle = _ihv256.GetHV256(dbar.GetI2CHV())
-            hv = _hv256.HV256(hv_handle)
-            result[hv.get_id()] = hv
-        return result
+        sequence = arrus.ops.imaging.LinSequence(
+            tx_aperture_center_element=tx_ap_center_element,
+            tx_aperture_size=tx_ap_size,
+            tx_focus=tx_focus,
+            pulse=pulse,
+            rx_aperture_center_element=rx_ap_center_element,
+            rx_aperture_size=rx_ap_size,
+            downsampling_factor=fsDivider,
+            rx_sample_range=(start_sample, end_sample),
+            pri=pri,
+            tgc_start=tgc_start,
+            tgc_slope=tgc_slope)
+
+        # Medium
+        c = MockMatlab045._get_scalar(seq, "c")
+        medium = arrus.medium.MediumDTO("dansk_phantom_1525_us4us",
+                                        speed_of_sound=c)
+
+        custom_data = dict()
+        custom_data["start_sample"] = MockMatlab045._get_scalar(seq, "startSample") - 1
+        custom_data["tx_delay_center"] = MockMatlab045._get_scalar(seq, "txDelCent")
+        custom_data["rx_aperture_origin"] = MockMatlab045._get_vector(seq, "rxApOrig")
+        custom_data["tx_aperture_center_angle"] = MockMatlab045._get_vector(seq,
+                                                                   "txApCentAng")
+
+        # Data characteristic:
+        data_char = arrus.metadata.EchoDataDescription(
+            sampling_frequency=rx_samp_freq)
+
+        # create context
+        context = arrus.metadata.FrameAcquisitionContext(
+            device=us4r, sequence=sequence, medium=medium,
+            raw_sequence=None,
+            custom_data=custom_data)
+        return arrus.metadata.Metadata(
+            context=context, data_desc=data_char, custom={})

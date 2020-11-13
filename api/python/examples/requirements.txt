@@ -1,0 +1,2 @@
+matplotlib
+h5py

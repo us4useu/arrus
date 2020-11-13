@@ -1,20 +1,25 @@
 from collections.abc import Iterable
 
+import arrus.exceptions
+
 
 def assert_equal(value, expected, parameter_name):
     if value != expected:
-        raise InvalidParameterError(parameter_name, f"should be "
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    f"should be "
                                                     f"equal {expected}")
 
 
 def assert_not_none(value, parameter_name):
     if value is None:
-        raise InvalidParameterError(parameter_name, "should be not None")
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "should be not None")
 
 
 def assert_none(value, parameter_name):
     if value is not None:
-        raise InvalidParameterError(parameter_name, "should not be provided")
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "should not be provided")
 
 
 def assert_shape(array, expected_shape, parameter_name, strict=False):
@@ -23,14 +28,15 @@ def assert_shape(array, expected_shape, parameter_name, strict=False):
     else:
         shape = array.flatten().shape
     if shape != expected_shape:
-        raise InvalidParameterError(parameter_name, "expected shape: %s " %
-                                    expected_shape)
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "expected shape: %s " %
+                                                    expected_shape)
 
 
 def assert_not_greater_than(value, maximum, parameter_name):
     if value > maximum:
-        raise InvalidParameterError(parameter_name,
-                                    "should not be greater than %d" % maximum)
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "should not be greater than %d" % maximum)
 
 
 def assert_in_range(actual, expected, parameter_name):
@@ -39,10 +45,11 @@ def assert_in_range(actual, expected, parameter_name):
     else:
         a_start, a_end = actual
     e_start, e_end = expected
-    if not(a_start >= e_start and a_end <= e_end):
-        raise InvalidParameterError(parameter_name,
-                                    "%s expected in range %s" %
-                                    (str(actual), str(expected)))
+    if not (a_start >= e_start and a_end <= e_end):
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "%s expected in range %s" %
+                                                    (
+                                                    str(actual), str(expected)))
 
 
 def assert_one_of(value, collection, parameter_name):
@@ -50,30 +57,25 @@ def assert_one_of(value, collection, parameter_name):
     assert isinstance(collection, Iterable)
     s = set(collection)
     if value not in s:
-        raise InvalidParameterError(parameter_name, "should be one of: %s" % str(s))
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "should be one of: %s" % str(
+                                                        s))
 
 
 def assert_non_negative(value, parameter_name):
     if value < 0:
-        raise InvalidParameterError(parameter_name, "should be non-negative")
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "should be non-negative")
 
 
 def assert_positive(value, parameter_name):
     if value <= 0:
-        raise InvalidParameterError(parameter_name, "should be positive")
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "should be positive")
 
 
 def assert_type(o, t, parameter_name):
     if not isinstance(o, t):
-        raise InvalidParameterError(parameter_name,
-                                    "should be of type: %s" % str(t))
-
-
-class InvalidParameterError(ValueError):
-    MSG_PATTERN = "Invalid parameter '%s': %s"
-
-    def __init__(self, param, msg):
-        super().__init__(InvalidParameterError.MSG_PATTERN % (param, msg))
-
-
-
+        raise arrus.exceptions.IllegalArgumentError(parameter_name,
+                                                    "should be of type: %s" % str(
+                                                        t))

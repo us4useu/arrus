@@ -3,57 +3,48 @@
 ################################################################################
 # - Targets
 ################################################################################
-
 if(ARRUS_BUILD_SWIG)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 find_package(PythonInterp REQUIRED)
 find_package(PythonLibs REQUIRED)
-set(Us4Components
-    US4OEM
-    HV256
-    DBARLite
+set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
+if(MSVC)
+    set_property(
+        SOURCE wrappers/core.i
+        PROPERTY
+        GENERATED_COMPILE_OPTIONS /Od /EHsc
+    )
+endif()
+swig_add_library(py_core
+    TYPE SHARED
+    LANGUAGE PYTHON
+    OUTPUT_DIR arrus
+    OUTFILE_DIR wrappers
+    SOURCES
+		wrappers/core.i
+		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
+		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
 )
-set(Us4Wrappers
-    ius4oem
-    ihv256
-    idbarlite
+set_target_properties(py_core
+    PROPERTIES
+        SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
+)
+target_include_directories(py_core
+    PRIVATE
+    ${PYTHON_INCLUDE_DIRS}
+    ${ARRUS_ROOT_DIR}
 )
 
-foreach(wrapper component IN ZIP_LISTS Us4Wrappers Us4Components)
-    set_property(SOURCE wrappers/${wrapper}.i PROPERTY CPLUSPLUS ON)
-    if(MSVC)
-        set_property(
-            SOURCE wrappers/${wrapper}.i
-            PROPERTY
-                GENERATED_COMPILE_OPTIONS /Od /EHsc
-        )
-    endif()
-    swig_add_library(${wrapper}
-        TYPE SHARED
-        LANGUAGE PYTHON
-        OUTPUT_DIR arrus/devices
-        OUTFILE_DIR wrappers
-        SOURCES wrappers/${wrapper}.i
-    )
-    set_target_properties(${wrapper}
-        PROPERTIES
-            SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
-            RUNTIME_OUTPUT_DIRECTORY
-            "${CMAKE_CURRENT_BINARY_DIR}/arrus/devices/$<$<CONFIG:Debug>:>"
-    )
-    target_include_directories(${wrapper}
-        PRIVATE
-        ${PYTHON_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-    target_link_libraries(${wrapper}
-       PRIVATE
-       core
-       Us4::${component}
-        ${PYTHON_LIBRARIES}
-    )
-endforeach()
+target_link_libraries(py_core
+    PRIVATE
+    arrus-core
+	Boost::Boost
+	fmt::fmt
+	${PYTHON_LIBRARIES}
+)
 
 endif()
 ################################################################################
@@ -63,27 +54,39 @@ include(python)
 set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
-    "arrus/__init__.py"
-    "arrus/beam.py"
-    "arrus/interface.py"
-    "arrus/kernels.py"
-    "arrus/session.py"
-    "arrus/params.py"
-    "arrus/system.py"
-    "arrus/validation.py"
-    "arrus/ops/__init__.py"
-    "arrus/ops/operations.py"
-    "arrus/devices/__init__.py"
-    "arrus/devices/callbacks.py"
-    "arrus/devices/device.py"
-    "arrus/devices/hv256.py"
-    "arrus/devices/probe.py"
-    "arrus/devices/us4oem.py"
-    "arrus/utils/__init__.py"
-    "arrus/utils/imaging.py"
-    "arrus/utils/parameters.py"
-    "arrus/tests/tools.py"
+
+    arrus/__init__.py
+	arrus/logging.py
+    arrus/session.py
+    arrus/validation.py
+	arrus/metadata.py
+	arrus/exceptions.py
+	arrus/medium.py
+	arrus/params.py
+    arrus/ops/__init__.py
+	arrus/ops/imaging.py
+	arrus/ops/operation.py
+	arrus/ops/us4r.py
+	arrus/devices/__init__.py
+	arrus/devices/cpu.py
+	arrus/devices/gpu.py
+	arrus/devices/us4r.py
+	arrus/devices/mock_us4r.py
+	arrus/devices/probe.py
+	arrus/devices/device.py
+	arrus/kernels/__init__.py
+	arrus/kernels/kernel.py
+	arrus/kernels/imaging.py
+	arrus/utils/__init__.py
+    arrus/utils/imaging.py
+    arrus/utils/parameters.py
+	arrus/utils/us4r.py
+	arrus/utils/interpolate.py
+	arrus/utils/core.py
+    arrus/tests/tools.py
 )
+
+# TODO(pjarosik) revise the below list
 set(TEST_FILES
     "arrus/tests/beam_test.py"
     "arrus/tests/session_test.py"
@@ -103,11 +106,18 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
         ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${CMAKE_CURRENT_BINARY_DIR}/arrus
+	COMMAND
+		${CMAKE_COMMAND} -E copy_directory
+		${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
+	COMMAND
+		${CMAKE_COMMAND} -E copy
+		# Intentionally using Release version here.
+		${PROJECT_BINARY_DIR}/core/Release/arrus-core.dll ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
         ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
-    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} ${Us4Wrappers}
+    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} py_core
 )
 
 add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})

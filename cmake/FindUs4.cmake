@@ -1,5 +1,9 @@
 # Option: Us4_ROOT_DIR: a directory, where lib64 and include files are located.
 
+if(NOT DEFINED Us4_ROOT_DIR)
+    message(FATAL_ERROR "Us4_ROOT_DIR should be provided.")
+endif()
+
 find_path(Us4_INCLUDE_DIR
         NAMES ius4oem.h
         PATHS "${Us4_ROOT_DIR}/include"

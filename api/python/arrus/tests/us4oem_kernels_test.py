@@ -151,9 +151,9 @@ class TxRxModuleKernelCorrectOperationTest(unittest.TestCase):
         expected_delays = np.zeros(128)
         expected_delays[64:96] = tx.delays
         np.testing.assert_equal(device.delays, expected_delays)
-        self.assertEqual(device.tx_frequency[0], tx.excitation.frequency)
-        self.assertEqual(device.n_half_periods, tx.excitation.n_periods*2)
-        self.assertEqual(device.tx_invert, tx.excitation.inverse)
+        self.assertEqual(device.tx_frequency[0], tx.pulse.frequency)
+        self.assertEqual(device.n_half_periods, tx.pulse.n_periods * 2)
+        self.assertEqual(device.tx_invert, tx.pulse.inverse)
 
         expected_tx_mask = np.zeros(128, dtype=np.float64)
         expected_tx_mask[64:96] = 1.0
