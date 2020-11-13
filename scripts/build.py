@@ -44,9 +44,9 @@ def main():
     cmake_cmd = []
     join_cmd = False
     if os.name == "nt":
-        # Just call the .bat file in the same cmd as the
         join_cmd = True
-        cmake_cmd += [os.path.join(build_dir, 'activate.bat'), "&&"]
+        cmd = os.path.join(build_dir, 'activate.bat')
+        cmake_cmd += [f'"${cmd}"', "&&"]
         pass
     else:
         join_cmd = False
