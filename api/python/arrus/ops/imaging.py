@@ -3,6 +3,7 @@ import numpy as np
 import arrus.ops
 import dataclasses
 
+
 @dataclasses.dataclass(frozen=True)
 class LinSequence(arrus.ops.Operation):
     """
@@ -14,9 +15,9 @@ class LinSequence(arrus.ops.Operation):
     :param rx_aperture_size: size of the rx aperture [element]
     :param tx_focus: tx focal length [m]
     :param pulse: an excitation to perform
-    :param pri: pulse repetition interval
+    :param pri: pulse repetition interval [s]
     :param downsampling_factor: downsampling factor (decimation), integer factor for decreasing sampling frequency of the output signal
-    :param speed_of_sound: assumed speed of sound; can be None, in this case a medium in current context will be used to determine speed of sound
+    :param speed_of_sound: assumed speed of sound; can be None, in this case a medium in current context will be used to determine speed of sound [m/s]
     :param tgc_start: tgc starting gain [dB]
     :param tgc_slope: tgc gain slope [dB/m]
     """

@@ -211,7 +211,10 @@ class RxBeamforming:
                 interpolator = scipy.interpolate.interp1d(
                     x, input, kind="linear", bounds_error=False,
                     fill_value=0.0)
-                output[:] = interpolator(samples)
+                interp_values = interpolator(samples)
+                n_scanlines, _, n_samples = interp_values.shape
+                interp_values = np.reshape(interp_values, (n_scanlines, n_samples))
+                output[:] = interp_values
 
             self.interp1d_func = numpy_interp1d
         else:
@@ -377,6 +380,8 @@ class ScanConversion:
     the input mesh will be set to 0.0.
 
     Currently the op is implement for CPU only.
+    :param x_grid: a vector of grid points along OX axis [m]
+    :param z_grid: a vector of grid points along OZ axis [m]
     """
 
     def __init__(self, x_grid, z_grid):

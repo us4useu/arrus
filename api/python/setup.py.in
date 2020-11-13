@@ -1,7 +1,7 @@
 import setuptools
 
 setuptools.setup(
-    name="arrus",
+    name="${PYTHON_PACKAGE_NAME}",
     version="${PROJECT_VERSION}",
     author="us4us Ltd.",
     author_email="support@us4us.eu",
@@ -27,5 +27,8 @@ setuptools.setup(
         "numpy>=1.17.4",
         "scipy>=1.3.1"
     ],
+    package_data={
+        '${PYTHON_PACKAGE_NAME}': ['_py_core.pyd', "*.dll"]
+    },
     python_requires='>=3.7',
 )

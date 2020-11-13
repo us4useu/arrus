@@ -8,7 +8,6 @@ Welcome to ARRUS documentation!
 
     content/introduction
     content/installation/index
-    content/examples/single_module
     content/examples/bmode_imaging
     content/api
 

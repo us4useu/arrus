@@ -20,6 +20,11 @@ arrus.core.initLoggingMechanism(DEFAULT_LEVEL)
 
 
 def set_clog_level(level):
+    """
+    Sets console log level output.
+
+    :param level: log level to use
+    """
     return arrus.core.setClogLevel(level)
 
 

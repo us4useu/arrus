@@ -1,6 +1,6 @@
 import numpy as np
 import arrus
-import cupy as cp
+# import cupy as cp
 import matplotlib.pyplot as plt
 import h5py
 
@@ -39,9 +39,12 @@ print("...done.")
 # that means to load data from the provided dataset only.
 # A non-mocked session will read a configuration file and create handles
 # to the actual devices that should be available to user.
+print("Creating session.")
 sess = arrus.Session(mock={
     "Us4R:0": dataset
 })
+
+print("Session created.")
 
 # Session provides handles to system devices. What devices are available
 # depends on the session configuration file.
@@ -49,7 +52,7 @@ sess = arrus.Session(mock={
 # the us4r-lite hardware.
 # The `Us4R` is an us4r lite device.
 us4r = sess.get_device("/Us4R:0")
-gpu = sess.get_device("/GPU:0")
+gpu = sess.get_device("/CPU:0")
 
 # Set HV voltage [0.5*Vpp];
 # maximum value: 90 (can be limited for specific probes in the session
@@ -177,6 +180,7 @@ for i in range(100):
     # - buffer.release_tail() (notify the us4r-lite device that the
     #   data is not needed anymore and memory area can be reused by the
     #   us4r-lite device for the next acquisitions)
+    print("Acquiring data")
     data, metadata = buffer.tail()
 
     # The metadata structure contains all the information necessary to
@@ -196,7 +200,7 @@ for i in range(100):
         print(metadata.data_description)
 
     # process
-    gpu_data = cp.asarray(data)
+    # gpu_data = cp.asarray(data)
     # We've just copied the data from the us4r-lite buffer, we can release
     # the current buffer element.
     buffer.release_tail()
@@ -205,7 +209,7 @@ for i in range(100):
     # Note: metadata.data_description describes data produced at a given step;
     # e.g. metadata.data_description.sampling_frequency can change after
     # `Decimation` operation.
-    bmode, metadata = bmode_imaging(gpu_data, metadata)
+    bmode, metadata = bmode_imaging(data, metadata)
     # display
     canvas.set_data(bmode)
     ax.set_aspect("auto")

@@ -9,6 +9,15 @@ import arrus.ops.us4r
 
 @dataclasses.dataclass(frozen=True)
 class FrameAcquisitionContext:
+    """
+    Metadata describing RF frame acquisition process.
+
+    :param device: ultrasound device specification
+    :param sequence: a sequence that the user wanted to execute on the device
+    :param raw_sequence: an actual Tx/Rx sequence that was uploaded on the system
+    :param medium: description of the Medium assumed durring communication session with the device
+    :param custom_data: a dictionary with custom data
+    """
     device: arrus.devices.device.UltrasoundDeviceDTO
     sequence: arrus.ops.Operation
     raw_sequence: arrus.ops.us4r.TxRxSequence
@@ -22,6 +31,12 @@ class DataDescription(abc.ABC):
 
 @dataclasses.dataclass(frozen=True)
 class EchoDataDescription(DataDescription):
+    """
+    Data description of the ultrasound echo data.
+
+    :param sampling_frequency: a sampling frequency of the data
+    :param custom: custom information
+    """
     sampling_frequency: float
     custom: dict = dataclasses.field(default_factory=dict)
 
@@ -36,8 +51,7 @@ class Metadata:
     :param data_desc: data characteristic
     :param custom: custom frame data (e.g. trigger counters, etc.)
     """
-    def __init__(self,
-                 context: FrameAcquisitionContext,
+    def __init__(self,context: FrameAcquisitionContext,
                  data_desc: DataDescription,
                  custom: dict):
         self._context = context
