@@ -46,7 +46,7 @@ def main():
     if os.name == "nt":
         join_cmd = True
         cmd = os.path.join(build_dir, 'activate.bat')
-        cmake_cmd += [f'"${cmd}"', "&&"]
+        cmake_cmd += [f'"{cmd}"', "&&"]
         pass
     else:
         join_cmd = False
