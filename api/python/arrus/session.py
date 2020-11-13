@@ -129,8 +129,10 @@ class Session(AbstractSession):
         # Create mock devices
 
         devices = {}
-        for k, v in mock.items():
-            devices["/" + k] = MockMatlab045.load_device(v)
+
+        if mock is not None:
+            for k, v in mock.items():
+                devices["/" + k] = MockMatlab045.load_device(v)
 
         # Create CPU and GPU devices
         devices["/CPU:0"] = arrus.devices.cpu.CPU(0)
