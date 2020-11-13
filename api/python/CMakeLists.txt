@@ -112,7 +112,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
 	COMMAND
 		${CMAKE_COMMAND} -E copy
 		# Intentionally using Release version here.
-		${PROJECT_BINARY_DIR}/core/Release/arrus-core.dll ${CMAKE_CURRENT_BINARY_DIR}/arrus
+		${PROJECT_BINARY_DIR}/arrus/core/Release/arrus-core.dll ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND

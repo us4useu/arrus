@@ -28,7 +28,7 @@ set(CMAKE_MODULE_PATH
 ################################################################################
 include(common)
 
-set(ARRUS_ROOT_DIR ${CMAKE_SOURCE_DIR}/..)
+set(ARRUS_ROOT_DIR ${CMAKE_SOURCE_DIR})
 set(ARRUS_DOCS_INSTALL_DIR docs)
 set(ARRUS_MATLAB_INSTALL_DIR matlab)
 set(ARRUS_PYTHON_INSTALL_DIR python)
@@ -106,7 +106,7 @@ if(ARRUS_RUN_TESTS)
     enable_testing()
 endif()
 
-add_subdirectory(core)
+add_subdirectory(arrus/core)
 
 if(ARRUS_BUILD_PY)
     add_subdirectory(api/python)
