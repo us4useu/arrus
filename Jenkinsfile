@@ -44,7 +44,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building ...'
-                sh 'python "${env.WORKSPACE}/scripts/build.py" --source_dir"=${env.WORKSPACE}" --us4r_dir "${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG"'
+                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir'=${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG'"
             }
         }
         stage('Test') {
