@@ -15,7 +15,7 @@ class FrameAcquisitionContext:
     :param device: ultrasound device specification
     :param sequence: a sequence that the user wanted to execute on the device
     :param raw_sequence: an actual Tx/Rx sequence that was uploaded on the system
-    :param medium: description of the Medium assumed durring communication session with the device
+    :param medium: description of the Medium assumed during communication session with the device
     :param custom_data: a dictionary with custom data
     """
     device: arrus.devices.device.UltrasoundDeviceDTO
