@@ -3,6 +3,7 @@ import arrus.exceptions
 from arrus.ops.us4r import (
     Tx, Rx, TxRx, TxRxSequence, Pulse
 )
+import arrus.utils.imaging
 
 
 def create_lin_sequence(context):
@@ -16,6 +17,7 @@ def create_lin_sequence(context):
     pitch = context.device.probe.model.pitch
     # sequence parameters
     op = context.op
+
     n_elem_sub = op.tx_aperture_size
     focal_depth = op.tx_focus
     sample_range = op.rx_sample_range
@@ -54,9 +56,6 @@ def create_lin_sequence(context):
     else:
         focus = [0, focal_depth]
 
-    # enumerate delays mask and padding for each tx/rx event
-    subaperture_delays = enum_classic_delays(n_elem_sub, pitch, c, focus)
-
     def get_ap(center_element, size):
         left_half_size = (size-1)//2  # e.g. size 32 -> 15, size 33 -> 16
         right_half_size = size//2  # e.g. size 32 -> 16, size 33 -> 16
@@ -72,6 +71,16 @@ def create_lin_sequence(context):
         aperture = np.zeros((n_elem, ), dtype=np.bool)
         aperture[actual_origin:(actual_end+1)] = True
         return aperture, (left_padding, right_padding)
+
+    tx_apertures = []
+    for tx_center_element in tx_centers:
+        tx_apertures.append(get_ap(tx_center_element, tx_ap_size))
+
+    tx_delays = compute_tx_delays(op, context.device.probe.model, c)
+    for
+    txrxs = []
+
+    # use tx apertures to compute tx delays
 
     # create tx/rx objects list
     def create_tx_rx(tx_center_element, rx_center_element):
@@ -91,6 +100,59 @@ def create_lin_sequence(context):
         return TxRx(tx, rx, pri)
     txrxlist = [create_tx_rx(*c) for c in zip(tx_centers, rx_centers)]
     return TxRxSequence(txrxlist, tgc_curve=tgc_curve)
+
+
+def get_tx_aperture_center_coords(sequence, probe):
+    n_elements = probe.n_elements
+    pitch = probe.pitch
+    curvature_radius = probe.curvature_radius
+    tx_aperture_center_element = sequence.tx_aperture_center_element
+
+    element_position = np.arange(-(n_elements - 1) / 2,
+                                 (n_elements - 1) / 2)*pitch
+
+    if not probe.is_convex_array():
+        angle = np.zeros(n_elements)
+    else:
+        angle = element_position / curvature_radius
+
+    tx_aperture_center_angle = np.interp(tx_aperture_center_element,
+                                         np.arange(1, n_elements), angle)
+    tx_aperture_center_z = np.interp(tx_aperture_center_element,
+                                     np.arange(1, n_elements),
+                                     probe.element_pos_z)
+    tx_aperture_center_x = np.interp(tx_aperture_center_element,
+                                     np.arange(1, n_elements),
+                                     probe.element_pos_x)
+
+    return tx_aperture_center_angle, tx_aperture_center_x, tx_aperture_center_z
+
+
+def compute_tx_delays(sequence, probe, speed_of_sound):
+    element_x, element_z = probe.element_pos_x, probe.element_pos_z
+    element_x, element_z = np.atleast_2d(element_x), np.atleast_2d(element_z)
+
+    tx_center_angle, tx_center_x, tx_center_z = get_tx_aperture_center_coords(
+        sequence, probe)
+    tx_center_angle = np.atleast_2d(tx_center_angle)
+    tx_center_x = np.atleast_2d(tx_center_x)
+    tx_center_z = np.atleast_2d(tx_center_z)
+
+    tx_angle = 0
+    tx_focus = sequence.tx_focus
+    tx_angle_cartesian = tx_center_angle + tx_angle
+
+    focus_x = tx_center_x + tx_focus*np.sin(tx_angle_cartesian)
+    focus_z = tx_center_z + tx_focus*np.cos(tx_angle_cartesian)
+
+    # (n_elements, n_tx)
+    tx_delays = np.sqrt((focus_x - element_x.T)**2 + (focus_z-element_z.T)**2) / speed_of_sound
+    tx_delays_center = np.sqrt((focus_x - tx_center_x.T)**2 + (focus_z-tx_center_z.T)**2) / speed_of_sound
+
+    foc_defoc = 1 - 2*float(tx_focus > 0)
+    tx_delays = tx_delays*foc_defoc
+    tx_delays_center = tx_delays_center*foc_defoc
+
 
 
 def enum_classic_delays(n_elem, pitch, c, focus):
@@ -114,9 +176,14 @@ def enum_classic_delays(n_elem, pitch, c, focus):
         raise ValueError("Bad focus - should be scalar, 1-dimensional ndarray, "
                          "or 2-dimensional ndarray")
 
+
     aperture_width = (n_elem-1)*pitch
     el_coord_x = np.linspace(-aperture_width/2, aperture_width/2, n_elem)
     element2focus_distance = np.sqrt((el_coord_x - xf)**2 + zf**2)
+
+    distance = np.sqrt()
+
     dist_max = np.amax(element2focus_distance)
     delays = (dist_max - element2focus_distance)/c
     return delays
+

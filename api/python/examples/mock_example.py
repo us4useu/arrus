@@ -180,8 +180,12 @@ for i in range(100):
     # - buffer.release_tail() (notify the us4r-lite device that the
     #   data is not needed anymore and memory area can be reused by the
     #   us4r-lite device for the next acquisitions)
+
     print("Acquiring data")
+    # 2 elements
     data, metadata = buffer.tail()
+
+    # The processing happens here
 
     # The metadata structure contains all the information necessary to
     # reconstruct b-mode image from the RF data
