@@ -104,6 +104,34 @@ z_grid = np.arange(0, 60, 0.4)*1e-3
 # Define bmode image reconstruction pipeline.
 # You can find source and docstrings of each step in arrus.utils.imaging
 # module.
+
+class DynamicRangeAdjustment:
+
+    def __init__(self, min=20, max=80):
+        self.min = min
+        self.max = max
+        self.xp = None
+
+    def set_pkgs(self, num_pkgs, **kwargs):
+        self.xp = num_pkgs
+
+    def __call__(self, data, metadata):
+        return self.xp.clip(data, a_min=self.min, a_max=self.max), metadata
+
+
+class ToGrayscaleImg:
+
+    def __init__(self):
+        self.xp = None
+
+    def set_pkgs(self, nump_pkg, **kwargs):
+        self.xp = nump_pkg
+
+    def __call__(self, data, metadata):
+        data = data-self.xp.min(data)
+        data = data/self.xp.max(data)*255
+        return data.astype(self.xp.uint8), metadata
+
 bmode_imaging = Pipeline(
     placement=gpu,
     steps=(
@@ -148,7 +176,9 @@ bmode_imaging = Pipeline(
         # output: nd array, shape: len(z_grid), len(x_grid)
         ScanConversion(x_grid=x_grid, z_grid=z_grid),
         # Convert to decibel scale.
-        LogCompression()
+        LogCompression(),
+        DynamicRangeAdjustment(min=20, max=80),
+        ToGrayscaleImg()
     )
 )
 

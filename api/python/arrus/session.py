@@ -173,7 +173,7 @@ class MockMatlab045:
         probe_model = arrus.devices.probe.ProbeModel(
             model_id=arrus.devices.probe.ProbeModelId(
                 manufacturer="nanoecho", name="magprobe"),
-            n_elements=MockMatlab045._get_scalar(sys, "nElem"),
+            n_elements=int(MockMatlab045._get_scalar(sys, "nElem")),
             pitch=pitch,
             curvature_radius=curv_radius)
         probe = arrus.devices.probe.ProbeDTO(model=probe_model)

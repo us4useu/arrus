@@ -24,11 +24,12 @@ class ProbeModel:
     def _compute_element_position(self):
         # element position along the surface
         element_position = np.arange(-(self.n_elements - 1) / 2,
-                                     (self.n_elements - 1) / 2)
+                                     self.n_elements / 2)
         element_position = element_position * self.pitch
 
         if not self.is_convex_array():
             x_pos = element_position
+            # TODO(pjarosik) remove the last axis here (should be just (self.n_elements)
             z_pos = np.zeros((self.n_elements, 1))
         else:
             angle = element_position / self.curvature_radius

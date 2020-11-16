@@ -428,7 +428,7 @@ class ScanConversion:
         start_sample = 0# raw_seq.ops[0].rx.start_sample[0]
         fs = data_desc.sampling_frequency
         c = medium.speed_of_sound
-        tx_ap_cent_ang, _, _ = _get_tx_aperture_center_coords(seq, probe)
+        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
         tx_ap_cent_ang_mat = custom_data["tx_aperture_center_angle"]
         print(f"tx ap cent ang: matlab: {tx_ap_cent_ang_mat}, python: {tx_ap_cent_ang}")
 
@@ -480,6 +480,34 @@ class LogCompression:
             data = data.get()
         data[data == 0] = 1e-9
         return 20 * np.log10(data), metadata
+
+
+class DynamicRangeAdjustment:
+
+    def __init__(self, min=20, max=80):
+        self.min = min
+        self.max = max
+        self.xp = None
+
+    def set_pkgs(self, num_pkgs, **kwargs):
+        self.xp = num_pkgs
+
+    def __call__(self, data, metadata):
+        return self.xp.clip(data, a_min=self.min, a_max=self.max), metadata
+
+
+class ToGrayscaleImg:
+
+    def __init__(self):
+        self.xp = None
+
+    def set_pkgs(self, nump_pkg, **kwargs):
+        self.xp = nump_pkg
+
+    def __call__(self, data, metadata):
+        data = data - self.xp.min(data)
+        data = data/self.xp.max(data)*255
+        return data.astype(self.xp.uint8), metadata
 
 
 def _get_rx_aperture_origin(sequence):

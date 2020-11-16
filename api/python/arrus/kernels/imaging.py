@@ -49,7 +49,6 @@ def create_lin_sequence(context):
 
     tgc_curve = tgc_start + distance*tgc_slope
 
-    # tx/rx aperture, tx delays
     if np.mod(n_elem_sub, 2) == 0:
         # Move focal position to the center of the floor(n_sub_elem/2) element
         focus = [-pitch/2, focal_depth]
@@ -76,7 +75,7 @@ def create_lin_sequence(context):
     txrxs = []
     for tx_aperture, delays, rx_center in zip(tx_apertures, tx_delays,
                                               rx_centers):
-        tx = Tx(tx_aperture, pulse, delays)
+        tx = Tx(tx_aperture, pulse, np.squeeze(delays))
         rx_aperture, rx_padding = get_ap(rx_center, rx_ap_size)
         rx = Rx(rx_aperture, sample_range, downsampling_factor, rx_padding)
         txrxs.append(TxRx(tx, rx, pri))
@@ -97,7 +96,7 @@ def get_aperture_with_padding(center_element, size, probe_model):
     actual_end = min(n_elem-1, end)
     right_padding = abs(min(actual_end-end, 0))
     aperture = np.zeros((n_elem, ), dtype=np.bool)
-    aperture[actual_origin:(actual_end+1)] = True
+    aperture[int(actual_origin):(int(actual_end)+1)] = True
     return aperture, (left_padding, right_padding)
 
 
@@ -108,7 +107,7 @@ def get_tx_aperture_center_coords(sequence, probe):
     tx_aperture_center_element = sequence.tx_aperture_center_element
 
     element_position = np.arange(-(n_elements - 1) / 2,
-                                 (n_elements - 1) / 2)*pitch
+                                 n_elements / 2)*pitch
 
     if not probe.is_convex_array():
         angle = np.zeros(n_elements)
@@ -116,13 +115,13 @@ def get_tx_aperture_center_coords(sequence, probe):
         angle = element_position / curvature_radius
 
     tx_aperture_center_angle = np.interp(tx_aperture_center_element,
-                                         np.arange(1, n_elements), angle)
+                                         np.arange(0, n_elements), angle)
     tx_aperture_center_z = np.interp(tx_aperture_center_element,
-                                     np.arange(1, n_elements),
-                                     probe.element_pos_z)
+                                     np.arange(0, n_elements),
+                                     np.squeeze(probe.element_pos_z))
     tx_aperture_center_x = np.interp(tx_aperture_center_element,
-                                     np.arange(1, n_elements),
-                                     probe.element_pos_x)
+                                     np.arange(0, n_elements),
+                                     np.squeeze(probe.element_pos_x))
 
     return tx_aperture_center_angle, tx_aperture_center_x, tx_aperture_center_z
 
@@ -133,7 +132,7 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
     tx_apertures = []
     for tx_center_element in tx_centers:
         tx_apertures.append(get_aperture_with_padding(tx_center_element,
-                                                      tx_ap_size, probe))
+                                                      tx_ap_size, probe)[0])
 
     element_x, element_z = probe.element_pos_x, probe.element_pos_z
     element_x, element_z = np.atleast_2d(element_x), np.atleast_2d(element_z)
@@ -153,17 +152,19 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
 
     # (n_elements, n_tx)
     tx_delays = np.sqrt((focus_x-element_x.T)**2
-                        + (focus_z-element_z.T)**2) / speed_of_sound
+    # TODO use transposition here (element_z) when the probe_model.element_pos_z will be a 1D array
+                        + (focus_z-element_z)**2) / speed_of_sound
     tx_delays_center = np.sqrt((focus_x-tx_center_x)**2
                                + (focus_z-tx_center_z)**2) / speed_of_sound
     foc_defoc = 1 - 2*float(tx_focus > 0)
     tx_delays = tx_delays*foc_defoc
     tx_delays_center = tx_delays_center*foc_defoc
+    tx_delays_center = np.squeeze(tx_delays_center)
     tx_aperture_delays = []
     tx_aperture_delays_center = []
 
     for i, tx_aperture in enumerate(tx_apertures):
-        tx_del = tx_delays[tx_aperture, i]
+        tx_del = tx_delays[np.argwhere(tx_aperture), i]
         tx_delay_shift = - np.min(tx_del)
         tx_del = tx_del + tx_delay_shift
         tx_del_cent = tx_delays_center[i] + tx_delay_shift
