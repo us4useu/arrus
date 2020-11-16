@@ -76,8 +76,8 @@ def create_lin_sequence(context):
     for tx_center_element in tx_centers:
         tx_apertures.append(get_ap(tx_center_element, tx_ap_size))
 
-    tx_delays = compute_tx_delays(op, context.device.probe.model, c)
-    for
+    tx_delays = compute_tx_delays(op, context.device.probe.model, c,
+                                  tx_apertures)
     txrxs = []
 
     # use tx apertures to compute tx delays
@@ -128,7 +128,7 @@ def get_tx_aperture_center_coords(sequence, probe):
     return tx_aperture_center_angle, tx_aperture_center_x, tx_aperture_center_z
 
 
-def compute_tx_delays(sequence, probe, speed_of_sound):
+def compute_tx_delays(sequence, probe, speed_of_sound, tx_apertures):
     element_x, element_z = probe.element_pos_x, probe.element_pos_z
     element_x, element_z = np.atleast_2d(element_x), np.atleast_2d(element_z)
 
@@ -146,44 +146,29 @@ def compute_tx_delays(sequence, probe, speed_of_sound):
     focus_z = tx_center_z + tx_focus*np.cos(tx_angle_cartesian)
 
     # (n_elements, n_tx)
-    tx_delays = np.sqrt((focus_x - element_x.T)**2 + (focus_z-element_z.T)**2) / speed_of_sound
-    tx_delays_center = np.sqrt((focus_x - tx_center_x.T)**2 + (focus_z-tx_center_z.T)**2) / speed_of_sound
-
+    tx_delays = np.sqrt((focus_x-element_x.T)**2 +
+                        (focus_z-element_z.T)**2) / speed_of_sound
+    tx_delays_center = np.sqrt((focus_x-tx_center_x)**2 +
+                               (focus_z-tx_center_z)**2) / speed_of_sound
     foc_defoc = 1 - 2*float(tx_focus > 0)
     tx_delays = tx_delays*foc_defoc
     tx_delays_center = tx_delays_center*foc_defoc
+    tx_aperture_delays = []
+    tx_aperture_delays_center = []
 
+    for i, tx_aperture in enumerate(tx_apertures):
+        tx_del = tx_delays[tx_aperture, i]
+        tx_delay_shift = - np.min(tx_del, axis=1)
+        tx_del = tx_del + tx_delay_shift
+        tx_del_cent = tx_delays_center[i] + tx_delay_shift
+        tx_aperture_delays.append(tx_del)
+        tx_aperture_delays_center.append(tx_del_cent)
 
+    tx_delays_center_max = np.max(tx_delays_center)
 
-def enum_classic_delays(n_elem, pitch, c, focus):
-    """
-    The function enumerates classical focusing delays for linear array.
-    It assumes that the 0 is in the center of the aperture.
+    tx_aperture_delays = tx_aperture_delays-tx_delays_center\
+                         +max(tx_delays_center)
+    tx_delays_center = np.max(tx_delays_center)
+    return tx_aperture_delays, tx_delays_center
 
-    :param n_elem: number of elements in aperture,
-    :param pitch: distance between two adjacent probe elements [m],
-    :param c: speed of sound [m/s],
-    :param focus: coordinates of the focal point ([xf, zf]),
-      or focal length only (then xf = 0 is assumed) [m],
-    :param delays: output delays vector.
-    """
-    if np.isscalar(focus):
-        xf = 0
-        zf = focus
-    elif np.shape(focus) == (2,):
-        xf, zf = focus
-    else:
-        raise ValueError("Bad focus - should be scalar, 1-dimensional ndarray, "
-                         "or 2-dimensional ndarray")
-
-
-    aperture_width = (n_elem-1)*pitch
-    el_coord_x = np.linspace(-aperture_width/2, aperture_width/2, n_elem)
-    element2focus_distance = np.sqrt((el_coord_x - xf)**2 + zf**2)
-
-    distance = np.sqrt()
-
-    dist_max = np.amax(element2focus_distance)
-    delays = (dist_max - element2focus_distance)/c
-    return delays
 
