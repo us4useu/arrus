@@ -5,6 +5,7 @@ import scipy.signal as signal
 import arrus.metadata
 import arrus.devices.cpu
 import arrus.devices.gpu
+import arrus.kernels.imaging
 
 
 class Pipeline:
@@ -261,9 +262,11 @@ class RxBeamforming:
             c = medium.speed_of_sound
         tx_angle = 0 # TODO use appropriate tx angle
 
-        tx_delay_center = _get_tx_delay_center(seq, probe_model, c)
-        tx_delay_center = context.custom_data["tx_delay_center"]
-        # print(f"tx delay center: matlab: {tx_delay_center_mat}, python: {tx_delay_center}")
+        # TODO keep cache data? Here all the tx/rx parameters are recomputed
+        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+            seq, probe_model, c)
+        tx_delay_center_mat = context.custom_data["tx_delay_center"]
+        print(f"tx delay center: matlab: {tx_delay_center_mat}, python: {tx_delay_center}")
         # Assuming, that all tx/rxs have the constant start sample value.
         start_sample = 0 # raw_seq.ops[0].rx.sample_range[0] TODO
         start_sample_mat = context.custom_data["start_sample"] + 1
@@ -479,8 +482,6 @@ class LogCompression:
         return 20 * np.log10(data), metadata
 
 
-
-
 def _get_rx_aperture_origin(sequence):
     rx_aperture_size = sequence.rx_aperture_size
     rx_aperture_center_element = sequence.rx_aperture_center_element
@@ -488,21 +489,4 @@ def _get_rx_aperture_origin(sequence):
                                (rx_aperture_size - 1) / 2 + 1e-9)
     return rx_aperture_origin
 
-
-def _get_tx_delay_center(sequence, probe, speed_of_sound):
-    tx_angle = 0  # TODO implement custom tx angle
-    tx_aperture_center_angle, tx_aperture_center_x, tx_aperture_center_z = \
-        _get_tx_aperture_center_coords(sequence, probe)
-
-    x_focus = tx_aperture_center_x + sequence.tx_focus * np.sin(tx_angle)
-    z_focus = tx_aperture_center_z + sequence.tx_focus * np.cos(tx_angle)
-
-    print("Printy")
-    print(tx_aperture_center_x)
-    print(tx_aperture_center_z)
-
-    tx_delay_center = np.sqrt((x_focus - tx_aperture_center_x)**2
-                              +(z_focus-tx_aperture_center_z)**2)/speed_of_sound
-    print(tx_delay_center)
-    return np.max(tx_delay_center)
 
