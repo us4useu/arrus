@@ -16,7 +16,9 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     Transpose,
     ScanConversion,
-    LogCompression
+    LogCompression,
+    DynamicRangeAdjustment,
+    ToGrayscaleImg
 )
 
 
@@ -84,7 +86,9 @@ def main():
             EnvelopeDetection(),
             Transpose(),
             ScanConversion(x_grid=x_grid, z_grid=z_grid),
-            LogCompression()
+            LogCompression(),
+            DynamicRangeAdjustment(),
+            ToGrayscaleImg()
         ],
         placement=gpu)
     reconstructed_data, metadata = pipeline(cp.asarray(data), metadata)

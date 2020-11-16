@@ -494,8 +494,8 @@ class DynamicRangeAdjustment:
         self.max = max
         self.xp = None
 
-    def set_pkgs(self, num_pkgs, **kwargs):
-        self.xp = num_pkgs
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
 
     def __call__(self, data, metadata):
         return self.xp.clip(data, a_min=self.min, a_max=self.max), metadata
@@ -506,8 +506,8 @@ class ToGrayscaleImg:
     def __init__(self):
         self.xp = None
 
-    def set_pkgs(self, nump_pkg, **kwargs):
-        self.xp = nump_pkg
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
 
     def __call__(self, data, metadata):
         data = data - self.xp.min(data)
