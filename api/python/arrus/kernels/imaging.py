@@ -152,8 +152,7 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
 
     # (n_elements, n_tx)
     tx_delays = np.sqrt((focus_x-element_x.T)**2
-    # TODO use transposition here (element_z) when the probe_model.element_pos_z will be a 1D array
-                        + (focus_z-element_z)**2) / speed_of_sound
+                        + (focus_z-element_z.T)**2) / speed_of_sound
     tx_delays_center = np.sqrt((focus_x-tx_center_x)**2
                                + (focus_z-tx_center_z)**2) / speed_of_sound
     foc_defoc = 1 - 2*float(tx_focus > 0)

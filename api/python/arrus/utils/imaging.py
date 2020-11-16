@@ -265,15 +265,12 @@ class RxBeamforming:
         # TODO keep cache data? Here all the tx/rx parameters are recomputed
         _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
             seq, probe_model, c)
-        tx_delay_center_mat = context.custom_data["tx_delay_center"]
-        print(f"tx delay center: matlab: {tx_delay_center_mat}, python: {tx_delay_center}")
         # Assuming, that all tx/rxs have the constant start sample value.
-        start_sample = 0 # raw_seq.ops[0].rx.sample_range[0] TODO
-        start_sample_mat = context.custom_data["start_sample"] + 1
-        print(f"start sample: mat {start_sample_mat}, python: {start_sample} ")
+        if raw_seq is None:
+            start_sample = context.custom_data["start_sample"] + 1
+        else:
+            start_sample = raw_seq.ops[0].rx.sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(seq)
-        rx_aperture_origin_mat = context.custom_data["rx_aperture_origin"]
-        print(f"rx aperture origin: {rx_aperture_origin_mat}, python: {rx_aperture_origin}")
 
         burst_factor = n_periods / (2 * fc)
         initial_delay = (- start_sample / acq_fs
@@ -374,14 +371,15 @@ class Transpose:
     Data transposition.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, axes=None):
+        self.axes = axes
+        self.xp = None
 
-    def set_pkgs(self, **kwargs):
-        pass
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
 
     def __call__(self, data, metadata):
-        return data.T, metadata
+        return self.xp.transpose(data, self.axes), metadata
 
 
 class ScanConversion:
@@ -424,13 +422,20 @@ class ScanConversion:
         n_samples, _ = data.shape
         seq = metadata.context.sequence
         custom_data = metadata.context.custom_data
-        # start_sample = custom_data["start_sample"]
-        start_sample = 0# raw_seq.ops[0].rx.start_sample[0]
+        if raw_seq is None:
+            start_sample = custom_data["start_sample"]
+        else:
+            start_sample = raw_seq.ops[0].rx.sample_range[0]
         fs = data_desc.sampling_frequency
-        c = medium.speed_of_sound
+
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+
         tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
-        tx_ap_cent_ang_mat = custom_data["tx_aperture_center_angle"]
-        print(f"tx ap cent ang: matlab: {tx_ap_cent_ang_mat}, python: {tx_ap_cent_ang}")
+        # tx_ap_cent_ang_mat = custom_data["tx_aperture_center_angle"]
+        # print(f"tx ap cent ang: matlab: {tx_ap_cent_ang_mat}, python: {tx_ap_cent_ang}")
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
             probe.element_pos_z)

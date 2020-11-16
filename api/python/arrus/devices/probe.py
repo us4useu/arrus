@@ -29,8 +29,7 @@ class ProbeModel:
 
         if not self.is_convex_array():
             x_pos = element_position
-            # TODO(pjarosik) remove the last axis here (should be just (self.n_elements)
-            z_pos = np.zeros((self.n_elements, 1))
+            z_pos = np.zeros((1, self.n_elements))
         else:
             angle = element_position / self.curvature_radius
             x_pos = self.curvature_radius * np.sin(angle)

@@ -61,7 +61,8 @@ def main():
 
     if is_numpy_data:
         initial_steps = [
-            RemapToLogicalOrder()
+            RemapToLogicalOrder(),
+            Transpose(axes=(0, 2, 1))
         ]
     elif is_matlab_data:
         seq = arrus.ops.us4r.TxRxSequence([], [])
@@ -90,7 +91,7 @@ def main():
 
     fig, ax = plt.subplots()
     fig.set_size_inches((7, 7))
-    ax.imshow(reconstructed_data, cmap="gray", vmin=20, vmax=80)
+    ax.imshow(reconstructed_data, cmap="gray")
     ax.set_aspect('auto')
     fig.show()
     plt.show()
