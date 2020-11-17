@@ -82,7 +82,7 @@ if __name__ == "__main__":
                              "be saved.",
                         required=False, default=None)
 
-    arrus.set_clog_level(arrus.logging.TRACE)
+    # arrus.set_clog_level(arrus.logging.TRACE)
     arrus.add_log_file("channels_mask_test.log", arrus.logging.TRACE)
 
     args = parser.parse_args()
