@@ -127,7 +127,7 @@ private:
         FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 
-    static float getRxTime(size_t nSamples);
+    static float getRxTime(size_t nSamples, uint32 decimationFactor);
 
     void setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing);
 
