@@ -28,8 +28,8 @@ class LinSequence(arrus.ops.Operation):
     rx_aperture_center_element: np.ndarray
     rx_aperture_size: float
     pri: float
-    downsampling_factor: int
     rx_sample_range: tuple
     tgc_start: float
     tgc_slope: float
     speed_of_sound: float = None
+    downsampling_factor: int = 1

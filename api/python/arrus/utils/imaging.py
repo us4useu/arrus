@@ -434,8 +434,6 @@ class ScanConversion:
             c = medium.speed_of_sound
 
         tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
-        # tx_ap_cent_ang_mat = custom_data["tx_aperture_center_angle"]
-        # print(f"tx ap cent ang: matlab: {tx_ap_cent_ang_mat}, python: {tx_ap_cent_ang}")
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
             probe.element_pos_z)

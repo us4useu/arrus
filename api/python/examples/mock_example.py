@@ -20,7 +20,9 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     Transpose,
     ScanConversion,
-    LogCompression
+    LogCompression,
+    DynamicRangeAdjustment,
+    ToGrayscaleImg
 )
 
 # Read the dataset do display.
@@ -105,33 +107,6 @@ z_grid = np.arange(0, 60, 0.4)*1e-3
 # You can find source and docstrings of each step in arrus.utils.imaging
 # module.
 
-class DynamicRangeAdjustment:
-
-    def __init__(self, min=20, max=80):
-        self.min = min
-        self.max = max
-        self.xp = None
-
-    def set_pkgs(self, num_pkgs, **kwargs):
-        self.xp = num_pkgs
-
-    def __call__(self, data, metadata):
-        return self.xp.clip(data, a_min=self.min, a_max=self.max), metadata
-
-
-class ToGrayscaleImg:
-
-    def __init__(self):
-        self.xp = None
-
-    def set_pkgs(self, nump_pkg, **kwargs):
-        self.xp = nump_pkg
-
-    def __call__(self, data, metadata):
-        data = data-self.xp.min(data)
-        data = data/self.xp.max(data)*255
-        return data.astype(self.xp.uint8), metadata
-
 bmode_imaging = Pipeline(
     placement=gpu,
     steps=(
@@ -188,7 +163,10 @@ fig.set_size_inches((7, 7))
 ax.set_xlabel("OX")
 ax.set_ylabel("OZ")
 image_w, image_h = len(x_grid), len(z_grid)
-canvas = plt.imshow(np.zeros((image_w, image_h)), vmin=20, vmax=80, cmap="gray")
+canvas = plt.imshow(np.zeros((image_w, image_h)),
+                    vmin=np.iinfo(np.uint8).min,
+                    vmax=np.iinfo(np.uint8).max,
+                    cmap="gray")
 fig.show()
 
 # Here starts the data acquisition and processing.

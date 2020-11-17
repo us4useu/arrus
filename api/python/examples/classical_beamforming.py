@@ -7,6 +7,9 @@ import arrus.logging
 import arrus.utils.us4r
 import time
 import pickle
+import dataclasses
+import cupy as cp
+
 from arrus.utils.imaging import (
     Pipeline,
     BandpassFilter,
@@ -16,10 +19,14 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     Transpose,
     ScanConversion,
-    LogCompression
+    LogCompression,
+    DynamicRangeAdjustment,
+    ToGrayscaleImg
 )
 
-arrus.set_clog_level(arrus.logging.INFO)
+from arrus.utils.us4r import RemapToLogicalOrder
+
+arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
@@ -30,28 +37,21 @@ def init_display(aperture_size, n_samples):
     ax.set_ylabel("OZ")
     image_w, image_h = aperture_size, n_samples
     canvas = plt.imshow(np.zeros((image_w, image_h)),
-                        vmin=np.iinfo(np.int16).min,
-                        vmax=np.iinfo(np.int16).max, cmap="gray")
+                        vmin=np.iinfo(np.uint8).min,
+                        vmax=np.iinfo(np.uint8).max,
+                        cmap="gray")
     fig.show()
     return fig, ax, canvas
 
 
 def display_data(frame_number, data, metadata, imaging_pipeline, figure, ax, canvas):
     # TODO use the imaging pipeline
-    i = 32
-    print(f"Displaying frame {frame_number}, scanline data: {i}")
-    canvas.set_data(data[i*4096:(i+1)*4096, :])
+    print(f"Displaying frame {frame_number}")
+    bmode, metadata = imaging_pipeline(cp.asarray(data), metadata)
+    canvas.set_data(bmode)
     ax.set_aspect("auto")
     figure.canvas.flush_events()
     plt.draw()
-
-
-def display_raw_data(data):
-    fig, ax = plt.subplots()
-    fig.set_size_inches((7, 7))
-    ax.imshow(data)
-    ax.set_aspect('auto')
-    fig.show()
 
 
 def save_raw_data(frame_number, data, metadata):
@@ -70,6 +70,8 @@ def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
 
     return Pipeline(
         steps=(
+            RemapToLogicalOrder(),
+            Transpose(axes=(0, 2, 1)),
             BandpassFilter(),
             QuadratureDemodulation(),
             Decimation(decimation_factor=decimation_factor,
@@ -78,8 +80,9 @@ def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
             EnvelopeDetection(),
             Transpose(),
             ScanConversion(x_grid=x_grid, z_grid=z_grid),
-            LogCompression()
-        )
+            LogCompression(),
+            DynamicRangeAdjustment(min=5, max=120),
+            ToGrayscaleImg())
     )
 
 
@@ -101,25 +104,26 @@ def main():
                         help="Host buffer size.", required=False, type=int, default=2)
     args = parser.parse_args()
 
+    x_grid = np.arange(-50, 50, 0.4)*1e-3
+    z_grid = np.arange(0, 60, 0.4)*1e-3
+
     seq = LinSequence(
-        tx_aperture_center_element=np.arange(1, 182),
+        tx_aperture_center_element=np.arange(7, 185),
         tx_aperture_size=64,
         tx_focus=30e-3,
         pulse=Pulse(center_frequency=5e6, n_periods=3.5, inverse=False),
-        rx_aperture_center_element=np.arange(1, 182),
+        rx_aperture_center_element=np.arange(7, 185),
         rx_aperture_size=64,
         rx_sample_range=(0, 4096),
-        pri=100e-6, # pulse repetition interval, this is the time between succesive transmits on the system
-        # We 175 scanlines
-        # 175*100us, 17.5 ms
-        downsampling_factor=1,
+        pri=100e-6,
         tgc_start=14,
         tgc_slope=2e2,
         speed_of_sound=1490)
-    bmode_imaging = create_bmode_imaging_pipeline()
+
+    bmode_imaging = create_bmode_imaging_pipeline(x_grid=x_grid, z_grid=z_grid)
 
     if args.action == "img":
-        fig, ax, canvas = init_display(4096, 32)
+        fig, ax, canvas = init_display(len(z_grid), len(x_grid))
 
     action_func = {
         "nop":  None,
@@ -147,16 +151,13 @@ def main():
     arrus.logging.log(arrus.logging.INFO, f"Running {args.n} iterations.")
     for i in range(args.n):
         start = time.time()
-
         data, metadata = buffer.tail()
 
         if action_func is not None:
             action_func(i, data, metadata)
 
         buffer.release_tail()
-
         times.append(time.time()-start)
-
     arrus.logging.log(arrus.logging.INFO,
          f"Done, average acquisition + processing time: {np.mean(times)} [s]")
 
