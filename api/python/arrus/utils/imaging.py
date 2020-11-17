@@ -5,6 +5,7 @@ import scipy.signal as signal
 import arrus.metadata
 import arrus.devices.cpu
 import arrus.devices.gpu
+import arrus.kernels.imaging
 
 
 class Pipeline:
@@ -230,6 +231,7 @@ class RxBeamforming:
         context = metadata.context
         probe_model = metadata.context.device.probe.model
         seq = metadata.context.sequence
+        raw_seq = metadata.context.raw_sequence
         medium = metadata.context.medium
 
         n_tx, n_rx, n_samples = data.shape
@@ -248,10 +250,7 @@ class RxBeamforming:
                                     dtype=data.dtype)
 
         # -- Delays
-        start_sample = context.custom_data["start_sample"] + 1
-        tx_delay_center = context.custom_data["tx_delay_center"]
-        rx_aperture_origin = context.custom_data["rx_aperture_origin"]
-        # TODO(pjarosik) Make sure that we use echo data.
+
         acq_fs = (metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = metadata.data_description.sampling_frequency
@@ -262,6 +261,16 @@ class RxBeamforming:
         else:
             c = medium.speed_of_sound
         tx_angle = 0 # TODO use appropriate tx angle
+
+        # TODO keep cache data? Here all the tx/rx parameters are recomputed
+        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+            seq, probe_model, c)
+        # Assuming, that all tx/rxs have the constant start sample value.
+        if raw_seq is None:
+            start_sample = context.custom_data["start_sample"] + 1
+        else:
+            start_sample = raw_seq.ops[0].rx.sample_range[0]
+        rx_aperture_origin = _get_rx_aperture_origin(seq)
 
         burst_factor = n_periods / (2 * fc)
         initial_delay = (- start_sample / acq_fs
@@ -362,14 +371,15 @@ class Transpose:
     Data transposition.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, axes=None):
+        self.axes = axes
+        self.xp = None
 
-    def set_pkgs(self, **kwargs):
-        pass
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
 
     def __call__(self, data, metadata):
-        return data.T, metadata
+        return self.xp.transpose(data, self.axes), metadata
 
 
 class ScanConversion:
@@ -403,6 +413,7 @@ class ScanConversion:
         probe = metadata.context.device.probe.model
         medium = metadata.context.medium
         data_desc = metadata.data_description
+        raw_seq = metadata.context.raw_sequence
 
         if not probe.is_convex_array():
             raise ValueError(
@@ -411,10 +422,18 @@ class ScanConversion:
         n_samples, _ = data.shape
         seq = metadata.context.sequence
         custom_data = metadata.context.custom_data
-        start_sample = custom_data["start_sample"]
+        if raw_seq is None:
+            start_sample = custom_data["start_sample"]
+        else:
+            start_sample = raw_seq.ops[0].rx.sample_range[0]
         fs = data_desc.sampling_frequency
-        c = medium.speed_of_sound
-        tx_ap_cent_ang = custom_data["tx_aperture_center_angle"]
+
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+
+        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
             probe.element_pos_z)
@@ -464,3 +483,41 @@ class LogCompression:
             data = data.get()
         data[data == 0] = 1e-9
         return 20 * np.log10(data), metadata
+
+
+class DynamicRangeAdjustment:
+
+    def __init__(self, min=20, max=80):
+        self.min = min
+        self.max = max
+        self.xp = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def __call__(self, data, metadata):
+        return self.xp.clip(data, a_min=self.min, a_max=self.max), metadata
+
+
+class ToGrayscaleImg:
+
+    def __init__(self):
+        self.xp = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def __call__(self, data, metadata):
+        data = data - self.xp.min(data)
+        data = data/self.xp.max(data)*255
+        return data.astype(self.xp.uint8), metadata
+
+
+def _get_rx_aperture_origin(sequence):
+    rx_aperture_size = sequence.rx_aperture_size
+    rx_aperture_center_element = sequence.rx_aperture_center_element
+    rx_aperture_origin = np.round(rx_aperture_center_element -
+                               (rx_aperture_size - 1) / 2 + 1e-9)
+    return rx_aperture_origin
+
+

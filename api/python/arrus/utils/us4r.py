@@ -67,8 +67,9 @@ def group_transfers(frame_channel_mapping):
             prev_src_frame = src_frame
             prev_src_channel = src_channel
         # End a range for current frame.
+        current_src_range = int(current_src_range[0]), int(current_src_range[1])
         transfer = Transfer(
-            src_frame=current_src_frame,
+            src_frame=int(current_src_frame),
             src_range=tuple(current_src_range),
             dst_frame=dst_frame,
             dst_range=tuple(current_dst_range)

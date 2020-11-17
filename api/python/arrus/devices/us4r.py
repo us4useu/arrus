@@ -53,6 +53,15 @@ class HostBuffer:
         self.data_description = data_description
         self.frame_shape = frame_shape
         self.buffer_cache = {}
+        self.frame_metadata_cache = {}
+        # Required to determine time step between frame metadata positions.
+        self.n_samples = fac.raw_sequence.get_n_samples()
+        if len(self.n_samples) > 1:
+            raise RuntimeError
+        self.n_samples = next(iter(self.n_samples))
+        # FIXME This won't work when the the rx aperture has to be splitted to multiple operations
+        # Currently works for rx aperture <= 64 elements
+        self.n_triggers = self.data_description.custom["frame_channel_mapping"].frames.shape[0]
 
     def tail(self, timeout=None):
         """
@@ -65,14 +74,17 @@ class HostBuffer:
             -1 if timeout is None else timeout)
         if data_addr not in self.buffer_cache:
             array = self._create_array(data_addr)
+            frame_metadata_view = array[:self.n_samples*self.n_triggers:self.n_samples]
             self.buffer_cache[data_addr] = array
+            self.frame_metadata_cache[data_addr] = frame_metadata_view
         else:
             array = self.buffer_cache[data_addr]
+            frame_metadata_view = self.frame_metadata_cache[data_addr]
         # TODO extract first lines from each frame lazily
         metadata = arrus.metadata.Metadata(
             context=self.fac,
             data_desc=self.data_description,
-            custom={}
+            custom={"frame_metadata_view": frame_metadata_view}
         )
         return array, metadata
 
@@ -167,11 +179,13 @@ class Us4R(Device):
             raise ValueError(f"Unrecognized mode: {mode}")
 
         if mode == "sync" and (rx_buffer_size is not None
-                               or host_buffer_size is not None
                                or frame_repetition_interval is not None):
-            raise ValueError("rx_buffer_size, host_buffer_size and "
+            raise ValueError("rx_buffer_size and "
                              "frame_repetition_interval should be None "
                              "for 'sync' mode.")
+
+        if host_buffer_size is None:
+            host_buffer_size = 2
 
         # Prepare sequence to load
         kernel_context = self._create_kernel_context(seq)
@@ -181,7 +195,7 @@ class Us4R(Device):
         # Load the sequence
         upload_result = None
         if mode == "sync":
-            upload_result = self._handle.uploadSync(core_seq)
+            upload_result = self._handle.uploadSync(core_seq, host_buffer_size)
         elif mode == "async":
             upload_result = self._handle.uploadAsync(
                 core_seq, rxBufferSize=rx_buffer_size,
@@ -204,7 +218,7 @@ class Us4R(Device):
         n_samples = raw_seq.get_n_samples()
         if len(n_samples) > 1:
             raise arrus.exceptions.IllegalArgumentError(
-                "Currently only a sequence with contant number of samples "
+                "Currently only a sequence with constant number of samples "
                 "can be accepted.")
         n_samples = next(iter(n_samples))
         return HostBuffer(

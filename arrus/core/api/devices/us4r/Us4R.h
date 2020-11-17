@@ -57,7 +57,8 @@ public:
         std::shared_ptr<arrus::devices::FrameChannelMapping>,
         std::shared_ptr<arrus::devices::HostBuffer>
     >
-    uploadSync(const ::arrus::ops::us4r::TxRxSequence &seq) = 0;
+    uploadSync(const ::arrus::ops::us4r::TxRxSequence &seq,
+               unsigned short hostBufferSize) = 0;
 
     /**
      *

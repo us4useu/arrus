@@ -20,7 +20,9 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     Transpose,
     ScanConversion,
-    LogCompression
+    LogCompression,
+    DynamicRangeAdjustment,
+    ToGrayscaleImg
 )
 
 # Read the dataset do display.
@@ -104,6 +106,7 @@ z_grid = np.arange(0, 60, 0.4)*1e-3
 # Define bmode image reconstruction pipeline.
 # You can find source and docstrings of each step in arrus.utils.imaging
 # module.
+
 bmode_imaging = Pipeline(
     placement=gpu,
     steps=(
@@ -148,7 +151,9 @@ bmode_imaging = Pipeline(
         # output: nd array, shape: len(z_grid), len(x_grid)
         ScanConversion(x_grid=x_grid, z_grid=z_grid),
         # Convert to decibel scale.
-        LogCompression()
+        LogCompression(),
+        DynamicRangeAdjustment(min=20, max=80),
+        ToGrayscaleImg()
     )
 )
 
@@ -158,7 +163,10 @@ fig.set_size_inches((7, 7))
 ax.set_xlabel("OX")
 ax.set_ylabel("OZ")
 image_w, image_h = len(x_grid), len(z_grid)
-canvas = plt.imshow(np.zeros((image_w, image_h)), vmin=20, vmax=80, cmap="gray")
+canvas = plt.imshow(np.zeros((image_w, image_h)),
+                    vmin=np.iinfo(np.uint8).min,
+                    vmax=np.iinfo(np.uint8).max,
+                    cmap="gray")
 fig.show()
 
 # Here starts the data acquisition and processing.
@@ -180,8 +188,12 @@ for i in range(100):
     # - buffer.release_tail() (notify the us4r-lite device that the
     #   data is not needed anymore and memory area can be reused by the
     #   us4r-lite device for the next acquisitions)
+
     print("Acquiring data")
+    # 2 elements
     data, metadata = buffer.tail()
+
+    # The processing happens here
 
     # The metadata structure contains all the information necessary to
     # reconstruct b-mode image from the RF data

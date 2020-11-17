@@ -172,7 +172,8 @@ std::pair<
     FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
 >
-Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
+Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
+                     unsigned short hostBufferSize) {
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
@@ -185,20 +186,19 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq) {
             "The device is already started, uploading sequence is forbidden.");
     }
 
-    constexpr uint16_t BUFFER_SIZE = 2;
+    constexpr uint16_t RX_BUFFER_SIZE = 2;
     auto nus4oems = (Ordinal) 1;// probeAdapter.value()->getNumberOfUs4OEMs();
-    this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, BUFFER_SIZE);
+    this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, RX_BUFFER_SIZE);
     this->watchdog = std::make_unique<Watchdog>();
 
     auto[fcm, transfers, totalTime] = uploadSequence(
-        seq, BUFFER_SIZE, true, std::nullopt);
+        seq, RX_BUFFER_SIZE, true, std::nullopt);
 
     // transfers[i][j] = transfer to perform
     // where i is the section (buffer element), j is the us4oem (a part of the buffer element)
     // Currently we assume that each buffer element has the same size.
     size_t bufferElementSize = countBufferElementSize(transfers);
-    this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize,
-                                                        BUFFER_SIZE);
+    this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, hostBufferSize);
     // Rx DMA timeout - to avoid situation, where rx irq is missing.
     // 1.5 - sleep time multiplier
 
