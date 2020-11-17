@@ -193,6 +193,7 @@ for i in range(100):
     # 2 elements
     data, metadata = buffer.tail()
 
+
     # The processing happens here
 
     # The metadata structure contains all the information necessary to
@@ -215,19 +216,20 @@ for i in range(100):
     # gpu_data = cp.asarray(data)
     # We've just copied the data from the us4r-lite buffer, we can release
     # the current buffer element.
-    buffer.release_tail()
-
     # Reconstruct bmode image.
     # Note: metadata.data_description describes data produced at a given step;
     # e.g. metadata.data_description.sampling_frequency can change after
     # `Decimation` operation.
     bmode, metadata = bmode_imaging(data, metadata)
+    print(bmode.dtype)
     # display
     canvas.set_data(bmode)
     ax.set_aspect("auto")
     fig.canvas.flush_events()
     plt.draw()
     print(f"Custom metadata: {metadata.custom}")
+
+    buffer.release_tail()
 
 # Stop the execution of the tx/rx sequence.
 us4r.stop()
