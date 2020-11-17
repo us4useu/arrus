@@ -75,7 +75,13 @@ def create_lin_sequence(context):
     txrxs = []
     for tx_aperture, delays, rx_center in zip(tx_apertures, tx_delays,
                                               rx_centers):
-        tx = Tx(tx_aperture, pulse, np.squeeze(delays))
+
+        if delays.shape == (1,1):
+            delays = delays.reshape((1, ))
+        else:
+            delays = np.squeeze(delays)
+
+        tx = Tx(tx_aperture, pulse, delays)
         rx_aperture, rx_padding = get_ap(rx_center, rx_ap_size)
         rx = Rx(rx_aperture, sample_range, downsampling_factor, rx_padding)
         txrxs.append(TxRx(tx, rx, pri))

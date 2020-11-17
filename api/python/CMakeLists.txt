@@ -141,7 +141,7 @@ install(
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}
     RENAME
-        "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-cp37-cp37m-win_amd64.whl"
+        "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-cp38-cp38m-win_amd64.whl"
     COMPONENT
         python_whl
 )

@@ -1,5 +1,3 @@
-import logging
-from logging import (INFO, WARN, ERROR)
 import numpy as np
 import argparse
 
@@ -7,6 +5,8 @@ import arrus
 from arrus.ops.imaging import LinSequence
 from arrus.ops.us4r import Pulse
 import arrus.utils.us4r
+import arrus.logging
+from arrus.logging import (TRACE, DEBUG, INFO, ERROR)
 
 
 def check_channels_mask(rf, channel_mask, threshold):
@@ -30,8 +30,10 @@ def check_channels_mask(rf, channel_mask, threshold):
 
     # mid is a channel number from subaperture corresponding to tested channel
 
+    print(channel_mask)
+
     for i, channel in enumerate(channel_mask):
-        logging.log(INFO, f"Checking channel {channel}")
+        arrus.logging.log(INFO, f"Checking channel {channel}")
         nonmasked = False
 
         # All samples (also the first 10 samples) should be smaller than the
@@ -39,7 +41,7 @@ def check_channels_mask(rf, channel_mask, threshold):
         # We try to detect a peak that occurs in the first of couple samples.
         masked_line_max = np.max(rf[i, :, mid])
         if masked_line_max >= threshold:
-            logging.log(ERROR,
+            arrus.logging.log(ERROR,
                         f"Too high signal ({masked_line_max}) detected in the "
                         f"masked channel.")
             nonmasked = True
@@ -48,15 +50,15 @@ def check_channels_mask(rf, channel_mask, threshold):
         # (ommit first couple of samples which usually contains a large peak)
         mx = np.amax(np.absolute(stripped_rf[i, :, :]))
         if mx >= threshold:
-            logging.log(ERROR,
+            arrus.logging.log(ERROR,
                         f"Too high signal ({mx}) detected in one of "
                         f"neighboring channels of channel #{channel}.")
             nonmasked = True
 
         if nonmasked:
-            logging.log(ERROR, f"The channel {channel} is not masked!")
+            arrus.logging.log(ERROR, f"The channel {channel} is not masked!")
         else:
-            logging.log(INFO, f"The channel {channel} is masked.")
+            arrus.logging.log(INFO, f"The channel {channel} is masked.")
 
 
 if __name__ == "__main__":
@@ -80,6 +82,7 @@ if __name__ == "__main__":
                              "be saved.",
                         required=False, default=None)
 
+    arrus.set_clog_level(arrus.logging.TRACE)
     arrus.add_log_file("channels_mask_test.log", arrus.logging.TRACE)
 
     args = parser.parse_args()
@@ -106,18 +109,21 @@ if __name__ == "__main__":
 
     us4r = session.get_device("/Us4R:0")
     us4r.set_hv_voltage(1)
-    buffer = us4r.upload(seq)
+    buffer = us4r.upload(seq, host_buffer_size=2)
 
     us4r.start()
     data, metadata = buffer.tail()
     remap_step = arrus.utils.us4r.RemapToLogicalOrder()
     remap_step.set_pkgs(num_pkg=np)
     remapped_data, metadata = remap_step(data, metadata)
+    print("Calling channels mask check.")
     check_channels_mask(rf=remapped_data,
                         channel_mask=expected_channels_off,
                         threshold=threshold)
+    print("Atfter channels mask check.")
+    buffer.release_tail()
     if dump_file is not None:
-        logging.log(logging.INFO, f"Saving data to {dump_file}")
+        arrus.logging.log(INFO, f"Saving data to {dump_file}")
         np.save(f"{dump_file}.npy", remapped_data)
         np.save(f"{dump_file}_raw.npy", data)
         np.save(f"{dump_file}_fcm_frames.npy",
