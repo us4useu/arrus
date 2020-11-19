@@ -114,10 +114,11 @@ def main():
         pulse=Pulse(center_frequency=5e6, n_periods=3.5, inverse=False),
         rx_aperture_center_element=np.arange(7, 185),
         rx_aperture_size=64,
-        rx_sample_range=(0, 4096),
+        rx_sample_range=(0, 2048),
         pri=100e-6,
         tgc_start=14,
         tgc_slope=2e2,
+        downsampling_factor=2,
         speed_of_sound=1490)
 
     bmode_imaging = create_bmode_imaging_pipeline(x_grid=x_grid, z_grid=z_grid)

@@ -238,7 +238,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             }
             auto[startSample, endSample] = op.getRxSampleRange().asPair();
             size_t nSamples = endSample - startSample;
-            float rxTime = getRxTime(nSamples);
+            float rxTime = getRxTime(nSamples, op.getRxDecimationFactor());
             size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
             auto rxMapId = rxMappings.find(opIdx)->second;
 
@@ -485,8 +485,8 @@ double Us4OEMImpl::getSamplingFrequency() {
     return Us4OEMImpl::SAMPLING_FREQUENCY;
 }
 
-float Us4OEMImpl::getRxTime(size_t nSamples) {
-    return nSamples / Us4OEMImpl::SAMPLING_FREQUENCY
+float Us4OEMImpl::getRxTime(size_t nSamples, uint32 decimationFactor) {
+    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY/decimationFactor)
            + Us4OEMImpl::RX_TIME_EPSILON;
 }
 

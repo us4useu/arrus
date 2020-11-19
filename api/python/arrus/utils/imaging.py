@@ -46,7 +46,6 @@ class Pipeline:
             step.set_pkgs(**pkgs)
 
 
-
 class BandpassFilter:
     """
     Bandpass filtering to apply to signal data.
@@ -306,16 +305,18 @@ class RxBeamforming:
             (x_distance - element_x) ** 2 + (z_distance - element_z) ** 2)
 
         self.t = (tx_distance + rx_distance) / c + initial_delay
-        self.t = self.xp.asarray(self.t)
-        self.delays = self.t * fs + 1
-
-        # Unroll the array of delays to a single line of delays
+        self.delays = self.t * fs
+        total_n_samples = self.n_rx * self.n_samples
+        # Move samples outside the available area
+        self.delays[self.delays > self.n_samples] = total_n_samples + 1
         # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
         #  row-wise major order).
+        self.delays = self.xp.asarray(self.delays)
         self.delays += self.xp.arange(0, self.n_rx).reshape(n_rx, 1) \
                        * self.n_samples
         self.delays = self.delays.reshape(-1, self.n_samples * self.n_rx) \
             .astype(self.xp.float32)
+
 
         # Apodization
         lambd = c / fc
@@ -329,6 +330,7 @@ class RxBeamforming:
         rx_apodization = rx_apodization/(rx_apod_sum.reshape(1, n_samples))
         self.rx_apodization = self.xp.asarray(rx_apodization)
         # IQ correction
+        self.t = self.xp.asarray(self.t)
         self.iq_correction = self.xp.exp(1j * 2 * np.pi * fc * self.t) \
             .astype(self.xp.complex64)
 
@@ -446,6 +448,7 @@ class ScanConversion:
         azimuthGridOut = np.arctan2(self.x_grid, z_grid_moved)
         radGridOut = (np.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
                       - probe.curvature_radius)
+
         dst_points = np.dstack((radGridOut, azimuthGridOut))
         w, h, d = dst_points.shape
         self.dst_points = dst_points.reshape((w * h, d))
