@@ -184,7 +184,7 @@ target_link_libraries(${TARGET_NAME}
     Us4::HV256
     Us4::DBARLite
     Boost::Boost
-    Protobuf::Protobuf
+    protobuf::libprotobuf
     fmt::fmt
     range-v3::range-v3
     Eigen3::Eigen3
@@ -237,7 +237,7 @@ if (ARRUS_RUN_TESTS)
 #    create_core_test(
 #        io/settingsTest.cpp
 #        "" # no additional source files
-#        "Protobuf::Protobuf;arrus-core"
+#        "protobuf::libprotobuf;arrus-core"
 #        "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
 endif ()
 

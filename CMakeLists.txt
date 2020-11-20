@@ -91,7 +91,7 @@ if(ARRUS_BUILD_SWIG)
 endif()
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
-find_package(Protobuf REQUIRED)
+find_package(protobuf REQUIRED)
 # Use project root to search for .proto files.
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(fmt REQUIRED)
