@@ -45,34 +45,45 @@ public:
 
     void process() {
         int16_t i = 0;
-        while(this->state == State::STARTED) {
-            auto idx = inputBuffer->tail();
-            if(idx == -1) {
-                this->state = State::STOPPED;
-                break;
-            }
-            auto &ts = transfers[idx];
-
-            bool pushResult = outputBuffer->push([&ts, idx] (int16* dstAddress) {
-                size_t offset = 0;
-                for(auto &t : ts) {
-                    t.getTransferFunc()((uint8_t*)dstAddress + offset);
-                    offset += t.getSize();
+        int j = 0;
+        try {
+            while(this->state == State::STARTED) {
+                auto idx = inputBuffer->tail();
+                if(idx == -1) {
+                    this->state = State::STOPPED;
+                    break;
                 }
-            });
-            if(!pushResult) {
-                this->state = State::STOPPED;
-                break;
-            }
-            bool releaseTail = inputBuffer->releaseTail();
-            if(!releaseTail) {
-                this->state = State::STOPPED;
-                break;
-            }
+                auto &ts = transfers[idx];
 
-            i = (i+1) % (inputBuffer->size());
+                bool pushResult = outputBuffer->push([&ts, idx] (int16* dstAddress) {
+                    size_t offset = 0;
+                    for(auto &t : ts) {
+                        t.getTransferFunc()((uint8_t*)dstAddress + offset);
+                        offset += t.getSize();
+                    }
+                });
+                if(!pushResult) {
+                    this->state = State::STOPPED;
+                    break;
+                }
+                bool releaseTail = inputBuffer->releaseTail();
+                if(!releaseTail) {
+                    this->state = State::STOPPED;
+                    break;
+                }
+
+                i = (i+1) % (inputBuffer->size());
+            }
+            logger->log(LogSeverity::DEBUG, "Host buffer finished all work.");
         }
-        logger->log(LogSeverity::DEBUG, "Host buffer finished all work.");
+        catch(const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+            throw e;
+        }
+        catch(...) {
+            std::cerr << "Unknown exception" << std::endl;
+            throw;
+        }
     }
 
     void join() {

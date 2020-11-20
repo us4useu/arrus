@@ -14,7 +14,12 @@ public:
         for(int i = 0; i < nElements; ++i) {
             auto elementPtr = (int16 *) operator new[](elementSize,std::align_val_t{4096});
             elements.push_back(elementPtr);
+            getDefaultLogger()->log(LogSeverity::TRACE,
+                                    ::arrus::format("Created element in address {} with size {}", (size_t)elementPtr, elementSize));
         }
+        getDefaultLogger()->log(LogSeverity::TRACE,
+                                ::arrus::format("Created array with element size: {}, n elements: {}",
+                                                elementSize, nElements));
     }
 
     ~Us4RHostBuffer() override {
@@ -29,6 +34,9 @@ public:
     bool push(const std::function<void(int16*)> &pushFunc) {
         {
             std::unique_lock<std::mutex> guard(mutex);
+            if(this->isShutdown) {
+                return false;
+            }
             while(currentSize == elements.size()) {
                 canPush.wait(guard);
                 if(this->isShutdown) {
@@ -49,6 +57,9 @@ public:
     int16 *tail(long long timeout) override {
         {
             std::unique_lock<std::mutex> guard(mutex);
+            if(this->isShutdown) {
+                return nullptr;
+            }
             while(currentSize == 0) {
                 ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
                     canPop, guard, timeout,
@@ -64,6 +75,9 @@ public:
     void releaseTail(long long timeout) override {
         {
             std::unique_lock<std::mutex> guard(mutex);
+            if(this->isShutdown) {
+                throw IllegalStateException("The access to us4r buffer is closed.");
+            }
             while(currentSize == 0) {
                 ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
                     canPop, guard, timeout,

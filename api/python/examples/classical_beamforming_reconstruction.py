@@ -59,7 +59,7 @@ def main():
 
     # Create session with not Us4R device.
     sess = arrus.Session(mock=mock)
-    gpu = sess.get_device("/GPU:0")
+    cpu = sess.get_device("/CPU:0")
 
     if is_numpy_data:
         initial_steps = [
@@ -74,8 +74,8 @@ def main():
         initial_steps = []
 
     # Actual imaging starts here.
-    x_grid = np.arange(-50, 50, 0.4)*1e-3
-    z_grid = np.arange(0, 60, 0.4)*1e-3
+    x_grid = np.arange(-50, 50, 0.1)*1e-3
+    z_grid = np.arange(0, 60, 0.1)*1e-3
 
     pipeline = Pipeline(
         steps=initial_steps + [
@@ -87,12 +87,14 @@ def main():
             Transpose(),
             ScanConversion(x_grid=x_grid, z_grid=z_grid),
             LogCompression(),
-            DynamicRangeAdjustment(),
+            DynamicRangeAdjustment(min=0, max=100),
             ToGrayscaleImg()
         ],
-        placement=gpu)
-    reconstructed_data, metadata = pipeline(cp.asarray(data), metadata)
-
+        placement=cpu)
+    reconstructed_data, metadata = pipeline(data, metadata)
+    if type(reconstructed_data) == cp.ndarray:
+        # Get data from the GPU device to host memory.
+        reconstructed_data = reconstructed_data.get()
     fig, ax = plt.subplots()
     fig.set_size_inches((7, 7))
     ax.imshow(reconstructed_data, cmap="gray")

@@ -51,6 +51,9 @@ public:
      */
     bool reserveElement(Ordinal ordinal) {
         std::unique_lock<std::mutex> guard(mutex);
+        if(this->isShutdown) {
+            return false;
+        }
         auto headIdx = heads[ordinal];
         auto &accumulator = accumulators[headIdx];
         while(accumulator > 0) {
@@ -71,6 +74,9 @@ public:
      */
     int16_t tail() {
         std::unique_lock<std::mutex> guard(mutex);
+        if(this->isShutdown) {
+            return -1;
+        }
         while(accumulators[tailIdx] != filledAccumulator) {
             bufferEmpty.wait(guard);
             if(this->isShutdown) {
@@ -85,6 +91,9 @@ public:
      */
     bool releaseTail() {
         std::unique_lock<std::mutex> guard(mutex);
+        if(this->isShutdown) {
+            return false;
+        }
         auto releasedIdx = tailIdx;
         while(accumulators[releasedIdx] != filledAccumulator) {
             bufferEmpty.wait(guard);

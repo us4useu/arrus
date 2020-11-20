@@ -45,43 +45,53 @@ public:
     }
 
     void process() {
-        logger->log(LogSeverity::DEBUG, "Started.");
-        std::unique_lock<std::mutex> guard(mutex);
-        bool internalStart = false;
-        while(this->state == STARTED) {
-            if(!internalStart) {
-                logger->log(LogSeverity::DEBUG, "Waiting for the start.");
-                cvStart.wait(guard, [this] {return this->startIndicator;});
-                this->startIndicator = false;
-                this->responseIndicator = false;
-                logger->log(LogSeverity::DEBUG, "After the start.");
-            }
-            if(this->state == STOPPED) {
-                break;
-            }
-            bool status = cvResponse.wait_for(guard, timeout, [this] {
-                return this->responseIndicator;
-            });
-
-            if(this->state == STOPPED) {
-                break;
-            }
-            if(!status) {
-                logger->log(LogSeverity::DEBUG, "Timeout.");
-                bool res = callback();
-                internalStart = true;
-                if(!res) {
-                    // Queues closed.
-                    this->state = STOPPED;
+        try {
+            logger->log(LogSeverity::DEBUG, "Started.");
+            std::unique_lock<std::mutex> guard(mutex);
+            bool internalStart = false;
+            while(this->state == STARTED) {
+                if(!internalStart) {
+                    logger->log(LogSeverity::DEBUG, "Waiting for the start.");
+                    cvStart.wait(guard, [this] {return this->startIndicator;});
+                    this->startIndicator = false;
+                    this->responseIndicator = false;
+                    logger->log(LogSeverity::DEBUG, "After the start.");
+                }
+                if(this->state == STOPPED) {
                     break;
                 }
+                bool status = cvResponse.wait_for(guard, timeout, [this] {
+                    return this->responseIndicator;
+                });
+
+                if(this->state == STOPPED) {
+                    break;
+                }
+                if(!status) {
+                    logger->log(LogSeverity::DEBUG, "Timeout.");
+                    bool res = callback();
+                    internalStart = true;
+                    if(!res) {
+                        // Queues closed.
+                        this->state = STOPPED;
+                        break;
+                    }
+                }
+                else {
+                    logger->log(LogSeverity::DEBUG, "No timeout.");
+                    internalStart = false;
+                }
             }
-            else {
-                logger->log(LogSeverity::DEBUG, "No timeout.");
-                internalStart = false;
-            }
+            logger->log(LogSeverity::DEBUG, "Stopped.");
         }
-        logger->log(LogSeverity::DEBUG, "Stopped.");
+        catch(const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+            throw e;
+        }
+        catch(...) {
+            std::cerr << "Unknown exception" << std::endl;
+            throw;
+        }
     }
 
     void stop() {
