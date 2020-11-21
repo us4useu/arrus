@@ -185,7 +185,7 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
         throw ::arrus::IllegalStateException(
             "The device is already started, uploading sequence is forbidden.");
     }
-    constexpr uint16_t RX_BUFFER_SIZE = 2;
+    constexpr uint16_t RX_BUFFER_SIZE = 1;
     auto[fcm, transfers, totalTime] = uploadSequence(
         seq, RX_BUFFER_SIZE, true, std::nullopt);
 
