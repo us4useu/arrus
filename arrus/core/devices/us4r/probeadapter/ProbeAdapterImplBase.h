@@ -26,7 +26,7 @@ public:
     >
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    uint16 nRepeats,
+                    uint16 rxBufferSize, uint16 rxBatchSize,
                     std::optional<float> frameRepetitionInterval) = 0;
 
     virtual Ordinal getNumberOfUs4OEMs() = 0;

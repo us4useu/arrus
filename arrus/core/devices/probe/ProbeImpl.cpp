@@ -48,7 +48,7 @@ private:
 std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                            const ops::us4r::TGCCurve &tgcSamples,
-                           uint16 nRepeats,
+                           uint16 rxBufferSize, uint16 rxBatchSize,
                            std::optional<float> frameRepetitionInterval) {
     // Validate input sequence
     ProbeTxRxValidator validator(
@@ -90,7 +90,8 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                 op.getCallback());
     }
 
-    return adapter->setTxRxSequence(adapterSeq, tgcSamples, nRepeats, frameRepetitionInterval);
+    return adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize,
+                                    rxBatchSize, frameRepetitionInterval);
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {

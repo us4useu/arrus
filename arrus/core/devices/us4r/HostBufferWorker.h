@@ -49,25 +49,32 @@ public:
     }
 
     void process() {
-        startFunc();
-        std::this_thread::sleep_for(std::chrono::microseconds(priTimeout));
-        while(this->state == State::STARTED) {
-            syncFunc();
+        try {
+            startFunc();
             std::this_thread::sleep_for(std::chrono::microseconds(priTimeout));
-            auto &ts = transfers[0];
-            bool pushResult = outputBuffer->push([&ts] (int16* dstAddress) {
-                size_t offset = 0;
-                for(auto &t : ts) {
-                    t.getTransferFunc()((uint8_t*)dstAddress + offset);
-                    offset += t.getSize();
+            while(this->state == State::STARTED) {
+                syncFunc();
+                std::this_thread::sleep_for(std::chrono::microseconds(priTimeout));
+                auto &ts = transfers[0];
+                bool pushResult = outputBuffer->push([&ts] (int16* dstAddress) {
+                    size_t offset = 0;
+                    for(auto &t : ts) {
+                        t.getTransferFunc()((uint8_t*)dstAddress + offset);
+                        offset += t.getSize();
+                    }
+                });
+                if(!pushResult) {
+                    this->state = State::STOPPED;
+                    break;
                 }
-            });
-            if(!pushResult) {
-                this->state = State::STOPPED;
-                break;
             }
+            logger->log(LogSeverity::DEBUG, "Host buffer finished all work.");
+        } catch(const std::exception &e) {
+            std::cerr << e.what() << std::endl;
+        } catch(...) {
+            std::cerr << "Unhandled exception" << std::endl;
         }
-        logger->log(LogSeverity::DEBUG, "Host buffer finished all work.");
+
     }
 private:
     enum class State{NEW, STARTED, STOPPED};

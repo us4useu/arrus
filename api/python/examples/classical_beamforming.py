@@ -101,7 +101,11 @@ def main():
                         help="How many times should the operation be performed.",
                         required=False, type=int, default=100)
     parser.add_argument("--host_buffer_size", dest="host_buffer_size",
-                        help="Host buffer size.", required=False, type=int, default=2)
+                        help="Host buffer size.", required=False, type=int,
+                        default=2)
+    parser.add_argument("--rx_batch_size", dest="rx_batch_size",
+                        help="Rx batch size.", required=False, type=int,
+                        default=1)
     args = parser.parse_args()
 
     x_grid = np.arange(-50, 50, 0.4)*1e-3
@@ -144,7 +148,8 @@ def main():
     us4r.set_hv_voltage(30)
     # Upload sequence on the us4r-lite device.
     buffer = us4r.upload(seq, mode="sync",
-                         host_buffer_size=args.host_buffer_size)
+                         host_buffer_size=args.host_buffer_size,
+                         rx_batch_size=args.rx_batch_size)
 
     # Start the device.
     us4r.start()

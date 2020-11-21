@@ -20,14 +20,15 @@ public:
     /**
      * @param seq
      * @param tgcSamples
-     * @param nRepeats how many times repeat the sequence of tx/rxs
+     * @param rxBufferSize how many times repeat the sequence of tx/rxs
      * @return
      */
      // TODO(pjarosik) wrap the below tuple in some meaningful class
     virtual
      std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 nRepeats,
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize,
                     std::optional<float> frameRepetitionInterval) = 0;
 
     virtual void start() = 0;

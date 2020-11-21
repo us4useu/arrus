@@ -36,8 +36,10 @@ public:
         std::vector<std::vector<DataTransfer>>,
         float // total PRI
     >
-    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    uint16 nRepeats = 1, std::optional<float> frameRepetitionInterval = std::nullopt) override;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                    const ::arrus::ops::us4r::TGCCurve &tgcSamples,
+                    uint16 rxBufferSize = 1, uint16 rxBatchSize = 1,
+                    std::optional<float> frameRepetitionInterval = std::nullopt) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 

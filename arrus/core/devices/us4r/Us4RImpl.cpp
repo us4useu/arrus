@@ -116,7 +116,7 @@ Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
         fri = frameRepetitionInterval;
     }
     auto[fcm, transfers, totalTime] = uploadSequence(
-        seq, rxBufferSize, false, fri);
+        seq, rxBufferSize, 1, false, fri);
 
     ARRUS_REQUIRES_TRUE(!transfers.empty(),
                         "The transfers list cannot be empty");
@@ -173,7 +173,8 @@ std::pair<
     HostBuffer::SharedHandle
 >
 Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
-                     unsigned short hostBufferSize) {
+                     unsigned short hostBufferSize,
+                     unsigned short rxBatchSize) {
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
@@ -187,7 +188,7 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
     }
     constexpr uint16_t RX_BUFFER_SIZE = 1;
     auto[fcm, transfers, totalTime] = uploadSequence(
-        seq, RX_BUFFER_SIZE, true, std::nullopt);
+        seq, RX_BUFFER_SIZE, rxBatchSize, true, std::nullopt);
 
     // transfers[i][j] = transfer to perform
     // where i is the section (buffer element), j is the us4oem (a part of the buffer element)
@@ -256,9 +257,12 @@ void Us4RImpl::stopDevice(bool stopGently) {
     this->hostBufferWorker->stop();
     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     // Delete all data.
-    this->currentRxBuffer.reset();
-    this->hostBuffer.reset();
     this->hostBufferWorker.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    logger->log(LogSeverity::DEBUG, "Deleting host buffer.");
+    this->hostBuffer.reset();
+    logger->log(LogSeverity::DEBUG, "Host buffer deleted.");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     this->state = State::STOPPED;
 }
@@ -281,8 +285,8 @@ std::tuple<
     float // ntriggers
 >
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
-                         uint16_t nRepeats,
-                         bool checkpoint,
+                         uint16_t rxBufferSize,
+                         uint16_t rxBatchSize, bool checkpoint,
                          std::optional<float> frameRepetitionInterval) {
     std::vector<TxRxParameters> actualSeq;
     auto nOps = seq.getOps().size();
@@ -317,7 +321,8 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
         ++opIdx;
     }
     return getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve(),
-                                                  nRepeats,
+                                                  rxBufferSize,
+                                                  rxBatchSize,
                                                   frameRepetitionInterval);
 
 }

@@ -31,9 +31,6 @@ public:
         : Validator(componentName), nChannels(nChannels) {}
 
     void validate(const TxRxParamsSequence &txRxs) override {
-        ARRUS_VALIDATOR_EXPECT_IN_RANGE(txRxs.size(), size_t(1), size_t(2048));
-        throwOnErrors();
-
         const auto nSamples = txRxs[0].getNumberOfSamples();
         size_t nActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()),
                                                    std::end(txRxs[0].getRxAperture()), 0)
@@ -72,7 +69,7 @@ std::tuple<
 >
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                   const TGCCurve &tgcSamples,
-                                  uint16 nRepeats,
+                                  uint16 rxBufferSize, uint16 batchSize,
                                   std::optional<float> frameRepetitionInterval) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
@@ -208,7 +205,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
         auto [fcMapping, us4oemTransfers, totalPri] = us4oem->setTxRxSequence(
-            splittedOps[us4oemOrdinal], tgcSamples, nRepeats,
+            splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, batchSize,
             frameRepetitionInterval);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();

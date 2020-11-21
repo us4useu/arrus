@@ -28,6 +28,7 @@ class FrameChannelMapping:
     """
     frames: np.ndarray
     channels: np.ndarray
+    batch_size: int = 1
 
 
 class HostBuffer:
@@ -47,7 +48,8 @@ class HostBuffer:
     def __init__(self, buffer_handle,
                  fac: arrus.metadata.FrameAcquisitionContext,
                  data_description: arrus.metadata.EchoDataDescription,
-                 frame_shape: tuple):
+                 frame_shape: tuple,
+                 rx_batch_size: int):
         self.buffer_handle = buffer_handle
         self.fac = fac
         self.data_description = data_description
@@ -62,6 +64,7 @@ class HostBuffer:
         # FIXME This won't work when the the rx aperture has to be splitted to multiple operations
         # Currently works for rx aperture <= 64 elements
         self.n_triggers = self.data_description.custom["frame_channel_mapping"].frames.shape[0]
+        self.rx_batch_size = rx_batch_size
 
     def tail(self, timeout=None):
         """
@@ -74,7 +77,7 @@ class HostBuffer:
             -1 if timeout is None else timeout)
         if data_addr not in self.buffer_cache:
             array = self._create_array(data_addr)
-            frame_metadata_view = array[:self.n_samples*self.n_triggers:self.n_samples]
+            frame_metadata_view = array[:self.n_samples*self.n_triggers*self.rx_batch_size:self.n_samples]
             self.buffer_cache[data_addr] = array
             self.frame_metadata_cache[data_addr] = frame_metadata_view
         else:
@@ -155,7 +158,8 @@ class Us4R(Device):
 
     def upload(self, seq: arrus.ops.Operation, mode="sync",
                rx_buffer_size=None, host_buffer_size=None,
-               frame_repetition_interval=None) -> HostBuffer:
+               frame_repetition_interval=None,
+               rx_batch_size=1) -> HostBuffer:
         """
         Uploads a given sequence of operations to perform on the device.
 
@@ -171,6 +175,7 @@ class Us4R(Device):
         :param frame_repetition_interval: the expected time between successive
           frame acquisitions to set, should be None for "sync" version. None
           value means that no interval should be set
+        :param rx_batch_size: number of RF frames that should be acquired in a single run
         :raises: ValueError when some of the input parameters are invalid
         :return: a data buffer
         """
@@ -187,6 +192,11 @@ class Us4R(Device):
         if host_buffer_size is None:
             host_buffer_size = 2
 
+        if host_buffer_size % rx_batch_size != 0:
+            raise ValueError("Host buffer size should be a multiple "
+                             "of rx batch size.")
+        host_buffer_size = host_buffer_size // rx_batch_size
+
         # Prepare sequence to load
         kernel_context = self._create_kernel_context(seq)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
@@ -195,7 +205,8 @@ class Us4R(Device):
         # Load the sequence
         upload_result = None
         if mode == "sync":
-            upload_result = self._handle.uploadSync(core_seq, host_buffer_size)
+            upload_result = self._handle.uploadSync(core_seq, host_buffer_size,
+                                                    rx_batch_size)
         elif mode == "async":
             upload_result = self._handle.uploadAsync(
                 core_seq, rxBufferSize=rx_buffer_size,
@@ -208,7 +219,8 @@ class Us4R(Device):
         # -- Constant metadata
         # --- FCM
         fcm_frame, fcm_channel = arrus.utils.core.convert_fcm_to_np_arrays(fcm)
-        fcm = FrameChannelMapping(frames=fcm_frame, channels=fcm_channel)
+        fcm = FrameChannelMapping(frames=fcm_frame, channels=fcm_channel,
+                                  batch_size=rx_batch_size)
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq)
@@ -225,7 +237,8 @@ class Us4R(Device):
             buffer_handle=buffer_handle,
             fac=fac,
             data_description=echo_data_description,
-            frame_shape=self._get_physical_frame_shape(fcm, n_samples))
+            frame_shape=self._get_physical_frame_shape(fcm, n_samples,rx_batch_size=rx_batch_size),
+            rx_batch_size=rx_batch_size)
 
     def _create_kernel_context(self, seq):
         return arrus.kernels.kernel.KernelExecutionContext(
@@ -246,11 +259,12 @@ class Us4R(Device):
             custom={"frame_channel_mapping": fcm}
         )
 
-    def _get_physical_frame_shape(self, fcm, n_samples, n_channels=32):
+    def _get_physical_frame_shape(self, fcm, n_samples, n_channels=32,
+                                  rx_batch_size=1):
         # TODO: We assume here, that each frame has the same number of samples!
         # This might not be case in further improvements.
         n_frames = np.max(fcm.frames) + 1
-        return n_frames * n_samples, n_channels
+        return n_frames * n_samples * rx_batch_size, n_channels
 
     def _get_dto(self):
         probe_model = arrus.utils.core.convert_to_py_probe_model(
