@@ -539,7 +539,7 @@ void Us4OEMImpl::transferData(uint8_t *dstAddress, size_t size, size_t srcAddres
     size_t transferredSize = 0;
     while(transferredSize < size) {
         size_t chunkSize = std::min(MAX_TRANSFER_SIZE, size - transferredSize);
-        ius4oem->TransferRXBufferToHost(dstAddress, chunkSize, srcAddress);
+        ius4oem->TransferRXBufferToHost(dstAddress+transferredSize, chunkSize, srcAddress+transferredSize);
         transferredSize += chunkSize;
     }
 }
