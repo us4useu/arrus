@@ -29,6 +29,9 @@ public:
     bool push(const std::function<void(int16*)> &pushFunc) {
         {
             std::unique_lock<std::mutex> guard(mutex);
+            if(this->isShutdown) {
+                return false;
+            }
             while(currentSize == elements.size()) {
                 canPush.wait(guard);
                 if(this->isShutdown) {
@@ -49,6 +52,9 @@ public:
     int16 *tail(long long timeout) override {
         {
             std::unique_lock<std::mutex> guard(mutex);
+            if(this->isShutdown) {
+                return nullptr;
+            }
             while(currentSize == 0) {
                 ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
                     canPop, guard, timeout,

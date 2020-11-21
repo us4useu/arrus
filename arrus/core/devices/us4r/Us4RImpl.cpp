@@ -185,12 +185,7 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
         throw ::arrus::IllegalStateException(
             "The device is already started, uploading sequence is forbidden.");
     }
-
     constexpr uint16_t RX_BUFFER_SIZE = 2;
-    auto nus4oems = (Ordinal) 1;// probeAdapter.value()->getNumberOfUs4OEMs();
-    this->currentRxBuffer = std::make_unique<RxBuffer>(nus4oems, RX_BUFFER_SIZE);
-    this->watchdog = std::make_unique<Watchdog>();
-
     auto[fcm, transfers, totalTime] = uploadSequence(
         seq, RX_BUFFER_SIZE, true, std::nullopt);
 
@@ -201,18 +196,16 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
     this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, hostBufferSize);
     // Rx DMA timeout - to avoid situation, where rx irq is missing.
     // 1.5 - sleep time multiplier
-
-    logger->log(LogSeverity::DEBUG,
-                ::arrus::format("Total PRI: {}", totalTime));
-    auto timeout = (long long) (totalTime * 1e6 * 1.5);
-
+    auto timeout = (long long) (totalTime * 1.5);
+    logger->log(LogSeverity::DEBUG,::arrus::format("Total PRI: {}", totalTime));
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
-        this->currentRxBuffer, this->hostBuffer, transfers);
-
-    this->watchdog->setTimeout(timeout);
-    this->watchdog->setCallback([this]() {
-        return this->rxDmaCallback();
-    });
+        this->hostBuffer, transfers, timeout,
+        [this]() {
+            this->syncTrigger();
+        },
+        [this]() {
+            this->getDefaultComponent()->start();
+        });
 
     this->mode = SYNC;
     return std::make_pair(std::move(fcm), hostBuffer);
@@ -229,9 +222,7 @@ void Us4RImpl::startSync() {
         throw ::arrus::IllegalStateException("Device is already running.");
     }
     this->hostBufferWorker->start();
-    this->watchdog->start();
-    this->getDefaultComponent()->start();
-    this->watchdog->notifyStart();
+
     this->state = State::STARTED;
 }
 
@@ -254,15 +245,9 @@ void Us4RImpl::stopDevice(bool stopGently) {
         }
     }
     logger->log(LogSeverity::DEBUG, "Queue shutdown.");
-    if(this->currentRxBuffer) {
-        this->currentRxBuffer->shutdown();
-    }
     if(this->hostBuffer) {
         this->hostBuffer->shutdown();
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    logger->log(LogSeverity::DEBUG, "Stopping watchdog.");
-    this->watchdog->stop();
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     logger->log(LogSeverity::DEBUG, "Stopping system.");
     this->getDefaultComponent()->stop();

@@ -11,13 +11,18 @@ namespace arrus::devices {
 
 class HostBufferWorker {
 public:
-    HostBufferWorker(std::shared_ptr<RxBuffer> inputBuffer,
-                     std::shared_ptr<Us4RHostBuffer> outputBuffer,
-                     std::vector<std::vector<DataTransfer>> transfers)
+    HostBufferWorker(std::shared_ptr<Us4RHostBuffer> outputBuffer,
+                     std::vector<std::vector<DataTransfer>> transfers,
+                     long long priTimeout,
+                     std::function<void()> syncFunc,
+                     std::function<void()> startFunc)
         : logger{getLoggerFactory()->getLogger()},
-          inputBuffer(std::move(inputBuffer)),
           outputBuffer(std::move(outputBuffer)),
-          transfers(std::move(transfers)) {
+          transfers(std::move(transfers)),
+          syncFunc(std::move(syncFunc)),
+          startFunc(std::move(startFunc)),
+          priTimeout(priTimeout)
+    {
         INIT_ARRUS_DEVICE_LOGGER(logger, "HostBufferRunner");
     }
 
@@ -44,16 +49,13 @@ public:
     }
 
     void process() {
-        int16_t i = 0;
+        startFunc();
+        std::this_thread::sleep_for(std::chrono::microseconds(priTimeout));
         while(this->state == State::STARTED) {
-            auto idx = inputBuffer->tail();
-            if(idx == -1) {
-                this->state = State::STOPPED;
-                break;
-            }
-            auto &ts = transfers[idx];
-
-            bool pushResult = outputBuffer->push([&ts, idx] (int16* dstAddress) {
+            syncFunc();
+            std::this_thread::sleep_for(std::chrono::microseconds(priTimeout));
+            auto &ts = transfers[0];
+            bool pushResult = outputBuffer->push([&ts] (int16* dstAddress) {
                 size_t offset = 0;
                 for(auto &t : ts) {
                     t.getTransferFunc()((uint8_t*)dstAddress + offset);
@@ -64,21 +66,9 @@ public:
                 this->state = State::STOPPED;
                 break;
             }
-            bool releaseTail = inputBuffer->releaseTail();
-            if(!releaseTail) {
-                this->state = State::STOPPED;
-                break;
-            }
-
-            i = (i+1) % (inputBuffer->size());
         }
         logger->log(LogSeverity::DEBUG, "Host buffer finished all work.");
     }
-
-    void join() {
-        this->processingThread.join();
-    }
-
 private:
     enum class State{NEW, STARTED, STOPPED};
 
@@ -90,6 +80,9 @@ private:
     // Element -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> transfers;
     State state{State::NEW};
+    long long priTimeout;
+    std::function<void()> syncFunc;
+    std::function<void()> startFunc;
 };
 
 }
