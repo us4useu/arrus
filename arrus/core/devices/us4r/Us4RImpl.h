@@ -114,7 +114,8 @@ public:
         std::shared_ptr<arrus::devices::HostBuffer>
     >
     uploadSync(const ops::us4r::TxRxSequence &seq,
-               unsigned short hostBufferSize) override;
+               unsigned short hostBufferSize,
+               unsigned short rxBatchSize) override;
 
     std::pair<
         std::shared_ptr<arrus::devices::FrameChannelMapping>,
@@ -167,7 +168,8 @@ private:
     >
     uploadSequence(
         const ops::us4r::TxRxSequence &seq,
-        uint16_t nRepeats,
+        uint16_t rxBufferSize,
+        uint16_t rxBatchSize,
         bool checkpoint,
         std::optional<float> frameRepetitionInterval);
 

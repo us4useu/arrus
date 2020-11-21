@@ -31,7 +31,6 @@ public:
         : Validator(componentName), nChannels(nChannels) {}
 
     void validate(const TxRxParamsSequence &txRxs) override {
-        ARRUS_VALIDATOR_EXPECT_IN_RANGE(txRxs.size(), size_t(1), size_t(2048));
         throwOnErrors();
 
         const auto nSamples = txRxs[0].getNumberOfSamples();
@@ -72,7 +71,7 @@ std::tuple<
 >
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                   const TGCCurve &tgcSamples,
-                                  uint16 nRepeats,
+                                  uint16 rxBufferSize, uint16 batchSize,
                                   std::optional<float> frameRepetitionInterval) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
@@ -208,7 +207,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
         auto [fcMapping, us4oemTransfers, totalPri] = us4oem->setTxRxSequence(
-            splittedOps[us4oemOrdinal], tgcSamples, nRepeats,
+            splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, batchSize,
             frameRepetitionInterval);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
@@ -246,9 +245,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                 // and has no assigned value.
                 ARRUS_REQUIRES_DATA_TYPE_E(
                     dstModuleChannel, int8,
-                    ::arrus::ArrusException(
-                        "Invalid dstModuleChannel data type, "
-                        "rx aperture is outise."));
+                    ::arrus::ArrusException("Invalid dstModuleChannel data type, rx aperture is outise."));
                 if(FrameChannelMapping::isChannelUnavailable((int8)dstModuleChannel)) {
                     outFcBuilder.setChannelMapping(
                         frameIdx, activeRxChIdx+op.getRxPadding()[0],
@@ -258,8 +255,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     // Otherwise, we have an actual channel.
                     ARRUS_REQUIRES_TRUE_E(
                         dstModule >= 0 && dstModuleChannel >= 0,
-                        arrus::ArrusException("Dst module and dst channel "
-                                              "should be non-negative")
+                        arrus::ArrusException("Dst module and dst channel should be non-negative")
                     );
 
                     auto dstOp = opDstSplittedOp(dstModule, frameIdx, dstModuleChannel);

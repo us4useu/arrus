@@ -45,7 +45,6 @@ public:
 
     void process() {
         int16_t i = 0;
-        int j = 0;
         try {
             while(this->state == State::STARTED) {
                 auto idx = inputBuffer->tail();

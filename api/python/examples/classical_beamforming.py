@@ -64,9 +64,9 @@ def save_raw_data(frame_number, data, metadata):
 def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
                                   x_grid=None, z_grid=None):
     if x_grid is None:
-        x_grid = np.arange(-50, 50, 0.4)*1e-3
+        x_grid = np.arange(-50, 50, 0.2)*1e-3
     if z_grid is None:
-        z_grid = np.arange(0, 60, 0.4)*1e-3
+        z_grid = np.arange(0, 60, 0.2)*1e-3
 
     return Pipeline(
         steps=(
@@ -82,8 +82,7 @@ def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
             ScanConversion(x_grid=x_grid, z_grid=z_grid),
             LogCompression(),
             DynamicRangeAdjustment(min=5, max=120),
-            ToGrayscaleImg())
-    )
+            ToGrayscaleImg()))
 
 
 def main():
@@ -104,8 +103,8 @@ def main():
                         help="Host buffer size.", required=False, type=int, default=2)
     args = parser.parse_args()
 
-    x_grid = np.arange(-50, 50, 0.4)*1e-3
-    z_grid = np.arange(0, 60, 0.4)*1e-3
+    x_grid = np.arange(-50, 50, 0.2)*1e-3
+    z_grid = np.arange(0, 60, 0.2)*1e-3
 
     seq = LinSequence(
         tx_aperture_center_element=np.arange(7, 185),
