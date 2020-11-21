@@ -108,11 +108,11 @@ def main():
     z_grid = np.arange(0, 60, 0.4)*1e-3
 
     seq = LinSequence(
-        tx_aperture_center_element=np.arange(7, 185),
+        tx_aperture_center_element=np.arange(8, 183),
         tx_aperture_size=64,
         tx_focus=30e-3,
         pulse=Pulse(center_frequency=5e6, n_periods=3.5, inverse=False),
-        rx_aperture_center_element=np.arange(7, 185),
+        rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
         pri=100e-6,
