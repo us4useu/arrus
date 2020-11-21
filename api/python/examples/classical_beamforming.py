@@ -96,7 +96,7 @@ def main():
                         required=True)
     parser.add_argument("--action", dest="action",
                         help="An action to perform.",
-                        required=True, choices=["nop", "save", "img"])
+                        required=True, choices=["nop", "save", "img", "save_mem"])
     parser.add_argument("--n", dest="n",
                         help="How many times should the operation be performed.",
                         required=False, type=int, default=100)
