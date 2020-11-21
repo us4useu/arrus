@@ -72,7 +72,8 @@ std::tuple<
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                   const TGCCurve &tgcSamples,
                                   uint16 rxBufferSize, uint16 batchSize,
-                                  std::optional<float> frameRepetitionInterval) {
+                                  std::optional<float> frameRepetitionInterval,
+                                  bool isTriggerSync) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
         ::arrus::format("{} tx rx sequence", getDeviceId().toString()),
@@ -208,7 +209,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         auto &us4oem = us4oems[us4oemOrdinal];
         auto [fcMapping, us4oemTransfers, totalPri] = us4oem->setTxRxSequence(
             splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, batchSize,
-            frameRepetitionInterval);
+            frameRepetitionInterval, isTriggerSync);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));
@@ -308,8 +309,131 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
             ++transferIdx;
         }
 
-        us4oem->registerOutputBuffer(buffer, us4oemTransfers);
+        registerOutputBufferForUs4OEM(us4oem, buffer, us4oemTransfers);
         ++us4oemOrdinal;
+    }
+}
+
+void ProbeAdapterImpl::registerOutputBufferForUs4OEM(
+    Us4OEMImplBase::RawHandle us4oem,
+    Us4ROutputBuffer *outputBuffer,
+    const std::vector<std::vector<DataTransfer>> &transfers, bool isAsync) {
+    // Assuming here that each data transfer here will have exactly
+    // a single element.
+    std::vector<DataTransfer> us4oemTransfers;
+    for(auto &transfer: transfers) {
+        us4oemTransfers.push_back(transfer[0]);
+    }
+
+    // Each transfer should have the same size.
+    std::unordered_set<size_t> sizes;
+    for(auto &transfer: us4oemTransfers) {
+        sizes.insert(transfer.getSize());
+    }
+    if(sizes.size() > 1) {
+        throw ::arrus::ArrusException("Each transfer should have the same size.");
+    }
+    // This is the size of a single element produced by this us4oem.
+    const size_t elementSize = *std::begin(sizes);
+    if(elementSize == 0) {
+        // This us4oem will not transfer any data, so the buffer registration has no sense here.
+        return;
+    }
+    // Output buffer - assuming that the number of elements is a multiple of number of transfers
+    const auto rxBufferSize = ARRUS_SAFE_CAST(us4oemTransfers.size(), uint16);
+    const uint16 hostBufferSize = outputBuffer->getNumberOfElements();
+    const Ordinal ordinal = us4oem->getDeviceId().getOrdinal();
+
+    // Prepare host buffers
+    uint16 hostElement = 0;
+    uint16 rxElement = 0;
+    while(hostElement < hostBufferSize) {
+        auto dstAddress = outputBuffer->getAddress(hostElement, ordinal);
+        auto srcAddress = us4oemTransfers[rxElement].getSrcAddress();
+
+        logger->log(LogSeverity::DEBUG, ::arrus::format(
+            "Preparing host buffer to {} from {}, size {}",
+            (size_t) dstAddress, (size_t) srcAddress, elementSize));
+
+        us4oem->getIus4Oem()->PrepareHostBuffer(dstAddress, elementSize, srcAddress);
+        ++hostElement;
+        rxElement = (rxElement + 1) % rxBufferSize;
+    }
+
+    // prepare transfers
+    uint16 transferIdx = 0;
+    uint16 startFiring = 0;
+
+    for(auto &transfer: us4oemTransfers) {
+        auto dstAddress = outputBuffer->getAddress(transferIdx, ordinal);
+        auto srcAddress = transfer.getSrcAddress();
+        auto endFiring = transfer.getFiring();
+
+        us4oem->getIus4Oem()->PrepareTransferRXBufferToHost(transferIdx, dstAddress, elementSize, srcAddress);
+
+        us4oem->getIus4Oem()->ScheduleTransferRXBufferToHost(
+            endFiring, transferIdx,
+            [this, outputBuffer, ordinal, transferIdx, startFiring,
+                endFiring, srcAddress, elementSize, rxBufferSize, hostBufferSize,
+                element = transferIdx, &us4oem]() mutable {
+
+                auto dstAddress = outputBuffer->getAddress((uint16) element, ordinal);
+
+                us4oem->getIus4Oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                logger->log(LogSeverity::DEBUG,::arrus::format("Rx Released: {}, {}, us4oem: {}", startFiring, endFiring));
+
+                // Prepare transfer for the next iteration.
+                us4oem->getIus4Oem()->PrepareTransferRXBufferToHost(transferIdx, dstAddress, elementSize, srcAddress);
+                us4oem->getIus4Oem()->ScheduleTransferRXBufferToHost(endFiring, transferIdx,nullptr);
+
+                bool cont = outputBuffer->signal(ordinal, element,0);
+                if(!cont) {
+                    logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
+                    return;
+                }
+
+                // Also a callback function can be used here.
+                cont = outputBuffer->waitForRelease(ordinal, element, 0);
+                if(!cont) {
+                    logger->log(LogSeverity::DEBUG, "Output buffer shut down");
+                    return;
+                }
+                us4oem->getIus4Oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                // TODO the last us4oem here should call:
+                // SyncReceive
+                // SyncTransfer
+                // The call should be done in reverse order (us4oem: 0 should be last)
+                logger->log(LogSeverity::DEBUG,
+                            ::arrus::format("Host Released: {}, {}", startFiring, endFiring));
+                element = (element + rxBufferSize) % hostBufferSize;
+            }
+        );
+
+        startFiring = endFiring + 1;
+        ++transferIdx;
+    }
+    // Register overflow callbacks (mark output buffer as invalid)
+    if(isAsync) {
+        us4oem->getIus4Oem()->RegisterReceiveOverflowCallback([this, outputBuffer]() {
+            this->logger->log(LogSeverity::WARNING, "Rx buffer overflow, stopping the device.");
+            this->us4oems[0]->stop();
+            outputBuffer->markAsInvalid();
+        });
+        us4oem->getIus4Oem()->RegisterTransferOverflowCallback([this, outputBuffer]() {
+            this->logger->log(LogSeverity::WARNING, "Host buffer overflow, stopping the device.");
+            this->us4oems[0]->stop();
+            outputBuffer->markAsInvalid();
+        });
+    }
+    else {
+        us4oem->getIus4Oem()->RegisterReceiveOverflowCallback([this, outputBuffer]() {
+            this->logger->log(LogSeverity::DEBUG, "Rx buffer overflow, stopping the device.");
+        });
+        us4oem->getIus4Oem()->RegisterTransferOverflowCallback([this, outputBuffer]() {
+            this->logger->log(LogSeverity::DEBUG, "Host buffer overflow, stopping the device.");
+        });
+        us4oem->getIus4Oem()->EnableWaitOnReceiveOverflow();
+        us4oem->getIus4Oem()->EnableWaitOnTransferOverflow();
     }
 }
 

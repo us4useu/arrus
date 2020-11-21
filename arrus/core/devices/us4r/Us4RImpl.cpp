@@ -95,18 +95,15 @@ Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
 
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
-        ::arrus::IllegalArgumentException(
-            "Currently TxRx sequence upload is available for system with probes only."));
+        ::arrus::IllegalArgumentException("Currently TxRx sequence upload is available for system with probes only."));
     if((hostBufferSize % rxBufferSize) != 0) {
         throw ::arrus::IllegalArgumentException(
-            "The size of the host buffer must be a multiple of the size "
-            "of the rx buffer.");
+            "The size of the host buffer must be a multiple of the size of the rx buffer.");
     }
     std::unique_lock<std::mutex> guard(deviceStateMutex);
 
     if(this->state == State::STARTED) {
-        throw ::arrus::IllegalStateException(
-            "The device is running, uploading sequence is forbidden.");
+        throw ::arrus::IllegalStateException("The device is running, uploading sequence is forbidden.");
     }
 
     std::optional<float> fri = std::nullopt;
@@ -128,8 +125,7 @@ Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
         });
     this->asyncBuffer = std::make_shared<Us4ROutputBuffer>(us4oemSizes,
                                                            hostBufferSize);
-    getDefaultComponent()->registerOutputBuffer(this->asyncBuffer.get(),
-                                                transfers);
+    getDefaultComponent()->registerOutputBuffer(this->asyncBuffer.get(), transfers);
     this->mode = ASYNC;
     return {std::move(fcm), this->asyncBuffer};
 }
@@ -206,7 +202,7 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
 
     logger->log(LogSeverity::DEBUG,
                 ::arrus::format("Total PRI: {}", totalTime));
-    auto timeout = (long long) (totalTime * 1e6 * 10.5);
+    auto timeout = (long long) (totalTime * 1e6 * 2);
 
     this->hostBufferWorker = std::make_unique<HostBufferWorker>(
         this->currentRxBuffer, this->hostBuffer, transfers);
@@ -297,10 +293,8 @@ std::tuple<
     float // ntriggers
 >
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
-                         uint16_t rxBufferSize,
-                         uint16_t rxBatchSize,
-                         bool checkpoint,
-                         std::optional<float> frameRepetitionInterval) {
+                         uint16_t rxBufferSize, uint16_t rxBatchSize,
+                         bool checkpoint, std::optional<float> frameRepetitionInterval, bool isTriggerSync) {
     std::vector<TxRxParameters> actualSeq;
     auto nOps = seq.getOps().size();
     // Convert to intermediate representation (TxRxParameters).
@@ -334,7 +328,8 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
     return getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve(),
                                                   rxBufferSize,
                                                   rxBatchSize,
-                                                  frameRepetitionInterval);
+                                                  frameRepetitionInterval,
+                                                  isTriggerSync);
 
 }
 

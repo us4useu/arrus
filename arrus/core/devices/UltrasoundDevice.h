@@ -29,7 +29,8 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples,
                     uint16 rxBufferSize, uint16 rxBatchSize,
-                    std::optional<float> frameRepetitionInterval) = 0;
+                    std::optional<float> frameRepetitionInterval,
+                    bool isTriggerSync) = 0;
 
     virtual void start() = 0;
 

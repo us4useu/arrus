@@ -29,6 +29,10 @@ from arrus.utils.us4r import RemapToLogicalOrder
 arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
+collected_bmode_data = []
+collected_iq_data = []
+collected_metadata = []
+
 
 def init_display(aperture_size, n_samples):
     fig, ax = plt.subplots()
@@ -45,13 +49,46 @@ def init_display(aperture_size, n_samples):
 
 
 def display_data(frame_number, data, metadata, imaging_pipeline, figure, ax, canvas):
-    # TODO use the imaging pipeline
     print(f"Displaying frame {frame_number}")
     bmode, metadata = imaging_pipeline(cp.asarray(data), metadata)
     canvas.set_data(bmode)
     ax.set_aspect("auto")
     figure.canvas.flush_events()
     plt.draw()
+
+
+def display_data_sequence(seq):
+    fig, ax, canvas = init_display(64, 512)
+    for data in seq:
+        canvas.set_data(data)
+        ax.set_aspect("auto")
+        fig.canvas.flush_events()
+        plt.draw()
+
+
+def collect_iq_data(data, metadata, iq_pipeline):
+    iq_rf, metadata = iq_pipeline(cp.asarray(data), metadata)
+    collected_iq_data.append(iq_rf.get())
+    collected_metadata.append(metadata)
+
+
+def collect_bmode_data(data, metadata, bmode_pipeline):
+    bmode, metadata = bmode_pipeline(cp.asarray(data), metadata)
+    collected_bmode_data.append(bmode.get())
+    collected_metadata.append(metadata)
+
+
+def get_timestamps(metadata):
+    timestamps = []
+    for m in metadata:
+        timestamps.append(m.custom["frame_metadata_view"].copy().view(np.int8)[0:8].view(np.uint64).item())
+    return timestamps
+
+
+def get_average_timestamp_diff(metadata):
+    timestamps = get_timestamps(metadata)
+    diffs = np.diff(timestamps)
+    return np.average(diffs)
 
 
 def save_raw_data(frame_number, data, metadata):
@@ -82,7 +119,23 @@ def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
             ScanConversion(x_grid=x_grid, z_grid=z_grid),
             LogCompression(),
             DynamicRangeAdjustment(min=5, max=120),
-            ToGrayscaleImg()))
+            ToGrayscaleImg()
+        )
+    )
+
+
+def create_rf_iq_pipeline(decimation_factor=4, cic_order=2):
+    return Pipeline(
+        steps=(
+            RemapToLogicalOrder(),
+            Transpose(axes=(0, 2, 1)),
+            BandpassFilter(),
+            QuadratureDemodulation(),
+            Decimation(decimation_factor=decimation_factor,
+                       cic_order=cic_order),
+            RxBeamforming()
+        )
+    )
 
 
 def main():
@@ -95,23 +148,26 @@ def main():
                         required=True)
     parser.add_argument("--action", dest="action",
                         help="An action to perform.",
-                        required=True, choices=["nop", "save", "img"])
+                        required=True, choices=["nop", "save_rf", "save_iq",
+                                                "save_bmode", "img"])
     parser.add_argument("--n", dest="n",
                         help="How many times should the operation be performed.",
                         required=False, type=int, default=100)
     parser.add_argument("--host_buffer_size", dest="host_buffer_size",
-                        help="Host buffer size.", required=False, type=int, default=2)
+                        help="Host buffer size.", required=False, type=int,
+                        default=2)
+
     args = parser.parse_args()
 
-    x_grid = np.arange(-50, 50, 0.2)*1e-3
-    z_grid = np.arange(0, 60, 0.2)*1e-3
+    x_grid = np.arange(-50, 50, 0.4)*1e-3
+    z_grid = np.arange(0, 60, 0.4)*1e-3
 
     seq = LinSequence(
-        tx_aperture_center_element=np.arange(7, 185),
+        tx_aperture_center_element=np.arange(8, 183),
         tx_aperture_size=64,
         tx_focus=30e-3,
         pulse=Pulse(center_frequency=5e6, n_periods=3.5, inverse=False),
-        rx_aperture_center_element=np.arange(7, 185),
+        rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
         pri=100e-6,
@@ -121,13 +177,16 @@ def main():
         speed_of_sound=1490)
 
     bmode_imaging = create_bmode_imaging_pipeline(x_grid=x_grid, z_grid=z_grid)
+    iq_data_pipeline = create_rf_iq_pipeline()
 
     if args.action == "img":
         fig, ax, canvas = init_display(len(z_grid), len(x_grid))
 
     action_func = {
         "nop":  None,
-        "save": save_raw_data,
+        "save_rf": save_raw_data,
+        "save_iq": lambda frame_number, data, metadata: collect_iq_data(data, metadata, iq_data_pipeline),
+        "save_bmode": lambda data, metadata: collect_bmode_data(data, metadata, bmode_imaging),
         "img":  lambda frame_number, data, metadata: display_data(frame_number, data, metadata, bmode_imaging, fig, ax, canvas)
     }[args.action]
 
@@ -139,6 +198,7 @@ def main():
 
     # Set the pipeline to be executed on the GPU
     bmode_imaging.set_placement(gpu)
+    iq_data_pipeline.set_placement(gpu)
     # Set initial voltage on the us4r-lite device.
     us4r.set_hv_voltage(30)
     # Upload sequence on the us4r-lite device.
@@ -156,12 +216,25 @@ def main():
         if action_func is not None:
             action_func(i, data, metadata)
 
+        input("Waiting for the input.")
+
         buffer.release_tail()
         times.append(time.time()-start)
     arrus.logging.log(arrus.logging.INFO,
          f"Done, average acquisition + processing time: {np.mean(times)} [s]")
-
     us4r.stop()
+
+    global collected_iq_data, collected_bmode_data, collected_metadata
+    if args.action == "save_iq":
+        collected_iq_data = np.stack(collected_iq_data)
+        np.save("iq_data.npy", collected_iq_data)
+    if args.action == "save_bmode":
+        collected_bmode_data = np.stack(collected_bmode_data)
+        np.save("bmode_data.npy", collected_bmode_data)
+    if args.action in {"save_iq", "save_bmode"}:
+        with open(f"metadata.pkl", "wb") as file:
+            pickle.dump(collected_metadata, file)
+
 
 
 if __name__ == "__main__":

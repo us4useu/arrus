@@ -41,7 +41,8 @@ public:
         const ::arrus::ops::us4r::TGCCurve &tgcSamples,
         uint16 rxBufferSize = 1,
         uint16 batchSize = 1,
-        std::optional<float> frameRepetitionInterval = std::nullopt) override;
+        std::optional<float> frameRepetitionInterval = std::nullopt,
+        bool isSync = true) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 
@@ -53,6 +54,11 @@ public:
 
     void registerOutputBuffer(Us4ROutputBuffer *buffer,
                             const std::vector<std::vector<DataTransfer>> &transfers) override;
+
+    void registerOutputBufferForUs4OEM(
+        Us4OEMImplBase::RawHandle us4oem,
+        Us4ROutputBuffer *buffer,
+        const std::vector<std::vector<DataTransfer>> &transfers, bool isAsync);
 
 private:
     Logger::Handle logger;

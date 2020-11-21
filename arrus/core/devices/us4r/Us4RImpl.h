@@ -171,7 +171,7 @@ private:
         uint16_t rxBufferSize,
         uint16_t rxBatchSize,
         bool checkpoint,
-        std::optional<float> frameRepetitionInterval);
+        std::optional<float> frameRepetitionInterval, bool isTriggerSync);
 
     void startAsync();
     void stopAsync();

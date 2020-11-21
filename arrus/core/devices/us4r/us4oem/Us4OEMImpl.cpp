@@ -198,7 +198,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                             uint16 rxBufferSize,
     // In the number of frames
                             uint16 batchSize,
-                            std::optional<float> fri) {
+                            std::optional<float> fri,
+                            bool isTriggerSync) {
 
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
     // This probably should be implemented in IUs4OEMInitializer
@@ -386,22 +387,19 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
         for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = (uint16) (opIdx + batchElementIdx * nOps +
-                                   batchIdx * nOps * batchSize);
+                firing = (uint16) (opIdx + batchElementIdx * nOps + batchIdx * nOps * batchSize);
                 auto const &op = seq[opIdx];
                 bool checkpoint =
-                    opIdx == nOps - 1 && batchElementIdx == batchSize - 1;
+                    opIdx == nOps - 1 && batchElementIdx == batchSize - 1 && isTriggerSync;
                 float pri = op.getPri();
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
                 }
-                ius4oem->SetTrigger(static_cast<short>(pri * 1e6), checkpoint,
-                                    firing);
+                ius4oem->SetTrigger(static_cast<short>(pri * 1e6), checkpoint, firing);
             }
         }
     }
     ius4oem->EnableSequencer();
-
     return {std::move(fcm), std::move(dataTransfers), totalPri*batchSize};
 }
 
@@ -527,17 +525,11 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
         ius4oem->TGCEnable();
 
         static const std::vector<float> tgcChar =
-            {14.000f, 14.001f, 14.002f, 14.003f, 14.024f, 14.168f, 14.480f,
-             14.825f,
-             15.234f, 15.770f, 16.508f, 17.382f, 18.469f, 19.796f, 20.933f,
-             21.862f,
-             22.891f, 24.099f, 25.543f, 26.596f, 27.651f, 28.837f, 30.265f,
-             31.690f,
-             32.843f, 34.045f, 35.543f, 37.184f, 38.460f, 39.680f, 41.083f,
-             42.740f,
-             44.269f, 45.540f, 46.936f, 48.474f, 49.895f, 50.966f, 52.083f,
-             53.256f,
-             54.0f};
+            {14.000f, 14.001f, 14.002f, 14.003f, 14.024f, 14.168f, 14.480f, 14.825f,
+             15.234f, 15.770f, 16.508f, 17.382f, 18.469f, 19.796f, 20.933f, 21.862f,
+             22.891f, 24.099f, 25.543f, 26.596f, 27.651f, 28.837f, 30.265f, 31.690f,
+             32.843f, 34.045f, 35.543f, 37.184f, 38.460f, 39.680f, 41.083f, 42.740f,
+             44.269f, 45.540f, 46.936f, 48.474f, 49.895f, 50.966f, 52.083f, 53.256f, 54.0f};
         auto actualTGC = ::arrus::interpolate1d(
             tgcChar,
             ::arrus::getRange<float>(14, 55, 1.0),
@@ -592,124 +584,8 @@ void Us4OEMImpl::syncTrigger() {
     this->ius4oem->TriggerSync();
 }
 
-void Us4OEMImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
-                                      const std::vector<std::vector<DataTransfer>> &transfers) {
-    // Assuming here that each data transfer here will have exactly a single element.
-    std::vector<DataTransfer> us4oemTransfers;
-    for(auto &transfer: transfers) {
-        us4oemTransfers.push_back(transfer[0]);
-    }
-
-    // Each transfer should have the same size.
-    std::unordered_set<size_t> sizes;
-    for(auto &transfer: us4oemTransfers) {
-        sizes.insert(transfer.getSize());
-    }
-    if(sizes.size() > 1) {
-        throw ::arrus::ArrusException(
-            "Each transfer should have the same size.");
-    }
-    // This is the size of a single element produced by this us4oem.
-    const size_t elementSize = *std::begin(sizes);
-    if(elementSize == 0) {
-        // This us4oem will not transfer any data, so the buffer registration has no sense here.
-        return;
-    }
-    // Output buffer - assuming that the number of elements is a multiple of number of transfers
-    const auto rxBufferSize = ARRUS_SAFE_CAST(us4oemTransfers.size(), uint16);
-    const uint16 hostBufferSize = outputBuffer->getNumberOfElements();
-    const Ordinal ordinal = getDeviceId().getOrdinal();
-
-    // Prepare host buffers
-    uint16 hostElement = 0;
-    uint16 rxElement = 0;
-    while(hostElement < hostBufferSize) {
-        auto dstAddress = outputBuffer->getAddress(hostElement, ordinal);
-        auto srcAddress = us4oemTransfers[rxElement].getSrcAddress();
-        logger->log(LogSeverity::DEBUG, ::arrus::format(
-            "Preparing host buffer to {} from {}, size {}",
-            (size_t) dstAddress, (size_t) srcAddress, elementSize));
-        this->ius4oem->PrepareHostBuffer(dstAddress, elementSize, srcAddress);
-        ++hostElement;
-        rxElement = (rxElement + 1) % rxBufferSize;
-    }
-
-    // prepare transfers
-    uint16 transferIdx = 0;
-    uint16 startFiring = 0;
-
-    for(auto &transfer: us4oemTransfers) {
-        auto dstAddress = outputBuffer->getAddress(transferIdx, ordinal);
-        auto srcAddress = transfer.getSrcAddress();
-        auto endFiring = transfer.getFiring();
-
-
-        this->ius4oem->PrepareTransferRXBufferToHost(
-            transferIdx, dstAddress, elementSize, srcAddress);
-
-        this->ius4oem->ScheduleTransferRXBufferToHost(
-            endFiring, transferIdx,
-            [this, outputBuffer, ordinal, transferIdx, startFiring,
-                endFiring, srcAddress, elementSize,
-                rxBufferSize, hostBufferSize,
-                element = transferIdx]() mutable {
-                auto dstAddress = outputBuffer->getAddress((uint16) element,
-                                                           ordinal);
-                this->ius4oem->MarkEntriesAsReadyForReceive(startFiring,
-                                                            endFiring);
-                logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Rx Released: {}, {}", startFiring,
-                                            endFiring));
-
-                // Prepare transfer for the next iteration.
-                this->ius4oem->PrepareTransferRXBufferToHost(
-                    transferIdx, dstAddress, elementSize, srcAddress);
-                this->ius4oem->ScheduleTransferRXBufferToHost(endFiring,
-                                                              transferIdx,
-                                                              nullptr);
-
-                bool cont = outputBuffer->signal(ordinal, element,
-                                                 0); // Also a callback function can be used here.
-                if(!cont) {
-                    logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
-                    return;
-                }
-                cont = outputBuffer->waitForRelease(ordinal, element, 0);
-
-                if(!cont) {
-                    logger->log(LogSeverity::DEBUG, "Output buffer shut down");
-                    return;
-                }
-                this->ius4oem->MarkEntriesAsReadyForTransfer(startFiring,
-                                                             endFiring);
-                logger->log(LogSeverity::DEBUG,
-                            ::arrus::format("Host Released: {}, {}",
-                                            startFiring, endFiring));
-                element = (element + rxBufferSize) % hostBufferSize;
-            }
-        );
-        startFiring = endFiring + 1;
-        ++transferIdx;
-    }
-    // Register overflow callbacks (mark output buffer as invalid)
-
-    this->ius4oem->RegisterReceiveOverflowCallback([this, outputBuffer]() {
-        this->logger->log(LogSeverity::ERROR,
-                          "Rx buffer overflow, stopping the device.");
-        if(this->isMaster()) {
-            this->stop();
-        }
-        outputBuffer->markAsInvalid();
-    });
-
-    this->ius4oem->RegisterTransferOverflowCallback([this, outputBuffer]() {
-        this->logger->log(LogSeverity::ERROR,
-                          "Host buffer overflow, stopping the device.");
-        if(this->isMaster()) {
-            this->stop();
-        }
-        outputBuffer->markAsInvalid();
-    });
+const IUs4OEMHandle &Us4OEMImpl::getIus4Oem() const {
+    return ius4oem;
 }
 
 }

@@ -25,6 +25,7 @@ public:
 
     virtual void syncTrigger() = 0;
     virtual bool isMaster() = 0;
+    virtual const IUs4OEMHandle &getIus4Oem() const = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

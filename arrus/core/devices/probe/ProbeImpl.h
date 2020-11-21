@@ -34,8 +34,10 @@ public:
      */
     std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 nRepeats,
-                    std::optional<float> frameRepetitionInterval) override;
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize,
+                    std::optional<float> frameRepetitionInterval,
+                    bool isTriggerSync) override;
 
     Interval<Voltage> getAcceptedVoltageRange() override;
 

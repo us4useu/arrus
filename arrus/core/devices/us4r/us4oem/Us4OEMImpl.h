@@ -92,11 +92,14 @@ public:
 
     void syncTrigger() override;
 
+    const IUs4OEMHandle &getIus4Oem() const override;
+
     std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 batchSize,
-                    std::optional<float> anOptional) override;
+                    std::optional<float> anOptional,
+                    bool isTriggerSync) override;
 
     double getSamplingFrequency() override;
 
@@ -109,8 +112,6 @@ public:
     void start() override;
 
     void stop() override;
-
-    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<std::vector<DataTransfer>> &transfers) override;
 
 private:
     using Us4rBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;

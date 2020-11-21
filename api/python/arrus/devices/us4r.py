@@ -50,8 +50,8 @@ class HostBuffer:
                  fac: arrus.metadata.FrameAcquisitionContext,
                  data_description: arrus.metadata.EchoDataDescription,
                  frame_shape: tuple,
-                 rx_batch_size: int):
-
+                 rx_batch_size: int,
+                 trigger_data=None):
         self.buffer_handle = buffer_handle
         self.fac = fac
         self.data_description = data_description
@@ -79,17 +79,16 @@ class HostBuffer:
             -1 if timeout is None else timeout)
         if data_addr not in self.buffer_cache:
             data = self._create_array(data_addr)
-            frame_metadata_view = data[:self.n_samples*self.n_triggers*self.rx_batch_size:self.n_samples]
-            metadata = arrus.metadata.Metadata(
-                context=self.fac,
-                data_desc=self.data_description,
-                custom={"frame_metadata_view": frame_metadata_view})
             self.buffer_cache[data_addr] = data
-            self.frame_metadata_cache[data_addr] = metadata
         else:
             data = self.buffer_cache[data_addr]
-            metadata = self.frame_metadata_cache[data_addr]
-        # Metadata can be cached here (we use a view)
+        frame_metadata_view = data[:self.n_samples*self.n_triggers*self.rx_batch_size:self.n_samples]
+        print(frame_metadata_view[0].copy().view(np.int8)[0:8].view(np.uint64).item())
+        frame_metadata = frame_metadata_view[0].copy()
+        metadata = arrus.metadata.Metadata(
+            context=self.fac,
+            data_desc=self.data_description,
+            custom={"frame_metadata_view": frame_metadata})
         return data, metadata
 
     def release_tail(self, timeout=None):
@@ -213,7 +212,6 @@ class Us4R(Device):
                 core_seq, rxBufferSize=rx_buffer_size,
                 hostBufferSize=host_buffer_size,
                 frameRepetitionInterval=frame_repetition_interval)
-
 
         # Prepare data buffer and constant context metadata
         fcm, buffer_handle = upload_result[0], upload_result[1]

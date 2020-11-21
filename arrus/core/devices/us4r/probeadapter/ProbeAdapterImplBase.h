@@ -28,7 +28,7 @@ public:
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples,
                     uint16 rxBufferSize,
                     uint16 batchSize,
-                    std::optional<float> frameRepetitionInterval) = 0;
+                    std::optional<float> frameRepetitionInterval, bool isSync) = 0;
 
     virtual Ordinal getNumberOfUs4OEMs() = 0;
 
