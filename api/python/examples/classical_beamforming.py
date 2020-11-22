@@ -98,8 +98,35 @@ def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
             ScanConversion(x_grid=x_grid, z_grid=z_grid),
             LogCompression(),
             DynamicRangeAdjustment(min=5, max=120),
-            ToGrayscaleImg())
-    )
+            ToGrayscaleImg()))
+
+
+def iq_reconstruct(decimation_factor=4, cic_order=2):
+    return Pipeline(
+        steps=(
+            RemapToLogicalOrder(),
+            Transpose(axes=(0, 2, 1)),
+            BandpassFilter(),
+            QuadratureDemodulation(),
+            Decimation(decimation_factor=decimation_factor,
+                       cic_order=cic_order),
+            RxBeamforming()))
+
+
+iq_data = []
+iq_metadata = []
+
+
+def save_iq_data(frame_number, data, metadata, iq_rec):
+    global iq_data, iq_metadata
+    iq, iq_m = iq_rec(cp.asarray(data), metadata)
+
+    iq_data.append(iq.get())
+    frame_metadata = metadata.custom["frame_metadata_view"].copy()
+    custom_data = copy.copy(metadata.custom)
+    custom_data["frame_metadata_view"] = frame_metadata
+    metadata = metadata.copy(custom=custom_data)
+    iq_metadata.append(metadata)
 
 
 def main():
@@ -112,7 +139,7 @@ def main():
                         required=True)
     parser.add_argument("--action", dest="action",
                         help="An action to perform.",
-                        required=True, choices=["nop", "save", "img", "save_mem"])
+                        required=True, choices=["nop", "save", "img", "save_mem", "save_iq"])
     parser.add_argument("--n", dest="n",
                         help="How many times should the operation be performed.",
                         required=False, type=int, default=100)
@@ -142,6 +169,7 @@ def main():
         speed_of_sound=1490)
 
     bmode_imaging = create_bmode_imaging_pipeline(x_grid=x_grid, z_grid=z_grid)
+    iq_rec = iq_reconstruct(4, 2)
 
     if args.action == "img":
         fig, ax, canvas = init_display(len(z_grid), len(x_grid))
@@ -150,7 +178,10 @@ def main():
         "nop":  None,
         "save": save_raw_data,
         "save_mem": copy_raw_data,
-        "img":  lambda frame_number, data, metadata: display_data(frame_number, data, metadata, bmode_imaging, fig, ax, canvas)
+        "img":  lambda frame_number, data, metadata: display_data(
+            frame_number, data, metadata, bmode_imaging, fig, ax, canvas),
+        "save_iq": lambda frame_number, data, metadata: save_iq_data(
+            frame_number, data, metadata, iq_rec),
     }[args.action]
 
     # Here starts communication with the device.
@@ -161,6 +192,8 @@ def main():
 
     # Set the pipeline to be executed on the GPU
     bmode_imaging.set_placement(gpu)
+    iq_rec.set_placement(gpu)
+
     # Set initial voltage on the us4r-lite device.
     us4r.set_hv_voltage(30)
     # Upload sequence on the us4r-lite device.
@@ -190,6 +223,11 @@ def main():
         np.save("rf.npy", np.stack(rf_data))
         with open("metadata.pkl", "wb") as f:
             pickle.dump(rf_metadata, f)
+    if args.action == "save_iq":
+        global iq_data, iq_metadata
+        np.save("rf_iq.npy", np.stack(iq_data))
+        with open("metadata.pkl", "wb") as f:
+            pickle.dump(iq_metadata, f)
 
     us4r.stop()
 
