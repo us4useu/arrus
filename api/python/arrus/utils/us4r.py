@@ -143,9 +143,5 @@ class RemapToLogicalOrder:
             output_array=self._output_buffer,
             input_array=data.reshape(self._input_shape),
             transfers=self._transfers)
-
-        if self.batch_size > 1:
-            return self._output_buffer.reshape((self.batch_size,) + self.output_shape), metadata
-        else:
-            return self._output_buffer, metadata
+        return self._output_buffer, metadata
 
