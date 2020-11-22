@@ -9,6 +9,7 @@ import time
 import pickle
 import dataclasses
 import cupy as cp
+import copy
 
 from arrus.utils.imaging import (
     Pipeline,
@@ -54,11 +55,26 @@ def display_data(frame_number, data, metadata, imaging_pipeline, figure, ax, can
     plt.draw()
 
 
+rf_data = []
+rf_metadata = []
+
+
 def save_raw_data(frame_number, data, metadata):
+    print(f"Data shape: {data.shape}")
     arrus.logging.log(arrus.logging.INFO, f"Saving frame {frame_number}")
     np.save(f"rf_{frame_number}.npy", data)
     with open(f"metadata_{frame_number}.pkl", "wb") as file:
         pickle.dump(metadata, file)
+
+
+def copy_raw_data(frame_number, data, metadata):
+    global rf_data, rf_metadata
+    rf_data.append(data.copy())
+    frame_metadata = metadata.custom["frame_metadata_view"].copy()
+    custom_data = copy.copy(metadata.custom)
+    custom_data["frame_metadata_view"] = frame_metadata
+    metadata = metadata.copy(custom=custom_data)
+    rf_metadata.append(metadata)
 
 
 def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
@@ -133,6 +149,7 @@ def main():
     action_func = {
         "nop":  None,
         "save": save_raw_data,
+        "save_mem": copy_raw_data,
         "img":  lambda frame_number, data, metadata: display_data(frame_number, data, metadata, bmode_imaging, fig, ax, canvas)
     }[args.action]
 
@@ -166,6 +183,14 @@ def main():
         times.append(time.time()-start)
     arrus.logging.log(arrus.logging.INFO,
          f"Done, average acquisition + processing time: {np.mean(times)} [s]")
+
+    if args.action == "save_mem":
+        arrus.logging.log(arrus.logging.INFO,
+                          f"Saving data to rf.npy i metadata.pkl")
+        global rf_data, rf_metadata
+        np.save("rf.npy", np.stack(rf_data))
+        with open("metadata.pkl", "wb") as f:
+            pickle.dump(rf_metadata, f)
 
     us4r.stop()
 
