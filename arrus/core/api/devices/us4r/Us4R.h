@@ -58,7 +58,8 @@ public:
         std::shared_ptr<arrus::devices::HostBuffer>
     >
     uploadSync(const ::arrus::ops::us4r::TxRxSequence &seq,
-               unsigned short hostBufferSize) = 0;
+               unsigned short hostBufferSize,
+               unsigned short rxBatchSize) = 0;
 
     /**
      *

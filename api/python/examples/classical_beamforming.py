@@ -9,6 +9,7 @@ import time
 import pickle
 import dataclasses
 import cupy as cp
+import copy
 
 from arrus.utils.imaging import (
     Pipeline,
@@ -54,11 +55,26 @@ def display_data(frame_number, data, metadata, imaging_pipeline, figure, ax, can
     plt.draw()
 
 
+rf_data = []
+rf_metadata = []
+
+
 def save_raw_data(frame_number, data, metadata):
+    print(f"Data shape: {data.shape}")
     arrus.logging.log(arrus.logging.INFO, f"Saving frame {frame_number}")
     np.save(f"rf_{frame_number}.npy", data)
     with open(f"metadata_{frame_number}.pkl", "wb") as file:
         pickle.dump(metadata, file)
+
+
+def copy_raw_data(frame_number, data, metadata):
+    global rf_data, rf_metadata
+    rf_data.append(data.copy())
+    frame_metadata = metadata.custom["frame_metadata_view"].copy()
+    custom_data = copy.copy(metadata.custom)
+    custom_data["frame_metadata_view"] = frame_metadata
+    metadata = metadata.copy(custom=custom_data)
+    rf_metadata.append(metadata)
 
 
 def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
@@ -101,7 +117,11 @@ def main():
                         help="How many times should the operation be performed.",
                         required=False, type=int, default=100)
     parser.add_argument("--host_buffer_size", dest="host_buffer_size",
-                        help="Host buffer size.", required=False, type=int, default=2)
+                        help="Host buffer size.", required=False, type=int,
+                        default=2)
+    parser.add_argument("--rx_batch_size", dest="rx_batch_size",
+                        help="Rx batch size.", required=False, type=int,
+                        default=1)
     args = parser.parse_args()
 
     x_grid = np.arange(-50, 50, 0.4)*1e-3
@@ -129,6 +149,7 @@ def main():
     action_func = {
         "nop":  None,
         "save": save_raw_data,
+        "save_mem": copy_raw_data,
         "img":  lambda frame_number, data, metadata: display_data(frame_number, data, metadata, bmode_imaging, fig, ax, canvas)
     }[args.action]
 
@@ -144,7 +165,8 @@ def main():
     us4r.set_hv_voltage(30)
     # Upload sequence on the us4r-lite device.
     buffer = us4r.upload(seq, mode="sync",
-                         host_buffer_size=args.host_buffer_size)
+                         host_buffer_size=args.host_buffer_size,
+                         rx_batch_size=args.rx_batch_size)
 
     # Start the device.
     us4r.start()
@@ -161,6 +183,14 @@ def main():
         times.append(time.time()-start)
     arrus.logging.log(arrus.logging.INFO,
          f"Done, average acquisition + processing time: {np.mean(times)} [s]")
+
+    if args.action == "save_mem":
+        arrus.logging.log(arrus.logging.INFO,
+                          f"Saving data to rf.npy i metadata.pkl")
+        global rf_data, rf_metadata
+        np.save("rf.npy", np.stack(rf_data))
+        with open("metadata.pkl", "wb") as f:
+            pickle.dump(rf_metadata, f)
 
     us4r.stop()
 

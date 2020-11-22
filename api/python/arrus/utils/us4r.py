@@ -91,9 +91,15 @@ class RemapToLogicalOrder:
     """
     Remaps the order of the data to logical order defined by the us4r device.
 
-    In particular, the raw ultrasound RF data with shape
-    (n_us4oems*n_samples*n_frames, 32) will be reordered to
+    If the batch size was equal 1, the raw ultrasound RF data with shape.
     (n_frames, n_samples, n_channels).
+    A single metadata object will be returned.
+
+    If the batch size was > 1, the the raw ultrasound RF data with shape
+    (n_us4oems*n_samples*n_frames*n_batches, 32) will be reordered to
+    (batch_size, n_frames, n_samples, n_channels). A list of metadata objects
+    will be returned.
+
     """
 
     def __init__(self, num_pkg=None):
@@ -109,11 +115,12 @@ class RemapToLogicalOrder:
 
     def _prepare(self, data, metadata: arrus.metadata.Metadata):
         xp = self.xp
-        # get shape, create an array with given shae
+        # get shape, create an array with given shape
         # create required transfers
         # perform the transfers
         fcm = metadata.data_description.custom["frame_channel_mapping"]
         n_frames, n_channels = fcm.frames.shape
+        batch_size = fcm.batch_size
         n_samples_set = {op.rx.get_n_samples()
                          for op in metadata.context.raw_sequence.ops}
         if len(n_samples_set) > 1:
@@ -121,12 +128,13 @@ class RemapToLogicalOrder:
                 f"Each tx/rx in the sequence should acquire the same number of "
                 f"samples (actual: {n_samples_set})")
         n_samples = next(iter(n_samples_set))
-        output_shape = (n_frames, n_samples, n_channels)
-        self._output_buffer = xp.zeros(shape=output_shape, dtype=xp.int16)
+        self.output_shape = (n_frames, n_samples, n_channels)
+        self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
         self._transfers = group_transfers(fcm)
         n_samples_raw, n_channels_raw = data.shape
         self._input_shape = (n_samples_raw//n_samples, n_samples,
                              n_channels_raw)
+        self.batch_size = fcm.batch_size
 
     def __call__(self, data, metadata: arrus.metadata.Metadata):
         if not self._is_prepared():
