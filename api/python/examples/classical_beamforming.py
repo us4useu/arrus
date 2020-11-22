@@ -27,7 +27,7 @@ from arrus.utils.imaging import (
 
 from arrus.utils.us4r import RemapToLogicalOrder
 
-arrus.set_clog_level(arrus.logging.TRACE)
+arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
@@ -131,7 +131,7 @@ def main():
         tx_aperture_center_element=np.arange(8, 183),
         tx_aperture_size=64,
         tx_focus=30e-3,
-        pulse=Pulse(center_frequency=5e6, n_periods=3.5, inverse=False),
+        pulse=Pulse(center_frequency=8e6, n_periods=3.5, inverse=False),
         rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
@@ -185,8 +185,7 @@ def main():
          f"Done, average acquisition + processing time: {np.mean(times)} [s]")
 
     if args.action == "save_mem":
-        arrus.logging.log(arrus.logging.INFO,
-                          f"Saving data to rf.npy i metadata.pkl")
+        print("Saving data to rf.npy i metadata.pkl")
         global rf_data, rf_metadata
         np.save("rf.npy", np.stack(rf_data))
         with open("metadata.pkl", "wb") as f:

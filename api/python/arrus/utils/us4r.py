@@ -12,6 +12,24 @@ class Transfer:
     dst_range: tuple
 
 
+def reshape_batch_data(data, metadata):
+    batch_size = metadata.data_description.custom["frame_channel_mapping"].batch_size
+    return data.reshape((batch_size, data.shape[0]//batch_size, data.shape[1]))
+
+
+def split_batch_metadata(metadata):
+    result = []
+    batch_size = metadata.data_description.custom["frame_channel_mapping"].batch_size
+    n_samples = metadata.custom["frame_metadata_view"].shape[0]
+    n_scanlines = n_samples // batch_size
+    for i in range(batch_size):
+        frame_metadata_view = metadata.custom["frame_metadata_view"][i*n_scanlines:(i+1)*n_scanlines]
+        new_metadata = arrus.metadata.Metadata(context=metadata.context, data_desc=metadata.data_description,
+                                               custom={"frame_metadata_view" : frame_metadata_view})
+        yield new_metadata
+
+
+
 def group_transfers(frame_channel_mapping):
     result = []
     frame_mapping = frame_channel_mapping.frames
