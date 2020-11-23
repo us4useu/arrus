@@ -1,4 +1,5 @@
 import dataclasses
+import numpy as np
 
 import arrus.metadata
 import arrus.exceptions
@@ -10,6 +11,59 @@ class Transfer:
     src_range: tuple
     dst_frame: int
     dst_range: tuple
+
+
+def get_batch_data(data, metadata, frame_nr):
+    batch_size = metadata.data_description.custom["frame_channel_mapping"].batch_size
+    n_samples = metadata.context.raw_sequence.get_n_samples()
+    if len(n_samples) > 1:
+        raise ValueError("This function doesn't support tx/rx sequences with variable number of samples")
+    n_samples = next(iter(n_samples))
+
+    # TODO here is an assumption, that each output frame has exactly the same number of samples
+    # This might not be the case in the future.
+    # Data from the first module.
+    firstm_n_scanlines = metadata.custom["frame_metadata_view"].shape[0]
+    # Number of scanlines in a single RF frame
+    assert firstm_n_scanlines % batch_size == 0, "Incorrect number of the result scanlines and samples."
+    firstm_n_scanlines_frame = firstm_n_scanlines // batch_size
+
+    # Number of sample for the first module
+    firstm_n_samples_frame = firstm_n_scanlines_frame * n_samples
+
+    first = data[frame_nr*firstm_n_samples_frame:
+                 (frame_nr+1)*firstm_n_samples_frame, :]
+
+    # Data from the second module.
+    # FIXME: here is an assumption, that there are not rx nops in the sequence
+    # This won't work for larger
+    offset = firstm_n_scanlines * n_samples  # the number of samples
+    total_n_scanlines = np.max(metadata.data_description.custom["frame_channel_mapping"].frames+1)*batch_size
+    secondm_n_scanlines = total_n_scanlines - firstm_n_scanlines
+    assert secondm_n_scanlines % batch_size == 0, "Incorrect number of " \
+                                                  "the result scanlines " \
+                                                  "and samples."
+    assert firstm_n_scanlines == secondm_n_scanlines
+    secondm_n_scanlines_frame = secondm_n_scanlines // batch_size
+    secondm_n_samples_frame = secondm_n_scanlines_frame * n_samples
+
+    second = data[frame_nr*secondm_n_samples_frame+offset:
+                  (frame_nr+1)*secondm_n_samples_frame+offset, :]
+    return np.concatenate((first, second), axis=0)
+
+
+def get_batch_metadata(metadata, frame_nr):
+    batch_size = metadata.data_description.custom["frame_channel_mapping"].batch_size
+    # Number of scanlines in the first module
+    n_scanlines_total = metadata.custom["frame_metadata_view"].shape[0]
+    n_samples_in_scanline = n_scanlines_total // batch_size
+    frame_metadata_view = metadata.custom["frame_metadata_view"][
+                          frame_nr*n_samples_in_scanline:(frame_nr+1)*n_samples_in_scanline]
+    new_metadata = arrus.metadata.Metadata(context=metadata.context,
+                                           data_desc=metadata.data_description,
+                                           custom={"frame_metadata_view" :
+                                                       frame_metadata_view})
+    return new_metadata
 
 
 def group_transfers(frame_channel_mapping):
