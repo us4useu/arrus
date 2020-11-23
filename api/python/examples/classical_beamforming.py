@@ -101,6 +101,17 @@ def create_bmode_imaging_pipeline(decimation_factor=4, cic_order=2,
             ToGrayscaleImg()))
 
 
+def get_rf_iq_data(buffer, buffer_size):
+    iq_rec = iq_reconstruct(decimation_factor=4, cic_order=2)
+    iq_data_list = []
+    for i in range(buffer_size):
+        data, metadata = buffer.tail()
+        iq_data, iq_metadata = iq_rec(data, metadata)
+        iq_data_list.append((iq_data.get(), iq_metadata.get()))
+        buffer.release_tail()
+    return iq_data_list
+
+
 def iq_reconstruct(decimation_factor=4, cic_order=2):
     return Pipeline(
         steps=(
@@ -152,7 +163,7 @@ def main():
     args = parser.parse_args()
 
     x_grid = np.arange(-50, 50, 0.4)*1e-3
-    z_grid = np.arange(0, 60, 0.4)*1e-3
+    z_grid = np.arange(0, 30, 0.4)*1e-3
 
     seq = LinSequence(
         tx_aperture_center_element=np.arange(8, 183),
@@ -161,8 +172,8 @@ def main():
         pulse=Pulse(center_frequency=8e6, n_periods=3.5, inverse=False),
         rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
-        rx_sample_range=(0, 2048),
-        pri=100e-6,
+        rx_sample_range=(0, 1024),
+        pri=200e-6,
         tgc_start=14,
         tgc_slope=2e2,
         downsampling_factor=2,
