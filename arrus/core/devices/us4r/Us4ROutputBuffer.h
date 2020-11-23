@@ -227,6 +227,10 @@ public:
         }
     }
 
+    int16 *head(long long int) override {
+        throw ::arrus::ArrusException("Not implemented.");
+    }
+
 private:
     size_t elementSize;
     /** Us4OEM output address relative to the data buffer element address. */

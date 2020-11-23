@@ -18,8 +18,14 @@ public:
      */
     virtual int16* tail(long long timeout) = 0;
 
+    virtual int16* head(long long timeout) = 0;
+
     virtual size_t tailAddress(long long timeout) {
         return (size_t)tail(timeout);
+    }
+
+    virtual size_t headAddress(long long timeout) {
+        return (size_t)head(timeout);
     }
 
     virtual void releaseTail(long long timeout) = 0;

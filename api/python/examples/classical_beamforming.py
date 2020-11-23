@@ -106,7 +106,7 @@ def get_rf_iq_data(buffer, buffer_size):
     iq_data_list = []
     for i in range(buffer_size):
         data, metadata = buffer.tail()
-        iq_data, iq_metadata = iq_rec(data, metadata)
+        iq_data, iq_metadata = iq_rec(cp.asarray(data), metadata)
         iq_data_list.append((iq_data.get(), iq_metadata.get()))
         buffer.release_tail()
     return iq_data_list
@@ -172,8 +172,8 @@ def main():
         pulse=Pulse(center_frequency=8e6, n_periods=3.5, inverse=False),
         rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
-        rx_sample_range=(0, 1024),
-        pri=200e-6,
+        rx_sample_range=(0, 2048),
+        pri=100e-6,
         tgc_start=14,
         tgc_slope=2e2,
         downsampling_factor=2,
@@ -218,7 +218,7 @@ def main():
     arrus.logging.log(arrus.logging.INFO, f"Running {args.n} iterations.")
     for i in range(args.n):
         start = time.time()
-        data, metadata = buffer.tail()
+        data, metadata = buffer.head()
 
         if action_func is not None:
             action_func(i, data, metadata)
@@ -227,6 +227,9 @@ def main():
         times.append(time.time()-start)
     arrus.logging.log(arrus.logging.INFO,
          f"Done, average acquisition + processing time: {np.mean(times)} [s]")
+
+    rf_iq_data_buffer = get_rf_iq_data(buffer, 100)
+
 
     if args.action == "save_mem":
         print("Saving data to rf.npy i metadata.pkl")

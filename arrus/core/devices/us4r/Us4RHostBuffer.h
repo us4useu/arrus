@@ -67,6 +67,34 @@ public:
         }
     }
 
+    /**
+ * @return a pointer when the access was possible, nullptr otherwise (e.g. queue shutdown).
+ */
+    int16 *head(long long timeout) override {
+        {
+            std::unique_lock<std::mutex> guard(mutex);
+            if(this->isShutdown) {
+                return nullptr;
+            }
+            while(currentSize == 0) {
+                ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
+                    canPop, guard, timeout,
+                    "Timeout while waiting for new data queue.")
+                if(this->isShutdown) {
+                    return nullptr;
+                }
+            }
+            auto elementIdx = 0;
+            if(headIdx == 0) {
+                elementIdx = nElements-1;
+            }
+            else {
+                elementIdx = (headIdx-1)%nElements;
+            }
+            return elements[elementIdx];
+        }
+    }
+
     void releaseTail(long long timeout) override {
         {
             std::unique_lock<std::mutex> guard(mutex);
