@@ -31,11 +31,11 @@ from arrus.utils.us4r import (
 )
 
 # Acquisition parameters.
-VOLTAGE = 30
+VOLTAGE = 50
 TX_RX_SEQUENCE = LinSequence(
     tx_aperture_center_element=np.arange(8, 183),
     tx_aperture_size=64,
-    tx_focus=30e-3,
+    tx_focus=20e-3,
     pulse=Pulse(center_frequency=8e6, n_periods=3.5, inverse=False),
     rx_aperture_center_element=np.arange(8, 183),
     rx_aperture_size=64,
@@ -44,7 +44,7 @@ TX_RX_SEQUENCE = LinSequence(
     tgc_start=14,
     tgc_slope=2e2,
     downsampling_factor=2,
-    speed_of_sound=1490)
+    speed_of_sound=1480)
 
 
 arrus.set_clog_level(arrus.logging.INFO)
