@@ -115,4 +115,8 @@ void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
     adapter->registerOutputBuffer(buffer, transfers);
 }
 
+void ProbeImpl::setTgcCurve(const std::vector<float> &tgcCurve) {
+    adapter->setTgcCurve(tgcCurve);
+}
+
 }

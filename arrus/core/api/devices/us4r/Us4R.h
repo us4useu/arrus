@@ -82,6 +82,13 @@ public:
 
     virtual void disableHV() = 0;
 
+    /**
+     * Sets tgc curve points asynchronously.
+     *
+     * @param tgcCurvePoints tgc curve points to set.
+     */
+    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints) = 0;
+
     virtual void start() = 0;
     virtual void stop() = 0;
 

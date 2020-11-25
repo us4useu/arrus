@@ -35,8 +35,8 @@ def get_batch_data(data, metadata, frame_nr):
                  (frame_nr+1)*firstm_n_samples_frame, :]
 
     # Data from the second module.
-    # FIXME: here is an assumption, that there are not rx nops in the sequence
-    # This won't work for larger
+    # FIXME: here is an assumption, that there are no rx nops in the sequence
+    # This may not be the case in the future
     offset = firstm_n_scanlines * n_samples  # the number of samples
     total_n_scanlines = np.max(metadata.data_description.custom["frame_channel_mapping"].frames+1)*batch_size
     secondm_n_scanlines = total_n_scanlines - firstm_n_scanlines

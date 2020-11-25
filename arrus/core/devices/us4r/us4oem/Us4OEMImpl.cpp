@@ -670,4 +670,9 @@ void Us4OEMImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std:
     });
 }
 
+void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
+    // Currently firing parameter doesn't matter.
+    this->setTGC(tgc, 0);
+}
+
 }

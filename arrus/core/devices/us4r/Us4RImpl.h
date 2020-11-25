@@ -134,6 +134,8 @@ public:
 
     void disableHV();
 
+    void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
+
 private:
     Logger::Handle logger;
     Us4OEMs us4oems;

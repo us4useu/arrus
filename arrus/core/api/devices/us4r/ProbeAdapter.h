@@ -19,6 +19,9 @@ public:
     void operator=(ProbeAdapter const&&) = delete;
 
     [[nodiscard]] virtual ChannelIdx getNumberOfChannels() const = 0;
+
+    virtual void setTgcCurve(const std::vector<float> &curve) = 0;
+
 protected:
     explicit ProbeAdapter(const DeviceId &id): Device(id) {}
 };

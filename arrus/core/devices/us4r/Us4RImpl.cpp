@@ -364,5 +364,10 @@ void Us4RImpl::syncTrigger() {
     this->getDefaultComponent()->syncTrigger();
 }
 
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
+    this->getDefaultComponent()->setTgcCurve(tgcCurvePoints);
+}
+
+
 
 }

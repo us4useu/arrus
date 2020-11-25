@@ -10,6 +10,7 @@ import pickle
 import dataclasses
 import cupy as cp
 import copy
+import keyboard
 
 from arrus.utils.imaging import (
     Pipeline,
@@ -127,6 +128,7 @@ def iq_reconstruct(decimation_factor=4, cic_order=2):
 iq_data = []
 iq_metadata = []
 
+current_voltage = 5
 
 def save_iq_data(frame_number, data, metadata, iq_rec):
     global iq_data, iq_metadata
@@ -163,7 +165,7 @@ def main():
     args = parser.parse_args()
 
     x_grid = np.arange(-50, 50, 0.4)*1e-3
-    z_grid = np.arange(0, 30, 0.4)*1e-3
+    z_grid = np.arange(0, 60, 0.4)*1e-3
 
     seq = LinSequence(
         tx_aperture_center_element=np.arange(8, 183),
@@ -206,11 +208,30 @@ def main():
     iq_rec.set_placement(gpu)
 
     # Set initial voltage on the us4r-lite device.
-    us4r.set_hv_voltage(30)
     # Upload sequence on the us4r-lite device.
     buffer = us4r.upload(seq, mode="sync",
                          host_buffer_size=args.host_buffer_size,
                          rx_batch_size=args.rx_batch_size)
+
+    def increase_voltage(ev):
+        print("Increasing voltage")
+        global current_voltage
+        if current_voltage >= 90:
+            print("maximum voltage set")
+            return
+        current_voltage += 1
+        us4r.set_hv_voltage(current_voltage)
+
+    def decrease_voltage(ev):
+        print("Decreasing voltage")
+        global current_voltage
+        if current_voltage <= 0:
+            print("minimum voltage set")
+        current_voltage -= 1
+        us4r.set_hv_voltage(current_voltage)
+
+    keyboard.on_press_key("a", increase_voltage)
+    keyboard.on_press_key("1", decrease_voltage)
 
     # Start the device.
     us4r.start()
@@ -228,9 +249,7 @@ def main():
     arrus.logging.log(arrus.logging.INFO,
          f"Done, average acquisition + processing time: {np.mean(times)} [s]")
 
-    rf_iq_data_buffer = get_rf_iq_data(buffer, 100)
-
-
+    # rf_iq_data_buffer = get_rf_iq_data(buffer, 100)
     if args.action == "save_mem":
         print("Saving data to rf.npy i metadata.pkl")
         global rf_data, rf_metadata
@@ -243,7 +262,9 @@ def main():
         with open("metadata.pkl", "wb") as f:
             pickle.dump(iq_metadata, f)
 
+    print("Stopping the device.")
     us4r.stop()
+    print("Device stopped.")
 
 
 if __name__ == "__main__":
