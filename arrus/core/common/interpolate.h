@@ -22,7 +22,7 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                              const std::vector<T> &xi) {
 
     ARRUS_REQUIRES_TRUE(!x.empty(), "Interpolation 1D: "
-                                    "sample points list should be empty.");
+                                    "sample points list should not be empty.");
     ARRUS_REQUIRES_TRUE(x.size() == y.size(),
                         "Interpolation 1D: x.size != y.size");
     ARRUS_REQUIRES_TRUE(!xi.empty(), "Interpolation 1D: "
@@ -35,7 +35,7 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
         if(it == std::end(x)) {
             throw IllegalArgumentException(arrus::format(
                 "Interpolation 1D: value {} is out of range [{}, {}].",
-                value, *std::begin(x), *std::end(x)));
+                value, *std::begin(x), *std::prev(std::end(x))));
         } else if(it == std::begin(x)) {
             if(*it == *std::begin(x)) {
                 result[i] = y[0];
@@ -43,7 +43,7 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                 // value is lower than the first element of x
                 throw IllegalArgumentException(arrus::format(
                     "Interp 1D: value {} is out of range [{}, {}].",
-                    value, *std::begin(x), *std::end(x)));
+                    value, *std::begin(x), *std::prev(std::end(x))));
             }
         } else {
             auto pos = std::distance(std::begin(x), it);

@@ -14,6 +14,7 @@ import arrus.metadata
 import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
+import arrus.ops.tgc
 
 
 DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
@@ -162,8 +163,8 @@ class Us4R(Device):
                 raise ValueError("There is no tx/rx sequence currently "
                                  "uploaded.")
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
-                self._current_sequence_context)
-        elif not isinstance(tgc_curve, collections.abc.Iterable):
+                self._current_sequence_context, tgc_curve)
+        else:
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
         self._handle.setTgcCurve(list(tgc_curve))
 

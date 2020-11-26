@@ -1,6 +1,7 @@
 import dataclasses
 
 
+@dataclasses.dataclass(frozen=True)
 class LinearTgc:
     """
     Set linear TGC on the device.

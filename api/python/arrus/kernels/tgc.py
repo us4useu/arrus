@@ -1,16 +1,16 @@
 import numpy as np
 
 
-def compute_linear_tgc(seq_context):
-    op = seq_context.op
-    tgc_start = op.tgc_start
-    tgc_slope = op.tgc_slope
-    sample_range = op.rx_sample_range
+def compute_linear_tgc(seq_context, linear_tgc):
+    seq = seq_context.op
+    tgc_start = linear_tgc.start
+    tgc_slope = linear_tgc.slope
+    sample_range = seq.rx_sample_range
     start_sample, end_sample = sample_range
-    downsampling_factor = op.downsampling_factor
-    fs = seq_context.device.sampling_frequency/op.downsampling_factor
+    downsampling_factor = seq.downsampling_factor
+    fs = seq_context.device.sampling_frequency/seq.downsampling_factor
     # medium parameters
-    c = op.speed_of_sound
+    c = seq.speed_of_sound
     if c is None:
         c = seq_context.medium.speed_of_sound
 
