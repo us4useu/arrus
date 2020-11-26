@@ -147,6 +147,14 @@ class Us4R(Device):
     def get_device_id(self):
         return self._device_id
 
+    def set_tgc_samples(self, samples):
+        """
+        Sets TGC samples.
+
+        :param samples: samples to set
+        """
+        self._handle.setTgcCurve(list(samples))
+
     def set_hv_voltage(self, voltage):
         """
         Enables HV and sets a given voltage.

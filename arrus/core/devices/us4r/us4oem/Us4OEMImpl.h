@@ -123,8 +123,6 @@ private:
     std::vector<uint8_t> channelMapping;
     std::unordered_set<uint8_t> channelsMask;
     uint16 pgaGain, lnaGain;
-    // TGC state: enabled, disabled.
-    bool tgcEnable{false};
 
     std::tuple<
         std::unordered_map<uint16, uint16>,

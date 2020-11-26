@@ -10,6 +10,7 @@ import pickle
 import dataclasses
 import cupy as cp
 import copy
+import keyboard
 
 from arrus.utils.imaging import (
     Pipeline,
@@ -27,7 +28,7 @@ from arrus.utils.imaging import (
 
 from arrus.utils.us4r import RemapToLogicalOrder
 
-arrus.set_clog_level(arrus.logging.INFO)
+arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
@@ -127,7 +128,7 @@ def iq_reconstruct(decimation_factor=4, cic_order=2):
 iq_data = []
 iq_metadata = []
 
-current_voltage = 5
+current_voltage = 30
 
 def save_iq_data(frame_number, data, metadata, iq_rec):
     global iq_data, iq_metadata
@@ -211,6 +212,26 @@ def main():
     buffer = us4r.upload(seq, mode="sync",
                          host_buffer_size=args.host_buffer_size,
                          rx_batch_size=args.rx_batch_size)
+
+    def increase_voltage(ev):
+        print("Increasing voltage")
+        global current_voltage
+        if current_voltage >= 90:
+            print("maximum voltage set")
+            return
+        current_voltage += 1
+        us4r.set_hv_voltage(current_voltage)
+
+    def decrease_voltage(ev):
+        print("Decreasing voltage")
+        global current_voltage
+        if current_voltage <= 0:
+            print("minimum voltage set")
+        current_voltage -= 1
+        us4r.set_hv_voltage(current_voltage)
+
+    keyboard.on_press_key("a", increase_voltage)
+    keyboard.on_press_key("1", decrease_voltage)
 
     # Start the device.
     us4r.start()

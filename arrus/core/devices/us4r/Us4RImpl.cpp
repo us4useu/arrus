@@ -178,8 +178,7 @@ Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
-            "Currently TxRx sequence upload is available for system with probes only.")
-    );
+            "Currently TxRx sequence upload is available for system with probes only."));
     std::unique_lock<std::mutex> guard(deviceStateMutex);
 
     if(this->state == State::STARTED) {
@@ -342,22 +341,6 @@ size_t Us4RImpl::countBufferElementSize(
         throw ArrusException("A buffer elements with different sizes.");
     }
     return *std::begin(transferSizes);
-}
-
-bool Us4RImpl::rxDmaCallback() {
-    // Notify the new buffer element is available.
-    bool canContinue = this->currentRxBuffer->notify(0);
-    if(!canContinue) {
-        return false;
-    }
-    // Reserve access to next element.
-    bool isReservationPossible = this->currentRxBuffer->reserveElement(0);
-
-    if(isReservationPossible) {
-        // TODO access us4oem:0 directly (performance)?
-        this->syncTrigger();
-    }
-    return isReservationPossible;
 }
 
 void Us4RImpl::syncTrigger() {
