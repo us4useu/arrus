@@ -129,6 +129,8 @@ iq_data = []
 iq_metadata = []
 
 current_voltage = 30
+current_tgc = 14
+
 
 def save_iq_data(frame_number, data, metadata, iq_rec):
     global iq_data, iq_metadata
@@ -176,8 +178,8 @@ def main():
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
         pri=100e-6,
-        tgc_start=14,
-        tgc_slope=2e2,
+        tgc_start=current_tgc,
+        tgc_slope=0,
         downsampling_factor=2,
         speed_of_sound=1490)
 
@@ -216,22 +218,49 @@ def main():
     def increase_voltage(ev):
         print("Increasing voltage")
         global current_voltage
-        if current_voltage >= 90:
+        new_voltage = current_voltage + 5
+        if current_voltage > 90:
             print("maximum voltage set")
             return
-        current_voltage += 1
+        current_voltage = new_voltage
         us4r.set_hv_voltage(current_voltage)
 
     def decrease_voltage(ev):
         print("Decreasing voltage")
         global current_voltage
-        if current_voltage <= 0:
+        new_voltage = current_voltage - 5
+        if current_voltage < 5:
             print("minimum voltage set")
-        current_voltage -= 1
+            return
+        current_voltage = new_voltage
         us4r.set_hv_voltage(current_voltage)
 
-    keyboard.on_press_key("a", increase_voltage)
-    keyboard.on_press_key("1", decrease_voltage)
+    def increase_tgc(ev):
+        print("Increasing TGC")
+        global current_tgc
+        new_tgc = current_tgc + 5
+        if new_tgc > 54:
+            print("maximum tgc already set")
+            return
+        current_tgc = new_tgc
+        print(f"Setting tgc start: {current_tgc}")
+        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=current_tgc, slope=0))
+
+    def decrease_tgc(ev):
+        print("decreasing TGC")
+        global current_tgc
+        new_tgc = current_tgc - 5
+        if current_tgc < 14:
+            print("minimum tgc set")
+            return
+        current_tgc = new_tgc
+        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=current_tgc, slope=0))
+
+    keyboard.on_press_key("1", increase_voltage)
+    keyboard.on_press_key("2", decrease_voltage)
+
+    keyboard.on_press_key("3", increase_tgc)
+    keyboard.on_press_key("4", decrease_tgc)
 
     # Start the device.
     us4r.start()
@@ -243,7 +272,7 @@ def main():
 
         if action_func is not None:
             action_func(i, data, metadata)
-
+        time.sleep(1)
         buffer.release_tail()
         times.append(time.time()-start)
     arrus.logging.log(arrus.logging.INFO,
