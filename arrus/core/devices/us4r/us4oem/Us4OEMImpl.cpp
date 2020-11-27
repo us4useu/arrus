@@ -13,6 +13,7 @@
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/common/validation.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 
 namespace arrus::devices {
 
@@ -181,15 +182,11 @@ private:
     uint16 pgaGain, lnaGain;
 };
 
-std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
+std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                             const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
-                            uint16 batchSize, std::optional<float> fri) {
+                            uint16 batchSize) {
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
-    // This probably should be implemented in IUs4OEMInitializer
-
-    std::vector<std::vector<DataTransfer>> dataTransfers;
-
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
     Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr));
@@ -275,8 +272,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
-        ius4oem->SetTxHalfPeriods(
-            static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
+        ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, opIdx);
@@ -306,14 +302,11 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
                 ARRUS_REQUIRES_AT_MOST(
                     outputAddress + nBytes, DDR_SIZE,
-                    ::arrus::format(
-                        "Total data size cannot exceed 4GiB (device {})",
-                        getDeviceId().toString()));
+                    ::arrus::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
 
                 if(op.isRxNOP() && !this->isMaster()) {
-                    // TODO reduce the size of data acquired for master the rx nop to small number of samples
+                    // TODO reduce the size of data acquired for master rx nops to small number of samples
                     // (e.g. 64)
-                    // TODO add optional configuration "is metadata"
                     ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
                                              SAMPLE_DELAY + startSample,
                                              op.getRxDecimationFactor() - 1,
@@ -381,12 +374,12 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         }
     }
     ius4oem->EnableSequencer();
-    return {std::move(fcm), std::move(dataTransfers), totalPri};
+    return {std::move(fcm), std::move(dataTransfers)};
 }
 
 std::tuple<
     std::unordered_map<uint16, uint16>,
-    std::vector<Us4OEMImpl::Us4rBitMask>,
+    std::vector<Us4OEMImpl::Us4OEMBitMask>,
     FrameChannelMapping::Handle>
 Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     // a map: op ordinal number -> rx map id
@@ -403,7 +396,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
     // Rx apertures after taking into account possible conflicts in Rx channel
     // mapping.
-    std::vector<Us4rBitMask> outputRxApertures;
+    std::vector<Us4OEMBitMask> outputRxApertures;
 
     uint16 rxMapId = 0;
     uint16 opId = 0;
@@ -539,17 +532,6 @@ Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
                 ::arrus::format("Attempted to set masked channel: {}", channel)
             );
         }
-    }
-}
-
-void Us4OEMImpl::transferData(uint8_t *dstAddress, size_t size, size_t srcAddress) {
-    // Maximum transfer part: 64 MB TODO (MB or MiB?)
-    constexpr size_t MAX_TRANSFER_SIZE = 64*1000*1000;
-    size_t transferredSize = 0;
-    while(transferredSize < size) {
-        size_t chunkSize = std::min(MAX_TRANSFER_SIZE, size - transferredSize);
-        ius4oem->TransferRXBufferToHost(dstAddress+transferredSize, chunkSize, srcAddress+transferredSize);
-        transferredSize += chunkSize;
     }
 }
 

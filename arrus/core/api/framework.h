@@ -5,7 +5,6 @@
 #include "arrus/core/api/framework/Tensor.h"
 #include "arrus/core/api/framework/Constant.h"
 #include "arrus/core/api/framework/Variable.h"
-#include "arrus/core/api/framework/CircularQueue.h"
 
 namespace arrus {
 using arrus::framework::Op;

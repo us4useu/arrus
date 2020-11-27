@@ -15,9 +15,6 @@ namespace arrus::devices {
 
 class TxRxParameters {
 public:
-    /** (us4oem module, iteration) -> return true if can continue data acquisition */
-    using SequenceCallback = std::function<void(Ordinal, uint16)>;
-
     static const TxRxParameters US4OEM_NOP;
 
     static TxRxParameters createRxNOPCopy(const TxRxParameters& op) {
@@ -47,11 +44,6 @@ public:
      * @param rxDecimationFactor
      * @param pri
      * @param rxPadding how many 0-channels padd from the left and right
-     * @param checkpoint true if the given tx/rx should be a checkpoint
-     *   (i.e. the device should stop and wait for TriggerSync)
-     * @param callback a callback that should be called when the data acquisition
-     *   at this point ends. When set to  != nullptr, the event will be set to syncReq=true,
-     *   and, after calling the callback function; master module will require TriggerSync
      */
     TxRxParameters(std::vector<bool> txAperture,
                    std::vector<float> txDelays,
@@ -59,18 +51,12 @@ public:
                    std::vector<bool> rxAperture,
                    Interval<uint32> rxSampleRange,
                    uint32 rxDecimationFactor, float pri,
-                   Tuple<ChannelIdx> rxPadding = {0, 0},
-                   bool checkpoint = false,
-                   std::optional<SequenceCallback> callback = std::nullopt,
-                   std::optional<SequenceCallback> pciCallback = std::nullopt)
+                   Tuple<ChannelIdx> rxPadding = {0, 0})
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri),
-          rxPadding(std::move(rxPadding)),
-          checkpoint(checkpoint),
-          callback(std::move(callback)),
-          pciCallback(std::move(pciCallback)) {}
+          rxPadding(std::move(rxPadding)){}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const {
         return txAperture;
@@ -106,23 +92,6 @@ public:
 
     [[nodiscard]] const Tuple<ChannelIdx> &getRxPadding() const {
         return rxPadding;
-    }
-
-    [[nodiscard]] const std::optional<SequenceCallback> &getCallback() const {
-        return callback;
-    }
-
-    // TODO try keeping this class immutable
-    void setCallback(const std::optional<SequenceCallback> &clbk) {
-        this->callback = clbk;
-    }
-
-    void setCheckpoint(bool ckpt) {
-        this->checkpoint = ckpt;
-    }
-
-    bool isCheckpoint() const {
-        return checkpoint;
     }
 
     [[nodiscard]] bool isNOP() const  {
@@ -186,10 +155,8 @@ private:
     int32 rxDecimationFactor;
     float pri;
     Tuple<ChannelIdx> rxPadding;
-    bool checkpoint;
-    std::optional<SequenceCallback> callback;
-    std::optional<SequenceCallback> pciCallback;
 };
+
 
 using TxRxParamsSequence = std::vector<TxRxParameters>;
 

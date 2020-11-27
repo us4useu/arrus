@@ -68,21 +68,11 @@ void Us4RImpl::disableHV() {
 }
 
 void Us4RImpl::start() {
-    if(this->mode == ASYNC) {
-        this->startAsync();
-    }
-    else {
-        this->startSync();
-    }
+    this->startAsync();
 }
 
 void Us4RImpl::stop() {
-    if(this->mode == ASYNC) {
-        this->stopAsync();
-    }
-    else {
-        this->stopSync();
-    }
+    this->stopAsync();
 }
 
 // ------------------------------------------ Async version (i.e. using streaming firmware features).
@@ -90,10 +80,9 @@ std::pair<
     FrameChannelMapping::SharedHandle,
     HostBuffer::SharedHandle
 >
-Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
-                      unsigned short rxBufferSize,
-                      unsigned short hostBufferSize,
-                      float frameRepetitionInterval) {
+Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
+                 unsigned short rxBufferSize,
+                 unsigned short hostBufferSize) {
 
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
@@ -111,12 +100,7 @@ Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
             "The device is running, uploading sequence is forbidden.");
     }
 
-    std::optional<float> fri = std::nullopt;
-    if(frameRepetitionInterval != 0.0) {
-        fri = frameRepetitionInterval;
-    }
-    auto[fcm, transfers, totalTime] = uploadSequence(
-        seq, rxBufferSize, 1, false, fri);
+    auto[fcm, transfers, totalTime] = uploadSequence(seq, rxBufferSize, 1);
 
     ARRUS_REQUIRES_TRUE(!transfers.empty(),
                         "The transfers list cannot be empty");
@@ -128,16 +112,16 @@ Us4RImpl::uploadAsync(const ops::us4r::TxRxSequence &seq,
         [](DataTransfer& transfer) {
             return transfer.getSize();
         });
-    this->asyncBuffer = std::make_shared<Us4ROutputBuffer>(us4oemSizes, hostBufferSize);
-    getDefaultComponent()->registerOutputBuffer(this->asyncBuffer.get(), transfers);
+    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemSizes, hostBufferSize);
+    getDefaultComponent()->registerOutputBuffer(this->buffer.get(), transfers);
     this->mode = ASYNC;
-    return {std::move(fcm), this->asyncBuffer};
+    return {std::move(fcm), this->buffer};
 }
 
 void Us4RImpl::startAsync() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     logger->log(LogSeverity::INFO, "Starting us4r.");
-    if(this->asyncBuffer == nullptr) {
+    if(this->buffer == nullptr) {
         throw ::arrus::IllegalArgumentException("Call upload function first.");
     }
     if(this->state == State::STARTED) {
@@ -158,80 +142,12 @@ void Us4RImpl::stopAsync() {
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
-    if(this->asyncBuffer != nullptr) {
-        this->asyncBuffer->shutdown();
+    if(this->buffer != nullptr) {
+        this->buffer->shutdown();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        this->asyncBuffer.reset();
+        this->buffer.reset();
     }
     this->state = State::STOPPED;
-}
-
-
-// ------------------------------------------ Sync version.
-std::pair<
-    FrameChannelMapping::SharedHandle,
-    HostBuffer::SharedHandle
->
-Us4RImpl::uploadSync(const ops::us4r::TxRxSequence &seq,
-                     unsigned short hostBufferSize,
-                     unsigned short rxBatchSize) {
-    ARRUS_REQUIRES_EQUAL(
-        getDefaultComponent(), probe.value().get(),
-        ::arrus::IllegalArgumentException(
-            "Currently TxRx sequence upload is available for system with probes only."));
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
-
-    if(this->state == State::STARTED) {
-        throw ::arrus::IllegalStateException(
-            "The device is already started, uploading sequence is forbidden.");
-    }
-    constexpr uint16_t RX_BUFFER_SIZE = 1;
-    auto[fcm, transfers, totalTime] = uploadSequence(
-        seq, RX_BUFFER_SIZE, rxBatchSize, true, std::nullopt);
-
-    // transfers[i][j] = transfer to perform
-    // where i is the section (buffer element), j is the us4oem (a part of the buffer element)
-    // Currently we assume that each buffer element has the same size.
-    size_t bufferElementSize = countBufferElementSize(transfers);
-    this->hostBuffer = std::make_shared<Us4RHostBuffer>(bufferElementSize, hostBufferSize);
-    // Rx DMA timeout - to avoid situation, where rx irq is missing.
-    // 1.5 - sleep time multiplier
-    auto timeout = (long long) (rxBatchSize * totalTime * 1e6 * 1.5);
-    logger->log(LogSeverity::DEBUG,::arrus::format("Total PRI: {}", totalTime));
-    this->hostBufferWorker = std::make_unique<HostBufferWorker>(
-        this->hostBuffer, transfers, timeout,
-        [this]() {
-            this->syncTrigger();
-        },
-        [this]() {
-            this->getDefaultComponent()->start();
-        });
-
-    this->mode = SYNC;
-    return std::make_pair(std::move(fcm), hostBuffer);
-}
-
-
-void Us4RImpl::startSync() {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
-    logger->log(LogSeverity::DEBUG, "Starting us4r.");
-    if(this->hostBufferWorker == nullptr) {
-        throw ::arrus::IllegalArgumentException("Call upload function first.");
-    }
-    if(this->state == State::STARTED) {
-        throw ::arrus::IllegalStateException("Device is already running.");
-    }
-    this->hostBufferWorker->start();
-
-    this->state = State::STARTED;
-}
-
-/**
- * When the device is stopped, the buffer should be destroyed.
- */
-void Us4RImpl::stopSync() {
-    logger->log(LogSeverity::DEBUG, "Stopping us4r.");
-    this->stopDevice();
 }
 
 void Us4RImpl::stopDevice(bool stopGently) {
@@ -244,49 +160,22 @@ void Us4RImpl::stopDevice(bool stopGently) {
             throw IllegalArgumentException("Device was not started.");
         }
     }
-    logger->log(LogSeverity::DEBUG, "Queue shutdown.");
-    if(this->hostBuffer) {
-        this->hostBuffer->shutdown();
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    logger->log(LogSeverity::DEBUG, "Stopping system.");
     this->getDefaultComponent()->stop();
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    logger->log(LogSeverity::DEBUG, "Stopping host buffer worker.");
-    this->hostBufferWorker->stop();
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-    // Delete all data.
-    this->hostBufferWorker.reset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    logger->log(LogSeverity::DEBUG, "Deleting host buffer.");
-    this->hostBuffer.reset();
-    logger->log(LogSeverity::DEBUG, "Host buffer deleted.");
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
     this->state = State::STOPPED;
 }
 
 Us4RImpl::~Us4RImpl() {
     getDefaultLogger()->log(LogSeverity::DEBUG,
                             "Closing connection with Us4R.");
-    if(this->mode == ASYNC) {
-        this->stopAsync();
-    }
-    else {
-        this->stopSync();
-    }
+    this->stop();
     getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
 }
 
 std::tuple<
-    FrameChannelMapping::Handle,
-    std::vector<std::vector<DataTransfer>>,
-    float // ntriggers
->
+    Us4ROutputBuffer,
+    FrameChannelMapping::Handle>
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
-                         uint16_t rxBufferSize,
-                         uint16_t rxBatchSize, bool checkpoint,
-                         std::optional<float> frameRepetitionInterval) {
+                         uint16_t rxBufferSize, uint16_t rxBatchSize) {
     std::vector<TxRxParameters> actualSeq;
     auto nOps = seq.getOps().size();
     // Convert to intermediate representation (TxRxParameters).
@@ -294,13 +183,9 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
     for(const auto &txrx : seq.getOps()) {
         auto &tx = txrx.getTx();
         auto &rx = txrx.getRx();
-        std::optional<TxRxParameters::SequenceCallback> callback = std::nullopt;
 
-
-        Interval<uint32> sampleRange(rx.getSampleRange().first,
-                                     rx.getSampleRange().second);
-        Tuple<ChannelIdx> padding(
-            {rx.getPadding().first, rx.getPadding().second});
+        Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
+        Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
 
         actualSeq.push_back(
             TxRxParameters(
@@ -311,36 +196,14 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
                 sampleRange,
                 rx.getDownsamplingFactor(),
                 txrx.getPri(),
-                padding,
-                (opIdx == nOps - 1 && checkpoint),
-                std::nullopt,
-                std::nullopt
-            )
+                padding)
         );
         ++opIdx;
     }
     return getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve(),
-                                                  rxBufferSize,
-                                                  rxBatchSize,
-                                                  frameRepetitionInterval);
+                                                  rxBufferSize, rxBatchSize,
+                                                  seq.getSri());
 
-}
-
-size_t Us4RImpl::countBufferElementSize(
-    const std::vector<std::vector<DataTransfer>> &transfers) {
-    std::unordered_set<size_t> transferSizes;
-    for(auto &bufferElement : transfers) {
-        size_t size = 0;
-        for(auto &us4oemTransfer : bufferElement) {
-            size += us4oemTransfer.getSize();
-        }
-        transferSizes.insert(size);
-    }
-    if(transferSizes.size() > 1) {
-        std::cout << ::arrus::toString(transferSizes) << std::endl;
-        throw ArrusException("A buffer elements with different sizes.");
-    }
-    return *std::begin(transferSizes);
 }
 
 void Us4RImpl::syncTrigger() {

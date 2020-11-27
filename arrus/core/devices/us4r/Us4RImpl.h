@@ -17,11 +17,7 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/hv/HV256Impl.h"
-#include "arrus/core/devices/us4r/RxBuffer.h"
-#include "arrus/core/devices/us4r/HostBufferWorker.h"
-#include "arrus/core/devices/us4r/Us4RHostBuffer.h"
-#include "arrus/core/devices/us4r/Watchdog.h"
-#include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
+#include "arrus/core/devices/us4r/Us4RBuffer.h"
 
 namespace arrus::devices {
 
@@ -31,10 +27,6 @@ public:
 
     enum class State {
         STARTED, STOPPED
-    };
-
-    enum Mode {
-        SYNC, ASYNC
     };
 
     ~Us4RImpl() override;
@@ -107,21 +99,11 @@ public:
     }
 
     std::pair<
-        std::shared_ptr<arrus::devices::FrameChannelMapping>,
-        std::shared_ptr<arrus::devices::HostBuffer>
+        std::shared_ptr<arrus::devices::HostBuffer>,
+        std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
-    uploadSync(const ops::us4r::TxRxSequence &seq,
-               unsigned short hostBufferSize,
-               unsigned short rxBatchSize) override;
-
-    std::pair<
-        std::shared_ptr<arrus::devices::FrameChannelMapping>,
-        std::shared_ptr<arrus::devices::HostBuffer>
-    >
-    uploadAsync(const ::arrus::ops::us4r::TxRxSequence &seq,
-                unsigned short rxBufferSize,
-                unsigned short hostBufferSize,
-                float frameRepetitionInterval) override;
+    upload(const ops::us4r::TxRxSequence &seq,
+           unsigned short hostBufferSize, unsigned short rxBatchSize) override;
 
     void start() override;
 
@@ -134,47 +116,25 @@ public:
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
 
 private:
+    std::mutex deviceStateMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
     std::optional<HV256Impl::Handle> hv;
-    std::shared_ptr<RxBuffer> currentRxBuffer;
-    std::unique_ptr<HostBufferWorker> hostBufferWorker;
-    std::unique_ptr<Watchdog> watchdog;
     // will be used outside
-    std::shared_ptr<Us4RHostBuffer> hostBuffer;
-    std::shared_ptr<Us4ROutputBuffer> asyncBuffer;
-    std::mutex deviceStateMutex;
+    // TODO extract output buffer to some external class
+    std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};
-    std::optional<Mode> mode;
-
     UltrasoundDevice *getDefaultComponent();
-
-    static size_t countBufferElementSize(
-        const std::vector<std::vector<DataTransfer>> &transfers);
 
     void stopDevice(bool stopGently = true);
 
     void syncTrigger();
 
-    std::tuple<
-        FrameChannelMapping::Handle,
-        std::vector<std::vector<DataTransfer>>,
-        float // total PRI
-    >
-    uploadSequence(
-        const ops::us4r::TxRxSequence &seq,
-        uint16_t rxBufferSize,
-        uint16_t rxBatchSize,
-        bool checkpoint,
-        std::optional<float> frameRepetitionInterval);
-
-    void startAsync();
-    void stopAsync();
-
-    void startSync();
-    void stopSync();
+    std::tuple<FrameChannelMapping::Handle, Us4RBuffer>
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize,
+                   uint16_t rxBatchSize);
 };
 
 }

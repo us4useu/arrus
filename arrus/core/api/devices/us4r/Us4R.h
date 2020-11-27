@@ -50,33 +50,19 @@ public:
      */
     virtual arrus::devices::Probe* getProbe(Ordinal ordinal) = 0;
 
-    // TODO(pjarosik) return unique_ptr<FrameChannelMapping>
-    // Currently shared_ptr is necessary for python swig wrappers only
-    // TODO rxBufferSize, hostBufferSize
-    virtual std::pair<
-        std::shared_ptr<arrus::devices::FrameChannelMapping>,
-        std::shared_ptr<arrus::devices::HostBuffer>
-    >
-    uploadSync(const ::arrus::ops::us4r::TxRxSequence &seq,
-               unsigned short hostBufferSize,
-               unsigned short rxBatchSize) = 0;
-
     /**
+     *  Uploads a given
      *
      * @param seq
      * @param rxBufferSize
      * @param hostBufferSize
-     * @param frameRepetitionInterval 0 means to not extend sequence interval time
      * @return
      */
     virtual std::pair<
         std::shared_ptr<arrus::devices::FrameChannelMapping>,
         std::shared_ptr<arrus::devices::HostBuffer>
     >
-    uploadAsync(const ::arrus::ops::us4r::TxRxSequence &seq,
-                unsigned short rxBufferSize,
-                unsigned short hostBufferSize,
-                float frameRepetitionInterval) = 0;
+    upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize, unsigned short hostBufferSize) = 0;
 
     virtual void setVoltage(Voltage voltage) = 0;
 
