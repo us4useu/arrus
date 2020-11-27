@@ -272,7 +272,6 @@ def main():
 
         if action_func is not None:
             action_func(i, data, metadata)
-        time.sleep(1)
         buffer.release_tail()
         times.append(time.time()-start)
     arrus.logging.log(arrus.logging.INFO,
