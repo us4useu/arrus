@@ -65,6 +65,7 @@ set(SOURCE_FILES
 	arrus/params.py
     arrus/ops/__init__.py
 	arrus/ops/imaging.py
+	arrus/ops/tgc.py
 	arrus/ops/operation.py
 	arrus/ops/us4r.py
 	arrus/devices/__init__.py
@@ -77,6 +78,7 @@ set(SOURCE_FILES
 	arrus/kernels/__init__.py
 	arrus/kernels/kernel.py
 	arrus/kernels/imaging.py
+	arrus/kernels/tgc.py
 	arrus/utils/__init__.py
     arrus/utils/imaging.py
     arrus/utils/parameters.py

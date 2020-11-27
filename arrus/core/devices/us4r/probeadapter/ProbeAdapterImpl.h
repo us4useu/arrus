@@ -49,8 +49,11 @@ public:
 
     void syncTrigger() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer,
-                            const std::vector<std::vector<DataTransfer>> &transfers) override;
+    void registerOutputBuffer(
+        Us4ROutputBuffer *buffer,
+        const std::vector<std::vector<DataTransfer>> &transfers) override;
+
+    void setTgcCurve(const arrus::ops::us4r::TGCCurve &curve) override;
 
 private:
     Logger::Handle logger;

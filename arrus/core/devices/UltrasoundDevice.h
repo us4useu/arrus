@@ -41,6 +41,8 @@ public:
 
     virtual void registerOutputBuffer(Us4ROutputBuffer* outputBuffer,
                                       const std::vector<std::vector<DataTransfer>> &transfers) = 0;
+
+    virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgcCurve) = 0;
 };
 
 }

@@ -26,6 +26,8 @@ public:
     virtual void syncTrigger() = 0;
     virtual bool isMaster() = 0;
 
+    virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgc) = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

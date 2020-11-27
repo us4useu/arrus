@@ -3,7 +3,9 @@ import arrus.exceptions
 from arrus.ops.us4r import (
     Tx, Rx, TxRx, TxRxSequence, Pulse
 )
+from arrus.ops.tgc import LinearTgc
 import arrus.utils.imaging
+import arrus.kernels.tgc
 
 
 def create_lin_sequence(context):
@@ -43,11 +45,9 @@ def create_lin_sequence(context):
     if c is None:
         c = context.medium.speed_of_sound
 
-    distance = np.arange(start=round(400/downsampling_factor),
-                         stop=end_sample,
-                         step=round(150/downsampling_factor))/fs*c
-
-    tgc_curve = tgc_start + distance*tgc_slope
+    tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
+        context,
+        arrus.ops.tgc.LinearTgc(op.tgc_start, op.tgc_slope))
 
     if np.mod(n_elem_sub, 2) == 0:
         # Move focal position to the center of the floor(n_sub_elem/2) element

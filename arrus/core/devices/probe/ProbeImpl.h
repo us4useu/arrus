@@ -48,6 +48,8 @@ public:
 
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const std::vector<std::vector<DataTransfer>> &transfers) override;
 
+    void setTgcCurve(const std::vector<float> &tgcCurve) override;
+
 private:
     Logger::Handle logger;
     ProbeModel model;

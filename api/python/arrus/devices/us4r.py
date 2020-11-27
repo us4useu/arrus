@@ -2,6 +2,7 @@ import dataclasses
 import numpy as np
 import time
 import ctypes
+import collections.abc
 
 import arrus.utils.core
 import arrus.logging
@@ -12,6 +13,8 @@ import arrus.devices.probe
 import arrus.metadata
 import arrus.kernels
 import arrus.kernels.kernel
+import arrus.kernels.tgc
+import arrus.ops.tgc
 
 
 DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
@@ -143,9 +146,27 @@ class Us4R(Device):
         self._session = parent_session
         self._device_id = DeviceId(DEVICE_TYPE,
                                    self._handle.getDeviceId().getOrdinal())
+        # Context for the currently running sequence.
+        self._current_sequence_context = None
 
     def get_device_id(self):
         return self._device_id
+
+    def set_tgc(self, tgc_curve):
+        """
+        Sets TGC samples for given TGC description.
+
+        :param samples: a given TGC to set.
+        """
+        if isinstance(tgc_curve, arrus.ops.tgc.LinearTgc):
+            if self._current_sequence_context is None:
+                raise ValueError("There is no tx/rx sequence currently "
+                                 "uploaded.")
+            tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
+                self._current_sequence_context, tgc_curve)
+        else:
+            raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
+        self._handle.setTgcCurve(list(tgc_curve))
 
     def set_hv_voltage(self, voltage):
         """
@@ -154,12 +175,6 @@ class Us4R(Device):
         :param voltage: voltage to set
         """
         self._handle.setVoltage(voltage)
-
-    def disable_hv(self):
-        """
-        Disables high voltage supplier.
-        """
-        self._handle.disableHV()
 
     def start(self):
         """
@@ -224,6 +239,7 @@ class Us4R(Device):
 
         # Prepare sequence to load
         kernel_context = self._create_kernel_context(seq)
+        self._current_sequence_context = kernel_context
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
         core_seq = arrus.utils.core.convert_to_core_sequence(raw_seq)
 

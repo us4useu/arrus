@@ -39,11 +39,8 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
-             std::optional<HV256Impl::Handle> hv)
-        : Us4R(id), us4oems(std::move(us4oems)),
-          hv(std::move(hv)) {
-    }
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HV256Impl::Handle> hv)
+        : Us4R(id), us4oems(std::move(us4oems)), hv(std::move(hv)) {}
 
     Us4RImpl(const DeviceId &id,
              Us4OEMs us4oems,
@@ -134,6 +131,8 @@ public:
 
     void disableHV();
 
+    void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
+
 private:
     Logger::Handle logger;
     Us4OEMs us4oems;
@@ -156,8 +155,6 @@ private:
         const std::vector<std::vector<DataTransfer>> &transfers);
 
     void stopDevice(bool stopGently = true);
-
-    bool rxDmaCallback();
 
     void syncTrigger();
 

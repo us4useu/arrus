@@ -112,6 +112,8 @@ public:
 
     void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<std::vector<DataTransfer>> &transfers) override;
 
+    void setTgcCurve(const ops::us4r::TGCCurve &tgc) override;
+
 private:
     using Us4rBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 

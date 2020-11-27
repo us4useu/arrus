@@ -10,6 +10,7 @@ import pickle
 import dataclasses
 import cupy as cp
 import copy
+import keyboard
 
 from arrus.utils.imaging import (
     Pipeline,
@@ -27,7 +28,7 @@ from arrus.utils.imaging import (
 
 from arrus.utils.us4r import RemapToLogicalOrder
 
-arrus.set_clog_level(arrus.logging.INFO)
+arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
@@ -127,7 +128,9 @@ def iq_reconstruct(decimation_factor=4, cic_order=2):
 iq_data = []
 iq_metadata = []
 
-current_voltage = 5
+current_voltage = 30
+current_tgc = 14
+
 
 def save_iq_data(frame_number, data, metadata, iq_rec):
     global iq_data, iq_metadata
@@ -175,8 +178,8 @@ def main():
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
         pri=100e-6,
-        tgc_start=14,
-        tgc_slope=2e2,
+        tgc_start=current_tgc,
+        tgc_slope=0,
         downsampling_factor=2,
         speed_of_sound=1490)
 
@@ -212,6 +215,53 @@ def main():
                          host_buffer_size=args.host_buffer_size,
                          rx_batch_size=args.rx_batch_size)
 
+    def increase_voltage(ev):
+        print("Increasing voltage")
+        global current_voltage
+        new_voltage = current_voltage + 5
+        if current_voltage > 90:
+            print("maximum voltage set")
+            return
+        current_voltage = new_voltage
+        us4r.set_hv_voltage(current_voltage)
+
+    def decrease_voltage(ev):
+        print("Decreasing voltage")
+        global current_voltage
+        new_voltage = current_voltage - 5
+        if current_voltage < 5:
+            print("minimum voltage set")
+            return
+        current_voltage = new_voltage
+        us4r.set_hv_voltage(current_voltage)
+
+    def increase_tgc(ev):
+        print("Increasing TGC")
+        global current_tgc
+        new_tgc = current_tgc + 5
+        if new_tgc > 54:
+            print("maximum tgc already set")
+            return
+        current_tgc = new_tgc
+        print(f"Setting tgc start: {current_tgc}")
+        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=current_tgc, slope=0))
+
+    def decrease_tgc(ev):
+        print("decreasing TGC")
+        global current_tgc
+        new_tgc = current_tgc - 5
+        if current_tgc < 14:
+            print("minimum tgc set")
+            return
+        current_tgc = new_tgc
+        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=current_tgc, slope=0))
+
+    keyboard.on_press_key("1", increase_voltage)
+    keyboard.on_press_key("2", decrease_voltage)
+
+    keyboard.on_press_key("3", increase_tgc)
+    keyboard.on_press_key("4", decrease_tgc)
+
     # Start the device.
     us4r.start()
     times = []
@@ -222,7 +272,6 @@ def main():
 
         if action_func is not None:
             action_func(i, data, metadata)
-
         buffer.release_tail()
         times.append(time.time()-start)
     arrus.logging.log(arrus.logging.INFO,

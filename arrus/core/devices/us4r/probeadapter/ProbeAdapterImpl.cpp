@@ -314,4 +314,10 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
     }
 }
 
+void ProbeAdapterImpl::setTgcCurve(const TGCCurve &curve) {
+    for(auto &us4oem: us4oems) {
+        us4oem->setTgcCurve(curve);
+    }
+}
+
 }
