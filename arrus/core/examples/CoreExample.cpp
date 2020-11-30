@@ -63,15 +63,15 @@ int main() noexcept {
         TxRxSequence seq(txrxs, {}, std::nullopt);
         us4r->setVoltage(30);
 
-        auto[buffer, fcm] = us4r->upload(seq, 2, 1);
+        auto[buffer, fcm] = us4r->upload(seq, 2, 2);
 
         us4r->start();
         for(int i = 0; i < 10; ++i) {
             std::string msg = "i: " + std::to_string(i) + "\n";
             std::cout << msg;
-            int16_t* data = buffer->tail(0);
+            int16_t* data = buffer->tail(-1);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            buffer->releaseTail(0);
+            buffer->releaseTail(-1);
         }
         us4r->stop();
 
