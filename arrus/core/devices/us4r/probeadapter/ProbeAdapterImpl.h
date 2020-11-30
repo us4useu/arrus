@@ -10,7 +10,7 @@
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/common/asserts.h"
 #include "arrus/core/common/logging.h"
-
+#include "arrus/core/devices/us4r/Us4RBuffer.h"
 
 namespace arrus::devices {
 
@@ -31,15 +31,11 @@ public:
         return numberOfChannels;
     }
 
-    std::tuple<
-        FrameChannelMapping::Handle,
-        std::vector<std::vector<DataTransfer>>,
-        float // total PRI
-    >
+    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples,
                     uint16 rxBufferSize = 1, uint16 rxBatchSize = 1,
-                    std::optional<float> frameRepetitionInterval = std::nullopt) override;
+                    std::optional<float> sri = std::nullopt) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 
@@ -49,9 +45,7 @@ public:
 
     void syncTrigger() override;
 
-    void registerOutputBuffer(
-        Us4ROutputBuffer *buffer,
-        const std::vector<std::vector<DataTransfer>> &transfers) override;
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers);
 
     void setTgcCurve(const arrus::ops::us4r::TGCCurve &curve) override;
 

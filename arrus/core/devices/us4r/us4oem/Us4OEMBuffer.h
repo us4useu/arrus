@@ -19,25 +19,25 @@ namespace arrus::devices {
 class Us4OEMBufferElement {
 public:
 
-    Us4OEMBufferElement(size_t address, size_t length, unsigned short firing)
-        : address(address), length(length), firing(firing) {}
+    Us4OEMBufferElement(size_t address, size_t size, unsigned short firing)
+        : address(address), size(size), firing(firing) {}
 
     [[nodiscard]] size_t getAddress() const {
         return address;
     }
 
-    [[nodiscard]] size_t getLength() const {
-        return length;
+    [[nodiscard]] size_t getSize() const {
+        return size;
     }
 
-    [[nodiscard]] Us4OEMImpl::FiringIdx getFiring() const {
+    [[nodiscard]] uint16 getFiring() const {
         return firing;
     }
 
 private:
     size_t address;
-    size_t length;
-    Us4OEMImpl::FiringIdx firing;
+    size_t size;
+    uint16 firing;
 };
 
 /**
@@ -51,6 +51,14 @@ public:
 
     [[nodiscard]] const Us4OEMBufferElement &getElement(size_t i) const {
         return elements[i];
+    }
+
+    [[nodiscard]] size_t getNumberOfElements() const {
+        return elements.size();
+    }
+
+    [[nodiscard]] const std::vector<Us4OEMBufferElement> &getElements() const {
+        return elements;
     }
 
 private:

@@ -8,6 +8,7 @@
 #include "arrus/core/devices/us4r/DataTransfer.h"
 #include "arrus/core/api/devices/us4r/HostBuffer.h"
 #include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
+#include "arrus/core/devices/us4r/Us4RBuffer.h"
 
 namespace arrus::devices {
 
@@ -19,15 +20,14 @@ public:
     using RawHandle = PtrHandle<ProbeAdapterImplBase>;
 
     virtual
-    std::tuple<
-        FrameChannelMapping::Handle,
-        std::vector<std::vector<DataTransfer>>,
-        float // total PRI
-    >
+    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ::arrus::ops::us4r::TGCCurve &tgcSamples,
                     uint16 rxBufferSize, uint16 rxBatchSize,
-                    std::optional<float> frameRepetitionInterval) = 0;
+                    std::optional<float> sri) = 0;
+
+    virtual
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers) = 0;
 
     virtual Ordinal getNumberOfUs4OEMs() = 0;
 
@@ -36,9 +36,6 @@ public:
     virtual void stop() = 0;
 
     virtual void syncTrigger() = 0;
-
-    virtual void registerOutputBuffer(Us4ROutputBuffer* buffer,
-                                    const std::vector<std::vector<DataTransfer>> &transfers) = 0;
 };
 
 }

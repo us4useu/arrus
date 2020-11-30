@@ -3,21 +3,26 @@
 
 #include <utility>
 #include <vector>
+#include <memory>
 
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 
 namespace arrus::devices {
 
-class Us4RElement {
+class Us4RBufferElement {
 public:
-    explicit Us4RElement(std::vector<Us4OEMBufferElement> us4OemElements)
+    explicit Us4RBufferElement(std::vector<Us4OEMBufferElement> us4OemElements)
         : us4oemElements(std::move(us4OemElements)) {}
 
-    [[nodiscard]] const Us4OEMBufferElement &getUs4oemElement(const size_t i) const {
-        return us4oemElements[i];
+    [[nodiscard]] const Us4OEMBufferElement &getUs4oemElement(const size_t ordinal) const {
+        return us4oemElements[ordinal];
     }
 
-    size_t getNumberOfUs4oems() {
+    [[nodiscard]] const std::vector<Us4OEMBufferElement> &getUs4oemElements() const {
+        return us4oemElements;
+    }
+
+    [[nodiscard]] size_t getNumberOfUs4oems() const {
         return us4oemElements.size();
     }
 
@@ -27,10 +32,12 @@ private:
 
 class Us4RBuffer {
 public:
-    explicit Us4RBuffer(std::vector<Us4RElement> elements)
+    using Handle = std::unique_ptr<Us4RBuffer>;
+
+    explicit Us4RBuffer(std::vector<Us4RBufferElement> elements)
     : elements(std::move(elements)) {}
 
-    [[nodiscard]] const Us4RElement &getElement(const size_t i) const {
+    [[nodiscard]] const Us4RBufferElement &getElement(const size_t i) const {
         return elements[i];
     }
 
@@ -38,8 +45,48 @@ public:
         return elements.size();
     }
 
+    [[nodiscard]] bool empty() {
+        return elements.empty();
+    }
+
+    size_t getElementSize() {
+        return std::accumulate(std::begin(elements[0].getUs4oemElements()),
+                               std::end(elements[0].getUs4oemElements()),
+                               (size_t)0);
+    }
+
 private:
-    std::vector<Us4RElement> elements;
+    std::vector<Us4RBufferElement> elements;
+};
+
+class Us4RBufferBuilder {
+public:
+
+    void pushBackUs4oemBuffer(const Us4OEMBuffer &us4oemBuffer) {
+        if(!elements.empty() && elements.size() != us4oemBuffer.getNumberOfElements()) {
+            throw arrus::ArrusException("Each Us4OEM rx buffer should have the same number of elements.");
+        }
+        if(elements.empty()) {
+            elements = std::vector<std::vector<Us4OEMBufferElement>>(us4oemBuffer.getNumberOfElements());
+        }
+        for(size_t i = 0; i < us4oemBuffer.getNumberOfElements(); ++i) {
+            elements[i].push_back(us4oemBuffer.getElement(i));
+        }
+    }
+
+    Us4RBuffer::Handle build() {
+        // Create buffer.
+        std::vector<Us4RBufferElement> us4rElements;
+        for(auto &element : elements) {
+            us4rElements.emplace_back(element);
+        }
+        return std::make_unique<Us4RBuffer>(us4rElements);
+    }
+
+private:
+    // element number -> us4oem ordinal -> part of the buffer element
+    std::vector<std::vector<Us4OEMBufferElement>> elements;
+
 };
 
 }

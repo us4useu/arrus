@@ -67,28 +67,16 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-void Us4RImpl::start() {
-    this->startAsync();
-}
-
-void Us4RImpl::stop() {
-    this->stopAsync();
-}
-
-// ------------------------------------------ Async version (i.e. using streaming firmware features).
-std::pair<
-    FrameChannelMapping::SharedHandle,
-    HostBuffer::SharedHandle
->
+std::pair<HostBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
-                 unsigned short rxBufferSize,
-                 unsigned short hostBufferSize) {
+                 unsigned short rxBufferNElements, unsigned short hostBufferNElements) {
 
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
             "Currently TxRx sequence upload is available for system with probes only."));
-    if((hostBufferSize % rxBufferSize) != 0) {
+
+    if((hostBufferNElements % rxBufferNElements) != 0) {
         throw ::arrus::IllegalArgumentException(
             "The size of the host buffer must be a multiple of the size "
             "of the rx buffer.");
@@ -100,25 +88,26 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
             "The device is running, uploading sequence is forbidden.");
     }
 
-    auto[fcm, transfers, totalTime] = uploadSequence(seq, rxBufferSize, 1);
+    auto[buffer, fcm] = uploadSequence(seq, rxBufferNElements, 1);
 
-    ARRUS_REQUIRES_TRUE(!transfers.empty(),
-                        "The transfers list cannot be empty");
-    auto &elementTransfers = transfers[0];
-    std::vector<size_t> us4oemSizes(elementTransfers.size(), 0);
+    ARRUS_REQUIRES_TRUE(!buffer->empty(), "Us4R Rx buffer cannot be empty.");
+
+    auto &element = buffer->getElement(0);
+    std::vector<size_t> elementPartSizes(element.getNumberOfUs4oems(), 0);
     std::transform(
-        std::begin(elementTransfers), std::end(elementTransfers),
-        std::begin(us4oemSizes),
+        std::begin(element.getUs4oemElements()),
+        std::end(element.getUs4oemElements()),
+        std::begin(elementPartSizes),
         [](DataTransfer& transfer) {
             return transfer.getSize();
         });
-    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemSizes, hostBufferSize);
-    getDefaultComponent()->registerOutputBuffer(this->buffer.get(), transfers);
-    this->mode = ASYNC;
-    return {std::move(fcm), this->buffer};
+    this->buffer = std::make_shared<Us4ROutputBuffer>(
+        elementPartSizes, hostBufferNElements);
+    getProbeImpl()->registerOutputBuffer(this->buffer.get(), buffer);
+    return {this->buffer, std::move(fcm)};
 }
 
-void Us4RImpl::startAsync() {
+void Us4RImpl::start() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     logger->log(LogSeverity::INFO, "Starting us4r.");
     if(this->buffer == nullptr) {
@@ -131,7 +120,11 @@ void Us4RImpl::startAsync() {
     this->state = State::STARTED;
 }
 
-void Us4RImpl::stopAsync() {
+void Us4RImpl::stop() {
+    this->stopDevice();
+}
+
+void Us4RImpl::stopDevice() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if(this->state != State::STARTED) {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
@@ -150,30 +143,14 @@ void Us4RImpl::stopAsync() {
     this->state = State::STOPPED;
 }
 
-void Us4RImpl::stopDevice(bool stopGently) {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
-    if(this->state != State::STARTED) {
-        if(stopGently) {
-            logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
-            return;
-        } else {
-            throw IllegalArgumentException("Device was not started.");
-        }
-    }
-    this->getDefaultComponent()->stop();
-    this->state = State::STOPPED;
-}
-
 Us4RImpl::~Us4RImpl() {
     getDefaultLogger()->log(LogSeverity::DEBUG,
                             "Closing connection with Us4R.");
-    this->stop();
+    this->stopDevice();
     getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
 }
 
-std::tuple<
-    Us4ROutputBuffer,
-    FrameChannelMapping::Handle>
+std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
                          uint16_t rxBufferSize, uint16_t rxBatchSize) {
     std::vector<TxRxParameters> actualSeq;
@@ -200,9 +177,7 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
         );
         ++opIdx;
     }
-    return getDefaultComponent()->setTxRxSequence(actualSeq, seq.getTgcCurve(),
-                                                  rxBufferSize, rxBatchSize,
-                                                  seq.getSri());
+    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize, rxBatchSize, seq.getSri());
 
 }
 

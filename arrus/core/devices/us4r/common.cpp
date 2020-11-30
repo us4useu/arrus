@@ -174,16 +174,6 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                 resSeq.resize(maxSize, TxRxParameters::createRxNOPCopy(resSeq[resSeq.size()-1]));
             }
         }
-
-        // Copy callbacks to the last op in the result sequence
-        for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) {
-            const auto &seq = seqs[seqIdx];
-            auto &resSeq = result[seqIdx];
-            const auto &op = seq[opIdx];
-
-            resSeq[resSeq.size()-1].setCallback(op.getCallback());
-            resSeq[resSeq.size()-1].setCheckpoint(op.isCheckpoint());
-        }
     }
     return std::make_tuple(result, opDestOp, opDestChannel);
 }

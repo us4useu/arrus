@@ -185,7 +185,7 @@ private:
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                             const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
-                            uint16 batchSize) {
+                            uint16 batchSize, std::optional<float> sri) {
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
@@ -288,6 +288,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     size_t transferAddressStart = 0;
 
     uint16 firing = 0;
+    std::vector<Us4OEMBufferElement> rxBufferElements;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
         // Batch elements.
         for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
@@ -326,16 +327,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         auto size = outputAddress - transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
-        std::vector<DataTransfer> dataTransferSection = {
-            DataTransfer(
-                [=](uint8_t *dstAddress) {
-                    if(size > 0) {
-                        this->transferData(dstAddress, size, srcAddress);
-                    }
-                }, size, srcAddress, firing)
-        };
-        dataTransfers.push_back(dataTransferSection);
-        transferAddressStart = outputAddress;
+        rxBufferElements.emplace_back(srcAddress, size, firing);
     }
     ius4oem->EnableTransmit();
 
@@ -345,13 +337,13 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         totalPri += op.getPri();
     }
     std::optional<float> lastPriExtend = std::nullopt;
-    if(fri.has_value()) {
-        if(totalPri < fri.value()) {
-            lastPriExtend = totalPri - fri.value();
+    if(sri.has_value()) {
+        if(totalPri < sri.value()) {
+            lastPriExtend = totalPri - sri.value();
         } else {
             // TODO move this condition to sequence validator
             throw IllegalArgumentException(
-                arrus::format("Frame repetition interval cannot be set, "
+                arrus::format("Sequence repetition interval cannot be set, "
                               "sequence total pri is equal {}", totalPri));
         }
     }
@@ -364,7 +356,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
                 firing = (uint16) (opIdx + batchElementIdx * nOps + batchIdx * nOps * batchSize);
                 auto const &op = seq[opIdx];
-                bool checkpoint = opIdx == nOps - 1 && batchElementIdx == batchSize - 1;
+                bool checkpoint = false;
                 float pri = op.getPri();
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
@@ -374,7 +366,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         }
     }
     ius4oem->EnableSequencer();
-    return {std::move(fcm), std::move(dataTransfers)};
+    return {Us4OEMBuffer(rxBufferElements), std::move(fcm)};
 }
 
 std::tuple<
@@ -545,111 +537,6 @@ void Us4OEMImpl::stop() {
 
 void Us4OEMImpl::syncTrigger() {
     this->ius4oem->TriggerSync();
-}
-
-void Us4OEMImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<std::vector<DataTransfer>> &transfers) {
-    // Assuming here that each data transfer here will have exactly a single element.
-    std::vector<DataTransfer> us4oemTransfers;
-    for(auto &transfer: transfers) {
-        us4oemTransfers.push_back(transfer[0]);
-    }
-
-    // Each transfer should have the same size.
-    std::unordered_set<size_t> sizes;
-    for(auto &transfer: us4oemTransfers){
-        sizes.insert(transfer.getSize());
-    }
-    if(sizes.size() > 1) {
-        throw ::arrus::ArrusException("Each transfer should have the same size.");
-    }
-    // This is the size of a single element produced by this us4oem.
-    const size_t elementSize = *std::begin(sizes);
-    if(elementSize == 0) {
-        // This us4oem will not transfer any data, so the buffer registration has no sense here.
-        return;
-    }
-    // Output buffer - assuming that the number of elements is a multiple of number of transfers
-    const auto rxBufferSize = ARRUS_SAFE_CAST(us4oemTransfers.size(), uint16);
-    const uint16 hostBufferSize = outputBuffer->getNumberOfElements();
-    const Ordinal ordinal = getDeviceId().getOrdinal();
-
-    // Prepare host buffers
-    uint16 hostElement = 0;
-    uint16 rxElement = 0;
-    while(hostElement < hostBufferSize) {
-        auto dstAddress = outputBuffer->getAddress(hostElement, ordinal);
-        auto srcAddress = us4oemTransfers[rxElement].getSrcAddress();
-        logger->log(LogSeverity::DEBUG, ::arrus::format("Preparing host buffer to {} from {}, size {}",
-                                                        (size_t)dstAddress, (size_t)srcAddress, elementSize));
-        this->ius4oem->PrepareHostBuffer(dstAddress, elementSize, srcAddress);
-        ++hostElement;
-        rxElement = (rxElement+1) % rxBufferSize;
-    }
-
-    // prepare transfers
-    uint16 transferIdx = 0;
-    uint16 startFiring = 0;
-
-    for(auto &transfer: us4oemTransfers) {
-        auto dstAddress = outputBuffer->getAddress(transferIdx, ordinal);
-        auto srcAddress = transfer.getSrcAddress();
-        auto endFiring = transfer.getFiring();
-
-
-        this->ius4oem->PrepareTransferRXBufferToHost(
-            transferIdx, dstAddress, elementSize, srcAddress);
-
-        this->ius4oem->ScheduleTransferRXBufferToHost(
-            endFiring, transferIdx,
-            [this, outputBuffer, ordinal, transferIdx, startFiring,
-                    endFiring, srcAddress, elementSize,
-                    rxBufferSize, hostBufferSize,
-                    element = transferIdx] () mutable {
-                auto dstAddress = outputBuffer->getAddress((uint16)element, ordinal);
-                this->ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-                logger->log(LogSeverity::DEBUG, ::arrus::format("Rx Released: {}, {}", startFiring, endFiring));
-
-                // Prepare transfer for the next iteration.
-                this->ius4oem->PrepareTransferRXBufferToHost(
-                    transferIdx, dstAddress, elementSize, srcAddress);
-                this->ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
-
-                bool cont = outputBuffer->signal(ordinal, element, 0); // Also a callback function can be used here.
-                if(!cont) {
-                    logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
-                    return;
-                }
-                cont = outputBuffer->waitForRelease(ordinal, element, 0);
-
-                if(!cont) {
-                    logger->log(LogSeverity::DEBUG, "Output buffer shut down");
-                    return;
-                }
-                this->ius4oem->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                logger->log(LogSeverity::DEBUG, ::arrus::format("Host Released: {}, {}", startFiring, endFiring));
-                element = (element + rxBufferSize) % hostBufferSize;
-            }
-        );
-        startFiring = endFiring + 1;
-        ++transferIdx;
-    }
-    // Register overflow callbacks (mark output buffer as invalid)
-
-    this->ius4oem->RegisterReceiveOverflowCallback([this, outputBuffer] () {
-        this->logger->log(LogSeverity::ERROR, "Rx buffer overflow, stopping the device.");
-        if(this->isMaster()) {
-            this->stop();
-        }
-        outputBuffer->markAsInvalid();
-    });
-
-    this->ius4oem->RegisterTransferOverflowCallback([this, outputBuffer] () {
-        this->logger->log(LogSeverity::ERROR, "Host buffer overflow, stopping the device.");
-        if(this->isMaster()) {
-            this->stop();
-        }
-        outputBuffer->markAsInvalid();
-    });
 }
 
 void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {

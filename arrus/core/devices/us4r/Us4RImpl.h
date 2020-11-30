@@ -103,7 +103,7 @@ public:
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
     upload(const ops::us4r::TxRxSequence &seq,
-           unsigned short hostBufferSize, unsigned short rxBatchSize) override;
+           unsigned short rxBufferNElements, unsigned short hostBufferNElements) override;
 
     void start() override;
 
@@ -128,13 +128,17 @@ private:
     State state{State::STOPPED};
     UltrasoundDevice *getDefaultComponent();
 
-    void stopDevice(bool stopGently = true);
+    void stopDevice();
 
     void syncTrigger();
 
-    std::tuple<FrameChannelMapping::Handle, Us4RBuffer>
+    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize,
                    uint16_t rxBatchSize);
+
+    ProbeImplBase::RawHandle getProbeImpl() {
+        return probe.value().get();
+    }
 };
 
 }
