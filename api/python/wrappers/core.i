@@ -5,6 +5,7 @@
 %include std_unordered_set.i
 %include std_vector.i
 %include std_pair.i
+%include std_optional.i
 
 %{
 #include "arrus/core/api/ops/us4r/Rx.h"
