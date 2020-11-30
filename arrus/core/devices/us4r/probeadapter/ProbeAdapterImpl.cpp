@@ -373,6 +373,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                 element = (element + rxBufferSize) % hostBufferSize;
             }
         );
+        // TODO register in the us4oem
         startFiring = endFiring + 1;
         ++transferIdx;
     }
