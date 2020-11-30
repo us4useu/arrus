@@ -544,4 +544,8 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
     this->setTGC(tgc, 0);
 }
 
+Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() {
+    return ius4oem.get();
+}
+
 }

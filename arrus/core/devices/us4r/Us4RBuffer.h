@@ -55,6 +55,14 @@ public:
                                (size_t)0);
     }
 
+    [[nodiscard]] Us4OEMBuffer getUs4oemBuffer(Ordinal ordinal) const {
+        std::vector<Us4OEMBufferElement> us4oemBufferElements;
+        for(const auto &element : elements) {
+            us4oemBufferElements.push_back(element.getUs4oemElement(ordinal));
+        }
+        return Us4OEMBuffer(us4oemBufferElements);
+    }
+
 private:
     std::vector<Us4RBufferElement> elements;
 };

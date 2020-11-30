@@ -109,6 +109,8 @@ public:
 
     void setTgcCurve(const ops::us4r::TGCCurve &tgc) override;
 
+    Ius4OEMRawHandle getIUs4oem() override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 

@@ -28,6 +28,9 @@ public:
 
     virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgc) = 0;
 
+    // TODO expose "registerUs4OEMOutputBuffer" function, keep this class hermetic
+    virtual Ius4OEMRawHandle getIUs4oem() = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

@@ -9,6 +9,7 @@
 namespace arrus::devices {
 
 using IUs4OEMHandle = std::unique_ptr<IUs4OEM>;
+using Ius4OEMRawHandle = IUs4OEM*;
 
 /**
  * A simple wrapper over GetUs4OEM method available in Us4.

@@ -55,6 +55,12 @@ private:
     std::vector<Us4OEMImplBase::RawHandle> us4oems;
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
+
+    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &transfers, Us4OEMImplBase::RawHandle us4oem);
+
+    Us4OEMImplBase::RawHandle getMasterUs4oem() const {
+        return this->us4oems[0];
+    }
 };
 
 }
