@@ -50,9 +50,11 @@ public:
     }
 
     size_t getElementSize() {
-        return std::accumulate(std::begin(elements[0].getUs4oemElements()),
-                               std::end(elements[0].getUs4oemElements()),
-                               (size_t)0);
+        size_t result = 0;
+        for(auto &element: elements[0].getUs4oemElements()) {
+            result += element.getSize();
+        }
+        return result;
     }
 
     [[nodiscard]] Us4OEMBuffer getUs4oemBuffer(Ordinal ordinal) const {

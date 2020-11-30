@@ -195,8 +195,6 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     // section -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> outputTransfers;
 
-    float maxTotalPri = 0;
-
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];

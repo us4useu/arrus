@@ -60,10 +60,10 @@ int main() noexcept {
             txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange, 1, {leftPadding, rightPadding}), 1000e-6);
         }
 
-        TxRxSequence seq(txrxs, {});
+        TxRxSequence seq(txrxs, {}, std::nullopt);
         us4r->setVoltage(30);
 
-        auto[fcm, buffer] = us4r->uploadSync(seq, 2, 1);
+        auto[buffer, fcm] = us4r->upload(seq, 2, 1);
 
         us4r->start();
         for(int i = 0; i < 10; ++i) {

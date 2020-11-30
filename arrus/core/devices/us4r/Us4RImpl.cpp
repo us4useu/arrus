@@ -88,22 +88,22 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
             "The device is running, uploading sequence is forbidden.");
     }
 
-    auto[buffer, fcm] = uploadSequence(seq, rxBufferNElements, 1);
+    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, 1);
 
-    ARRUS_REQUIRES_TRUE(!buffer->empty(), "Us4R Rx buffer cannot be empty.");
+    ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
-    auto &element = buffer->getElement(0);
+    auto &element = rxBuffer->getElement(0);
     std::vector<size_t> elementPartSizes(element.getNumberOfUs4oems(), 0);
     std::transform(
         std::begin(element.getUs4oemElements()),
         std::end(element.getUs4oemElements()),
         std::begin(elementPartSizes),
-        [](DataTransfer& transfer) {
+        [](const Us4OEMBufferElement& transfer) {
             return transfer.getSize();
         });
     this->buffer = std::make_shared<Us4ROutputBuffer>(
         elementPartSizes, hostBufferNElements);
-    getProbeImpl()->registerOutputBuffer(this->buffer.get(), buffer);
+    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer);
     return {this->buffer, std::move(fcm)};
 }
 
@@ -154,7 +154,6 @@ std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
                          uint16_t rxBufferSize, uint16_t rxBatchSize) {
     std::vector<TxRxParameters> actualSeq;
-    auto nOps = seq.getOps().size();
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
     for(const auto &txrx : seq.getOps()) {

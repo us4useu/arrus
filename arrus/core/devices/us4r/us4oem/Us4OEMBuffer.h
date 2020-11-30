@@ -3,7 +3,6 @@
 
 #include <utility>
 
-#include "Us4OEMImpl.h"
 #include "arrus/core/api/common/types.h"
 
 namespace arrus::devices {

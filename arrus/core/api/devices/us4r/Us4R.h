@@ -59,8 +59,8 @@ public:
      * @return
      */
     virtual std::pair<
-        std::shared_ptr<arrus::devices::FrameChannelMapping>,
-        std::shared_ptr<arrus::devices::HostBuffer>
+        std::shared_ptr<arrus::devices::HostBuffer>,
+        std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
     upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize, unsigned short hostBufferSize) = 0;
 

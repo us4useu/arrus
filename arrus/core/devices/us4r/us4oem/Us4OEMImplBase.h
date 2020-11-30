@@ -21,10 +21,14 @@ public:
     Us4OEMImplBase(Us4OEMImplBase const&&) = delete;
     void operator=(Us4OEMImplBase const&) = delete;
     void operator=(Us4OEMImplBase const&&) = delete;
-    virtual void transferData(uint8_t* dstAddress, size_t size, size_t srcAddress) = 0;
 
     virtual void syncTrigger() = 0;
     virtual bool isMaster() = 0;
+
+    virtual
+    std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
+                    uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri) = 0;
 
     virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgc) = 0;
 

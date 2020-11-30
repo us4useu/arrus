@@ -11,7 +11,6 @@ using arrus::framework::Op;
 using arrus::framework::Tensor;
 using arrus::framework::Constant;
 using arrus::framework::Variable;
-using arrus::framework::CircularQueue;
 }
 
 #endif //ARRUS_CORE_API_FRAMEWORK_H
