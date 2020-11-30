@@ -327,6 +327,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         auto size = outputAddress - transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
+        transferAddressStart = outputAddress;
         rxBufferElements.emplace_back(srcAddress, size, firing);
     }
     ius4oem->EnableTransmit();
