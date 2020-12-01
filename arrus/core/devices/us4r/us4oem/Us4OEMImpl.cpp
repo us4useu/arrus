@@ -362,7 +362,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
                 }
-                ius4oem->SetTrigger(static_cast<short>(pri * 1e6), checkpoint, firing);
+                auto priMs = static_cast<unsigned int>(pri * 1e6);
+                ius4oem->SetTrigger(priMs, checkpoint, firing);
             }
         }
     }
