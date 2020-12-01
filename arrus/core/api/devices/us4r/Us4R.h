@@ -21,6 +21,7 @@ namespace arrus::devices {
 class Us4R : public DeviceWithComponents {
 public:
     using Handle = std::unique_ptr<Us4R>;
+    static constexpr long long INF_TIMEOUT = -1;
 
     explicit Us4R(const DeviceId &id): DeviceWithComponents(id) {}
 

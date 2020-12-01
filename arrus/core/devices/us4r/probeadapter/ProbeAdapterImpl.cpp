@@ -310,7 +310,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
     // Output buffer - assuming that the number of elements is a multiple of number of transfers
     const auto rxBufferSize = ARRUS_SAFE_CAST(transfers.getNumberOfElements(), uint16);
     const uint16 hostBufferSize = outputBuffer->getNumberOfElements();
-    const Ordinal ordinal = getDeviceId().getOrdinal();
+    const Ordinal ordinal = us4oem->getDeviceId().getOrdinal();
 
     // Prepare host buffers
     uint16 hostElement = 0;
@@ -355,13 +355,13 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                     transferIdx, dstAddress, elementSize, srcAddress);
                 ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
-                bool cont = outputBuffer->signal(ordinal, element, 0); // Also a callback function can be used here.
+                bool cont = outputBuffer->signal(ordinal, element, HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
                 if(!cont) {
                     logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
                     return;
                 }
                 // TODO the below should be called when buffer element is released.
-                cont = outputBuffer->waitForRelease(ordinal, element, 0);
+                cont = outputBuffer->waitForRelease(ordinal, element, HostBuffer::INF_TIMEOUT);
                 if(!cont) {
                     logger->log(LogSeverity::DEBUG, "Output buffer shut down");
                     return;

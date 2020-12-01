@@ -340,7 +340,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     std::optional<float> lastPriExtend = std::nullopt;
     if(sri.has_value()) {
         if(totalPri < sri.value()) {
-            lastPriExtend = totalPri - sri.value();
+            lastPriExtend = sri.value() - totalPri;
         } else {
             // TODO move this condition to sequence validator
             throw IllegalArgumentException(

@@ -9,6 +9,7 @@ class HostBuffer {
 public:
     using Handle = std::unique_ptr<HostBuffer>;
     using SharedHandle = std::shared_ptr<HostBuffer>;
+    static constexpr long long INF_TIMEOUT = -1;
 
     virtual ~HostBuffer() = default;
 

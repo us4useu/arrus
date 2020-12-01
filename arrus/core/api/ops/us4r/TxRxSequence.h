@@ -45,6 +45,7 @@ private:
 
 class TxRxSequence {
 public:
+    static constexpr float NO_SRI = -1;
     /**
      * Tx/Rx sequence to execute on Us4R device.
      *
@@ -52,7 +53,7 @@ public:
      * @param tgcCurve tgc curve to apply
      * @param sri frame repetition interval - the total time that a given sequence should take. Should be not smaller
      */
-    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, std::optional<float> sri)
+    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI)
         : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri) {}
 
     /**
