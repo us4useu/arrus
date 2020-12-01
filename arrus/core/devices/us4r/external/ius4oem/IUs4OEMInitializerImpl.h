@@ -11,22 +11,20 @@ public:
     void initModules(std::vector<IUs4OEMHandle> &ius4oems) override {
         // Reorder us4oems according to ids (us4oem with the lowest id is the
         // first one, with the highest id - the last one).
-        std::vector<std::pair<unsigned int, Ius4OEMRawHandle>> sortedIus4oems;
+        // TODO(pjarosik) make the below sorting exception safe
+        // (currently will std::terminate on an exception).
+        std::sort(std::begin(ius4oems), std::end(ius4oems),
+                  [](const IUs4OEMHandle &x, const IUs4OEMHandle &y) {
+                      return x->GetID() < y->GetID();
+                  });
 
-        for(auto &ius4oem: ius4oems) {
-            sortedIus4oems.emplace_back(ius4oem->GetID(), ius4oem.get());
-        }
-
-        std::sort(std::begin(sortedIus4oems), std::end(sortedIus4oems),
-                  [](const auto &x, const auto &y) {return x.first < y.first;});
-
-        for(auto &[id, u] : sortedIus4oems) {
+        for(auto &u : ius4oems) {
             u->Initialize(1);
         }
         // Perform successive initialization levels.
         for(int level = 2; level <= 4; level++) {
-            sortedIus4oems[0].second->Synchronize();
-            for(auto &[id, u] : sortedIus4oems) {
+            ius4oems[0]->Synchronize();
+            for(auto &u : ius4oems) {
                 u->Initialize(level);
             }
         }
