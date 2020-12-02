@@ -27,7 +27,7 @@ from arrus.utils.imaging import (
 
 from arrus.utils.us4r import RemapToLogicalOrder
 
-arrus.set_clog_level(arrus.logging.INFO)
+arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
@@ -178,7 +178,8 @@ def main():
         tgc_start=14,
         tgc_slope=2e2,
         downsampling_factor=2,
-        speed_of_sound=1490)
+        speed_of_sound=1490,
+        sri=500e-3)
 
     bmode_imaging = create_bmode_imaging_pipeline(x_grid=x_grid, z_grid=z_grid)
     iq_rec = iq_reconstruct(4, 2)
@@ -208,17 +209,18 @@ def main():
 
     # Set initial voltage on the us4r-lite device.
     # Upload sequence on the us4r-lite device.
-    buffer = us4r.upload(seq, mode="sync",
-                         host_buffer_size=args.host_buffer_size,
-                         rx_batch_size=args.rx_batch_size)
+    buffer, const_metadata = us4r.upload(seq, host_buffer_size=args.host_buffer_size,
+                                         rx_buffer_size=args.host_buffer_size,
+                                         rx_batch_size=args.rx_batch_size)
 
+    bmode_imaging.initialize(const_metadata)
     # Start the device.
     us4r.start()
     times = []
     arrus.logging.log(arrus.logging.INFO, f"Running {args.n} iterations.")
     for i in range(args.n):
         start = time.time()
-        data, metadata = buffer.head()
+        data, metadata = buffer.tail()
 
         if action_func is not None:
             action_func(i, data, metadata)

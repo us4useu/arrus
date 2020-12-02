@@ -160,7 +160,7 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/us4r/HostBuffer.h"
 
 namespace std {
-    %template(UploadResult) pair<std::shared_ptr<arrus::devices::FrameChannelMapping>, std::shared_ptr<arrus::devices::HostBuffer>>;
+    %template(UploadResult) pair<std::shared_ptr<arrus::devices::HostBuffer>, std::shared_ptr<arrus::devices::FrameChannelMapping>>;
     %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
 };
 

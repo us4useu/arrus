@@ -203,7 +203,7 @@ public:
                 "Timeout while waiting for new data queue.")
             validateState();
         }
-        return dataBuffer + tailIdx * elementSize;
+        return (int16*)((uint8*)dataBuffer + tailIdx * elementSize);
     }
 
     void markAsInvalid() {

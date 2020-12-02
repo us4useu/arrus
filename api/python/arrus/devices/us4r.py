@@ -231,10 +231,10 @@ class Us4R(Device):
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
         core_seq = arrus.utils.core.convert_to_core_sequence(raw_seq)
 
-        upload_result = self._handle.upload(core_seq, host_buffer_size, rx_batch_size)
+        upload_result = self._handle.upload(core_seq, rx_buffer_size, host_buffer_size)
 
         # Prepare data buffer and constant context metadata
-        fcm, buffer_handle = upload_result[0], upload_result[1]
+        buffer_handle, fcm = upload_result[0], upload_result[1]
 
         # -- Constant metadata
         # --- FCM
@@ -248,17 +248,27 @@ class Us4R(Device):
 
         # --- Data buffer
         n_samples = raw_seq.get_n_samples()
+        
         if len(n_samples) > 1:
             raise arrus.exceptions.IllegalArgumentError(
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
+
+        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=rx_batch_size)
+
         n_samples = next(iter(n_samples))
-        return HostBuffer(
+        buffer = HostBuffer(
             buffer_handle=buffer_handle,
             fac=fac,
             data_description=echo_data_description,
-            frame_shape=self._get_physical_frame_shape(fcm, n_samples,rx_batch_size=rx_batch_size),
+            frame_shape=input_shape,
             rx_batch_size=rx_batch_size)
+
+        const_metadata = arrus.metadata.ConstMetadata(
+            context=fac, data_description=echo_data_description,
+            input_shape=input_shape, is_iq_data=False)
+        return buffer, const_metadata
+
 
     def _create_kernel_context(self, seq):
         return arrus.kernels.kernel.KernelExecutionContext(

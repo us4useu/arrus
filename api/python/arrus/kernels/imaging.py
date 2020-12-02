@@ -27,6 +27,7 @@ def create_lin_sequence(context):
     pulse = op.pulse
     downsampling_factor = op.downsampling_factor
     pri = op.pri
+    sri = op.sri
     fs = context.device.sampling_frequency/op.downsampling_factor
 
     tx_centers = op.tx_aperture_center_element
@@ -76,7 +77,7 @@ def create_lin_sequence(context):
     for tx_aperture, delays, rx_center in zip(tx_apertures, tx_delays,
                                               rx_centers):
 
-        if delays.shape == (1,1):
+        if delays.shape == (1, 1):
             delays = delays.reshape((1, ))
         else:
             delays = np.squeeze(delays)
@@ -85,7 +86,7 @@ def create_lin_sequence(context):
         rx_aperture, rx_padding = get_ap(rx_center, rx_ap_size)
         rx = Rx(rx_aperture, sample_range, downsampling_factor, rx_padding)
         txrxs.append(TxRx(tx, rx, pri))
-    return TxRxSequence(txrxs, tgc_curve=tgc_curve)
+    return TxRxSequence(txrxs, tgc_curve=tgc_curve, sri=sri)
 
 
 def get_aperture_with_padding(center_element, size, probe_model):

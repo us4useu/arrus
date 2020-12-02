@@ -20,10 +20,17 @@ class Pipeline:
         if placement is not None:
             self.set_placement(placement)
 
-    def __call__(self, data, metadata):
+    def __call__(self, data):
         for step in self.steps:
-            data, metadata = step(data, metadata)
-        return data, metadata
+            data = step(data)
+        return data
+
+    def initialize(self, const_metadata):
+        for step in self.steps:
+            const_metadata = step._prepare(const_metadata)
+        # Force cupy to recompile kernels before running the pipeline.
+        init_array = self.num_pkg.zeros(const_metadata.input_shape)
+        self.__call__(init_array)
 
     def set_placement(self, device):
         """
@@ -44,6 +51,8 @@ class Pipeline:
             raise ValueError(f"Unsupported device: {device}")
         for step in self.steps:
             step.set_pkgs(**pkgs)
+        self.num_pkg = pkgs.num_pkg
+        self.filter_pkg = pkgs.filter_pkg
 
 
 class BandpassFilter:
@@ -80,10 +89,10 @@ class BandpassFilter:
     def _is_prepared(self):
         return self.taps is not None
 
-    def _prepare(self, data, metadata: arrus.metadata.Metadata):
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
-        center_frequency = metadata.context.sequence.pulse.center_frequency
-        sampling_frequency = metadata.data_description.sampling_frequency
+        center_frequency = const_metadata.context.sequence.pulse.center_frequency
+        sampling_frequency = const_metadata.data_description.sampling_frequency
         # FIXME(pjarosik) implement iir filter
         taps, _ = scipy.signal.butter(
                 2,
@@ -94,13 +103,12 @@ class BandpassFilter:
         #     cutoff=[l * center_frequency, r * center_frequency],
         #     fs=sampling_frequency)
         self.taps = self.xp.asarray(taps)
+        return const_metadata
 
-    def __call__(self, data, metadata: arrus.metadata.Metadata):
-        if not self._is_prepared():
-            self._prepare(data, metadata)
+    def __call__(self, data):
         result = self.filter_pkg.convolve1d(data, self.taps, axis=-1,
                                             mode='constant')
-        return result, metadata
+        return result
 
 
 class QuadratureDemodulation:
@@ -118,20 +126,19 @@ class QuadratureDemodulation:
     def _is_prepared(self):
         return self.mod_factor is not None
 
-    def _prepare(self, data, metadata):
+    def _prepare(self, const_metadata):
         xp = self.xp
-        fs = metadata.data_description.sampling_frequency
-        fc = metadata.context.sequence.pulse.center_frequency
-        _, _, n_samples = data.shape
+        fs = const_metadata.data_description.sampling_frequency
+        fc = const_metadata.context.sequence.pulse.center_frequency
+        _, _, n_samples = const_metadata.input_shape
         t = (xp.arange(0, n_samples) / fs).reshape(1, 1, -1)
         self.mod_factor = (2 * xp.cos(-2 * xp.pi * fc * t)
                            + 2 * xp.sin(-2 * xp.pi * fc * t) * 1j)
         self.mod_factor = self.mod_factor.astype(xp.complex64)
+        return const_metadata.copy(is_iq_data=True)
 
-    def __call__(self, data, metadata):
-        if not self._is_prepared():
-            self._prepare(data, metadata)
-        return self.mod_factor * data, metadata
+    def __call__(self, data):
+        return self.mod_factor * data
 
 
 class Decimation:
@@ -155,32 +162,28 @@ class Decimation:
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def __prepare(self, data, metadata):
-        pass
+    def __prepare(self, const_metadata):
+        new_fs = (const_metadata.data_description.sampling_frequency
+                  / self.decimation_factor)
+        new_signal_description = arrus.metadata.EchoDataDescription(
+            sampling_frequency=new_fs, custom=const_metadata.custom)
 
-    def __call__(self, data, metadata):
-        # TODO for each function write
-        """
-        :param data: expected data shape
-        :param metadata:
-        :return:
-        """
+        n_frames, n_channels, n_samples = const_metadata.input_shape
+
+        output_shape = n_frames, n_channels, n_samples//
+        return const_metadata.copy(data_description=new_signal_description,
+                                   input_shape=output_shape)
+
+    def __call__(self, data):
         data_out = data
         for i in range(self.cic_order):
             data_out = self.xp.cumsum(data_out, axis=-1)
 
-        data_out = data_out[:, :, 0:-1:self.decimation_factor]
+        data_out = data_out[:, :, 0::self.decimation_factor]
 
         for i in range(self.cic_order):
             data_out[:, :, 1:] = self.xp.diff(data_out, axis=-1)
-
-        new_fs = (metadata.data_description.sampling_frequency
-                  / self.decimation_factor)
-
-        # TODO(pjarosik) - instead - make a copy of the object
-        new_signal_desc = arrus.metadata.EchoDataDescription(
-            sampling_frequency=new_fs)
-        return data_out, metadata.copy(data_desc=new_signal_desc)
+        return data_out
 
 
 class RxBeamforming:
@@ -224,35 +227,29 @@ class RxBeamforming:
             import arrus.utils.interpolate
             self.interp1d_func = arrus.utils.interpolate.interp1d
 
-    def _prepare(self, data, metadata: arrus.metadata.Metadata):
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         # TODO verify that all angles, focal points are the same
         # TODO make sure start_sample is computed appropriately
-        context = metadata.context
-        probe_model = metadata.context.device.probe.model
-        seq = metadata.context.sequence
-        raw_seq = metadata.context.raw_sequence
-        medium = metadata.context.medium
+        context = const_metadata.context
+        probe_model = const_metadata.context.device.probe.model
+        seq = const_metadata.context.sequence
+        raw_seq = const_metadata.context.raw_sequence
+        medium = const_metadata.context.medium
 
-        n_tx, n_rx, n_samples = data.shape
-        self.n_tx, self.n_rx, self.n_samples = data.shape
+        self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
 
         # TODO store iq trait in the metadata.data_description
-        if data.dtype == self.xp.complex64:
-            self.is_iq = True
-        elif data.dtype == self.xp.float32:
-            self.is_iq = False
-        else:
-            raise ValueError(f"Unhandled data type: {data.dtype}.")
+        self.is_iq = const_metadata.is_iq_data
 
         # -- Output buffer
         self.buffer = self.xp.zeros((self.n_tx, self.n_rx * self.n_samples),
-                                    dtype=data.dtype)
+                                    dtype=const_metadata.input_dtype)
 
         # -- Delays
 
-        acq_fs = (metadata.context.device.sampling_frequency
+        acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
-        fs = metadata.data_description.sampling_frequency
+        fs = const_metadata.data_description.sampling_frequency
         fc = seq.pulse.center_frequency
         n_periods = seq.pulse.n_periods
         if seq.speed_of_sound is not None:
@@ -312,7 +309,7 @@ class RxBeamforming:
         # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
         #  row-wise major order).
         self.delays = self.xp.asarray(self.delays)
-        self.delays += self.xp.arange(0, self.n_rx).reshape(n_rx, 1) \
+        self.delays += self.xp.arange(0, self.n_rx).reshape(self.n_rx, 1) \
                        * self.n_samples
         self.delays = self.delays.reshape(-1, self.n_samples * self.n_rx) \
             .astype(self.xp.float32)
@@ -327,7 +324,7 @@ class RxBeamforming:
         rx_apodization = (rx_tang < max_tang).astype(np.float32)
         rx_apod_sum = np.sum(rx_apodization, axis=0)
         rx_apod_sum[rx_apod_sum == 0] = 1
-        rx_apodization = rx_apodization/(rx_apod_sum.reshape(1, n_samples))
+        rx_apodization = rx_apodization/(rx_apod_sum.reshape(1, self.n_samples))
         self.rx_apodization = self.xp.asarray(rx_apodization)
         # IQ correction
         self.t = self.xp.asarray(self.t)
@@ -335,8 +332,6 @@ class RxBeamforming:
             .astype(self.xp.complex64)
 
     def __call__(self, data, metadata):
-        if self.delays is None and self.buffer is None:
-            self._prepare(data, metadata)
         data = data.copy().reshape(self.n_tx, self.n_rx * self.n_samples)
 
         self.interp1d_func(data, self.delays, self.buffer)
@@ -345,7 +340,7 @@ class RxBeamforming:
             out = out * self.iq_correction
         out = out * self.rx_apodization
         out = self.xp.sum(out, axis=1)
-        return out.reshape((self.n_tx, self.n_samples)), metadata
+        return out.reshape((self.n_tx, self.n_samples))
 
 
 class EnvelopeDetection:
@@ -379,6 +374,9 @@ class Transpose:
 
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
+
+    def _prepare(self, const_metadata):
+        pass
 
     def __call__(self, data, metadata):
         return self.xp.transpose(data, self.axes), metadata

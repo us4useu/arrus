@@ -78,8 +78,8 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
 
     if((hostBufferNElements % rxBufferNElements) != 0) {
         throw ::arrus::IllegalArgumentException(
-            "The size of the host buffer must be a multiple of the size "
-            "of the rx buffer.");
+            ::arrus::format("The size of the host buffer {} must be equal or a multiple "
+            "of the size of the rx buffer {}.", hostBufferNElements, rxBufferNElements));
     }
     std::unique_lock<std::mutex> guard(deviceStateMutex);
 

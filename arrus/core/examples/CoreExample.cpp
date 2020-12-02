@@ -17,7 +17,7 @@ int main() noexcept {
         auto loggingMechanism = std::make_shared<::arrus::Logging>();
         std::shared_ptr<std::ostream> ostream{
             std::shared_ptr<std::ostream>(&std::cout, [](std::ostream *) {})};
-        loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::INFO);
+        loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::TRACE);
 //        std::shared_ptr<std::ostream> logFileStream =
 //            // append to the end of the file
 //            std::make_shared<std::ofstream>(R"(C:\Users\pjarosik\cpplog.txt)", std::ios_base::app);
@@ -60,13 +60,13 @@ int main() noexcept {
             txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange, 1, {leftPadding, rightPadding}), 100e-6);
         }
 
-        TxRxSequence seq(txrxs, {}, 50e-3);
+        TxRxSequence seq(txrxs, {}, 200e-3);
         us4r->setVoltage(30);
 
         auto[buffer, fcm] = us4r->upload(seq, 2, 2);
 
         us4r->start();
-        for(int i = 0; i < 1000; ++i) {
+        for(int i = 0; i < 10; ++i) {
             std::string msg = "i: " + std::to_string(i) + "\n";
             std::cout << msg;
             int16_t* data = buffer->tail(::arrus::devices::HostBuffer::INF_TIMEOUT);

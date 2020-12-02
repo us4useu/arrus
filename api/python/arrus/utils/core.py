@@ -37,6 +37,8 @@ def convert_to_core_sequence(seq):
             rx.downsampling_factor,
             arrus.core.PairChannelIdx(int(rx.padding[0]), int(rx.padding[1]))
         )
+
+
         core_txrx = arrus.core.TxRx(core_tx, core_rx, op.pri)
         arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
 
@@ -48,9 +50,8 @@ def convert_to_core_sequence(seq):
                 "Sequences with the constant number of "
                 "samples are supported only.")
 
-    core_seq = arrus.core.TxRxSequence(
-        sequence=core_seq,
-        tgcCurve=seq.tgc_curve.tolist())
+    sri = -1 if seq.sri is None else seq.sri
+    core_seq = arrus.core.TxRxSequence(core_seq, seq.tgc_curve.tolist(), sri)
     return core_seq
 
 
