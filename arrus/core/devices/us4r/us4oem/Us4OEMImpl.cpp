@@ -199,18 +199,14 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
-    ARRUS_REQUIRES_AT_MOST(nOps, 1024, ::arrus::format(
+    ARRUS_REQUIRES_AT_MOST(nOps*batchSize, 1024, ::arrus::format(
         "Exceeded the maximum ({}) number of firings: {}", 1024, nOps));
     ARRUS_REQUIRES_AT_MOST(nOps * batchSize * rxBufferSize, 16384,
                            ::arrus::format(
                                "Exceeded the maximum ({}) number of triggers: {}",
                                16384, nOps * batchSize * rxBufferSize));
-    ARRUS_REQUIRES_AT_MOST(nOps * rxBufferSize, 16384,
-                           ::arrus::format(
-                               "Exceeded the maximum ({}) number of firings: {}",
-                               16384, nOps * rxBufferSize));
 
-    ius4oem->SetNumberOfFirings(nOps * rxBufferSize);
+    ius4oem->SetNumberOfFirings(nOps*batchSize);
     ius4oem->ClearScheduledReceive();
 
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
@@ -530,7 +526,6 @@ Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
 }
 
 void Us4OEMImpl::start() {
-    this->ius4oem->EnableSequencer();
     this->startTrigger();
 }
 
