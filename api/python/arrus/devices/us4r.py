@@ -90,7 +90,7 @@ class HostBuffer:
         metadata = arrus.metadata.Metadata(
             context=self.fac,
             data_desc=self.data_description,
-            custom={"frame_metadata_view": frame_metadata_view}
+            custom={"frame_metadata_view": frame_metadata_view.copy()}
         )
         return array, metadata
 
