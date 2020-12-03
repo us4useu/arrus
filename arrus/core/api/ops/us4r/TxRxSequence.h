@@ -74,8 +74,13 @@ public:
      * Returns frame repetition interval (the total time the given sequence should actually take).
      * nullopt means that the frame acquistion time should be determined by total PRI only.
      */
-    const std::optional<float> &getSri() const {
-        return sri;
+    const std::optional<float> getSri() const {
+        if(sri.value() != NO_SRI) {
+            return sri;
+        }
+        else {
+            return std::optional<float>();
+        }
     }
 
 private:

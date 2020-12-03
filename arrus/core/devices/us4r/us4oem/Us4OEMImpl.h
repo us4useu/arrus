@@ -111,6 +111,8 @@ public:
 
     Ius4OEMRawHandle getIUs4oem() override;
 
+    void enableSequencer() override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 

@@ -44,15 +44,19 @@ def init_display(aperture_size, n_samples):
     fig.show()
     return fig, ax, canvas
 
+metadatas = []
+bmodes = []
 
 def display_data(frame_number, data, metadata, imaging_pipeline, figure, ax, canvas):
     # TODO use the imaging pipeline
     print(f"Displaying frame {frame_number}")
+    metadatas.append(metadata.custom["frame_metadata_view"].copy())
     bmode = imaging_pipeline(cp.asarray(data))
-    canvas.set_data(bmode)
-    ax.set_aspect("auto")
-    figure.canvas.flush_events()
-    plt.draw()
+    bmodes.append(bmode)
+    # canvas.set_data(bmode)
+    # ax.set_aspect("auto")
+    # figure.canvas.flush_events()
+    # plt.draw()
 
 
 rf_data = []
@@ -174,7 +178,7 @@ def main():
         rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
-        pri=100e-6,
+        pri=200e-6,
         tgc_start=14,
         tgc_slope=2e2,
         downsampling_factor=2,
@@ -221,6 +225,7 @@ def main():
     for i in range(args.n):
         start = time.time()
         data, metadata = buffer.tail()
+        print(data.ctypes.data)
 
         if action_func is not None:
             action_func(i, data, metadata)

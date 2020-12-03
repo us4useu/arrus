@@ -27,10 +27,11 @@ class Pipeline:
 
     def initialize(self, const_metadata):
         input_shape = const_metadata.input_shape
+        input_dtype = const_metadata.dtype
         for step in self.steps:
             const_metadata = step._prepare(const_metadata)
         # Force cupy to recompile kernels before running the pipeline.
-        init_array = self.num_pkg.zeros(input_shape, dtype=const_metadata.dtype)
+        init_array = self.num_pkg.zeros(input_shape, dtype=input_dtype)
         self.__call__(init_array)
         return const_metadata
 
@@ -129,7 +130,7 @@ class QuadratureDemodulation:
         self.mod_factor = (2 * xp.cos(-2 * xp.pi * fc * t)
                            + 2 * xp.sin(-2 * xp.pi * fc * t) * 1j)
         self.mod_factor = self.mod_factor.astype(xp.complex64)
-        return const_metadata.copy(is_iq_data=True)
+        return const_metadata.copy(is_iq_data=True, dtype="complex64")
 
     def __call__(self, data):
         return self.mod_factor * data

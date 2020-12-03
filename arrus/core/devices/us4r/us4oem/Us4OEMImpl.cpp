@@ -340,8 +340,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         } else {
             // TODO move this condition to sequence validator
             throw IllegalArgumentException(
-                arrus::format("Sequence repetition interval cannot be set, "
-                              "sequence total pri is equal {}", totalPri));
+                arrus::format("Sequence repetition interval {} cannot be set, "
+                              "sequence total pri is equal {}",
+                              sri.value(), totalPri));
         }
     }
 
@@ -544,6 +545,10 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() {
     return ius4oem.get();
+}
+
+void Us4OEMImpl::enableSequencer() {
+    this->ius4oem->EnableSequencer();
 }
 
 }

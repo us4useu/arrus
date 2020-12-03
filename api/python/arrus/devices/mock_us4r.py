@@ -16,10 +16,9 @@ class MockFileBuffer:
         self.metadata = metadata
 
     def tail(self, timeout=None):
+        frame_metadata = np.zeros((175, 32), dtype=np.int16)
         custom_data = {
-            "pulse_counter": self.counter,
-            "trigger_counter": self.counter,
-            "timestamp": time.time_ns() // 1000000
+            "frame_metadata_view": frame_metadata
         }
         metadata = arrus.metadata.Metadata(
             context=self.metadata.context,
@@ -30,28 +29,18 @@ class MockFileBuffer:
     def release_tail(self, timeout=None):
         self.i = (self.i + 1) % self.n_frames
 
-    def pop(self):
-        i = self.i
-        self.i = (i + 1) % self.n_frames
-        custom_data = {
-            "pulse_counter": self.counter,
-            "trigger_counter": self.counter,
-            "timestamp": time.time_ns() // 1000000
-        }
-        self.counter += 1
-
-        metadata = arrus.metadata.Metadata(
-            context=self.metadata.context,
-            data_desc=self.metadata.data_description,
-            custom=custom_data)
-        return np.array(self.dataset[self.i, :, :, :]), metadata
-
 
 class MockUs4R(Device):
     def __init__(self, dataset: np.ndarray, metadata, index: int):
         super().__init__()
         self.dataset = dataset
         self.metadata = metadata
+        self.const_metadata = arrus.metadata.ConstMetadata(
+            context=metadata.context,
+            data_desc=metadata.data_description,
+            input_shape=dataset[0].shape,
+            is_iq_data=False,
+            dtype='int16')
         self.buffer = None
 
     def get_device_id(self):
@@ -94,9 +83,9 @@ class MockUs4R(Device):
         # TODO use sampling frequency from the us4r device
         return 65e6
 
-    def upload(self, seq: arrus.ops.Operation, mode="sync",
+    def upload(self, seq: arrus.ops.Operation,
                rx_buffer_size=None, host_buffer_size=None,
-               frame_repetition_interval=None) -> MockFileBuffer:
+               rx_batch_size=None):
         """
         Uploads a given sequence of operations to perform on the device.
 
@@ -115,17 +104,6 @@ class MockUs4R(Device):
         :raises: ValueError when some of the input parameters are invalid
         :return: a data buffer
         """
-        # Verify the input parameters.
-        if mode not in {"async", "sync"}:
-            raise ValueError(f"Unrecognized mode: {mode}")
-
-        if mode == "sync" and (rx_buffer_size is not None
-                               or host_buffer_size is not None
-                               or frame_repetition_interval is not None):
-            raise ValueError("rx_buffer_size, host_buffer_size and "
-                             "frame_repetition_interval should be None "
-                             "for 'sync' mode.")
-
         arrus.logging.log(arrus.logging.DEBUG, f"Uploaded sequence: {seq}")
-        return MockFileBuffer(self.dataset, self.metadata)
+        return MockFileBuffer(self.dataset, self.metadata), self.const_metadata
 
