@@ -46,12 +46,13 @@ class ConstMetadata:
     A metadata that won't change while the system is running.
     """
     def __init__(self, context: FrameAcquisitionContext,
-                 data_description: DataDescription,
-                 input_shape, is_iq_data):
+                 data_desc: DataDescription,
+                 input_shape, is_iq_data, dtype):
         self._context = context
-        self._data_char = data_description
+        self._data_char = data_desc
         self._input_shape = input_shape
         self._is_iq_data = is_iq_data
+        self._dtype = dtype
 
     @property
     def context(self) -> FrameAcquisitionContext:
@@ -69,9 +70,14 @@ class ConstMetadata:
     def is_iq_data(self):
         return self._is_iq_data
 
+    @property
+    def dtype(self):
+        return self._dtype
+
     def copy(self, **kwargs):
         kw = dict(context=self.context, data_desc=self.data_description,
-                input_shape=self.input_shape, is_iq_data=self.is_iq_data)
+                input_shape=self.input_shape, is_iq_data=self.is_iq_data,
+                dtype=self.dtype)
         return ConstMetadata(**{**kw, **kwargs})
 
 

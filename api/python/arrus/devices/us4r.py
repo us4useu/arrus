@@ -254,9 +254,10 @@ class Us4R(Device):
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
 
-        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=rx_batch_size)
-
         n_samples = next(iter(n_samples))
+        input_shape = self._get_physical_frame_shape(fcm, n_samples,
+                                                     rx_batch_size=rx_batch_size)
+
         buffer = HostBuffer(
             buffer_handle=buffer_handle,
             fac=fac,
@@ -265,8 +266,8 @@ class Us4R(Device):
             rx_batch_size=rx_batch_size)
 
         const_metadata = arrus.metadata.ConstMetadata(
-            context=fac, data_description=echo_data_description,
-            input_shape=input_shape, is_iq_data=False)
+            context=fac, data_desc=echo_data_description,
+            input_shape=input_shape, is_iq_data=False, dtype="int16")
         return buffer, const_metadata
 
 

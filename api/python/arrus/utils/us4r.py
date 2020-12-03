@@ -153,7 +153,6 @@ class RemapToLogicalOrder:
     (n_us4oems*n_samples*n_frames*n_batches, 32) will be reordered to
     (batch_size, n_frames, n_samples, n_channels). A list of metadata objects
     will be returned.
-
     """
 
     def __init__(self, num_pkg=None):

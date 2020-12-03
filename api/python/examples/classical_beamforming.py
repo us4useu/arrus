@@ -48,7 +48,7 @@ def init_display(aperture_size, n_samples):
 def display_data(frame_number, data, metadata, imaging_pipeline, figure, ax, canvas):
     # TODO use the imaging pipeline
     print(f"Displaying frame {frame_number}")
-    bmode, metadata = imaging_pipeline(cp.asarray(data), metadata)
+    bmode = imaging_pipeline(cp.asarray(data))
     canvas.set_data(bmode)
     ax.set_aspect("auto")
     figure.canvas.flush_events()
@@ -213,7 +213,7 @@ def main():
                                          rx_buffer_size=args.host_buffer_size,
                                          rx_batch_size=args.rx_batch_size)
 
-    bmode_imaging.initialize(const_metadata)
+    const_metadata = bmode_imaging.initialize(const_metadata)
     # Start the device.
     us4r.start()
     times = []

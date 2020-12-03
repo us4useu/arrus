@@ -26,11 +26,13 @@ class Pipeline:
         return data
 
     def initialize(self, const_metadata):
+        input_shape = const_metadata.input_shape
         for step in self.steps:
             const_metadata = step._prepare(const_metadata)
         # Force cupy to recompile kernels before running the pipeline.
-        init_array = self.num_pkg.zeros(const_metadata.input_shape)
+        init_array = self.num_pkg.zeros(input_shape, dtype=const_metadata.dtype)
         self.__call__(init_array)
+        return const_metadata
 
     def set_placement(self, device):
         """
@@ -51,8 +53,8 @@ class Pipeline:
             raise ValueError(f"Unsupported device: {device}")
         for step in self.steps:
             step.set_pkgs(**pkgs)
-        self.num_pkg = pkgs.num_pkg
-        self.filter_pkg = pkgs.filter_pkg
+        self.num_pkg = pkgs['num_pkg']
+        self.filter_pkg = pkgs['filter_pkg']
 
 
 class BandpassFilter:
@@ -86,9 +88,6 @@ class BandpassFilter:
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def _is_prepared(self):
-        return self.taps is not None
-
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
         center_frequency = const_metadata.context.sequence.pulse.center_frequency
@@ -98,10 +97,6 @@ class BandpassFilter:
                 2,
                 [l * center_frequency, r * center_frequency],
                 btype='bandpass', fs=sampling_frequency)
-        # taps = scipy.signal.firwin(
-        #     self.numtaps,
-        #     cutoff=[l * center_frequency, r * center_frequency],
-        #     fs=sampling_frequency)
         self.taps = self.xp.asarray(taps)
         return const_metadata
 
@@ -115,7 +110,6 @@ class QuadratureDemodulation:
     """
     Quadrature demodulation (I/Q decomposition).
     """
-
     def __init__(self, num_pkg=None):
         self.mod_factor = None
         self.xp = num_pkg
@@ -162,16 +156,17 @@ class Decimation:
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def __prepare(self, const_metadata):
+    def _prepare(self, const_metadata):
         new_fs = (const_metadata.data_description.sampling_frequency
                   / self.decimation_factor)
         new_signal_description = arrus.metadata.EchoDataDescription(
-            sampling_frequency=new_fs, custom=const_metadata.custom)
+            sampling_frequency=new_fs, custom=
+            const_metadata.data_description.custom)
 
         n_frames, n_channels, n_samples = const_metadata.input_shape
 
-        output_shape = n_frames, n_channels, n_samples//
-        return const_metadata.copy(data_description=new_signal_description,
+        output_shape = n_frames, n_channels, n_samples//self.decimation_factor
+        return const_metadata.copy(data_desc=new_signal_description,
                                    input_shape=output_shape)
 
     def __call__(self, data):
@@ -179,7 +174,7 @@ class Decimation:
         for i in range(self.cic_order):
             data_out = self.xp.cumsum(data_out, axis=-1)
 
-        data_out = data_out[:, :, 0::self.decimation_factor]
+        data_out = data_out[:, :, 0:-1:self.decimation_factor]
 
         for i in range(self.cic_order):
             data_out[:, :, 1:] = self.xp.diff(data_out, axis=-1)
@@ -203,7 +198,6 @@ class RxBeamforming:
         self.interp1d_func = None
 
     def set_pkgs(self, num_pkg, **kwargs):
-        # TODO this function should be possible to call at most one time
         self.xp = num_pkg
         if self.xp is np:
             import scipy.interpolate
@@ -240,13 +234,16 @@ class RxBeamforming:
 
         # TODO store iq trait in the metadata.data_description
         self.is_iq = const_metadata.is_iq_data
+        if self.is_iq:
+            buffer_dtype = self.xp.complex64
+        else:
+            buffer_dtype = self.xp.float32
 
         # -- Output buffer
         self.buffer = self.xp.zeros((self.n_tx, self.n_rx * self.n_samples),
-                                    dtype=const_metadata.input_dtype)
+                                    dtype=buffer_dtype)
 
         # -- Delays
-
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = const_metadata.data_description.sampling_frequency
@@ -256,8 +253,7 @@ class RxBeamforming:
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
-        tx_angle = 0 # TODO use appropriate tx angle
-
+        tx_angle = 0  # TODO use appropriate tx angle
         # TODO keep cache data? Here all the tx/rx parameters are recomputed
         _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
             seq, probe_model, c)
@@ -313,8 +309,6 @@ class RxBeamforming:
                        * self.n_samples
         self.delays = self.delays.reshape(-1, self.n_samples * self.n_rx) \
             .astype(self.xp.float32)
-
-
         # Apodization
         lambd = c / fc
         max_tang = math.tan(
@@ -330,8 +324,10 @@ class RxBeamforming:
         self.t = self.xp.asarray(self.t)
         self.iq_correction = self.xp.exp(1j * 2 * np.pi * fc * self.t) \
             .astype(self.xp.complex64)
+        # Create new output shape
+        return const_metadata.copy(input_shape=(self.n_tx, self.n_samples))
 
-    def __call__(self, data, metadata):
+    def __call__(self, data):
         data = data.copy().reshape(self.n_tx, self.n_rx * self.n_samples)
 
         self.interp1d_func(data, self.delays, self.buffer)
@@ -356,11 +352,14 @@ class EnvelopeDetection:
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def __call__(self, data, metadata):
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata.copy(is_iq_data=False)
+
+    def __call__(self, data):
         if data.dtype != self.xp.complex64:
             raise ValueError(
                 f"Data type {data.dtype} is currently not supported.")
-        return self.xp.abs(data), metadata
+        return self.xp.abs(data)
 
 
 class Transpose:
@@ -376,10 +375,13 @@ class Transpose:
         self.xp = num_pkg
 
     def _prepare(self, const_metadata):
-        pass
+        input_shape = const_metadata.input_shape
+        axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
+        output_shape = tuple(input_shape[ax] for ax in axes)
+        return const_metadata.copy(input_shape=output_shape)
 
-    def __call__(self, data, metadata):
-        return self.xp.transpose(data, self.axes), metadata
+    def __call__(self, data):
+        return self.xp.transpose(data, self.axes)
 
 
 class ScanConversion:
@@ -407,21 +409,21 @@ class ScanConversion:
         # Ignoring provided num. package - currently CPU implementation is
         # available only.
 
-    def _prepare(self, data, metadata: arrus.metadata.Metadata):
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         # TODO check if angle is zero and tx aperture is increasing
         # TODO compute center angle, etc.
-        probe = metadata.context.device.probe.model
-        medium = metadata.context.medium
-        data_desc = metadata.data_description
-        raw_seq = metadata.context.raw_sequence
+        probe = const_metadata.context.device.probe.model
+        medium = const_metadata.context.medium
+        data_desc = const_metadata.data_description
+        raw_seq = const_metadata.context.raw_sequence
 
         if not probe.is_convex_array():
             raise ValueError(
                 "Scan conversion currently works for convex probes data only.")
 
-        n_samples, _ = data.shape
-        seq = metadata.context.sequence
-        custom_data = metadata.context.custom_data
+        n_samples, _ = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+        custom_data = const_metadata.context.custom_data
         if raw_seq is None:
             start_sample = custom_data["start_sample"]
         else:
@@ -451,11 +453,9 @@ class ScanConversion:
         w, h, d = dst_points.shape
         self.dst_points = dst_points.reshape((w * h, d))
         self.dst_shape = len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        return const_metadata.copy(input_shape=self.dst_shape)
 
-    def __call__(self, data, metadata):
-        if self.dst_points is None:
-            self._prepare(data, metadata)
-
+    def __call__(self, data):
         if self.is_gpu:
             data = data.get()
         data[np.isnan(data)] = 0.0
@@ -463,8 +463,7 @@ class ScanConversion:
             (self.radGridIn, self.azimuthGridIn), data, method="linear",
             bounds_error=False, fill_value=0)
         res = interpolator(self.dst_points).reshape(self.dst_shape)
-        # Consider adding information about
-        return res, metadata
+        return res
 
 
 class LogCompression:
@@ -479,11 +478,14 @@ class LogCompression:
         # currently numpy is available only.
         pass
 
-    def __call__(self, data, metadata):
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
+
+    def __call__(self, data):
         if not isinstance(data, np.ndarray):
             data = data.get()
         data[data == 0] = 1e-9
-        return 20 * np.log10(data), metadata
+        return 20 * np.log10(data)
 
 
 class DynamicRangeAdjustment:
@@ -496,8 +498,11 @@ class DynamicRangeAdjustment:
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def __call__(self, data, metadata):
-        return self.xp.clip(data, a_min=self.min, a_max=self.max), metadata
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
+
+    def __call__(self, data):
+        return self.xp.clip(data, a_min=self.min, a_max=self.max)
 
 
 class ToGrayscaleImg:
@@ -508,10 +513,13 @@ class ToGrayscaleImg:
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def __call__(self, data, metadata):
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
+
+    def __call__(self, data):
         data = data - self.xp.min(data)
         data = data/self.xp.max(data)*255
-        return data.astype(self.xp.uint8), metadata
+        return data.astype(self.xp.uint8)
 
 
 def _get_rx_aperture_origin(sequence):
