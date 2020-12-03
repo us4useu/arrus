@@ -530,6 +530,7 @@ Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
 }
 
 void Us4OEMImpl::start() {
+    this->ius4oem->EnableSequencer();
     this->startTrigger();
 }
 
