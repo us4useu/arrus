@@ -97,7 +97,7 @@ if __name__ == "__main__":
         tx_focus=20e-3,
         pulse=Pulse(center_frequency=5e6, n_periods=1, inverse=False),
         rx_aperture_center_element=np.array(expected_channels_off),
-        rx_aperture_size=32,
+        rx_aperture_size=64,
         rx_sample_range=(0, 256),
         pri=2000e-6,
         downsampling_factor=1,
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     session = arrus.Session(cfg_path)
 
     us4r = session.get_device("/Us4R:0")
-    us4r.set_hv_voltage(1)
+    us4r.set_hv_voltage(5)
     buffer = us4r.upload(seq, host_buffer_size=2)
 
     us4r.start()
