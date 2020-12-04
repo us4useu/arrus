@@ -50,6 +50,7 @@ public:
           us4oemPositions(us4oemOutputSizes.size()),
           filledAccumulator((1ul << (size_t) us4oemOutputSizes.size()) - 1) {
 
+        this->initialize();
         // Buffer allocation.
         ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
                             "Currently Us4R data buffer supports up to 16 us4oem modules.");
@@ -107,6 +108,7 @@ public:
     bool signal(Ordinal n, int firing, long long timeout) {
         std::unique_lock<std::mutex> guard(mutex);
         if(this->state != State::RUNNING) {
+            getDefaultLogger()->log(LogSeverity::TRACE, "Signal queue shutdown.");
             return false;
         }
         auto &accumulator = accumulators[firing];
@@ -122,6 +124,7 @@ public:
                 isAccuClear[firing], guard, timeout,
                 ::arrus::format("Us4OEM:{} Timeout while waiting for queue element clearance.", n))
             if(this->state != State::RUNNING) {
+                getDefaultLogger()->log(LogSeverity::TRACE, "Signal queue shutdown.");
                 return false;
             }
         }
@@ -224,6 +227,21 @@ public:
         queueEmpty.notify_all();
         for(auto &cv: isAccuClear) {
             cv.notify_all();
+        }
+    }
+
+    void resetState() {
+        this->state = State::INVALID;
+        this->initialize();
+        this->state = State::RUNNING;
+    }
+
+    void initialize() {
+        this->tailIdx = 0;
+        accumulators = std::vector<AccumulatorType>(this->nElements);
+        isAccuClear = std::vector<std::condition_variable>(this->nElements);
+        for(auto &pos : us4oemPositions) {
+            pos = 0;
         }
     }
 

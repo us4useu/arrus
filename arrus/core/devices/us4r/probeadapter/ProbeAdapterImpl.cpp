@@ -7,6 +7,8 @@
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 #include "arrus/common/utils.h"
 
+#undef ERROR
+
 namespace arrus::devices {
 
 using namespace ::arrus::ops::us4r;
@@ -148,8 +150,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             // FC Mapping stuff
             if(op.getRxAperture()[ach]) {
                 isRxNop = false;
-                frameModule(frameNumber, activeAdapterCh+op.getRxPadding()[0]) = dstModule;
-                frameChannel(frameNumber, activeAdapterCh+op.getRxPadding()[0]) =
+                frameModule(frameNumber, activeAdapterCh + op.getRxPadding()[0]) = dstModule;
+                frameChannel(frameNumber, activeAdapterCh + op.getRxPadding()[0]) =
                     static_cast<int32>(activeUs4oemCh[dstModule]);
                 ++activeAdapterCh;
                 ++activeUs4oemCh[dstModule];
@@ -198,7 +200,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto [buffer, fcMapping] = us4oem->setTxRxSequence(
+        auto[buffer, fcMapping] = us4oem->setTxRxSequence(
             splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, batchSize,
             sri);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
@@ -219,8 +221,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         for(auto bit : op.getRxAperture()) {
             if(bit) {
                 // Frame channel mapping determined by distributing op on multiple devices
-                auto dstModule = frameModule(frameIdx, activeRxChIdx+op.getRxPadding()[0]);
-                auto dstModuleChannel = frameChannel(frameIdx, activeRxChIdx+op.getRxPadding()[0]);
+                auto dstModule = frameModule(frameIdx, activeRxChIdx + op.getRxPadding()[0]);
+                auto dstModuleChannel = frameChannel(frameIdx, activeRxChIdx + op.getRxPadding()[0]);
 
                 // if dstModuleChannel is unavailable, set channel mapping to -1 and continue
                 // unavailable dstModuleChannel means, that the given channel was virtual
@@ -230,12 +232,11 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     ::arrus::ArrusException(
                         "Invalid dstModuleChannel data type, "
                         "rx aperture is outise."));
-                if(FrameChannelMapping::isChannelUnavailable((int8)dstModuleChannel)) {
+                if(FrameChannelMapping::isChannelUnavailable((int8) dstModuleChannel)) {
                     outFcBuilder.setChannelMapping(
-                        frameIdx, activeRxChIdx+op.getRxPadding()[0],
+                        frameIdx, activeRxChIdx + op.getRxPadding()[0],
                         0, FrameChannelMapping::UNAVAILABLE);
-                }
-                else {
+                } else {
                     // Otherwise, we have an actual channel.
                     ARRUS_REQUIRES_TRUE_E(
                         dstModule >= 0 && dstModuleChannel >= 0,
@@ -253,7 +254,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                         destFrameChannel = res.second;
                     }
                     outFcBuilder.setChannelMapping(
-                        frameIdx, activeRxChIdx+op.getRxPadding()[0],
+                        frameIdx, activeRxChIdx + op.getRxPadding()[0],
                         destFrame + frameOffsets[dstModule],
                         destFrameChannel);
                 }
@@ -326,10 +327,10 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
         auto dstAddress = outputBuffer->getAddress(hostElement, ordinal);
         auto srcAddress = transfers.getElement(rxElement).getAddress();
         logger->log(LogSeverity::DEBUG, ::arrus::format("Preparing host buffer to {} from {}, size {}",
-                                                        (size_t)dstAddress, (size_t)srcAddress, elementSize));
+                                                        (size_t) dstAddress, (size_t) srcAddress, elementSize));
         ius4oem->PrepareHostBuffer(dstAddress, elementSize, srcAddress);
         ++hostElement;
-        rxElement = (rxElement+1) % rxBufferSize;
+        rxElement = (rxElement + 1) % rxBufferSize;
     }
 
     // prepare transfers
@@ -349,30 +350,43 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
             [this, ius4oem, outputBuffer, ordinal, transferIdx, startFiring,
                 endFiring, srcAddress, elementSize,
                 rxBufferSize, hostBufferSize,
-                element = transferIdx] () mutable {
-                auto dstAddress = outputBuffer->getAddress((uint16)element, ordinal);
-                ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-                logger->log(LogSeverity::DEBUG, ::arrus::format("Rx Released: {}, {}", startFiring, endFiring));
+                element = transferIdx]() mutable {
+                try {
+                    auto dstAddress = outputBuffer->getAddress((uint16) element, ordinal);
+                    ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                    logger->log(LogSeverity::DEBUG, ::arrus::format("Rx Released: {}, {}", startFiring, endFiring));
 
-                // Prepare transfer for the next iteration.
-                ius4oem->PrepareTransferRXBufferToHost(
-                    transferIdx, dstAddress, elementSize, srcAddress);
-                ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
+                    // Prepare transfer for the next iteration.
+                    ius4oem->PrepareTransferRXBufferToHost(
+                        transferIdx, dstAddress, elementSize, srcAddress);
+                    ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
-                bool cont = outputBuffer->signal(ordinal, element, HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
-                if(!cont) {
-                    logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
-                    return;
-                }
-                // TODO the below should be called when buffer element is released.
-                cont = outputBuffer->waitForRelease(ordinal, element, HostBuffer::INF_TIMEOUT);
-                if(!cont) {
-                    logger->log(LogSeverity::DEBUG, "Output buffer shut down");
-                    return;
-                }
-                ius4oem->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                logger->log(LogSeverity::DEBUG, ::arrus::format("Host Released: {}, {}", startFiring, endFiring));
-                element = (element + rxBufferSize) % hostBufferSize;
+                    bool cont = outputBuffer->signal(ordinal, element,
+                                                     HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
+                    if(!cont) {
+                        logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
+                        return;
+                    }
+                    // TODO the below should be called when buffer element is released.
+                    cont = outputBuffer->waitForRelease(ordinal, element, HostBuffer::INF_TIMEOUT);
+                    if(!cont) {
+                        logger->log(LogSeverity::DEBUG, "Output buffer shut down");
+                        return;
+                    }
+                    ius4oem->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                    logger->log(LogSeverity::DEBUG, ::arrus::format("Host Released: {}, {}", startFiring, endFiring));
+                    element = (element + rxBufferSize) % hostBufferSize;
+                } catch(const std::exception &e) {
+                    logger->log(LogSeverity::ERROR, "Us4OEM: "
+                                                    + std::to_string(ordinal) +
+                                                    " transfer callback ended with an exception: " +
+                                                    e.what());
+                } catch(...) {
+                    logger->log(LogSeverity::ERROR, "Us4OEM: "
+                                                    + std::to_string(ordinal) +
+                                                    " transfer callback ended with unknown exception");
+                   }
+
             }
         );
         // TODO register in the us4oem
@@ -381,16 +395,32 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
     }
     // Register overflow callbacks (mark output buffer as invalid)
 
-    ius4oem->RegisterReceiveOverflowCallback([this, outputBuffer] () {
-        this->logger->log(LogSeverity::FATAL, "Rx buffer overflow, stopping the device.");
-        this->getMasterUs4oem()->stop();
-        outputBuffer->markAsInvalid();
+    ius4oem->RegisterReceiveOverflowCallback([this, outputBuffer]() {
+        try {
+            this->logger->log(LogSeverity::ERROR, "Rx buffer overflow, stopping the device.");
+            this->getMasterUs4oem()->stop();
+            outputBuffer->markAsInvalid();
+        } catch (const std::exception &e) {
+            logger->log(LogSeverity::ERROR, "Receive overflow callback ended with an exception: " +
+                                            std::string(e.what()));
+        } catch (...) {
+            logger->log(LogSeverity::ERROR, "Receive overflow callback ended with unknown exception");
+        }
+
     });
 
-    ius4oem->RegisterTransferOverflowCallback([this, outputBuffer] () {
-        this->logger->log(LogSeverity::FATAL, "Host buffer overflow, stopping the device.");
-        this->getMasterUs4oem()->stop();
-        outputBuffer->markAsInvalid();
+    ius4oem->RegisterTransferOverflowCallback([this, outputBuffer]() {
+        try {
+            this->logger->log(LogSeverity::ERROR, "Host buffer overflow, stopping the device.");
+            this->getMasterUs4oem()->stop();
+            outputBuffer->markAsInvalid();
+        } catch (const std::exception &e) {
+            logger->log(LogSeverity::ERROR, "Receive overflow callback ended with an exception: " +
+                                            std::string(e.what()));
+        } catch (...) {
+            logger->log(LogSeverity::ERROR, "Receive overflow callback ended with unknown exception");
+        }
+
     });
 }
 

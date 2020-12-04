@@ -208,6 +208,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
     ius4oem->SetNumberOfFirings(nOps*batchSize);
     ius4oem->ClearScheduledReceive();
+    ius4oem->ResetCallbacks();
 
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 

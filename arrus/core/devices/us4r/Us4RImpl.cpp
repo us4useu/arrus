@@ -101,9 +101,15 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
         [](const Us4OEMBufferElement& transfer) {
             return transfer.getSize();
         });
+
+    // This is quite time consumming operation - it might be good idea to
+    // check if the buffer properties has changed and reuse the old buffer
+    // if possible.
+    if(this->buffer) {
+        this->buffer.reset();
+    }
     this->buffer = std::make_shared<Us4ROutputBuffer>(
         elementPartSizes, hostBufferNElements);
-    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer);
     return {this->buffer, std::move(fcm)};
 }
 
@@ -116,6 +122,7 @@ void Us4RImpl::start() {
     if(this->state == State::STARTED) {
         throw ::arrus::IllegalStateException("Device is already running.");
     }
+    this->buffer->resetState();
     this->getDefaultComponent()->start();
     this->state = State::STARTED;
 }
@@ -138,7 +145,6 @@ void Us4RImpl::stopDevice() {
     if(this->buffer != nullptr) {
         this->buffer->shutdown();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        this->buffer.reset();
     }
     this->state = State::STOPPED;
 }
