@@ -102,7 +102,7 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
             return transfer.getSize();
         });
 
-    // This is quite time consumming operation - it might be good idea to
+    // This might be quite time consuming operation - it might be good idea to
     // check if the buffer properties has changed and reuse the old buffer
     // if possible.
     if(this->buffer) {
@@ -110,6 +110,7 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
     }
     this->buffer = std::make_shared<Us4ROutputBuffer>(
         elementPartSizes, hostBufferNElements);
+    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer);
     return {this->buffer, std::move(fcm)};
 }
 
