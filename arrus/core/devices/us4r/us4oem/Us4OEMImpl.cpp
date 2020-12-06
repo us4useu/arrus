@@ -396,8 +396,10 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
     for(const auto &op: seq) {
         // Considering rx nops: rx channel mapping will be equal [0, 1,.. 31].
-        // uint8 is required by us4r API.
-        std::vector<uint8> mapping;
+
+        // Index of rx aperture channel (0, 1...32) -> us4oem physical channel
+        // nullopt means that given channel is missing (conflicting with some other channel or is masked)
+        std::vector<std::optional<uint8>> mapping;
         std::unordered_set<uint8> channelsUsed;
 
         // Convert rx aperture + channel mapping -> new rx aperture (with conflicting channels turned off).
@@ -420,50 +422,66 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 auto rxChannel = channelMapping[channel];
                 rxChannel = rxChannel % N_RX_CHANNELS;
                 if(!setContains(channelsUsed, rxChannel) && !setContains(this->channelsMask, channel)) {
+                    // This channel is OK.
                     // STRATEGY: if there are conflicting/masked rx channels, keep the
                     // first one (with the lowest channel number), turn off all
                     // the rest. Turn off conflicting channels.
                     outputRxAperture[channel] = true;
+                    mapping.emplace_back(rxChannel);
+                    channelsUsed.insert(rxChannel);
+                } else {
+                    // This channel is not OK.
+                    mapping.emplace_back(std::nullopt);
                 }
-                mapping.push_back(rxChannel);
-                channelsUsed.insert(rxChannel);
-
                 auto frameNumber = noRxNopId;
                 if(this->isMaster()) {
                     frameNumber = opId;
                 }
                 fcmBuilder.setChannelMapping(frameNumber, onChannel, frameNumber, (int8) (mapping.size() - 1));
-
                 ++onChannel;
             }
             ++channel;
         }
         outputRxApertures.push_back(outputRxAperture);
-        // Replace invalid channels with non-used channels
 
-        // Move all the non active channels to the end of the mapping
+        // Replace invalid channels with unused channels
+        std::list<uint8> unusedChannels;
         for(uint8 i = 0; i < N_RX_CHANNELS; ++i) {
             if(!setContains(channelsUsed, i)) {
-                mapping.push_back(i);
+                unusedChannels.push_back(i);
             }
         }
+        std::vector<uint8> rxMapping;
+        for(auto &dstChannel: mapping) {
+            if(!dstChannel.has_value()) {
+                rxMapping.push_back(unusedChannels.front());
+                unusedChannels.pop_front();
+            } else {
+                rxMapping.push_back(dstChannel.value());
+            }
+        }
+        // Move all the non-active channels to the end of mapping.
+        while(rxMapping.size() != 32) {
+            rxMapping.push_back(unusedChannels.front());
+            unusedChannels.pop_front();
+        }
 
-        auto mappingIt = rxMappings.find(mapping);
+        auto mappingIt = rxMappings.find(rxMapping);
         if(mappingIt == std::end(rxMappings)) {
             // Create new Rx channel mapping.
-            rxMappings.emplace(mapping, rxMapId);
+            rxMappings.emplace(rxMapping, rxMapId);
             result.emplace(opId, rxMapId);
             // Set channel mapping
-            ARRUS_REQUIRES_TRUE(mapping.size() == N_RX_CHANNELS,
+            ARRUS_REQUIRES_TRUE(rxMapping.size() == N_RX_CHANNELS,
                                 arrus::format(
                                     "Invalid size of the RX "
                                     "channel mapping to set: {}",
-                                    mapping.size()));
+                                    rxMapping.size()));
             ARRUS_REQUIRES_TRUE(
                 rxMapId < 128,
                 arrus::format("128 different rx mappings can be loaded only"
                               ", deviceId: {}.", getDeviceId().toString()));
-            ius4oem->SetRxChannelMapping(mapping, rxMapId);
+            ius4oem->SetRxChannelMapping(rxMapping, rxMapId);
             ++rxMapId;
         } else {
             // Use the existing one.
