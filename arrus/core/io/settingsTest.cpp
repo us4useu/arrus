@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <csignal>
 #include <filesystem>
-#include <range/v3/all.hpp>
 
 #include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/common/logging.h"
@@ -14,6 +13,14 @@ using namespace ::arrus::devices;
 using namespace arrus::ops::us4r;
 
 // ARRUS_TEST_DATA_PATH is defined in cmake.
+
+std::vector<ChannelIdx> generateReversed(ChannelIdx a, ChannelIdx b) {
+    std::vector<ChannelIdx> result;
+    for(int i = b - 1; i >= a; --i) {
+        result.push_back(i);
+    }
+    return result;
+}
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
@@ -180,10 +187,7 @@ TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
     // us4oem:1
     auto const &us4oem1 = us4rSettings.getUs4OEMSettings()[1];
     EXPECT_EQ(us4oem1.getChannelMapping(),
-              ranges::view::iota(0, 128)
-              | ranges::view::reverse
-              | ranges::view::transform([](auto v) { return ChannelIdx(v); })
-              | ranges::to_vector);
+              generateReversed(0, 128));
     EXPECT_EQ(us4oem1.getActiveChannelGroups(), std::vector<bool>(
         {
             false, false, false, false,

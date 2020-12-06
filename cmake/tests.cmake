@@ -30,7 +30,6 @@ function(create_core_test test_src)
         GTest::GTest
         Boost::Boost
         fmt::fmt
-        range-v3::range-v3
         Microsoft.GSL::GSL
         Eigen3::Eigen3
         ${other_deps})

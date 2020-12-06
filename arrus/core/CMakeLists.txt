@@ -185,7 +185,6 @@ target_link_libraries(${TARGET_NAME}
     Boost::Boost
     protobuf::libprotobuf
     fmt::fmt
-    range-v3::range-v3
     Eigen3::Eigen3
     Microsoft.GSL::GSL)
 ################################################################################
