@@ -112,6 +112,7 @@ public:
     MOCK_METHOD(void, EnableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, EnableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, SyncReceive, (), (override));
+    MOCK_METHOD(void, ResetCallbacks, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

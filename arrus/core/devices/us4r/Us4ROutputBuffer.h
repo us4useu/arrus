@@ -40,7 +40,7 @@ public:
      * Buffer's constructor.
      *
      * @param us4oemOutputSizes number of samples to allocate for each of the
-     *  us4oem output. That is, the i-th element describes how many samples will
+     *  us4oem output. That is, the i-th element describes how many bytes will
      *  be written by i-th us4oem.
      */
     Us4ROutputBuffer(const std::vector<size_t> &us4oemOutputSizes, uint16 nElements)
@@ -61,7 +61,7 @@ public:
             this->us4oemOffsets.emplace_back(us4oemOffset);
             us4oemOffset += s;
             if(s == 0) {
-                // We should not expect any response from modules, that do not acquire any data.
+                // We should not expect any response from modules, do not acquire any data.
                 filledAccumulator &= ~(1ul << us4oemOrdinal);
             }
             ++us4oemOrdinal;
@@ -105,7 +105,7 @@ public:
      *   reaches the timeout
      *  @return true if the buffer signal was successful, false otherwise (e.g. the queue was shut down).
      */
-    bool signal(Ordinal n, int firing, long long timeout) {
+    bool signal(Ordinal n, int firing, long long timeout = -1) {
         std::unique_lock<std::mutex> guard(mutex);
         if(this->state != State::RUNNING) {
             getDefaultLogger()->log(LogSeverity::TRACE, "Signal queue shutdown.");

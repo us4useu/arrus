@@ -400,10 +400,12 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         std::vector<uint8> mapping;
         std::unordered_set<uint8> channelsUsed;
 
-        // Convert rx aperture + channel mapping -> rx channel mapping
+        // Convert rx aperture + channel mapping -> new rx aperture (with conflicting channels turned off).
         std::bitset<N_ADDR_CHANNELS> outputRxAperture;
 
+        // Us4OEM channel number: values from 0-127
         uint8 channel = 0;
+        // Number of Us4OEM active channel, values from 0-31
         uint8 onChannel = 0;
 
         bool isRxNop = true;
@@ -414,14 +416,13 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     onChannel < N_RX_CHANNELS,
                     ArrusException("Up to 32 active rx channels can be set."));
 
+                // Physical channel number, values 0-31
                 auto rxChannel = channelMapping[channel];
                 rxChannel = rxChannel % N_RX_CHANNELS;
-                if(!setContains(channelsUsed, rxChannel)
-                   && !setContains(this->channelsMask, channel)) {
+                if(!setContains(channelsUsed, rxChannel) && !setContains(this->channelsMask, channel)) {
                     // STRATEGY: if there are conflicting/masked rx channels, keep the
                     // first one (with the lowest channel number), turn off all
-                    // the rest.
-                    // Turn off conflicting channels
+                    // the rest. Turn off conflicting channels.
                     outputRxAperture[channel] = true;
                 }
                 mapping.push_back(rxChannel);
@@ -438,6 +439,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             ++channel;
         }
         outputRxApertures.push_back(outputRxAperture);
+        // Replace invalid channels with non-used channels
 
         // Move all the non active channels to the end of the mapping
         for(uint8 i = 0; i < N_RX_CHANNELS; ++i) {

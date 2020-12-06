@@ -51,7 +51,7 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
     double producerSleepTimeDisp = GetParam().producerSleepTimeDispersion;
     double consumerSleepTimeDisp = GetParam().consumerSleepTimeDispersion;
 
-    auto callback = [&](Ordinal n) {
+    auto producer = [&](Ordinal n) {
         std::random_device rd{};
         std::mt19937 rng{rd()};
         std::normal_distribution<> rDistr{0.0, 1.0};
@@ -68,14 +68,14 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
                         ::arrus::format("Saving frame {}", outputNumber));
                 }
                 auto func = [&] {
-                    uint16 *data = buffer.getAddress(
+                    uint8 *data = buffer.getAddress(
                         (outputNumber % nElements), n);
                     for(size_t i = 0; i < OUTPUT_SIZE; ++i) {
                         data[i] = outputNumber;
                     }
                     ++outputNumber;
                 };
-                buffer.signal(n, 10000, func);
+                buffer.signal(n, firing);
             } catch(const std::exception &e) {
                 std::cerr << e.what() << std::endl;
             }
@@ -85,7 +85,7 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
     // run threads
     std::vector<std::thread> us4oems(nus4oems);
     for(int i = 0; i < nus4oems; ++i) {
-        us4oems[i] = std::thread(callback, static_cast<Ordinal>(i));
+        us4oems[i] = std::thread(producer, static_cast<Ordinal>(i));
     }
 
     std::random_device rd{};
@@ -97,7 +97,7 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
             uint32 sleepTimeMs = std::abs(rDistr(rng)) * consumerSleepTimeDisp * 1000;
             std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMs));
         }
-        uint16 *d = buffer.front();
+        uint16 *d = buffer.tail();
         size_t size = buffer.getElementSize();
         if(frameNumber % LOG_FREQ == 0) {
             getDefaultLogger()->log(arrus::LogSeverity::DEBUG,
@@ -109,7 +109,7 @@ TEST_P(Us4ROutputBufferTest, TestSingleConsumerMultipleProducersWithCallback) {
             ASSERT_EQ(d[i], frameNumber);
         }
         ++frameNumber;
-        buffer.releaseFront();
+        buffer.releaseTail(INFINITY);
     }
 
     for(std::thread &us4oem: us4oems) {

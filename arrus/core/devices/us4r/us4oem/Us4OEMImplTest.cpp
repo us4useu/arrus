@@ -73,8 +73,16 @@ protected:
     MockIUs4OEM *ius4oemPtr;
     Us4OEMImpl::Handle us4oem;
     TGCCurve defaultTGCCurve;
+    uint16 defaultRxBufferSize = 1;
+    uint16 defaultBatchSize = 1;
+    std::optional<float> defaultSri = std::nullopt;
 };
 
+
+#define SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc) \
+     us4oem->setTxRxSequence(seq, tgc, defaultRxBufferSize, defaultBatchSize, defaultSri)
+
+#define SET_TX_RX_SEQUENCE(us4oem, seq) SET_TX_RX_SEQUENCE_TGC(us4oem, seq, defaultTGCCurve)
 
 // ------------------------------------------ TESTING VALIDATION
 TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidApertureSize) {
@@ -85,8 +93,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidApertureSize) {
             (x.txAperture = getNTimes(true, Us4OEMImpl::N_TX_CHANNELS + 1)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
-                 IllegalArgumentException);
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
 
     // Rx aperture: total size
     seq = {
@@ -95,7 +102,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidApertureSize) {
             (x.rxAperture = getNTimes(true, Us4OEMImpl::N_TX_CHANNELS - 1)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 
 //     Rx aperture: number of active elements
@@ -109,7 +116,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidApertureSize) {
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 
     // Tx delays
@@ -119,7 +126,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidApertureSize) {
             (x.txDelays = getNTimes(0.0f, Us4OEMImpl::N_TX_CHANNELS / 2)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 }
 
@@ -131,7 +138,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidTxDelays) {
             (x.txDelays = getNTimes(Us4OEMImpl::MAX_TX_DELAY + 1e-6f, Us4OEMImpl::N_TX_CHANNELS)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 
     seq = {
@@ -140,7 +147,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidTxDelays) {
             (x.txDelays = getNTimes(Us4OEMImpl::MIN_TX_DELAY - 1e-6f, Us4OEMImpl::N_TX_CHANNELS)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 }
 
@@ -152,7 +159,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidPri) {
             (x.pri = Us4OEMImpl::MAX_PRI + 1e-6f))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 
     seq = {
@@ -161,7 +168,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidPri) {
             (x.pri = Us4OEMImpl::MIN_PRI - 1e-6f))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 }
 
@@ -173,7 +180,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsOnly) {
             (x.pulse = Pulse(2e6, 1.3f, false)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 
     seq = {
@@ -182,7 +189,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsOnly) {
             (x.pulse = Pulse(2e6, 1.5f, false)))
             .getTxRxParameters()
     };
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
@@ -195,7 +202,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
             (x.pulse = Pulse(std::nextafter(maxFreq, maxFreq + 1e6f), 1.0f, false)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 
     seq = {
@@ -204,7 +211,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
             (x.pulse = Pulse(Us4OEMImpl::MIN_TX_FREQUENCY - 0.5e6f, 1.0f, false)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(us4oem->setTxRxSequence(seq, defaultTGCCurve),
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 }
 // TODO test memory overflow protection
@@ -224,7 +231,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping032) {
     std::vector<uint8> expectedRxMapping = getRange<uint8>(0, 32);
     EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
 
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping032Missing1518) {
@@ -253,7 +260,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping032Missing1518) {
 
     EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
 
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping1648) {
@@ -274,7 +281,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping1648) {
                             [](size_t i) { return static_cast<uint8>(i % 16); });
     EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
 
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfMappings) {
@@ -317,7 +324,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfMappings) {
     EXPECT_CALL(*ius4oemPtr, ScheduleReceive(1, _, _, _, _, 1, _));
     EXPECT_CALL(*ius4oemPtr, ScheduleReceive(2, _, _, _, _, 0, _));
 
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 class Us4OEMImplConflictingChannelsTest : public ::testing::Test {
@@ -360,17 +367,26 @@ protected:
     MockIUs4OEM *ius4oemPtr;
     Us4OEMImpl::Handle us4oem;
     TGCCurve defaultTGCCurve;
+    uint16 defaultRxBufferSize = 1;
+    uint16 defaultBatchSize = 1;
+    std::optional<float> defaultSri = std::nullopt;
 };
 
 TEST_F(Us4OEMImplConflictingChannelsTest, TurnsOffConflictingChannels) {
     BitMask rxAperture(128, false);
 
-    // 10, 12, 14 and are conflicting:
+    //  11, 14, 30, 8, 12, 5, 10, 9,
+    //  31, 7, 3, 6, 0, 2, 4, 1,
+    //  56, 55, 54, 53, 57, 52, 51, 49,
+    //  50, 48, 47, 46, 44, 45, 58, 42,
+
+    // 10 (10, 42), 12 (12, 44), 14 (14, 46) are conflicting:
 
     // (11, 14, 30,  8, 12,  5, 10,  9,
     //  31,  7,  3,  6,  0,  2,  4,  1,
     //  24, 23, 22, 21, 25, 20, 19, 17,
     //  18, 16, 15, 14, 12, 13, 26, 10)
+
     setValuesInRange(rxAperture, 16, 48, true);
 
     std::vector<TxRxParameters> seq = {
@@ -387,15 +403,14 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TurnsOffConflictingChannels) {
     expectedRxAperture[47] = false;
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
 
+    // The channel mapping should stay unmodified
     std::vector<uint8> expectedRxMapping = {11, 14, 30, 8, 12, 5, 10, 9,
                                             31, 7, 3, 6, 0, 2, 4, 1,
                                             24, 23, 22, 21, 25, 20, 19, 17,
-                                            18, 16, 15, 13, 26,
-        // not used:
-                                            27, 28, 29};
+                                            18, 16, 15, 14, 12, 13, 26, 10};
     EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
 
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 // active channel groups! (NOP, no NOP)
@@ -417,7 +432,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
     EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::SAMPLE_DELAY + sampleRange.start(), _, _, _));
     // ScheduleReceive: starting sample
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
@@ -437,7 +452,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
     EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::SAMPLE_DELAY + sampleRange.start(), _, _, _));
     // ScheduleReceive: starting sample
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
@@ -450,7 +465,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(3, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxFreqency(3e6f, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxInvert(true, 0));
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
@@ -461,7 +476,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
             .getTxRxParameters()
     };
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(6, 0));
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
@@ -472,7 +487,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
             .getTxRxParameters()
     };
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(61, 0));
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
@@ -480,7 +495,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
         TestTxRxParams().getTxRxParameters()
     };
     EXPECT_CALL(*ius4oemPtr, TGCDisable);
-    us4oem->setTxRxSequence(seq, {});
+    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, {});
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
@@ -498,7 +513,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
     }
     EXPECT_CALL(*ius4oemPtr, TGCSetSamples(expectedTgc, _));
 
-    us4oem->setTxRxSequence(seq, tgc);
+    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
@@ -515,7 +530,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
         i = (i - 14.0f) / 40.f;
     }
     EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-    us4oem->setTxRxSequence(seq, tgc);
+    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
@@ -532,7 +547,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
         i = (i - 14.0f) / 40.f;
     }
     EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-    us4oem->setTxRxSequence(seq, tgc);
+    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
@@ -547,7 +562,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(txAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(activeChannelGroup, 0));
 
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapping) {
@@ -560,7 +575,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
@@ -581,7 +596,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
@@ -604,7 +619,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingIncompleteRxAperture) {
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
@@ -629,7 +644,7 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingM
             (x.rxAperture = rxAperture))
             .getTxRxParameters()
     };
-    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
         auto[dstfr, dstch] = fcm->getLogical(0, i);
@@ -687,6 +702,9 @@ protected:
     std::unique_ptr<IUs4OEM> ius4oem;
     MockIUs4OEM *ius4oemPtr;
     TGCCurve defaultTGCCurve;
+    uint16 defaultRxBufferSize = 1;
+    uint16 defaultBatchSize = 1;
+    std::optional<float> defaultSri = std::nullopt;
 };
 
 // no masking - no channels are turned off
@@ -725,7 +743,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, DoesNothingWithAperturesWhenNoChannelM
         EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0));
     }
 
-    us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    SET_TX_RX_SEQUENCE(us4oem, seq);
 }
 
 
@@ -765,7 +783,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
         EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0));
     }
 
-    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
     ASSERT_EQ(fcm->getNumberOfLogicalChannels(), Us4OEMImpl::N_RX_CHANNELS);
@@ -888,7 +906,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
         EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxApertures[i], i));
     }
 
-    auto [fcm, transfers] = us4oem->setTxRxSequence(seq, defaultTGCCurve);
+    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     // Validate generated FCM
     ASSERT_EQ(fcm->getNumberOfLogicalFrames(), 3);
