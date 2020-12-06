@@ -404,10 +404,12 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TurnsOffConflictingChannels) {
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
 
     // The channel mapping should stay unmodified
+    // 27, 28, 29 are not used (should be turned off)
     std::vector<uint8> expectedRxMapping = {11, 14, 30, 8, 12, 5, 10, 9,
                                             31, 7, 3, 6, 0, 2, 4, 1,
                                             24, 23, 22, 21, 25, 20, 19, 17,
-                                            18, 16, 15, 14, 12, 13, 26, 10};
+                                            18, 16, 15, 27, 28, 13, 26, 29};
+
     EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
 
     SET_TX_RX_SEQUENCE(us4oem, seq);
@@ -653,11 +655,12 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingM
     std::cerr << std::endl;
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
+    // turned off channels should be zeroed, so we just expect 0-31 here
     std::vector<int8> expectedDstChannels = {
         0, 1, 2, 3, 4, 5, 6, 7,
         8, 9, 10, 11, 12, 13, 14, 15,
         16, 17, 18, 19, 20, 21, 22, 23,
-        24, 25, 26, -1, -1, 27, 28, -1
+        24, 25, 26, 27, 28, 29, 30, 31
     };
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
@@ -790,9 +793,10 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
 
     std::vector<int8> expectedSrcChannels(Us4OEMImpl::N_RX_CHANNELS, -1);
     expectedSrcChannels[0] = 0;
-    // channel 1 is missing
-    expectedSrcChannels[2] = 1;
-    expectedSrcChannels[3] = 2;
+    expectedSrcChannels[1] = 1;
+    expectedSrcChannels[2] = 2;
+    expectedSrcChannels[3] = 3;
+
     for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
         auto[srcFrame, srcChannel] = fcm->getLogical(0, i);
         EXPECT_EQ(srcFrame, 0);
@@ -917,9 +921,11 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
 
         std::vector<int8> expectedSrcChannels(Us4OEMImpl::N_RX_CHANNELS, -1);
         expectedSrcChannels[0] = 0;
-        // channel 1 is missing (channel 7)
-        expectedSrcChannels[2] = 1;
-        // channel 3 is missing (channel 60)
+        expectedSrcChannels[1] = 1;
+        // rx aperture channel 1 is turned off (channel 7), but still we want to have it here
+        expectedSrcChannels[2] = 2;
+        // rx aperture channel 3 is missing (channel 60)
+        expectedSrcChannels[3] = 3;
 
         for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
             auto [srcFrame, srcChannel] = fcm->getLogical(0, i);
@@ -931,22 +937,13 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
         // Frame 1, 2
         for(int frame = 1; frame <= 2; ++frame) {
             uint8 i = 0;
-            uint8 j = 0;
             ChannelIdx rxChannelNumber = 0;
             for(auto bit : rxApertures[frame]) {
                 if(bit) {
                     auto [srcFrame, srcChannel] = fcm->getLogical(frame, i);
-
                     std::cerr << frame << ", " << (int)i << ", " << srcFrame << ", " << (int)srcChannel << std::endl;
-
-                    if(! ::arrus::setContains<uint8>(channelsMask, rxChannelNumber)) {
-                        ASSERT_EQ(srcFrame, frame);
-                        ASSERT_EQ(srcChannel, j++);
-                    }
-                    else {
-                        ASSERT_EQ(srcChannel, FrameChannelMapping::UNAVAILABLE);
-                    }
-                    ++i;
+                    ASSERT_EQ(srcFrame, frame);
+                    ASSERT_EQ(srcChannel, i++);
                 }
                 ++rxChannelNumber;
             }
