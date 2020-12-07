@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.5.0)
+set(PROJECT_VERSION 0.5.1)
 
 option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
 if(ARRUS_DEVELOP_VERSION)
@@ -87,7 +87,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 # Common dependencies
 ################################################################################
 if(ARRUS_BUILD_SWIG)
-    find_package(Us4 0.5.0 EXACT REQUIRED US4OEM HV256 DBARLite)
+    find_package(Us4 0.5.2 EXACT REQUIRED US4OEM HV256 DBARLite)
 endif()
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
@@ -95,7 +95,6 @@ find_package(protobuf REQUIRED)
 # Use project root to search for .proto files.
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(fmt REQUIRED)
-find_package(range-v3 REQUIRED)
 find_package(Microsoft.GSL REQUIRED)
 find_package(Eigen3 REQUIRED)
 ################################################################################

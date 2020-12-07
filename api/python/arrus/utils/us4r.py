@@ -153,7 +153,6 @@ class RemapToLogicalOrder:
     (n_us4oems*n_samples*n_frames*n_batches, 32) will be reordered to
     (batch_size, n_frames, n_samples, n_channels). A list of metadata objects
     will be returned.
-
     """
 
     def __init__(self, num_pkg=None):
@@ -167,16 +166,16 @@ class RemapToLogicalOrder:
     def _is_prepared(self):
         return self._transfers is not None and self._output_buffer is not None
 
-    def _prepare(self, data, metadata: arrus.metadata.Metadata):
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         xp = self.xp
         # get shape, create an array with given shape
         # create required transfers
         # perform the transfers
-        fcm = metadata.data_description.custom["frame_channel_mapping"]
+        fcm = const_metadata.data_description.custom["frame_channel_mapping"]
         n_frames, n_channels = fcm.frames.shape
         batch_size = fcm.batch_size
         n_samples_set = {op.rx.get_n_samples()
-                         for op in metadata.context.raw_sequence.ops}
+                         for op in const_metadata.context.raw_sequence.ops}
         if len(n_samples_set) > 1:
             raise arrus.exceptions.IllegalArgumentError(
                 f"Each tx/rx in the sequence should acquire the same number of "
@@ -185,17 +184,15 @@ class RemapToLogicalOrder:
         self.output_shape = (n_frames, n_samples, n_channels)
         self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
         self._transfers = group_transfers(fcm)
-        n_samples_raw, n_channels_raw = data.shape
+        n_samples_raw, n_channels_raw = const_metadata.input_shape
         self._input_shape = (n_samples_raw//n_samples, n_samples,
                              n_channels_raw)
         self.batch_size = fcm.batch_size
+        return const_metadata.copy(input_shape=self.output_shape)
 
-    def __call__(self, data, metadata: arrus.metadata.Metadata):
-        if not self._is_prepared():
-            self._prepare(data, metadata)
-        remap(
-            output_array=self._output_buffer,
+    def __call__(self, data):
+        remap(output_array=self._output_buffer,
             input_array=data.reshape(self._input_shape),
             transfers=self._transfers)
-        return self._output_buffer, metadata
+        return self._output_buffer
 

@@ -97,7 +97,7 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
         COMMAND
             ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
         COMMAND
-            ${INSTALL_VENV_EXECUTABLE} -m pip install sphinx sphinx_rtd_theme
+            ${INSTALL_VENV_EXECUTABLE} -m pip install sphinx sphinx_rtd_theme six
             "git+git://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain"
         DEPENDS
             ${VENV_TARGET}

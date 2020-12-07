@@ -2,7 +2,6 @@
 
 #include <type_traits>
 #include <ostream>
-#include <range/v3/all.hpp>
 
 #include "arrus/core/devices/us4r/Us4RSettingsConverterImpl.h"
 
@@ -20,6 +19,14 @@ using namespace arrus::devices;
 using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
 
 // -------- Mappings
+
+std::vector<ChannelIdx> generateReversed(ChannelIdx a, ChannelIdx b) {
+    std::vector<ChannelIdx> result;
+    for(int i = b-1; i >= a; --i) {
+        result.push_back(i);
+    }
+    return result;
+}
 
 struct Mappings {
     ProbeAdapterSettings::ChannelMapping adapterMapping;
@@ -157,21 +164,9 @@ INSTANTIATE_TEST_CASE_P
                          ::arrus::concat<ChannelIdx>(
                                  {
                                          getRange<ChannelIdx>(0, 32),
-                                         ranges::view::iota(32, 64)
-                                         | ranges::view::reverse
-                                         | ranges::view::transform(
-                                                 [](auto v) {
-                                                     return ChannelIdx(v);
-                                                 })
-                                         | ranges::to_vector,
+                                         generateReversed(32, 64),
                                          getRange<ChannelIdx>(64, 96),
-                                         ranges::view::iota(96, 128)
-                                         | ranges::view::reverse
-                                         | ranges::view::transform(
-                                                 [](auto v) {
-                                                     return ChannelIdx(v);
-                                                 })
-                                         | ranges::to_vector,
+                                         generateReversed(96, 128)
                                  })
                  },
 // The same as the input adapter mapping
@@ -198,21 +193,9 @@ INSTANTIATE_TEST_CASE_P
                          // 0:
                          ::arrus::concat<ChannelIdx>(
                                  {
-                                         ranges::view::iota(0, 32)
-                                         | ranges::view::reverse
-                                         | ranges::view::transform(
-                                                 [](auto v) {
-                                                     return ChannelIdx(v);
-                                                 })
-                                         | ranges::to_vector,
-                                         ranges::view::iota(32, 64)
-                                         | ranges::view::reverse
-                                         | ranges::view::transform(
-                                                 [](auto v) {
-                                                     return ChannelIdx(v);
-                                                 })
-                                         | ranges::to_vector,
-                                         getRange<ChannelIdx>(64, 128)
+                                        generateReversed(0, 32),
+                                        generateReversed(32, 64),
+                                        getRange<ChannelIdx>(64, 128)
                                  }),
                          // 1:
                          getRange<ChannelIdx>(0, 128)
@@ -241,21 +224,9 @@ INSTANTIATE_TEST_CASE_P
                          // 0:
                          ::arrus::concat<ChannelIdx>(
                                  {
-                                         ranges::view::iota(0, 32)
-                                         | ranges::view::reverse
-                                         | ranges::view::transform(
-                                                 [](auto v) {
-                                                     return ChannelIdx(v);
-                                                 })
-                                         | ranges::to_vector,
-                                         ranges::view::iota(32, 64)
-                                         | ranges::view::reverse
-                                         | ranges::view::transform(
-                                                 [](auto v) {
-                                                     return ChannelIdx(v);
-                                                 })
-                                         | ranges::to_vector,
-                                         getRange<ChannelIdx>(64, 128)
+                                     generateReversed(0, 32),
+                                     generateReversed(32, 64),
+                                     getRange<ChannelIdx>(64, 128)
                                  }),
                          // 1:
                          getRange<ChannelIdx>(0, 128)

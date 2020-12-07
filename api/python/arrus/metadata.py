@@ -41,6 +41,46 @@ class EchoDataDescription(DataDescription):
     custom: dict = dataclasses.field(default_factory=dict)
 
 
+class ConstMetadata:
+    """
+    A metadata that won't change while the system is running.
+    """
+    def __init__(self, context: FrameAcquisitionContext,
+                 data_desc: DataDescription,
+                 input_shape, is_iq_data, dtype):
+        self._context = context
+        self._data_char = data_desc
+        self._input_shape = input_shape
+        self._is_iq_data = is_iq_data
+        self._dtype = dtype
+
+    @property
+    def context(self) -> FrameAcquisitionContext:
+        return self._context
+
+    @property
+    def data_description(self) -> DataDescription:
+        return self._data_char
+
+    @property
+    def input_shape(self):
+        return self._input_shape
+
+    @property
+    def is_iq_data(self):
+        return self._is_iq_data
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    def copy(self, **kwargs):
+        kw = dict(context=self.context, data_desc=self.data_description,
+                input_shape=self.input_shape, is_iq_data=self.is_iq_data,
+                dtype=self.dtype)
+        return ConstMetadata(**{**kw, **kwargs})
+
+
 class Metadata:
     """
     Metadata describing the acquired data.

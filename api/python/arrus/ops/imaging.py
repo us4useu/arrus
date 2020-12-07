@@ -20,6 +20,7 @@ class LinSequence(arrus.ops.Operation):
     :param speed_of_sound: assumed speed of sound; can be None, in this case a medium in current context will be used to determine speed of sound [m/s]
     :param tgc_start: tgc starting gain [dB]
     :param tgc_slope: tgc gain slope [dB/m]
+    :param sri: sequence repetition interval - the time between consecutive RF frames. When None, the time between consecutive RF frames is determined by the total pri only. [s]
     """
     tx_aperture_center_element: np.ndarray
     tx_aperture_size: float
@@ -33,3 +34,4 @@ class LinSequence(arrus.ops.Operation):
     tgc_slope: float
     speed_of_sound: float = None
     downsampling_factor: int = 1
+    sri: float = None

@@ -18,10 +18,10 @@ int main() noexcept {
         std::shared_ptr<std::ostream> ostream{
             std::shared_ptr<std::ostream>(&std::cout, [](std::ostream *) {})};
         loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::TRACE);
-        std::shared_ptr<std::ostream> logFileStream =
-            // append to the end of the file
-            std::make_shared<std::ofstream>(R"(C:\Users\pjarosik\cpplog.txt)", std::ios_base::app);
-        loggingMechanism->addTextSink(logFileStream, arrus::LogSeverity::TRACE);
+//        std::shared_ptr<std::ostream> logFileStream =
+//            // append to the end of the file
+//            std::make_shared<std::ofstream>(R"(C:\Users\pjarosik\cpplog.txt)", std::ios_base::app);
+//        loggingMechanism->addTextSink(logFileStream, arrus::LogSeverity::TRACE);
 
         ::arrus::setLoggerFactory(loggingMechanism);
 
@@ -57,21 +57,22 @@ int main() noexcept {
                 }
             }
 
-            txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange, 1, {leftPadding, rightPadding}), 1000e-6);
+            txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange, 1, {leftPadding, rightPadding}), 100e-6);
         }
 
-        TxRxSequence seq(txrxs, {});
+        TxRxSequence seq(txrxs, {}, 200e-3);
         us4r->setVoltage(30);
 
-        auto[fcm, buffer] = us4r->uploadSync(seq, 2, 1);
+        auto[buffer, fcm] = us4r->upload(seq, 2, 2);
 
         us4r->start();
         for(int i = 0; i < 10; ++i) {
             std::string msg = "i: " + std::to_string(i) + "\n";
             std::cout << msg;
-            int16_t* data = buffer->tail(0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            buffer->releaseTail(0);
+            int16_t* data = buffer->tail(::arrus::devices::HostBuffer::INF_TIMEOUT);
+//            std::cout << "Got data" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            buffer->releaseTail(::arrus::devices::HostBuffer::INF_TIMEOUT);
         }
         us4r->stop();
 

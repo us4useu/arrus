@@ -1,10 +1,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <utility>
-#include <range/v3/view/zip.hpp>
-#include <range/v3/view/iota.hpp>
-#include <range/v3/view/repeat_n.hpp>
-#include <range/v3/all.hpp>
 
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h"

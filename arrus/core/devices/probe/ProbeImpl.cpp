@@ -45,11 +45,11 @@ private:
     const ProbeModel &modelRef;
 };
 
-std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
+std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                            const ops::us4r::TGCCurve &tgcSamples,
                            uint16 rxBufferSize, uint16 rxBatchSize,
-                           std::optional<float> frameRepetitionInterval) {
+                           std::optional<float> sri) {
     // Validate input sequence
     ProbeTxRxValidator validator(
         ::arrus::format("tx rx sequence for {}", getDeviceId().toString()), model);
@@ -86,12 +86,11 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         adapterSeq.emplace_back(txAperture, txDelays, op.getTxPulse(),
                                 rxAperture, op.getRxSampleRange(),
                                 op.getRxDecimationFactor(), op.getPri(),
-                                op.getRxPadding(), op.isCheckpoint(),
-                                op.getCallback());
+                                op.getRxPadding());
     }
 
     return adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize,
-                                    rxBatchSize, frameRepetitionInterval);
+                                    rxBatchSize, sri);
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {
@@ -110,9 +109,8 @@ void ProbeImpl::syncTrigger() {
     adapter->syncTrigger();
 }
 
-void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
-                                     const std::vector<std::vector<DataTransfer>> &transfers) {
-    adapter->registerOutputBuffer(buffer, transfers);
+void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer) {
+    adapter->registerOutputBuffer(buffer, us4rBuffer);
 }
 
 void ProbeImpl::setTgcCurve(const std::vector<float> &tgcCurve) {

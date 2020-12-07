@@ -16,6 +16,7 @@
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 #include "arrus/core/devices/us4r/DataTransfer.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 
 
 namespace arrus::devices {
@@ -31,6 +32,7 @@ public:
     using RawHandle = PtrHandle<Us4OEMImpl>;
 
     using OutputDType = int16;
+    using FiringIdx = uint16;
     // voltage, +/- [V] amplitude, (ref: technote)
     static constexpr Voltage MIN_VOLTAGE = 0;
     static constexpr Voltage MAX_VOLTAGE = 90; // 180 vpp
@@ -62,7 +64,6 @@ public:
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
-    static constexpr size_t DDR_OFFSET_HOST = 0x1'0000'0000;
     static constexpr size_t DDR_SIZE = 1ull << 32u;
     // Other
     static constexpr float MIN_PRI = 50e-6f;
@@ -92,11 +93,9 @@ public:
 
     void syncTrigger() override;
 
-    std::tuple<FrameChannelMapping::Handle, std::vector<std::vector<DataTransfer>>, float>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize,
-                    std::optional<float> anOptional) override;
+    std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
+                    uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri) override;
 
     double getSamplingFrequency() override;
 
@@ -104,18 +103,18 @@ public:
         return Interval<Voltage>(MIN_VOLTAGE, MAX_VOLTAGE);
     }
 
-    void transferData(uint8_t *dstAddress, size_t size, size_t srcAddress) override;
-
     void start() override;
 
     void stop() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<std::vector<DataTransfer>> &transfers) override;
-
     void setTgcCurve(const ops::us4r::TGCCurve &tgc) override;
 
+    Ius4OEMRawHandle getIUs4oem() override;
+
+    void enableSequencer() override;
+
 private:
-    using Us4rBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
+    using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -126,7 +125,7 @@ private:
 
     std::tuple<
         std::unordered_map<uint16, uint16>,
-        std::vector<Us4OEMImpl::Us4rBitMask>,
+        std::vector<Us4OEMImpl::Us4OEMBitMask>,
         FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 

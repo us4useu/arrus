@@ -196,9 +196,8 @@ class Us4R(Device):
         # TODO use sampling frequency from the us4r device
         return 65e6
 
-    def upload(self, seq: arrus.ops.Operation, mode="sync",
-               rx_buffer_size=None, host_buffer_size=None,
-               frame_repetition_interval=None,
+    def upload(self, seq: arrus.ops.Operation,
+               rx_buffer_size=2, host_buffer_size=2,
                rx_batch_size=1) -> HostBuffer:
         """
         Uploads a given sequence of operations to perform on the device.
@@ -220,21 +219,10 @@ class Us4R(Device):
         :return: a data buffer
         """
         # Verify the input parameters.
-        if mode not in {"async", "sync"}:
-            raise ValueError(f"Unrecognized mode: {mode}")
-
-        if mode == "sync" and (rx_buffer_size is not None
-                               or frame_repetition_interval is not None):
-            raise ValueError("rx_buffer_size and "
-                             "frame_repetition_interval should be None "
-                             "for 'sync' mode.")
-
-        if host_buffer_size is None:
-            host_buffer_size = 2
-
         if host_buffer_size % rx_batch_size != 0:
             raise ValueError("Host buffer size should be a multiple "
                              "of rx batch size.")
+
         host_buffer_size = host_buffer_size // rx_batch_size
 
         # Prepare sequence to load
@@ -243,19 +231,10 @@ class Us4R(Device):
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
         core_seq = arrus.utils.core.convert_to_core_sequence(raw_seq)
 
-        # Load the sequence
-        upload_result = None
-        if mode == "sync":
-            upload_result = self._handle.uploadSync(core_seq, host_buffer_size,
-                                                    rx_batch_size)
-        elif mode == "async":
-            upload_result = self._handle.uploadAsync(
-                core_seq, rxBufferSize=rx_buffer_size,
-                hostBufferSize=host_buffer_size,
-                frameRepetitionInterval=frame_repetition_interval)
+        upload_result = self._handle.upload(core_seq, rx_buffer_size, host_buffer_size)
 
         # Prepare data buffer and constant context metadata
-        fcm, buffer_handle = upload_result[0], upload_result[1]
+        buffer_handle, fcm = upload_result[0], upload_result[1]
 
         # -- Constant metadata
         # --- FCM
@@ -269,17 +248,28 @@ class Us4R(Device):
 
         # --- Data buffer
         n_samples = raw_seq.get_n_samples()
+        
         if len(n_samples) > 1:
             raise arrus.exceptions.IllegalArgumentError(
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
+
         n_samples = next(iter(n_samples))
-        return HostBuffer(
+        input_shape = self._get_physical_frame_shape(fcm, n_samples,
+                                                     rx_batch_size=rx_batch_size)
+
+        buffer = HostBuffer(
             buffer_handle=buffer_handle,
             fac=fac,
             data_description=echo_data_description,
-            frame_shape=self._get_physical_frame_shape(fcm, n_samples,rx_batch_size=rx_batch_size),
+            frame_shape=input_shape,
             rx_batch_size=rx_batch_size)
+
+        const_metadata = arrus.metadata.ConstMetadata(
+            context=fac, data_desc=echo_data_description,
+            input_shape=input_shape, is_iq_data=False, dtype="int16")
+        return buffer, const_metadata
+
 
     def _create_kernel_context(self, seq):
         return arrus.kernels.kernel.KernelExecutionContext(
@@ -315,9 +305,6 @@ class Us4R(Device):
 
 
 # ------------------------------------------ LEGACY MOCK
-
-
-
 @dataclasses.dataclass(frozen=True)
 class Us4RDTO(arrus.devices.device.UltrasoundDeviceDTO):
     probe: arrus.devices.probe.ProbeDTO

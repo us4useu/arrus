@@ -27,7 +27,7 @@ from arrus.utils.imaging import (
 
 from arrus.utils.us4r import RemapToLogicalOrder
 
-arrus.set_clog_level(arrus.logging.INFO)
+arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
@@ -44,15 +44,19 @@ def init_display(aperture_size, n_samples):
     fig.show()
     return fig, ax, canvas
 
+metadatas = []
+bmodes = []
 
 def display_data(frame_number, data, metadata, imaging_pipeline, figure, ax, canvas):
     # TODO use the imaging pipeline
     print(f"Displaying frame {frame_number}")
-    bmode, metadata = imaging_pipeline(cp.asarray(data), metadata)
-    canvas.set_data(bmode)
-    ax.set_aspect("auto")
-    figure.canvas.flush_events()
-    plt.draw()
+    metadatas.append(metadata.custom["frame_metadata_view"].copy())
+    bmode = imaging_pipeline(cp.asarray(data))
+    bmodes.append(bmode)
+    # canvas.set_data(bmode)
+    # ax.set_aspect("auto")
+    # figure.canvas.flush_events()
+    # plt.draw()
 
 
 rf_data = []
@@ -174,11 +178,12 @@ def main():
         rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
-        pri=100e-6,
+        pri=200e-6,
         tgc_start=14,
         tgc_slope=2e2,
         downsampling_factor=2,
-        speed_of_sound=1490)
+        speed_of_sound=1490,
+        sri=500e-3)
 
     bmode_imaging = create_bmode_imaging_pipeline(x_grid=x_grid, z_grid=z_grid)
     iq_rec = iq_reconstruct(4, 2)
@@ -208,17 +213,19 @@ def main():
 
     # Set initial voltage on the us4r-lite device.
     # Upload sequence on the us4r-lite device.
-    buffer = us4r.upload(seq, mode="sync",
-                         host_buffer_size=args.host_buffer_size,
-                         rx_batch_size=args.rx_batch_size)
+    buffer, const_metadata = us4r.upload(seq, host_buffer_size=args.host_buffer_size,
+                                         rx_buffer_size=args.host_buffer_size,
+                                         rx_batch_size=args.rx_batch_size)
 
+    const_metadata = bmode_imaging.initialize(const_metadata)
     # Start the device.
     us4r.start()
     times = []
     arrus.logging.log(arrus.logging.INFO, f"Running {args.n} iterations.")
     for i in range(args.n):
         start = time.time()
-        data, metadata = buffer.head()
+        data, metadata = buffer.tail()
+        print(data.ctypes.data)
 
         if action_func is not None:
             action_func(i, data, metadata)

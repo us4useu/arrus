@@ -145,12 +145,11 @@ set(SRC_FILES
     api/framework/Constant.h
     framework/graph/Graph.h
     api/framework/Op.h
-    api/framework/CircularQueue.h
     api/devices.h
     api/framework.h
     api/ops/us4r/tgc.h
     api/examples.h
-    devices/UltrasoundDevice.h api/devices/us4r/HVSettings.h api/devices/us4r/HVModelId.h devices/us4r/hv/HV256Impl.h devices/us4r/hv/HV256Factory.h devices/us4r/hv/HV256Impl.cpp devices/us4r/hv/HV256FactoryImpl.h devices/us4r/hv/HV256FactoryImpl.cpp api/devices/us4r/FrameChannelMapping.h devices/us4r/FrameChannelMappingImpl.cpp devices/us4r/FrameChannelMappingImpl.h common/aperture.h external/eigen/Tensor.h devices/us4r/us4oem/Us4OEMImplBase.h devices/us4r/probeadapter/ProbeAdapterImplBase.h devices/probe/ProbeImplBase.h external/eigen/Dense.h ../common/utils.h devices/us4r/RxBuffer.h devices/us4r/HostBufferWorker.h devices/us4r/Us4RHostBuffer.h devices/us4r/DataTransfer.h api/devices/us4r/HostBuffer.h devices/us4r/Watchdog.h)
+    devices/UltrasoundDevice.h api/devices/us4r/HVSettings.h api/devices/us4r/HVModelId.h devices/us4r/hv/HV256Impl.h devices/us4r/hv/HV256Factory.h devices/us4r/hv/HV256Impl.cpp devices/us4r/hv/HV256FactoryImpl.h devices/us4r/hv/HV256FactoryImpl.cpp api/devices/us4r/FrameChannelMapping.h devices/us4r/FrameChannelMappingImpl.cpp devices/us4r/FrameChannelMappingImpl.h common/aperture.h external/eigen/Tensor.h devices/us4r/us4oem/Us4OEMImplBase.h devices/us4r/probeadapter/ProbeAdapterImplBase.h devices/probe/ProbeImplBase.h external/eigen/Dense.h ../common/utils.h devices/us4r/DataTransfer.h api/devices/us4r/HostBuffer.h api/framework/FifoBuffer.h devices/us4r/us4oem/Us4OEMBuffer.h devices/us4r/Us4RBuffer.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -186,7 +185,6 @@ target_link_libraries(${TARGET_NAME}
     Boost::Boost
     protobuf::libprotobuf
     fmt::fmt
-    range-v3::range-v3
     Eigen3::Eigen3
     Microsoft.GSL::GSL)
 ################################################################################
@@ -208,37 +206,36 @@ if (ARRUS_RUN_TESTS)
     set(ARRUS_CORE_DEVICES_TESTS_SRCS
         devices/DeviceId.cpp common/logging.cpp)
     # core::devices test
-#    create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
-#    create_core_test(devices/utilsTest.cpp)
-#    create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp
-#            "${ARRUS_CORE_DEVICES_TESTS_SRCS}")
-#    create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp devices/DeviceId.cpp)
-#    create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp devices/DeviceId.cpp)
-#    set(US4OEM_FACTORY_IMPL_TEST_DEPS devices/DeviceId.cpp common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
-#        devices/TxRxParameters.cpp devices/us4r/FrameChannelMappingImpl.cpp)
-#    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "${US4OEM_FACTORY_IMPL_TEST_DEPS}")
+    create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/utilsTest.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp "${ARRUS_CORE_DEVICES_TESTS_SRCS}")
+    create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp devices/DeviceId.cpp)
+    set(US4OEM_FACTORY_IMPL_TEST_DEPS devices/DeviceId.cpp common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
+        devices/TxRxParameters.cpp devices/us4r/FrameChannelMappingImpl.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "${US4OEM_FACTORY_IMPL_TEST_DEPS}")
 #    #    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
-#    create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
-#    create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
+    create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
+    create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
 #    create_core_test(devices/us4r/Us4ROutputBufferTest.cpp "common/logging.cpp")
-#    create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
+    create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
 #
-#    set(US4OEM_IMPL_TEST_DEPS common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
-#        devices/us4r/common.cpp
-#        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
-#    create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
-#
-#    set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
-#        devices/us4r/common.cpp
-#        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
-#    create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
-#    # core::io tests
-#    set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
-#    create_core_test(
-#        io/settingsTest.cpp
-#        "" # no additional source files
-#        "protobuf::libprotobuf;arrus-core"
-#        "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
+    set(US4OEM_IMPL_TEST_DEPS common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
+        devices/us4r/common.cpp
+        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
+    create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
+
+    set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
+        devices/us4r/common.cpp
+        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
+    create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
+    # core::io tests
+    set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
+    create_core_test(
+        io/settingsTest.cpp
+        "" # no additional source files
+        "protobuf::libprotobuf;arrus-core"
+        "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
 endif ()
 
 ################################################################################

@@ -2,7 +2,6 @@
 #define ARRUS_CORE_DEVICES_UTILS_H
 
 #include <string>
-#include <range/v3/all.hpp>
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
 

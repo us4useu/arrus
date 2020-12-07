@@ -2,7 +2,6 @@
 #define ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERSETTINGSVALIDATOR_H
 
 #include <unordered_set>
-#include <range/v3/view/transform.hpp>
 #include <limits>
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 
@@ -41,8 +40,10 @@ public:
                                 " (size, compared to nChannels)");
 
         // Get the number of us4oems
-        auto modules = obj.getChannelMapping() |
-                       ranges::view::transform([](auto v) { return v.first; });
+        std::vector<Ordinal> modules;
+        for(auto &[us4oem, channel] : obj.getChannelMapping()) {
+            modules.push_back(us4oem);
+        }
 
         // Check if contains consecutive ordinal numbers.
         // Us4OEMs should have exactly ordinals: 0, 1, ... nmodules-1
@@ -103,16 +104,11 @@ public:
 
                 // Make sure, the mapping contains [0,31)*i*32 groups
                 // (where i can be 0, 1, 2, 3)
-                auto groups = channelsSet | ranges::view::transform(
-                        [=](auto v) { return v / N_RX; });
-
-
-                bool isSingleGroup = std::reduce(
-                        std::begin(groups), std::end(groups),
-                        true,
-                        [&groups](bool init, auto idx) {
-                           return init && idx == groups.front();
-                        });
+                std::unordered_set<OEMMappingElement> groups;
+                for(auto v: channelsSet) {
+                    groups.insert(v / N_RX);
+                }
+                bool isSingleGroup = groups.size() == 1;
 
                 expectTrue(
                         "channel mapping",
