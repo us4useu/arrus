@@ -232,8 +232,6 @@ class RxBeamforming:
         medium = const_metadata.context.medium
 
         self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
-
-        # TODO store iq trait in the metadata.data_description
         self.is_iq = const_metadata.is_iq_data
         if self.is_iq:
             buffer_dtype = self.xp.complex64
@@ -299,10 +297,10 @@ class RxBeamforming:
             (x_distance - element_x) ** 2 + (z_distance - element_z) ** 2)
 
         self.t = (tx_distance + rx_distance) / c + initial_delay
-        self.delays = self.t * fs
+        self.delays = self.t * fs # in number of samples
         total_n_samples = self.n_rx * self.n_samples
         # Move samples outside the available area
-        self.delays[self.delays > self.n_samples] = total_n_samples + 1
+        self.delays[self.delays >= self.n_samples-1] = total_n_samples + 1
         # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
         #  row-wise major order).
         self.delays = self.xp.asarray(self.delays)
