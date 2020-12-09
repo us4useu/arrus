@@ -31,7 +31,7 @@ class Pipeline:
         for step in self.steps:
             const_metadata = step._prepare(const_metadata)
         # Force cupy to recompile kernels before running the pipeline.
-        init_array = self.num_pkg.zeros(input_shape, dtype=input_dtype)
+        init_array = self.num_pkg.zeros(input_shape, dtype=input_dtype)+1000
         self.__call__(init_array)
         return const_metadata
 
