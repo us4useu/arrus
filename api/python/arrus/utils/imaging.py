@@ -230,6 +230,7 @@ class RxBeamforming:
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         medium = const_metadata.context.medium
+        rx_aperture_center_element = np.array(seq.rx_aperture_center_element)
 
         self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
         self.is_iq = const_metadata.is_iq_data
@@ -437,7 +438,7 @@ class ScanConversion:
         tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
-            probe.element_pos_z)
+             probe.element_pos_z)
 
         self.radGridIn = (
                 (start_sample / fs + np.arange(0, n_samples) / fs)
@@ -523,7 +524,7 @@ class ToGrayscaleImg:
 
 def _get_rx_aperture_origin(sequence):
     rx_aperture_size = sequence.rx_aperture_size
-    rx_aperture_center_element = sequence.rx_aperture_center_element
+    rx_aperture_center_element = np.array(sequence.rx_aperture_center_element)
     rx_aperture_origin = np.round(rx_aperture_center_element -
                                (rx_aperture_size - 1) / 2 + 1e-9)
     return rx_aperture_origin

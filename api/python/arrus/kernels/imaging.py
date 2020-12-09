@@ -30,9 +30,9 @@ def create_lin_sequence(context):
     sri = op.sri
     fs = context.device.sampling_frequency/op.downsampling_factor
 
-    tx_centers = op.tx_aperture_center_element
+    tx_centers = np.array(op.tx_aperture_center_element)
     tx_ap_size = op.tx_aperture_size
-    rx_centers = op.rx_aperture_center_element
+    rx_centers = np.array(op.rx_aperture_center_element)
     rx_ap_size = op.rx_aperture_size
     if tx_centers.shape != rx_centers.shape:
         raise arrus.exceptions.IllegalArgumentError(
