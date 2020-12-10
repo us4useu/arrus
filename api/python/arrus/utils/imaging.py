@@ -459,11 +459,10 @@ class ScanConversion:
         if self.is_gpu:
             data = data.get()
         data[np.isnan(data)] = 0.0
-        interpolator = scipy.interpolate.RegularGridInterpolator(
+        self.interpolator = scipy.interpolate.RegularGridInterpolator(
             (self.radGridIn, self.azimuthGridIn), data, method="linear",
             bounds_error=False, fill_value=0)
-        res = interpolator(self.dst_points).reshape(self.dst_shape)
-        return res
+        return self.interpolator(self.dst_points).reshape(self.dst_shape)
 
 
 class LogCompression:
