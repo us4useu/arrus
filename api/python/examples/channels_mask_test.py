@@ -109,13 +109,14 @@ if __name__ == "__main__":
 
     us4r = session.get_device("/Us4R:0")
     us4r.set_hv_voltage(5)
-    buffer = us4r.upload(seq, host_buffer_size=2)
+    buffer, const_metadata = us4r.upload(seq, host_buffer_size=2)
 
     us4r.start()
     data, metadata = buffer.tail()
     remap_step = arrus.utils.us4r.RemapToLogicalOrder()
     remap_step.set_pkgs(num_pkg=np)
-    remapped_data, metadata = remap_step(data, metadata)
+    remap_step._prepare(const_metadata)
+    remapped_data = remap_step(data)
     print("Calling channels mask check.")
     check_channels_mask(rf=remapped_data,
                         channel_mask=expected_channels_off,
