@@ -7,6 +7,8 @@
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/common/hash.h"
 #include "arrus/core/devices/DeviceId.h"
+#include "arrus/core/session/SessionImpl.h"
+#include "arrus/core/session/SessionController.h"
 
 namespace arrus::session {
 
@@ -24,6 +26,8 @@ public:
     arrus::devices::Device::RawHandle
     getDevice(const arrus::devices::DeviceId &deviceId) override;
 
+    void run(arrus::ops::Op::SharedHandle op) override;
+
     SessionImpl(SessionImpl const &) = delete;
 
     void operator=(SessionImpl const &) = delete;
@@ -31,6 +35,12 @@ public:
     SessionImpl(SessionImpl const &&) = delete;
 
     void operator=(SessionImpl const &&) = delete;
+
+    void setVoltage(Voltage voltage) override;
+
+    void start() override;
+
+    void stop() override;
 
 private:
     using DeviceMap = std::unordered_map<
@@ -43,6 +53,7 @@ private:
 
     DeviceMap devices;
     arrus::devices::Us4RFactory::Handle us4rFactory;
+    std::unique_ptr<SessionController> controller;
 };
 
 

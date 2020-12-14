@@ -99,9 +99,24 @@ SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     return result;
 }
 
+void SessionImpl::run(arrus::ops::Op::SharedHandle op) {
+    throw ::arrus::ArrusException("NYI");
+}
+
 SessionImpl::~SessionImpl() {
     ::arrus::getDefaultLogger()->log(LogSeverity::INFO, "Closing session.");
 }
 
+void SessionImpl::setVoltage(Voltage voltage) {
+
+}
+
+void SessionImpl::start() {
+
+}
+
+void SessionImpl::stop() {
+
+}
 
 }

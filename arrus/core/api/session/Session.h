@@ -5,6 +5,7 @@
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/SessionSettings.h"
+#include "arrus/core/api/ops/Op.h"
 
 namespace arrus::session {
 
@@ -29,6 +30,18 @@ public:
      */
     virtual arrus::devices::Device *
     getDevice(const arrus::devices::DeviceId &deviceId) = 0;
+
+    /**
+     * Runs given operation in the current session asynchronously.
+     */
+    virtual void run(arrus::ops::Op::SharedHandle op) = 0;
+
+    // TODO run SetHVVoltage operation instead
+    virtual void setVoltage(Voltage voltage) = 0;
+
+    virtual void start() = 0;
+
+    virtual void stop() = 0;
 
     virtual ~Session() = default;
 };
