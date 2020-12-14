@@ -201,7 +201,11 @@ probe_models: [
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
-        }
+        },
+        voltage_range: {
+			begin: 0,
+			end: 75
+		}
     },
     {
         id: {
@@ -213,7 +217,11 @@ probe_models: [
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
-        }
+        },
+        voltage_range: {
+			begin: 0,
+			end: 75
+		}
     },
     {
         id: {
@@ -225,7 +233,11 @@ probe_models: [
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
-        }
+        },
+        voltage_range: {
+			begin: 0,
+			end: 75
+		}
     },
     {
         id: {
@@ -237,7 +249,11 @@ probe_models: [
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
-        }
+        },
+        voltage_range: {
+			begin: 0,
+			end: 75
+		}
     }
 ]
 
