@@ -15,8 +15,7 @@ public:
 
     SessionController(): logger{getLoggerFactory()->getLogger()} {
         INIT_ARRUS_DEVICE_LOGGER(logger, "SessionController");
-
-        kernels.emplace();
+        // Initialize kernels that should be always available: SetHVVoltage, etc.
     }
 
     void start() {
@@ -56,7 +55,6 @@ private:
     std::thread thread;
     BlockingQueue<::arrus::ops::Op::SharedHandle> queue;
     // op type id -> kernel
-    std::unordered_map<unsigned, ::arrus::kernels::Kernel> kernels;
 };
 
 }

@@ -5,8 +5,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "arrus/core/api/common/exceptions.h"
-#include "arrus/common/format.h"
 #include "arrus/common/compiler.h"
 #include "arrus/core/devices/utils.h"
 
@@ -18,7 +16,6 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/devices/us4r/hv/HV256FactoryImpl.h"
-#include "arrus/core/session/SessionSettings.h"
 #include "arrus/core/api/io/settings.h"
 
 namespace arrus::session {
