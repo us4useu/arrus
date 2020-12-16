@@ -424,11 +424,15 @@ class ScanConversion:
         n_samples, _ = const_metadata.input_shape
         seq = const_metadata.context.sequence
         custom_data = const_metadata.context.custom_data
+
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = data_desc.sampling_frequency
+
         if raw_seq is None:
             start_sample = custom_data["start_sample"]
         else:
             start_sample = raw_seq.ops[0].rx.sample_range[0]
-        fs = data_desc.sampling_frequency
 
         if seq.speed_of_sound is not None:
             c = seq.speed_of_sound
@@ -441,7 +445,7 @@ class ScanConversion:
              probe.element_pos_z)
 
         self.radGridIn = (
-                (start_sample / fs + np.arange(0, n_samples) / fs)
+                (start_sample / acq_fs + np.arange(0, n_samples) / fs)
                 * c / 2)
 
         self.azimuthGridIn = tx_ap_cent_ang
