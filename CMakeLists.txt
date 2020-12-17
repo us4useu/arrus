@@ -87,7 +87,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 # Common dependencies
 ################################################################################
 if(ARRUS_BUILD_SWIG)
-    find_package(Us4 0.5.2 EXACT REQUIRED US4OEM HV256 DBARLite)
+    find_package(Us4 0.5.3 EXACT REQUIRED US4OEM HV256 DBARLite)
 endif()
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
