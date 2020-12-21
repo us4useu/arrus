@@ -388,6 +388,22 @@ probe_to_adapter_connections: [
             begin: 0
             end: 128
         }
-    }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "vermon"
+            name: "la/20/128"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "atl/philips"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 128
+        }
+    }    
    
 ]
