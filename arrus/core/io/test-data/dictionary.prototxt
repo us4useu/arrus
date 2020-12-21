@@ -291,7 +291,40 @@ probe_models: [
 			begin: 0,
 			end: 75
 		}
-    }
+    },
+    
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "5L128"
+        }
+        n_elements: 128,
+        pitch: 0.6e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "vermon"
+            name: "la/20/128"
+        }
+        n_elements: 128,
+        pitch: 0.1e-3,
+        tx_frequency_range: {
+            begin: 10e6,
+            end: 30e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 15
+		}
+    }    
 ]
 
 probe_to_adapter_connections: [
@@ -376,5 +409,38 @@ probe_to_adapter_connections: [
                 begin: 0
                 end: 128
          }
-     }
+     },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "5L128"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 128
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "vermon"
+            name: "la/20/128"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "atl/philips"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 128
+        }
+    }    
+   
 ]
