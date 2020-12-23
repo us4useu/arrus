@@ -341,6 +341,10 @@ probe_to_adapter_connections: [
             {
                 manufacturer: "us4us"
                 name: "esaote2"
+            },
+	    {
+                manufacturer: "us4us"
+                name: "esaote3"
             }
         ]
         channel_mapping_ranges: {
@@ -361,6 +365,10 @@ probe_to_adapter_connections: [
             {
                 manufacturer: "us4us"
                 name: "esaote2"
+            },
+	    {
+                manufacturer: "us4us"
+                name: "esaote3"
             }
         ]
         channel_mapping_ranges: {
@@ -381,7 +389,11 @@ probe_to_adapter_connections: [
              {
                  manufacturer: "us4us"
                  name: "esaote2"
-             }
+             },
+	     {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
          ]
          channel_mapping_ranges: [
             {
