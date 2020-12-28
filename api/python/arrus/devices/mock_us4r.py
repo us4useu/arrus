@@ -24,10 +24,19 @@ class MockFileBuffer:
             context=self.metadata.context,
             data_desc=self.metadata.data_description,
             custom=custom_data)
-        return np.array(self.dataset[self.i]), metadata
+        return self.dataset[self.i], metadata
 
     def release_tail(self, timeout=None):
         self.i = (self.i + 1) % self.n_frames
+
+    def get_n_elements(self):
+        return self.n_frames
+
+    def get_element(self, i):
+        return self.dataset[i].ctypes.data
+
+    def get_element_size(self):
+        return self.dataset[0].nbytes
 
 
 class MockUs4R(Device):

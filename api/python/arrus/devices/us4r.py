@@ -86,11 +86,10 @@ class HostBuffer:
         else:
             array = self.buffer_cache[data_addr]
             frame_metadata_view = self.frame_metadata_cache[data_addr]
-        # TODO extract first lines from each frame lazily
         metadata = arrus.metadata.Metadata(
             context=self.fac,
             data_desc=self.data_description,
-            custom={"frame_metadata_view": frame_metadata_view.copy()}
+            custom={"frame_metadata_view": frame_metadata_view}
         )
         return array, metadata
 
@@ -131,6 +130,15 @@ class HostBuffer:
         ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
         arr = np.ctypeslib.as_array(ctypes_ptr, shape=self.frame_shape)
         return arr
+
+    def get_n_elements(self):
+        return self.buffer_handle.getNumberOfElements()
+
+    def get_element(self, i):
+        return self.buffer_handle.getElement(i)
+
+    def get_element_size(self):
+        return self.buffer_handle.getElementSize()
 
 
 class Us4R(Device):

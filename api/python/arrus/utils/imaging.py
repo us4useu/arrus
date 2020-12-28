@@ -98,7 +98,7 @@ class BandpassFilter:
                 2,
                 [l * center_frequency, r * center_frequency],
                 btype='bandpass', fs=sampling_frequency)
-        self.taps = self.xp.asarray(taps)
+        self.taps = self.xp.asarray(taps).astype(self.xp.float32)
         return const_metadata
 
     def __call__(self, data):
