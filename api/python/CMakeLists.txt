@@ -84,6 +84,7 @@ set(SOURCE_FILES
     arrus/utils/parameters.py
 	arrus/utils/us4r.py
 	arrus/utils/us4r_remap_gpu.py
+	arrus/utils/fir.py
 	arrus/utils/interpolate.py
 	arrus/utils/core.py
     arrus/tests/tools.py

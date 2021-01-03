@@ -2,6 +2,7 @@ import numpy as np
 import math
 import scipy
 import scipy.signal as signal
+import scipy.ndimage
 import arrus.metadata
 import arrus.devices.cpu
 import arrus.devices.gpu
@@ -143,7 +144,7 @@ class Decimation:
     See: https://en.wikipedia.org/wiki/Cascaded_integrator%E2%80%93comb_filter
     """
 
-    def __init__(self, decimation_factor, cic_order, num_pkg=None):
+    def __init__(self, decimation_factor, cic_order, num_pkg=None, impl="legacy"):
         """
         Decimation op constructor.
 
@@ -153,9 +154,15 @@ class Decimation:
         self.decimation_factor = decimation_factor
         self.cic_order = cic_order
         self.xp = num_pkg
+        self.impl = impl
+        if self.impl == "legacy":
+            self._decimate = self._legacy_decimate
+        elif self.impl == "fir":
+            self._decimate = self._fir_decimate
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
+        self.filter_pkg = filter_pkg # not used by the GPU implementation (custom kernel for complex input data)
 
     def _prepare(self, const_metadata):
         new_fs = (const_metadata.data_description.sampling_frequency
@@ -165,18 +172,67 @@ class Decimation:
             const_metadata.data_description.custom)
 
         n_frames, n_channels, n_samples = const_metadata.input_shape
+        total_n_samples = n_frames*n_channels*n_samples
 
         output_shape = n_frames, n_channels, n_samples//self.decimation_factor
+
+        # CIC FIR coefficients
+        if self.impl == "fir":
+            cicFir = self.xp.array([1], dtype=self.xp.float32)
+            cicFir1 = self.xp.ones(self.decimation_factor, dtype=self.xp.float32)
+            for i in range(self.cic_order):
+                cicFir = self.xp.convolve(cicFir, cicFir1, 'full')
+            fir_taps = cicFir
+            n_fir_taps = len(fir_taps)
+            if self.xp == np:
+                def _cpu_fir_filter(data):
+                    return self.filter_pkg.convolve1d(
+                        np.real(data), fir_taps,
+                        axis=-1, mode='constant',
+                        cval=0, origin=-1) \
+                        + self.filter_pkg.convolve1d(np.imag(data),
+                                          fir_taps, axis=-1,
+                                          mode='constant', cval=0,
+                                          origin=-1)*1j
+                # CPU
+                self._fir_filter = _cpu_fir_filter
+            else:
+                # GPU
+                import cupy as cp
+                _fir_output_buffer = cp.zeros(const_metadata.input_shape,
+                                                dtype=cp.complex64)
+                # Kernel settings
+                from arrus.utils.fir import (
+                    get_default_grid_block_size,
+                    get_default_shared_mem_size,
+                    run_fir)
+                grid_size, block_size = get_default_grid_block_size(n_samples, total_n_samples)
+                shared_memory_size = get_default_shared_mem_size(n_samples, n_fir_taps)
+
+                def _gpu_fir_filter(data):
+                    run_fir(grid_size, block_size,
+                        (_fir_output_buffer, data, n_samples,
+                         total_n_samples, fir_taps, n_fir_taps),
+                            shared_memory_size)
+                    return _fir_output_buffer
+
+                self._fir_filter = _gpu_fir_filter
         return const_metadata.copy(data_desc=new_signal_description,
                                    input_shape=output_shape)
 
     def __call__(self, data):
+        return self._decimate(data)
+
+    def _fir_decimate(self, data):
+        fir_output = self._fir_filter(data)
+        data_out = fir_output[:, :, 0:-1:self.decimation_factor]
+        return data_out
+
+    def _legacy_decimate(self, data):
         data_out = data
         for i in range(self.cic_order):
             data_out = self.xp.cumsum(data_out, axis=-1)
-
         data_out = data_out[:, :, 0:-1:self.decimation_factor]
-
         for i in range(self.cic_order):
             data_out[:, :, 1:] = self.xp.diff(data_out, axis=-1)
         return data_out
