@@ -1,7 +1,7 @@
 import time
 import arrus.metadata
 import arrus.logging
-from arrus.logging import (DEBUG)
+from arrus.logging import (DEBUG, INFO)
 import arrus
 import numpy as np
 from arrus.devices.device import Device
@@ -16,7 +16,7 @@ class MockFileBuffer:
         self.metadata = metadata
 
     def tail(self, timeout=None):
-        frame_metadata = np.zeros((175, 32), dtype=np.int16)
+        frame_metadata = np.zeros((self.n_frames, 32), dtype=np.int16)
         custom_data = {
             "frame_metadata_view": frame_metadata
         }
@@ -76,13 +76,13 @@ class MockUs4R(Device):
         """
         Starts uploaded tx/rx sequence execution.
         """
-        arrus.logging.log(DEBUG, "Started device.")
+        arrus.logging.log(INFO, "Started device.")
 
     def stop(self):
         """
         Stops tx/rx sequence execution.
         """
-        arrus.logging.log(DEBUG, "Stopped device.")
+        arrus.logging.log(INFO, "Stopped device.")
 
     @property
     def sampling_frequency(self):

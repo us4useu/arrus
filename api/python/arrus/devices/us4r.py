@@ -135,7 +135,7 @@ class HostBuffer:
         return self.buffer_handle.getNumberOfElements()
 
     def get_element(self, i):
-        return self.buffer_handle.getElement(i)
+        return self.buffer_handle.getElementAddress(i)
 
     def get_element_size(self):
         return self.buffer_handle.getElementSize()
