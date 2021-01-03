@@ -77,18 +77,22 @@ public:
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
-    [[nodiscard]] uint16 getNumberOfElements() const {
+    [[nodiscard]] uint16 getNumberOfElements() const override {
         return nElements;
     }
 
+    int16 *getElement(size_t elementNumber) override {
+        return reinterpret_cast<int16*>(reinterpret_cast<int8*>(dataBuffer) + elementNumber*elementSize);
+    }
+
     uint8 *getAddress(uint16 elementNumber, Ordinal us4oem) {
-        return reinterpret_cast<uint8*>(dataBuffer) + elementNumber * elementSize + us4oemOffsets[us4oem];
+        return reinterpret_cast<uint8*>(dataBuffer) + elementNumber*elementSize + us4oemOffsets[us4oem];
     }
 
     /**
      * Returns a total size of the buffer, the number of **uint16** values.
      */
-    [[nodiscard]] size_t getElementSize() const {
+    [[nodiscard]] size_t getElementSize() const override {
         return elementSize;
     }
 

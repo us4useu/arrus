@@ -228,8 +228,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                         arrus::format("Setting tx/rx {}: {}", opIdx, ::arrus::toString(op)));
         }
         auto[startSample, endSample] = op.getRxSampleRange().asPair();
-        size_t nSamples = endSample - startSample;
-        float rxTime = getRxTime(nSamples, op.getRxDecimationFactor());
+        float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
 
         if(op.isNOP()) {
             ius4oem->SetActiveChannelGroup(emptyChannelGroups, opIdx);

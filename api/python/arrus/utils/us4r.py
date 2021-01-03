@@ -3,6 +3,7 @@ import numpy as np
 
 import arrus.metadata
 import arrus.exceptions
+from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
 
 
 @dataclasses.dataclass
@@ -159,6 +160,7 @@ class RemapToLogicalOrder:
         self._transfers = None
         self._output_buffer = None
         self.xp = num_pkg
+        self.remap = None
 
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
@@ -173,7 +175,6 @@ class RemapToLogicalOrder:
         # perform the transfers
         fcm = const_metadata.data_description.custom["frame_channel_mapping"]
         n_frames, n_channels = fcm.frames.shape
-        batch_size = fcm.batch_size
         n_samples_set = {op.rx.get_n_samples()
                          for op in const_metadata.context.raw_sequence.ops}
         if len(n_samples_set) > 1:
@@ -183,16 +184,41 @@ class RemapToLogicalOrder:
         n_samples = next(iter(n_samples_set))
         self.output_shape = (n_frames, n_samples, n_channels)
         self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
-        self._transfers = group_transfers(fcm)
+
         n_samples_raw, n_channels_raw = const_metadata.input_shape
         self._input_shape = (n_samples_raw//n_samples, n_samples,
                              n_channels_raw)
         self.batch_size = fcm.batch_size
+
+        if xp == np:
+            # CPU
+            self._transfers = group_transfers(fcm)
+
+            def cpu_remap_fn(data):
+                remap(self._output_buffer,
+                      data.reshape(self._input_shape),
+                      transfers=self._transfers)
+            self._remap_fn = cpu_remap_fn
+        else:
+            # GPU
+            print("Using new GPU kernel")
+            import cupy as cp
+            self._fcm_frames = cp.asarray(fcm.frames)
+            self._fcm_channels = cp.asarray(fcm.channels)
+            self.grid_size, self.block_size = get_default_grid_block_size(self._fcm_frames, n_samples)
+
+            def gpu_remap_fn(data):
+                run_remap(
+                    self.grid_size, self.block_size,
+                    [self._output_buffer, data,
+                     self._fcm_frames, self._fcm_channels,
+                     n_frames, n_samples, n_channels])
+
+            self._remap_fn = gpu_remap_fn
+
         return const_metadata.copy(input_shape=self.output_shape)
 
     def __call__(self, data):
-        remap(output_array=self._output_buffer,
-            input_array=data.reshape(self._input_shape),
-            transfers=self._transfers)
+        self._remap_fn(data)
         return self._output_buffer
 

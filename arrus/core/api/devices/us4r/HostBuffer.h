@@ -30,6 +30,16 @@ public:
     }
 
     virtual void releaseTail(long long timeout) = 0;
+
+    virtual unsigned short getNumberOfElements() const = 0;
+
+    virtual size_t getElementSize() const = 0;
+
+    virtual int16* getElement(size_t i) = 0;
+
+    virtual size_t getElementAddress(size_t i) {
+        return (size_t)getElement(i);
+    }
 };
 
 }

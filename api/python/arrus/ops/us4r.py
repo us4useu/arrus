@@ -23,7 +23,7 @@ class Tx(Operation):
     """
     Single atomic operation of a signal transmit.
 
-    :param aperture: a set of TX channels that should be enabled
+    :param aperture: a set of TX channels that should be enabled - a binary mask, where 1 at location i means that the channel should be turned on, 0 means that the channel should be turned off 
     :param pulse: an excitation to perform
     :param delays: an array of delays to set to active elements. Should have the \
         shape (n_a,), where n_a is a number of active elements determined by \
@@ -49,7 +49,7 @@ class Rx(Operation):
     """
     Single atomic operation of echo data reception.
 
-    :param aperture: a set of RX channels that should be enabled
+    :param aperture: a set of RX channels that should be enabled - a binary mask, where 1 at location i means that the channel should be turned on, 0 means that the channel should be turned off
     :param sample_range: a range of samples to acquire [start, end), starts from 0
     :param downsampling_factor: a sampling frequency divider. For example, if \
         nominal sampling frequency (fs) is equal to 65e6 Hz, ``fs_divider=1``,\
