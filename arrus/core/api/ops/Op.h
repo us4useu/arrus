@@ -10,10 +10,10 @@ public:
 
 //    explicit Op(::arrus::devices::Device *placement) : placement(placement) {}
 
-    virtual unsigned getTypeId() = 0;
-
 private:
-//    arrus::devices::Device::RawHandle placement;
+    std::string typeName;
+    arrus::devices::DeviceId placement;
+    std::vector<> inputs;
 };
 
 }
