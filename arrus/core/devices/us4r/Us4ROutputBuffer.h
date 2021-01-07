@@ -109,7 +109,7 @@ public:
      *   reaches the timeout
      *  @return true if the buffer signal was successful, false otherwise (e.g. the queue was shut down).
      */
-    bool signal(Ordinal n, int firing, long long timeout = -1) {
+    bool signal(Ordinal n, int firing, bool* isElReady, long long timeout = -1) {
         std::unique_lock<std::mutex> guard(mutex);
         if(this->state != State::RUNNING) {
             getDefaultLogger()->log(LogSeverity::TRACE, "Signal queue shutdown.");
@@ -137,6 +137,7 @@ public:
         if(isElementReady) {
             guard.unlock();
             queueEmpty.notify_one();
+            *isElReady = true;
         }
         return true;
     }

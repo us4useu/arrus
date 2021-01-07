@@ -56,7 +56,7 @@ private:
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
 
-    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &transfers, Us4OEMImplBase::RawHandle us4oem);
+    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &us4oemBuffer, Us4OEMImplBase::RawHandle us4oem);
 
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {
         return this->us4oems[0];
