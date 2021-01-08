@@ -359,6 +359,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                     ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
 
                     // Prepare transfer for the next iteration.
+                    // TODO jezeli mniej niz 4GB per modul -> utworz transfery przed uruchomieniem przerwan
+                    // TODO jezeli wiecej - przeprogramowuj tak jak teraz jest
                     ius4oem->PrepareTransferRXBufferToHost(
                         transferIdx, dstAddress, elementSize, srcAddress);
                     ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
@@ -367,16 +369,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                     bool cont = outputBuffer->signal(ordinal, element, &isElementReady,
                                                      HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
                     if(isElementReady) {
-                        logger->log(LogSeverity::DEBUG, ::arrus::format("Us4OEM {} clean ups", ordinal));
-                        if(!cont) {
-                            logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
-                            return;
-                        }
                         cont = outputBuffer->waitForRelease(0, element, HostBuffer::INF_TIMEOUT);
-                        if(!cont) {
-                            logger->log(LogSeverity::DEBUG, "Output buffer shut down");
-                            return;
-                        }
                         for(auto &us4oem: us4oems) {
                             us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                         }
