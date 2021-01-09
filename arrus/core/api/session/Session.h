@@ -30,11 +30,11 @@ public:
     virtual arrus::devices::Device *
     getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 
-    virtual void upload(Scheme::SharedHandle scheme);
-
-    virtual void start();
-
-    virtual void stop();
+//    virtual void upload(Scheme::SharedHandle scheme);
+//
+//    virtual void start();
+//
+//    virtual void stop();
 
     virtual ~Session() = default;
 };
