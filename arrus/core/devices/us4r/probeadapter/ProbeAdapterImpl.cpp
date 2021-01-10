@@ -271,11 +271,11 @@ Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() {
 }
 
 void ProbeAdapterImpl::start() {
-//     EnableSequencer resets position of the us4oem sequencer.
+//  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
         us4oem->enableSequencer();
     }
-    this->us4oems[0]->start();
+    this->us4oems[0]->startTrigger();
 }
 
 void ProbeAdapterImpl::stop() {

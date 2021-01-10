@@ -364,7 +364,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             }
         }
     }
-    ius4oem->EnableSequencer();
     return {Us4OEMBuffer(rxBufferElements), std::move(fcm)};
 }
 
