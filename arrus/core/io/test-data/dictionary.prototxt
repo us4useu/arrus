@@ -435,7 +435,7 @@ probe_to_adapter_connections: [
          ]
          channel_mapping_ranges: {
                 begin: 0
-                end: 128
+                end: 127
          }
      },
     {
@@ -451,7 +451,7 @@ probe_to_adapter_connections: [
         ]
         channel_mapping_ranges: {
             begin: 0
-            end: 128
+            end: 127
         }
     },
     {
@@ -467,7 +467,7 @@ probe_to_adapter_connections: [
         ]
         channel_mapping_ranges: {
             begin: 0
-            end: 128
+            end: 127
         }
     },
     {
@@ -483,7 +483,7 @@ probe_to_adapter_connections: [
         ]
         channel_mapping_ranges: {
             begin: 0
-            end: 128
+            end: 127
         }
     }
    
