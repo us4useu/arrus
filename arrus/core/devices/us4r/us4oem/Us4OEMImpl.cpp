@@ -229,6 +229,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         }
         auto[startSample, endSample] = op.getRxSampleRange().asPair();
         float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
+        rxTime = std::max(rxTime, MIN_RX_TIME);
 
         if(op.isNOP()) {
             ius4oem->SetActiveChannelGroup(emptyChannelGroups, opIdx);

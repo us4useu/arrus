@@ -66,7 +66,8 @@ public:
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
     // Other
-    static constexpr float MIN_PRI = 50e-6f;
+    static constexpr float MIN_PRI = 80e-6f;
+    static constexpr float MIN_RX_TIME = MIN_PRI;
     static constexpr float MAX_PRI = 1.0f;
 
     /**
