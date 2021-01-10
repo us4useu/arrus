@@ -124,7 +124,7 @@ inline std::vector<T>
 permute(const std::vector<T> &input, const std::vector<unsigned short> &perm) {
     std::vector<T> output(perm.size());
     for(size_t i = 0; i < static_cast<size_t>(perm.size()); ++i) {
-        output[i] = input[perm[i]];
+        output[perm[i]] = input[i];
     }
     return output;
 }
