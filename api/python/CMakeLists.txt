@@ -29,8 +29,9 @@ swig_add_library(py_core
 set_target_properties(py_core
     PROPERTIES
         SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
-		RUNTIME_OUTPUT_DIRECTORY
-			"${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
 )
 target_include_directories(py_core
     PRIVATE
