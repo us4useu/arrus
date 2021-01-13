@@ -42,7 +42,7 @@ public:
     }
 
     size_t sum() const {
-        size_t result = 1;
+        size_t result = 0;
         for(auto &value: values) {
             result = result + value;
         }
