@@ -209,6 +209,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     ius4oem->SetNumberOfFirings(nOps*batchSize);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
+    setTGC(tgc);
 
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 
@@ -273,7 +274,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, opIdx);
-        setTGC(tgc, opIdx);
     }
 
     // Program data acquisitions ("ScheduleReceive" part)
@@ -503,7 +503,7 @@ float Us4OEMImpl::getRxTime(size_t nSamples, uint32 decimationFactor) {
            + Us4OEMImpl::RX_TIME_EPSILON;
 }
 
-void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
+void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc) {
     if(tgc.empty()) {
         ius4oem->TGCDisable();
     } else {
@@ -523,7 +523,9 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
         for(auto &val: actualTGC) {
             val = (val - 14.0f) / 40.0f;
         }
-        ius4oem->TGCSetSamples(actualTGC, firing);
+        // Currently setting firing parameter has no impact on the result
+        // because TGC can be set only once for the whole sequence.
+        ius4oem->TGCSetSamples(actualTGC, 0);
     }
 }
 
@@ -560,7 +562,7 @@ void Us4OEMImpl::syncTrigger() {
 
 void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
     // Currently firing parameter doesn't matter.
-    this->setTGC(tgc, 0);
+    this->setTGC(tgc);
 }
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() {
