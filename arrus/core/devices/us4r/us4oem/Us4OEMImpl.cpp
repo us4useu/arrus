@@ -227,7 +227,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             logger->log(LogSeverity::DEBUG,
                         arrus::format("Setting tx/rx {}: {}", opIdx, ::arrus::toString(op)));
         }
-        auto[startSample, endSample] = op.getRxSampleRange().asPair();
+        auto sampleRange = op.getRxSampleRange().asPair();
+        auto endSample = std::get<1>(sampleRange);
         float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
         rxTime = std::max(rxTime, MIN_RX_TIME);
 

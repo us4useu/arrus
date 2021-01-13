@@ -1,7 +1,6 @@
 #include "common.h"
 
 #include <algorithm>
-#include <execution>
 #include <numeric>
 #include <tuple>
 #include <limits>

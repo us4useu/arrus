@@ -1,6 +1,6 @@
 #include "arrus/core/api/io/settings.h"
 #include <fcntl.h>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include <memory>
 #include <unordered_map>
 #include <cstdlib>
@@ -84,7 +84,7 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
                                  "Us4oems and channels lists should have "
                                  "the same size"));
         channelMapping = std::vector<ChannelAddress>{modules.size()};
-        for(int i = 0; i < modules.size(); ++i) {
+        for(unsigned i = 0; i < modules.size(); ++i) {
             channelMapping[i] = {modules[i], channels[i]};
         }
     } else if(!proto.channel_mapping_regions().empty()) {
@@ -335,7 +335,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         for(auto &mask: us4r.us4oem_channels_mask()) {
             auto channelsMask = readChannelsMask<uint8>(mask);
 
-            us4oemChannelsMask[i] = std::unordered_set(
+            us4oemChannelsMask[i] = std::unordered_set<uint8>(
                 std::begin(channelsMask), std::end(channelsMask));
             ++i;
         }
@@ -392,8 +392,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
 SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
     // Read and validate session.
-    std::filesystem::path sessionSettingsPath{filepath};
-    if(!std::filesystem::is_regular_file(sessionSettingsPath)) {
+    boost::filesystem::path sessionSettingsPath{filepath};
+    if(!boost::filesystem::is_regular_file(sessionSettingsPath)) {
         throw IllegalArgumentException(
             ::arrus::format("File not found {}.", filepath));
     }
@@ -412,16 +412,16 @@ SessionSettings readSessionSettings(const std::string &filepath) {
         std::string dictionaryPathStr;
         // 1. Try to use the parent directory of session settings.
         auto dictP = sessionSettingsPath.parent_path() / s->dictionary_file();
-        if(std::filesystem::is_regular_file(dictP)) {
-            dictionaryPathStr = dictP.u8string();
+        if(boost::filesystem::is_regular_file(dictP)) {
+            dictionaryPathStr = dictP.string();
         } else {
             // 2. Try to use ARRUS_PATH, if available.
             const char *arrusP = std::getenv(ARRUS_PATH_KEY);
             if(arrusP != nullptr) {
-                std::filesystem::path arrusDicP{arrusP};
+                boost::filesystem::path arrusDicP{arrusP};
                 arrusDicP = arrusDicP / s->dictionary_file();
-                if(std::filesystem::is_regular_file(arrusDicP)) {
-                    dictionaryPathStr = arrusDicP.u8string();
+                if(boost::filesystem::is_regular_file(arrusDicP)) {
+                    dictionaryPathStr = arrusDicP.string();
                 } else {
                     throw IllegalArgumentException(
                         ::arrus::format("Invalid path to dictionary: {}",

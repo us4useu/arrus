@@ -269,13 +269,13 @@ private:
     std::mutex mutex;
     // frame number -> accumulator
     std::vector<AccumulatorType> accumulators;
-    /** A pattern of the filled accumulator, which indicates that the
-     * whole element is ready. */
-    AccumulatorType filledAccumulator;
     // frame number -> condition variable to notify, that accu is clear
     std::vector<std::condition_variable> isAccuClear;
     // us4oem module id -> current writing position for this us4oem
     std::vector<int> us4oemPositions;
+    /** A pattern of the filled accumulator, which indicates that the
+     * whole element is ready. */
+    AccumulatorType filledAccumulator;
 
     // State management
     enum class State {RUNNING, SHUTDOWN, INVALID};

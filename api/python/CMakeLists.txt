@@ -115,8 +115,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
 		${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
 	COMMAND
 		${CMAKE_COMMAND} -E copy
-		# Intentionally using Release version here.
-		${PROJECT_BINARY_DIR}/arrus/core/Release/arrus-core.dll ${CMAKE_CURRENT_BINARY_DIR}/arrus
+		$<TARGET_FILE:arrus-core> ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
@@ -160,19 +159,4 @@ install(
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
 )
-
-################################################################################
-# Python tests
-################################################################################
-if(ARRUS_RUN_TESTS)
-    #create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
-    #install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
-    #get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
-    #foreach(TEST_FILE IN LISTS TEST_FILES)
-    #    add_test(
-    #        NAME ${TEST_FILE}
-    #        COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
-    #    )
-    #endforeach()
-endif()
 

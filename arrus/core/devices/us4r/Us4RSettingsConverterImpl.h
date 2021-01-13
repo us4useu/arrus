@@ -142,7 +142,8 @@ private:
         std::vector<bool> mask(
             std::numeric_limits<Ordinal>::max());
         Ordinal count = 0;
-        for(auto[module, channel] : adapterMapping) {
+        for(auto &moduleChannel : adapterMapping) {
+            auto module = moduleChannel.first;
             if(!mask[module]) {
                 count++;
                 mask[module] = true;

@@ -172,12 +172,21 @@ inline void setValuesInRange(std::vector<T> &container, size_t start, size_t end
     if(source.size != end-start) {
         throw IllegalArgumentException(
             arrus::format("Source vector should have exactly {} elements "
-                          "when assing it to the selected range.",
+                          "when assigning it to the selected range.",
                           end-start));
     }
     for(size_t i = start; i < end; ++i) {
         container[i] = source[i-start];
     }
+}
+
+template<class InputIt, class T, class BinaryOp>
+inline T reduce(InputIt first, InputIt last, T init, BinaryOp binaryOp) {
+    T result = init;
+    for(auto it = first; it != last; ++it) {
+        result = binaryOp(result, *it);
+    }
+    return result;
 }
 
 }

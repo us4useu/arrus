@@ -113,7 +113,7 @@ private:
             )
         );
 
-        for(int i = 0; i < us4oemSettings.size(); ++i) {
+        for(unsigned i = 0; i < us4oemSettings.size(); ++i) {
             auto &setting = us4oemSettings[i];
 
             std::unordered_set<uint8> us4oemMask(

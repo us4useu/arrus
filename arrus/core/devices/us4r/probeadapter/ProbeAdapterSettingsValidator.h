@@ -41,7 +41,8 @@ public:
 
         // Get the number of us4oems
         std::vector<Ordinal> modules;
-        for(auto &[us4oem, channel] : obj.getChannelMapping()) {
+        for(auto &moduleChannel : obj.getChannelMapping()) {
+            auto us4oem = moduleChannel.first;
             modules.push_back(us4oem);
         }
 

@@ -52,7 +52,10 @@ def main():
         join_cmd = False
         shell_source(f"{os.path.join(build_dir, 'activate.sh')}")
 
-    build_dir = f'"{build_dir}"'
+    build_dir = os.path.abspath(build_dir)
+    if os.name == "nt":
+        # Properly handle paths with white spaces.
+        build_dir = f'"{build_dir}"'
     cmake_cmd += [
         "cmake",
         "--build", build_dir,
