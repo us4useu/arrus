@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <csignal>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 
 #include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/common/logging.h"
@@ -23,8 +23,8 @@ std::vector<ChannelIdx> generateReversed(ChannelIdx a, ChannelIdx b) {
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
-    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    std::filesystem::path("us4r.prototxt");
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
+                    boost::filesystem::path("us4r.prototxt");
     ::arrus::session::SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
@@ -96,8 +96,8 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
 }
 
 TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
-    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    std::filesystem::path("custom_us4r.prototxt");
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
+                    boost::filesystem::path("custom_us4r.prototxt");
     SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
@@ -155,8 +155,8 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
 }
 
 TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
-    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    std::filesystem::path("us4oems.prototxt");
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
+                    boost::filesystem::path("us4oems.prototxt");
     SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
@@ -207,8 +207,8 @@ TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
 }
 
 TEST(ReadingProtoTxtFile, throwsExceptionOnNoChannelsMask) {
-    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    std::filesystem::path("custom_us4r_no_channels_mask.prototxt");
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
+                    boost::filesystem::path("custom_us4r_no_channels_mask.prototxt");
     EXPECT_THROW(arrus::io::readSessionSettings(filepath.string()), IllegalArgumentException);
 }
 
