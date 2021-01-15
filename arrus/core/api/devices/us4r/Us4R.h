@@ -52,18 +52,22 @@ public:
     virtual arrus::devices::Probe* getProbe(Ordinal ordinal) = 0;
 
     /**
-     *  Uploads a given
+     * Uploads a given sequence of transmits and  on the device.
+     *
+     * An element of the buffers is a one batch.
      *
      * @param seq
-     * @param rxBufferSize
-     * @param hostBufferSize
-     * @return
+     * @param rxBufferSize - number of elements in the rx (device) buffer
+     * @param hostBufferSize - number of elements in the host buffer
+     *
+     * @return a pair: a handle to the host buffer, frame channel mapping
      */
     virtual std::pair<
         std::shared_ptr<arrus::devices::HostBuffer>,
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
-    upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize, unsigned short hostBufferSize) = 0;
+    upload(const ::arrus::ops::us4r::TxRxSequence &seq,
+           unsigned short rxBufferSize, unsigned short hostBufferSize) = 0;
 
     virtual void setVoltage(Voltage voltage) = 0;
 

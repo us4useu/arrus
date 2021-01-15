@@ -91,11 +91,15 @@ class TxRxSequence:
 
     :param operations: sequence of TX/RX operations to perform
     :param tgc_curve: TGC curve samples [dB]
-    :param sri: sequence repetition interval - the time between consecutive RF frames. When None, the time between consecutive RF frames is determined by the total pri only. [s]
+    :param sri: sequence repetition interval - the time between consecutive RF frame sequences. When None, the SRI is determined by the total PRI only. [s]
+    :param n_repeats: how many times the given sequence should be repeated; a repeated sequence produces a batch of frames
+    :param bri: batch repetition interval - the total time between consecutive batches. When None, the BRI is determined by the total PRI only. [s]
     """
     ops: typing.List[TxRx]
     tgc_curve: np.ndarray
     sri: float = None
+    n_repeats: int = 1
+    bri: float = None
 
     def get_n_samples(self):
         """

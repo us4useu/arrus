@@ -52,7 +52,7 @@ class HostBuffer:
                  fac: arrus.metadata.FrameAcquisitionContext,
                  data_description: arrus.metadata.EchoDataDescription,
                  frame_shape: tuple,
-                 rx_batch_size: int):
+                 batch_size: int):
         self.buffer_handle = buffer_handle
         self.fac = fac
         self.data_description = data_description
@@ -64,10 +64,10 @@ class HostBuffer:
         if len(self.n_samples) > 1:
             raise RuntimeError
         self.n_samples = next(iter(self.n_samples))
-        # FIXME This won't work when the the rx aperture has to be splitted to multiple operations
+        # FIXME This won't work when the rx aperture has to be splitted to multiple operations
         # Currently works for rx aperture <= 64 elements
         self.n_triggers = self.data_description.custom["frame_channel_mapping"].frames.shape[0]
-        self.rx_batch_size = rx_batch_size
+        self.batch_size = batch_size
 
     def tail(self, timeout=None):
         """
@@ -80,7 +80,7 @@ class HostBuffer:
             -1 if timeout is None else timeout)
         if data_addr not in self.buffer_cache:
             array = self._create_array(data_addr)
-            frame_metadata_view = array[:self.n_samples*self.n_triggers*self.rx_batch_size:self.n_samples]
+            frame_metadata_view = array[:self.n_samples*self.n_triggers*self.batch_size:self.n_samples]
             self.buffer_cache[data_addr] = array
             self.frame_metadata_cache[data_addr] = frame_metadata_view
         else:
@@ -104,7 +104,7 @@ class HostBuffer:
             -1 if timeout is None else timeout)
         if data_addr not in self.buffer_cache:
             array = self._create_array(data_addr)
-            frame_metadata_view = array[:self.n_samples*self.n_triggers*self.rx_batch_size:self.n_samples]
+            frame_metadata_view = array[:self.n_samples*self.n_triggers*self.batch_size:self.n_samples]
             self.buffer_cache[data_addr] = array
             self.frame_metadata_cache[data_addr] = frame_metadata_view
         else:
@@ -205,8 +205,7 @@ class Us4R(Device):
         return 65e6
 
     def upload(self, seq: arrus.ops.Operation,
-               rx_buffer_size=2, host_buffer_size=2,
-               rx_batch_size=1) -> HostBuffer:
+               rx_buffer_size=2, host_buffer_size=2) -> HostBuffer:
         """
         Uploads a given sequence of operations to perform on the device.
 
@@ -227,12 +226,6 @@ class Us4R(Device):
         :return: a data buffer
         """
         # Verify the input parameters.
-        if host_buffer_size % rx_batch_size != 0:
-            raise ValueError("Host buffer size should be a multiple "
-                             "of rx batch size.")
-
-        host_buffer_size = host_buffer_size // rx_batch_size
-
         # Prepare sequence to load
         kernel_context = self._create_kernel_context(seq)
         self._current_sequence_context = kernel_context
@@ -248,7 +241,7 @@ class Us4R(Device):
         # --- FCM
         fcm_frame, fcm_channel = arrus.utils.core.convert_fcm_to_np_arrays(fcm)
         fcm = FrameChannelMapping(frames=fcm_frame, channels=fcm_channel,
-                                  batch_size=rx_batch_size)
+                                  batch_size=raw_seq.n_repeats)
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq)
@@ -264,14 +257,14 @@ class Us4R(Device):
 
         n_samples = next(iter(n_samples))
         input_shape = self._get_physical_frame_shape(fcm, n_samples,
-                                                     rx_batch_size=rx_batch_size)
+                                                     batch_size=raw_seq.n_repeats)
 
         buffer = HostBuffer(
             buffer_handle=buffer_handle,
             fac=fac,
             data_description=echo_data_description,
             frame_shape=input_shape,
-            rx_batch_size=rx_batch_size)
+            batch_size=raw_seq.n_repeats)
 
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
@@ -299,11 +292,11 @@ class Us4R(Device):
         )
 
     def _get_physical_frame_shape(self, fcm, n_samples, n_channels=32,
-                                  rx_batch_size=1):
+                                  batch_size=1):
         # TODO: We assume here, that each frame has the same number of samples!
         # This might not be case in further improvements.
         n_frames = np.max(fcm.frames) + 1
-        return n_frames * n_samples * rx_batch_size, n_channels
+        return n_frames * n_samples * batch_size, n_channels
 
     def _get_dto(self):
         probe_model = arrus.utils.core.convert_to_py_probe_model(

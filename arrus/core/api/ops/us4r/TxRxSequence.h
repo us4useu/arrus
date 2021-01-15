@@ -45,16 +45,26 @@ private:
 
 class TxRxSequence {
 public:
-    static constexpr float NO_SRI = -1;
+    static constexpr float NO_VALUE = -1;
     /**
      * Tx/Rx sequence to execute on Us4R device.
      *
      * @param sequence a list of tx/rxs that compose a given sequence
      * @param tgcCurve tgc curve to apply
-     * @param sri frame repetition interval - the total time that a given sequence should take. Should be not smaller
+     * @param sri sequence repetition interval - the total time that a given sequence
+     *  of txrxs should take. Should be not smaller than the total Pulse Repetition Interval
+     *  of transmits performed in the sequence. Optional; if not set, the sequence repetition
+     *  interval will be determined by total pulse repetition interval.
+     * @param nRepeats number of repeats: how many times the sequence should be repeated on the device
+     * @param bri batch repetition interval - the total time that a given number of repetition
+     *  of the sequence should take. Should be not smaller than time required to execute the
+     *  sequence multiplied by the number of repeats. Optional; if not set, BRI will be determined based
+     *  on total sequence execution time.
      */
-    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI)
-        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri) {}
+    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_VALUE,
+                 unsigned short nRepeats = 1, float bri = NO_VALUE)
+        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri),
+        nRepeats(nRepeats), bri(bri) {}
 
     /**
      * Sequence of operations to perform.
@@ -71,11 +81,11 @@ public:
     }
 
     /**
-     * Returns frame repetition interval (the total time the given sequence should actually take).
-     * nullopt means that the frame acquistion time should be determined by total PRI only.
+     * Returns sequence repetition interval (the total time the given sequence should actually take).
+     * nullopt means that the SRI will be equal total PRI of the performed TxRxs.
      */
     const std::optional<float> getSri() const {
-        if(sri.value() != NO_SRI) {
+        if(sri.value() != NO_VALUE) {
             return sri;
         }
         else {
@@ -83,10 +93,26 @@ public:
         }
     }
 
+    const std::optional<float> getBri() const {
+        if(sri.value() != NO_VALUE) {
+            return sri;
+        }
+        else {
+            return std::optional<float>();
+        }
+    }
+
+    unsigned short getNRepeats() const {
+        return nRepeats;
+    }
+
+
 private:
     std::vector<TxRx> txrxs;
     TGCCurve tgcCurve;
     std::optional<float> sri;
+    unsigned short nRepeats;
+    std::optional<float> bri;
 };
 
 }

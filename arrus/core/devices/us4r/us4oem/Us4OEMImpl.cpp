@@ -185,7 +185,8 @@ private:
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                             const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
-                            uint16 batchSize, std::optional<float> sri) {
+                            uint16 nRepeats, std::optional<float> sri,
+                            std::optional<float> bri) {
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
@@ -199,14 +200,14 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
-    ARRUS_REQUIRES_AT_MOST(nOps*batchSize, 1024, ::arrus::format(
+    ARRUS_REQUIRES_AT_MOST(nOps * nRepeats, 1024, ::arrus::format(
         "Exceeded the maximum ({}) number of firings: {}", 1024, nOps));
-    ARRUS_REQUIRES_AT_MOST(nOps * batchSize * rxBufferSize, 16384,
+    ARRUS_REQUIRES_AT_MOST(nOps * nRepeats * rxBufferSize, 16384,
                            ::arrus::format(
                                "Exceeded the maximum ({}) number of triggers: {}",
-                               16384, nOps * batchSize * rxBufferSize));
+                               16384, nOps * nRepeats * rxBufferSize));
 
-    ius4oem->SetNumberOfFirings(nOps*batchSize);
+    ius4oem->SetNumberOfFirings(nOps * nRepeats);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
     setTGC(tgc);
@@ -288,10 +289,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     std::vector<Us4OEMBufferElement> rxBufferElements;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
         // Batch elements.
-        for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
+        for(uint16 batchElementIdx = 0; batchElementIdx < nRepeats; ++batchElementIdx) {
             // Element operation.
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = opIdx + (batchElementIdx * nOps) + (batchIdx * nOps * batchSize);
+                firing = opIdx + (batchElementIdx * nOps) + (batchIdx * nOps * nRepeats);
                 auto const &op = seq[opIdx];
                 auto[startSample, endSample] = op.getRxSampleRange().asPair();
                 size_t nSamples = endSample - startSample;
@@ -329,15 +330,16 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     }
     ius4oem->EnableTransmit();
 
-    // Set frame repetition interval if possible.
+    // Set sequence repetition interval if possible.
     float totalPri = 0.0f;
     for(auto &op : seq) {
         totalPri += op.getPri();
     }
-    std::optional<float> lastPriExtend = std::nullopt;
+    std::optional<float> lastPriInSequenceExtend = std::nullopt;
+    std::optional<float> lastPriInBatchExtend = std::nullopt;
     if(sri.has_value()) {
         if(totalPri < sri.value()) {
-            lastPriExtend = sri.value() - totalPri;
+            lastPriInSequenceExtend = sri.value() - totalPri;
         } else {
             // TODO move this condition to sequence validator
             throw IllegalArgumentException(
@@ -347,18 +349,40 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         }
     }
 
+    // total sri - the total time of SRIs in a given batch
+    float totalSri = (float)nRepeats * (totalPri + lastPriInSequenceExtend.value_or(0.0f));
+
+    if(bri.has_value()) {
+        if(totalSri < bri.value()) {
+            lastPriInBatchExtend = bri.value() - totalSri;
+        } else {
+            // TODO move this condition to sequence validator
+            throw IllegalArgumentException(
+                arrus::format("Batch repetition interval {} cannot be set, "
+                              "total sequence time is equal {}",
+                              bri.value(), totalSri));
+        }
+    }
+
     // Program triggers
-    ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
+    ius4oem->SetNTriggers(nOps * nRepeats * rxBufferSize);
     firing = 0;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
-        for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
+        for(uint16 batchElementIdx = 0; batchElementIdx < nRepeats; ++batchElementIdx) {
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = (uint16) (opIdx + batchElementIdx * nOps + batchIdx * nOps * batchSize);
+                firing = (uint16) (opIdx + batchElementIdx*nOps + batchIdx * nOps * nRepeats);
                 auto const &op = seq[opIdx];
                 bool checkpoint = false;
                 float pri = op.getPri();
-                if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
-                    pri += lastPriExtend.value();
+                if(opIdx == nOps - 1) {
+                    // Last operation in sequence
+                    if(lastPriInSequenceExtend.has_value()) {
+                        pri += lastPriInSequenceExtend.value();
+                    }
+                    if(batchElementIdx == nRepeats-1) {
+                        // last operation in batch
+                        pri += lastPriInBatchExtend.value();
+                    }
                 }
                 auto priMs = static_cast<unsigned int>(pri * 1e6);
                 ius4oem->SetTrigger(priMs, checkpoint, firing);

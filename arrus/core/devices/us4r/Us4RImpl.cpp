@@ -88,7 +88,7 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
             "The device is running, uploading sequence is forbidden.");
     }
 
-    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, 1);
+    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats());
 
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
@@ -159,7 +159,7 @@ Us4RImpl::~Us4RImpl() {
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
-                         uint16_t rxBufferSize, uint16_t rxBatchSize) {
+                         uint16_t rxBufferSize, uint16_t nRepeats) {
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
@@ -183,7 +183,8 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
         );
         ++opIdx;
     }
-    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize, rxBatchSize, seq.getSri());
+    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize, nRepeats, seq.getSri(),
+                                           seq.getBri());
 
 }
 

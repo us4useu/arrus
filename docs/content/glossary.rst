@@ -9,3 +9,14 @@ An example of a sequence is 3-D array with shape (frame, sample, channel), from 
 A **batch of sequences** (in short: a **batch**) is a collection of multiple sequences.
 
 An example of batch is a 4-D array with shape (sequence, frame, sample, channel), which can be used in a Doppler estimation methods.
+
+
+The overall execution flow looks like this:
+
+for each batch in the buffer:
+    for each sequence in batch:
+            for each operation in sequence:
+                execute operation
+    transfer batch to buffer
+
+The data is transferred

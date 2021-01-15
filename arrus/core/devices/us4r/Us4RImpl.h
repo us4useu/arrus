@@ -122,10 +122,11 @@ private:
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
     std::optional<HV256Impl::Handle> hv;
-    // will be used outside
-    // TODO extract output buffer to some external class
+
     std::shared_ptr<Us4ROutputBuffer> buffer;
+
     State state{State::STOPPED};
+
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
@@ -134,7 +135,7 @@ private:
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize,
-                   uint16_t rxBatchSize);
+                   uint16_t nRepeats);
 
     ProbeImplBase::RawHandle getProbeImpl() {
         return probe.value().get();

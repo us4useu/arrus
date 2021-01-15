@@ -17,7 +17,8 @@ public:
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri) = 0;
+                    uint16 nRepeats, std::optional<float> sri,
+                    std::optional<float> bri) = 0;
 
     virtual
     void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle&) = 0;

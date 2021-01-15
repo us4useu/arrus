@@ -48,8 +48,8 @@ private:
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                            const ops::us4r::TGCCurve &tgcSamples,
-                           uint16 rxBufferSize, uint16 rxBatchSize,
-                           std::optional<float> sri) {
+                           uint16 rxBufferSize, uint16 nRepeats,
+                           std::optional<float> sri, std::optional<float> bri) {
     // Validate input sequence
     ProbeTxRxValidator validator(
         ::arrus::format("tx rx sequence for {}", getDeviceId().toString()), model);
@@ -90,7 +90,7 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     }
 
     return adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize,
-                                    rxBatchSize, sri);
+                                    nRepeats, sri, bri);
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {

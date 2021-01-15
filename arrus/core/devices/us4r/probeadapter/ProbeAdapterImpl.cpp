@@ -67,8 +67,9 @@ private:
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                   const TGCCurve &tgcSamples,
-                                  uint16 rxBufferSize, uint16 batchSize,
-                                  std::optional<float> sri) {
+                                  uint16 rxBufferSize, uint16 nRepeats,
+                                  std::optional<float> sri,
+                                  std::optional<float> bri) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
         ::arrus::format("{} tx rx sequence", getDeviceId().toString()),
@@ -201,8 +202,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
         auto[buffer, fcMapping] = us4oem->setTxRxSequence(
-            splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, batchSize,
-            sri);
+            splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, nRepeats,
+            sri, bri);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));

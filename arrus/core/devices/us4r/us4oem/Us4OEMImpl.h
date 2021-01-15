@@ -96,7 +96,8 @@ public:
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                    uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri) override;
+                    uint16 rxBufferSize, uint16 nRepeats, std::optional<float> sri,
+                    std::optional<float> bri) override;
 
     double getSamplingFrequency() override;
 
