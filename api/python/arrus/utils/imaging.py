@@ -310,20 +310,22 @@ class RxBeamforming:
         else:
             c = medium.speed_of_sound
         tx_angle = 0  # TODO use appropriate tx angle
-        # TODO keep cache data? Here all the tx/rx parameters are recomputed
-        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
-            seq, probe_model, c)
-        # Assuming, that all tx/rxs have the constant start sample value.
-        if raw_seq is None:
-            start_sample = context.custom_data["start_sample"] + 1
-        else:
-            start_sample = raw_seq.ops[0].rx.sample_range[0]
+        start_sample = seq.rx_sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(seq)
 
+        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+            seq, probe_model, c)
+
         burst_factor = n_periods / (2 * fc)
-        initial_delay = (- start_sample / acq_fs
-                         + tx_delay_center
-                         + burst_factor)
+        # -start_sample compensates the fact, that the data indices always start from 0
+        initial_delay = - start_sample / acq_fs
+        if seq.init_delay == "tx_start":
+            burst_factor = n_periods / (2 * fc)
+            _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+                seq, probe_model, c)
+            initial_delay += tx_delay_center + burst_factor
+        elif not seq.init_delay == "tx_center":
+            raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
 
         radial_distance = (
                 (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)
@@ -333,8 +335,7 @@ class RxBeamforming:
         z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
 
         origin_offset = (rx_aperture_origin[0]
-                         - (seq.rx_aperture_center_element[0] + 1))
-
+                         - (seq.rx_aperture_center_element[0]))
         # New coordinate system: origin: rx aperture center
         element_position = ((np.arange(0, self.n_rx) + origin_offset)
                             * probe_model.pitch)

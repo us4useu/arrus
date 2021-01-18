@@ -15,12 +15,14 @@ class LinSequence(arrus.ops.Operation):
     :param rx_aperture_size: size of the rx aperture [element]
     :param tx_focus: tx focal length [m]
     :param pulse: an excitation to perform
+    :param rx_sample_range: [start, end) sample; total number of samples should be divisible by 64
     :param pri: pulse repetition interval [s]
     :param downsampling_factor: downsampling factor (decimation), integer factor for decreasing sampling frequency of the output signal
     :param speed_of_sound: assumed speed of sound; can be None, in this case a medium in current context will be used to determine speed of sound [m/s]
     :param tgc_start: tgc starting gain [dB]
     :param tgc_slope: tgc gain slope [dB/m]
     :param sri: sequence repetition interval - the time between consecutive RF frames. When None, the time between consecutive RF frames is determined by the total pri only. [s]
+    :param init_delay: when the record should start, available options: 'tx_start' - the first recorded sample is when the transmit starts, 'tx_center' - the first recorded sample is delayed by tx aperture center delay and burst factor
     """
     tx_aperture_center_element: np.ndarray
     tx_aperture_size: float
@@ -35,3 +37,5 @@ class LinSequence(arrus.ops.Operation):
     speed_of_sound: float = None
     downsampling_factor: int = 1
     sri: float = None
+    init_delay: str = "tx_start"
+
