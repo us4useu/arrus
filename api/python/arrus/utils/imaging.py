@@ -358,7 +358,8 @@ class RxBeamforming:
         self.delays = self.t * fs # in number of samples
         total_n_samples = self.n_rx * self.n_samples
         # Move samples outside the available area
-        self.delays[self.delays >= self.n_samples-1] = total_n_samples + 1
+        self.delays[np.isclose(self.delays, self.n_samples-1)] = self.n_samples-1
+        self.delays[self.delays > self.n_samples-1] = total_n_samples + 1
         # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
         #  row-wise major order).
         self.delays = self.xp.asarray(self.delays)
