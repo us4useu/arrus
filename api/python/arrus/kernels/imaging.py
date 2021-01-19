@@ -29,6 +29,7 @@ def create_lin_sequence(context):
     pri = op.pri
     sri = op.sri
     fs = context.device.sampling_frequency/op.downsampling_factor
+    init_delay = op.init_delay
 
     tx_centers = np.array(op.tx_aperture_center_element)
     tx_ap_size = op.tx_aperture_size
@@ -74,6 +75,19 @@ def create_lin_sequence(context):
     tx_apertures, tx_delays, tx_delays_center = compute_tx_parameters(
         op, context.device.probe.model, c)
     txrxs = []
+
+    if init_delay == "tx_start":
+        actual_sample_range = sample_range
+    elif init_delay == "tx_center":
+        n_periods = pulse.n_periods
+        fc = pulse.center_frequency
+        burst_factor = n_periods / (2 * fc)
+        delay = burst_factor + tx_delays_center
+        delay = delay*fs
+        actual_sample_range = tuple(int(round(v+delay)) for v in sample_range)
+    else:
+        raise ValueError(f"Unrecognized value '{init_delay}' for init_delay.")
+
     for tx_aperture, delays, rx_center in zip(tx_apertures, tx_delays,
                                               rx_centers):
 
@@ -84,7 +98,7 @@ def create_lin_sequence(context):
 
         tx = Tx(tx_aperture, pulse, delays)
         rx_aperture, rx_padding = get_ap(rx_center, rx_ap_size)
-        rx = Rx(rx_aperture, sample_range, downsampling_factor, rx_padding)
+        rx = Rx(rx_aperture, actual_sample_range, downsampling_factor, rx_padding)
         txrxs.append(TxRx(tx, rx, pri))
     return TxRxSequence(txrxs, tgc_curve=tgc_curve, sri=sri)
 

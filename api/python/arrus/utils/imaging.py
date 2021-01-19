@@ -310,20 +310,22 @@ class RxBeamforming:
         else:
             c = medium.speed_of_sound
         tx_angle = 0  # TODO use appropriate tx angle
-        # TODO keep cache data? Here all the tx/rx parameters are recomputed
-        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
-            seq, probe_model, c)
-        # Assuming, that all tx/rxs have the constant start sample value.
-        if raw_seq is None:
-            start_sample = context.custom_data["start_sample"] + 1
-        else:
-            start_sample = raw_seq.ops[0].rx.sample_range[0]
+        start_sample = seq.rx_sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(seq)
 
+        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+            seq, probe_model, c)
+
         burst_factor = n_periods / (2 * fc)
-        initial_delay = (- start_sample / acq_fs
-                         + tx_delay_center
-                         + burst_factor)
+        # -start_sample compensates the fact, that the data indices always start from 0
+        initial_delay = - start_sample / acq_fs
+        if seq.init_delay == "tx_start":
+            burst_factor = n_periods / (2 * fc)
+            _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+                seq, probe_model, c)
+            initial_delay += tx_delay_center + burst_factor
+        elif not seq.init_delay == "tx_center":
+            raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
 
         radial_distance = (
                 (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)
@@ -333,8 +335,7 @@ class RxBeamforming:
         z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
 
         origin_offset = (rx_aperture_origin[0]
-                         - (seq.rx_aperture_center_element[0] + 1))
-
+                         - (seq.rx_aperture_center_element[0]))
         # New coordinate system: origin: rx aperture center
         element_position = ((np.arange(0, self.n_rx) + origin_offset)
                             * probe_model.pitch)
@@ -357,7 +358,8 @@ class RxBeamforming:
         self.delays = self.t * fs # in number of samples
         total_n_samples = self.n_rx * self.n_samples
         # Move samples outside the available area
-        self.delays[self.delays >= self.n_samples-1] = total_n_samples + 1
+        self.delays[np.isclose(self.delays, self.n_samples-1)] = self.n_samples-1
+        self.delays[self.delays > self.n_samples-1] = total_n_samples + 1
         # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
         #  row-wise major order).
         self.delays = self.xp.asarray(self.delays)
@@ -466,12 +468,9 @@ class ScanConversion:
         # available only.
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        # TODO check if angle is zero and tx aperture is increasing
-        # TODO compute center angle, etc.
         probe = const_metadata.context.device.probe.model
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
-        raw_seq = const_metadata.context.raw_sequence
 
         if not probe.is_convex_array():
             raise ValueError(
@@ -485,10 +484,7 @@ class ScanConversion:
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
 
-        if raw_seq is None:
-            start_sample = custom_data["start_sample"]
-        else:
-            start_sample = raw_seq.ops[0].rx.sample_range[0]
+        start_sample = seq.rx_sample_range[0]
 
         if seq.speed_of_sound is not None:
             c = seq.speed_of_sound
