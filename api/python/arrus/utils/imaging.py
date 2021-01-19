@@ -468,12 +468,9 @@ class ScanConversion:
         # available only.
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        # TODO check if angle is zero and tx aperture is increasing
-        # TODO compute center angle, etc.
         probe = const_metadata.context.device.probe.model
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
-        raw_seq = const_metadata.context.raw_sequence
 
         if not probe.is_convex_array():
             raise ValueError(
@@ -487,10 +484,7 @@ class ScanConversion:
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
 
-        if raw_seq is None:
-            start_sample = custom_data["start_sample"]
-        else:
-            start_sample = raw_seq.ops[0].rx.sample_range[0]
+        start_sample = seq.rx_sample_range[0]
 
         if seq.speed_of_sound is not None:
             c = seq.speed_of_sound
