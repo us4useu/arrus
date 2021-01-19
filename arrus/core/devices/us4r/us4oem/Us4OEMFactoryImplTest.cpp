@@ -146,7 +146,6 @@ TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
     RxSettings::TGCCurve tgcCurve = GetParam().first.getUs4OEMSettings().getRxSettings().getTgcSamples();
 
     if(tgcCurve.empty()) {
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem), TGCDisable());
         // NO TGC enable
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), TGCEnable()).Times(0);
     } else {
