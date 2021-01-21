@@ -29,7 +29,7 @@ public:
         return (size_t)head(timeout);
     }
 
-    virtual void releaseTail(long long timeout) = 0;
+    virtual void releaseTail(int firing) = 0;
 
     virtual unsigned short getNumberOfElements() const = 0;
 

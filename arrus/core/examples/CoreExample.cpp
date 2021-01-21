@@ -40,30 +40,17 @@ int main() noexcept {
 
         std::vector<TxRx> txrxs;
 
-        for(int i = 0; i < 175; ++i) {
-            arrus::BitMask aperture(192, false);
-
-            auto origin = i-32;
-
-            unsigned short leftPadding = 0, rightPadding = 0;
-            for(int j = 0; j < 64; ++j) {
-                auto idx = origin + j;
-                aperture[std::min(std::max(idx, 0), 191)] = true;
-                if(idx < 0) {
-                    ++leftPadding;
-                }
-                if(idx > 191) {
-                    ++rightPadding;
-                }
-            }
-
-            txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange, 1, {leftPadding, rightPadding}), 100e-6);
+        for(int i = 0; i < 20; ++i) {
+            arrus::BitMask aperture(192, true);
+            txrxs.emplace_back(Tx(aperture, delays, pulse),
+                               Rx(aperture, sampleRange, 1, {0, 0}),
+                               100e-6);
         }
 
-        TxRxSequence seq(txrxs, {}, 200e-3);
+        TxRxSequence seq(txrxs, {}, 250e-3);
         us4r->setVoltage(30);
 
-        auto[buffer, fcm] = us4r->upload(seq, 2, 14);
+        auto[buffer, fcm] = us4r->upload(seq, 2, 2);
 
         us4r->start();
         for(int i = 0; i < 20; ++i) {
@@ -71,9 +58,9 @@ int main() noexcept {
             std::cout << msg;
             int16_t* data = buffer->tail(::arrus::devices::HostBuffer::INF_TIMEOUT);
             std::cout << "Got data" << std::endl;
-//            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
             std::cout << "Processing done." << std::endl;
-            buffer->releaseTail(::arrus::devices::HostBuffer::INF_TIMEOUT);
+//            buffer->releaseTail(::arrus::devices::HostBuffer::INF_TIMEOUT);
         }
         us4r->stop();
 

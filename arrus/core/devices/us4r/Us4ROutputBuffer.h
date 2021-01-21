@@ -115,30 +115,10 @@ public:
             getDefaultLogger()->log(LogSeverity::TRACE, "Signal queue shutdown.");
             return false;
         }
+        timeout = timeout + 1;
         auto &accumulator = accumulators[firing];
-        getDefaultLogger()->log(LogSeverity::TRACE,
-                                ::arrus::format("Signal, position: {}, accumulator: {}", firing, accumulator));
-
-        while(accumulator & (1ul << n)) {
-            // wait till the bit will be cleared
-            getDefaultLogger()->log(
-                LogSeverity::TRACE,
-                arrus::format("Us4OEM:{} signal thread is waiting for accumulator clearance: {}", n, firing));
-            ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
-                isAccuClear[firing], guard, timeout,
-                ::arrus::format("Us4OEM:{} Timeout while waiting for queue element clearance.", n))
-            if(this->state != State::RUNNING) {
-                getDefaultLogger()->log(LogSeverity::TRACE, "Signal queue shutdown.");
-                return false;
-            }
-        }
         accumulator |= 1ul << n;
-        bool isElementReady = (accumulator & filledAccumulator) == filledAccumulator;
-        if(isElementReady) {
-            guard.unlock();
-            queueEmpty.notify_one();
-            *isElReady = true;
-        }
+        *isElReady = (accumulator & filledAccumulator) == filledAccumulator;
         return true;
     }
 
@@ -177,20 +157,11 @@ public:
      * @param timeout a number of milliseconds the thread will wait when
      * the queue is empty; nullptr means no timeout.
      */
-    void releaseTail(long long timeout) override {
+    void releaseTail(int firing) override {
         std::unique_lock<std::mutex> guard(mutex);
         validateState();
-        auto releasedIdx = tailIdx;
-        while(accumulators[releasedIdx] != filledAccumulator) {
-            ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
-                queueEmpty, guard, timeout,
-                "Timeout while waiting for new data queue.")
-            validateState();
-        }
-        accumulators[releasedIdx] = 0;
-        tailIdx = (tailIdx + 1) % nElements;
+        accumulators[firing] = 0;
         guard.unlock();
-        isAccuClear[releasedIdx].notify_all();
     }
 
     /**

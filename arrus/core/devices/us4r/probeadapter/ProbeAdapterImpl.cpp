@@ -366,17 +366,18 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                     ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
                     bool isElementReady = false;
-                    bool cont = outputBuffer->signal(ordinal, element, &isElementReady,
-                                                     HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
+                    outputBuffer->signal(ordinal, element, &isElementReady, HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
                     if(isElementReady) {
-                        cont = outputBuffer->waitForRelease(0, element, HostBuffer::INF_TIMEOUT);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        logger->log(LogSeverity::INFO, "Callback is done!");
                         for(auto &us4oem: us4oems) {
                             us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                         }
-                        for(auto i = nUs4OEM-1; i >= 0; ++i) {
+                        for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
                             us4oems[i]->getIUs4oem()->SyncReceive();
                             us4oems[i]->getIUs4oem()->SyncTransfer();
                         }
+                        outputBuffer->releaseTail(element);
                     }
                     element = (element + rxBufferNElements) % hostBufferNElements;
                 } catch(const std::exception &e) {
