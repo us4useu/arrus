@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+message LinearFunction {
+  double intercept = 1;
+  double slope = 2;
+}

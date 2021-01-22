@@ -20,7 +20,7 @@ def assert_no_error(return_code):
 def main():
     parser = argparse.ArgumentParser(description="Configures build system.")
     parser.add_argument("--targets", dest="targets",
-                        type=str, nargs="+", required=True)
+                        type=str, nargs="*", required=False)
     parser.add_argument("--run_targets", dest="run_targets",
                         type=str, nargs="*", required=False)
     parser.add_argument("--src_branch_name", dest="src_branch_name", type=str,
@@ -38,10 +38,12 @@ def main():
     run_targets = args.run_targets
     extra_options = args.options
     src_branch_name = args.src_branch_name
-    options = ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
+    options = []
+    if targets is not None:
+        options += ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
     if run_targets is not None:
         options += ["-DARRUS_RUN_%s=ON" % t.upper() for t in run_targets]
-    options += ["-D%s" % o.upper() for o in extra_options]
+    options += ["-D%s" % o for o in extra_options]
     src_dir = args.source_dir
     us4r_install_dir = args.us4r_dir
 
@@ -61,7 +63,12 @@ def main():
     shutil.rmtree(build_dir, ignore_errors=True)
     os.makedirs(build_dir)
 
-    cmake_generator = ""
+    # Conan install.
+    cmd = ["conan", "install",  src_dir, "-if", build_dir]
+    result = subprocess.call(cmd)
+    assert_no_error(result)
+
+    # Cmake cfg generator.
     if os.name == "nt":
         cmake_generator = "Visual Studio 15 2017 Win64"
     else:

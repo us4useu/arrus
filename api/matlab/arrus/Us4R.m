@@ -209,7 +209,25 @@ classdef Us4R < handle
             % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
             
             obj.openSequence;
-            rf = obj.execSequence;
+            [rf, ~] = obj.execSequence;
+            obj.closeSequence;
+            
+            if obj.rec.enable
+                img = obj.execReconstr(rf(:,:,:,1));
+            else
+                img = [];
+            end
+        end
+        
+        function [rf, img, metadata] = runWithMetadata(obj)
+            % Runs uploaded operations in the us4R system.
+            %
+            % Currently, only supports :class:`SimpleTxRxSequence` and :class:`Reconstruction`
+            % implementations.
+            %
+            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
+            obj.openSequence;
+            [rf, metadata] = obj.execSequence;
             obj.closeSequence;
             
             if obj.rec.enable
@@ -827,7 +845,7 @@ classdef Us4R < handle
 
         end
 
-        function rf = execSequence(obj)
+        function [rf, metadata] = execSequence(obj)
 
             nArius	= obj.sys.nArius;
             nChan	= obj.sys.nChArius;
@@ -848,7 +866,9 @@ classdef Us4R < handle
                         repmat(nSamp * nTrig, [nArius 1]), ...
                         int8(obj.logTime) ...
             );
-
+            %% Get metadata
+            metadata = zeros(nChan, nTrig, 'int16');
+            metadata(:, :) = rf(:, 1:nSamp:nTrig*nSamp);
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 

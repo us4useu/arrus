@@ -74,7 +74,7 @@ function(install_arrus_package TARGET_NAME VENV_TARGET PACKAGE_TARGET INSTALLATI
         COMMAND
             ${INSTALL_VENV_EXECUTABLE} -m pip install
             #TODO(pjarosik) consider appending timestamp to project version
-            # in order to avoid unecessary reinstallation of arius dependencies
+            # in order to avoid unnecessary reinstallation of arius dependencies
             ${INSTALL_ARRUS_OPTIONS}
         DEPENDS
             ${VENV_TARGET} ${PACKAGE_TARGET} ${ARRUS_PACKAGE_STAMP}
@@ -97,7 +97,7 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
         COMMAND
             ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
         COMMAND
-            ${INSTALL_VENV_EXECUTABLE} -m pip install sphinx sphinx_rtd_theme
+            ${INSTALL_VENV_EXECUTABLE} -m pip install sphinx sphinx_rtd_theme six
             "git+git://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain"
         DEPENDS
             ${VENV_TARGET}

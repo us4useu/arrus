@@ -1,477 +1,587 @@
 import numpy as np
+import math
+import scipy
 import scipy.signal as signal
-import matplotlib.pyplot as plt
-from collections.abc import Iterable
+import scipy.ndimage
+import arrus.metadata
+import arrus.devices.cpu
+import arrus.devices.gpu
+import arrus.kernels.imaging
 
-def reconstruct_rf_img(rf, x_grid, z_grid,
-                       pitch, fs, fc, c,
-                       tx_aperture, tx_focus, tx_angle,
-                       n_pulse_periods, tx_mode='lin', n_first_samples=0,
-                       use_gpu=0,
-                       ):
+
+class Pipeline:
     """
-    Function for image reconstruction using delay-and-sum approach.
+    Imaging pipeline.
 
-    :param rf: 3D array of rf signals before beamforming
-    :param x_grid: vector of pixel x coordinates [m]
-    :param z_grid: vector of pixel z coordinates [m]
-    :param pitch: the distance between contiguous elements [m]
-    :param fs: sampling frequency [Hz]
-    :param fc: carrier frequency [Hz]
-    :param c: assumed speed of sound [m/s]
-    :param tx_aperture: transmit aperture length [elements]
-    :param tx_focus: transmit focus [m]
-    :param tx_angle: transmit angle [radians]
-    :param n_pulse_periods: the length of the pulse in periods
-    :param tx_mode: imaging mode - lin (classical),
-                                   sta (synthetic transmit aperture)
-                                   pwi (plane wave imaging)
-    :param n_first_samples: samples recorded before transmission
-    :param use_gpu: if 0 - the cpu is used (default),
-                    if 1 - the gpu is used (only for nvidia card with CUDA)
-    :return: rf beamformed image
+    Processes given data,metadata using a given sequence of steps.
+    The processing will be performed on a given device ('placement').
+    """
+    def __init__(self, steps, placement=None):
+        self.steps = steps
+        if placement is not None:
+            self.set_placement(placement)
 
+    def __call__(self, data):
+        for step in self.steps:
+            data = step(data)
+        return data
+
+    def initialize(self, const_metadata):
+        input_shape = const_metadata.input_shape
+        input_dtype = const_metadata.dtype
+        for step in self.steps:
+            const_metadata = step._prepare(const_metadata)
+        # Force cupy to recompile kernels before running the pipeline.
+        init_array = self.num_pkg.zeros(input_shape, dtype=input_dtype)+1000
+        self.__call__(init_array)
+        return const_metadata
+
+    def set_placement(self, device):
+        """
+        Sets the pipeline to be executed on a particular device.
+
+        :param device: device on which the pipeline should be executed
+        """
+        self.placement = device
+        # Initialize steps with a proper library.
+        if isinstance(self.placement, arrus.devices.gpu.GPU):
+            import cupy as cp
+            import cupyx.scipy.ndimage as cupy_scipy_ndimage
+            pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
+        elif isinstance(self.placement, arrus.devices.cpu.CPU):
+            import scipy.ndimage
+            pkgs = dict(num_pkg=np, filter_pkg=scipy.ndimage)
+        else:
+            raise ValueError(f"Unsupported device: {device}")
+        for step in self.steps:
+            step.set_pkgs(**pkgs)
+        self.num_pkg = pkgs['num_pkg']
+        self.filter_pkg = pkgs['filter_pkg']
+
+
+class BandpassFilter:
+    """
+    Bandpass filtering to apply to signal data.
+
+    A bandwidth [0.5, 1.5]*center_frequency is currently used.
+
+    The filtering is performed along the last axis.
+
+    Currently only FIR filter is available.
     """
 
-    tx_angle = np.array(tx_angle)
-    if tx_angle.size != 1:
-        tx_angle = np.squeeze(tx_angle)
+    def __init__(self, numtaps=7, bounds=(0.5, 1.5), filter_type="butter",
+                 num_pkg=None, filter_pkg=None):
+        """
+        Bandpass filter constructor.
 
-    if use_gpu:
-        import cupy as cp
-        rf = cp.array(rf)
-        x_grid = cp.array(x_grid)
-        z_grid = cp.array(z_grid)
-        tx_angle = cp.array(tx_angle)
-        print('recontruction using gpu')
-        xp = cp
-    else:
-        print('recontruction using cpu')
-        xp = np
+        :param bounds: determines filter's frequency boundaries,
+            e.g. setting 0.5 will give a bandpass filter
+            [0.5*center_frequency, 1.5*center_frequency].
+        """
+        self.taps = None
+        self.numtaps = numtaps
+        self.bound_l, self.bound_r = bounds
+        self.filter_type = filter_type
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
 
-    if tx_focus is None:
-        tx_focus = 0
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
 
-    # making x and z_grid column vector
-    z_grid = z_grid[xp.newaxis].T
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        l, r = self.bound_l, self.bound_r
+        center_frequency = const_metadata.context.sequence.pulse.center_frequency
+        sampling_frequency = const_metadata.data_description.sampling_frequency
+        # FIXME(pjarosik) implement iir filter
+        taps, _ = scipy.signal.butter(
+                2,
+                [l * center_frequency, r * center_frequency],
+                btype='bandpass', fs=sampling_frequency)
+        self.taps = self.xp.asarray(taps).astype(self.xp.float32)
+        return const_metadata
 
-    # getting size parameters
-    n_samples, n_channels, n_transmissions = rf.shape
-    z_size = max(z_grid.shape)
-    x_size = max(x_grid.shape)
+    def __call__(self, data):
+        result = self.filter_pkg.convolve1d(data, self.taps, axis=-1,
+                                            mode='constant')
+        return result
 
-    # check if data is iq (i.e. complex) or 'ordinary' rf (i.e. real)
-    is_iqdata = isinstance(rf[0, 0, 0], xp.complex)
-    if is_iqdata:
-        print('iq (complex) data on input')
-    else:
-        print('rf (real) data on input')
 
-    # probe/transducer width
-    probe_width = (n_channels-1)*pitch
+class QuadratureDemodulation:
+    """
+    Quadrature demodulation (I/Q decomposition).
+    """
+    def __init__(self, num_pkg=None):
+        self.mod_factor = None
+        self.xp = num_pkg
 
-    # x coordinate of transducer elements
-    element_xcoord = xp.linspace(-probe_width/2, probe_width/2, n_channels)
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
 
-    # initial delays [s]
-    delay0 = n_first_samples/fs
-    burst_factor = 0.5*n_pulse_periods/fc
-    is_lin_or_sta = tx_mode == 'lin' or tx_mode == 'sta'
-    if is_lin_or_sta and tx_focus > 0:
-        focus_delay = (xp.sqrt(((tx_aperture-1)*pitch/2)**2+tx_focus**2)
-                      -tx_focus)/c
-    else:
-        focus_delay = 0
+    def _is_prepared(self):
+        return self.mod_factor is not None
 
-    init_delay = focus_delay+burst_factor+delay0
+    def _prepare(self, const_metadata):
+        xp = self.xp
+        fs = const_metadata.data_description.sampling_frequency
+        fc = const_metadata.context.sequence.pulse.center_frequency
+        _, _, n_samples = const_metadata.input_shape
+        t = (xp.arange(0, n_samples) / fs).reshape(1, 1, -1)
+        self.mod_factor = (2 * xp.cos(-2 * xp.pi * fc * t)
+                           + 2 * xp.sin(-2 * xp.pi * fc * t) * 1j)
+        self.mod_factor = self.mod_factor.astype(xp.complex64)
+        return const_metadata.copy(is_iq_data=True, dtype="complex64")
 
-    # Delay & Sum
-    # add zeros as last samples.
-    # If a sample is out of range 1: nSamp,
-    # then use the sample no.nSamp + 1 which is 0.
-    # to be checked if it is faster than irregular memory access.
-    tail = xp.zeros((1, n_channels, n_transmissions))
-    rf = xp.concatenate((rf, tail))
+    def __call__(self, data):
+        return self.mod_factor * data
 
-    # buffers allocation
-    rf_tx = xp.zeros((z_size, x_size, n_transmissions))
-    if is_iqdata:
-        rf_tx = rf_tx.astype(complex)
 
-    weight_tx = xp.zeros((z_size, x_size, n_transmissions))
+class Decimation:
+    """
+    Decimation + CIC (Cascade Integrator-Comb) filter.
 
-    # loop over transmissions
-    for itx in range(0, n_transmissions):
+    See: https://en.wikipedia.org/wiki/Cascaded_integrator%E2%80%93comb_filter
+    """
 
-        # calculate tx delays and apodization
+    def __init__(self, decimation_factor, cic_order, num_pkg=None, impl="legacy"):
+        """
+        Decimation op constructor.
 
-        # classical linear scanning
-        # (only a narrow stripe is reconstructed  at a time, no tx apodization)
-        if tx_mode == 'lin':
+        :param decimation_factor: decimation factor to apply
+        :param cic_order: CIC filter order
+        """
+        self.decimation_factor = decimation_factor
+        self.cic_order = cic_order
+        self.xp = num_pkg
+        self.impl = impl
+        if self.impl == "legacy":
+            self._decimate = self._legacy_decimate
+        elif self.impl == "fir":
+            self._decimate = self._fir_decimate
 
-            # difference between image point x coordinate and element x coord
-            xdifference = xp.array(x_grid-element_xcoord[itx])
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg # not used by the GPU implementation (custom kernel for complex input data)
 
-            # logical indexes of valid x coordinates
-            lix_valid = (xdifference > (-pitch/2)) & (xdifference <= (pitch/2))
-            n_valid = xp.sum(lix_valid)
-            n_valid = int(n_valid)
+    def _prepare(self, const_metadata):
+        new_fs = (const_metadata.data_description.sampling_frequency
+                  / self.decimation_factor)
+        new_signal_description = arrus.metadata.EchoDataDescription(
+            sampling_frequency=new_fs, custom=
+            const_metadata.data_description.custom)
 
-            # ix_valid = list(np.nonzero(lix_valid))
-            tx_distance = xp.tile(z_grid, (1, n_valid))
-            tx_apodization = xp.ones((z_size, n_valid))
+        n_frames, n_channels, n_samples = const_metadata.input_shape
+        total_n_samples = n_frames*n_channels*n_samples
 
-        # synthetic transmit aperture method
-        elif tx_mode == 'sta':
-            lix_valid = xp.ones(x_size, dtype=bool)
-            tx_distance = xp.sqrt((z_grid-tx_focus)**2
-                                + (x_grid-element_xcoord[itx])**2
-                                )
+        output_shape = n_frames, n_channels, n_samples//self.decimation_factor
 
-            tx_distance = tx_distance*xp.sign(z_grid-tx_focus) + tx_focus
-
-            f_number = max(abs(z_grid-tx_focus))
-            f_number = max(f_number, xp.array(1e-12))\
-                     /abs(x_grid-element_xcoord[itx])*0.5
-
-            tx_apodization = f_number > 2
-
-        elif tx_mode == 'pwi':
-            lix_valid = xp.ones((x_size), dtype=bool)
-
-            if tx_angle[itx] >= 0:
-                first_element = 0
+        # CIC FIR coefficients
+        if self.impl == "fir":
+            cicFir = self.xp.array([1], dtype=self.xp.float32)
+            cicFir1 = self.xp.ones(self.decimation_factor, dtype=self.xp.float32)
+            for i in range(self.cic_order):
+                cicFir = self.xp.convolve(cicFir, cicFir1, 'full')
+            fir_taps = cicFir
+            n_fir_taps = len(fir_taps)
+            if self.xp == np:
+                def _cpu_fir_filter(data):
+                    return self.filter_pkg.convolve1d(
+                        np.real(data), fir_taps,
+                        axis=-1, mode='constant',
+                        cval=0, origin=-1) \
+                        + self.filter_pkg.convolve1d(np.imag(data),
+                                          fir_taps, axis=-1,
+                                          mode='constant', cval=0,
+                                          origin=-1)*1j
+                # CPU
+                self._fir_filter = _cpu_fir_filter
             else:
-                first_element = n_channels-1
+                # GPU
+                import cupy as cp
+                _fir_output_buffer = cp.zeros(const_metadata.input_shape,
+                                                dtype=cp.complex64)
+                # Kernel settings
+                from arrus.utils.fir import (
+                    get_default_grid_block_size,
+                    get_default_shared_mem_size,
+                    run_fir)
+                grid_size, block_size = get_default_grid_block_size(n_samples, total_n_samples)
+                shared_memory_size = get_default_shared_mem_size(n_samples, n_fir_taps)
 
-            tx_distance = \
-                (x_grid-element_xcoord[first_element])*xp.sin(tx_angle[itx]) \
-                +z_grid*xp.cos(tx_angle[itx])
+                def _gpu_fir_filter(data):
+                    run_fir(grid_size, block_size,
+                        (_fir_output_buffer, data, n_samples,
+                         total_n_samples, fir_taps, n_fir_taps),
+                            shared_memory_size)
+                    return _fir_output_buffer
 
-            r1 = (x_grid-element_xcoord[0])*xp.cos(tx_angle[itx]) \
-                 -z_grid*xp.sin(tx_angle[itx])
+                self._fir_filter = _gpu_fir_filter
+        return const_metadata.copy(data_desc=new_signal_description,
+                                   input_shape=output_shape)
 
-            r2 = (x_grid-element_xcoord[-1])*xp.cos(tx_angle[itx]) \
-                 -z_grid*xp.sin(tx_angle[itx])
+    def __call__(self, data):
+        return self._decimate(data)
 
-            tx_apodization = (r1 >= 0) & (r2 <= 0)
+    def _fir_decimate(self, data):
+        fir_output = self._fir_filter(data)
+        data_out = fir_output[:, :, 0:-1:self.decimation_factor]
+        return data_out
 
+    def _legacy_decimate(self, data):
+        data_out = data
+        for i in range(self.cic_order):
+            data_out = self.xp.cumsum(data_out, axis=-1)
+        data_out = data_out[:, :, 0:-1:self.decimation_factor]
+        for i in range(self.cic_order):
+            data_out[:, :, 1:] = self.xp.diff(data_out, axis=-1)
+        return data_out
+
+
+class RxBeamforming:
+    """
+    Rx beamforming.
+
+    Expected input data shape: n_emissions, n_rx, n_samples
+
+    Currently the beamforming op works only for LIN sequence output data.
+    """
+
+    def __init__(self, num_pkg=None):
+        self.delays = None
+        self.buffer = None
+        self.rx_apodization = None
+        self.xp = num_pkg
+        self.interp1d_func = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+        if self.xp is np:
+            import scipy.interpolate
+
+            def numpy_interp1d(input, samples, output):
+                n_samples = input.shape[-1]
+                x = np.arange(0, n_samples)
+                interpolator = scipy.interpolate.interp1d(
+                    x, input, kind="linear", bounds_error=False,
+                    fill_value=0.0)
+                interp_values = interpolator(samples)
+                n_scanlines, _, n_samples = interp_values.shape
+                interp_values = np.reshape(interp_values, (n_scanlines, n_samples))
+                output[:] = interp_values
+
+            self.interp1d_func = numpy_interp1d
         else:
-            raise ValueError('unknown reconstruction mode!')
+            import cupy as cp
+            if self.xp != cp:
+                raise ValueError(f"Unhandled numerical package: {self.xp}")
+            import arrus.utils.interpolate
+            self.interp1d_func = arrus.utils.interpolate.interp1d
 
-        # buffers allocation
-        rf_rx = xp.zeros((z_size, x_size, n_channels))
-        if is_iqdata:
-            rf_rx = rf_rx.astype(complex)
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        # TODO verify that all angles, focal points are the same
+        # TODO make sure start_sample is computed appropriately
+        context = const_metadata.context
+        probe_model = const_metadata.context.device.probe.model
+        seq = const_metadata.context.sequence
+        raw_seq = const_metadata.context.raw_sequence
+        medium = const_metadata.context.medium
+        rx_aperture_center_element = np.array(seq.rx_aperture_center_element)
 
-        weight_rx = xp.zeros((z_size, x_size, n_channels))
-
-        # loop over elements
-        for irx in range(0, n_channels):
-
-            # calculate rx delays and apodization
-            rx_distance = xp.sqrt((x_grid[lix_valid]-element_xcoord[irx])**2
-                                  + z_grid**2)
-            f_number = abs(z_grid/(x_grid[lix_valid]-element_xcoord[irx])*0.5)
-            rx_apodization = f_number > 2
-
-            # calculate total delays [s]
-            delays = init_delay + (tx_distance+rx_distance)/c
-
-            # calculate sample number to be used in reconstruction
-            samples = delays*fs+1
-            out_of_range = (0 > samples) | (samples > n_samples-1)
-            samples[out_of_range] = n_samples
-
-            # calculate rf samples (interpolated) and apodization weights
-            rf_raw_line = rf[:, irx, itx]
-            ceil_samples = xp.ceil(samples).astype(int)
-            floor_samples = xp.floor(samples).astype(int)
-            valid = xp.where(lix_valid)[0].tolist()
-            rf_rx[:, valid, irx] = rf_raw_line[floor_samples]*(1-(samples % 1)) \
-                                   + rf_raw_line[ceil_samples]*(samples % 1)
-            weight_rx[:, valid, irx] = tx_apodization*rx_apodization
-
-            # modulate if iq signal is used
-            if is_iqdata:
-                rf_rx[:, lix_valid, irx] = rf_rx[:, lix_valid, irx] \
-                                          * xp.exp(1j*2*xp.pi*fc*delays)
-                pass
-
-        # calculate rf and weights for single tx
-        rf_tx[:, :, itx] = xp.sum(rf_rx*weight_rx, axis=2)
-        sumwrx = xp.sum(weight_rx, axis=2)
-        weight_tx[:, :, itx] = xp.divide(1, sumwrx,
-                                         out=xp.zeros_like(sumwrx),
-                                         where=sumwrx!=0)
-
-        # show progress
-        percentage = round((itx+1)/n_transmissions*1000)/10
-        if itx == 0:
-            print('{}%'.format(percentage), end='')
-        elif itx == n_transmissions-1:
-            print('\r{}%'.format(percentage))
+        self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
+        self.is_iq = const_metadata.is_iq_data
+        if self.is_iq:
+            buffer_dtype = self.xp.complex64
         else:
-            print('\r{}%'.format(percentage), end='')
+            buffer_dtype = self.xp.float32
 
-    # calculate final rf image
-    rf_image = xp.sum(rf_tx, axis=2)*np.sum(weight_tx, axis=2)
+        # -- Output buffer
+        self.buffer = self.xp.zeros((self.n_tx, self.n_rx * self.n_samples),
+                                    dtype=buffer_dtype)
 
-    if use_gpu:
-        return cp.asnumpy(rf_image)
-    else:
-        return rf_image
+        # -- Delays
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = const_metadata.data_description.sampling_frequency
+        fc = seq.pulse.center_frequency
+        n_periods = seq.pulse.n_periods
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+        tx_angle = 0  # TODO use appropriate tx angle
+        start_sample = seq.rx_sample_range[0]
+        rx_aperture_origin = _get_rx_aperture_origin(seq)
+
+        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+            seq, probe_model, c)
+
+        burst_factor = n_periods / (2 * fc)
+        # -start_sample compensates the fact, that the data indices always start from 0
+        initial_delay = - start_sample / acq_fs
+        if seq.init_delay == "tx_start":
+            burst_factor = n_periods / (2 * fc)
+            _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
+                seq, probe_model, c)
+            initial_delay += tx_delay_center + burst_factor
+        elif not seq.init_delay == "tx_center":
+            raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
+
+        radial_distance = (
+                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)
+                * c / 2
+        )
+        x_distance = (radial_distance * np.sin(tx_angle)).reshape(1, -1)
+        z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
+
+        origin_offset = (rx_aperture_origin[0]
+                         - (seq.rx_aperture_center_element[0]))
+        # New coordinate system: origin: rx aperture center
+        element_position = ((np.arange(0, self.n_rx) + origin_offset)
+                            * probe_model.pitch)
+        element_position = element_position.reshape((self.n_rx, 1))
+        if not probe_model.is_convex_array():
+            element_angle = np.zeros((self.n_rx, 1))
+            element_x = element_position
+            element_z = np.zeros((self.n_rx, 1))
+        else:
+            element_angle = element_position / probe_model.curvature_radius
+            element_x = probe_model.curvature_radius * np.sin(element_angle)
+            element_z = probe_model.curvature_radius * (
+                    np.cos(element_angle) - 1)
+
+        tx_distance = radial_distance
+        rx_distance = np.sqrt(
+            (x_distance - element_x) ** 2 + (z_distance - element_z) ** 2)
+
+        self.t = (tx_distance + rx_distance) / c + initial_delay
+        self.delays = self.t * fs # in number of samples
+        total_n_samples = self.n_rx * self.n_samples
+        # Move samples outside the available area
+        self.delays[np.isclose(self.delays, self.n_samples-1)] = self.n_samples-1
+        self.delays[self.delays > self.n_samples-1] = total_n_samples + 1
+        # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
+        #  row-wise major order).
+        self.delays = self.xp.asarray(self.delays)
+        self.delays += self.xp.arange(0, self.n_rx).reshape(self.n_rx, 1) \
+                       * self.n_samples
+        self.delays = self.delays.reshape(-1, self.n_samples * self.n_rx) \
+            .astype(self.xp.float32)
+        # Apodization
+        lambd = c / fc
+        max_tang = math.tan(
+            math.asin(min(1, 2 / 3 * lambd / probe_model.pitch)))
+        rx_tang = np.abs(np.tan(np.arctan2(x_distance - element_x,
+                                           z_distance - element_z) - element_angle))
+        rx_apodization = (rx_tang < max_tang).astype(np.float32)
+        rx_apod_sum = np.sum(rx_apodization, axis=0)
+        rx_apod_sum[rx_apod_sum == 0] = 1
+        rx_apodization = rx_apodization/(rx_apod_sum.reshape(1, self.n_samples))
+        self.rx_apodization = self.xp.asarray(rx_apodization)
+        # IQ correction
+        self.t = self.xp.asarray(self.t)
+        self.iq_correction = self.xp.exp(1j * 2 * np.pi * fc * self.t) \
+            .astype(self.xp.complex64)
+        # Create new output shape
+        return const_metadata.copy(input_shape=(self.n_tx, self.n_samples))
+
+    def __call__(self, data):
+        data = data.copy().reshape(self.n_tx, self.n_rx * self.n_samples)
+
+        self.interp1d_func(data, self.delays, self.buffer)
+        out = self.buffer.reshape((self.n_tx, self.n_rx, self.n_samples))
+        if self.is_iq:
+            out = out * self.iq_correction
+        out = out * self.rx_apodization
+        out = self.xp.sum(out, axis=1)
+        return out.reshape((self.n_tx, self.n_samples))
 
 
-def make_bmode_image(rf_image, x_grid, y_grid, db_range=-60):
+class EnvelopeDetection:
     """
-    The function for creating b-mode image.
-    
-    :param rf_image: 2D rf image
-    :param x_grid: vector of x coordinates
-    :param y_grid: vector of y coordinates
-    :param db_range: dynamic range in [dB].
-           If int or float, it is the lower bound of dynamic range,
-           and upper bound equal 0 is assumed.
-           If list or tuple - min and max values are treated
-           as bounds of the dynamic range.
-    :return:
+    Envelope detection (Hilbert transform).
+
+    Currently this op works only for I/Q data (complex64).
     """
 
-    if isinstance(db_range, int) or isinstance(db_range, float):
-        db_range = [db_range, 0]
-        min_db, max_db = db_range
-        if min_db >= max_db:
+    def __init__(self, num_pkg=None):
+        self.xp = num_pkg
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata.copy(is_iq_data=False)
+
+    def __call__(self, data):
+        if data.dtype != self.xp.complex64:
             raise ValueError(
-                "Bad db_range: max_db (now  max_db = {}) "
-                "should be larger than min_db (now min_db = {})"
-                .format(max_db, min_db)
-            )
+                f"Data type {data.dtype} is currently not supported.")
+        return self.xp.abs(data)
 
-    if isinstance(db_range, Iterable):
-        min_db, max_db = db_range
-        if min_db >= max_db:
+
+class Transpose:
+    """
+    Data transposition.
+    """
+
+    def __init__(self, axes=None):
+        self.axes = axes
+        self.xp = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def _prepare(self, const_metadata):
+        input_shape = const_metadata.input_shape
+        axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
+        output_shape = tuple(input_shape[ax] for ax in axes)
+        return const_metadata.copy(input_shape=output_shape)
+
+    def __call__(self, data):
+        return self.xp.transpose(data, self.axes)
+
+
+class ScanConversion:
+    """
+    Scan conversion (interpolation to target mesh).
+
+    Currently linear interpolation is used by default, values outside
+    the input mesh will be set to 0.0.
+
+    Currently the op is implement for CPU only.
+    :param x_grid: a vector of grid points along OX axis [m]
+    :param z_grid: a vector of grid points along OZ axis [m]
+    """
+
+    def __init__(self, x_grid, z_grid):
+        self.dst_points = None
+        self.dst_shape = None
+        self.x_grid = x_grid.reshape(1, -1)
+        self.z_grid = z_grid.reshape(1, -1)
+        self.is_gpu = False
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg != np:
+            self.is_gpu = True
+        # Ignoring provided num. package - currently CPU implementation is
+        # available only.
+
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        probe = const_metadata.context.device.probe.model
+        medium = const_metadata.context.medium
+        data_desc = const_metadata.data_description
+
+        if not probe.is_convex_array():
             raise ValueError(
-                "Bad db_range: max_db (now  max_db = {}) "
-                "should be larger than min_db (now min_db = {})"
-                .format(max_db, min_db)
-            )
+                "Scan conversion currently works for convex probes data only.")
 
-    # check if 'rf' or 'iq' data on input
-    is_iqdata = isinstance(rf_image[1, 1], np.complex)
+        n_samples, _ = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+        custom_data = const_metadata.context.custom_data
 
-    dx = x_grid[1]-x_grid[0]
-    dy = y_grid[1]-y_grid[0]
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = data_desc.sampling_frequency
 
-    # calculate envelope
-    if is_iqdata:
-        amplitude_image = np.abs(rf_image)
-    else:
-        amplitude_image = np.abs(signal.hilbert(rf_image, axis=0))
+        start_sample = seq.rx_sample_range[0]
 
-    # convert do dB
-    max_image_value = np.max(amplitude_image)
-    bmode_image = np.log10(amplitude_image/max_image_value)*20
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
 
-    # calculate ticks and labels
-    n_samples, n_lines = rf_image.shape
-    image_height = (n_samples-1)*dy
-    image_height = y_grid[-1]-y_grid[0]
-    # max_depth = image_depth + depth0
-    # max_depth = z_grid[-1]
-    # image_width = (n_lines - 1)*dx
-    image_width = x_grid[-1]-x_grid[0]
-    image_proportion = image_height/image_width
+        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
 
-    n_xticks = 4
-    n_yticks = int(round(n_xticks*image_proportion))
+        z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
+             probe.element_pos_z)
 
-    xticks = np.linspace(0, n_lines-1, n_xticks)
-    xtickslabels = np.linspace(x_grid[0], x_grid[-1], n_xticks)*1e3
-    xtickslabels = np.round(xtickslabels, 1)
+        self.radGridIn = (
+                (start_sample / acq_fs + np.arange(0, n_samples) / fs)
+                * c / 2)
 
-    yticks = np.linspace(0, n_samples-1, n_yticks)
-    ytickslabels = np.linspace(y_grid[0], y_grid[-1], n_yticks)*1e3
-    ytickslabels = np.round(ytickslabels, 1)
+        self.azimuthGridIn = tx_ap_cent_ang
+        azimuthGridOut = np.arctan2(self.x_grid, z_grid_moved)
+        radGridOut = (np.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
+                      - probe.curvature_radius)
 
-    # calculate data aspect for proper image proportions
-    data_aspect = dy/dx
+        dst_points = np.dstack((radGridOut, azimuthGridOut))
+        w, h, d = dst_points.shape
+        self.dst_points = dst_points.reshape((w * h, d))
+        self.dst_shape = len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        return const_metadata.copy(input_shape=self.dst_shape)
 
-    # show the image
-
-    plt.imshow(bmode_image,
-               interpolation='bicubic',
-               aspect=data_aspect,
-               cmap='gray',
-               vmin=db_range[0], vmax=db_range[1]
-               )
-
-    plt.xticks(xticks, xtickslabels)
-    plt.yticks(yticks, ytickslabels)
-
-    cbar = plt.colorbar()
-    cbar.ax.get_yaxis().labelpad=10
-    cbar.ax.set_ylabel('[dB]', rotation=90)
-    plt.xlabel('[mm]')
-    plt.ylabel('[mm]')
-#    plt.show()
+    def __call__(self, data):
+        if self.is_gpu:
+            data = data.get()
+        data[np.isnan(data)] = 0.0
+        self.interpolator = scipy.interpolate.RegularGridInterpolator(
+            (self.radGridIn, self.azimuthGridIn), data, method="linear",
+            bounds_error=False, fill_value=0)
+        return self.interpolator(self.dst_points).reshape(self.dst_shape)
 
 
-def compute_tx_delays(angles, focus, pitch, c=1490, n_chanels=128):
+class LogCompression:
     """
-    Computes Tx delays using given parameters.
-    
-    
-    :param angles: Transmission angles [rad].
-                   Can be a number or a list (for multiple angles).
-    :param focus: Focal length [m].
-    :param pitch: Pitch [m]
-    :param c: Speed of sound [m/s]. Default value is 1490.
-    :param n_chanels: Number of channels/transducers. Default value is 128.
-    :return: Ndarray of delays.
-             Its shape is (number of angles, number of channels).
+    Converts to decibel scale.
     """
+    def __init__(self):
+        pass
 
-    # transducer indexes
-    x_i = np.linspace(0, n_chanels-1, n_chanels)
+    def set_pkgs(self, **kwargs):
+        # Intentionally ignoring num. package -
+        # currently numpy is available only.
+        pass
 
-    # transducer coordinates
-    x_c = x_i*pitch
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
 
-    angles = np.array(angles)
-    n_angles = angles.size
-    if n_angles != 0:
-        # reducing possible singleton dimensions of 'angles'
-        angles = np.squeeze(angles)
-        if angles.shape == ():
-            angles = np.array([angles])
-
-        # allocating memory for delays
-        delays = np.zeros(shape=(n_angles, n_chanels))
-
-        # calculating delays for each angle
-        for i_angle in range(0, n_angles):
-            this_angle = angles[i_angle]
-            this_delays = x_c*np.sin(this_angle)/c
-            if this_angle < 0:
-                this_delays = this_delays-this_delays[-1]
-            delays[i_angle, :] = this_delays
-    else:
-        delays = np.zeros(shape=(1, n_chanels))
-
-    focus = np.array(focus)
-    if focus.size == 0:
-        return delays
-
-    elif focus.size == 1:
-        xf = (n_chanels-1)*pitch/2
-        yf = focus
-
-    elif focus.size == 2:
-        xf = focus[0] + (n_chanels-1)*pitch/2
-        yf = focus[1]
-
-    else:
-        print('Bad focus value, set to [] (plane wave)')
-        return delays
-
-    # distance between origin of coordinate system and focus
-    s0 = np.sqrt(yf**2+xf**2)
-    focus_sign = np.sign(yf)
-
-    # cosinus of the angle between array (y=0) and focus position vector
-    if s0 == 0:
-        cos_alpha = 0
-    else:
-        cos_alpha = xf/s0
-
-    # distances between elements and focus
-    si = np.sqrt(s0**2 + x_c**2 - 2*s0*x_c*cos_alpha)
-
-    # focusing delays
-    delays_foc = (s0-si)/c
-    delays_foc = delays_foc*focus_sign
-
-    # set min(delays_foc) as delay==0
-    d0 = np.min(delays_foc)
-    delays_foc = delays_foc - d0
-
-    # full delays
-    delays = delays + delays_foc
-
-    return delays
+    def __call__(self, data):
+        if not isinstance(data, np.ndarray):
+            data = data.get()
+        data[data == 0] = 1e-9
+        return 20 * np.log10(data)
 
 
-def calculate_envelope(rf):
-    """
-    The function calculate envelope using hilbert transform
-    :param rf:
-    :return: envelope image
-    """
-    envelope = np.abs(signal.hilbert(rf, axis=0))
-    return envelope
+class DynamicRangeAdjustment:
+
+    def __init__(self, min=20, max=80):
+        self.min = min
+        self.max = max
+        self.xp = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
+
+    def __call__(self, data):
+        return self.xp.clip(data, a_min=self.min, a_max=self.max)
 
 
-def rf2iq(rf, fc, fs, decimation_factor):
-    """
-    Demodulation and decimation from rf signal to iq (quadrature) signal.
+class ToGrayscaleImg:
 
-    :param rf: array of rf signals
-    :param fc: carrier frequency
-    :param fs: sampling frequency
-    :param decimation_factor: decimation factor
-    :return: array of decimated iq signals
+    def __init__(self):
+        self.xp = None
 
-    """
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
 
-    s = rf.shape
-    n_dim = len(s)
-    n_samples = s[0]
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
 
-    if n_dim > 1:
-        n_channels = s[1]
-    else:
-        n_channels = 1
-        rf = rf[..., np.newaxis]
-
-    if n_dim > 2:
-        n_transmissions = s[2]
-    else:
-        n_transmissions = 1
-        rf = rf[..., np.newaxis]
-    # creating time array
-    ts = 1/fs
-    t = np.linspace(0, (n_samples-1)*ts, n_samples)
-    t = t[..., np.newaxis, np.newaxis]
+    def __call__(self, data):
+        data = data - self.xp.min(data)
+        data = data/self.xp.max(data)*255
+        return data.astype(self.xp.uint8)
 
 
-    # demodulation
-    iq = rf*np.exp(0-1j*2*np.pi*fc*t)
+def _get_rx_aperture_origin(sequence):
+    rx_aperture_size = sequence.rx_aperture_size
+    rx_aperture_center_element = np.array(sequence.rx_aperture_center_element)
+    rx_aperture_origin = np.round(rx_aperture_center_element -
+                               (rx_aperture_size - 1) / 2 + 1e-9)
+    return rx_aperture_origin
 
-
-    # low-pass filtration (assuming 150% band)
-    f_up_cut = fc*1.5/2
-
-    # ir
-    filter_order = 8
-    b, a = signal.butter(filter_order,
-                         f_up_cut,
-                         btype='low',
-                         analog=False,
-                         output='ba',
-                         fs=fs
-                         )
-
-    # this scaling of amplitude is to make envelopes from iq and rf similar
-    iq = 2*signal.filtfilt(b, a, iq, axis=0)
-
-    # decimation
-    if decimation_factor > 1:
-        iq = signal.decimate(iq, decimation_factor, axis=0)
-    else:
-        print('decimation factor <= 1, no decimation')
-
-    iq = np.squeeze(iq)
-
-    return iq
 
