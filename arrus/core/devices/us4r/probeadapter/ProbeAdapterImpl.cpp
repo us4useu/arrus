@@ -348,6 +348,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
 
         ius4oem->PrepareTransferRXBufferToHost(
             transferIdx, dstAddress, elementSize, srcAddress);
+
         ius4oem->ScheduleTransferRXBufferToHost(
             endFiring, transferIdx,
             [this, ius4oem, outputBuffer, ordinal, transferIdx, startFiring,
@@ -359,26 +360,14 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                     ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
 
                     // Prepare transfer for the next iteration.
-                    // TODO jezeli mniej niz 4GB per modul -> utworz transfery przed uruchomieniem przerwan
-                    // TODO jezeli wiecej - przeprogramowuj tak jak teraz jest
+                    // TODO if there is more than 4GiB per us4oem -> create transfer before handling interrupts
+                    // TODO if there is more data -> keep current reprogramming as is
                     ius4oem->PrepareTransferRXBufferToHost(
                         transferIdx, dstAddress, elementSize, srcAddress);
                     ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
-                    bool isElementReady = false;
-                    outputBuffer->signal(ordinal, element, &isElementReady, HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
-                    if(isElementReady) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                        logger->log(LogSeverity::INFO, "Callback is done!");
-                        for(auto &us4oem: us4oems) {
-                            us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                        }
-                        for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
-                            us4oems[i]->getIUs4oem()->SyncReceive();
-                            us4oems[i]->getIUs4oem()->SyncTransfer();
-                        }
-                        outputBuffer->releaseTail(element);
-                    }
+                    outputBuffer->signal(ordinal, element);
+
                     element = (element + rxBufferNElements) % hostBufferNElements;
                 } catch(const std::exception &e) {
                     logger->log(LogSeverity::ERROR, "Us4OEM: "
@@ -393,11 +382,29 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
 
             }
         );
-        // TODO register in the us4oem
         startFiring = endFiring + 1;
         ++transferIdx;
+
+        // Register element release functions here.
+        if(outputBuffer->getNumberOfElements() % us4oemBuffer.getNumberOfElements() != 0) {
+            throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
+        }
+        uint16 nRepeats = outputBuffer->getNumberOfElements() / us4oemBuffer.getNumberOfElements();
+
+        std::function<void()> releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
+            outputBuffer->release()
+            for(auto &us4oem: this->us4oems) {
+                us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+            }
+            for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
+                this->us4oems[i]->getIUs4oem()->SyncReceive();
+                this->us4oems[i]->getIUs4oem()->SyncTransfer();
+            }
+        };
+        for(uint16 i = 0; i < nRepeats; ++i) {
+            outputBuffer->registerReleaseFunction(transferIdx+(i*hostBufferNElements), releaseFunc);
+        }
     }
-    // Register overflow callbacks (mark output buffer as invalid)
 
     ius4oem->RegisterReceiveOverflowCallback([this, outputBuffer]() {
         try {

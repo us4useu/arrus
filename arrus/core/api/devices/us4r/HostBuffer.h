@@ -5,41 +5,24 @@
 
 namespace arrus::devices {
 
+class HostBufferElement {
+public:
+    using SharedHandle = std::shared_ptr<HostBufferElement>;
+
+    virtual void release() = 0;
+};
+
 class HostBuffer {
 public:
     using Handle = std::unique_ptr<HostBuffer>;
     using SharedHandle = std::shared_ptr<HostBuffer>;
-    static constexpr long long INF_TIMEOUT = -1;
+    typedef std::function<void(HostBufferElement::SharedHandle)> OnNewDataCallback;
 
-    virtual ~HostBuffer() = default;
-
-    /**
-     * @param timeout -1 means infinity timeout
-     * @return
-     */
-    virtual int16* tail(long long timeout) = 0;
-
-    virtual int16* head(long long timeout) = 0;
-
-    virtual size_t tailAddress(long long timeout) {
-        return (size_t)tail(timeout);
-    }
-
-    virtual size_t headAddress(long long timeout) {
-        return (size_t)head(timeout);
-    }
-
-    virtual void releaseTail(int firing) = 0;
+    virtual ~HostBuffer() = 0;
 
     virtual unsigned short getNumberOfElements() const = 0;
 
     virtual size_t getElementSize() const = 0;
-
-    virtual int16* getElement(size_t i) = 0;
-
-    virtual size_t getElementAddress(size_t i) {
-        return (size_t)getElement(i);
-    }
 };
 
 }
