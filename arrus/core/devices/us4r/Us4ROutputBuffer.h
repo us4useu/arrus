@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <gsl/span>
 #include <chrono>
+#include <iostream>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -63,6 +64,7 @@ public:
             throw IllegalStateException("Detected data overflow, buffer is in invalid state.");
         }
         accumulator |= us4oemPattern;
+        std::cout << "accumulator: " << accumulator << " ordinal " << n << std::endl;
     }
 
     void resetState() {
@@ -116,8 +118,8 @@ public:
         ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
                             "Currently Us4R data buffer supports up to 16 us4oem modules.");
 
-        Ordinal nus4oems = us4oemOutputSizes.size();
-        Us4ROutputBufferElement::AccumulatorType filledAccumulator((1ul << (size_t) nus4oems) - 1);
+        size_t nus4oems = us4oemOutputSizes.size();
+        Us4ROutputBufferElement::AccumulatorType filledAccumulator((1ul << nus4oems) - 1);
         // Calculate us4oem write offsets for each buffer element.
         size_t us4oemOffset = 0;
         Ordinal us4oemOrdinal = 0;
@@ -139,7 +141,7 @@ public:
                                     "Allocated {} ({}, {}) bytes of memory, address: {}",
                                     elementSize * nElements, elementSize, nElements, (size_t) dataBuffer));
 
-        for(int i = 0; i < nElements; ++i) {
+        for(unsigned i = 0; i < nElements; ++i) {
             auto elementAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + i * elementSize);
             elements.push_back(std::make_shared<Us4ROutputBufferElement>(elementAddress, elementSize,
                                                                          elementShape, elementDataType,
@@ -157,7 +159,7 @@ public:
         this->onNewDataCallback = callback;
     }
 
-    [[nodiscard]] uint16 getNumberOfElements() const override {
+    [[nodiscard]] size_t getNumberOfElements() const override {
         return elements.size();
     }
 
@@ -197,6 +199,7 @@ public:
             throw e;
         }
         if(element->isElementReady()) {
+            std::cout << "Element is ready!" << std::endl;
             onNewDataCallback(elements[elementNr]);
         }
         return true;
@@ -226,7 +229,7 @@ public:
         }
     }
 
-    void registerReleaseFunction(uint16 element, std::function<void()> &releaseFunction) {
+    void registerReleaseFunction(size_t element, std::function<void()> &releaseFunction) {
         this->elements[element]->registerReleaseFunction(releaseFunction);
     }
 

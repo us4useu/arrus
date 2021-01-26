@@ -21,7 +21,7 @@ public:
 /**
  * A callback to be called once new data arrives.
  */
-using OnNewDataCallback = std::function<void(FifoBufferElement::SharedHandle)>;
+using OnNewDataCallback = std::function<void(const FifoBufferElement::SharedHandle& )>;
 
 /**
  * FIFO (first in, first out) buffer.
@@ -36,10 +36,10 @@ public:
     /**
      * Returns number of elements the buffer contains.
      */
-    virtual unsigned short getNumberOfElements() const = 0;
+    virtual size_t getNumberOfElements() const = 0;
 
     /**
-     * Returns size of a single buffer element, that is the number of values with given data type.
+     * Returns size of a single buffer element, that is the number of values of a given data type.
      */
     virtual size_t getElementSize() const = 0;
 

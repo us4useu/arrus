@@ -16,11 +16,11 @@ public:
         : us4oemComponents(std::move(us4oemComponents)) {
 
         // Sum buffer us4oem component number of samples to determine buffer element shape.
-        unsigned nChannels = us4oemComponents[0].getElementShape().get(1);
+        unsigned nChannels = this->us4oemComponents[0].getElementShape().get(1);
         unsigned nSamples = 0;
-        framework::NdArray::DataType dataType = us4oemComponents[0].getDataType();
+        framework::NdArray::DataType dataType = this->us4oemComponents[0].getDataType();
 
-        for(auto& component: us4oemComponents) {
+        for(auto& component: this->us4oemComponents) {
             auto &componentShape = component.getElementShape();
             // Verify if we have the same number of channels for each component
             if(nChannels != componentShape.get(1)) {

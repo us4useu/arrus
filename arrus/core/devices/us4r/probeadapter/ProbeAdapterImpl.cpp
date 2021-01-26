@@ -314,7 +314,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
     }
     // Output buffer - assuming that the number of elements is a multiple of number of transfers
     const auto rxBufferNElements = ARRUS_SAFE_CAST(us4oemBuffer.getNumberOfElements(), uint16);
-    const uint16 hostBufferNElements = outputBuffer->getNumberOfElements();
+    const size_t hostBufferNElements = outputBuffer->getNumberOfElements();
     const Ordinal ordinal = us4oem->getDeviceId().getOrdinal();
 
     // Prepare host buffers
@@ -382,34 +382,36 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
 
             }
         );
-        startFiring = endFiring + 1;
-        ++transferIdx;
 
         // Register element release functions here.
         if(outputBuffer->getNumberOfElements() % us4oemBuffer.getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
         }
-        uint16 nRepeats = outputBuffer->getNumberOfElements() / us4oemBuffer.getNumberOfElements();
+        size_t nRepeats = outputBuffer->getNumberOfElements() / us4oemBuffer.getNumberOfElements();
 
-        std::function<void()> releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
-            for(auto &us4oem: this->us4oems) {
-                us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-            }
-            for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
-                this->us4oems[i]->getIUs4oem()->SyncReceive();
-                this->us4oems[i]->getIUs4oem()->SyncTransfer();
-            }
-        };
-        for(uint16 i = 0; i < nRepeats; ++i) {
-            outputBuffer->registerReleaseFunction(transferIdx+(i*hostBufferNElements), releaseFunc);
+        for(size_t i = 0; i < nRepeats; ++i) {
+            if
+            std::function<void()> releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
+                for(auto &us4oem: this->us4oems) {
+                    us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                }
+                for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
+                    this->us4oems[i]->getIUs4oem()->SyncReceive();
+                    this->us4oems[i]->getIUs4oem()->SyncTransfer();
+                }
+            };
+            outputBuffer->registerReleaseFunction(transferIdx+(i*rxBufferNElements), releaseFunc);
         }
+
+        startFiring = endFiring + 1;
+        ++transferIdx;
     }
 
     ius4oem->RegisterReceiveOverflowCallback([this, outputBuffer]() {
         try {
             this->logger->log(LogSeverity::ERROR, "Rx buffer overflow, stopping the device.");
-//            this->getMasterUs4oem()->stop();
-//            outputBuffer->markAsInvalid();
+            this->getMasterUs4oem()->stop();
+            outputBuffer->markAsInvalid();
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, "Receive overflow callback ended with an exception: " +
                                             std::string(e.what()));
@@ -422,8 +424,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
     ius4oem->RegisterTransferOverflowCallback([this, outputBuffer]() {
         try {
             this->logger->log(LogSeverity::ERROR, "Host buffer overflow, stopping the device.");
-//            this->getMasterUs4oem()->stop();
-//            outputBuffer->markAsInvalid();
+            this->getMasterUs4oem()->stop();
+            outputBuffer->markAsInvalid();
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, "Receive overflow callback ended with an exception: " +
                                             std::string(e.what()));

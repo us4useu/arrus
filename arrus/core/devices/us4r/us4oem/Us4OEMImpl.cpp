@@ -319,7 +319,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                              op.getRxDecimationFactor() - 1,
                                              rxMapId, nullptr);
                     outputAddress += nBytes;
-                    totalNSamples += nSamples;
+                    totalNSamples += (unsigned)nSamples;
                 }
             }
         }
@@ -329,7 +329,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
         framework::NdArray::Shape shape{totalNSamples, N_RX_CHANNELS};
-        rxBufferElements.emplace_back(srcAddress, size, firing, totalNSamples, shape, NdArrayDataType);
+        rxBufferElements.emplace_back(srcAddress, size, firing, shape, NdArrayDataType);
     }
     ius4oem->EnableTransmit();
 

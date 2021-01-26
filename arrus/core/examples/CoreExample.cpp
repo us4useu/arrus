@@ -3,6 +3,7 @@
 #include <fstream>
 #include <cstdio>
 #include <string>
+#include <condition_variable>
 
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
@@ -10,9 +11,11 @@
 #include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "arrus/core/api/framework/FifoBufferSpec.h"
 
 int main() noexcept {
     using namespace ::arrus::ops::us4r;
+    using namespace ::arrus::framework;
     try {
         auto loggingMechanism = std::make_shared<::arrus::Logging>();
         std::shared_ptr<std::ostream> ostream{
@@ -44,26 +47,35 @@ int main() noexcept {
             arrus::BitMask aperture(192, true);
             txrxs.emplace_back(Tx(aperture, delays, pulse),
                                Rx(aperture, sampleRange, 1, {0, 0}),
-                               100e-6);
+                               100e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, 500e-3);
+        TxRxSequence seq(txrxs, {}, 50e-3f);
+        FifoBufferSpec outputBuffer{BufferWorkMode::ASYNC, 10};
+        Scheme scheme(seq, 2, outputBuffer);
+
+        auto result = session->upload(scheme);
         us4r->setVoltage(10);
 
-        auto[buffer, fcm] = us4r->upload(seq, 2, 2);
+        std::condition_variable cv;
 
-        us4r->start();
-        for(int i = 0; i < 20; ++i) {
-            std::string msg = "i: " + std::to_string(i) + "\n";
-            std::cout << msg;
-            int16_t* data = buffer->tail(::arrus::devices::HostBuffer::INF_TIMEOUT);
-            std::cout << "Got data" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            std::cout << "Processing done." << std::endl;
-//            buffer->releaseTail(::arrus::devices::HostBuffer::INF_TIMEOUT);
-        }
-        us4r->stop();
+        OnNewDataCallback callback = [&, i = 0](const FifoBufferElement::SharedHandle &ptr) mutable {
+            std::cout << "Callback!" << std::endl;
+            if(i == 9) {
+                std::cout << "Stopping program!!!" << std::endl;
+                cv.notify_all();
+            }
+            ptr->release();
+            ++i;
+        };
+        result.getBuffer()->registerOnNewDataCallback(callback);
+        session->start();
 
+        std::mutex mutex;
+        std::unique_lock<std::mutex> lock(mutex);
+        cv.wait(lock);
+        std::cout << "Got 10 frames" << std::endl;
+        session->stop();
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return -1;
