@@ -6,17 +6,20 @@
 #include <gsl/span>
 #include <chrono>
 
-#include "arrus/core/api/devices/us4r/HostBuffer.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
+#include "arrus/core/api/framework/FifoBuffer.h"
 
 
 namespace arrus::devices {
 
-class HostBufferElementImpl: public HostBufferElement {
+using ::arrus::framework::FifoBuffer;
+using ::arrus::framework::FifoBufferElement;
+
+class HostBufferElementImpl: public FifoBufferElement {
 public:
     using SharedHandle = std::shared_ptr<HostBufferElementImpl>;
 
@@ -59,7 +62,7 @@ private:
  *
  * The assumption is here that each element of the buffer has the same size (and the same us4oem offsets).
  */
-class Us4ROutputBuffer: public HostBuffer {
+class Us4ROutputBuffer: public FifoBuffer {
 public:
     static constexpr size_t DATA_ALIGNMENT = 4096;
     using AccumulatorType = uint16;

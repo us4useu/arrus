@@ -103,5 +103,26 @@ SessionImpl::~SessionImpl() {
     ::arrus::getDefaultLogger()->log(LogSeverity::INFO, "Closing session.");
 }
 
+UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
+    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    auto &outputBufferSpec = scheme.getOutputBuffer();
+    auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(), outputBufferSpec);
+
+    std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
+    metadataMap.emplace("frame_channel_mapping", std::move(fcm));
+    auto constMetadata = std::make_shared<UploadConstMetadata>(metadataMap);
+    return UploadResult(buffer, constMetadata);
+}
+
+void SessionImpl::start() {
+    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    us4r->start();
+}
+
+void SessionImpl::stop() {
+    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    us4r->stop();
+}
+
 
 }

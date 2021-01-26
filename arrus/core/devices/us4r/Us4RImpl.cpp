@@ -10,6 +10,8 @@ using ::arrus::ops::us4r::TxRxSequence;
 using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
+using ::arrus::framework::FifoBuffer;
+using ::arrus::framework::FifoBufferSpec;
 
 UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     // NOTE! The implementation of this function determines
@@ -67,14 +69,17 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::pair<HostBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
+std::pair<FifoBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
-                 unsigned short rxBufferNElements, unsigned short hostBufferNElements) {
+                 unsigned short rxBufferNElements,
+                 const FifoBufferSpec &hostBufferSpec) {
 
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
             "Currently TxRx sequence upload is available for system with probes only."));
+
+    unsigned hostBufferNElements = hostBufferSpec.getNumberOfElements();
 
     if((hostBufferNElements % rxBufferNElements) != 0) {
         throw ::arrus::IllegalArgumentException(
@@ -92,6 +97,7 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
 
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
+    // Calculate how much of the data each Us4OEM produces.
     auto &element = rxBuffer->getElement(0);
     std::vector<size_t> elementPartSizes(element.getNumberOfUs4oems(), 0);
     std::transform(

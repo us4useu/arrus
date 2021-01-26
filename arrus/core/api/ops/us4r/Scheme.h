@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "TxRxSequence.h"
+#include "arrus/core/api/framework/FifoBufferSpec.h"
 
 namespace arrus::ops::us4r {
 
@@ -13,13 +14,9 @@ enum class WorkMode {
 };
 
 class Scheme {
-
 public:
-    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, uint16 hostBufferSize, WorkMode workMode)
-            : txRxSequence(std::move(txRxSequence)),
-              rxBufferSize(rxBufferSize),
-              hostBufferSize(hostBufferSize),
-              workMode(workMode) {}
+    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::FifoBufferSpec &outputBuffer)
+        : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer) {}
 
     const TxRxSequence &getTxRxSequence() const {
         return txRxSequence;
@@ -29,19 +26,14 @@ public:
         return rxBufferSize;
     }
 
-    uint16 getHostBufferSize() const {
-        return hostBufferSize;
-    }
-
-    WorkMode getWorkMode() const {
-        return workMode;
+    const framework::FifoBufferSpec &getOutputBuffer() const {
+        return outputBuffer;
     }
 
 private:
     TxRxSequence txRxSequence;
     uint16 rxBufferSize;
-    uint16 hostBufferSize;
-    WorkMode workMode;
+    ::arrus::framework::FifoBufferSpec outputBuffer;
 };
 
 }

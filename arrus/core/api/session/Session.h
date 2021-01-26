@@ -7,6 +7,7 @@
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/SessionSettings.h"
+#include "arrus/core/api/session/UploadResult.h"
 
 namespace arrus::session {
 
@@ -30,9 +31,15 @@ public:
      */
     virtual arrus::devices::Device * getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 
-    virtual std::tuple<Buffer, DataDescription> upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
-
-    virtual void upload(const ::arrus::ops::us4r::Scheme &scheme, CustomProcessing &customProcessing) = 0;
+    /**
+     * Uploads a given scheme on the available devices.
+     *
+     * Currently, the scheme upload is performed on the Us4R:0 device only.
+     *
+     * @param scheme scheme to upload
+     * @return upload result information
+     */
+    virtual UploadResult upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 
     virtual void start() = 0;
 
