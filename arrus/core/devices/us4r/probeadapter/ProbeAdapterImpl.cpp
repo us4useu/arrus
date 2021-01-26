@@ -286,10 +286,10 @@ void ProbeAdapterImpl::syncTrigger() {
     this->us4oems[0]->syncTrigger();
 }
 
-void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers) {
+void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer) {
     Ordinal us4oemOrdinal = 0;
     for(auto &us4oem: us4oems) {
-        auto us4oemBuffer = transfers->getUs4oemBuffer(us4oemOrdinal);
+        auto us4oemBuffer = us4rBuffer->getUs4oemBuffer(us4oemOrdinal);
         registerOutputBuffer(buffer, us4oemBuffer, us4oem);
         ++us4oemOrdinal;
     }
@@ -392,7 +392,6 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
         uint16 nRepeats = outputBuffer->getNumberOfElements() / us4oemBuffer.getNumberOfElements();
 
         std::function<void()> releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
-            outputBuffer->release()
             for(auto &us4oem: this->us4oems) {
                 us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }

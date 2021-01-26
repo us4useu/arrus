@@ -1,17 +1,14 @@
 #ifndef ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 #define ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 
+#include <utility>
+
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/devices/DeviceId.h"
 
 namespace arrus::framework {
 
-/**
- * A list of currently supported data types of the output buffer.
- */
-enum class DataType {
-    INT16
-};
+
 
 /**
  * N-dimensional array.
@@ -24,16 +21,23 @@ enum class DataType {
  */
 class NdArray {
 public:
+    /**
+        * A list of currently supported data types of the output buffer.
+    */
+    enum class DataType {
+        INT16
+    };
+    typedef Tuple<unsigned int> Shape;
 
-    NdArray(void *ptr, const Tuple<unsigned int> &shape, DataType dataType, const devices::DeviceId &placement) :
-        ptr(ptr), shape(shape), dataType(dataType), placement(placement) {}
+    NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
+        ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement) {}
 
     template<typename T>
     T *get() {
         return (T *) ptr;
     }
 
-    const Tuple<unsigned int> &getShape() const {
+    const Shape &getShape() const {
         return shape;
     }
 
@@ -43,7 +47,7 @@ public:
 
 private:
     void *ptr;
-    Tuple<unsigned> shape;
+    Shape shape;
     DataType dataType;
     ::arrus::devices::DeviceId placement;
 };

@@ -36,6 +36,8 @@ public:
      *
      * Currently, the scheme upload is performed on the Us4R:0 device only.
      *
+     * After uploading a sequence the previously returned will be in invalid state.
+     *
      * @param scheme scheme to upload
      * @return upload result information
      */

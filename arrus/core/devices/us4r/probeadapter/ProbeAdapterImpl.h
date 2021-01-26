@@ -45,7 +45,7 @@ public:
 
     void syncTrigger() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers);
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer);
 
     void setTgcCurve(const arrus::ops::us4r::TGCCurve &curve) override;
 

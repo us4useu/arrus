@@ -106,7 +106,7 @@ public:
     >
     upload(const ops::us4r::TxRxSequence &seq,
            unsigned short rxBufferNElements,
-           const ::arrus::framework::FifoBufferSpec &hostBufferSpec) override;
+           const ::arrus::framework::FifoBufferSpec &outputBufferSpec) override;
 
     void start() override;
 

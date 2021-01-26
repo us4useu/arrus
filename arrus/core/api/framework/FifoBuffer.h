@@ -25,8 +25,6 @@ using OnNewDataCallback = std::function<void(FifoBufferElement::SharedHandle)>;
 
 /**
  * FIFO (first in, first out) buffer.
- *
- * The oldest buffer elements are always overiden first.
  */
 class FifoBuffer {
 public:
@@ -41,7 +39,7 @@ public:
     virtual unsigned short getNumberOfElements() const = 0;
 
     /**
-     * Returns size of a single buffer element.
+     * Returns size of a single buffer element, that is the number of values with given data type.
      */
     virtual size_t getElementSize() const = 0;
 
@@ -49,7 +47,7 @@ public:
      * Registers callback, that should be called once new data arrives at the buffer head.
      * The callback has an access to the latest data.
      *
-     * Free the provided buffer element when the data is no longer needed.
+     * Free the provided buffer element using `release` function when the data is no longer needed.
      */
     virtual void registerOnNewDataCallback(OnNewDataCallback &callback) = 0;
 };
