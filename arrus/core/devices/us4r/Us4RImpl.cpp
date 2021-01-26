@@ -101,10 +101,6 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
         [](const Us4OEMBufferElement& transfer) {
             return transfer.getSize();
         });
-
-    // This might be quite time consuming operation - it might be good idea to
-    // check if the buffer properties has changed and reuse the old buffer
-    // if possible.
     if(this->buffer) {
         this->buffer.reset();
     }

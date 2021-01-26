@@ -51,13 +51,13 @@ public:
      *
      * @param sequence a list of tx/rxs that compose a given sequence
      * @param tgcCurve tgc curve to apply
-     * @param sri frame repetition interval - the total time that a given sequence should take. Should be not smaller
+     * @param sri frame repetition interval - the total time that a given sequence should take.
      */
     TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI)
         : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri) {}
 
     /**
-     * Sequence of operations to perform.
+     * Returns vector of operations to perform.
      */
     const std::vector<TxRx> &getOps() const {
         return txrxs;
@@ -72,7 +72,7 @@ public:
 
     /**
      * Returns frame repetition interval (the total time the given sequence should actually take).
-     * nullopt means that the frame acquistion time should be determined by total PRI only.
+     * nullopt means that the frame acquisition time should be determined by total PRI only.
      */
     const std::optional<float> getSri() const {
         if(sri.value() != NO_SRI) {

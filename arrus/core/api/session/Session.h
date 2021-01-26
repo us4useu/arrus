@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_API_SESSION_SESSION_H
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -18,8 +20,7 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    virtual arrus::devices::Device *
-    getDevice(const std::string &deviceId) = 0;
+    virtual arrus::devices::Device * getDevice(const std::string &deviceId) = 0;
 
     /**
      * Returns a handle to device with given Id.
@@ -27,14 +28,15 @@ public:
      * @param deviceId device identifier
      * @return a device handle
      */
-    virtual arrus::devices::Device *
-    getDevice(const arrus::devices::DeviceId &deviceId) = 0;
+    virtual arrus::devices::Device * getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 
-//    virtual void upload(Scheme::SharedHandle scheme);
-//
-//    virtual void start();
-//
-//    virtual void stop();
+    virtual std::tuple<Buffer, DataDescription> upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
+
+    virtual void upload(const ::arrus::ops::us4r::Scheme &scheme, CustomProcessing &customProcessing) = 0;
+
+    virtual void start() = 0;
+
+    virtual void stop() = 0;
 
     virtual ~Session() = default;
 };

@@ -5,20 +5,15 @@
 
 namespace arrus::devices {
 
-class HostBufferElement {
-public:
-    using SharedHandle = std::shared_ptr<HostBufferElement>;
 
-    virtual void release() = 0;
-};
 
 class HostBuffer {
 public:
     using Handle = std::unique_ptr<HostBuffer>;
     using SharedHandle = std::shared_ptr<HostBuffer>;
-    typedef std::function<void(HostBufferElement::SharedHandle)> OnNewDataCallback;
 
-    virtual ~HostBuffer() = 0;
+
+    virtual ~HostBuffer() = default;
 
     virtual unsigned short getNumberOfElements() const = 0;
 

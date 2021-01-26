@@ -40,15 +40,15 @@ int main() noexcept {
 
         std::vector<TxRx> txrxs;
 
-        for(int i = 0; i < 20; ++i) {
+        for(int i = 0; i < 10; ++i) {
             arrus::BitMask aperture(192, true);
             txrxs.emplace_back(Tx(aperture, delays, pulse),
                                Rx(aperture, sampleRange, 1, {0, 0}),
                                100e-6);
         }
 
-        TxRxSequence seq(txrxs, {}, 250e-3);
-        us4r->setVoltage(30);
+        TxRxSequence seq(txrxs, {}, 500e-3);
+        us4r->setVoltage(10);
 
         auto[buffer, fcm] = us4r->upload(seq, 2, 2);
 
