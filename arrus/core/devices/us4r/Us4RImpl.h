@@ -18,7 +18,7 @@
 #include "arrus/core/devices/us4r/hv/HV256Impl.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 
-#include "arrus/core/api/framework/FifoBufferSpec.h"
+#include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/DataBuffer.h"
 
 namespace arrus::devices {
@@ -106,7 +106,7 @@ public:
     >
     upload(const ops::us4r::TxRxSequence &seq,
            unsigned short rxBufferNElements,
-           const ::arrus::framework::FifoBufferSpec &outputBufferSpec) override;
+           const ::arrus::framework::DataBufferSpec &outputBufferSpec) override;
 
     void start() override;
 

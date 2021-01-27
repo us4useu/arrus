@@ -12,13 +12,15 @@
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/api/framework/DataBuffer.h"
+#include "arrus/core/api/framework/FifoLockfreeBuffer.h"
 
 
 namespace arrus::devices {
 
 using ::arrus::framework::DataBuffer;
 using ::arrus::framework::DataBufferElement;
+
+class Us4ROutputBuffer;
 
 /**
  * Buffer element owns the data arrrays, which then are returned to user.
@@ -35,7 +37,7 @@ public:
                             AccumulatorType filledAccumulator)
         : data(address, elementShape, elementDataType,
                DeviceId(DeviceType::Us4R, 0)), size(size),
-          filledAccumulator(filledAccumulator) {}
+          filledAccumulator(filledAccumulator){}
 
     void release() override {
         this->accumulator = 0;
@@ -43,10 +45,12 @@ public:
     }
 
     int16 *getAddress() {
+        validateState();
         return data.get<int16>();
     }
 
     framework::NdArray &getData() override {
+        validateState();
         return data;
     }
 
@@ -64,11 +68,22 @@ public:
             throw IllegalStateException("Detected data overflow, buffer is in invalid state.");
         }
         accumulator |= us4oemPattern;
-        std::cout << "accumulator: " << accumulator << " ordinal " << n << std::endl;
     }
 
     void resetState() {
         accumulator = 0;
+    }
+
+    void markAsInvalid() {
+        this->isInvalid = true;
+    }
+
+    void validateState() {
+        if(this->isInvalid) {
+            throw ::arrus::IllegalStateException(
+                "The buffer is in invalid state "
+                "(probably some data transfer overflow happened).");
+        }
     }
 
 private:
@@ -79,6 +94,7 @@ private:
      * whole element is ready. */
     AccumulatorType filledAccumulator;
     std::function<void()> releaseFunction;
+    bool isInvalid{false};
 };
 
 /**
@@ -98,7 +114,7 @@ private:
  *
  * The assumption is here that each element of the buffer has the same size (and the same us4oem offsets).
  */
-class Us4ROutputBuffer : public DataBuffer {
+class Us4ROutputBuffer : public framework::FifoLockfreeBuffer {
 public:
     static constexpr size_t DATA_ALIGNMENT = 4096;
     using DataType = int16;
@@ -159,6 +175,14 @@ public:
         this->onNewDataCallback = callback;
     }
 
+    [[nodiscard]] const framework::OnNewDataCallback& getOnNewDataCallback() const {
+        return this->onNewDataCallback;
+    }
+
+    void registerOnOverflowCallback(framework::OnOverflowCallback &callback) override {
+        this->onOverflowCallback = callback;
+    }
+
     [[nodiscard]] size_t getNumberOfElements() const override {
         return elements.size();
     }
@@ -199,7 +223,6 @@ public:
             throw e;
         }
         if(element->isElementReady()) {
-            std::cout << "Element is ready!" << std::endl;
             onNewDataCallback(elements[elementNr]);
         }
         return true;
@@ -207,8 +230,13 @@ public:
 
     void markAsInvalid() {
         std::unique_lock<std::mutex> guard(mutex);
-        this->state = State::INVALID;
-        guard.unlock();
+        if(this->state != State::INVALID) {
+            this->state = State::INVALID;
+            for(auto &element: elements) {
+                element->markAsInvalid();
+            }
+            this->onOverflowCallback();
+        }
     }
 
     void shutdown() {
@@ -245,6 +273,7 @@ private:
     std::vector<size_t> us4oemOffsets;
     // Callback that should be called once new data arrive.
     framework::OnNewDataCallback onNewDataCallback;
+    framework::OnOverflowCallback onOverflowCallback{[](){}};
 
     // State management
     enum class State {

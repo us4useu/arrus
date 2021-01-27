@@ -18,10 +18,7 @@ public:
     virtual NdArray& getData() = 0;
 };
 
-/**
- * A callback to be called once new data arrives.
- */
-using OnNewDataCallback = std::function<void(const DataBufferElement::SharedHandle& )>;
+
 
 /**
  * FIFO (first in, first out) buffer.
@@ -43,13 +40,7 @@ public:
      */
     virtual size_t getElementSize() const = 0;
 
-    /**
-     * Registers callback, that should be called once new data arrives at the buffer head.
-     * The callback has an access to the latest data.
-     *
-     * Free the provided buffer element using `release` function when the data is no longer needed.
-     */
-    virtual void registerOnNewDataCallback(OnNewDataCallback &callback) = 0;
+
 };
 
 }

@@ -45,13 +45,15 @@ public:
 
     /**
      * Starts currently uploaded scheme.
+     *
+     * Raises InvalidStateException when no scheme has been uploaded yet.
      */
     virtual void startScheme() = 0;
 
     /**
      * Stops currently uploaded scheme.
      *
-     * Raises InvalidStateException when no scheme has been uploaded yet.
+     * Raises InvalidStateException when no scheme is running now.
      */
     virtual void stopScheme() = 0;
 

@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <string>
 #include <condition_variable>
+#include "arrus/core/api/framework/FifoLockfreeBuffer.h"
 
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
@@ -11,7 +12,7 @@
 #include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/framework/FifoBufferSpec.h"
+#include "arrus/core/api/framework/DataBufferSpec.h"
 
 int main() noexcept {
     using namespace ::arrus::ops::us4r;
@@ -51,30 +52,46 @@ int main() noexcept {
         }
 
         TxRxSequence seq(txrxs, {}, 50e-3f);
-        FifoBufferSpec outputBuffer{BufferWorkMode::ASYNC, 10};
+        DataBufferSpec outputBuffer{DataBufferType::FIFO_LOCKFREE, 10};
         Scheme scheme(seq, 2, outputBuffer);
 
         auto result = session->upload(scheme);
         us4r->setVoltage(10);
 
         std::condition_variable cv;
+        using namespace std::chrono_literals;
 
         OnNewDataCallback callback = [&, i = 0](const DataBufferElement::SharedHandle &ptr) mutable {
-            std::cout << "Callback!" << std::endl;
-            if(i == 9) {
-                std::cout << "Stopping program!!!" << std::endl;
-                cv.notify_all();
+            try {
+                std::cout << "Callback!" << std::endl;
+                if(i == 9) {
+                    cv.notify_one();
+                }
+                ptr->release();
+                std::cout << ptr->getData().getShape().size() << std::endl;
+                std::cout << ptr->getData().getShape().get(0) << ", " << ptr->getData().getShape().get(1)<< std::endl;
+                ++i;
+            } catch(const std::exception &e) {
+                std::cout << "Exception: " << e.what() << std::endl;
+                cv.notify_one();
             }
-            ptr->release();
-            ++i;
         };
-        result.getBuffer()->registerOnNewDataCallback(callback);
-        session->startScheme();
 
+        OnOverflowCallback overflowCallback = [&] () {
+            std::cout << "Overflow!!!" << std::endl;
+            cv.notify_one();
+        };
+
+        // Register the callback for new data in the output buffer.
+        auto buffer = std::static_pointer_cast<FifoLockfreeBuffer>(result.getBuffer());
+        buffer->registerOnNewDataCallback(callback);
+        buffer->registerOnOverflowCallback(overflowCallback);
+
+        session->startScheme();
         std::mutex mutex;
         std::unique_lock<std::mutex> lock(mutex);
         cv.wait(lock);
-        std::cout << "Got 10 frames" << std::endl;
+        std::cout << "Closing scheme and program." << std::endl;
         session->stopScheme();
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;

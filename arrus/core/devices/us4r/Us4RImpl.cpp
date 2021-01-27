@@ -11,7 +11,7 @@ using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
 using ::arrus::framework::DataBuffer;
-using ::arrus::framework::FifoBufferSpec;
+using ::arrus::framework::DataBufferSpec;
 
 UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     // NOTE! The implementation of this function determines
@@ -72,7 +72,7 @@ void Us4RImpl::disableHV() {
 std::pair<DataBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
                  unsigned short rxBufferNElements,
-                 const FifoBufferSpec &outputBufferSpec) {
+                 const DataBufferSpec &outputBufferSpec) {
 
     unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
 
@@ -128,6 +128,9 @@ void Us4RImpl::start() {
         throw ::arrus::IllegalStateException("Device is already running.");
     }
     this->buffer->resetState();
+    if(!this->buffer->getOnNewDataCallback()) {
+        throw ::arrus::IllegalArgumentException("'On new data callback' is not set.");
+    }
     this->getDefaultComponent()->start();
     this->state = State::STARTED;
 }
