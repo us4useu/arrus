@@ -54,7 +54,7 @@ public:
     static constexpr float MAX_TX_DELAY = 16.96e-6f;
 
     static constexpr float MIN_TX_FREQUENCY = 1e6f;
-    static constexpr float MAX_TX_FREQUENCY = 20e6f;
+    static constexpr float MAX_TX_FREQUENCY = 60e6f;
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
