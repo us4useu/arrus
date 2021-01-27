@@ -114,12 +114,12 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     return UploadResult(buffer, constMetadata);
 }
 
-void SessionImpl::start() {
+void SessionImpl::startScheme() {
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->start();
 }
 
-void SessionImpl::stop() {
+void SessionImpl::stopScheme() {
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->stop();
 }

@@ -322,8 +322,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
     uint16 rxElement = 0;
 
     auto ius4oem = us4oem->getIUs4oem();
-    ius4oem->EnableWaitOnReceiveOverflow();
-    ius4oem->EnableWaitOnTransferOverflow();
+//    ius4oem->EnableWaitOnReceiveOverflow();
+//    ius4oem->EnableWaitOnTransferOverflow();
 
     while(hostElement < hostBufferNElements) {
         auto dstAddress = outputBuffer->getAddress(hostElement, ordinal);
@@ -382,7 +382,6 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
 
             }
         );
-
         // Register element release functions here.
         if(outputBuffer->getNumberOfElements() % us4oemBuffer.getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
@@ -390,15 +389,14 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
         size_t nRepeats = outputBuffer->getNumberOfElements() / us4oemBuffer.getNumberOfElements();
 
         for(size_t i = 0; i < nRepeats; ++i) {
-            if
             std::function<void()> releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
                 for(auto &us4oem: this->us4oems) {
                     us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                 }
-                for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
-                    this->us4oems[i]->getIUs4oem()->SyncReceive();
-                    this->us4oems[i]->getIUs4oem()->SyncTransfer();
-                }
+//                for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
+//                    this->us4oems[i]->getIUs4oem()->SyncReceive();
+//                    this->us4oems[i]->getIUs4oem()->SyncTransfer();
+//                }
             };
             outputBuffer->registerReleaseFunction(transferIdx+(i*rxBufferNElements), releaseFunc);
         }

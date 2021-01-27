@@ -69,13 +69,13 @@ int main() noexcept {
             ++i;
         };
         result.getBuffer()->registerOnNewDataCallback(callback);
-        session->start();
+        session->startScheme();
 
         std::mutex mutex;
         std::unique_lock<std::mutex> lock(mutex);
         cv.wait(lock);
         std::cout << "Got 10 frames" << std::endl;
-        session->stop();
+        session->stopScheme();
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return -1;

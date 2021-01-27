@@ -26,9 +26,9 @@ public:
 
     UploadResult upload(const ops::us4r::Scheme &scheme) override;
 
-    void start() override;
+    void startScheme() override;
 
-    void stop() override;
+    void stopScheme() override;
 
     SessionImpl(SessionImpl const &) = delete;
 

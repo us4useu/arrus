@@ -36,16 +36,24 @@ public:
      *
      * Currently, the scheme upload is performed on the Us4R:0 device only.
      *
-     * After uploading a sequence the previously returned will be in invalid state.
+     * After uploading a sequence the previously returned output buffers will be in invalid state.
      *
      * @param scheme scheme to upload
      * @return upload result information
      */
     virtual UploadResult upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 
-    virtual void start() = 0;
+    /**
+     * Starts currently uploaded scheme.
+     */
+    virtual void startScheme() = 0;
 
-    virtual void stop() = 0;
+    /**
+     * Stops currently uploaded scheme.
+     *
+     * Raises InvalidStateException when no scheme has been uploaded yet.
+     */
+    virtual void stopScheme() = 0;
 
     virtual ~Session() = default;
 };

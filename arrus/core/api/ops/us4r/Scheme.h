@@ -8,11 +8,6 @@
 
 namespace arrus::ops::us4r {
 
-enum class WorkMode {
-    ASYNC,
-    SYNC
-};
-
 class Scheme {
 public:
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::FifoBufferSpec &outputBuffer)
