@@ -12,7 +12,7 @@
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/api/framework/FifoLockfreeBuffer.h"
+#include "arrus/core/api/framework/FifoLockFreeBuffer.h"
 
 
 namespace arrus::devices {
@@ -114,7 +114,7 @@ private:
  *
  * The assumption is here that each element of the buffer has the same size (and the same us4oem offsets).
  */
-class Us4ROutputBuffer : public framework::FifoLockfreeBuffer {
+class Us4ROutputBuffer : public framework::FifoLockFreeBuffer {
 public:
     static constexpr size_t DATA_ALIGNMENT = 4096;
     using DataType = int16;
@@ -183,6 +183,10 @@ public:
         this->onOverflowCallback = callback;
     }
 
+    void registerShutdownCallback(framework::OnShutdownCallback &callback) override {
+        this->onShutdownCallback = callback;
+    }
+
     [[nodiscard]] size_t getNumberOfElements() const override {
         return elements.size();
     }
@@ -241,6 +245,7 @@ public:
 
     void shutdown() {
         std::unique_lock<std::mutex> guard(mutex);
+        this->onShutdownCallback();
         this->state = State::SHUTDOWN;
         guard.unlock();
     }
@@ -274,6 +279,7 @@ private:
     // Callback that should be called once new data arrive.
     framework::OnNewDataCallback onNewDataCallback;
     framework::OnOverflowCallback onOverflowCallback{[](){}};
+    framework::OnShutdownCallback onShutdownCallback{[](){}};
 
     // State management
     enum class State {

@@ -4,7 +4,8 @@
 #include <cstdio>
 #include <string>
 #include <condition_variable>
-#include "arrus/core/api/framework/FifoLockfreeBuffer.h"
+#include "arrus/core/api/framework/FifoLockFreeBuffer.h"
+#include "arrus/core/api/framework/FifoBuffer.h"
 
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
@@ -51,8 +52,8 @@ int main() noexcept {
                                100e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, 50e-3f);
-        DataBufferSpec outputBuffer{DataBufferType::FIFO_LOCKFREE, 10};
+        TxRxSequence seq(txrxs, {}, 500e-3f);
+        DataBufferSpec outputBuffer{DataBufferType::FIFO_LOCKFREE, 4};
         Scheme scheme(seq, 2, outputBuffer);
 
         auto result = session->upload(scheme);
@@ -60,37 +61,48 @@ int main() noexcept {
 
         std::condition_variable cv;
         using namespace std::chrono_literals;
+//
+//        OnNewDataCallback callback = [&, i = 0](const DataBufferElement::SharedHandle &ptr) mutable {
+//            try {
+//                std::cout << "Callback!" << std::endl;
+//                if(i == 9) {
+//                    cv.notify_one();
+//                }
+//                ptr->release();
+//                std::cout << ptr->getData().getShape().size() << std::endl;
+//                std::cout << ptr->getData().getShape().get(0) << ", " << ptr->getData().getShape().get(1)<< std::endl;
+//                ++i;
+//            } catch(const std::exception &e) {
+//                std::cout << "Exception: " << e.what() << std::endl;
+//                cv.notify_one();
+//            }
+//        };
+//
+//        OnOverflowCallback overflowCallback = [&] () {
+//            std::cout << "Overflow!!!" << std::endl;
+//            cv.notify_one();
+//        };
+//
+//        // Register the callback for new data in the output buffer.
+//        auto buffer = std::static_pointer_cast<FifoLockFreeBuffer>(result.getBuffer());
+//        buffer->registerOnNewDataCallback(callback);
+//        buffer->registerOnOverflowCallback(overflowCallback);
+        auto buffer = std::static_pointer_cast<FifoLockFreeBuffer>(result.getBuffer());
+        auto blockingBuffer = std::make_shared<FifoBuffer>(buffer);
 
-        OnNewDataCallback callback = [&, i = 0](const DataBufferElement::SharedHandle &ptr) mutable {
-            try {
-                std::cout << "Callback!" << std::endl;
-                if(i == 9) {
-                    cv.notify_one();
-                }
-                ptr->release();
-                std::cout << ptr->getData().getShape().size() << std::endl;
-                std::cout << ptr->getData().getShape().get(0) << ", " << ptr->getData().getShape().get(1)<< std::endl;
-                ++i;
-            } catch(const std::exception &e) {
-                std::cout << "Exception: " << e.what() << std::endl;
-                cv.notify_one();
-            }
-        };
-
-        OnOverflowCallback overflowCallback = [&] () {
-            std::cout << "Overflow!!!" << std::endl;
-            cv.notify_one();
-        };
-
-        // Register the callback for new data in the output buffer.
-        auto buffer = std::static_pointer_cast<FifoLockfreeBuffer>(result.getBuffer());
-        buffer->registerOnNewDataCallback(callback);
-        buffer->registerOnOverflowCallback(overflowCallback);
-
+//        std::mutex mutex;
+//        std::unique_lock<std::mutex> lock(mutex);
+//        cv.wait(lock);
         session->startScheme();
-        std::mutex mutex;
-        std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock);
+        for(int i = 0; i < 10; ++i) {
+            auto [isShutdown, data] = blockingBuffer->pop();
+            if(isShutdown) {
+                break;
+            }
+            auto* dataPtr = data->getData().get<short>();
+            std::cout << "i: " << i << ", dataPtr: " << (size_t)dataPtr << std::endl;
+            data->release();
+        }
         std::cout << "Closing scheme and program." << std::endl;
         session->stopScheme();
     } catch(const std::exception &e) {

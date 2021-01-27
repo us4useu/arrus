@@ -18,8 +18,6 @@ public:
     virtual NdArray& getData() = 0;
 };
 
-
-
 /**
  * FIFO (first in, first out) buffer.
  */
