@@ -91,7 +91,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
         mexErrMsgIdAndTxt( invalidInputMsgId, "Seven inputs required");
     }
     
-    if (nlhs!=1) {
+    if (nlhs>1) {
         mexErrMsgIdAndTxt( invalidOutputMsgId, "One output allowed");
     }
     
