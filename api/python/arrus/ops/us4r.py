@@ -84,6 +84,7 @@ class TxRx:
     rx: Rx
     pri: float
 
+
 @dataclass(frozen=True)
 class TxRxSequence:
     """
@@ -102,6 +103,33 @@ class TxRxSequence:
         Returns a set of number of samples that the Tx/Rx sequence defines.
         """
         return {op.rx.get_n_samples() for op in self.ops}
+
+
+@dataclass(frozen=True)
+class DataBufferSpec:
+    """
+    Output data buffer specification.
+
+    :param n_elements: number of elements the buffer should consists of
+    :param type: type of a buffer, available values: "FIFO_LOCKFREE"
+    """
+    n_elements: int
+    type: str
+
+
+@dataclass(frozen=True)
+class Scheme:
+    """
+    A scheme to load on the us4r device.
+
+    :param tx_rx_sequence: a sequence of tx/rx parameters to perform
+    :param rx_buffer_size: number of elements the rx buffer (allocated on \
+      us4r ddr internal memory) should consists of
+    :param output_buffer: specification of the output buffer
+    """
+    tx_rx_sequence: TxRxSequence
+    rx_buffer_size: int
+    output_buffer: DataBufferSpec
 
 
 

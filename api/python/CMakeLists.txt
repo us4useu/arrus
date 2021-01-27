@@ -90,16 +90,6 @@ set(SOURCE_FILES
     arrus/tests/tools.py
 )
 
-# TODO(pjarosik) revise the below list
-set(TEST_FILES
-    "arrus/tests/beam_test.py"
-    "arrus/tests/session_test.py"
-    "arrus/devices/tests/probe_test.py"
-    "arrus/utils/tests/utils_test.py"
-    "arrus/utils/tests/parameters_test.py"
-    "arrus/tests/us4oem_kernels_test.py"
-)
-
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
 set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
@@ -165,6 +155,7 @@ install(
 # Python tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
+	# TODO most of the previous logic was moved to c++ code.
     #create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
     #install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
     #get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)

@@ -23,7 +23,7 @@ public:
 
     template<typename T>
     std::shared_ptr<T> get(const std::string &key) {
-        return (std::shared_ptr<T>) metadata.at(key);
+        return std::static_pointer_cast<T>(metadata.at(key));
     }
 
 private:

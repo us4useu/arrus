@@ -8,14 +8,18 @@ namespace arrus::session {
 
 class UploadResult {
 public:
-    UploadResult(::arrus::framework::DataBuffer::SharedHandle buffer, UploadConstMetadata::SharedHandle constMetadata)
+    // swig
+    UploadResult() {}
+
+    UploadResult(std::shared_ptr<::arrus::framework::DataBuffer> buffer,
+                 std::shared_ptr<UploadConstMetadata> constMetadata)
         : buffer(std::move(buffer)), constMetadata(std::move(constMetadata)) {}
 
-    const framework::DataBuffer::SharedHandle &getBuffer() const {
+    const std::shared_ptr<framework::DataBuffer> &getBuffer() const {
         return buffer;
     }
 
-    const UploadConstMetadata::SharedHandle &getConstMetadata() const {
+    const std::shared_ptr<UploadConstMetadata> &getConstMetadata() const {
         return constMetadata;
     }
 

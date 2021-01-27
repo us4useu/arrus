@@ -93,31 +93,6 @@ class HostBuffer:
         )
         return array, metadata
 
-    def head(self, timeout=None):
-        """
-        Returns data available at the tail of the buffer.
-
-        :param timeout: timeout in milliseconds, None means infinite timeout
-        :return: a pair: RF data, metadata
-        """
-        data_addr = self.buffer_handle.headAddress(
-            -1 if timeout is None else timeout)
-        if data_addr not in self.buffer_cache:
-            array = self._create_array(data_addr)
-            frame_metadata_view = array[:self.n_samples*self.n_triggers*self.rx_batch_size:self.n_samples]
-            self.buffer_cache[data_addr] = array
-            self.frame_metadata_cache[data_addr] = frame_metadata_view
-        else:
-            array = self.buffer_cache[data_addr]
-            frame_metadata_view = self.frame_metadata_cache[data_addr]
-        # TODO extract first lines from each frame lazily
-        metadata = arrus.metadata.Metadata(
-            context=self.fac,
-            data_desc=self.data_description,
-            custom={"frame_metadata_view": frame_metadata_view}
-        )
-        return array, metadata
-
     def release_tail(self, timeout=None):
         """
         Marks the tail data as no longer needed.
@@ -277,7 +252,6 @@ class Us4R(Device):
             context=fac, data_desc=echo_data_description,
             input_shape=input_shape, is_iq_data=False, dtype="int16")
         return buffer, const_metadata
-
 
     def _create_kernel_context(self, seq):
         return arrus.kernels.kernel.KernelExecutionContext(
