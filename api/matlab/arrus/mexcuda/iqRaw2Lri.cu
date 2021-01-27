@@ -83,26 +83,29 @@ void mexFunction(int nlhs, mxArray * plhs[],
     dim3 const threadsPerBlock = {32, 32, 1};
     dim3 blocksPerGrid;
     
+    char const * const invalidInputMsgId = "iqRaw2Lri:InvalidInput";
+    char const * const invalidOutputMsgId = "iqRaw2Lri:InvalidOutput";
+    
     /* Validate mex inputs/outputs */
     if (nrhs!=7) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "Seven inputs required");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "Seven inputs required");
     }
     
     if (nlhs!=1) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidOutput", "One output allowed");
+        mexErrMsgIdAndTxt( invalidOutputMsgId, "One output allowed");
     }
     
     if (!(mxIsGPUArray(prhs[0])) || 
         !(mxIsGPUArray(prhs[1])) || 
         !(mxIsGPUArray(prhs[2])) || 
         !(mxIsGPUArray(prhs[3]))) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "First 4 inputs (iqRaw, xElem, zPix, xPix) must be gpuArray");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "First 4 inputs (iqRaw, xElem, zPix, xPix) must be gpuArray");
     }
     
     if (!mxIsSingle(prhs[4]) || !mxIsSingle(prhs[5]) || !mxIsSingle(prhs[6]) || 
         mxIsComplex(prhs[4]) || mxIsComplex(prhs[5]) || mxIsComplex(prhs[6]) || 
         mxGetNumberOfElements(prhs[4]) != 1 || mxGetNumberOfElements(prhs[5]) != 1 || mxGetNumberOfElements(prhs[6]) != 1) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "Last 3 inputs (sos, fs, fn) must be single, real scalars");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "Last 3 inputs (sos, fs, fn) must be single, real scalars");
     }
     
     /* Extract inputs from prhs */
@@ -117,23 +120,23 @@ void mexFunction(int nlhs, mxArray * plhs[],
     
     /* Validate inputs */
     if ((mxGPUGetClassID(iqRaw) != mxSINGLE_CLASS) || !mxGPUGetComplexity(iqRaw) || mxGPUGetNumberOfDimensions(iqRaw) > 2) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "iqRaw must be single, complex 2D array.");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "iqRaw must be single, complex 2D array.");
     }
     
     if ((mxGPUGetClassID(xElem) != mxSINGLE_CLASS) || mxGPUGetComplexity(xElem) || !(mxGPUGetNumberOfDimensions(xElem) == 2 && mxGPUGetDimensions(xElem)[0] == 1)) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "xElem must be single, real, horizontal vector.");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "xElem must be single, real, horizontal vector.");
     }
     
     if ((mxGPUGetClassID(zPix) != mxSINGLE_CLASS) || mxGPUGetComplexity(zPix) || !(mxGPUGetNumberOfDimensions(zPix) == 2 && mxGPUGetDimensions(zPix)[0] == 1)) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "zPix must be single, real, horizontal vector.");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "zPix must be single, real, horizontal vector.");
     }
     
     if ((mxGPUGetClassID(xPix) != mxSINGLE_CLASS) || mxGPUGetComplexity(xPix) || !(mxGPUGetNumberOfDimensions(xPix) == 2 && mxGPUGetDimensions(xPix)[0] == 1)) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "xPix must be single, real, horizontal vector.");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "xPix must be single, real, horizontal vector.");
     }
     
     if (mxGPUGetDimensions(iqRaw)[1] != mxGPUGetNumberOfElements(xElem)) {
-        mexErrMsgIdAndTxt("testRecMex:InvalidInput", "size(iqRaw,2) must be equal to length(xElem).");
+        mexErrMsgIdAndTxt( invalidInputMsgId, "size(iqRaw,2) must be equal to length(xElem).");
     }
     
     /* Get some additional information */
