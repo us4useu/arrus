@@ -1,17 +1,17 @@
 #ifndef ARRUS_ARRUS_CORE_API_SESSION_UPLOADRESULT_H
 #define ARRUS_ARRUS_CORE_API_SESSION_UPLOADRESULT_H
 
-#include "arrus/core/api/framework/FifoBuffer.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 #include "UploadConstMetadata.h"
 
 namespace arrus::session {
 
 class UploadResult {
 public:
-    UploadResult(::arrus::framework::FifoBuffer::SharedHandle buffer, UploadConstMetadata::SharedHandle constMetadata)
+    UploadResult(::arrus::framework::DataBuffer::SharedHandle buffer, UploadConstMetadata::SharedHandle constMetadata)
         : buffer(std::move(buffer)), constMetadata(std::move(constMetadata)) {}
 
-    const framework::FifoBuffer::SharedHandle &getBuffer() const {
+    const framework::DataBuffer::SharedHandle &getBuffer() const {
         return buffer;
     }
 
@@ -20,7 +20,7 @@ public:
     }
 
 private:
-    ::arrus::framework::FifoBuffer::SharedHandle buffer;
+    ::arrus::framework::DataBuffer::SharedHandle buffer;
     UploadConstMetadata::SharedHandle constMetadata;
 };
 

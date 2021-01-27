@@ -9,7 +9,7 @@
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/framework/FifoBuffer.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/api/framework/FifoBufferSpec.h"
 #include "FrameChannelMapping.h"
 
@@ -61,7 +61,7 @@ public:
      * @return
      */
     virtual std::pair<
-        std::shared_ptr<arrus::framework::FifoBuffer>,
+        std::shared_ptr<arrus::framework::DataBuffer>,
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
     upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize,

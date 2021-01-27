@@ -7,11 +7,11 @@
 
 namespace arrus::framework {
 
-class FifoBufferElement {
+class DataBufferElement {
 public:
-    using SharedHandle = std::shared_ptr<FifoBufferElement>;
+    using SharedHandle = std::shared_ptr<DataBufferElement>;
 
-    virtual ~FifoBufferElement() = default;
+    virtual ~DataBufferElement() = default;
 
     virtual void release() = 0;
 
@@ -21,17 +21,17 @@ public:
 /**
  * A callback to be called once new data arrives.
  */
-using OnNewDataCallback = std::function<void(const FifoBufferElement::SharedHandle& )>;
+using OnNewDataCallback = std::function<void(const DataBufferElement::SharedHandle& )>;
 
 /**
  * FIFO (first in, first out) buffer.
  */
-class FifoBuffer {
+class DataBuffer {
 public:
-    using Handle = std::unique_ptr<FifoBuffer>;
-    using SharedHandle = std::shared_ptr<FifoBuffer>;
+    using Handle = std::unique_ptr<DataBuffer>;
+    using SharedHandle = std::shared_ptr<DataBuffer>;
 
-    virtual ~FifoBuffer() = default;
+    virtual ~DataBuffer() = default;
 
     /**
      * Returns number of elements the buffer contains.

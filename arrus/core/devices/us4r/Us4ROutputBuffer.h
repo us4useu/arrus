@@ -12,18 +12,18 @@
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/api/framework/FifoBuffer.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 
 
 namespace arrus::devices {
 
-using ::arrus::framework::FifoBuffer;
-using ::arrus::framework::FifoBufferElement;
+using ::arrus::framework::DataBuffer;
+using ::arrus::framework::DataBufferElement;
 
 /**
  * Buffer element owns the data arrrays, which then are returned to user.
  */
-class Us4ROutputBufferElement : public FifoBufferElement {
+class Us4ROutputBufferElement : public DataBufferElement {
 public:
     using AccumulatorType = uint16;
 
@@ -98,7 +98,7 @@ private:
  *
  * The assumption is here that each element of the buffer has the same size (and the same us4oem offsets).
  */
-class Us4ROutputBuffer : public FifoBuffer {
+class Us4ROutputBuffer : public DataBuffer {
 public:
     static constexpr size_t DATA_ALIGNMENT = 4096;
     using DataType = int16;

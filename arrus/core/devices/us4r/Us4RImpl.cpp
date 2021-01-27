@@ -10,7 +10,7 @@ using ::arrus::ops::us4r::TxRxSequence;
 using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
-using ::arrus::framework::FifoBuffer;
+using ::arrus::framework::DataBuffer;
 using ::arrus::framework::FifoBufferSpec;
 
 UltrasoundDevice *Us4RImpl::getDefaultComponent() {
@@ -69,7 +69,7 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::pair<FifoBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
+std::pair<DataBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
                  unsigned short rxBufferNElements,
                  const FifoBufferSpec &outputBufferSpec) {

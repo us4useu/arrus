@@ -19,7 +19,7 @@
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 
 #include "arrus/core/api/framework/FifoBufferSpec.h"
-#include "arrus/core/api/framework/FifoBuffer.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 
 namespace arrus::devices {
 
@@ -101,7 +101,7 @@ public:
     }
 
     std::pair<
-        std::shared_ptr<arrus::framework::FifoBuffer>,
+        std::shared_ptr<arrus::framework::DataBuffer>,
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
     upload(const ops::us4r::TxRxSequence &seq,

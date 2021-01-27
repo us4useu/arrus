@@ -59,7 +59,7 @@ int main() noexcept {
 
         std::condition_variable cv;
 
-        OnNewDataCallback callback = [&, i = 0](const FifoBufferElement::SharedHandle &ptr) mutable {
+        OnNewDataCallback callback = [&, i = 0](const DataBufferElement::SharedHandle &ptr) mutable {
             std::cout << "Callback!" << std::endl;
             if(i == 9) {
                 std::cout << "Stopping program!!!" << std::endl;
