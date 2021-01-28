@@ -9,7 +9,8 @@ namespace arrus::session {
 class UploadResult {
 public:
     // swig
-    UploadResult() {}
+    UploadResult() {};
+    virtual ~UploadResult() {};
 
     UploadResult(std::shared_ptr<::arrus::framework::DataBuffer> buffer,
                  std::shared_ptr<UploadConstMetadata> constMetadata)

@@ -111,7 +111,7 @@ class DataBufferSpec:
     Output data buffer specification.
 
     :param n_elements: number of elements the buffer should consists of
-    :param type: type of a buffer, available values: "FIFO_LOCKFREE"
+    :param type: type of a buffer, available values: "FIFO_LOCK_FREE"
     """
     n_elements: int
     type: str

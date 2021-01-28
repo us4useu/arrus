@@ -142,11 +142,11 @@ install(
 
 install(
 	FILES
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_pwi_single.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_multiple.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/cfg.yaml
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_old_api.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_single.py
+	examples/legacy/us4oem/us4oem_x1_pwi_single.py
+	examples/legacy/us4oem/us4oem_x1_sta_multiple.py
+	examples/legacy/us4oem/cfg.yaml
+	examples/legacy/us4oem/us4oem_x1_sta_old_api.py
+	examples/legacy/us4oem/us4oem_x1_sta_single.py
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
 )

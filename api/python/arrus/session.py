@@ -7,7 +7,6 @@ import dataclasses
 import arrus.core
 import arrus.exceptions
 import arrus.devices.us4r
-import arrus.devices.mock_us4r
 import arrus.medium
 import arrus.metadata
 import arrus.params
@@ -88,11 +87,10 @@ class Session(AbstractSession):
         us_device_dto = us_device._get_dto()
         medium = self._context.medium
         seq = scheme.tx_rx_sequence
-        # Device should have sampling_frequency property (DTO?)
         kernel_context = self._create_kernel_context(seq, us_device_dto, medium)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
 
-        actual_scheme = arrus.utils.copy_frozen_dataclass(scheme, tx_rx_sequence=raw_seq)
+        actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
 
@@ -121,11 +119,7 @@ class Session(AbstractSession):
         n_samples = next(iter(n_samples))
         input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=1)
 
-        buffer = arrus.framework.DataBuffer(
-            buffer_handle=buffer_handle,
-            data_description=echo_data_description,
-            frame_shape=input_shape,
-            rx_batch_size=1)
+        buffer = arrus.framework.DataBuffer(buffer_handle)
 
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,

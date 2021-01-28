@@ -73,18 +73,3 @@ def convert_snake_to_camel_case(string: str):
     return "".join(words)
 
 
-def copy_frozen_dataclass(obj, **kwargs):
-    """
-    Creates a copy of given data class object with fields set to specific values.
-
-    :param obj: object to modify
-    :param kwargs: values to set
-    :return: a copy of the modified object
-    """
-    d = dataclasses.asdict(obj)
-    for k, v in kwargs:
-        if k not in d:
-            raise ValueError(f"Unknown field {k}")
-        d[k] = v
-    return type(obj)(**d)
-

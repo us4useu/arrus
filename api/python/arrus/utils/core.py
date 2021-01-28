@@ -94,4 +94,16 @@ def convert_to_py_probe_model(core_model):
 
 def convert_to_core_scheme(scheme):
     seq = scheme.tx_rx_sequence
+    rx_buffer_size = scheme.rx_buffer_size
+    output_buffer = scheme.output_buffer
+
+    # Convert output buffer to core.DataBufferSpec
+    core_buffer_type = {
+        "FIFO_LOCK_FREE": arrus.core.DataBufferType_FIFO_LOCKFREE
+    }[output_buffer.type]
+    data_buffer_spec = arrus.core.DataBufferSpec(core_buffer_type, output_buffer.n_elements)
+
+    # Convert sequence to core sequence.
     core_seq = arrus.utils.core.convert_to_core_sequence(seq)
+    return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec)
+

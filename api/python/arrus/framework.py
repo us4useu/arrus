@@ -22,7 +22,7 @@ class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):
             traceback.print_exc()
 
 
-class FifoBuffer:
+class DataBuffer:
 
     def __init__(self, buffer_handle):
         self._buffer_handle = buffer_handle

@@ -143,46 +143,45 @@ namespace std {
 %inline %{
 class OnNewDataCallbackWrapper {
 public:
-    virtual void run(const arrus::framework::DataBufferElement& element) const = 0;
+    virtual void run(const std::shared_ptr<arrus::framework::DataBufferElement> element) const = 0;
     virtual ~OnNewDataCallbackWrapper() {};
 };
 
-void registerOnNewDataCallbackWrapper(std::shared_ptr<arrus::framework::FifoLockFreeBuffer> &buffer, OnNewDataCalbackWrapper& callback) {
-    callback = [](const std::shared_ptr<DataBufferElement> &ptr) {
+void registerOnNewDataCallbackWrapper(std::shared_ptr<arrus::framework::FifoLockFreeBuffer> &buffer, OnNewDataCallbackWrapper& callback) {
+    ::arrus::framework::OnNewDataCallback actualCallback = [&](const std::shared_ptr<DataBufferElement> &ptr) {
             // TODO avoid potential priority inversion here
             PyGILState_STATE gstate = PyGILState_Ensure();
             try {
                 callback.run(ptr);
             } catch(const std::exception &e) {
                 std::cerr << "Exception: " << e.what() << std::endl;
-                cv.notify_one();
             } catch(...) {
                 std::cerr << "Unhandled exception" << std::endl;
             }
             PyGILState_Release(gstate);
     };
-    buffer->registerOnNewDataCallback(callback);
+    buffer->registerOnNewDataCallback(actualCallback);
 }
 %};
 
 // ------------------------------------------ SESSION
 %{
-#include "arrus/core/api/session/Session.h"
-#include "arrus/core/api/session/UploadResult.h"
 #include "arrus/core/api/session/UploadConstMetadata.h"
+#include "arrus/core/api/session/UploadResult.h"
+#include "arrus/core/api/session/Session.h"
 using namespace ::arrus::session;
 
 %};
 // TODO consider using unique_ptr anyway (https://stackoverflow.com/questions/27693812/how-to-handle-unique-ptrs-with-swig)
 
-%shared_ptr(arrus::session::Session);
 %shared_ptr(arrus::session::UploadConstMetadata);
+%shared_ptr(arrus::session::Session);
 %ignore createSession;
 
 
-%include "arrus/core/api/session/Session.h"
-%include "arrus/core/api/session/UploadResult.h"
 %include "arrus/core/api/session/UploadConstMetadata.h"
+%include "arrus/core/api/session/UploadResult.h"
+%include "arrus/core/api/session/Session.h"
 
 %inline %{
 
@@ -191,12 +190,12 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
     return res;
 }
 
-std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(const UploadResult &uploadResult) {
-    return uploadResult.getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
+std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arrus::session::UploadResult* uploadResult) {
+    return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
 }
 
-std::shared_ptr<arrus::framework::FifoBuffer> getFifoBuffer(const UploadResult &uploadResult) {
-    auto buffer = std::static_pointer_cast<FifoLockFreeBuffer>(uploadResult.getBuffer());
+std::shared_ptr<arrus::framework::FifoBuffer> getFifoBuffer(arrus::session::UploadResult* uploadResult) {
+    auto buffer = std::static_pointer_cast<FifoLockFreeBuffer>(uploadResult->getBuffer());
     return std::make_shared<arrus::framework::FifoBuffer>(buffer);
 }
 
