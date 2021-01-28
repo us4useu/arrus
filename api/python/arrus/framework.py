@@ -8,7 +8,7 @@ import traceback
 class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):
 
     def __init__(self, callback_fn):
-        super(OnNewDataCallback, self).__init__()
+        super().__init__()
         self._callback_fn = callback_fn
 
     def run(self, element):
@@ -23,19 +23,19 @@ class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):
 
 
 class DataBuffer:
-
     def __init__(self, buffer_handle):
         self._buffer_handle = buffer_handle
         self._user_defined_callback = None
 
     def register_on_new_data_callback(self, callback):
         self._user_defined_callback = callback
-        self._callback_wrapper = OnNewDataCallback(self._user_defined_callback)
-        arrus.core.registerOnNewDataCallbackWrapper(self._buffer_handle, self._callback_wrapper)
+        self._callback_wrapper = OnNewDataCallback(self._callback)
+        arrus.core.registerOnNewDataCallbackFifoLockFreeBuffer(self._buffer_handle, self._callback_wrapper)
 
     def _callback(self, element):
-        # TODO wrap into numpy array
-        self._user_defined_callback()
+        # TODO extract numpy array from the element
+        self._user_defined_callback(element)
+        element.release()
 
 
 class LegacyBuffer:

@@ -96,7 +96,7 @@ class Session(AbstractSession):
 
         # Prepare data buffer and constant context metadata
         fcm = arrus.core.getFrameChannelMapping(upload_result)
-        buffer_handle = arrus.core.getFifoBuffer(upload_result)
+        buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
 
         ###
         # -- Constant metadata
@@ -125,6 +125,12 @@ class Session(AbstractSession):
             context=fac, data_desc=echo_data_description,
             input_shape=input_shape, is_iq_data=False, dtype="int16")
         return buffer, const_metadata
+
+    def start_scheme(self):
+        self._session_handle.startScheme()
+
+    def stop_scheme(self):
+        self._session_handle.stopScheme()
 
     def get_device(self, path: str):
         """
