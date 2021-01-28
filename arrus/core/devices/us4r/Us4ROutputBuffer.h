@@ -218,7 +218,6 @@ public:
             return false;
         }
         this->validateState();
-
         auto &element = this->elements[elementNr];
         try {
             element->signal(n);
@@ -227,7 +226,11 @@ public:
             throw e;
         }
         if(element->isElementReady()) {
+            guard.unlock();
             onNewDataCallback(elements[elementNr]);
+        }
+        else {
+            guard.unlock();
         }
         return true;
     }
