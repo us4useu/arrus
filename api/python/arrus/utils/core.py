@@ -90,3 +90,8 @@ def convert_to_py_probe_model(core_model):
         n_elements=n_elements,
         pitch=pitch,
         curvature_radius=curvature_radius)
+
+
+def convert_to_core_scheme(scheme):
+    seq = scheme.tx_rx_sequence
+    core_seq = arrus.utils.core.convert_to_core_sequence(seq)

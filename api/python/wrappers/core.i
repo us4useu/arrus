@@ -50,7 +50,7 @@ namespace std {
     }
 }
 
-%module core
+%module(directors="1") core
 
 %{
 #include <memory>
@@ -113,15 +113,20 @@ using namespace ::arrus;
 
 // ------------------------------------------ FRAMEWORK
 %{
+#include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/FifoBuffer.h"
+#include "arrus/core/api/framework/FifoLockFreeBuffer.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 using namespace arrus::framework;
 using namespace arrus::devices;
 %};
 
 %shared_ptr(arrus::devices::FrameChannelMapping);
+%shared_ptr(arrus::framework::DataBuffer);
+%shared_ptr(arrus::framework::DataBufferelement);
 %shared_ptr(arrus::framework::FifoBuffer);
+%shared_ptr(arrus::framework::FifoLockFreeBuffer);
 
 namespace std {
     %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
@@ -130,6 +135,35 @@ namespace std {
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
 %include "arrus/core/api/framework/DataBuffer.h"
+%include "arrus/core/api/framework/FifoLockFreeBuffer.h"
+%include "arrus/core/api/framework/FifoBuffer.h"
+
+%feature("director") OnNewDataCallbackWrapper;
+
+%inline %{
+class OnNewDataCallbackWrapper {
+public:
+    virtual void run(const arrus::framework::DataBufferElement& element) const = 0;
+    virtual ~OnNewDataCallbackWrapper() {};
+};
+
+void registerOnNewDataCallbackWrapper(std::shared_ptr<arrus::framework::FifoLockFreeBuffer> &buffer, OnNewDataCalbackWrapper& callback) {
+    callback = [](const std::shared_ptr<DataBufferElement> &ptr) {
+            // TODO avoid potential priority inversion here
+            PyGILState_STATE gstate = PyGILState_Ensure();
+            try {
+                callback.run(ptr);
+            } catch(const std::exception &e) {
+                std::cerr << "Exception: " << e.what() << std::endl;
+                cv.notify_one();
+            } catch(...) {
+                std::cerr << "Unhandled exception" << std::endl;
+            }
+            PyGILState_Release(gstate);
+    };
+    buffer->registerOnNewDataCallback(callback);
+}
+%};
 
 // ------------------------------------------ SESSION
 %{

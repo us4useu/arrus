@@ -54,7 +54,6 @@ include(python)
 set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
-
     arrus/__init__.py
 	arrus/logging.py
     arrus/session.py
@@ -63,6 +62,7 @@ set(SOURCE_FILES
 	arrus/exceptions.py
 	arrus/medium.py
 	arrus/params.py
+	arrus/framework.py
     arrus/ops/__init__.py
 	arrus/ops/imaging.py
 	arrus/ops/tgc.py
