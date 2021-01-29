@@ -4,6 +4,7 @@ import scipy
 import scipy.signal as signal
 import scipy.ndimage
 import arrus.metadata
+import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.kernels.imaging
@@ -18,10 +19,17 @@ class Pipeline:
     """
     def __init__(self, steps, placement=None):
         self.steps = steps
+        self._host_registered = None
+        self._placement = None
         if placement is not None:
             self.set_placement(placement)
 
     def __call__(self, data):
+        """
+        :param data: numpy array with data to process
+        :return:
+        """
+        data = self.num_pkg.asarray(data)
         for step in self.steps:
             data = step(data)
         return data
@@ -42,13 +50,21 @@ class Pipeline:
 
         :param device: device on which the pipeline should be executed
         """
-        self.placement = device
+        device_type = None
+        if isinstance(device, str):
+            # Device id
+            device_type = arrus.devices.device.get_device_type_str(device)
+        elif isinstance(device, arrus.devices.device.DeviceId):
+            device_type = device.device_type.type
+        elif isinstance(device, arrus.devices.device.Device):
+            device_type = device.get_device_id().device_type.type
+        self._placement = device_type
         # Initialize steps with a proper library.
-        if isinstance(self.placement, arrus.devices.gpu.GPU):
+        if self._placement == "GPU":
             import cupy as cp
             import cupyx.scipy.ndimage as cupy_scipy_ndimage
             pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
-        elif isinstance(self.placement, arrus.devices.cpu.CPU):
+        elif self._placement == "CPU":
             import scipy.ndimage
             pkgs = dict(num_pkg=np, filter_pkg=scipy.ndimage)
         else:
@@ -57,6 +73,39 @@ class Pipeline:
             step.set_pkgs(**pkgs)
         self.num_pkg = pkgs['num_pkg']
         self.filter_pkg = pkgs['filter_pkg']
+
+    def register_host_buffer(self, buffer):
+        if self._placement == "GPU":
+            import cupy as cp
+            for element in buffer.elements:
+                cp.cuda.runtime.hostRegister(element.data.ctypes.data, element.size, 1)
+            self._host_registered = buffer
+
+    def stop(self):
+        if self._host_registered is not None:
+            import cupy as cp
+            for element in self._host_registered.elements:
+                cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
+
+
+class Lambda:
+    """
+    Custom function to perform on data from a given step.
+    """
+
+    def __init__(self, function):
+        self.func = function
+        pass
+
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
+
+    def __call__(self, data):
+        return self.func(data)
 
 
 class BandpassFilter:

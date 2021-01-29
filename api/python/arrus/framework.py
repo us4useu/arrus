@@ -14,28 +14,65 @@ class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):
     def run(self, element):
         try:
             self._callback_fn(element)
-        except Exception as e:
-            print(f"Exception in the callback function")
-            traceback.print_exc()
         except:
-            print("Unknown exception in the callback function.")
             traceback.print_exc()
+
+
+class DataBufferElement:
+
+    def __init__(self, element_handle):
+        self._element_handle = element_handle
+        self._size = element_handle.getSize()
+        self._numpy_array_wrapping = self._create_np_array(element_handle)
+
+    @property
+    def data(self):
+        return self._numpy_array_wrapping
+
+    @property
+    def size(self):
+        return self._size
+
+    def _create_np_array(self, element):
+        ndarray = element.getData()
+        if ndarray.getDataType() != arrus.core.NdArray.DataType_INT16:
+            raise ValueError("Currently output data type int16 is supported only.")
+        addr = arrus.core.castToInt(ndarray.getInt16())
+        ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
+        shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())
+        arr = np.ctypeslib.as_array(ctypes_ptr, shape=shape)
+        return arr
 
 
 class DataBuffer:
     def __init__(self, buffer_handle):
         self._buffer_handle = buffer_handle
-        self._user_defined_callback = None
+        self._callbacks = []
+        self._register_internal_callback()
+        self._elements = self._wrap_elements()
 
-    def register_on_new_data_callback(self, callback):
-        self._user_defined_callback = callback
+    def append_on_new_data_callback(self, callback):
+        self._callbacks.append(callback)
+
+    def _register_internal_callback(self):
         self._callback_wrapper = OnNewDataCallback(self._callback)
-        arrus.core.registerOnNewDataCallbackFifoLockFreeBuffer(self._buffer_handle, self._callback_wrapper)
+        arrus.core.registerOnNewDataCallbackFifoLockFreeBuffer(
+            self._buffer_handle, self._callback_wrapper)
 
     def _callback(self, element):
-        # TODO extract numpy array from the element
-        self._user_defined_callback(element)
+        pos = element.getPosition()
+        py_element = self._elements[pos]
+        for cbk in self._callbacks:
+            cbk(py_element)
         element.release()
+
+    def _wrap_elements(self):
+        return [DataBufferElement(self._buffer_handle.getElement(i))
+                for i in range(self._buffer_handle.getNumberOfElements())]
+
+    @property
+    def elements(self):
+        return self._elements
 
 
 class LegacyBuffer:
@@ -102,10 +139,7 @@ class LegacyBuffer:
         """
         self.buffer_handle.releaseTail(-1 if timeout is None else timeout)
 
-    def _create_array(self, addr):
-        ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
-        arr = np.ctypeslib.as_array(ctypes_ptr, shape=self.frame_shape)
-        return arr
+
 
     def get_n_elements(self):
         return self.buffer_handle.getNumberOfElements()

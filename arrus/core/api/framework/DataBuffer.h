@@ -16,6 +16,13 @@ public:
     virtual void release() = 0;
 
     virtual NdArray& getData() = 0;
+
+    /**
+     * @return size of the element in bytes
+     */
+    virtual size_t getSize() = 0;
+
+    virtual size_t getPosition() = 0;
 };
 
 /**
@@ -32,6 +39,14 @@ public:
      * Returns number of elements the buffer contains.
      */
     virtual size_t getNumberOfElements() const = 0;
+
+    /**
+     * Returns a pointer to selected element buffer.
+     *
+     * @param i number of buffer element
+     * @return a pointer to the buffer element
+     */
+    virtual std::shared_ptr<DataBufferElement> getElement(size_t i) = 0;
 
     /**
      * Returns size of a single buffer element, that is the number of values of a given data type.

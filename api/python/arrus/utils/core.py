@@ -107,3 +107,11 @@ def convert_to_core_scheme(scheme):
     core_seq = arrus.utils.core.convert_to_core_sequence(seq)
     return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec)
 
+
+def convert_from_tuple(core_tuple):
+    """
+    Converts arrus core tuple to python tuple.
+    """
+    v = [core_tuple.get(i) for i in range(core_tuple.size())]
+    return tuple(v)
+

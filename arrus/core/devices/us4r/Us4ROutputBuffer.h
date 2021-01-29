@@ -34,12 +34,16 @@ public:
     Us4ROutputBufferElement(int16 *address, size_t size,
                             const framework::NdArray::Shape &elementShape,
                             const framework::NdArray::DataType elementDataType,
-                            AccumulatorType filledAccumulator)
+                            AccumulatorType filledAccumulator,
+                            size_t position)
         : data(address, elementShape, elementDataType,
                DeviceId(DeviceType::Us4R, 0)), size(size),
-          filledAccumulator(filledAccumulator){}
+          filledAccumulator(filledAccumulator),
+          position(position)
+          {}
 
     void release() override {
+        std::unique_lock<std::mutex> guard(mutex);
         this->accumulator = 0;
         releaseFunction();
     }
@@ -54,15 +58,25 @@ public:
         return data;
     }
 
+    size_t getSize() override {
+        return size;
+    }
+
+    size_t getPosition() override {
+        return position;
+    }
+
     void registerReleaseFunction(std::function<void()> &func) {
         releaseFunction = func;
     }
 
-    [[nodiscard]] bool isElementReady() const {
+    [[nodiscard]] bool isElementReady() {
+        std::unique_lock<std::mutex> guard(mutex);
         return accumulator == filledAccumulator;
     }
 
     void signal(Ordinal n) {
+        std::unique_lock<std::mutex> guard(mutex);
         AccumulatorType us4oemPattern = 1ul << n;
         if((accumulator & us4oemPattern) != 0) {
             throw IllegalStateException("Detected data overflow, buffer is in invalid state.");
@@ -87,6 +101,7 @@ public:
     }
 
 private:
+    std::mutex mutex;
     framework::NdArray data;
     size_t size;
     AccumulatorType accumulator;
@@ -95,6 +110,7 @@ private:
     AccumulatorType filledAccumulator;
     std::function<void()> releaseFunction;
     bool isInvalid{false};
+    size_t position;
 };
 
 /**
@@ -161,7 +177,8 @@ public:
             auto elementAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + i * elementSize);
             elements.push_back(std::make_shared<Us4ROutputBufferElement>(elementAddress, elementSize,
                                                                          elementShape, elementDataType,
-                                                                         filledAccumulator));
+                                                                         filledAccumulator,
+                                                                         i));
         }
         this->initialize();
     }
@@ -175,7 +192,7 @@ public:
         this->onNewDataCallback = callback;
     }
 
-    [[nodiscard]] const framework::OnNewDataCallback& getOnNewDataCallback() const {
+    [[nodiscard]] const framework::OnNewDataCallback &getOnNewDataCallback() const {
         return this->onNewDataCallback;
     }
 
@@ -189,6 +206,10 @@ public:
 
     [[nodiscard]] size_t getNumberOfElements() const override {
         return elements.size();
+    }
+
+    DataBufferElement::SharedHandle getElement(size_t i) override {
+        return std::static_pointer_cast<DataBufferElement>(elements[i]);
     }
 
     uint8 *getAddress(uint16 elementNumber, Ordinal us4oem) {
@@ -228,8 +249,7 @@ public:
         if(element->isElementReady()) {
             guard.unlock();
             onNewDataCallback(elements[elementNr]);
-        }
-        else {
+        } else {
             guard.unlock();
         }
         return true;
@@ -269,6 +289,7 @@ public:
         this->elements[element]->registerReleaseFunction(releaseFunction);
     }
 
+
 private:
     std::mutex mutex;
     /** A size of a single element IN number of BYTES. */
@@ -281,8 +302,8 @@ private:
     std::vector<size_t> us4oemOffsets;
     // Callback that should be called once new data arrive.
     framework::OnNewDataCallback onNewDataCallback;
-    framework::OnOverflowCallback onOverflowCallback{[](){}};
-    framework::OnShutdownCallback onShutdownCallback{[](){}};
+    framework::OnOverflowCallback onOverflowCallback{[]() {}};
+    framework::OnShutdownCallback onShutdownCallback{[]() {}};
 
     // State management
     enum class State {

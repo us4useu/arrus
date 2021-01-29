@@ -112,8 +112,26 @@ using namespace ::arrus;
     }
 %}
 
+// ------------------------------------------ COMMON
+// Turn on globally value wrappers
+%feature("valuewrapper", "1");
+
+%ignore arrus::Tuple::operator[];
+
+%include "arrus/core/api/common/Tuple.h"
+%include "arrus/core/api/common/Interval.h"
+
+%feature("valuewrapper", "0");
+
+%inline %{
+    size_t castToInt(short* ptr) {
+        return (size_t)ptr;
+    }
+%};
 // ------------------------------------------ FRAMEWORK
+
 %{
+#include "arrus/core/api/framework/NdArray.h"
 #include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/FifoBuffer.h"
@@ -124,15 +142,19 @@ using namespace arrus::devices;
 %};
 
 %shared_ptr(arrus::devices::FrameChannelMapping);
-%shared_ptr(arrus::framework::DataBuffer);
 %shared_ptr(arrus::framework::DataBufferElement);
+%shared_ptr(arrus::framework::DataBuffer);
 %shared_ptr(arrus::framework::FifoBuffer);
 %shared_ptr(arrus::framework::FifoLockFreeBuffer);
 
 namespace std {
     %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
 };
+namespace arrus {
+    %template(TupleUint32) Tuple<unsigned int>;
+};
 
+%include "arrus/core/api/framework/NdArray.h"
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
 %include "arrus/core/api/framework/DataBuffer.h"
@@ -201,9 +223,7 @@ std::shared_ptr<arrus::framework::FifoLockFreeBuffer> getFifoLockFreeBuffer(arru
     auto buffer = std::static_pointer_cast<FifoLockFreeBuffer>(uploadResult->getBuffer());
     return buffer;
 }
-
 %};
-
 // ------------------------------------------ DEVICES
 // Us4R
 %{
@@ -257,14 +277,7 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
 }
 %};
 
-// ------------------------------------------ COMMON
-// Turn on globally value wrappers
-%feature("valuewrapper");
 
-%ignore arrus::Tuple::operator[];
-
-%include "arrus/core/api/common/Tuple.h"
-%include "arrus/core/api/common/Interval.h"
 
 // ------------------------------------------ OPERATIONS
 

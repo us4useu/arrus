@@ -126,10 +126,13 @@ class Scheme:
     :param rx_buffer_size: number of elements the rx buffer (allocated on \
       us4r ddr internal memory) should consists of
     :param output_buffer: specification of the output buffer
+    :param processing: data processing to perform on the raw channel RF data \
+      currently only arrus.utils.imaging is supported
     """
     tx_rx_sequence: TxRxSequence
     rx_buffer_size: int
     output_buffer: DataBufferSpec
+    processing: object = None
 
 
 

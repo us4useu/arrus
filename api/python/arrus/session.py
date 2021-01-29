@@ -72,6 +72,7 @@ class Session(AbstractSession):
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
+        self._current_processing = None
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
@@ -87,6 +88,8 @@ class Session(AbstractSession):
         us_device_dto = us_device._get_dto()
         medium = self._context.medium
         seq = scheme.tx_rx_sequence
+        processing = scheme.processing
+
         kernel_context = self._create_kernel_context(seq, us_device_dto, medium)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
 
@@ -121,9 +124,29 @@ class Session(AbstractSession):
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
 
+
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
             input_shape=input_shape, is_iq_data=False, dtype="int16")
+
+        # numpy/cupy processing initialization
+        if processing is not None:
+            # setup processing
+            import arrus.utils.imaging as _imaging
+            if not isinstance(processing, _imaging.Pipeline):
+                raise ValueError("Currently only arrus.utils.imaging.Pipeline "
+                                 "processing is supported only.")
+            processing.register_host_buffer(buffer)
+            processing.initialize(const_metadata)
+
+            self._current_processing = processing
+
+            def processing_callback(element):
+                print(element)
+                processing(element.data)
+
+            buffer.append_on_new_data_callback(processing_callback)
+
         return buffer, const_metadata
 
     def start_scheme(self):
@@ -131,6 +154,7 @@ class Session(AbstractSession):
 
     def stop_scheme(self):
         self._session_handle.stopScheme()
+        self._current_processing.stop()
 
     def get_device(self, path: str):
         """

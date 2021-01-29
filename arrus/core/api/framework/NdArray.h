@@ -37,6 +37,10 @@ public:
         return (T *) ptr;
     }
 
+    short* getInt16() {
+        return this->get<short>();
+    }
+
     const Shape &getShape() const {
         return shape;
     }
