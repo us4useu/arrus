@@ -87,6 +87,7 @@ set(SOURCE_FILES
 	arrus/utils/fir.py
 	arrus/utils/interpolate.py
 	arrus/utils/core.py
+	arrus/utils/gui.py
     arrus/tests/tools.py
 )
 

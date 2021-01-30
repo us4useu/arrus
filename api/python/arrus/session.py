@@ -124,7 +124,6 @@ class Session(AbstractSession):
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
 
-
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
             input_shape=input_shape, is_iq_data=False, dtype="int16")
@@ -137,12 +136,11 @@ class Session(AbstractSession):
                 raise ValueError("Currently only arrus.utils.imaging.Pipeline "
                                  "processing is supported only.")
             processing.register_host_buffer(buffer)
-            processing.initialize(const_metadata)
+            const_metadata = processing.initialize(const_metadata)
 
             self._current_processing = processing
 
             def processing_callback(element):
-                print(element)
                 processing(element.data)
 
             buffer.append_on_new_data_callback(processing_callback)

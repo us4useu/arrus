@@ -3,7 +3,7 @@ import numpy as np
 
 import arrus.metadata
 import arrus.exceptions
-from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
+import arrus.utils.imaging
 
 
 @dataclasses.dataclass
@@ -142,7 +142,7 @@ def remap(output_array, input_array, transfers):
             input_array[t.src_frame, :, src_l:src_r]
 
 
-class RemapToLogicalOrder:
+class RemapToLogicalOrder(arrus.utils.imaging.Operation):
     """
     Remaps the order of the data to logical order defined by the us4r device.
 
@@ -202,6 +202,7 @@ class RemapToLogicalOrder:
         else:
             # GPU
             import cupy as cp
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self.grid_size, self.block_size = get_default_grid_block_size(self._fcm_frames, n_samples)
@@ -217,7 +218,7 @@ class RemapToLogicalOrder:
 
         return const_metadata.copy(input_shape=self.output_shape)
 
-    def __call__(self, data):
+    def _process(self, data):
         self._remap_fn(data)
         return self._output_buffer
 

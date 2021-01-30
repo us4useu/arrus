@@ -8,6 +8,8 @@ import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.kernels.imaging
+import time
+import queue
 
 
 class Pipeline:
@@ -29,10 +31,14 @@ class Pipeline:
         :param data: numpy array with data to process
         :return:
         """
+        print(f"Data we got: {data}")
         data = self.num_pkg.asarray(data)
         for step in self.steps:
-            data = step(data)
+            data = step._process(data)
         return data
+
+    def _initialize(self, data):
+        self.__call__(data)
 
     def initialize(self, const_metadata):
         input_shape = const_metadata.input_shape
@@ -41,7 +47,7 @@ class Pipeline:
             const_metadata = step._prepare(const_metadata)
         # Force cupy to recompile kernels before running the pipeline.
         init_array = self.num_pkg.zeros(input_shape, dtype=input_dtype)+1000
-        self.__call__(init_array)
+        self._initialize(init_array)
         return const_metadata
 
     def set_placement(self, device):
@@ -88,7 +94,12 @@ class Pipeline:
                 cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
 
 
-class Lambda:
+class Operation:
+    def _initialize(self, data):
+        self._process(data)
+
+
+class Lambda(Operation):
     """
     Custom function to perform on data from a given step.
     """
@@ -101,10 +112,13 @@ class Lambda:
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
+    def _initialize(self, data):
+        pass
+
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
-    def __call__(self, data):
+    def _process(self, data):
         return self.func(data)
 
 
@@ -151,7 +165,7 @@ class BandpassFilter:
         self.taps = self.xp.asarray(taps).astype(self.xp.float32)
         return const_metadata
 
-    def __call__(self, data):
+    def _process(self, data):
         result = self.filter_pkg.convolve1d(data, self.taps, axis=-1,
                                             mode='constant')
         return result
@@ -182,7 +196,7 @@ class QuadratureDemodulation:
         self.mod_factor = self.mod_factor.astype(xp.complex64)
         return const_metadata.copy(is_iq_data=True, dtype="complex64")
 
-    def __call__(self, data):
+    def _process(self, data):
         return self.mod_factor * data
 
 
@@ -269,7 +283,7 @@ class Decimation:
         return const_metadata.copy(data_desc=new_signal_description,
                                    input_shape=output_shape)
 
-    def __call__(self, data):
+    def _process(self, data):
         return self._decimate(data)
 
     def _fir_decimate(self, data):
@@ -432,7 +446,7 @@ class RxBeamforming:
         # Create new output shape
         return const_metadata.copy(input_shape=(self.n_tx, self.n_samples))
 
-    def __call__(self, data):
+    def _process(self, data):
         data = data.copy().reshape(self.n_tx, self.n_rx * self.n_samples)
 
         self.interp1d_func(data, self.delays, self.buffer)
@@ -458,9 +472,9 @@ class EnvelopeDetection:
         self.xp = num_pkg
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        return const_metadata.copy(is_iq_data=False)
+        return const_metadata.copy(is_iq_data=False, dtype="float32")
 
-    def __call__(self, data):
+    def _process(self, data):
         if data.dtype != self.xp.complex64:
             raise ValueError(
                 f"Data type {data.dtype} is currently not supported.")
@@ -485,7 +499,7 @@ class Transpose:
         output_shape = tuple(input_shape[ax] for ax in axes)
         return const_metadata.copy(input_shape=output_shape)
 
-    def __call__(self, data):
+    def _process(self, data):
         return self.xp.transpose(data, self.axes)
 
 
@@ -564,7 +578,7 @@ class ScanConversion:
         self.dst_shape = len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
         return const_metadata.copy(input_shape=self.dst_shape)
 
-    def __call__(self, data):
+    def _process(self, data):
         if self.is_gpu:
             data = data.get()
         data[np.isnan(data)] = 0.0
@@ -589,7 +603,7 @@ class LogCompression:
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
-    def __call__(self, data):
+    def _process(self, data):
         if not isinstance(data, np.ndarray):
             data = data.get()
         data[data == 0] = 1e-9
@@ -609,7 +623,7 @@ class DynamicRangeAdjustment:
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
-    def __call__(self, data):
+    def _process(self, data):
         return self.xp.clip(data, a_min=self.min, a_max=self.max)
 
 
@@ -624,10 +638,68 @@ class ToGrayscaleImg:
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
-    def __call__(self, data):
+    def _process(self, data):
         data = data - self.xp.min(data)
         data = data/self.xp.max(data)*255
         return data.astype(self.xp.uint8)
+
+
+class Enqueue:
+    """
+    Copies the output data from the previous stage to the provided queue
+    and passes the input data unmodified for further processing.
+
+    Works on queue.Queue objects.
+
+    :param queue: queue.Queue instance
+    :param block: if true, will block the pipeline until a free slot is available,
+      otherwise will raise queue.Full exception
+    :param ignore_full: when true and block = False, this step will not throw
+      queue.Full exception. Set it to true if it is ok to ommit some of the
+      acquired frames.
+    """
+
+    def __init__(self, queue, block=True, ignore_full=False):
+        self.queue = queue
+        self.block = block
+        self.ignore_full = ignore_full
+        if self.block:
+            self._process = self._put_block
+        else:
+            if self.ignore_full:
+                self._process = self._put_ignore_full
+            else:
+                self._process = self._put_non_block
+        self._copy_func = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg == np:
+            self._copy_func = np.copy
+        else:
+            import cupy as cp
+            self._copy_func = cp.asnumpy
+
+    def _prepare(self, const_metadata):
+        return const_metadata
+
+    def _initialize(self, data):
+        pass
+
+    def _put_block(self, data):
+        self.queue.put(self._copy_func(data))
+        return data
+
+    def _put_non_block(self, data):
+        self.queue.put_nowait(self._copy_func(data))
+        return data
+
+    def _put_ignore_full(self, data):
+        try:
+            self.queue.put_nowait(self._copy_func(data))
+        except queue.Full:
+            pass
+        return data
+
 
 
 def _get_rx_aperture_origin(sequence):
