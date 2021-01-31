@@ -147,6 +147,12 @@ class Session(AbstractSession):
 
         return buffer, const_metadata
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop_scheme()
+
     def start_scheme(self):
         self._session_handle.startScheme()
 

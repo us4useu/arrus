@@ -43,7 +43,7 @@ def main():
     seq = LinSequence(
         tx_aperture_center_element=np.arange(8, 183),
         tx_aperture_size=64,
-        tx_focus=23e-3,
+        tx_focus=28e-3,
         pulse=Pulse(center_frequency=8e6, n_periods=3.5, inverse=False),
         rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
@@ -79,19 +79,19 @@ def main():
     )
 
     # Here starts communication with the device.
-    session = arrus.session.Session(r"C:\Users\Public\us4r.prototxt")
-    us4r = session.get_device("/Us4R:0")
-    us4r.set_hv_voltage(50)
+    with arrus.session.Session(r"C:\Users\Public\us4r.prototxt") as sess:
+        us4r = sess.get_device("/Us4R:0")
+        us4r.set_hv_voltage(50)
 
-    # Upload sequence on the us4r-lite device.
-    buffer, const_metadata = session.upload(scheme)
+        # Upload sequence on the us4r-lite device.
+        buffer, const_metadata = sess.upload(scheme)
+        display = Display2D(const_metadata, value_range=(20, 80), cmap="gray")
+        sess.start_scheme()
+        display.start(data_queue)
+        print("Display closed, stopping the script.")
 
-    display = Display2D(const_metadata, value_range=(20, 80), cmap="gray")
-
-    session.start_scheme()
-    display.start(data_queue)
-    session.stop_scheme()
-
+    # When we exit the above scope, the session and scheme is properly closed.
+    print("Stopping the example.")
 
 if __name__ == "__main__":
     main()
