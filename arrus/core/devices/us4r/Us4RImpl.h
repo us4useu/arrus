@@ -106,6 +106,7 @@ public:
     >
     upload(const ops::us4r::TxRxSequence &seq,
            unsigned short rxBufferNElements,
+           const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
            const ::arrus::framework::DataBufferSpec &outputBufferSpec) override;
 
     void start() override;
