@@ -24,7 +24,8 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     LogCompression,
     DynamicRangeAdjustment,
-    Enqueue
+    Enqueue,
+    SelectFrames
 )
 from arrus.utils.us4r import (
     RemapToLogicalOrder
@@ -41,7 +42,7 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 def main():
 
     seq = PwiSequence(
-        angles=np.asarray([0])*np.pi/180,
+        angles=np.asarray([-5, 0, 5])*np.pi/180,
         pulse=Pulse(center_frequency=8e6, n_periods=3, inverse=False),
         rx_sample_range=(0, 4096),
         downsampling_factor=2,
@@ -65,6 +66,7 @@ def main():
             steps=(
                 RemapToLogicalOrder(),
                 Transpose(axes=(0, 2, 1)),
+                SelectFrames(frames=[0]),
                 BandpassFilter(),
                 QuadratureDemodulation(),
                 Decimation(decimation_factor=4, cic_order=2),
@@ -72,7 +74,7 @@ def main():
                 EnvelopeDetection(),
                 Transpose(),
                 LogCompression(),
-                Enqueue(display_input_queue, block=False, ignore_full=True),
+                Enqueue(display_input_queue, block=False, ignore_full=True)
             ),
             placement="/GPU:0"
         )

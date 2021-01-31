@@ -10,6 +10,7 @@ import arrus.devices.gpu
 import arrus.kernels.imaging
 import time
 import queue
+import dataclasses
 
 
 class Pipeline:
@@ -864,6 +865,47 @@ class Enqueue:
             pass
         return data
 
+
+class SelectFrames(Operation):
+
+    def __init__(self, frames):
+        self.frames = frames
+
+    def set_pkgs(self, **kwargs):
+        pass
+
+    def _initialize(self, data):
+        pass
+
+    def _prepare(self, const_metadata):
+        input_shape = const_metadata.input_shape
+        context = const_metadata.context
+        seq = context.sequence
+        n_frames = len(self.frames)
+
+        if len(input_shape) != 3:
+            raise ValueError("The input should be 3-D "
+                             "(frame number should be the first axis)")
+
+        input_n_frames, d2, d3 = input_shape
+        output_shape = (n_frames, d2, d3)
+        # TODO make this op less prone to changes in op implementation
+        if isinstance(seq, arrus.ops.imaging.PwiSequence):
+            # select appropriate angles
+            output_angles = seq.angles[self.frames]
+            new_seq = dataclasses.replace(seq, angles=output_angles)
+            new_context = const_metadata.context
+            new_context = arrus.metadata.FrameAcquisitionContext(
+                device=new_context.device, sequence=new_seq,
+                raw_sequence=new_context.raw_sequence,
+                medium=new_context.medium, custom_data=new_context.custom_data)
+            return const_metadata.copy(input_shape=output_shape,
+                                       context=new_context)
+        else:
+            return const_metadata.copy(input_shape=output_shape)
+
+    def _process(self, data):
+        return data[self.frames]
 
 
 def _get_rx_aperture_origin(sequence):
