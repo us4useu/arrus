@@ -111,7 +111,7 @@ class DataBufferSpec:
     Output data buffer specification.
 
     :param n_elements: number of elements the buffer should consists of
-    :param type: type of a buffer, available values: "FIFO_LOCK_FREE"
+    :param type: type of a buffer, available values: "FIFO"
     """
     n_elements: int
     type: str
@@ -126,12 +126,14 @@ class Scheme:
     :param rx_buffer_size: number of elements the rx buffer (allocated on \
       us4r ddr internal memory) should consists of
     :param output_buffer: specification of the output buffer
+    :param work_mode: determines the system work mode, available values: 'ASYNC'
     :param processing: data processing to perform on the raw channel RF data \
       currently only arrus.utils.imaging is supported
     """
     tx_rx_sequence: TxRxSequence
     rx_buffer_size: int
     output_buffer: DataBufferSpec
+    work_mode: str
     processing: object = None
 
 

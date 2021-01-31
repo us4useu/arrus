@@ -99,13 +99,20 @@ def convert_to_core_scheme(scheme):
 
     # Convert output buffer to core.DataBufferSpec
     core_buffer_type = {
-        "FIFO_LOCK_FREE": arrus.core.DataBufferType_FIFO_LOCKFREE
+        "FIFO": arrus.core.DataBufferSpec.Type_FIFO
     }[output_buffer.type]
-    data_buffer_spec = arrus.core.DataBufferSpec(core_buffer_type, output_buffer.n_elements)
+    data_buffer_spec = arrus.core.DataBufferSpec(core_buffer_type,
+                                                 output_buffer.n_elements)
 
     # Convert sequence to core sequence.
     core_seq = arrus.utils.core.convert_to_core_sequence(seq)
-    return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec)
+
+    core_work_mode = {
+        "ASYNC": arrus.core.Scheme.WorkMode_ASYNC
+    }[scheme.work_mode]
+
+    return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
+                             workMode=core_work_mode)
 
 
 def convert_from_tuple(core_tuple):

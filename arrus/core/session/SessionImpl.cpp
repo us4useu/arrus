@@ -108,7 +108,8 @@ SessionImpl::~SessionImpl() {
 UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     auto &outputBufferSpec = scheme.getOutputBuffer();
-    auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(), outputBufferSpec);
+    auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
+                                     scheme.getWorkMode(), outputBufferSpec);
 
     std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
     metadataMap.emplace("frameChannelMapping", std::move(fcm));

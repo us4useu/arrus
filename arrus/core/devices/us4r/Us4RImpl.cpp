@@ -72,6 +72,7 @@ void Us4RImpl::disableHV() {
 std::pair<DataBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
                  unsigned short rxBufferNElements,
+                 const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
                  const DataBufferSpec &outputBufferSpec) {
 
     unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
@@ -85,6 +86,9 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
         throw ::arrus::IllegalArgumentException(
             ::arrus::format("The size of the host buffer {} must be equal or a multiple "
             "of the size of the rx buffer {}.", hostBufferNElements, rxBufferNElements));
+    }
+    if(workMode == arrus::ops::us4r::Scheme::WorkMode::HOST) {
+        throw ::arrus::IllegalArgumentException("Host work mode not yet implemented.");
     }
 
     std::unique_lock<std::mutex> guard(deviceStateMutex);
@@ -112,8 +116,9 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
         this->buffer.reset();
     }
     // Create output buffer.
-    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType,
-                                                      outputBufferSpec.getNumberOfElements());
+    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize,
+                                                      shape, dataType,
+                                                      hostBufferNElements);
     getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer);
     return {this->buffer, std::move(fcm)};
 }

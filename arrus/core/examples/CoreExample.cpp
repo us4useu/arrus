@@ -53,8 +53,8 @@ int main() noexcept {
         }
 
         TxRxSequence seq(txrxs, {}, 500e-3f);
-        DataBufferSpec outputBuffer{DataBufferType::FIFO_LOCKFREE, 4};
-        Scheme scheme(seq, 2, outputBuffer);
+        DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
+        Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::ASYNC);
 
         auto result = session->upload(scheme);
         us4r->setVoltage(10);

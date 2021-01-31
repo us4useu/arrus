@@ -60,7 +60,8 @@ def main():
     scheme = Scheme(
         tx_rx_sequence=seq,
         rx_buffer_size=4,
-        output_buffer=DataBufferSpec(type="FIFO_LOCK_FREE", n_elements=12),
+        output_buffer=DataBufferSpec(type="FIFO", n_elements=12),
+        work_mode="ASYNC",
         processing=Pipeline(
             steps=(
                 RemapToLogicalOrder(),
