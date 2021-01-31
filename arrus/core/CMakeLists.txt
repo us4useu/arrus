@@ -213,13 +213,13 @@ if (ARRUS_RUN_TESTS)
 #    #    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
-#    create_core_test(devices/us4r/Us4ROutputBufferTest.cpp "common/logging.cpp")
     create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
 #
     set(US4OEM_IMPL_TEST_DEPS common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
         devices/us4r/common.cpp
         devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
+    #    create_core_test(devices/us4r/Us4ROutput "common/logging.cpp")IT
 
     set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
         devices/us4r/common.cpp
