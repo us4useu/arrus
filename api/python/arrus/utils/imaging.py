@@ -95,8 +95,18 @@ class Pipeline:
 
 
 class Operation:
+
     def _initialize(self, data):
         self._process(data)
+
+    def set_pkgs(self, **kwargs):
+        pass
+
+    def _prepare(self, const_metadata):
+        raise ValueError("Calling abstract method")
+
+    def _process(self, data):
+        raise ValueError("Calling abstract method")
 
 
 class Lambda(Operation):
