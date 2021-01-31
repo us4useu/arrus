@@ -9,18 +9,27 @@ class LinSequence(arrus.ops.Operation):
     """
     A sequence of Tx/Rx operations for classical beamforming (linear scanning).
 
-    :param tx_aperture_center_element: vector of tx aperture center elements [element]
+    Tx/Rxs from a given sequence differ in the location of the tx/rx aperture
+    center (you can provide array of tx or rx aperture center elements).
+
+    :param tx_aperture_center_element: vector of tx aperture center elements \
+      [element]
     :param tx_aperture_size: size of the tx aperture [element]
-    :param rx_aperture_center_element: vector of rx aperture center elements [element]
+    :param rx_aperture_center_element: vector of rx aperture center elements \
+      [element]
     :param rx_aperture_size: size of the rx aperture [element]
     :param tx_focus: tx focal length [m]
     :param pulse: an excitation to perform
     :param pri: pulse repetition interval [s]
-    :param downsampling_factor: downsampling factor (decimation), integer factor for decreasing sampling frequency of the output signal
-    :param speed_of_sound: assumed speed of sound; can be None, in this case a medium in current context will be used to determine speed of sound [m/s]
+    :param downsampling_factor: downsampling factor (decimation), integer \
+      factor for decreasing sampling frequency of the output signal
+    :param speed_of_sound: assumed speed of sound; can be None, in this case \
+      a medium in current context will be used to determine speed of sound [m/s]
     :param tgc_start: tgc starting gain [dB]
     :param tgc_slope: tgc gain slope [dB/m]
-    :param sri: sequence repetition interval - the time between consecutive RF frames. When None, the time between consecutive RF frames is determined by the total pri only. [s]
+    :param sri: sequence repetition interval - the time between consecutive \
+      RF frames. When None, the time between consecutive RF frames is \
+      determined by the total pri only. [s]
     """
     tx_aperture_center_element: np.ndarray
     tx_aperture_size: float
@@ -35,3 +44,36 @@ class LinSequence(arrus.ops.Operation):
     speed_of_sound: float = None
     downsampling_factor: int = 1
     sri: float = None
+
+
+@dataclasses.dataclass(frozen=True)
+class PwiSequence:
+    """
+    A sequence of Tx/Rx operations for plane wave imaging.
+
+    Tx/Rxs from a given sequence differ in the plane wave angle
+    (you can provide a list of angles to transmit).
+
+    Currently, full tx/rx aperture is used.
+
+    :param angles: transmission angles [rad]
+    :param pulse: an excitation to perform
+    :param pri: pulse repetition interval [s]
+    :param downsampling_factor: downsampling factor (decimation), integer
+      factor for decreasing sampling frequency of the output signal
+    :param speed_of_sound: assumed speed of sound [m/s]
+    :param tgc_start: tgc starting gain [dB]
+    :param tgc_slope: tgc gain slope [dB/m]
+    :param sri: sequence repetition interval - the time between consecutive RF
+      frames. When None, the time between consecutive RF frames is determined
+      by the total pri only. [s]
+    """
+    angles: list
+    pulse: arrus.ops.us4r.Pulse
+    rx_sample_range: tuple
+    downsampling_factor: int
+    speed_of_sound: float
+    pri: float
+    tgc_start: float
+    tgc_slope: float
+    sri: float

@@ -8,6 +8,8 @@ import arrus.utils.imaging
 import arrus.kernels.tgc
 
 
+# -- LIN - classical imaging (scanline by scanline).
+
 def create_lin_sequence(context):
     """
     The function creates list of TxRx objects describing classic scheme.
@@ -187,3 +189,119 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
     return tx_apertures, tx_aperture_delays, tx_delays_center_max
 
 
+# -- PWI - plane wave imaging
+def create_pwi_sequence(context):
+    # device parameters
+    n_elem = context.device.probe.model.n_elements
+    pitch = context.device.probe.model.pitch
+    # sequence parameters
+    op = context.op # PWI Sequence
+    if not isinstance(op, arrus.ops.imaging.PwiSequence):
+        raise ValueError("This kernel is intended for Pwi sequence only.")
+    focus = None
+    # sample_range = op.rx_sample_range
+    sample_range = op.rx_sample_range
+    pulse = op.pulse
+    downsampling_factor = op.downsampling_factor
+    pri = op.pri
+    sri = op.sri
+    fs = context.device.sampling_frequency/downsampling_factor
+    tgc_start = op.tgc_start
+    tgc_slope = op.tgc_slope
+    angles = op.angles
+    # medium parameters
+    c = op.speed_of_sound
+    if c is None:
+        c = context.medium.speed_of_sound
+
+    tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
+        context,
+        arrus.ops.tgc.LinearTgc(tgc_start, tgc_slope))
+
+    tx_aperture = np.ones(n_elem, dtype=bool)
+    rx_aperture = np.ones(n_elem, dtype=bool)
+
+    n_angles = np.size(angles)
+    delays = _compute_tx_rx_delays(angles, focus, pitch, n_elem, c)
+    txrx = []
+    for i_angle in range(n_angles):
+        angle_delays = delays[i_angle, :]
+        tx = Tx(tx_aperture, pulse, angle_delays)
+        rx = Rx(rx_aperture, sample_range, downsampling_factor)
+        txrx.append(TxRx(tx, rx, pri))
+    return TxRxSequence(txrx, tgc_curve=tgc_curve, sri=sri)
+
+
+def _compute_tx_rx_delays(angles, focus, pitch, n_channels, c=1490):
+    """
+    Computes tx rx delays for provided angle and focus.
+
+    Currently used by PWI imaging.
+    """
+    # transducer indexes
+    x_i = np.linspace(0, n_channels - 1, n_channels)
+    # transducer coordinates
+    x_c = x_i*pitch
+    # convert angles to ndarray, angles.shape can not be equal ()
+    angles = np.array([angles])
+    n_angles = angles.size
+
+    # allocating memory for delays
+    delays = np.zeros(shape=(n_angles, n_channels))
+
+    angles = np.array(angles)
+    if angles.size != 0:
+        # reducing possible singleton dimensions of 'angles'
+        angles = np.squeeze(angles)
+        if angles.shape == ():
+            angles = np.array([angles])
+        # allocating memory for delays
+        delays = np.zeros(shape=(n_angles, n_channels))
+        # calculating delays for each angle
+        for i_angle in range(n_angles):
+            this_angle = angles[i_angle]
+            this_delays = x_c*np.sin(this_angle)/c
+            if this_angle < 0:
+                this_delays = this_delays-this_delays[-1]
+            delays[i_angle, :] = this_delays
+    else:
+        delays = np.zeros(shape=(1, n_channels))
+
+    focus = np.array(focus)
+    if focus.item() is None:
+        return delays
+
+    if focus.size == 0:
+        return delays
+    elif focus.size == 1:
+        xf = (n_channels - 1) * pitch / 2
+        yf = focus
+    elif focus.size == 2:
+        xf = focus[0] + (n_channels - 1) * pitch / 2
+        yf = focus[1]
+    else:
+        raise ValueError(f"Bad focus value: {focus}")
+
+    # distance between origin of coordinate system and focus
+    s0 = np.sqrt(yf**2+xf**2)
+    focus_sign = np.sign(yf)
+
+    # cosinus of the angle between array (y=0) and focus position vector
+    if s0 == 0:
+        cos_alpha = 0
+    else:
+        cos_alpha = xf/s0
+    # distances between elements and focus
+    si = np.sqrt(s0**2 + x_c**2 - 2*s0*x_c*cos_alpha)
+
+    # focusing delays
+    delays_foc = (s0-si)/c
+    delays_foc = delays_foc*focus_sign
+
+    # set min(delays_foc) as delay==0
+    d0 = np.min(delays_foc)
+    delays_foc = delays_foc - d0
+
+    # full delays
+    delays = delays + delays_foc
+    return delays
