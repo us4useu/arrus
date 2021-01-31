@@ -219,7 +219,6 @@ if (ARRUS_RUN_TESTS)
         devices/us4r/common.cpp
         devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
-    #    create_core_test(devices/us4r/Us4ROutput "common/logging.cpp")IT
 
     set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
         devices/us4r/common.cpp
