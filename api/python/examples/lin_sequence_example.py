@@ -79,7 +79,7 @@ def main():
     )
 
     # Here starts communication with the device.
-    with arrus.session.Session(r"C:\Users\Public\us4r.prototxt") as sess:
+    with arrus.Session(r"C:\Users\Public\us4r.prototxt") as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(50)
 
