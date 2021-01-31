@@ -31,7 +31,6 @@ class Pipeline:
         :param data: numpy array with data to process
         :return:
         """
-        print(f"Data we got: {data}")
         data = self.num_pkg.asarray(data)
         for step in self.steps:
             data = step._process(data)

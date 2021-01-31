@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import threading
 import time
+from matplotlib.animation import FuncAnimation
 
 
 class Display2D:
     def __init__(self, metadata, value_range=None,
                  window_size=None, title=None, xlabel=None,
-                 ylabel=None, cmap=None):
+                 ylabel=None, cmap=None, interval=10):
         """
         2D display constructor.
 
@@ -17,6 +17,7 @@ class Display2D:
         :param xlabel: x label
         :param ylabel: y label
         :param cmap: color map to apply
+        :param interval: number of milliseconds between successive img updates
         """
         self.metadata = metadata
         self.window_size = window_size
@@ -25,12 +26,13 @@ class Display2D:
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.cmap = cmap
-        self.stop_event = threading.Event()
         self._prepare(metadata)
+        self.interval = interval
+        self._current_queue = None
+        self._anim = None
 
     def _prepare(self, metadata):
         self._fig, self._ax = plt.subplots()
-        self._fig.canvas.mpl_connect("close_event", self.stop)
         if self.window_size is not None:
             self._fig.set_size_inches(self.window_size)
         if self.xlabel is not None:
@@ -39,6 +41,8 @@ class Display2D:
             self._ax.set_ylabel(self.ylabel)
         if self.title is not None:
             self._fig.canvas.set_window_title(self.title)
+
+        # TODO compute extent based on sampling frequency and
 
         input_shape = metadata.input_shape
         datatype = metadata.dtype
@@ -60,15 +64,13 @@ class Display2D:
             self._img = self._ax.imshow(empty, cmap=self.cmap,
                                         vmin=vmin, vmax=vmax)
             pass
-        self._fig.show()
 
     def start(self, queue):
-        while not self.stop_event.is_set():
-            data = queue.get()
-            self._img.set_data(data[100:, :])
-            # self._ax.set_aspect("auto")
-            self._fig.canvas.flush_events()
-            plt.draw()
+        self._current_queue = queue
+        self._anim = FuncAnimation(self._fig, self._update,
+                                   interval=self.interval)
+        plt.show()
 
-    def stop(self):
-        self.stop_event.set()
+    def _update(self, frame):
+        data = self._current_queue.get()
+        self._img.set_data(data)

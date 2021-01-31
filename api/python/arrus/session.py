@@ -152,7 +152,8 @@ class Session(AbstractSession):
 
     def stop_scheme(self):
         self._session_handle.stopScheme()
-        self._current_processing.stop()
+        if self._current_processing is not None:
+            self._current_processing.stop()
 
     def get_device(self, path: str):
         """

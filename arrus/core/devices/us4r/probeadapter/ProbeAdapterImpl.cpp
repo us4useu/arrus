@@ -356,19 +356,21 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                 rxBufferNElements, hostBufferNElements, nUs4OEM,
                 element = transferIdx]() mutable {
                 try {
-                    auto dstAddress = outputBuffer->getAddress((uint16) element, ordinal);
                     ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                    uint16 nextElement = (element + rxBufferNElements) % hostBufferNElements;
+                    auto nextDstAddress = outputBuffer->getAddress(nextElement, ordinal);
 
                     // Prepare transfer for the next iteration.
                     // TODO if there is more than 4GiB per us4oem -> create transfer before handling interrupts
                     // TODO if there is more data -> keep current reprogramming as is
                     ius4oem->PrepareTransferRXBufferToHost(
-                        transferIdx, dstAddress, elementSize, srcAddress);
+                        transferIdx, nextDstAddress, elementSize, srcAddress);
                     ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
                     outputBuffer->signal(ordinal, element);
 
-                    element = (element + rxBufferNElements) % hostBufferNElements;
+                    element = nextElement;
+
                 } catch(const std::exception &e) {
                     logger->log(LogSeverity::ERROR, "Us4OEM: "
                                                     + std::to_string(ordinal) +
