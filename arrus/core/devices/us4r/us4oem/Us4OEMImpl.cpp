@@ -292,16 +292,18 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
             // Element operation.
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = opIdx + (batchElementIdx * nOps) + (batchIdx * nOps * batchSize);
+                firing = opIdx + (batchElementIdx*nOps) + (batchIdx*nOps*batchSize);
                 auto const &op = seq[opIdx];
                 auto[startSample, endSample] = op.getRxSampleRange().asPair();
                 size_t nSamples = endSample - startSample;
-                size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
+                size_t nBytes = nSamples*N_RX_CHANNELS*sizeof(OutputDType);
                 auto rxMapId = rxMappings.find(opIdx)->second;
 
                 ARRUS_REQUIRES_AT_MOST(
                     outputAddress + nBytes, DDR_SIZE,
-                    ::arrus::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
+                    ::arrus::format("Total data size cannot exceed {} GiB (device {})",
+                                    DDR_SIZE / (1024*1024*1024),
+                                    getDeviceId().toString()));
 
                 if(op.isRxNOP() && !this->isMaster()) {
                     // TODO reduce the size of data acquired for master rx nops to small number of samples

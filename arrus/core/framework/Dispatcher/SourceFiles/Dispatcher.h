@@ -2,7 +2,7 @@
 
 #include <limits>
 
-#include "../HeaderFiles/DispatcherInterface.h"
+#include "DispatcherInterface.h"
 #include "../HeaderFiles/Controller/Controller.h"
 #include "../HeaderFiles/Controller/ControllerEvents/SetUserInputDataEvent.h"
 #include "../HeaderFiles/Controller/ControllerEvents/UpdateGraphNodeParameterEvent.h"

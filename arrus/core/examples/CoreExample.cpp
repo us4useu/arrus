@@ -26,8 +26,7 @@ int main() noexcept {
         ::arrus::setLoggerFactory(loggingMechanism);
 
         auto settings =
-            ::arrus::io::readSessionSettings(
-                R"(C:\Users\pjarosik\src\x-files\customers\nanoecho\nanoecho_magprobe_002.prototxt)");
+            ::arrus::io::readSessionSettings("home/nvidia/test.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
 

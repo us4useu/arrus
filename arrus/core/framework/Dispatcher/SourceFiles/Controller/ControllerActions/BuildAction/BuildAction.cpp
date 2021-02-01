@@ -149,6 +149,7 @@ void BuildAction::parseGraphNodesConnections(const boost::property_tree::ptree &
 	
 	BOOST_FOREACH(const boost::property_tree::ptree::value_type &v, connections)
 	{
+	    // po prostu lista wezlow
 		int srcId = v.second.get<int>("srcId");
 		int dstId = v.second.get<int>("dstId");
 		this->controller->getModel()->getGraphNodesLibrary(graphIndex)->connectNodes(srcId, dstId);
