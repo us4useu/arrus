@@ -181,6 +181,39 @@ class BandpassFilter:
         return result
 
 
+class Filter:
+    """
+    1D filter.
+
+    The filtering is performed along the last axis.
+
+    Currently only FIR filter is implemented.
+    """
+
+    def __init__(self, taps, num_pkg=None, filter_pkg=None):
+        """
+        Bandpass filter constructor.
+
+        :param taps: filter feedforward coefficients
+        """
+        self.taps = taps
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        self.taps = self.xp.asarray(self.taps).astype(self.xp.float32)
+        return const_metadata
+
+    def _process(self, data):
+        result = self.filter_pkg.convolve1d(data, self.taps, axis=-1,
+                                            mode='constant')
+        return result
+
+
 class QuadratureDemodulation:
     """
     Quadrature demodulation (I/Q decomposition).
@@ -553,7 +586,7 @@ class RxBeamformingImg:
         tx_delay_center = 0.5*(probe_model.n_elements-1)*probe_model.pitch*np.abs(np.tan(angles))/c
         tx_delay_center = np.squeeze(tx_delay_center)
 
-        start_sample = seq.rx_sample_range[0]
+        start_sample = seq.rx_sample_range[0] + 16
         burst_factor = n_periods / (2 * fc)
         initial_delay = (- start_sample / acq_fs
                          + tx_delay_center
@@ -599,7 +632,7 @@ class RxBeamformingImg:
         delay_total = (tx_distance + rx_distance)/c + initial_delay
         samples = delay_total * fs
         # samples outside should be neglected
-        samples[np.logical_or(samples < 0, samples > self.n_samples)] = np.Inf
+        samples[np.logical_or(samples < 0, samples >= self.n_samples-1)] = np.Inf
         samples = samples + irx*self.n_samples
         samples[np.isinf(samples)] = -1
         samples = samples.astype(np.float32)
