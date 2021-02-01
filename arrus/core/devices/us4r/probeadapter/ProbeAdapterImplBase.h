@@ -6,7 +6,6 @@
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/us4r/DataTransfer.h"
-#include "arrus/core/api/devices/us4r/HostBuffer.h"
 #include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 

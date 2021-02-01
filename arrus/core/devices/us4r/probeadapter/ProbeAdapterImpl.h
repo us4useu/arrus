@@ -45,7 +45,7 @@ public:
 
     void syncTrigger() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers);
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer);
 
     void setTgcCurve(const arrus::ops::us4r::TGCCurve &curve) override;
 
@@ -56,7 +56,7 @@ private:
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
 
-    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &transfers, Us4OEMImplBase::RawHandle us4oem);
+    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &us4oemBuffer, Us4OEMImplBase::RawHandle us4oem);
 
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {
         return this->us4oems[0];

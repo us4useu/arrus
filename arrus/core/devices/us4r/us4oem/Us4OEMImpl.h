@@ -10,6 +10,7 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/framework/NdArray.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
@@ -31,8 +32,10 @@ public:
     using Handle = std::unique_ptr<Us4OEMImpl>;
     using RawHandle = PtrHandle<Us4OEMImpl>;
 
-    using OutputDType = int16;
     using FiringIdx = uint16;
+    using OutputDType = int16;
+    static constexpr framework::NdArray::DataType NdArrayDataType = framework::NdArray::DataType::INT16;
+
     // voltage, +/- [V] amplitude, (ref: technote)
     static constexpr Voltage MIN_VOLTAGE = 0;
     static constexpr Voltage MAX_VOLTAGE = 90; // 180 vpp

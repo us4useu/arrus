@@ -10,6 +10,8 @@ using ::arrus::ops::us4r::TxRxSequence;
 using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
+using ::arrus::framework::DataBuffer;
+using ::arrus::framework::DataBufferSpec;
 
 UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     // NOTE! The implementation of this function determines
@@ -67,49 +69,56 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::pair<HostBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
+std::pair<DataBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
-                 unsigned short rxBufferNElements, unsigned short hostBufferNElements) {
+                 unsigned short rxBufferNElements,
+                 const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
+                 const DataBufferSpec &outputBufferSpec) {
 
+    unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
+
+    // Validate input parameters.
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
         ::arrus::IllegalArgumentException(
             "Currently TxRx sequence upload is available for system with probes only."));
-
     if((hostBufferNElements % rxBufferNElements) != 0) {
         throw ::arrus::IllegalArgumentException(
             ::arrus::format("The size of the host buffer {} must be equal or a multiple "
             "of the size of the rx buffer {}.", hostBufferNElements, rxBufferNElements));
     }
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if(workMode == arrus::ops::us4r::Scheme::WorkMode::HOST) {
+        throw ::arrus::IllegalArgumentException("Host work mode not yet implemented.");
+    }
 
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
     if(this->state == State::STARTED) {
         throw ::arrus::IllegalStateException(
             "The device is running, uploading sequence is forbidden.");
     }
 
+    // Upload and register buffers.
     auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, 1);
-
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
+    // Calculate how much of the data each Us4OEM produces.
     auto &element = rxBuffer->getElement(0);
-    std::vector<size_t> elementPartSizes(element.getNumberOfUs4oems(), 0);
-    std::transform(
-        std::begin(element.getUs4oemElements()),
-        std::end(element.getUs4oemElements()),
-        std::begin(elementPartSizes),
-        [](const Us4OEMBufferElement& transfer) {
-            return transfer.getSize();
-        });
-
-    // This might be quite time consuming operation - it might be good idea to
-    // check if the buffer properties has changed and reuse the old buffer
-    // if possible.
+    // a vector, where value[i] contains a size that is produced by a single us4oem.
+    std::vector<size_t> us4oemComponentSize(element.getNumberOfUs4oems(), 0);
+    int i = 0;
+    for(auto& component : element.getUs4oemComponents()) {
+        us4oemComponentSize[i++] = component.getSize();
+    }
+    auto& shape = element.getShape();
+    auto dataType = element.getDataType();
+    // If the output buffer already exists - remove it.
     if(this->buffer) {
         this->buffer.reset();
     }
-    this->buffer = std::make_shared<Us4ROutputBuffer>(
-        elementPartSizes, hostBufferNElements);
+    // Create output buffer.
+    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize,
+                                                      shape, dataType,
+                                                      hostBufferNElements);
     getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer);
     return {this->buffer, std::move(fcm)};
 }
@@ -124,6 +133,9 @@ void Us4RImpl::start() {
         throw ::arrus::IllegalStateException("Device is already running.");
     }
     this->buffer->resetState();
+    if(!this->buffer->getOnNewDataCallback()) {
+        throw ::arrus::IllegalArgumentException("'On new data callback' is not set.");
+    }
     this->getDefaultComponent()->start();
     this->state = State::STARTED;
 }
@@ -183,7 +195,8 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
         );
         ++opIdx;
     }
-    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize, rxBatchSize, seq.getSri());
+    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize,
+                                           rxBatchSize, seq.getSri());
 
 }
 

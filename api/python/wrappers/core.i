@@ -50,11 +50,12 @@ namespace std {
     }
 }
 
-%module core
+%module(directors="1") core
 
 %{
 #include <memory>
 #include <fstream>
+#include <iostream>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/common/logging/impl/Logging.h"
@@ -111,16 +112,100 @@ using namespace ::arrus;
     }
 %}
 
+// ------------------------------------------ COMMON
+// Turn on globally value wrappers
+%feature("valuewrapper", "1");
+
+%ignore arrus::Tuple::operator[];
+
+%include "arrus/core/api/common/Tuple.h"
+%include "arrus/core/api/common/Interval.h"
+
+%feature("valuewrapper", "0");
+
+%inline %{
+    size_t castToInt(short* ptr) {
+        return (size_t)ptr;
+    }
+%};
+// ------------------------------------------ FRAMEWORK
+
+%{
+#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/framework/DataBuffer.h"
+#include "arrus/core/api/framework/DataBufferSpec.h"
+#include "arrus/core/api/framework/FifoBuffer.h"
+#include "arrus/core/api/framework/FifoLockFreeBuffer.h"
+#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+using namespace arrus::framework;
+using namespace arrus::devices;
+%};
+
+%shared_ptr(arrus::devices::FrameChannelMapping);
+%shared_ptr(arrus::framework::DataBufferElement);
+%shared_ptr(arrus::framework::DataBuffer);
+%shared_ptr(arrus::framework::FifoBuffer);
+%shared_ptr(arrus::framework::FifoLockFreeBuffer);
+
+namespace std {
+    %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
+};
+namespace arrus {
+    %template(TupleUint32) Tuple<unsigned int>;
+};
+
+%include "arrus/core/api/framework/NdArray.h"
+%include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+%include "arrus/core/api/framework/DataBufferSpec.h"
+%include "arrus/core/api/framework/DataBuffer.h"
+%include "arrus/core/api/framework/FifoLockFreeBuffer.h"
+%include "arrus/core/api/framework/FifoBuffer.h"
+
+%feature("director") OnNewDataCallbackWrapper;
+
+%inline %{
+class OnNewDataCallbackWrapper {
+public:
+    OnNewDataCallbackWrapper() {}
+    virtual void run(const std::shared_ptr<arrus::framework::DataBufferElement> element) const {}
+    virtual ~OnNewDataCallbackWrapper() {}
+};
+
+void registerOnNewDataCallbackFifoLockFreeBuffer(const std::shared_ptr<arrus::framework::DataBuffer> &buffer, OnNewDataCallbackWrapper& callback) {
+    auto fifolockfreeBuffer = std::static_pointer_cast<FifoLockFreeBuffer>(buffer);
+    ::arrus::framework::OnNewDataCallback actualCallback = [&](const std::shared_ptr<DataBufferElement> &ptr) {
+            // TODO avoid potential priority inversion here
+            PyGILState_STATE gstate = PyGILState_Ensure();
+            try {
+                callback.run(ptr);
+            } catch(const std::exception &e) {
+                std::cerr << "Exception: " << e.what() << std::endl;
+            } catch(...) {
+                std::cerr << "Unhandled exception" << std::endl;
+            }
+            PyGILState_Release(gstate);
+    };
+    fifolockfreeBuffer->registerOnNewDataCallback(actualCallback);
+}
+%};
+
 // ------------------------------------------ SESSION
 %{
+#include "arrus/core/api/session/UploadConstMetadata.h"
+#include "arrus/core/api/session/UploadResult.h"
 #include "arrus/core/api/session/Session.h"
 using namespace ::arrus::session;
 
 %};
 // TODO consider using unique_ptr anyway (https://stackoverflow.com/questions/27693812/how-to-handle-unique-ptrs-with-swig)
 
+%shared_ptr(arrus::session::UploadConstMetadata);
 %shared_ptr(arrus::session::Session);
 %ignore createSession;
+
+
+%include "arrus/core/api/session/UploadConstMetadata.h"
+%include "arrus/core/api/session/UploadResult.h"
 %include "arrus/core/api/session/Session.h"
 
 %inline %{
@@ -129,8 +214,16 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
     std::shared_ptr<Session> res = createSession(filepath);
     return res;
 }
-%};
 
+std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arrus::session::UploadResult* uploadResult) {
+    return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
+}
+
+std::shared_ptr<arrus::framework::FifoLockFreeBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {
+    auto buffer = std::static_pointer_cast<FifoLockFreeBuffer>(uploadResult->getBuffer());
+    return buffer;
+}
+%};
 // ------------------------------------------ DEVICES
 // Us4R
 %{
@@ -141,8 +234,7 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
-#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-#include "arrus/core/api/devices/us4r/HostBuffer.h"
+
 using namespace arrus::devices;
 %};
 
@@ -154,15 +246,9 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/Probe.h"
-%shared_ptr(arrus::devices::FrameChannelMapping);
-%shared_ptr(arrus::devices::HostBuffer);
-%include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-%include "arrus/core/api/devices/us4r/HostBuffer.h"
 
-namespace std {
-    %template(UploadResult) pair<std::shared_ptr<arrus::devices::HostBuffer>, std::shared_ptr<arrus::devices::FrameChannelMapping>>;
-    %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
-};
+
+
 
 %inline %{
 arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
@@ -191,14 +277,7 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
 }
 %};
 
-// ------------------------------------------ COMMON
-// Turn on globally value wrappers
-%feature("valuewrapper");
 
-%ignore arrus::Tuple::operator[];
-
-%include "arrus/core/api/common/Tuple.h"
-%include "arrus/core/api/common/Interval.h"
 
 // ------------------------------------------ OPERATIONS
 
@@ -211,6 +290,7 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
 #include <vector>
 using namespace arrus::ops::us4r;
 %};
@@ -222,6 +302,7 @@ using namespace arrus::ops::us4r;
 %include "arrus/core/api/ops/us4r/Rx.h"
 %include "arrus/core/api/ops/us4r/Tx.h"
 %include "arrus/core/api/ops/us4r/TxRxSequence.h"
+%include "arrus/core/api/ops/us4r/Scheme.h"
 
 
 %include "std_vector.i"
