@@ -132,7 +132,7 @@ private:
 
     static float getRxTime(size_t nSamples, uint32 decimationFactor);
 
-    void setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing);
+    void setTGC(const ops::us4r::TGCCurve &tgc);
 
     std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
