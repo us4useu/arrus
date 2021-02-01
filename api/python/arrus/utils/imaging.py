@@ -914,6 +914,21 @@ class SelectFrames(Operation):
         return data[self.frames]
 
 
+class Squeeze(Operation):
+    def __init__(self):
+        pass
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def _prepare(self, const_metadata):
+        output_shape = tuple(i for i in const_metadata.input_shape if i != 1)
+        return const_metadata.copy(input_shape=output_shape)
+
+    def _process(self, data):
+        return self.xp.squeeze(data)
+
+
 def _get_rx_aperture_origin(sequence):
     rx_aperture_size = sequence.rx_aperture_size
     rx_aperture_center_element = np.array(sequence.rx_aperture_center_element)
