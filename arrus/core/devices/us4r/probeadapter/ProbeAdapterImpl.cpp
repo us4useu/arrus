@@ -286,25 +286,25 @@ void ProbeAdapterImpl::syncTrigger() {
     this->us4oems[0]->syncTrigger();
 }
 
-void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers) {
+void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer) {
     Ordinal us4oemOrdinal = 0;
     for(auto &us4oem: us4oems) {
-        auto us4oemBuffer = transfers->getUs4oemBuffer(us4oemOrdinal);
+        auto us4oemBuffer = us4rBuffer->getUs4oemBuffer(us4oemOrdinal);
         registerOutputBuffer(buffer, us4oemBuffer, us4oem);
         ++us4oemOrdinal;
     }
 }
 
 void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
-                                            const Us4OEMBuffer &transfers,
+                                            const Us4OEMBuffer &us4oemBuffer,
                                             Us4OEMImplBase::RawHandle us4oem) {
     // Each transfer should have the same size.
     std::unordered_set<size_t> sizes;
-    for(auto &transfer: transfers.getElements()) {
-        sizes.insert(transfer.getSize());
+    for(auto &element: us4oemBuffer.getElements()) {
+        sizes.insert(element.getSize());
     }
     if(sizes.size() > 1) {
-        throw ::arrus::ArrusException("Each transfer should have the same size.");
+        throw ::arrus::ArrusException("Each us4oem buffer element should have the same size.");
     }
     // This is the size of a single element produced by this us4oem.
     const size_t elementSize = *std::begin(sizes);
@@ -313,8 +313,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
         return;
     }
     // Output buffer - assuming that the number of elements is a multiple of number of transfers
-    const auto rxBufferSize = ARRUS_SAFE_CAST(transfers.getNumberOfElements(), uint16);
-    const uint16 hostBufferSize = outputBuffer->getNumberOfElements();
+    const auto rxBufferNElements = ARRUS_SAFE_CAST(us4oemBuffer.getNumberOfElements(), uint16);
+    const size_t hostBufferNElements = outputBuffer->getNumberOfElements();
     const Ordinal ordinal = us4oem->getDeviceId().getOrdinal();
 
     // Prepare host buffers
@@ -322,22 +322,26 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
     uint16 rxElement = 0;
 
     auto ius4oem = us4oem->getIUs4oem();
+//    ius4oem->EnableWaitOnReceiveOverflow();
+//    ius4oem->EnableWaitOnTransferOverflow();
 
-    while(hostElement < hostBufferSize) {
+    while(hostElement < hostBufferNElements) {
         auto dstAddress = outputBuffer->getAddress(hostElement, ordinal);
-        auto srcAddress = transfers.getElement(rxElement).getAddress();
+        auto srcAddress = us4oemBuffer.getElement(rxElement).getAddress();
         logger->log(LogSeverity::DEBUG, ::arrus::format("Preparing host buffer to {} from {}, size {}",
                                                         (size_t) dstAddress, (size_t) srcAddress, elementSize));
         ius4oem->PrepareHostBuffer(dstAddress, elementSize, srcAddress);
         ++hostElement;
-        rxElement = (rxElement + 1) % rxBufferSize;
+        rxElement = (rxElement + 1) % rxBufferNElements;
     }
 
     // prepare transfers
     uint16 transferIdx = 0;
     uint16 startFiring = 0;
 
-    for(auto &transfer: transfers.getElements()) {
+    size_t nUs4OEM = us4oems.size();
+
+    for(auto &transfer: us4oemBuffer.getElements()) {
         auto dstAddress = outputBuffer->getAddress(transferIdx, ordinal);
         auto srcAddress = transfer.getAddress();
         auto endFiring = transfer.getFiring();
@@ -349,33 +353,24 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
             endFiring, transferIdx,
             [this, ius4oem, outputBuffer, ordinal, transferIdx, startFiring,
                 endFiring, srcAddress, elementSize,
-                rxBufferSize, hostBufferSize,
+                rxBufferNElements, hostBufferNElements, nUs4OEM,
                 element = transferIdx]() mutable {
                 try {
-                    auto dstAddress = outputBuffer->getAddress((uint16) element, ordinal);
                     ius4oem->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-                    logger->log(LogSeverity::DEBUG, ::arrus::format("Rx Released: {}, {}", startFiring, endFiring));
+                    uint16 nextElement = (element + rxBufferNElements) % hostBufferNElements;
+                    auto nextDstAddress = outputBuffer->getAddress(nextElement, ordinal);
 
                     // Prepare transfer for the next iteration.
+                    // TODO if there is more than 4GiB per us4oem -> create transfer before handling interrupts
+                    // TODO if there is more data -> keep current reprogramming as is
                     ius4oem->PrepareTransferRXBufferToHost(
-                        transferIdx, dstAddress, elementSize, srcAddress);
+                        transferIdx, nextDstAddress, elementSize, srcAddress);
                     ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
-                    bool cont = outputBuffer->signal(ordinal, element,
-                                                     HostBuffer::INF_TIMEOUT); // Also a callback function can be used here.
-                    if(!cont) {
-                        logger->log(LogSeverity::DEBUG, "Output buffer shut down.");
-                        return;
-                    }
-                    // TODO the below should be called when buffer element is released.
-                    cont = outputBuffer->waitForRelease(ordinal, element, HostBuffer::INF_TIMEOUT);
-                    if(!cont) {
-                        logger->log(LogSeverity::DEBUG, "Output buffer shut down");
-                        return;
-                    }
-                    ius4oem->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                    logger->log(LogSeverity::DEBUG, ::arrus::format("Host Released: {}, {}", startFiring, endFiring));
-                    element = (element + rxBufferSize) % hostBufferSize;
+                    outputBuffer->signal(ordinal, element);
+
+                    element = nextElement;
+
                 } catch(const std::exception &e) {
                     logger->log(LogSeverity::ERROR, "Us4OEM: "
                                                     + std::to_string(ordinal) +
@@ -389,11 +384,28 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
 
             }
         );
-        // TODO register in the us4oem
+        // Register element release functions here.
+        if(outputBuffer->getNumberOfElements() % us4oemBuffer.getNumberOfElements() != 0) {
+            throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
+        }
+        size_t nRepeats = outputBuffer->getNumberOfElements() / us4oemBuffer.getNumberOfElements();
+
+        for(size_t i = 0; i < nRepeats; ++i) {
+            std::function<void()> releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
+                for(auto &us4oem: this->us4oems) {
+                    us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                }
+//                for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
+//                    this->us4oems[i]->getIUs4oem()->SyncReceive();
+//                    this->us4oems[i]->getIUs4oem()->SyncTransfer();
+//                }
+            };
+            outputBuffer->registerReleaseFunction(transferIdx+(i*rxBufferNElements), releaseFunc);
+        }
+
         startFiring = endFiring + 1;
         ++transferIdx;
     }
-    // Register overflow callbacks (mark output buffer as invalid)
 
     ius4oem->RegisterReceiveOverflowCallback([this, outputBuffer]() {
         try {

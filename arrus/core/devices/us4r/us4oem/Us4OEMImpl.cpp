@@ -209,6 +209,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     ius4oem->SetNumberOfFirings(nOps*batchSize);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
+    setTGC(tgc);
 
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 
@@ -287,6 +288,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     uint16 firing = 0;
     std::vector<Us4OEMBufferElement> rxBufferElements;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
+        // Total number of samples in a single batch.
+        unsigned int totalNSamples = 0;
         // Batch elements.
         for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
             // Element operation.
@@ -300,10 +303,11 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
                 ARRUS_REQUIRES_AT_MOST(
                     outputAddress + nBytes, DDR_SIZE,
-                    ::arrus::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
+                    ::arrus::format("Total data size cannot exceed 4GiB (device {})",
+                                    getDeviceId().toString()));
 
                 if(op.isRxNOP() && !this->isMaster()) {
-                    // TODO reduce the size of data acquired for master rx nops to small number of samples
+                    // TODO reduce the size of data acquired from master rx nops to small number of samples
                     // (e.g. 64)
                     ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
                                              SAMPLE_DELAY + startSample,
@@ -317,15 +321,17 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                              op.getRxDecimationFactor() - 1,
                                              rxMapId, nullptr);
                     outputAddress += nBytes;
+                    totalNSamples += (unsigned)nSamples;
                 }
             }
         }
-        // The size of the chunk.
+        // The size of the chunk, in number of BYTES.
         auto size = outputAddress - transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
-        rxBufferElements.emplace_back(srcAddress, size, firing);
+        framework::NdArray::Shape shape{totalNSamples, N_RX_CHANNELS};
+        rxBufferElements.emplace_back(srcAddress, size, firing, shape, NdArrayDataType);
     }
     ius4oem->EnableTransmit();
 
@@ -523,6 +529,8 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc) {
         for(auto &val: actualTGC) {
             val = (val - 14.0f) / 40.0f;
         }
+        // Currently setting firing parameter has no impact on the result
+        // because TGC can be set only once for the whole sequence.
         ius4oem->TGCSetSamples(actualTGC, 0);
     }
 }

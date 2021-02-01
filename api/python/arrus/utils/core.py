@@ -90,3 +90,35 @@ def convert_to_py_probe_model(core_model):
         n_elements=n_elements,
         pitch=pitch,
         curvature_radius=curvature_radius)
+
+
+def convert_to_core_scheme(scheme):
+    seq = scheme.tx_rx_sequence
+    rx_buffer_size = scheme.rx_buffer_size
+    output_buffer = scheme.output_buffer
+
+    # Convert output buffer to core.DataBufferSpec
+    core_buffer_type = {
+        "FIFO": arrus.core.DataBufferSpec.Type_FIFO
+    }[output_buffer.type]
+    data_buffer_spec = arrus.core.DataBufferSpec(core_buffer_type,
+                                                 output_buffer.n_elements)
+
+    # Convert sequence to core sequence.
+    core_seq = arrus.utils.core.convert_to_core_sequence(seq)
+
+    core_work_mode = {
+        "ASYNC": arrus.core.Scheme.WorkMode_ASYNC
+    }[scheme.work_mode]
+
+    return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
+                             workMode=core_work_mode)
+
+
+def convert_from_tuple(core_tuple):
+    """
+    Converts arrus core tuple to python tuple.
+    """
+    v = [core_tuple.get(i) for i in range(core_tuple.size())]
+    return tuple(v)
+

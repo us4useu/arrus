@@ -1,7 +1,8 @@
 import arrus.ops.imaging
 import arrus.exceptions
 from .imaging import (
-    create_lin_sequence
+    create_lin_sequence,
+    create_pwi_sequence
 )
 
 
@@ -12,7 +13,8 @@ def _identity_func(context):
 # TODO should depend on the device, currently us4r is supported only
 _kernel_registry = {
     arrus.ops.us4r.TxRxSequence: _identity_func,
-    arrus.ops.imaging.LinSequence: create_lin_sequence
+    arrus.ops.imaging.LinSequence: create_lin_sequence,
+    arrus.ops.imaging.PwiSequence: create_pwi_sequence
 }
 
 

@@ -9,8 +9,10 @@
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/framework/DataBuffer.h"
+#include "arrus/core/api/framework/DataBufferSpec.h"
 #include "FrameChannelMapping.h"
-#include "HostBuffer.h"
 
 
 namespace arrus::devices {
@@ -60,10 +62,12 @@ public:
      * @return
      */
     virtual std::pair<
-        std::shared_ptr<arrus::devices::HostBuffer>,
+        std::shared_ptr<arrus::framework::DataBuffer>,
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
-    upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize, unsigned short hostBufferSize) = 0;
+    upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize,
+           const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
+           const ::arrus::framework::DataBufferSpec &hostBufferSpec) = 0;
 
     virtual void setVoltage(Voltage voltage) = 0;
 
