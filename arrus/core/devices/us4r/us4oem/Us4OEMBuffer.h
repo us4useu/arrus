@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/framework/NdArray.h"
 
 namespace arrus::devices {
 
@@ -18,8 +19,11 @@ namespace arrus::devices {
 class Us4OEMBufferElement {
 public:
 
-    Us4OEMBufferElement(size_t address, size_t size, unsigned short firing)
-        : address(address), size(size), firing(firing) {}
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing,
+                        framework::NdArray::Shape elementShape,
+                        framework::NdArray::DataType dataType)
+                        : address(address), size(size), firing(firing),
+                          elementShape(std::move(elementShape)), dataType(dataType) {}
 
     [[nodiscard]] size_t getAddress() const {
         return address;
@@ -32,11 +36,21 @@ public:
     [[nodiscard]] uint16 getFiring() const {
         return firing;
     }
+    // TODO store ndarray here with placement on the us4oem module
+    [[nodiscard]] const framework::NdArray::Shape &getElementShape() const {
+        return elementShape;
+    }
+
+    [[nodiscard]] framework::NdArray::DataType getDataType() const {
+        return dataType;
+    }
 
 private:
     size_t address;
     size_t size;
     uint16 firing;
+    framework::NdArray::Shape elementShape;
+    framework::NdArray::DataType dataType;
 };
 
 /**

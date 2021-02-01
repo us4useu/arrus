@@ -2,7 +2,6 @@
 Definition of exceptions thrown by arrus functions.
 """
 
-
 class ArrusError(Exception):
     pass
 

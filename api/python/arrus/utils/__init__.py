@@ -1,6 +1,7 @@
 import functools
 import numpy as np
 import re
+import dataclasses
 
 # ------------------------------------------ Assertions
 def assert_true(value: bool, desc: str = ""):
@@ -70,3 +71,5 @@ def convert_snake_to_camel_case(string: str):
     words = [first_word]
     words.extend(capitalized_words)
     return "".join(words)
+
+

@@ -55,7 +55,6 @@ include(python)
 set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
-
     arrus/__init__.py
 	arrus/logging.py
     arrus/session.py
@@ -64,6 +63,7 @@ set(SOURCE_FILES
 	arrus/exceptions.py
 	arrus/medium.py
 	arrus/params.py
+	arrus/framework.py
     arrus/ops/__init__.py
 	arrus/ops/imaging.py
 	arrus/ops/tgc.py
@@ -88,17 +88,8 @@ set(SOURCE_FILES
 	arrus/utils/fir.py
 	arrus/utils/interpolate.py
 	arrus/utils/core.py
+	arrus/utils/gui.py
     arrus/tests/tools.py
-)
-
-# TODO(pjarosik) revise the below list
-set(TEST_FILES
-    "arrus/tests/beam_test.py"
-    "arrus/tests/session_test.py"
-    "arrus/devices/tests/probe_test.py"
-    "arrus/utils/tests/utils_test.py"
-    "arrus/utils/tests/parameters_test.py"
-    "arrus/tests/us4oem_kernels_test.py"
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -152,11 +143,11 @@ install(
 
 install(
 	FILES
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_pwi_single.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_multiple.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/cfg.yaml
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_old_api.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_single.py
+	examples/legacy/us4oem/us4oem_x1_pwi_single.py
+	examples/legacy/us4oem/us4oem_x1_sta_multiple.py
+	examples/legacy/us4oem/cfg.yaml
+	examples/legacy/us4oem/us4oem_x1_sta_old_api.py
+	examples/legacy/us4oem/us4oem_x1_sta_single.py
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
 )

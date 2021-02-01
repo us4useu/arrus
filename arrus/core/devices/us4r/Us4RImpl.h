@@ -5,7 +5,6 @@
 #include <utility>
 
 #include <boost/algorithm/string.hpp>
-#include <arrus/core/api/devices/us4r/HostBuffer.h>
 
 #include "arrus/common/asserts.h"
 #include "arrus/core/devices/utils.h"
@@ -18,6 +17,9 @@
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/hv/HV256Impl.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
+
+#include "arrus/core/api/framework/DataBufferSpec.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 
 namespace arrus::devices {
 
@@ -99,11 +101,13 @@ public:
     }
 
     std::pair<
-        std::shared_ptr<arrus::devices::HostBuffer>,
+        std::shared_ptr<arrus::framework::DataBuffer>,
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
     upload(const ops::us4r::TxRxSequence &seq,
-           unsigned short rxBufferNElements, unsigned short hostBufferNElements) override;
+           unsigned short rxBufferNElements,
+           const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
+           const ::arrus::framework::DataBufferSpec &outputBufferSpec) override;
 
     void start() override;
 

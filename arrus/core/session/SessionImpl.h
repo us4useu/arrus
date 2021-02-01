@@ -24,6 +24,12 @@ public:
     arrus::devices::Device::RawHandle
     getDevice(const arrus::devices::DeviceId &deviceId) override;
 
+    UploadResult upload(const ops::us4r::Scheme &scheme) override;
+
+    void startScheme() override;
+
+    void stopScheme() override;
+
     SessionImpl(SessionImpl const &) = delete;
 
     void operator=(SessionImpl const &) = delete;

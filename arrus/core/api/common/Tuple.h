@@ -22,7 +22,7 @@ public:
     }
 
     const T &get(size_t i) const {
-        return this[i];
+        return this->values[i];
     }
 
     size_t size() const {
