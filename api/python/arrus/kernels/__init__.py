@@ -23,3 +23,10 @@ def get_kernel(op_type):
         raise arrus.exceptions.IllegalArgumentError(
             f"Operation {op_type} is not supported.")
     return _kernel_registry[op_type]
+
+
+def register_kernel(op_type, func):
+    if op_type in _kernel_registry:
+        raise arrus.exceptions.IllegalArgumentError(f"Kernel for op {op_type} "
+                                                    f"already registered")
+    _kernel_registry[op_type] = func

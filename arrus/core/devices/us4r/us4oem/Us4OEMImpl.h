@@ -57,7 +57,7 @@ public:
     static constexpr float MAX_TX_DELAY = 16.96e-6f;
 
     static constexpr float MIN_TX_FREQUENCY = 1e6f;
-    static constexpr float MAX_TX_FREQUENCY = 20e6f;
+    static constexpr float MAX_TX_FREQUENCY = 60e6f;
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
@@ -69,7 +69,8 @@ public:
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
     // Other
-    static constexpr float MIN_PRI = 50e-6f;
+    static constexpr float MIN_PRI = 80e-6f;
+    static constexpr float MIN_RX_TIME = MIN_PRI;
     static constexpr float MAX_PRI = 1.0f;
 
     /**
@@ -134,7 +135,7 @@ private:
 
     static float getRxTime(size_t nSamples, uint32 decimationFactor);
 
-    void setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing);
+    void setTGC(const ops::us4r::TGCCurve &tgc);
 
     std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 

@@ -72,10 +72,10 @@ install(
 )
 
 # New API
-install(
-        DIRECTORY
-        ${CMAKE_CURRENT_SOURCE_DIR}/+arrus
-        DESTINATION
-        ${ARRUS_MATLAB_INSTALL_DIR}
-)
+# install(
+#        DIRECTORY
+#        ${CMAKE_CURRENT_SOURCE_DIR}/+arrus
+#        DESTINATION
+#        ${ARRUS_MATLAB_INSTALL_DIR}
+#)
 
