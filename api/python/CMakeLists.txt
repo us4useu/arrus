@@ -88,7 +88,6 @@ set(SOURCE_FILES
 	arrus/utils/interpolate.py
 	arrus/utils/core.py
 	arrus/utils/gui.py
-    arrus/tests/tools.py
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
