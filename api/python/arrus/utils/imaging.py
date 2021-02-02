@@ -652,8 +652,7 @@ class RxBeamformingImg:
         self.tx_weights = self.xp.asarray(tx_weights).astype(self.xp.float32)
         self.samples = self.xp.asarray(samples).astype(self.xp.float32)
         # Create new output shape
-        return const_metadata.copy(input_shape=(self.n_tx,
-                                                len(self.x_grid),
+        return const_metadata.copy(input_shape=(len(self.x_grid),
                                                 len(self.z_grid)))
 
     def _process(self, data):
