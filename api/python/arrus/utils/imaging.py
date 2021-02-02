@@ -586,7 +586,7 @@ class RxBeamformingImg:
         tx_delay_center = 0.5*(probe_model.n_elements-1)*probe_model.pitch*np.abs(np.tan(angles))/c
         tx_delay_center = np.squeeze(tx_delay_center)
 
-        start_sample = seq.rx_sample_range[0] + 16
+        start_sample = seq.rx_sample_range[0]
         burst_factor = n_periods / (2 * fc)
         initial_delay = (- start_sample / acq_fs
                          + tx_delay_center
