@@ -331,14 +331,14 @@ class Decimation:
 
     def _fir_decimate(self, data):
         fir_output = self._fir_filter(data)
-        data_out = fir_output[:, :, 0:-1:self.decimation_factor]
+        data_out = fir_output[:, :, 0::self.decimation_factor]
         return data_out
 
     def _legacy_decimate(self, data):
         data_out = data
         for i in range(self.cic_order):
             data_out = self.xp.cumsum(data_out, axis=-1)
-        data_out = data_out[:, :, 0:-1:self.decimation_factor]
+        data_out = data_out[:, :, 0::self.decimation_factor]
         for i in range(self.cic_order):
             data_out[:, :, 1:] = self.xp.diff(data_out, axis=-1)
         return data_out
@@ -503,168 +503,7 @@ class RxBeamforming:
         return out.reshape((self.n_tx, self.n_samples))
 
 
-class RxBeamformingImg:
-    """
-    Rx beamforming for synthetic aperture imaging.
 
-    Expected input data shape: n_emissions, n_rx, n_samples
-
-    Currently Plane Wave Imaging (Pwi) is supported only.
-    """
-    def __init__(self, x_grid, z_grid, num_pkg=None):
-        self.x_grid = x_grid
-        self.z_grid = z_grid
-        self.delays = None
-        self.buffer = None
-        self.rx_apodization = None
-        self.xp = num_pkg
-        self.interp1d_func = None
-
-    def set_pkgs(self, num_pkg, **kwargs):
-        self.xp = num_pkg
-        if self.xp is np:
-            import scipy.interpolate
-
-            def numpy_interp1d(input, samples, output):
-                n_samples = input.shape[-1]
-                x = np.arange(0, n_samples)
-                interpolator = scipy.interpolate.interp1d(
-                    x, input, kind="linear", bounds_error=False,
-                    fill_value=0.0)
-                interpolated_values = interpolator(samples)
-                output[:] = interpolated_values
-
-            self.interp1d_func = numpy_interp1d
-        else:
-            import cupy as cp
-            if self.xp != cp:
-                raise ValueError(f"Unhandled numerical package: {self.xp}")
-            import arrus.utils.interpolate
-            self.interp1d_func = arrus.utils.interpolate.interp1d
-
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        probe_model = const_metadata.context.device.probe.model
-
-        if probe_model.is_convex_array():
-            raise ValueError("PWI reconstruction mode is available for "
-                             "linear arrays only.")
-
-        seq = const_metadata.context.sequence
-        medium = const_metadata.context.medium
-
-        self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
-        self.is_iq = const_metadata.is_iq_data
-        if self.is_iq:
-            self.buffer_dtype = self.xp.complex64
-        else:
-            self.buffer_dtype = self.xp.float32
-
-        # -- Output buffer
-        x_size = len(self.x_grid.flatten())
-        z_size = len(self.z_grid.flatten())
-        self.buffer_shape = (self.n_rx, x_size, z_size)
-        self.buffer = self.xp.zeros(self.buffer_shape, dtype=self.buffer_dtype)\
-            .flatten()
-        self.buffer = self.xp.atleast_2d(self.buffer)
-        self.lri_buffer = self.xp.zeros((self.n_tx, x_size, z_size),
-                                        dtype=self.buffer_dtype)
-
-        # -- Delays
-        # --- Initial delay
-        acq_fs = (const_metadata.context.device.sampling_frequency
-                  / seq.downsampling_factor)
-        fs = const_metadata.data_description.sampling_frequency
-        fc = seq.pulse.center_frequency
-        n_periods = seq.pulse.n_periods
-        if seq.speed_of_sound is not None:
-            c = seq.speed_of_sound
-        else:
-            c = medium.speed_of_sound
-
-        angles = np.atleast_1d(np.array(seq.angles))
-        angles = np.expand_dims(angles, axis=(1, 2, 3))  # (ntx, 1, 1, 1)
-        tx_delay_center = 0.5*(probe_model.n_elements-1)*probe_model.pitch*np.abs(np.tan(angles))/c
-        tx_delay_center = np.squeeze(tx_delay_center)
-
-        start_sample = seq.rx_sample_range[0]
-        burst_factor = n_periods / (2 * fc)
-        initial_delay = (- start_sample / acq_fs
-                         + tx_delay_center
-                         + burst_factor)
-        initial_delay = np.array(initial_delay)
-        initial_delay = initial_delay[..., np.newaxis, np.newaxis, np.newaxis]
-
-        # --- Distances and apodizations
-        lambd = c / fc
-        max_tang = math.tan(
-            math.asin(min(1, 2 / 3 * lambd / probe_model.pitch)))
-
-        element_pos_x = probe_model.element_pos_x
-        rx_aperture_origin = np.zeros(self.n_tx, dtype=np.int16)
-        rx_aperture_origin = np.expand_dims(rx_aperture_origin, axis=(1, 2, 3))
-        # (ntx, 1, 1, 1)
-        # TODO parametrize rx aperture size
-        rx_aperture_size = probe_model.n_elements
-        irx = np.arange(0, probe_model.n_elements)
-        irx = np.expand_dims(irx, axis=(0, 2, 3))  # (1, nrx, 1, 1)
-        itx = np.expand_dims(np.arange(0, self.n_tx), axis=(1, 2, 3))
-        rx_aperture_element_pos_x = (rx_aperture_origin+irx -
-                                     (probe_model.n_elements-1)/2)*probe_model.pitch
-
-        # Output delays/apodization
-        x_grid = np.expand_dims(self.x_grid, axis=(0, 1, 3))
-        # (1, 1, x_size, 1)
-        z_grid = np.expand_dims(self.z_grid, axis=(0, 1, 2))
-        # (1, 1, 1, z_size)
-
-        tx_distance = x_grid*np.sin(angles) + z_grid*np.cos(angles)
-        # (ntx, 1, x_size, z_size)
-        r1 = (x_grid-element_pos_x[0])*np.cos(angles) - z_grid*np.sin(angles)
-        r2 = (x_grid-element_pos_x[-1])*np.cos(angles) - z_grid*np.sin(angles)
-        tx_apodization = np.logical_and(r1 >= 0, r2 <= 0).astype(np.int8)
-
-        rx_distance = np.sqrt((x_grid-rx_aperture_element_pos_x)**2 + z_grid**2)
-        # (ntx, nrx, x_size, z_size)
-        # rx_distance = np.expand_dims(rx_distance, axis=(0, 1))
-        rx_tangens = np.abs(x_grid - rx_aperture_element_pos_x)
-        rx_apodization = (rx_tangens < max_tang).astype(np.int8)
-
-        delay_total = (tx_distance + rx_distance)/c + initial_delay
-        samples = delay_total * fs
-        # samples outside should be neglected
-        samples[np.logical_or(samples < 0, samples >= self.n_samples-1)] = np.Inf
-        samples = samples + irx*self.n_samples
-        samples[np.isinf(samples)] = -1
-        samples = samples.astype(np.float32)
-        rx_weights = tx_apodization*rx_apodization
-
-        # IQ correction
-        if self.is_iq:
-            t = self.xp.asarray(delay_total)
-            rx_weights = self.xp.asarray(rx_weights)
-            self.iq_correction = self.xp.exp(1j*2*np.pi*fc*t)\
-                .astype(self.xp.complex64)
-            self.rx_weights = self.iq_correction * rx_weights
-        else:
-            self.rx_weights = self.xp.asarray(rx_weights)
-        tx_weights = np.sum(rx_weights, axis=1)
-        self.rx_weights = self.rx_weights.astype(self.xp.complex64)
-        self.tx_weights = self.xp.asarray(tx_weights).astype(self.xp.float32)
-        self.samples = self.xp.asarray(samples).astype(self.xp.float32)
-        # Create new output shape
-        return const_metadata.copy(input_shape=(len(self.x_grid),
-                                                len(self.z_grid)))
-
-    def _process(self, data):
-        data = data.copy().reshape(self.n_tx, self.n_rx*self.n_samples)
-        for i in range(self.n_tx):
-            self.interp1d_func(data[i:(i+1)], self.samples[i:(i+1)].flatten(),
-                               self.buffer)
-            rf_rx = self.buffer.reshape(self.buffer_shape)
-            rf_rx = rf_rx * self.rx_weights[i]
-            rf_rx = np.sum(rf_rx, axis=0)
-            self.lri_buffer[i] = rf_rx
-        return np.sum(self.lri_buffer, axis=0)/np.sum(self.tx_weights, axis=0)
 
 
 class EnvelopeDetection:
@@ -959,6 +798,173 @@ class Squeeze(Operation):
 
     def _process(self, data):
         return self.xp.squeeze(data)
+
+
+class RxBeamformingImg:
+    """
+    Rx beamforming for synthetic aperture imaging.
+
+    Expected input data shape: n_emissions, n_rx, n_samples
+
+    Currently Plane Wave Imaging (Pwi) is supported only.
+    """
+    def __init__(self, x_grid, z_grid, num_pkg=None):
+        self.x_grid = x_grid
+        self.z_grid = z_grid
+        self.delays = None
+        self.buffer = None
+        self.rx_apodization = None
+        self.xp = num_pkg
+        self.interp1d_func = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+        if self.xp is np:
+            import scipy.interpolate
+
+            def numpy_interp1d(input, samples, output):
+                n_samples = input.shape[-1]
+                x = np.arange(0, n_samples)
+                interpolator = scipy.interpolate.interp1d(
+                    x, input, kind="linear", bounds_error=False,
+                    fill_value=0.0)
+                interpolated_values = interpolator(samples)
+                output[:] = interpolated_values
+
+            self.interp1d_func = numpy_interp1d
+        else:
+            import cupy as cp
+            if self.xp != cp:
+                raise ValueError(f"Unhandled numerical package: {self.xp}")
+            import arrus.utils.interpolate
+            self.interp1d_func = arrus.utils.interpolate.interp1d
+
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        probe_model = const_metadata.context.device.probe.model
+
+        if probe_model.is_convex_array():
+            raise ValueError("PWI reconstruction mode is available for "
+                             "linear arrays only.")
+
+        seq = const_metadata.context.sequence
+        medium = const_metadata.context.medium
+
+        self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
+        self.is_iq = const_metadata.is_iq_data
+        if self.is_iq:
+            self.buffer_dtype = self.xp.complex64
+        else:
+            self.buffer_dtype = self.xp.float32
+
+        # -- Output buffer
+        x_size = len(self.x_grid.flatten())
+        z_size = len(self.z_grid.flatten())
+        self.buffer_shape = (self.n_rx, x_size, z_size)
+        self.buffer = self.xp.zeros(self.buffer_shape, dtype=self.buffer_dtype)\
+            .flatten()
+        self.buffer = self.xp.atleast_2d(self.buffer)
+        self.lri_buffer = self.xp.zeros((self.n_tx, x_size, z_size),
+                                        dtype=self.buffer_dtype)
+
+        # -- Delays
+
+        # --- Initial delay
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = const_metadata.data_description.sampling_frequency
+        fc = seq.pulse.center_frequency
+        n_periods = seq.pulse.n_periods
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+
+        angles = np.atleast_1d(np.array(seq.angles))
+        angles = np.expand_dims(angles, axis=(1, 2, 3))  # (ntx, 1, 1, 1)
+        tx_delay_center = 0.5*(probe_model.n_elements-1)*probe_model.pitch*np.abs(np.tan(angles))/c
+        tx_delay_center = np.squeeze(tx_delay_center)
+
+        start_sample = seq.rx_sample_range[0]
+        burst_factor = n_periods / (2 * fc)
+        initial_delay = (- start_sample / acq_fs
+                         + tx_delay_center
+                         + burst_factor)
+        initial_delay = np.array(initial_delay)
+        initial_delay = initial_delay[..., np.newaxis, np.newaxis, np.newaxis]
+
+        # --- Distances and apodizations
+        lambd = c / fc
+        max_tang = math.tan(
+            math.asin(min(1, 2 / 3 * lambd / probe_model.pitch)))
+
+        element_pos_x = probe_model.element_pos_x
+        rx_aperture_origin = np.zeros(self.n_tx, dtype=np.int16)
+        rx_aperture_origin = np.expand_dims(rx_aperture_origin, axis=(1, 2, 3))
+        # (ntx, 1, 1, 1)
+        # TODO parametrize rx aperture size
+        rx_aperture_size = probe_model.n_elements
+        irx = np.arange(0, probe_model.n_elements)
+        irx = np.expand_dims(irx, axis=(0, 2, 3))  # (1, nrx, 1, 1)
+        itx = np.expand_dims(np.arange(0, self.n_tx), axis=(1, 2, 3))
+        rx_aperture_element_pos_x = (rx_aperture_origin+irx -
+                                     (probe_model.n_elements-1)/2)*probe_model.pitch
+
+
+        # Output delays/apodization
+        x_grid = np.expand_dims(self.x_grid, axis=(0, 1, 3))
+        # (1, 1, x_size, 1)
+        z_grid = np.expand_dims(self.z_grid, axis=(0, 1, 2))
+
+        # (1, 1, 1, z_size)
+
+        tx_distance = x_grid*np.sin(angles) + z_grid*np.cos(angles)
+        # (ntx, 1, x_size, z_size)
+        r1 = (x_grid-element_pos_x[0])*np.cos(angles) - z_grid*np.sin(angles)
+        r2 = (x_grid-element_pos_x[-1])*np.cos(angles) - z_grid*np.sin(angles)
+        tx_apodization = np.logical_and(r1 >= 0, r2 <= 0).astype(np.int8)
+
+        rx_distance = np.sqrt((x_grid-rx_aperture_element_pos_x)**2 + z_grid**2)
+        # (ntx, nrx, x_size, z_size)
+        # rx_distance = np.expand_dims(rx_distance, axis=(0, 1))
+        rx_tangens = np.abs(x_grid - rx_aperture_element_pos_x)/(z_grid+1e-12)
+        rx_apodization = (rx_tangens < max_tang).astype(np.int8)
+
+        delay_total = (tx_distance + rx_distance)/c + initial_delay
+        samples = delay_total * fs
+        # samples outside should be neglected
+        samples[np.logical_or(samples < 0, samples >= self.n_samples-1)] = np.Inf
+        samples = samples + irx*self.n_samples
+        samples[np.isinf(samples)] = -1
+        samples = samples.astype(np.float32)
+        rx_weights = tx_apodization*rx_apodization
+
+        # IQ correction
+        if self.is_iq:
+            t = self.xp.asarray(delay_total)
+            rx_weights = self.xp.asarray(rx_weights)
+            self.iq_correction = self.xp.exp(1j*2*np.pi*fc*t)\
+                .astype(self.xp.complex64)
+            self.rx_weights = self.iq_correction * rx_weights
+        else:
+            self.rx_weights = self.xp.asarray(rx_weights)
+        tx_weights = np.sum(rx_weights, axis=1)
+        self.rx_weights = self.rx_weights.astype(self.xp.complex64)
+        self.tx_weights = self.xp.asarray(tx_weights).astype(self.xp.float32)
+        self.samples = self.xp.asarray(samples).astype(self.xp.float32)
+        # Create new output shape
+        return const_metadata.copy(input_shape=(len(self.x_grid),
+                                                len(self.z_grid)))
+
+    def _process(self, data):
+        data = data.copy().reshape(self.n_tx, self.n_rx*self.n_samples)
+        for i in range(self.n_tx):
+            self.interp1d_func(data[i:(i+1)], self.samples[i:(i+1)].flatten(),
+                               self.buffer)
+            rf_rx = self.buffer.reshape(self.buffer_shape)
+            rf_rx = rf_rx * self.rx_weights[i]
+            rf_rx = np.sum(rf_rx, axis=0)
+            self.lri_buffer[i] = rf_rx
+        return np.sum(self.lri_buffer, axis=0)/np.sum(self.tx_weights, axis=0)
 
 
 def _get_rx_aperture_origin(sequence):
