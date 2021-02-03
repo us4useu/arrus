@@ -34,9 +34,6 @@ class FrameChannelMapping:
     batch_size: int = 1
 
 
-
-
-
 class Us4R(Device):
     """
     A handle to Us4R device.

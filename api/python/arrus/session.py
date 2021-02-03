@@ -57,7 +57,11 @@ class SessionContext:
 class Session(AbstractSession):
     """
     A communication session with the ultrasound system.
+
     Currently, only localhost session is available.
+
+    This class is a context manager. All the processing to be done on the device
+    on the devices should be done withing the session context.
     """
 
     def __init__(self, cfg_path: str = None,
@@ -154,9 +158,15 @@ class Session(AbstractSession):
         self.stop_scheme()
 
     def start_scheme(self):
+        """
+        Starts the execution of the uploaded scheme.
+        """
         self._session_handle.startScheme()
 
     def stop_scheme(self):
+        """
+        Stops execution of the scheme.
+        """
         self._session_handle.stopScheme()
         if self._current_processing is not None:
             self._current_processing.stop()

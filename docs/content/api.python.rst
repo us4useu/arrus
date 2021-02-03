@@ -31,8 +31,19 @@ Devices
 Operations
 ==========
 
+Scheme
+------
+.. autoclass:: arrus.ops.imaging.LinSequence
+    :members:
+    :show-inheritance:
+
+
 B-mode imaging Tx/Rx sequences
 ------------------------------
+
+.. autoclass:: arrus.ops.imaging.LinSequence
+    :members:
+    :show-inheritance:
 
 .. autoclass:: arrus.ops.imaging.LinSequence
     :members:
@@ -41,6 +52,10 @@ B-mode imaging Tx/Rx sequences
 
 Custom Tx/Rx sequences
 ----------------------
+
+.. autoclass:: arrus.ops.us4r.TxRxSequence
+    :members:
+    :show-inheritance:
 
 .. autoclass:: arrus.ops.us4r.Pulse
     :members:
@@ -58,9 +73,6 @@ Custom Tx/Rx sequences
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.ops.us4r.TxRxSequence
-    :members:
-    :show-inheritance:
 
 Output data
 ===========
@@ -91,8 +103,8 @@ Metadata
 Utility functions
 =================
 
-B-mode imaging pipeline
------------------------
+B-mode imaging pipeline using cupy/numpy
+----------------------------------------
 
 .. autoclass:: arrus.utils.imaging.Pipeline
     :show-inheritance:
