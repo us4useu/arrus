@@ -8,7 +8,6 @@ import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.kernels.imaging
-import time
 import queue
 import dataclasses
 
@@ -95,26 +94,68 @@ class Pipeline:
 
 
 class Operation:
-
+    """
+    An operation to perform in the imaging pipeline -- one data processing
+    stage.
+    """
     def _initialize(self, data):
-        self._process(data)
+        """
+        Initialization function.
+
+        This function will be called on a cupy initialization stage.
+
+        By default, it runs `_process` function on a test cupy data.
+
+        :return: the processed data.
+        """
+        return self._process(data)
 
     def set_pkgs(self, **kwargs):
+        """
+        Provides to possibility to gather python packages for numerical
+        processing and filtering.
+
+        The provided kwargs are:
+
+        - `num_pkg`: numerical package: numpy for CPU, cupy for GPU
+        - `filter_pkg`: scipy.ndimage for CPU, cupyx.scipy.ndimage for GPU
+        """
         pass
 
     def _prepare(self, const_metadata):
+        """
+        Function that will called when the processing pipeline is prepared.
+
+        :param const_metadata: const metadata describing output from the \
+          previous Operation.
+        :return: const metadata describing output of this Operation.
+        """
         raise ValueError("Calling abstract method")
 
     def _process(self, data):
+        """
+        Function that will be called when new data arrives.
+
+        :param data: input data
+        :return: output data
+        """
         raise ValueError("Calling abstract method")
 
 
 class Lambda(Operation):
     """
     Custom function to perform on data from a given step.
+
+
     """
 
     def __init__(self, function):
+        """
+        Lambda op constructor.
+
+        :param function: a function with a single input: (cupy or numpy array \
+          with the data)
+        """
         self.func = function
         pass
 
@@ -141,6 +182,9 @@ class BandpassFilter:
     The filtering is performed along the last axis.
 
     Currently only FIR filter is available.
+
+    NOTE: consider using Filter op, which provides more possibilities to
+    define what kind of filter is used (e.g. by providing filter coefficients).
     """
 
     def __init__(self, numtaps=7, bounds=(0.5, 1.5), filter_type="butter",
@@ -183,11 +227,11 @@ class BandpassFilter:
 
 class Filter:
     """
-    1D filter.
+    Filter data in one dimension along the last axis.
 
-    The filtering is performed along the last axis.
+    The filtering is performed according to the given filter taps.
 
-    Currently only FIR filter is implemented.
+    Currently only FIR filter is available.
     """
 
     def __init__(self, taps, num_pkg=None, filter_pkg=None):
@@ -503,9 +547,6 @@ class RxBeamforming:
         return out.reshape((self.n_tx, self.n_samples))
 
 
-
-
-
 class EnvelopeDetection:
     """
     Envelope detection (Hilbert transform).
@@ -535,6 +576,9 @@ class Transpose:
     """
 
     def __init__(self, axes=None):
+        """
+        :param axes: permutation of axes to apply
+        """
         self.axes = axes
         self.xp = None
 
@@ -559,11 +603,19 @@ class ScanConversion:
     the input mesh will be set to 0.0.
 
     Currently the op is implement for CPU only.
-    :param x_grid: a vector of grid points along OX axis [m]
-    :param z_grid: a vector of grid points along OZ axis [m]
+
+    Currently, the op is available only for convex probes.
+
+
     """
 
     def __init__(self, x_grid, z_grid):
+        """
+        Scan converter constructor.
+
+        :param x_grid: a vector of grid points along OX axis [m]
+        :param z_grid: a vector of grid points along OZ axis [m]
+        """
         self.dst_points = None
         self.dst_shape = None
         self.x_grid = x_grid.reshape(1, -1)
@@ -632,7 +684,7 @@ class ScanConversion:
 
 class LogCompression:
     """
-    Converts to decibel scale.
+    Converts data to decibel scale.
     """
     def __init__(self):
         pass
@@ -653,8 +705,17 @@ class LogCompression:
 
 
 class DynamicRangeAdjustment:
+    """
+    Clips data values to given range.
+    """
 
     def __init__(self, min=20, max=80):
+        """
+        Constructor.
+
+        :param min: minimum value to clamp
+        :param max: maximum value to clamp
+        """
         self.min = min
         self.max = max
         self.xp = None
@@ -670,6 +731,9 @@ class DynamicRangeAdjustment:
 
 
 class ToGrayscaleImg:
+    """
+    Converts data to grayscale image (uint8).
+    """
 
     def __init__(self):
         self.xp = None
@@ -744,8 +808,16 @@ class Enqueue:
 
 
 class SelectFrames(Operation):
+    """
+    Selects frames for a given sequence for further processing.
+    """
 
     def __init__(self, frames):
+        """
+        Constructor.
+
+        :param frames: frames to select
+        """
         self.frames = frames
 
     def set_pkgs(self, **kwargs):
@@ -786,6 +858,9 @@ class SelectFrames(Operation):
 
 
 class Squeeze(Operation):
+    """
+    Squeezes input array (removes axes = 1).
+    """
     def __init__(self):
         pass
 
