@@ -26,13 +26,24 @@ swig_add_library(py_core
 		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
 		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
 )
+
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
 set_target_properties(py_core
-    PROPERTIES
-        SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+	PROPERTIES
+		SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+		RUNTIME_OUTPUT_DIRECTORY
+		"${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
+)
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set_target_properties(py_core
+		PROPERTIES
+		SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
 		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
-)
+		)
+endif()
+
 target_include_directories(py_core
     PRIVATE
     ${PYTHON_INCLUDE_DIRS}
@@ -96,6 +107,13 @@ set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
 
+
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+	set(ARRUS_TARGET_SHARED_OBJECT_FILE "${PROJECT_BINARY_DIR}/arrus/core/Release/arrus-core.dll")
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set(ARRUS_TARGET_SHARED_OBJECT_FILE "$<TARGET_FILE:arrus-core>")
+endif()
+
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
         ${CMAKE_COMMAND} -E copy_directory
@@ -105,7 +123,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
 		${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
 	COMMAND
 		${CMAKE_COMMAND} -E copy
-		$<TARGET_FILE:arrus-core> ${CMAKE_CURRENT_BINARY_DIR}/arrus
+		${ARRUS_TARGET_SHARED_OBJECT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND

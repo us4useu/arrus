@@ -39,15 +39,6 @@ class AbstractSession(abc.ABC):
         """
         raise ValueError("Tried to access an abstract method.")
 
-    @abc.abstractmethod
-    def set_current_medium(self, medium: arrus.medium.Medium):
-        """
-        Sets a medium in the current session context.
-
-        :param medium: medium description to set
-        """
-        raise ValueError("Tried to access an abstract method.")
-
 
 @dataclasses.dataclass(frozen=True)
 class SessionContext:
