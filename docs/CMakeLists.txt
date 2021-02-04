@@ -17,9 +17,15 @@ set(DOC_FILES
     "content/installation/img/uninstall_arius_drv.png"
     "content/examples/bmode_imaging.matlab.rst"
     content/examples/mock_session_example.python.rst
+    content/user_guide.python.rst
+    content/definitions.python.rst
     "content/examples/img/coordinate_system.jpeg"
     "content/examples/img/apertures.jpeg"
     "content/examples/img/delays.jpeg"
+    "content/img/coordinate_system.jpeg"
+    "content/img/apertures.jpeg"
+    "content/img/delays.jpeg"
+    "content/img/scheme.jpeg"
     "content/misc/release_notes.rst"
     "content/misc/acknowledgments.rst"
     "content/misc/img/ncbr.png"
