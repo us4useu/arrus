@@ -605,8 +605,6 @@ class ScanConversion:
     Currently the op is implement for CPU only.
 
     Currently, the op is available only for convex probes.
-
-
     """
 
     def __init__(self, x_grid, z_grid):

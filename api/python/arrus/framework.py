@@ -19,6 +19,9 @@ class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):
 
 
 class DataBufferElement:
+    """
+    Data buffer element. Allows to access the space of the acquired data.
+    """
 
     def __init__(self, element_handle):
         self._element_handle = element_handle
@@ -27,6 +30,9 @@ class DataBufferElement:
 
     @property
     def data(self):
+        """
+        The data wrapped into a numpy array.
+        """
         return self._numpy_array_wrapping
 
     @property
@@ -45,6 +51,14 @@ class DataBufferElement:
 
 
 class DataBuffer:
+    """
+    The output data buffer.
+
+    This buffer allows to register a callback, that should called when new
+    data arrives.
+
+    The buffer elements are automatically released after running all available callbacks.
+    """
     def __init__(self, buffer_handle):
         self._buffer_handle = buffer_handle
         self._callbacks = []
@@ -52,6 +66,12 @@ class DataBuffer:
         self._elements = self._wrap_elements()
 
     def append_on_new_data_callback(self, callback):
+        """
+        Append to the list of callbacks that should be run when new data
+        arrives.
+
+        :param callback: a callback function, should take one parameter -- DataBufferElement instance
+        """
         self._callbacks.append(callback)
 
     def _register_internal_callback(self):

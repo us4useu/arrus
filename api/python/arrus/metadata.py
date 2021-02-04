@@ -43,7 +43,17 @@ class EchoDataDescription(DataDescription):
 
 class ConstMetadata:
     """
-    A metadata that won't change while the system is running.
+
+    Metadata describing the acquired data.
+
+    This class is immutable.
+
+    :param context: frame acquisition context
+    :param data_desc: data characteristic
+    :param custom: custom frame data (e.g. trigger counters, etc.)
+    :param input_shape: input shape of the data, a tuple
+    :param is_iq_data: true if we have bandpass data, false otherwise
+    :param dtype: data type
     """
     def __init__(self, context: FrameAcquisitionContext,
                  data_desc: DataDescription,

@@ -5,6 +5,12 @@ from matplotlib.animation import FuncAnimation
 
 
 class Display2D:
+    """
+    A very simple implementation of the 2D display.
+
+    Currently, implemented using matplotlib FuncAnimation.
+
+    """
     def __init__(self, metadata, value_range=None,
                  window_size=None, title=None, xlabel=None,
                  ylabel=None, cmap=None, interval=10):
@@ -13,7 +19,7 @@ class Display2D:
 
         :param value_range: range of values to display, (vmin, vmax)
         :param window_size: size of the window
-        :param title: windo title
+        :param title: window title
         :param xlabel: x label
         :param ylabel: y label
         :param cmap: color map to apply
