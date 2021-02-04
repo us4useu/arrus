@@ -8,7 +8,7 @@ us4r: {
 
     adapter_id: {
         manufacturer: "us4us"
-        name: "esaote3"
+        name: "esaote2"
     }
 
     # Default initial values.

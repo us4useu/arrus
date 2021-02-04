@@ -30,8 +30,8 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     auto const &us4rSettings = settings.getUs4RSettings();
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
 
-    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({5, 10, 15}));
-    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<uint8>>({{5, 10}, {15}}));
+    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({}));
+    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<uint8>>({{}, {}}));
 
     // Probe settings
     // Probe model
@@ -90,8 +90,8 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_EQ(rxSettings->getPgaGain(), 30);
     EXPECT_EQ(rxSettings->getLnaGain(), 24);
     EXPECT_EQ(rxSettings->getTgcSamples(),
-              std::vector<TGCSampleValue>({14, 15, 16}));
-    EXPECT_EQ(rxSettings->getLpfCutoff(), 10000000);
+              std::vector<TGCSampleValue>({}));
+    EXPECT_EQ(rxSettings->getLpfCutoff(), 15000000);
     EXPECT_EQ(rxSettings->getActiveTermination(), 200);
 }
 
