@@ -15,7 +15,7 @@ Devices
 
 **Do not create instances of the below classes directly**. Use
 ``session.get_device`` to acquire the appropriate device, for example:
-``session.get_device('/Us4OEM:0')``.
+``session.get_device('/Us4R:0')``.
 
 .. autoclass:: arrus.devices.us4r.Us4R
     :members:
@@ -31,16 +31,34 @@ Devices
 Operations
 ==========
 
-B-mode imaging Tx/Rx sequences
-------------------------------
+Scheme
+------
+
+.. autoclass:: arrus.ops.us4r.Scheme
+    :members:
+    :show-inheritance:
+
+
+Common Tx/Rx sequences
+----------------------
+
+The following sequences are the
 
 .. autoclass:: arrus.ops.imaging.LinSequence
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.ops.imaging.PwiSequence
     :members:
     :show-inheritance:
 
 
 Custom Tx/Rx sequences
 ----------------------
+
+.. autoclass:: arrus.ops.us4r.TxRxSequence
+    :members:
+    :show-inheritance:
 
 .. autoclass:: arrus.ops.us4r.Pulse
     :members:
@@ -58,9 +76,6 @@ Custom Tx/Rx sequences
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.ops.us4r.TxRxSequence
-    :members:
-    :show-inheritance:
 
 Output data
 ===========
@@ -91,8 +106,8 @@ Metadata
 Utility functions
 =================
 
-B-mode imaging pipeline
------------------------
+B-mode imaging pipeline using cupy/numpy
+----------------------------------------
 
 .. autoclass:: arrus.utils.imaging.Pipeline
     :show-inheritance:

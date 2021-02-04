@@ -145,7 +145,7 @@ set(SRC_FILES
     api/framework.h
     api/ops/us4r/tgc.h
     api/examples.h
-    devices/UltrasoundDevice.h api/devices/us4r/HVSettings.h api/devices/us4r/HVModelId.h devices/us4r/hv/HV256Impl.h devices/us4r/hv/HV256Factory.h devices/us4r/hv/HV256Impl.cpp devices/us4r/hv/HV256FactoryImpl.h devices/us4r/hv/HV256FactoryImpl.cpp api/devices/us4r/FrameChannelMapping.h devices/us4r/FrameChannelMappingImpl.cpp devices/us4r/FrameChannelMappingImpl.h common/aperture.h external/eigen/Tensor.h devices/us4r/us4oem/Us4OEMImplBase.h devices/us4r/probeadapter/ProbeAdapterImplBase.h devices/probe/ProbeImplBase.h external/eigen/Dense.h ../common/utils.h devices/us4r/DataTransfer.h devices/us4r/us4oem/Us4OEMBuffer.h devices/us4r/Us4RBuffer.h api/ops/us4r/Scheme.h api/framework/DataBuffer.h api/framework/NdArray.h api/session/UploadResult.h api/framework/DataBufferSpec.h api/framework/DataBuffer.h api/session/UploadConstMetadata.h api/framework/FifoLockFreeBuffer.h api/framework/FifoBuffer.h)
+    devices/UltrasoundDevice.h api/devices/us4r/HVSettings.h api/devices/us4r/HVModelId.h devices/us4r/hv/HV256Impl.h devices/us4r/hv/HV256Factory.h devices/us4r/hv/HV256Impl.cpp devices/us4r/hv/HV256FactoryImpl.h devices/us4r/hv/HV256FactoryImpl.cpp api/devices/us4r/FrameChannelMapping.h devices/us4r/FrameChannelMappingImpl.cpp devices/us4r/FrameChannelMappingImpl.h common/aperture.h external/eigen/Tensor.h devices/us4r/us4oem/Us4OEMImplBase.h devices/us4r/probeadapter/ProbeAdapterImplBase.h devices/probe/ProbeImplBase.h external/eigen/Dense.h ../common/utils.h devices/us4r/DataTransfer.h devices/us4r/us4oem/Us4OEMBuffer.h devices/us4r/Us4RBuffer.h api/ops/us4r/Scheme.h api/framework/DataBuffer.h api/framework/NdArray.h api/session/UploadResult.h api/framework/DataBufferSpec.h api/framework/DataBuffer.h api/session/UploadConstMetadata.h api/framework/FifoLockFreeBuffer.h api/framework/FifoBuffer.h cfg/default.h.in)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -232,6 +232,14 @@ if (ARRUS_RUN_TESTS)
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
 endif ()
+
+################################################################################
+# Configuration
+################################################################################
+# Create default configuration header.
+file(READ "${PROJECT_SOURCE_DIR}/arrus/cfg/default.dict" ARRUS_DEFAULT_DICT)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cfg/default.h.in ${CMAKE_CURRENT_BINARY_DIR}/cfg/default.h)
+
 
 ################################################################################
 # Installation
