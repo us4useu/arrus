@@ -159,12 +159,9 @@ install(
 
 install(
 	FILES
-	examples/legacy/us4oem/us4oem_x1_pwi_single.py
-	examples/legacy/us4oem/us4oem_x1_sta_multiple.py
-	examples/legacy/us4oem/cfg.yaml
-	examples/legacy/us4oem/us4oem_x1_sta_old_api.py
-	examples/legacy/us4oem/us4oem_x1_sta_single.py
+	examples/pwi_sequence_example.py
+	examples/lin_sequence_example.py
     DESTINATION
-        ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
+        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
 
