@@ -130,7 +130,7 @@ class Operation:
           previous Operation.
         :return: const metadata describing output of this Operation.
         """
-        raise ValueError("Calling abstract method")
+        pass
 
     def _process(self, data):
         """
