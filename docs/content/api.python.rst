@@ -15,7 +15,7 @@ Devices
 
 **Do not create instances of the below classes directly**. Use
 ``session.get_device`` to acquire the appropriate device, for example:
-``session.get_device('/Us4OEM:0')``.
+``session.get_device('/Us4R:0')``.
 
 .. autoclass:: arrus.devices.us4r.Us4R
     :members:
@@ -33,19 +33,22 @@ Operations
 
 Scheme
 ------
-.. autoclass:: arrus.ops.imaging.LinSequence
+
+.. autoclass:: arrus.ops.us4r.Scheme
     :members:
     :show-inheritance:
 
 
-B-mode imaging Tx/Rx sequences
-------------------------------
+Common Tx/Rx sequences
+----------------------
+
+The following sequences are the
 
 .. autoclass:: arrus.ops.imaging.LinSequence
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.ops.imaging.LinSequence
+.. autoclass:: arrus.ops.imaging.PwiSequence
     :members:
     :show-inheritance:
 

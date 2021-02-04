@@ -212,9 +212,9 @@ class Session(AbstractSession):
     def get_session_context(self):
         return self._context
 
-    def set_current_medium(self, medium: arrus.medium.Medium):
-        # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
-        raise RuntimeError("NYI")
+    # def set_current_medium(self, medium: arrus.medium.Medium):
+    #     # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
+    #     raise RuntimeError("NYI")
 
     def _create_py_devices(self):
         devices = {}
