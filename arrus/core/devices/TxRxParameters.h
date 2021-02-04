@@ -9,6 +9,7 @@
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/common/format.h"
+#include "arrus/core/common/collections.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
 
 namespace arrus::devices {
@@ -95,11 +96,11 @@ public:
     }
 
     [[nodiscard]] bool isNOP() const  {
-        auto atLeastOneTxActive = std::reduce(
+        auto atLeastOneTxActive = ::arrus::reduce(
             std::begin(txAperture),
             std::end(txAperture),
             false, [](auto a, auto b) {return a | b;});
-        auto atLeastOneRxActive = std::reduce(
+        auto atLeastOneRxActive = ::arrus::reduce(
             std::begin(rxAperture),
             std::end(rxAperture),
             false, [](auto a, auto b) {return a | b;});
@@ -107,7 +108,7 @@ public:
     }
 
     [[nodiscard]] bool isRxNOP() const {
-        auto atLeastOneRxActive = std::reduce(
+        auto atLeastOneRxActive = ::arrus::reduce(
             std::begin(rxAperture),
             std::end(rxAperture),
             false, [](auto a, auto b) {return a | b;});

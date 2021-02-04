@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <type_traits>
 #include <bitset>
+#include <stdexcept>
 
 #include <gsl/span>
 #include <boost/range/combine.hpp>
@@ -71,8 +72,7 @@ template<typename T, typename U>
 inline std::vector<std::pair<T, U>>
 zip(const std::vector<T> &a, const std::vector<U> &b) {
     if(a.size() != b.size()) {
-        throw ::arrus::IllegalArgumentException("Zipped vectors should "
-                                       "have the same size.");
+        throw std::runtime_error("Zipped vectors should have the same size.");
     }
     std::vector<std::pair<T, U>> res;
     res.reserve(a.size());
@@ -170,14 +170,22 @@ template<typename T>
 inline void setValuesInRange(std::vector<T> &container, size_t start, size_t end,
                              const std::vector<T>& source) {
     if(source.size != end-start) {
-        throw IllegalArgumentException(
-            arrus::format("Source vector should have exactly {} elements "
-                          "when assing it to the selected range.",
-                          end-start));
+        throw std::runtime_error("Source vector should have exactly "
+                            + std::to_string(end-start) + " elements "
+                          "when assigning it to the selected range.");
     }
     for(size_t i = start; i < end; ++i) {
         container[i] = source[i-start];
     }
+}
+
+template<class InputIt, class T, class BinaryOp>
+inline T reduce(InputIt first, InputIt last, T init, BinaryOp binaryOp) {
+    T result = init;
+    for(auto it = first; it != last; ++it) {
+        result = binaryOp(result, *it);
+    }
+    return result;
 }
 
 }

@@ -26,12 +26,24 @@ swig_add_library(py_core
 		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
 		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
 )
+
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
 set_target_properties(py_core
-    PROPERTIES
-        SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+	PROPERTIES
+		SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
 		RUNTIME_OUTPUT_DIRECTORY
-			"${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
+		"${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
 )
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set_target_properties(py_core
+		PROPERTIES
+		SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+		)
+endif()
+
 target_include_directories(py_core
     PRIVATE
     ${PYTHON_INCLUDE_DIRS}
@@ -72,7 +84,6 @@ set(SOURCE_FILES
 	arrus/devices/cpu.py
 	arrus/devices/gpu.py
 	arrus/devices/us4r.py
-	arrus/devices/mock_us4r.py
 	arrus/devices/probe.py
 	arrus/devices/device.py
 	arrus/kernels/__init__.py
@@ -88,7 +99,6 @@ set(SOURCE_FILES
 	arrus/utils/interpolate.py
 	arrus/utils/core.py
 	arrus/utils/gui.py
-    arrus/tests/tools.py
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -96,6 +106,13 @@ set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
+
+
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+	set(ARRUS_TARGET_SHARED_OBJECT_FILE "${PROJECT_BINARY_DIR}/arrus/core/Release/arrus-core.dll")
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set(ARRUS_TARGET_SHARED_OBJECT_FILE "$<TARGET_FILE:arrus-core>")
+endif()
 
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
@@ -106,8 +123,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
 		${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
 	COMMAND
 		${CMAKE_COMMAND} -E copy
-		# Intentionally using Release version here.
-		${PROJECT_BINARY_DIR}/arrus/core/Release/arrus-core.dll ${CMAKE_CURRENT_BINARY_DIR}/arrus
+		${ARRUS_TARGET_SHARED_OBJECT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
@@ -151,20 +167,4 @@ install(
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
 )
-
-################################################################################
-# Python tests
-################################################################################
-if(ARRUS_RUN_TESTS)
-	# TODO most of the previous logic was moved to c++ code.
-    #create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
-    #install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
-    #get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
-    #foreach(TEST_FILE IN LISTS TEST_FILES)
-    #    add_test(
-    #        NAME ${TEST_FILE}
-    #        COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE}
-    #    )
-    #endforeach()
-endif()
 

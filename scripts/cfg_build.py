@@ -32,12 +32,15 @@ def main():
                         type=str, default=os.environ.get(US4R_INSTALL_ENVIRON, None))
     parser.add_argument("--options", dest="options",
                         type=str, nargs="*", required=False, default=[])
+    parser.add_argument("--conan_build_mode", dest="conan_build_mode",
+                        type=str, required=False, default=None)
 
     args = parser.parse_args()
     targets = args.targets
     run_targets = args.run_targets
     extra_options = args.options
     src_branch_name = args.src_branch_name
+    conan_build_mode = args.conan_build_mode
     options = []
     if targets is not None:
         options += ["-DARRUS_BUILD_%s=ON" % target.upper() for target in targets]
@@ -65,6 +68,8 @@ def main():
 
     # Conan install.
     cmd = ["conan", "install",  src_dir, "-if", build_dir]
+    if conan_build_mode is not None:
+        cmd = cmd + ["--build=" + conan_build_mode]
     result = subprocess.call(cmd)
     assert_no_error(result)
 

@@ -24,6 +24,8 @@ def main():
     parser.add_argument("--us4r_dir", dest="us4r_dir",
                         type=str, required=False,
                         default=None)
+    parser.add_argument("--j", dest="j", type=int, required=False,
+                        default=1)
     parser.add_argument("--verbose", dest="verbose",
                         required=False, default=False,
                         action="store_true")
@@ -33,6 +35,7 @@ def main():
     src_dir = args.source_dir
     us4r_dir = args.us4r_dir
     verbose = args.verbose
+    number_of_jobs = args.j
 
     if src_dir is None:
         raise ValueError("%s environment variable should be declared "
@@ -52,12 +55,20 @@ def main():
         join_cmd = False
         shell_source(f"{os.path.join(build_dir, 'activate.sh')}")
 
-    build_dir = f'"{build_dir}"'
+    build_dir = os.path.abspath(build_dir)
+    if os.name == "nt":
+        # Properly handle paths with white spaces.
+        build_dir = f'"{build_dir}"'
     cmake_cmd += [
         "cmake",
         "--build", build_dir,
-        "--config", configuration
+        "--config", configuration,
     ]
+
+    if os.name != "nt":
+        cmake_cmd += [
+            "-j" + str(number_of_jobs)
+        ]
 
     if verbose:
         cmake_cmd += ["--verbose"]
