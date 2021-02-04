@@ -8,15 +8,14 @@ us4r: {
 
     adapter_id: {
         manufacturer: "us4us"
-        name: "esaote2"
+        name: "esaote3"
     }
 
     # Default initial values.
     rx_settings: {
         lna_gain: 24
         pga_gain: 30
-        tgc_samples: [14, 15, 16]
-        lpf_cutoff: 10000000
+        lpf_cutoff: 15000000
         active_termination: 200
     }
 
@@ -27,17 +26,11 @@ us4r: {
         }
     }
 
-    channels_mask: {
-        channels: [5, 10, 15]
-    }
+    channels_mask: {}
 
     us4oem_channels_mask: [
-        {
-            channels: [5, 10]
-        },
-        {
-            channels: 15
-        }
+        {},
+        {}
     ]
 }
 
