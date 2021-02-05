@@ -38,7 +38,7 @@ struct TestTxRxParams {
     ops::us4r::Pulse pulse{2.0e6f, 2.5f, true};
     BitMask rxAperture = getNTimes(false, Us4OEMImpl::N_ADDR_CHANNELS);
     uint32 decimationFactor = 1;
-    float pri = 100e-6f;
+    float pri = 200e-6f;
     Interval<uint32> sampleRange{0, 4096};
 
     [[nodiscard]] TxRxParameters getTxRxParameters() const {

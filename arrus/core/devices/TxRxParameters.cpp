@@ -11,7 +11,7 @@ const TxRxParameters TxRxParameters::US4OEM_NOP = TxRxParameters(
     ops::us4r::Pulse(1e6, 1, false),
     std::vector<bool>(128, false),
     Interval<uint32>(0, 64),
-    0, 0);
+    0, 80);
 
 
 
