@@ -13,7 +13,8 @@ class Display2D:
     """
     def __init__(self, metadata, value_range=None,
                  window_size=None, title=None, xlabel=None,
-                 ylabel=None, cmap=None, interval=10):
+                 ylabel=None, cmap=None, interval=10,
+                 input_timeout=2):
         """
         2D display constructor.
 
@@ -32,8 +33,9 @@ class Display2D:
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.cmap = cmap
-        self._prepare(metadata)
+        self.input_timeout = input_timeout
         self.interval = interval
+        self._prepare(metadata)
         self._current_queue = None
         self._anim = None
 
@@ -78,5 +80,5 @@ class Display2D:
         plt.show()
 
     def _update(self, frame):
-        data = self._current_queue.get()
+        data = self._current_queue.get(timeout=self.input_timeout)
         self._img.set_data(data)
