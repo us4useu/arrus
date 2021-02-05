@@ -42,15 +42,15 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 def main():
 
     seq = PwiSequence(
-        angles=np.asarray([-5, 0, 5])*np.pi/180,
+        angles=np.asarray([0])*np.pi/180,
         pulse=Pulse(center_frequency=8e6, n_periods=3, inverse=False),
         rx_sample_range=(0, 4096),
         downsampling_factor=2,
-        speed_of_sound=1490,
+        speed_of_sound=1450,
         pri=100e-6,
-        sri=20e-3,
+        sri=50e-3,
         tgc_start=14,
-        tgc_slope=0)
+        tgc_slope=2e2)
 
     display_input_queue = queue.Queue(1)
 
