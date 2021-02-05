@@ -55,7 +55,7 @@ def main():
         rx_aperture_center_element=np.arange(8, 183),
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
-        pri=100e-6,
+        pri=200e-6,
         tgc_start=14,
         tgc_slope=2e2,
         downsampling_factor=2,
