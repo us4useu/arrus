@@ -1,3 +1,11 @@
+"""
+This script acquires and reconstructs RF img for plane wave imaging
+(synthetic aperture).
+
+GPU usage is recommended.
+"""
+
+
 import arrus
 import arrus.session
 import arrus.utils.imaging
@@ -83,7 +91,7 @@ def main():
     # Here starts communication with the device.
     with arrus.Session(r"C:\Users\Public\us4r.prototxt") as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(50)
+        us4r.set_hv_voltage(20)
 
         # Upload sequence on the us4r-lite device.
         buffer, const_metadata = sess.upload(scheme)

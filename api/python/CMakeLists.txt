@@ -161,6 +161,9 @@ install(
 	FILES
 	examples/pwi_sequence_example.py
 	examples/lin_sequence_example.py
+	examples/custom_callback_example.py
+	examples/requirements.txt
+	examples/gpu_requirements.txt
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
