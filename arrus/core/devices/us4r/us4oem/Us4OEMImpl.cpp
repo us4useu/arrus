@@ -232,6 +232,14 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
         rxTime = std::max(rxTime, MIN_RX_TIME);
 
+        float totalSeqTime = rxTime + SEQUENCER_REPROGRAMMING_TIME;
+        // receive time + reprogramming time
+        if(totalSeqTime > op.getPri()) {
+            throw IllegalArgumentException(
+                ::arrus::format(
+                "Total time required for the data acquisition ({}) should not exceed PRI ({})",
+                totalSeqTime, op.getPri()));
+        }
         if(op.isNOP()) {
             ius4oem->SetActiveChannelGroup(emptyChannelGroups, opIdx);
             // Intentionally filtering empty aperture to reduce possibility of a mistake.

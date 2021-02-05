@@ -197,7 +197,6 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq,
     }
     return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize,
                                            rxBatchSize, seq.getSri());
-
 }
 
 void Us4RImpl::syncTrigger() {
@@ -207,7 +206,5 @@ void Us4RImpl::syncTrigger() {
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
     this->getDefaultComponent()->setTgcCurve(tgcCurvePoints);
 }
-
-
 
 }

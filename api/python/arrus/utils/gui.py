@@ -50,7 +50,6 @@ class Display2D:
         if self.title is not None:
             self._fig.canvas.set_window_title(self.title)
 
-        # TODO compute extent based on sampling frequency and
 
         input_shape = metadata.input_shape
         datatype = metadata.dtype
