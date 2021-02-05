@@ -47,7 +47,7 @@ def main():
         rx_sample_range=(0, 4096),
         downsampling_factor=2,
         speed_of_sound=1450,
-        pri=100e-6,
+        pri=200e-6,
         sri=50e-3,
         tgc_start=14,
         tgc_slope=2e2)
