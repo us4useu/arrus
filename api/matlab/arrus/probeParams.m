@@ -33,7 +33,7 @@ switch probeName
     case 'L14-5/38'
         probe.nElem	= 128;
         probe.pitch	= 0.3048e-3;
-        probe.maxVpp = 100;
+        probe.maxVpp = 180;
         probe.channelsMask = [];
 
     case 'L7-4'
