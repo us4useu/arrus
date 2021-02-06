@@ -63,7 +63,7 @@ Install Us4OEM drivers
 2. Run ``install.bat`` with **administrative privileges**. Confirm driver
    installation if necessary.
 
-``us4oem`` and ``us4OEM`` nodes should now be visible in the
+``us4oem`` and ``WinDriver1450`` nodes should now be visible in the
 Device Manager.
 
 .. figure:: img/dev_manager.png
