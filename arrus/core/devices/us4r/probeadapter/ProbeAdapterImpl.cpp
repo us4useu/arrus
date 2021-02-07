@@ -395,6 +395,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                 for(auto &us4oem: this->us4oems) {
                     us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                 }
+                this->us4oems[0]->syncTrigger();
 //                for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
 //                    this->us4oems[i]->getIUs4oem()->SyncReceive();
 //                    this->us4oems[i]->getIUs4oem()->SyncTransfer();

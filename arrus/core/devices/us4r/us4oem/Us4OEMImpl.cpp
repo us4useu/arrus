@@ -368,7 +368,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
                 firing = (uint16) (opIdx + batchElementIdx * nOps + batchIdx * nOps * batchSize);
                 auto const &op = seq[opIdx];
-                bool checkpoint = false;
+                bool checkpoint = opIdx == seq.size()-1 && batchElementIdx == batchSize-1;
                 float pri = op.getPri();
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
