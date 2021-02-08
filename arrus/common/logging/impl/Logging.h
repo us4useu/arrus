@@ -35,11 +35,11 @@ public:
                      bool autoFlush = false);
 
     /**
-     * Sets a minimum severity level for messages printed to the standard output.
+     * Sets a minimum level level for messages printed to the standard output.
      *
-     * @param severity severity level to apply
+     * @param level level level to apply
      */
-    void addClog(LogSeverity severity);
+    void addClog(LogSeverity level);
 
     /**
      * Sets logging level for clog.

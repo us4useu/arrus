@@ -12,6 +12,7 @@ import arrus.utils.imaging
 import arrus.utils.us4r
 import numpy as np
 import queue
+import time
 
 from arrus.ops.us4r import (
     Scheme,
@@ -51,7 +52,7 @@ def main():
 
     seq = PwiSequence(
         angles=np.asarray([0])*np.pi/180,
-        pulse=Pulse(center_frequency=8e6, n_periods=3, inverse=False),
+        pulse=Pulse(center_frequency=6e6, n_periods=3, inverse=False),
         rx_sample_range=(0, 4096),
         downsampling_factor=2,
         speed_of_sound=1450,
@@ -74,7 +75,6 @@ def main():
             steps=(
                 RemapToLogicalOrder(),
                 Transpose(axes=(0, 2, 1)),
-                SelectFrames(frames=[0]),
                 BandpassFilter(),
                 QuadratureDemodulation(),
                 Decimation(decimation_factor=4, cic_order=2),
@@ -82,6 +82,7 @@ def main():
                 EnvelopeDetection(),
                 Transpose(),
                 LogCompression(),
+                # Lambda(lambda data: (time.sleep(0.1), data)[1]),
                 Enqueue(display_input_queue, block=False, ignore_full=True)
             ),
             placement="/GPU:0"

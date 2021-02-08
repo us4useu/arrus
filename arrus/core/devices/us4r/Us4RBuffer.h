@@ -33,7 +33,7 @@ public:
             }
             nSamples += componentShape.get(0);
         }
-        elementShape = framework::NdArray::Shape{nChannels, nSamples};
+        elementShape = framework::NdArray::Shape{nSamples, nChannels};
         elementDataType = dataType;
     }
 

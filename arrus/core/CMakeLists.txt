@@ -144,8 +144,42 @@ set(SRC_FILES
         api/devices.h
     api/framework.h
     api/ops/us4r/tgc.h
-    api/examples.h
-    devices/UltrasoundDevice.h api/devices/us4r/HVSettings.h api/devices/us4r/HVModelId.h devices/us4r/hv/HV256Impl.h devices/us4r/hv/HV256Factory.h devices/us4r/hv/HV256Impl.cpp devices/us4r/hv/HV256FactoryImpl.h devices/us4r/hv/HV256FactoryImpl.cpp api/devices/us4r/FrameChannelMapping.h devices/us4r/FrameChannelMappingImpl.cpp devices/us4r/FrameChannelMappingImpl.h common/aperture.h external/eigen/Tensor.h devices/us4r/us4oem/Us4OEMImplBase.h devices/us4r/probeadapter/ProbeAdapterImplBase.h devices/probe/ProbeImplBase.h external/eigen/Dense.h ../common/utils.h devices/us4r/DataTransfer.h devices/us4r/us4oem/Us4OEMBuffer.h devices/us4r/Us4RBuffer.h api/ops/us4r/Scheme.h api/framework/DataBuffer.h api/framework/NdArray.h api/session/UploadResult.h api/framework/DataBufferSpec.h api/framework/DataBuffer.h api/session/UploadConstMetadata.h api/framework/FifoLockFreeBuffer.h api/framework/FifoBuffer.h cfg/default.h.in)
+    devices/UltrasoundDevice.h
+    api/devices/us4r/HVSettings.h
+    api/devices/us4r/HVModelId.h
+    devices/us4r/hv/HV256Impl.h
+    devices/us4r/hv/HV256Factory.h
+    devices/us4r/hv/HV256Impl.cpp
+    devices/us4r/hv/HV256FactoryImpl.h
+    devices/us4r/hv/HV256FactoryImpl.cpp
+    api/devices/us4r/FrameChannelMapping.h
+    devices/us4r/FrameChannelMappingImpl.cpp
+    devices/us4r/FrameChannelMappingImpl.h
+    common/aperture.h
+    external/eigen/Tensor.h
+    devices/us4r/us4oem/Us4OEMImplBase.h
+    devices/us4r/probeadapter/ProbeAdapterImplBase.h
+    devices/probe/ProbeImplBase.h
+    external/eigen/Dense.h
+    ../common/utils.h
+    devices/us4r/DataTransfer.h
+    devices/us4r/us4oem/Us4OEMBuffer.h
+    devices/us4r/Us4RBuffer.h
+    api/ops/us4r/Scheme.h
+    api/framework/DataBuffer.h
+    api/framework/NdArray.h
+    api/session/UploadResult.h
+    api/framework/DataBufferSpec.h
+    api/framework/DataBuffer.h
+    api/session/UploadConstMetadata.h
+    api/framework/FifoLockFreeBuffer.h
+    api/framework/FifoBuffer.h
+    cfg/default.h.in
+    ../common/logging/impl/Logging.cpp
+    ../common/logging/impl/LogSeverity.cpp
+    api/arrus.h
+    api/session.h
+    api/common.h api/io.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -251,16 +285,16 @@ install(
     ${ARRUS_LIB_INSTALL_DIR}
 )
 
+install(
+    DIRECTORY
+    api
+    DESTINATION
+    ${ARRUS_INCLUDE_INSTALL_DIR}/arrus/core
+)
+
 ################################################################################
 # Examples
 ################################################################################
-add_executable(core-example
-    examples/CoreExample.cpp
-    ../common/logging/impl/Logging.cpp
-    ../common/logging/impl/LogSeverity.cpp)
-target_link_libraries(core-example
-    PRIVATE
-    arrus-core
-    Boost::Boost
-    fmt::fmt)
-target_include_directories(core-example PRIVATE ${ARRUS_ROOT_DIR})
+add_executable(pwi-example examples/PwiExample.cpp)
+target_link_libraries(pwi-example PRIVATE arrus-core)
+target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
