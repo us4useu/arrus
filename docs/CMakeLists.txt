@@ -136,8 +136,6 @@ install_sphinx_package(sphinx_package docs_venv)
 find_package(Doxygen)
 
 set(DOXYGEN_INPUT_DIR "${CMAKE_SOURCE_DIR}/arrus/core/api")
-file(GLOB_RECURSE DOXYGEN_INPUT_SRC_FILES "${DOXYGEN_INPUT_DIR}/*.h")
-string(REPLACE ";" " " DOXYGEN_INPUT_SRC_FILES "${DOXYGEN_INPUT_SRC_FILES}")
 set(DOXYGEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cpp/doxy")
 set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml)
 
