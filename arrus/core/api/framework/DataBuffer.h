@@ -1,61 +1,57 @@
-#ifndef ARRUS_CORE_API_FRAMEWORK_FIFO_BUFFER_H
-#define ARRUS_CORE_API_FRAMEWORK_FIFO_BUFFER_H
+#ifndef ARRUS_ARRUS_CORE_API_FRAMEWORK_DATABUFFER_H
+#define ARRUS_ARRUS_CORE_API_FRAMEWORK_DATABUFFER_H
 
-#include <memory>
-#include <functional>
-#include "NdArray.h"
+#include "Buffer.h"
 
 namespace arrus::framework {
 
-class DataBufferElement {
-public:
-    using SharedHandle = std::shared_ptr<DataBufferElement>;
-
-    virtual ~DataBufferElement() = default;
-
-    virtual void release() = 0;
-
-    virtual NdArray& getData() = 0;
-
-    /**
-     * @return size of the element in bytes
-     */
-    virtual size_t getSize() = 0;
-
-    virtual size_t getPosition() = 0;
-};
+/**
+ * A callback to be called once new data arrives.
+ */
+using OnNewDataCallback = std::function<void(const BufferElement::SharedHandle& )>;
+/**
+ * A callback to be called when data overflow happens.
+ */
+using OnOverflowCallback = std::function<void()>;
+/**
+ * A callback to be called when the buffer is shut down (e.g. when the session is stopped).
+ */
+using OnShutdownCallback = std::function<void()>;
 
 /**
- * FIFO (first in, first out) buffer.
+ * A data buffer. This interface allows to register callback function to be called when new data arrives.
  */
-class DataBuffer {
+class DataBuffer: public Buffer {
 public:
     using Handle = std::unique_ptr<DataBuffer>;
     using SharedHandle = std::shared_ptr<DataBuffer>;
 
-    virtual ~DataBuffer() = default;
-
     /**
-     * Returns number of elements the buffer contains.
-     */
-    virtual size_t getNumberOfElements() const = 0;
-
-    /**
-     * Returns a pointer to selected element buffer.
+     * Registers callback, that should be called once new data arrives at the buffer head.
+     * The callback has an access to the latest data.
      *
-     * @param i number of buffer element
-     * @return a pointer to the buffer element
+     * Free the provided buffer element using `release` function when the data is no longer needed.
+     *
+     * The callback is required.
      */
-    virtual std::shared_ptr<DataBufferElement> getElement(size_t i) = 0;
+    virtual void registerOnNewDataCallback(OnNewDataCallback &callback) = 0;
 
     /**
-     * Returns size of a single buffer element, that is the number of values of a given data type.
+     * Registers callback, that will be called once buffer overflow happens.
+     *
+     * The callback function is optional, by default nop is performed.
      */
-    virtual size_t getElementSize() const = 0;
+    virtual void registerOnOverflowCallback(OnOverflowCallback &callback) = 0;
 
-
+    /**
+     * Registers callback, that will be called once buffer is shutdown.
+     *
+     * Buffer shutdown is preformed when the device is stopped.
+     * The callback function is optional, by default nop is set.
+     */
+    virtual void registerShutdownCallback(OnShutdownCallback &callback) = 0;
 };
 
 }
 
-#endif //ARRUS_CORE_API_FRAMEWORK_FIFO_BUFFER_H
+#endif //ARRUS_ARRUS_CORE_API_FRAMEWORK_DATABUFFER_H

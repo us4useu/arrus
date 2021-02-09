@@ -66,7 +66,7 @@ in the arrus package supports only one type of HV device:
 To turn off the high voltage supplier, skip the ``hv`` field.
 
 To configure us4r’s signal transmission/data reception, it is essential to
-specify the settings of the probe and probe adapter used in the system.
+specify settings of the probe and probe adapter used in the system.
 
 Specify the settings of the probe and probe adapter
 '''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -182,6 +182,7 @@ it is necessary to specify the fields:
 `channels_mask` and ``us4oem_channels_mask``. If these two mappings do not
 match, an error will be reported at the device configuration stage.
 
+
 Dictionary
 ----------
 
@@ -274,206 +275,122 @@ Currently, the default dictionary contains definitions of the following probes:
 
 .. _running_example:
 
-Running example scripts
-=======================
+Example
+=======
 
-The general overview of data acquisition and processing is as follows:
+.. code-block:: cpp
 
-#. prepare scheme to be executed on the devices,
-#. start new session,
-#. upload created scheme,
-#. run the uploaded scheme,
-#. get data from the output buffer.
+    #include <iostream>
+    #include <thread>
+    #include <condition_variable>
 
-Let's delve into the details of each stage; we will describe the whole process
-on the example of a ``pwi_sequence_example.py`` script.
+    #include <arrus/core/api/arrus.h>
 
-Creating Scheme
----------------
+    int main() noexcept {
+        using namespace ::arrus::session;
+        using namespace ::arrus::devices;
+        using namespace ::arrus::ops::us4r;
+        using namespace ::arrus::framework;
+        try {
+            // Read session configuration from the file.
+            auto settings = ::arrus::io::readSessionSettings(
+                    R"(C:\Users\Public\us4r.prototxt)");
+            // Create new session.
+            auto session = ::arrus::session::createSession(settings);
 
-First we need to describe data acquisition process (and possibly data
-processing pipeline). In the arrus package that description is called ``Scheme``.
+            // Get Us4R device handle.
+            auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
 
+            // Tx/Rx sequence:
+            // Common Tx parameters:
+            ::arrus::BitMask rxAperture(192, true);
+            Pulse pulse(4e6, 2, false);
 
-.. _fig-scheme:
-.. figure:: img/scheme.png
+            // Common Rx parameters:
+            std::vector<float> delays(192, 0.0f);
+            arrus::BitMask txAperture(192, true);
+            float pri = 200e-6f;
+            ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 2048};
+            std::vector<TxRx> txrxs;
+            for(int i = 0; i < 10; ++i) {
+                txrxs.emplace_back(Tx(txAperture, delays, pulse),
+                                   Rx(txAperture, sampleRange),
+                                   200e-6f);
+            }
+            TxRxSequence seq(txrxs, {}, 500e-3f);
 
-     An example of scheme.
+            // Define RF channel data output buffer.
+            DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
+            // Define scheme to execute.
+            Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::ASYNC);
 
-The ``Scheme`` describes:
+            // Upload the scheme.
+            auto result = session->upload(scheme);
+            // Set HV voltage.
+            us4r->setVoltage(10);
 
-- tx/rx sequence to perform on the ultrasound device (in loop),
-- description of the output buffer to which the data should be written,
-- ultrasound device work mode,
-- `optional`: data processing pipeline to run when new data arrives in the ultrasound device output buffer.
+            // Create "on new data" callback function.
+            // In this example, the callback function counts the number of frames
+            // that currently occurred and stops the session when a 10th frame is
+            // acquired.
+            std::condition_variable cv;
+            using namespace std::chrono_literals;
+            OnNewDataCallback callback = [&, i = 0](const BufferElement::SharedHandle &ptr) mutable {
+                try {
+                    std::cout << "Iteration: " << i << ", data: " << std::endl;
+                    std::cout << "- memory ptr: " << std::hex
+                                               << ptr->getData().get<short>()
+                                               << std::dec << std::endl;
+                    std::cout << "- size: " << ptr->getSize() << std::endl;
+                    std::cout << "- shape: (" << ptr->getData().getShape()[0] <<
+                                         ", " << ptr->getData().getShape()[1] <<
+                                         ")" << std::endl;
 
+                    // Stop the system after 10-th frame.
+                    if(i == 9) {
+                        cv.notify_one();
+                    }
+                    ptr->release();
+                    ++i;
+                } catch(const std::exception &e) {
+                    std::cout << "Exception: " << e.what() << std::endl;
+                    cv.notify_all();
+                } catch (...) {
+                    std::cout << "Unrecognized exception" << std::endl;
+                    cv.notify_all();
+                }
+            };
 
-.. code-block:: python
+            // Create callback to be called when overflow occurs.
+            OnOverflowCallback overflowCallback = [&] () {
+                std::cout << "Data overflow occurred!" << std::endl;
+                cv.notify_one();
+            };
 
-    scheme = Scheme(
-        tx_rx_sequence=sequence
-        rx_buffer_size=4,
-        output_buffer=DataBufferSpec(type="FIFO", n_elements=12),
-        work_mode="ASYNC",
-        processing=processing_pipeline
-    )
+            // Register callbacks in the data buffer.
+            auto buffer = std::static_pointer_cast<DataBuffer>(result.getBuffer());
+            buffer->registerOnNewDataCallback(callback);
+            buffer->registerOnOverflowCallback(overflowCallback);
 
-The tx/rx sequence can be described using one of the common sequences
-or by preparing a custom sequence of TxRx objects. For example, to transmit
-plane waves at three different angles, create the
-``arrus.ops.imaging.PwiSequence`` object:
+            // Start the scheme.
+            session->startScheme();
+            // At this point, data acquisition is started
+            // (the occurrence of new data is signaled by the callback function).
 
-.. code-block:: python
+            // Wait for callback to signal that the we hit 10-th iteration.
+            std::mutex mutex;
+            std::unique_lock<std::mutex> lock(mutex);
+            cv.wait(lock);
 
-    sequence = arrus.ops.imaging.PwiSequence(
-        angles=np.asarray([-5, 0, 5])*np.pi/180,
-        pulse=Pulse(center_frequency=8e6, n_periods=3, inverse=False),
-        rx_sample_range=(0, 4096),
-        downsampling_factor=2,
-        speed_of_sound=1490,
-        pri=100e-6,
-        sri=20e-3,
-        tgc_start=14,
-        tgc_slope=0)
+            // Stop the system.
+            session->stopScheme();
 
+        } catch(const std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            return -1;
+        }
 
-Optionally, it is also possible to provide a data processing that should be run
-when new data arrives. For example, b-mode reconstruction for plane wave imaging
-can be implemented using the following pipeline:
-
-
-.. code-block:: python
-
-    display_input_queue = queue.Queue(1)
-
-    x_grid = np.linspace(-15, 15, 256) * 1e-3
-    z_grid = np.linspace(0, 40, 256) * 1e-3
-
-    processing = Pipeline(
-            steps=(
-                RemapToLogicalOrder(),
-                Transpose(axes=(0, 2, 1)),
-                BandpassFilter(),
-                QuadratureDemodulation(),
-                Decimation(decimation_factor=4, cic_order=2),
-                RxBeamformingImg(x_grid=x_grid, z_grid=z_grid),
-                EnvelopeDetection(),
-                Transpose(),
-                LogCompression(),
-                Enqueue(display_input_queue, block=False, ignore_full=True)
-            ),
-            placement="/GPU:0"
-        )
-
-
-The above code creates a pipeline, which will put the reconstructed b-mode
-images into the ``display_input_queue``. That queue will contain
-
-.. note::
-
-    Currently python API allows for data processing implemented using
-    ``arrus.utils.imaging`` package only, which uses cupy/numpy packages.
-    An optimized imaging pipeline for real-time b-mode reconstruction
-    will be available soon.
-
-
-Running the Scheme
-------------------
-
-To run the scheme:
-
-#. start new session,
-#. set device parameters if necessary,
-#. upload scheme,
-#. start scheme.
-
-
-If you want to display reconstructed b-mode images,
-you can use ``arrus.utils.gui.Display2D`` class as show below, by providing
-the previously created ``input_data_queue``. The ``arrus.utils.gui.Display2D``
-class requires `matplotlib` package installed.
-
-.. code-block:: python
-
-    with arrus.Session(r"C:\Users\Public\us4r.prototxt") as sess:
-        us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(50)
-
-        # Upload sequence on the us4r-lite device.
-        buffer, const_metadata = sess.upload(scheme)
-        display = Display2D(const_metadata, value_range=(20, 80), cmap="gray")
-        sess.start_scheme()
-        display.start(display_input_queue)
+        return 0;
+    }
 
 
-The function ``display.start`` starts displaying reconstructed images and blocks
-the current thread until the window is closed. When the program leaves the
-``arrus.Session`` context manager scope, the scheme is stopped and
-the connection to all the running devices is closed.
-
-
-Running custom callback functions
----------------------------------
-
-You can provide your own custom callback functions that should be run when
-raw RF channel data arrives in the ultrasound device output buffer.
-In order to do that, use ``buffer.append_on_new_data_callback(callback)``:
-
-.. code-block:: python
-
-    with arrus.Session(r"C:\Users\Public\us4r.prototxt") as sess:
-        us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(50)
-
-        # Upload sequence on the us4r-lite device.
-        buffer, const_metadata = sess.upload(scheme)
-        def callback(element):
-            print("Got new data!")
-        buffer.append_on_new_data_callback(callback)
-        sess.start_scheme()
-        time.sleep(10)
-
-
-Implementing custom ``arrus.utils.imaging`` operations
-------------------------------------------------------
-
-It is possible to provide custom processing steps for the
-``arrus.utils.imaging`` package. In order to do that, you have to implement
-the following interface:
-
-.. code-block:: python
-
-    class MyCustomOperation:
-
-        def _process(self, data):
-            """
-            Function that will be called when new data arrives.
-
-            :param data: input data
-            :return: output data
-            """
-            # Here is your custom data processing implementation
-            pass
-
-The ``_process`` function will be called when new data arrives, at the appropriate stage of the pipeline.
-
-Then, you can put your custom operation into the pipeline:
-
-.. code-block:: python
-
-    processing = Pipeline(
-            steps=(
-                RemapToLogicalOrder(),
-                Transpose(axes=(0, 2, 1)),
-                BandpassFilter(),
-                QuadratureDemodulation(),
-                Decimation(decimation_factor=4, cic_order=2),
-                RxBeamformingImg(x_grid=x_grid, z_grid=z_grid),
-                MyCustomOperation(),
-                EnvelopeDetection(),
-                Transpose(),
-                LogCompression(),
-                Enqueue(display_input_queue, block=False, ignore_full=True)
-            ),
-            placement="/GPU:0"
-        )

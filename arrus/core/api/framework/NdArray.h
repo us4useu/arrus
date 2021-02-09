@@ -21,30 +21,46 @@ namespace arrus::framework {
  */
 class NdArray {
 public:
-    /**
-        * A list of currently supported data types of the output buffer.
-    */
+    /** A list of currently supported data types of the output buffer.*/
     enum class DataType {
         INT16
     };
+
+    /** Array shape. */
     typedef Tuple<unsigned int> Shape;
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
         ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement) {}
 
+    /**
+    * Returns a pointer to data.
+    *
+    * @tparam T data type
+    * @return a pointer to data
+    */
     template<typename T>
     T *get() {
         return (T *) ptr;
     }
 
+    /**
+     * Returns a pointer to the memory data (assuming the data type is int16).
+     * @return
+     */
     short* getInt16() {
         return this->get<short>();
     }
 
+    /**
+     * Returns data shape.
+     */
     const Shape &getShape() const {
         return shape;
     }
 
+    /**
+     * Returns array data type.
+     */
     DataType getDataType() const {
         return dataType;
     }

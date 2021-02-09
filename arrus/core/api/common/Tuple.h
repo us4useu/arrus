@@ -17,14 +17,24 @@ public:
 
     explicit Tuple(const std::vector<T> &values) : values(values) {}
 
+    /**
+     * Returns i-th. value.
+     */
     const T &operator[](size_t i) const {
         return values[i];
     }
 
+    /**
+     * Returns i-th value.
+     */
     const T &get(size_t i) const {
         return this->values[i];
     }
 
+    /**
+     * Returns the tuple size (number of values it consists of).
+     * @return
+     */
     size_t size() const {
         return values.size();
     }

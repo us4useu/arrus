@@ -12,20 +12,20 @@
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/api/framework/FifoLockFreeBuffer.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 
 
 namespace arrus::devices {
 
-using ::arrus::framework::DataBuffer;
-using ::arrus::framework::DataBufferElement;
+using ::arrus::framework::Buffer;
+using ::arrus::framework::BufferElement;
 
 class Us4ROutputBuffer;
 
 /**
  * Buffer element owns the data arrrays, which then are returned to user.
  */
-class Us4ROutputBufferElement : public DataBufferElement {
+class Us4ROutputBufferElement : public BufferElement {
 public:
     using AccumulatorType = uint16;
 
@@ -130,7 +130,7 @@ private:
  *
  * The assumption is here that each element of the buffer has the same size (and the same us4oem offsets).
  */
-class Us4ROutputBuffer : public framework::FifoLockFreeBuffer {
+class Us4ROutputBuffer : public framework::DataBuffer {
 public:
     static constexpr size_t DATA_ALIGNMENT = 4096;
     using DataType = int16;
@@ -208,8 +208,8 @@ public:
         return elements.size();
     }
 
-    DataBufferElement::SharedHandle getElement(size_t i) override {
-        return std::static_pointer_cast<DataBufferElement>(elements[i]);
+    BufferElement::SharedHandle getElement(size_t i) override {
+        return std::static_pointer_cast<BufferElement>(elements[i]);
     }
 
     uint8 *getAddress(uint16 elementNumber, Ordinal us4oem) {

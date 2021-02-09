@@ -91,7 +91,7 @@ An instance of the following class is returned by the ``sesion.upload`` function
 
 Data buffers consists of multiple buffer elements.
 
-.. autoclass:: arrus.framework.DataBufferElement
+.. autoclass:: arrus.framework.BufferElement
     :members: data
     :show-inheritance:
 

@@ -12,6 +12,9 @@
 
 namespace arrus::ops::us4r {
 
+/**
+ * A single tx/rx operation to perform.
+ */
 class TxRx {
 public:
     // TODO(pjarosik) remove default constructor!!! Currently required by py swig wrapper
@@ -23,6 +26,13 @@ public:
      pri(0.0f)
     {}
 
+    /**
+     * TxRx constructor.
+     *
+     * @param tx - tx description
+     * @param rx - rx description
+     * @param pri - pulse repetition interval
+     */
     TxRx(Tx tx, Rx rx, float pri) : tx(std::move(tx)), rx(std::move(rx)), pri(pri) {}
 
     const Tx &getTx() const {
@@ -51,7 +61,7 @@ public:
      *
      * @param sequence a list of tx/rxs that compose a given sequence
      * @param tgcCurve tgc curve to apply
-     * @param sri frame repetition interval - the total time that a given sequence should take.
+     * @param sri sequence repetition interval - the total time that a given sequence should take.
      */
     TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI)
         : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri) {}
@@ -71,7 +81,7 @@ public:
     }
 
     /**
-     * Returns frame repetition interval (the total time the given sequence should actually take).
+     * Returns sequence repetition interval (the total time the given sequence should actually take).
      * nullopt means that the frame acquisition time should be determined by total PRI only.
      */
     const std::optional<float> getSri() const {

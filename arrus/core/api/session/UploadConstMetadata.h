@@ -21,6 +21,13 @@ public:
     : metadata(std::move(metadata)) {}
 
 
+    /**
+     * Returns metadata for the given key.
+     *
+     * @tparam T output type
+     * @param key metadata key
+     * @return metadata value for given key
+     */
     template<typename T>
     std::shared_ptr<T> get(const std::string &key) {
         return std::static_pointer_cast<T>(metadata.at(key));
