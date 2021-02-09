@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/core/api/framework/FifoLockFreeBuffer.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 
 namespace arrus::framework {
 
@@ -18,8 +18,8 @@ namespace arrus::framework {
  */
 class FifoBuffer {
 public:
-    explicit FifoBuffer(FifoLockFreeBuffer::SharedHandle inputBuffer) : inputBuffer(std::move(inputBuffer)) {
-        OnNewDataCallback callback = [this] (const DataBufferElement::SharedHandle& dataPtr) {
+    explicit FifoBuffer(DataBuffer::SharedHandle inputBuffer) : inputBuffer(std::move(inputBuffer)) {
+        OnNewDataCallback callback = [this] (const BufferElement::SharedHandle& dataPtr) {
             this->push(dataPtr);
         };
         OnOverflowCallback overflowCallback = [this] () {
@@ -32,7 +32,7 @@ public:
         this->inputBuffer->registerOnOverflowCallback(overflowCallback);
     }
 
-    void push(const DataBufferElement::SharedHandle &element) {
+    void push(const BufferElement::SharedHandle &element) {
         {
             std::unique_lock<std::mutex> lock(mutex);
             queue.push(element);
@@ -43,7 +43,7 @@ public:
     /**
      * Returns true, if the queue was shut down, false otherwise.
      */
-    std::pair<bool, DataBufferElement::SharedHandle> pop() {
+    std::pair<bool, BufferElement::SharedHandle> pop() {
         std::unique_lock<std::mutex> lock(mutex);
         while(true) {
             if(isInvalid) {
@@ -82,8 +82,8 @@ public:
     }
 
 private:
-    FifoLockFreeBuffer::SharedHandle inputBuffer;
-    std::queue<DataBufferElement::SharedHandle> queue;
+    DataBuffer::SharedHandle inputBuffer;
+    std::queue<BufferElement::SharedHandle> queue;
     std::condition_variable onNewData;
     std::mutex mutex;
     bool isShutdown{false};

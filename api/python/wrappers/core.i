@@ -132,20 +132,18 @@ using namespace ::arrus;
 
 %{
 #include "arrus/core/api/framework/NdArray.h"
-#include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
-#include "arrus/core/api/framework/FifoBuffer.h"
-#include "arrus/core/api/framework/FifoLockFreeBuffer.h"
+#include "arrus/core/api/framework/Buffer.h"
+#include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 using namespace arrus::framework;
 using namespace arrus::devices;
 %};
 
 %shared_ptr(arrus::devices::FrameChannelMapping);
-%shared_ptr(arrus::framework::DataBufferElement);
+%shared_ptr(arrus::framework::Buffer);
+%shared_ptr(arrus::framework::BufferElement);
 %shared_ptr(arrus::framework::DataBuffer);
-%shared_ptr(arrus::framework::FifoBuffer);
-%shared_ptr(arrus::framework::FifoLockFreeBuffer);
 
 namespace std {
     %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
@@ -157,9 +155,8 @@ namespace arrus {
 %include "arrus/core/api/framework/NdArray.h"
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
+%include "arrus/core/api/framework/Buffer.h"
 %include "arrus/core/api/framework/DataBuffer.h"
-%include "arrus/core/api/framework/FifoLockFreeBuffer.h"
-%include "arrus/core/api/framework/FifoBuffer.h"
 
 %feature("director") OnNewDataCallbackWrapper;
 
@@ -167,13 +164,13 @@ namespace arrus {
 class OnNewDataCallbackWrapper {
 public:
     OnNewDataCallbackWrapper() {}
-    virtual void run(const std::shared_ptr<arrus::framework::DataBufferElement> element) const {}
+    virtual void run(const std::shared_ptr<arrus::framework::BufferElement> element) const {}
     virtual ~OnNewDataCallbackWrapper() {}
 };
 
-void registerOnNewDataCallbackFifoLockFreeBuffer(const std::shared_ptr<arrus::framework::DataBuffer> &buffer, OnNewDataCallbackWrapper& callback) {
-    auto fifolockfreeBuffer = std::static_pointer_cast<FifoLockFreeBuffer>(buffer);
-    ::arrus::framework::OnNewDataCallback actualCallback = [&](const std::shared_ptr<DataBufferElement> &ptr) {
+void registerOnNewDataCallbackFifoLockFreeBuffer(const std::shared_ptr<arrus::framework::Buffer> &buffer, OnNewDataCallbackWrapper& callback) {
+    auto fifolockfreeBuffer = std::static_pointer_cast<DataBuffer>(buffer);
+    ::arrus::framework::OnNewDataCallback actualCallback = [&](const std::shared_ptr<BufferElement> &ptr) {
             // TODO avoid potential priority inversion here
             PyGILState_STATE gstate = PyGILState_Ensure();
             try {
@@ -219,8 +216,8 @@ std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arru
     return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
 }
 
-std::shared_ptr<arrus::framework::FifoLockFreeBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {
-    auto buffer = std::static_pointer_cast<FifoLockFreeBuffer>(uploadResult->getBuffer());
+std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {
+    auto buffer = std::static_pointer_cast<DataBuffer>(uploadResult->getBuffer());
     return buffer;
 }
 %};

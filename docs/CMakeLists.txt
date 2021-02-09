@@ -32,6 +32,7 @@ set(DOC_FILES
     "content/misc/img/us4us.png"
     "content/api.python.rst"
     "content/api.matlab.rst"
+    "content/api.cpp.rst"
     "content/low_level_api.matlab.rst"
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
@@ -39,7 +40,7 @@ list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 ################################################################################
 # Sphinx Docs generator.
 ################################################################################
-function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
+function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS CUSTOM_OPTIONS)
     get_target_property(VENV_PY_EXECUTABLE ${VENV_TARGET} VENV_EXECUTABLE)
     get_target_property(SPHINX_EXECUTABLE ${SPHINX_TARGET} SPHINX_EXECUTABLE)
 
@@ -90,6 +91,7 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS)
         COMMAND
             ${SPHINX_EXECUTABLE} -M ${FORMAT_SPHINX_METHOD}
                 ${SPHINX_CURRENT_LANG_DIR} ${SPHINX_BUILD}
+                ${CUSTOM_OPTIONS}
                 -c ${SPHINX_LATEX_CONF_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_LANG_DIR}
         DEPENDS
@@ -139,7 +141,7 @@ string(REPLACE ";" " " DOXYGEN_INPUT_SRC_FILES "${DOXYGEN_INPUT_SRC_FILES}")
 set(DOXYGEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cpp/doxy")
 set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml)
 
-set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/cpp/Doxyfile.in)
+set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in)
 set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/cpp/Doxyfile)
 configure_file(${DOXYFILE_IN} ${DOXYFILE_OUT} @ONLY)
 
@@ -155,15 +157,15 @@ add_custom_target(arrus_cpp_doxygen ALL DEPENDS ${DOXYGEN_INDEX_FILE})
 ## C++ sphinx
 #CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package "")
 set(ARRUS_BREATHE_PROJECT_OPTION "-Dbreathe_projects.arrus=${DOXYGEN_OUTPUT_DIR}/xml")
-message(${ARRUS_BREATHE_PROJECT_OPTION})
-CREATE_DOC_TARGET(cpp html docs_venv sphinx_package ${ARRUS_BREATHE_PROJECT_OPTION})
+CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package "" ${ARRUS_BREATHE_PROJECT_OPTION})
+CREATE_DOC_TARGET(cpp html docs_venv sphinx_package "" ${ARRUS_BREATHE_PROJECT_OPTION})
 
 
 # Python
 if(ARRUS_BUILD_PY)
     install_arrus_package(arrus_package docs_venv python_whl "PKG")
-    CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arrus_package)
-    CREATE_DOC_TARGET(python html docs_venv sphinx_package arrus_package)
+    CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arrus_package "")
+    CREATE_DOC_TARGET(python html docs_venv sphinx_package arrus_package "")
 endif()
 
 # MATLAB
@@ -171,7 +173,7 @@ if(ARRUS_BUILD_MATLAB)
     get_target_property(
             MATLAB_TOOLBOX_DIR
             matlab_toolbox  MATLAB_TOOLBOX_BIN_DIR)
-    CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package matlab_toolbox)
-    CREATE_DOC_TARGET(matlab html docs_venv sphinx_package matlab_toolbox)
+    CREATE_DOC_TARGET(matlab pdf docs_venv sphinx_package matlab_toolbox "")
+    CREATE_DOC_TARGET(matlab html docs_venv sphinx_package matlab_toolbox "")
 endif()
 

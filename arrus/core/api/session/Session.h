@@ -11,15 +11,19 @@
 
 namespace arrus::session {
 
+/**
+ * A communication session with the device.
+ */
 class Session {
 public:
     using Handle = std::unique_ptr<Session>;
 
     /**
-     * Returns a handle to device with given Id.
+     * Returns a handle to device with given Id. The string format is:
+     * /DeviceType:Ordinal, e.g. "/Us4R:0".
      *
      * @param deviceId device identifier
-     * @return a device handle
+     * @return a handle to the device
      */
     virtual arrus::devices::Device * getDevice(const std::string &deviceId) = 0;
 
@@ -27,7 +31,7 @@ public:
      * Returns a handle to device with given Id.
      *
      * @param deviceId device identifier
-     * @return a device handle
+     * @return a handle to the device
      */
     virtual arrus::devices::Device * getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 
@@ -36,7 +40,7 @@ public:
      *
      * Currently, the scheme upload is performed on the Us4R:0 device only.
      *
-     * After uploading a sequence the previously returned output buffers will be in invalid state.
+     * After uploading a new sequence the previously returned output buffers will be in invalid state.
      *
      * @param scheme scheme to upload
      * @return upload result information
@@ -45,15 +49,11 @@ public:
 
     /**
      * Starts currently uploaded scheme.
-     *
-     * Raises InvalidStateException when no scheme has been uploaded yet.
      */
     virtual void startScheme() = 0;
 
     /**
      * Stops currently uploaded scheme.
-     *
-     * Raises InvalidStateException when no scheme is running now.
      */
     virtual void stopScheme() = 0;
 

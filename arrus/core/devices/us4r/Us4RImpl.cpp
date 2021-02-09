@@ -10,7 +10,7 @@ using ::arrus::ops::us4r::TxRxSequence;
 using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
-using ::arrus::framework::DataBuffer;
+using ::arrus::framework::Buffer;
 using ::arrus::framework::DataBufferSpec;
 
 UltrasoundDevice *Us4RImpl::getDefaultComponent() {
@@ -69,10 +69,10 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::pair<DataBuffer::SharedHandle, FrameChannelMapping::SharedHandle>
+std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
                  unsigned short rxBufferNElements,
-                 const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
+                 const ::arrus::ops::us4r::Scheme::WorkMode &,
                  const DataBufferSpec &outputBufferSpec) {
 
     unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
@@ -87,9 +87,9 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
             ::arrus::format("The size of the host buffer {} must be equal or a multiple "
             "of the size of the rx buffer {}.", hostBufferNElements, rxBufferNElements));
     }
-    if(workMode == arrus::ops::us4r::Scheme::WorkMode::HOST) {
-        throw ::arrus::IllegalArgumentException("Host work mode not yet implemented.");
-    }
+//    if(workMode == arrus::ops::us4r::Scheme::WorkMode::HOST) {
+//        throw ::arrus::IllegalArgumentException("Host work mode not yet implemented.");
+//    }
 
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if(this->state == State::STARTED) {

@@ -166,13 +166,13 @@ set(SRC_FILES
     devices/us4r/us4oem/Us4OEMBuffer.h
     devices/us4r/Us4RBuffer.h
     api/ops/us4r/Scheme.h
-    api/framework/DataBuffer.h
+    api/framework/Buffer.h
     api/framework/NdArray.h
     api/session/UploadResult.h
     api/framework/DataBufferSpec.h
-    api/framework/DataBuffer.h
+    api/framework/Buffer.h
     api/session/UploadConstMetadata.h
-    api/framework/FifoLockFreeBuffer.h
+    api/framework/DataBuffer.h
     api/framework/FifoBuffer.h
     cfg/default.h.in
     ../common/logging/impl/Logging.cpp
