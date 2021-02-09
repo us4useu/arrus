@@ -33,9 +33,9 @@ public:
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri,
-                    bool triggerSync) override;
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize=2,
+                    uint16 rxBatchSize=1, std::optional<float> sri=std::nullopt,
+                    bool triggerSync = false) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 
