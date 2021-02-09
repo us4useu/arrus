@@ -66,9 +66,10 @@ private:
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                                  const TGCCurve &tgcSamples,
-                                  uint16 rxBufferSize, uint16 batchSize,
-                                  std::optional<float> sri) {
+								  const ops::us4r::TGCCurve &tgcSamples,
+								  uint16 rxBufferSize,
+								  uint16 batchSize, std::optional<float> sri,
+								  bool triggerSync) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(
         ::arrus::format("{} tx rx sequence", getDeviceId().toString()),
@@ -201,8 +202,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
         auto[buffer, fcMapping] = us4oem->setTxRxSequence(
-            splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, batchSize,
-            sri);
+			splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize, batchSize,
+			sri, triggerSync);
         frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
         totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
         fcMappings.push_back(std::move(fcMapping));
@@ -286,18 +287,23 @@ void ProbeAdapterImpl::syncTrigger() {
     this->us4oems[0]->syncTrigger();
 }
 
-void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer) {
+void ProbeAdapterImpl::registerOutputBuffer(
+	Us4ROutputBuffer *buffer,
+	const Us4RBuffer::Handle &us4rBuffer,
+	bool isTriggerSync) {
     Ordinal us4oemOrdinal = 0;
     for(auto &us4oem: us4oems) {
         auto us4oemBuffer = us4rBuffer->getUs4oemBuffer(us4oemOrdinal);
-        registerOutputBuffer(buffer, us4oemBuffer, us4oem);
+        registerOutputBuffer(buffer, us4oemBuffer, us4oem,
+							 isTriggerSync);
         ++us4oemOrdinal;
     }
 }
 
 void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
                                             const Us4OEMBuffer &us4oemBuffer,
-                                            Us4OEMImplBase::RawHandle us4oem) {
+                                            Us4OEMImplBase::RawHandle us4oem,
+                                            bool isTriggerSync) {
     // Each transfer should have the same size.
     std::unordered_set<size_t> sizes;
     for(auto &element: us4oemBuffer.getElements()) {
@@ -391,17 +397,25 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
         size_t nRepeats = outputBuffer->getNumberOfElements() / us4oemBuffer.getNumberOfElements();
 
         for(size_t i = 0; i < nRepeats; ++i) {
-            std::function<void()> releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
-                for(auto &us4oem: this->us4oems) {
-                    us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                }
-//                for(int i = (int)(nUs4OEM-1); i >= 0; --i) {
-//                    this->us4oems[i]->getIUs4oem()->SyncReceive();
-//                    this->us4oems[i]->getIUs4oem()->SyncTransfer();
-//                }
-            };
-            outputBuffer->registerReleaseFunction(transferIdx+(i*rxBufferNElements), releaseFunc);
-        }
+			std::function<void()> releaseFunc;
+        	if(!isTriggerSync)  {
+				releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
+					for(auto &us4oem: this->us4oems) {
+						us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+					}
+				};
+        	}
+        	else {
+        		// Host version.
+				releaseFunc = [this, nUs4OEM, startFiring, endFiring] () {
+					for(auto &us4oem: this->us4oems) {
+						us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+					}
+					getMasterUs4oem()->syncTrigger();
+				};
+        	}
+			outputBuffer->registerReleaseFunction(transferIdx+(i*rxBufferNElements), releaseFunc);
+		}
 
         startFiring = endFiring + 1;
         ++transferIdx;

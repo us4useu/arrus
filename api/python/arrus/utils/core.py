@@ -108,7 +108,8 @@ def convert_to_core_scheme(scheme):
     core_seq = arrus.utils.core.convert_to_core_sequence(seq)
 
     core_work_mode = {
-        "ASYNC": arrus.core.Scheme.WorkMode_ASYNC
+        "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
+        "HOST": arrus.core.Scheme.WorkMode_HOST
     }[scheme.work_mode]
 
     return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,

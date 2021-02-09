@@ -33,9 +33,9 @@ public:
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ::arrus::ops::us4r::TGCCurve &tgcSamples,
-                    uint16 rxBufferSize = 1, uint16 rxBatchSize = 1,
-                    std::optional<float> sri = std::nullopt) override;
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize, std::optional<float> sri,
+                    bool triggerSync) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 
@@ -45,7 +45,10 @@ public:
 
     void syncTrigger() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer);
+    void
+    registerOutputBuffer(Us4ROutputBuffer *buffer,
+                         const Us4RBuffer::Handle &us4rBuffer,
+                         bool isTriggerSync);
 
     void setTgcCurve(const arrus::ops::us4r::TGCCurve &curve) override;
 
@@ -56,7 +59,10 @@ private:
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
 
-    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &us4oemBuffer, Us4OEMImplBase::RawHandle us4oem);
+    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
+                              const Us4OEMBuffer &us4oemBuffer,
+                              Us4OEMImplBase::RawHandle us4oem,
+                              bool isTriggerSync);
 
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {
         return this->us4oems[0];

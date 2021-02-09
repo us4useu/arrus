@@ -17,7 +17,8 @@ ProbeImpl::ProbeImpl(const DeviceId &id, ProbeModel model,
 
 class ProbeTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    ProbeTxRxValidator(const std::string &componentName, const ProbeModel &modelRef)
+    ProbeTxRxValidator(const std::string &componentName,
+                       const ProbeModel &modelRef)
         : Validator(componentName), modelRef(modelRef) {}
 
     void validate(const TxRxParamsSequence &txRxs) override {
@@ -48,11 +49,13 @@ private:
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                            const ops::us4r::TGCCurve &tgcSamples,
-                           uint16 rxBufferSize, uint16 rxBatchSize,
-                           std::optional<float> sri) {
+                           uint16 rxBufferSize,
+                           uint16 rxBatchSize, std::optional<float> sri,
+                           bool triggerSync) {
     // Validate input sequence
     ProbeTxRxValidator validator(
-        ::arrus::format("tx rx sequence for {}", getDeviceId().toString()), model);
+        ::arrus::format("tx rx sequence for {}", getDeviceId().toString()),
+        model);
     validator.validate(seq);
     validator.throwOnErrors();
 
@@ -90,7 +93,8 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     }
 
     return adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize,
-                                    rxBatchSize, sri);
+                                    rxBatchSize, sri,
+                                    triggerSync);
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {
@@ -109,8 +113,10 @@ void ProbeImpl::syncTrigger() {
     adapter->syncTrigger();
 }
 
-void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer) {
-    adapter->registerOutputBuffer(buffer, us4rBuffer);
+void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
+                                     const Us4RBuffer::Handle &us4rBuffer,
+                                     bool isTriggerSync) {
+    adapter->registerOutputBuffer(buffer, us4rBuffer, isTriggerSync);
 }
 
 void ProbeImpl::setTgcCurve(const std::vector<float> &tgcCurve) {

@@ -17,18 +17,24 @@ public:
 
     ~Us4OEMImplBase() override = default;
 
-    Us4OEMImplBase(Us4OEMImplBase const&) = delete;
-    Us4OEMImplBase(Us4OEMImplBase const&&) = delete;
-    void operator=(Us4OEMImplBase const&) = delete;
-    void operator=(Us4OEMImplBase const&&) = delete;
+    Us4OEMImplBase(Us4OEMImplBase const &) = delete;
+
+    Us4OEMImplBase(Us4OEMImplBase const &&) = delete;
+
+    void operator=(Us4OEMImplBase const &) = delete;
+
+    void operator=(Us4OEMImplBase const &&) = delete;
 
     virtual void syncTrigger() = 0;
+
     virtual bool isMaster() = 0;
 
     virtual
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                    uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri) = 0;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize, std::optional<float> sri,
+                    bool triggerSync) = 0;
 
     virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgc) = 0;
 

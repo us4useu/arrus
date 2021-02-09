@@ -23,7 +23,9 @@ class Tx(Operation):
     """
     Single atomic operation of a signal transmit.
 
-    :param aperture: a set of TX channels that should be enabled - a binary mask, where 1 at location i means that the channel should be turned on, 0 means that the channel should be turned off 
+    :param aperture: a set of TX channels that should be enabled - a binary \
+        mask, where 1 at location i means that the channel should be turned \
+        on, 0 means that the channel should be turned off
     :param pulse: an excitation to perform
     :param delays: an array of delays to set to active elements. Should have the \
         shape (n_a,), where n_a is a number of active elements determined by \
@@ -49,7 +51,9 @@ class Rx(Operation):
     """
     Single atomic operation of echo data reception.
 
-    :param aperture: a set of RX channels that should be enabled - a binary mask, where 1 at location i means that the channel should be turned on, 0 means that the channel should be turned off
+    :param aperture: a set of RX channels that should be enabled - a binary
+        mask, where 1 at location i means that the channel should be turned on, \
+        0 means that the channel should be turned off
     :param sample_range: a range of samples to acquire [start, end), starts from 0
     :param downsampling_factor: a sampling frequency divider. For example, if \
         nominal sampling frequency (fs) is equal to 65e6 Hz, ``fs_divider=1``,\
@@ -92,7 +96,9 @@ class TxRxSequence:
 
     :param operations: sequence of TX/RX operations to perform
     :param tgc_curve: TGC curve samples [dB]
-    :param sri: sequence repetition interval - the time between consecutive RF frames. When None, the time between consecutive RF frames is determined by the total pri only. [s]
+    :param sri: sequence repetition interval - the time between consecutive RF \
+        frames. When None, the time between consecutive RF frames is \
+        determined by the total pri only. [s]
     """
     ops: typing.List[TxRx]
     tgc_curve: np.ndarray
@@ -126,7 +132,7 @@ class Scheme:
     :param rx_buffer_size: number of elements the rx buffer (allocated on \
       us4r ddr internal memory) should consists of
     :param output_buffer: specification of the output buffer
-    :param work_mode: determines the system work mode, available values: 'ASYNC'
+    :param work_mode: determines the system work mode, available values: 'ASYNC', 'HOST'
     :param processing: data processing to perform on the raw channel RF data \
       currently only arrus.utils.imaging is supported
     """

@@ -35,7 +35,8 @@ public:
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri) override;
+                    uint16 rxBatchSize, std::optional<float> sri,
+                    bool triggerSync) override;
 
     Interval<Voltage> getAcceptedVoltageRange() override;
 
@@ -45,7 +46,9 @@ public:
 
     void syncTrigger() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer) override;
+    void registerOutputBuffer(Us4ROutputBuffer *buffer,
+                              const Us4RBuffer::Handle &us4rBuffer,
+                              bool isTriggerSync) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurve) override;
 

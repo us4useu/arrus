@@ -99,8 +99,10 @@ public:
     void syncTrigger() override;
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                    uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri) override;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize, std::optional<float> sri,
+                    bool triggerSync) override;
 
     double getSamplingFrequency() override;
 
@@ -138,7 +140,8 @@ private:
 
     void setTGC(const ops::us4r::TGCCurve &tgc);
 
-    std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
+    std::bitset<N_ADDR_CHANNELS>
+    filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
 };

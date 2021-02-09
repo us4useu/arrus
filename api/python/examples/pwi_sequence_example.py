@@ -70,7 +70,7 @@ def main():
         tx_rx_sequence=seq,
         rx_buffer_size=4,
         output_buffer=DataBufferSpec(type="FIFO", n_elements=12),
-        work_mode="ASYNC",
+        work_mode="HOST",
         processing=Pipeline(
             steps=(
                 RemapToLogicalOrder(),
@@ -82,7 +82,7 @@ def main():
                 EnvelopeDetection(),
                 Transpose(),
                 LogCompression(),
-                # Lambda(lambda data: (time.sleep(0.1), data)[1]),
+                # Lambda(lambda data: (time.sleep(0.5), data)[1]),
                 Enqueue(display_input_queue, block=False, ignore_full=True)
             ),
             placement="/GPU:0"
