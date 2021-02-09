@@ -120,6 +120,5 @@ def convert_from_tuple(core_tuple):
     Converts arrus core tuple to python tuple.
     """
     v = [core_tuple.get(i) for i in range(core_tuple.size())]
-    print(f"Got shape: {v}")
     return tuple(v)
 

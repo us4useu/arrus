@@ -159,8 +159,6 @@ class LegacyBuffer:
         """
         self.buffer_handle.releaseTail(-1 if timeout is None else timeout)
 
-
-
     def get_n_elements(self):
         return self.buffer_handle.getNumberOfElements()
 
