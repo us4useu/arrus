@@ -8,8 +8,59 @@ import arrus.utils.imaging
 import arrus.kernels.tgc
 
 
-# -- LIN - classical imaging (scanline by scanline).
+# -- STA - synthetic transmit aperture
+def create_sta_sequence(context):
+    # device parameters
+    n_elem = context.device.probe.model.n_elements
+    pitch = context.device.probe.model.pitch
+    # sequence parameters
+    op = context.op
+    if not isinstance(op, arrus.ops.imaging.StaSequence):
+        raise ValueError("This kernel is intended for Pwi sequence only.")
+    focus = None
+    # sample_range = op.rx_sample_range
+    sample_range = op.rx_sample_range
+    pulse = op.pulse
+    downsampling_factor = op.downsampling_factor
+    pri = op.pri
+    sri = op.sri
+    fs = context.device.sampling_frequency/downsampling_factor
+    tgc_start = op.tgc_start
+    tgc_slope = op.tgc_slope
+    # medium parameters
+    c = op.speed_of_sound
+    if c is None:
+        c = context.medium.speed_of_sound
 
+    tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
+        context,
+        arrus.ops.tgc.LinearTgc(tgc_start, tgc_slope))
+
+    rx_cent_elem = op.rx_aperture_center_element
+    rx_ap_size = op.rx_aperture_size
+    # First active element
+    l = max(0, round(rx_cent_elem - (rx_ap_size-1)//2))
+    # Last active element
+    r = min(n_elem-1, l+rx_ap_size)
+    rx_aperture = np.zeros(n_elem, dtype=bool)
+    rx_aperture[l:r] = True
+
+    tx_ap_cent_el = op.tx_aperture_center_element
+    tx_ap_cent_el = np.array(tx_ap_cent_el)
+
+    tx_delays = np.zeros(1, dtype=np.float32)
+
+    txrx = []
+    for i in tx_ap_cent_el:
+        tx_aperture = np.zeros(n_elem, dtype=bool)
+        tx_aperture[i] = True
+        tx = Tx(tx_aperture, pulse, tx_delays)
+        rx = Rx(rx_aperture, sample_range, downsampling_factor)
+        txrx.append(TxRx(tx, rx, pri))
+    return TxRxSequence(txrx, tgc_curve=tgc_curve, sri=sri)
+
+
+# -- LIN - classical imaging (scanline by scanline).
 def create_lin_sequence(context):
     """
     The function creates list of TxRx objects describing classic scheme.

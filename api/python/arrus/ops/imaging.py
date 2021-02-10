@@ -81,3 +81,40 @@ class PwiSequence:
     tgc_start: float
     tgc_slope: float
     sri: float
+
+
+@dataclasses.dataclass(frozen=True)
+class StaSequence:
+    """
+    A sequence of Tx/Rx operations for synthetic transmit aperture.
+
+    Currently, a single-element transmit is supported only.
+
+    :param tx_aperture_center_element: vector of tx aperture center elements \
+      [element]
+    :param rx_aperture_center_element: vector of rx aperture center elements \
+      [element]
+    :param rx_aperture_size: size of the rx aperture [element]
+    :param angles: transmission angles [rad]
+    :param pulse: an excitation to perform
+    :param pri: pulse repetition interval [s]
+    :param downsampling_factor: downsampling factor (decimation), integer
+      factor for decreasing sampling frequency of the output signal
+    :param speed_of_sound: assumed speed of sound [m/s]
+    :param tgc_start: tgc starting gain [dB]
+    :param tgc_slope: tgc gain slope [dB/m]
+    :param sri: sequence repetition interval - the time between consecutive RF
+      frames. When None, the time between consecutive RF frames is determined
+      by the total pri only. [s]
+    """
+    pulse: arrus.ops.us4r.Pulse
+    tx_aperture_center_element: list
+    rx_aperture_center_element: int
+    rx_aperture_size: int
+    rx_sample_range: tuple
+    downsampling_factor: int
+    speed_of_sound: float
+    pri: float
+    tgc_start: float
+    tgc_slope: float
+    sri: float
