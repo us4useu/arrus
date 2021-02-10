@@ -140,8 +140,7 @@ set(SRC_FILES
     common/interpolate.h
     # TODO(pjarosik) cleanup below
     api/common/macros.h
-        framework/graph/Graph.h
-        api/devices.h
+    api/devices.h
     api/framework.h
     api/ops/us4r/tgc.h
     devices/UltrasoundDevice.h
