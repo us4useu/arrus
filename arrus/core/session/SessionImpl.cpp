@@ -127,5 +127,17 @@ void SessionImpl::stopScheme() {
     us4r->stop();
 }
 
+//COMPILER_PUSH_DIAGNOSTIC_STATE
+//COMPILER_DISABLE_MSVC_WARNINGS(4127)
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+//#include "io/proto/ops/Op.h"
+//
+//void readOp(const ::std::string& opStr) {
+//    ::std::cout << "Got data: " << opStr << ::std::endl;
+//}
+//
+//COMPILER_POP_DIAGNOSTIC_STATE
+
 
 }

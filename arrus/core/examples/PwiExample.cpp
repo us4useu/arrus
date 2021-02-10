@@ -13,6 +13,8 @@ int main() noexcept {
     	// Read session configuration from the file.
         auto settings = ::arrus::io::readSessionSettings(
                 R"(C:\Users\Public\us4r.prototxt)");
+
+        ::arrus::session::readOp("{'type': 'RxBeamforming'}");
         // Create new session.
         auto session = ::arrus::session::createSession(settings);
 

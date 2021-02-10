@@ -16,6 +16,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/Us4OEMSettings.proto
     io/proto/devices/us4r/HVSettings.proto
     io/proto/devices/us4r/Us4RSettings.proto
+    io/proto/ops/Op.proto
     )
 ################################################################################
 # Target

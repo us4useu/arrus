@@ -137,7 +137,7 @@ private:
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,
                                 "At least one us4oem should be configured.");
-        auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
+//        auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
 
         // Initialize Us4OEMs.
         // We need to initialize Us4OEMs on a Us4R system level.
@@ -145,7 +145,7 @@ private:
         // existence of some master module (by default it's the 'Us4OEM:0').
         // Check the initializeModules function to see why.
         std::vector<IUs4OEMHandle> ius4oems =
-            ius4oemFactory->getModules(nUs4oems);
+            ius4oemFactory->getModules(2);
 
         // Modifies input list - sorts ius4oems by ID in ascending order.
         ius4oemInitializer->initModules(ius4oems);
@@ -153,12 +153,12 @@ private:
 
         // Create Us4OEMs.
         Us4RImpl::Us4OEMs us4oems;
-        ARRUS_REQUIRES_EQUAL(ius4oems.size(), us4oemCfgs.size(),
-                             ArrusException(
-                                 "Values are not equal: ius4oem size, "
-                                 "us4oem settings size"));
+//        ARRUS_REQUIRES_EQUAL(ius4oems.size(), us4oemCfgs.size(),
+//                             ArrusException(
+//                                 "Values are not equal: ius4oem size, "
+//                                 "us4oem settings size"));
 
-        for(unsigned i = 0; i < ius4oems.size(); ++i) {
+        for(unsigned i = 0; i < 1; ++i) {
             us4oems.push_back(
                 us4oemFactory->getUs4OEM(
                     static_cast<ChannelIdx>(i),

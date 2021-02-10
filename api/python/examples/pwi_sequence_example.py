@@ -34,7 +34,8 @@ from arrus.utils.imaging import (
     LogCompression,
     DynamicRangeAdjustment,
     Enqueue,
-    SelectFrames
+    SelectFrames,
+    Squeeze
 )
 from arrus.utils.us4r import (
     RemapToLogicalOrder
@@ -53,7 +54,7 @@ def main():
     seq = PwiSequence(
         angles=np.asarray([0])*np.pi/180,
         pulse=Pulse(center_frequency=6e6, n_periods=3, inverse=False),
-        rx_sample_range=(0, 4096),
+        rx_sample_range=(0, 2048),
         downsampling_factor=2,
         speed_of_sound=1450,
         pri=200e-6,
@@ -92,7 +93,7 @@ def main():
     # Here starts communication with the device.
     with arrus.Session(r"C:\Users\Public\us4r.prototxt") as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(20)
+        # us4r.set_hv_voltage(20)
 
         # Upload sequence on the us4r-lite device.
         buffer, const_metadata = sess.upload(scheme)

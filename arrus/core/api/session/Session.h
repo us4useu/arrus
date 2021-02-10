@@ -77,6 +77,9 @@ Session::Handle createSession(const SessionSettings &sessionSettings);
 */
 ARRUS_CPP_EXPORT
 Session::Handle createSession(const std::string& filepath);
+
+ARRUS_CPP_EXPORT
+void readOp(const std::string& opStr);
 }
 
 

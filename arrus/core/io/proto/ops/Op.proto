@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+message Op {
+  string type = 1;
+  message Input {
+    repeated uint32 shape = 1;
+    repeated string dataType = 2;
+  }
+  repeated Input inputs = 2;
+}
