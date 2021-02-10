@@ -28,9 +28,8 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
     int z = blockIdx.x * blockDim.x + threadIdx.x;
     int x = blockIdx.y * blockDim.y + threadIdx.y;
     
-    float txDist, rxDist, txTang, rxTang, txApod, rxApod, time, iSamp, interpWgh;
+    float txDist, rxDist, txTang, rxTang, txApod, rxApod, time, iSamp, iSampMod, interpWgh;
     float modSin, modCos, sampRe, sampIm, pixRe = 0.f, pixIm = 0.f, pixWgh = 0.f;
-    float const omega = 2 * M_PI * fn;
     float const sosInv = 1 / sos;
     float zDistInv;
     int offset;
@@ -61,6 +60,21 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
     
     zDistInv = 1 / zPix[z];
     
+    const int nSin = 512;
+    float dPhase = 2 * M_PI / (nSin-1);
+    float currentPhase;
+    __shared__ float2 sincosShared[nSin];
+    int startSamp = threadIdx.x + threadIdx.y * blockDim.x;
+    int stepSamp = blockDim.x * blockDim.y;
+    
+    for (int iSin=startSamp; iSin<nSin; iSin+=stepSamp) {
+        currentPhase = iSin * dPhase;
+        sincosShared[iSin].x = sinf(currentPhase);
+        sincosShared[iSin].y = cosf(currentPhase);
+    }
+	__syncthreads();
+    
+    
 //     extern __shared__ float2 iqRawShared[];
 //     int startSamp = threadIdx.x + threadIdx.y * blockDim.x;
 //     int stepSamp = blockDim.x * blockDim.y;
@@ -86,8 +100,10 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
             offset = iElem * nSamp;
             interpWgh = modff(iSamp, &iSamp);
             
-            modSin = sinf(omega * time);	// 280us
-            modCos = cosf(omega * time);
+            iSampMod = time * fn;
+            iSampMod = (iSampMod - truncf(iSampMod))*(float)nSin;
+            modSin = sincosShared[(int)iSampMod].x;      // 120us
+            modCos = sincosShared[(int)iSampMod].y;
             
             sampRe = (iqRaw[offset + (int)iSamp  ].x * (1 - interpWgh)  // 60us
                     + iqRaw[offset + (int)iSamp+1].x *      interpWgh );
