@@ -57,9 +57,9 @@ Logging::addTextSink(std::shared_ptr<std::ostream> &ostream,
     addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
 }
 
-void Logging::addClog(LogSeverity severity) {
+void Logging::addClog(LogSeverity level) {
     boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
-    this->clogSink = addTextSinkBoostPtr(stream, severity, false);
+    this->clogSink = addTextSinkBoostPtr(stream, level, false);
 }
 
 void Logging::setClogLevel(LogSeverity level) {

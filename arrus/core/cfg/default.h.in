@@ -1,0 +1,10 @@
+#ifndef ARRUS_ARRUS_CORE_CFG_DEFAULT_H_IN
+#define ARRUS_ARRUS_CORE_CFG_DEFAULT_H_IN
+
+// Default dictionary file
+#include <string>
+
+namespace arrus::io {
+const std::string DEFAULT_DICT = R""""(${ARRUS_DEFAULT_DICT})"""";
+}
+#endif //ARRUS_ARRUS_CORE_CFG_DEFAULT_H_IN

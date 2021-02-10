@@ -101,6 +101,30 @@ SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
 
 SessionImpl::~SessionImpl() {
     ::arrus::getDefaultLogger()->log(LogSeverity::INFO, "Closing session.");
+    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    us4r->stop();
+}
+
+UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
+    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    auto &outputBufferSpec = scheme.getOutputBuffer();
+    auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
+                                     scheme.getWorkMode(), outputBufferSpec);
+
+    std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
+    metadataMap.emplace("frameChannelMapping", std::move(fcm));
+    auto constMetadata = std::make_shared<UploadConstMetadata>(metadataMap);
+    return UploadResult(buffer, constMetadata);
+}
+
+void SessionImpl::startScheme() {
+    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    us4r->start();
+}
+
+void SessionImpl::stopScheme() {
+    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    us4r->stop();
 }
 
 

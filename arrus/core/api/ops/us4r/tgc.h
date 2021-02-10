@@ -6,6 +6,7 @@
 namespace arrus::ops::us4r {
 
 using TGCSampleValue = float;
+/** TGC curve to apply on the us4r device. */
 using TGCCurve = std::vector<TGCSampleValue>;
 
 }

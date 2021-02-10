@@ -26,13 +26,24 @@ swig_add_library(py_core
 		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
 		${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
 )
+
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
 set_target_properties(py_core
-    PROPERTIES
-        SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+	PROPERTIES
+		SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+		RUNTIME_OUTPUT_DIRECTORY
+		"${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
+)
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set_target_properties(py_core
+		PROPERTIES
+		SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
 		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
-)
+		)
+endif()
+
 target_include_directories(py_core
     PRIVATE
     ${PYTHON_INCLUDE_DIRS}
@@ -55,7 +66,6 @@ include(python)
 set(PYTHON_PACKAGE_NAME arrus)
 
 set(SOURCE_FILES
-
     arrus/__init__.py
 	arrus/logging.py
     arrus/session.py
@@ -64,6 +74,7 @@ set(SOURCE_FILES
 	arrus/exceptions.py
 	arrus/medium.py
 	arrus/params.py
+	arrus/framework.py
     arrus/ops/__init__.py
 	arrus/ops/imaging.py
 	arrus/ops/tgc.py
@@ -73,7 +84,6 @@ set(SOURCE_FILES
 	arrus/devices/cpu.py
 	arrus/devices/gpu.py
 	arrus/devices/us4r.py
-	arrus/devices/mock_us4r.py
 	arrus/devices/probe.py
 	arrus/devices/device.py
 	arrus/kernels/__init__.py
@@ -88,17 +98,7 @@ set(SOURCE_FILES
 	arrus/utils/fir.py
 	arrus/utils/interpolate.py
 	arrus/utils/core.py
-    arrus/tests/tools.py
-)
-
-# TODO(pjarosik) revise the below list
-set(TEST_FILES
-    "arrus/tests/beam_test.py"
-    "arrus/tests/session_test.py"
-    "arrus/devices/tests/probe_test.py"
-    "arrus/utils/tests/utils_test.py"
-    "arrus/utils/tests/parameters_test.py"
-    "arrus/tests/us4oem_kernels_test.py"
+	arrus/utils/gui.py
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
@@ -106,6 +106,13 @@ set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
+
+
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+	set(ARRUS_TARGET_SHARED_OBJECT_FILE "${PROJECT_BINARY_DIR}/arrus/core/Release/arrus-core.dll")
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set(ARRUS_TARGET_SHARED_OBJECT_FILE "$<TARGET_FILE:arrus-core>")
+endif()
 
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
@@ -116,7 +123,7 @@ add_custom_command(OUTPUT ${TIMESTAMP}
 		${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
 	COMMAND
 		${CMAKE_COMMAND} -E copy
-		$<TARGET_FILE:arrus-core> ${CMAKE_CURRENT_BINARY_DIR}/arrus
+		${ARRUS_TARGET_SHARED_OBJECT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
@@ -152,12 +159,12 @@ install(
 
 install(
 	FILES
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_pwi_single.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_multiple.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/cfg.yaml
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_old_api.py
-	    ${CMAKE_CURRENT_SOURCE_DIR}/examples/us4oem/us4oem_x1_sta_single.py
+	examples/pwi_sequence_example.py
+	examples/lin_sequence_example.py
+	examples/custom_callback_example.py
+	examples/requirements.txt
+	examples/gpu_requirements.txt
     DESTINATION
-        ${ARRUS_PYTHON_INSTALL_DIR}/examples/us4oem/
+        ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
 

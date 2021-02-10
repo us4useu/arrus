@@ -8,6 +8,7 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/session/SessionSettings.h"
 #include "arrus/common/utils.h"
+#include "cfg/default.h"
 
 #ifdef _MSC_VER
 
@@ -57,6 +58,13 @@ std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
     input.SetCloseOnDelete(true);
     auto result = std::make_unique<T>();
     google::protobuf::TextFormat::Parse(&input, result.get());
+    return result;
+}
+
+template<typename T>
+std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
+    auto result = std::make_unique<T>();
+    google::protobuf::TextFormat::ParseFromString(proto, result.get());
     return result;
 }
 
@@ -387,8 +395,6 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
     }
 }
 
-
-
 SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
     // Read and validate session.
@@ -434,10 +440,16 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        DictionaryProtoValidator dictionaryValidator("dictionary");
-        dictionaryValidator.validate(d);
-        dictionaryValidator.throwOnErrors();
+        logger->log(LogSeverity::DEBUG,
+                    ::arrus::format("Read dictionary file: {}", dictionaryPathStr));
+    } else {
+        // Read default dictionary.
+        d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
+        logger->log(LogSeverity::INFO, "Using default dictionary.");
     }
+    DictionaryProtoValidator dictionaryValidator("dictionary");
+    dictionaryValidator.validate(d);
+    dictionaryValidator.throwOnErrors();
 
     SettingsDictionary dictionary = readDictionary(d.get());
 

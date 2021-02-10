@@ -46,7 +46,8 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
 
     if(this->channelsMask.empty()) {
         this->logger->log(LogSeverity::INFO, ::arrus::format(
-            "No channel masking will be applied for {}", ::arrus::toString(id)));
+            "No channel masking will be applied for {}",
+            ::arrus::toString(id)));
     } else {
         this->logger->log(LogSeverity::INFO, ::arrus::format(
             "Following us4oem channels will be turned off: {}",
@@ -58,8 +59,10 @@ Us4OEMImpl::~Us4OEMImpl() {
     try {
         logger->log(LogSeverity::DEBUG, arrus::format("Destroying handle"));
     } catch(const std::exception &e) {
-        std::cerr << arrus::format("Exception while calling us4oem destructor: {}", e.what())
-                  << std::endl;
+        std::cerr
+            << arrus::format("Exception while calling us4oem destructor: {}",
+                             e.what())
+            << std::endl;
     }
     logger->log(LogSeverity::DEBUG, arrus::format("Us4OEM handle destroyed."));
 }
@@ -95,7 +98,8 @@ public:
 
                 // Tx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getTxAperture().size(), size_t(Us4OEMImpl::N_TX_CHANNELS),
+                    op.getTxAperture().size(),
+                    size_t(Us4OEMImpl::N_TX_CHANNELS),
                     firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(
                     op.getTxDelays().size(), size_t(Us4OEMImpl::N_TX_CHANNELS),
@@ -113,22 +117,26 @@ public:
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
-                float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
+                float fractional = std::modf(op.getTxPulse().getNPeriods(),
+                                             &ignore);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(
                     (fractional == 0.0f || fractional == 0.5f),
                     (firingStr + ", n periods"));
 
                 // Rx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getRxAperture().size(), size_t(Us4OEMImpl::N_ADDR_CHANNELS), firingStr);
+                    op.getRxAperture().size(),
+                    size_t(Us4OEMImpl::N_ADDR_CHANNELS), firingStr);
                 size_t numberOfActiveRxChannels = std::accumulate(
-                    std::begin(op.getRxAperture()), std::end(op.getRxAperture()), 0);
+                    std::begin(op.getRxAperture()),
+                    std::end(op.getRxAperture()), 0);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     numberOfActiveRxChannels, size_t(0), size_t(32), firingStr);
                 uint32 numberOfSamples = op.getNumberOfSamples();
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                 // should be enough for condition rxTime < 4000 [us]
-                    numberOfSamples, Us4OEMImpl::MIN_NSAMPLES, Us4OEMImpl::MAX_NSAMPLES, firingStr);
+                    numberOfSamples, Us4OEMImpl::MIN_NSAMPLES,
+                    Us4OEMImpl::MAX_NSAMPLES, firingStr);
                 ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(
                     numberOfSamples, 64, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
@@ -139,11 +147,13 @@ public:
                     firingStr);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(
                     op.getRxDecimationFactor() == decimationFactor,
-                    "Decimation factor should be the same for all operations." + firingStr
+                    "Decimation factor should be the same for all operations." +
+                    firingStr
                 );
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(
                     op.getRxSampleRange().start() == startSample,
-                    "Start sample should be the same for all operations." + firingStr
+                    "Start sample should be the same for all operations." +
+                    firingStr
                 );
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(
                     (op.getRxPadding() == ::arrus::Tuple<ChannelIdx>{0, 0}),
@@ -161,7 +171,8 @@ std::pair<float, float> getTgcMinMax(uint16 pgaGain, uint16 lnaGain) {
 
 class TGCCurveValidator : public Validator<::arrus::ops::us4r::TGCCurve> {
 public:
-    TGCCurveValidator(const std::string &componentName, uint16 pgaGain, uint16 lnaGain)
+    TGCCurveValidator(const std::string &componentName, uint16 pgaGain,
+                      uint16 lnaGain)
         : Validator(componentName), pgaGain(pgaGain), lnaGain(lnaGain) {}
 
     void validate(const ops::us4r::TGCCurve &tgcCurve) override {
@@ -185,7 +196,8 @@ private:
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                             const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
-                            uint16 batchSize, std::optional<float> sri) {
+                            uint16 batchSize, std::optional<float> sri,
+                            bool triggerSync) {
     // TODO initialize module: reset all parameters (turn off TGC, DTGC, ActiveTermination, etc.)
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
@@ -193,23 +205,23 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
-    TGCCurveValidator tgcValidator(format("{} tgc samples", deviceIdStr), pgaGain, lnaGain);
+    TGCCurveValidator tgcValidator(format("{} tgc samples", deviceIdStr),
+                                   pgaGain, lnaGain);
     tgcValidator.validate(tgc);
     tgcValidator.throwOnErrors();
 
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
-    ARRUS_REQUIRES_AT_MOST(nOps*batchSize, 1024, ::arrus::format(
+    ARRUS_REQUIRES_AT_MOST(nOps * batchSize, 1024, ::arrus::format(
         "Exceeded the maximum ({}) number of firings: {}", 1024, nOps));
     ARRUS_REQUIRES_AT_MOST(nOps * batchSize * rxBufferSize, 16384,
                            ::arrus::format(
                                "Exceeded the maximum ({}) number of triggers: {}",
                                16384, nOps * batchSize * rxBufferSize));
 
-    ius4oem->SetNumberOfFirings(nOps*batchSize);
+    ius4oem->SetNumberOfFirings(nOps * batchSize);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
-
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
 
     // helper data
@@ -217,21 +229,32 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     const std::bitset<N_ACTIVE_CHANNEL_GROUPS> emptyChannelGroups;
 
     // Program Tx/rx sequence ("firings")
+    setTGC(tgc);
     for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
         logger->log(LogSeverity::TRACE, format("Setting tx/rx: {}", opIdx));
         auto const &op = seq[opIdx];
         if(op.isNOP()) {
             logger->log(LogSeverity::TRACE,
-                        format("Setting tx/rx {}: NOP {}", opIdx, ::arrus::toString(op)));
+                        format("Setting tx/rx {}: NOP {}", opIdx,
+                               ::arrus::toString(op)));
         } else {
             logger->log(LogSeverity::DEBUG,
-                        arrus::format("Setting tx/rx {}: {}", opIdx, ::arrus::toString(op)));
+                        arrus::format("Setting tx/rx {}: {}", opIdx,
+                                      ::arrus::toString(op)));
         }
         auto sampleRange = op.getRxSampleRange().asPair();
         auto endSample = std::get<1>(sampleRange);
         float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
         rxTime = std::max(rxTime, MIN_RX_TIME);
 
+        float totalSeqTime = rxTime + SEQUENCER_REPROGRAMMING_TIME;
+        // receive time + reprogramming time
+        if(totalSeqTime > op.getPri()) {
+            throw IllegalArgumentException(
+                ::arrus::format(
+                    "Total time required for the data acquisition ({}) should not exceed PRI ({})",
+                    totalSeqTime, op.getPri()));
+        }
         if(op.isNOP()) {
             ius4oem->SetActiveChannelGroup(emptyChannelGroups, opIdx);
             // Intentionally filtering empty aperture to reduce possibility of a mistake.
@@ -270,11 +293,11 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
-        ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
+        ius4oem->SetTxHalfPeriods(
+            static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, opIdx);
-        setTGC(tgc, opIdx);
     }
 
     // Program data acquisitions ("ScheduleReceive" part)
@@ -288,11 +311,15 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     uint16 firing = 0;
     std::vector<Us4OEMBufferElement> rxBufferElements;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
+        // Total number of samples in a single batch.
+        unsigned int totalNSamples = 0;
         // Batch elements.
-        for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
+        for(uint16 batchElementIdx = 0;
+            batchElementIdx < batchSize; ++batchElementIdx) {
             // Element operation.
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = opIdx + (batchElementIdx*nOps) + (batchIdx*nOps*batchSize);
+                firing = opIdx + (batchElementIdx * nOps) +
+                         (batchIdx * nOps * batchSize);
                 auto const &op = seq[opIdx];
                 auto[startSample, endSample] = op.getRxSampleRange().asPair();
                 size_t nSamples = endSample - startSample;
@@ -306,7 +333,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                     getDeviceId().toString()));
 
                 if(op.isRxNOP() && !this->isMaster()) {
-                    // TODO reduce the size of data acquired for master rx nops to small number of samples
+                    // TODO reduce the size of data acquired from master rx nops to small number of samples
                     // (e.g. 64)
                     ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
                                              SAMPLE_DELAY + startSample,
@@ -320,15 +347,18 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                              op.getRxDecimationFactor() - 1,
                                              rxMapId, nullptr);
                     outputAddress += nBytes;
+                    totalNSamples += (unsigned) nSamples;
                 }
             }
         }
-        // The size of the chunk.
+        // The size of the chunk, in number of BYTES.
         auto size = outputAddress - transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
-        rxBufferElements.emplace_back(srcAddress, size, firing);
+        framework::NdArray::Shape shape{totalNSamples, N_RX_CHANNELS};
+        rxBufferElements.emplace_back(srcAddress, size, firing, shape,
+                                      NdArrayDataType);
     }
     ius4oem->EnableTransmit();
 
@@ -354,11 +384,16 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
     firing = 0;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
-        for(uint16 batchElementIdx = 0; batchElementIdx < batchSize; ++batchElementIdx) {
+        for(uint16 batchElementIdx = 0;
+            batchElementIdx < batchSize; ++batchElementIdx) {
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = (uint16) (opIdx + batchElementIdx * nOps + batchIdx * nOps * batchSize);
+                firing = (uint16) (opIdx + batchElementIdx * nOps +
+                                   batchIdx * nOps * batchSize);
                 auto const &op = seq[opIdx];
-                bool checkpoint = false;
+                // checkpoint only when it is the last operation of the last batch element
+                bool checkpoint = triggerSync && (opIdx == seq.size() - 1 &&
+                                                  batchElementIdx ==
+                                                  batchSize - 1);
                 float pri = op.getPri();
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
@@ -423,7 +458,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 // Physical channel number, values 0-31
                 auto rxChannel = channelMapping[channel];
                 rxChannel = rxChannel % N_RX_CHANNELS;
-                if(!setContains(channelsUsed, rxChannel) && !setContains(this->channelsMask, channel)) {
+                if(!setContains(channelsUsed, rxChannel) &&
+                   !setContains(this->channelsMask, channel)) {
                     // This channel is OK.
                     // STRATEGY: if there are conflicting/masked rx channels, keep the
                     // first one (with the lowest channel number), turn off all
@@ -439,7 +475,9 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                 if(this->isMaster()) {
                     frameNumber = opId;
                 }
-                fcmBuilder.setChannelMapping(frameNumber, onChannel, frameNumber, (int8) (mapping.size() - 1));
+                fcmBuilder.setChannelMapping(frameNumber, onChannel,
+                                             frameNumber,
+                                             (int8) (mapping.size() - 1));
                 ++onChannel;
             }
             ++channel;
@@ -502,22 +540,27 @@ double Us4OEMImpl::getSamplingFrequency() {
 }
 
 float Us4OEMImpl::getRxTime(size_t nSamples, uint32 decimationFactor) {
-    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY/decimationFactor)
+    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY / decimationFactor)
            + Us4OEMImpl::RX_TIME_EPSILON;
 }
 
-void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
+void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc) {
     if(tgc.empty()) {
         ius4oem->TGCDisable();
     } else {
         ius4oem->TGCEnable();
 
         static const std::vector<float> tgcChar =
-            {14.000f, 14.001f, 14.002f, 14.003f, 14.024f, 14.168f, 14.480f, 14.825f,
-             15.234f, 15.770f, 16.508f, 17.382f, 18.469f, 19.796f, 20.933f, 21.862f,
-             22.891f, 24.099f, 25.543f, 26.596f, 27.651f, 28.837f, 30.265f, 31.690f,
-             32.843f, 34.045f, 35.543f, 37.184f, 38.460f, 39.680f, 41.083f, 42.740f,
-             44.269f, 45.540f, 46.936f, 48.474f, 49.895f, 50.966f, 52.083f, 53.256f,
+            {14.000f, 14.001f, 14.002f, 14.003f, 14.024f, 14.168f, 14.480f,
+             14.825f,
+             15.234f, 15.770f, 16.508f, 17.382f, 18.469f, 19.796f, 20.933f,
+             21.862f,
+             22.891f, 24.099f, 25.543f, 26.596f, 27.651f, 28.837f, 30.265f,
+             31.690f,
+             32.843f, 34.045f, 35.543f, 37.184f, 38.460f, 39.680f, 41.083f,
+             42.740f,
+             44.269f, 45.540f, 46.936f, 48.474f, 49.895f, 50.966f, 52.083f,
+             53.256f,
              54.0f};
         auto actualTGC = ::arrus::interpolate1d(
             tgcChar,
@@ -526,7 +569,9 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing) {
         for(auto &val: actualTGC) {
             val = (val - 14.0f) / 40.0f;
         }
-        ius4oem->TGCSetSamples(actualTGC, firing);
+        // Currently setting firing parameter has no impact on the result
+        // because TGC can be set only once for the whole sequence.
+        ius4oem->TGCSetSamples(actualTGC, 0);
     }
 }
 
@@ -563,7 +608,7 @@ void Us4OEMImpl::syncTrigger() {
 
 void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
     // Currently firing parameter doesn't matter.
-    this->setTGC(tgc, 0);
+    this->setTGC(tgc);
 }
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() {

@@ -3,10 +3,20 @@
 
 namespace arrus::ops::us4r {
 
+/**
+ * A single pulse (sine wave) produced by us4r device.
+ */
 class Pulse {
 
 public:
-    Pulse(float centerFrequency, float nPeriods, bool inverse) :
+	/**
+	 * Pulse constructor.
+	 *
+	 * @param centerFrequency center frequency of the transmitted pulse
+	 * @param nPeriods pulse number of periods, should be a multiple of 0.5
+	 * @param inverse if set to true - inverse the pulse polarity
+	 */
+    Pulse(float centerFrequency, float nPeriods, bool inverse):
         centerFrequency(centerFrequency), nPeriods(nPeriods),
         inverse(inverse) {}
 

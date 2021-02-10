@@ -10,6 +10,7 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/framework/NdArray.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
@@ -31,8 +32,10 @@ public:
     using Handle = std::unique_ptr<Us4OEMImpl>;
     using RawHandle = PtrHandle<Us4OEMImpl>;
 
-    using OutputDType = int16;
     using FiringIdx = uint16;
+    using OutputDType = int16;
+    static constexpr framework::NdArray::DataType NdArrayDataType = framework::NdArray::DataType::INT16;
+
     // voltage, +/- [V] amplitude, (ref: technote)
     static constexpr Voltage MIN_VOLTAGE = 0;
     static constexpr Voltage MAX_VOLTAGE = 90; // 180 vpp
@@ -54,20 +57,21 @@ public:
     static constexpr float MAX_TX_DELAY = 16.96e-6f;
 
     static constexpr float MIN_TX_FREQUENCY = 1e6f;
-    static constexpr float MAX_TX_FREQUENCY = 20e6f;
+    static constexpr float MAX_TX_FREQUENCY = 60e6f;
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32 SAMPLE_DELAY = 240;
     static constexpr float RX_DELAY = 0.0;
-    static constexpr float RX_TIME_EPSILON = static_cast<float>(10e-6);
+    static constexpr float RX_TIME_EPSILON = 0e-6f;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
     // Other
-    static constexpr float MIN_PRI = 80e-6f;
-    static constexpr float MIN_RX_TIME = MIN_PRI;
+    static constexpr float MIN_PRI = 100e-6f; // [s]
+    static constexpr float MIN_RX_TIME = 60e-6f; // [s]
+    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 40e-6f; // [s]
     static constexpr float MAX_PRI = 1.0f;
 
     /**
@@ -95,8 +99,10 @@ public:
     void syncTrigger() override;
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                    uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri) override;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize, std::optional<float> sri,
+                    bool triggerSync = false) override;
 
     double getSamplingFrequency() override;
 
@@ -132,9 +138,10 @@ private:
 
     static float getRxTime(size_t nSamples, uint32 decimationFactor);
 
-    void setTGC(const ops::us4r::TGCCurve &tgc, uint16 firing);
+    void setTGC(const ops::us4r::TGCCurve &tgc);
 
-    std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
+    std::bitset<N_ADDR_CHANNELS>
+    filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
 };

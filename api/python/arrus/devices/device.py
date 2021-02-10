@@ -21,6 +21,23 @@ class DeviceId:
     ordinal: int
 
 
+def get_device_type_str(s):
+    """
+    Extracts device type from given string id.
+
+    :param str: id as a string
+    :return: device type string
+    """
+    s = s.strip()
+    n = s.split("/")
+    if s.startswith("/"):
+        n = n[1:]
+    if len(n) == 0:
+        raise ValueError("No device provided in the id.")
+    c = n[0].split(":")
+    return c[0]
+
+
 class Device(abc.ABC):
     """
     A handle to device.

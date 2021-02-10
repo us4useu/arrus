@@ -10,37 +10,40 @@ Session
 .. autoclass:: arrus.Session
     :members:
 
-Devices
-=======
-
-**Do not create instances of the below classes directly**. Use
-``session.get_device`` to acquire the appropriate device, for example:
-``session.get_device('/Us4OEM:0')``.
-
-.. autoclass:: arrus.devices.us4r.Us4R
-    :members:
-    :show-inheritance:
-
-.. autoclass:: arrus.devices.gpu.GPU
-    :show-inheritance:
-
-.. autoclass:: arrus.devices.cpu.CPU
-    :show-inheritance:
-
-
 Operations
 ==========
 
-B-mode imaging Tx/Rx sequences
-------------------------------
+Scheme
+------
+
+.. autoclass:: arrus.ops.us4r.Scheme
+    :members:
+    :show-inheritance:
+
+
+.. autoclass:: arrus.ops.us4r.DataBufferSpec
+    :members:
+    :show-inheritance:
+
+
+Common Tx/Rx sequences
+----------------------
 
 .. autoclass:: arrus.ops.imaging.LinSequence
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.ops.imaging.PwiSequence
     :members:
     :show-inheritance:
 
 
 Custom Tx/Rx sequences
 ----------------------
+
+.. autoclass:: arrus.ops.us4r.TxRxSequence
+    :members:
+    :show-inheritance:
 
 .. autoclass:: arrus.ops.us4r.Pulse
     :members:
@@ -58,24 +61,45 @@ Custom Tx/Rx sequences
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.ops.us4r.TxRxSequence
+
+Devices
+=======
+
+**Do not create instances of the below classes directly**. Use
+``session.get_device`` to acquire the appropriate device, for example:
+``session.get_device('/Us4R:0')``.
+
+.. autoclass:: arrus.devices.us4r.Us4R
     :members:
+    :exclude-members: start, stop, set_tgc
+    :show-inheritance:
+
+.. autoclass:: arrus.devices.gpu.GPU
+    :show-inheritance:
+
+.. autoclass:: arrus.devices.cpu.CPU
     :show-inheritance:
 
 Output data
 ===========
 
-An instance of the following class is returned by the ``us4r.upload`` function:
+An instance of the following class is returned by the ``sesion.upload`` function:
 
-.. autoclass:: arrus.devices.us4r.HostBuffer
-    :members:
+.. autoclass:: arrus.framework.DataBuffer
+    :members: append_on_new_data_callback
+    :show-inheritance:
+
+Data buffers consists of multiple buffer elements.
+
+.. autoclass:: arrus.framework.BufferElement
+    :members: data
     :show-inheritance:
 
 
 Metadata
 --------
 
-.. autoclass:: arrus.metadata.Metadata
+.. autoclass:: arrus.metadata.ConstMetadata
     :members:
     :show-inheritance:
 
@@ -91,13 +115,16 @@ Metadata
 Utility functions
 =================
 
-B-mode imaging pipeline
------------------------
+B-mode imaging pipeline using cupy/numpy
+----------------------------------------
 
 .. autoclass:: arrus.utils.imaging.Pipeline
     :show-inheritance:
 
 .. autoclass:: arrus.utils.imaging.BandpassFilter
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.imaging.Filter
     :show-inheritance:
 
 .. autoclass:: arrus.utils.imaging.QuadratureDemodulation
@@ -119,6 +146,18 @@ B-mode imaging pipeline
     :show-inheritance:
 
 .. autoclass:: arrus.utils.imaging.LogCompression
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.imaging.Lambda
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.imaging.Enqueue
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.imaging.SelectFrames
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.imaging.Squeeze
     :show-inheritance:
 
 Logging

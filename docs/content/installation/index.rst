@@ -59,11 +59,11 @@ drivers are the legacy drivers that were required before the 0.4.3 version.
 Install Us4OEM drivers
 ~~~~~~~~~~~~~~~~~~~~~~
 
-1. Download and extract ``us4oem-drivers-1290.zip`` (contact us4us support to make sure you get the newest version).
+1. Download and extract ``us4oem-drivers-1450.zip`` (contact us4us support to make sure you get the newest version).
 2. Run ``install.bat`` with **administrative privileges**. Confirm driver
    installation if necessary.
 
-``us4oem`` and ``us4OEM`` nodes should now be visible in the
+``us4oem`` and ``WinDriver1450`` nodes should now be visible in the
 Device Manager.
 
 .. figure:: img/dev_manager.png

@@ -13,7 +13,7 @@ API Reference
 .. _arrus-Us4R:
 
 Handle to the Us4R System
-=====================
+=========================
 
 .. mat:autoclass:: arrus.Us4R
     :show-inheritance:

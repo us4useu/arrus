@@ -5,7 +5,6 @@
 #include <utility>
 
 #include <boost/algorithm/string.hpp>
-#include <arrus/core/api/devices/us4r/HostBuffer.h>
 
 #include "arrus/common/asserts.h"
 #include "arrus/core/devices/utils.h"
@@ -19,6 +18,9 @@
 #include "arrus/core/devices/us4r/hv/HV256Impl.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 
+#include "arrus/core/api/framework/DataBufferSpec.h"
+#include "arrus/core/api/framework/Buffer.h"
+
 namespace arrus::devices {
 
 class Us4RImpl : public Us4R {
@@ -31,7 +33,8 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HV256Impl::Handle> hv)
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
+             std::optional<HV256Impl::Handle> hv)
         : Us4R(id), us4oems(std::move(us4oems)), hv(std::move(hv)) {}
 
     Us4RImpl(const DeviceId &id,
@@ -99,11 +102,13 @@ public:
     }
 
     std::pair<
-        std::shared_ptr<arrus::devices::HostBuffer>,
+        std::shared_ptr<arrus::framework::Buffer>,
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
     upload(const ops::us4r::TxRxSequence &seq,
-           unsigned short rxBufferNElements, unsigned short hostBufferNElements) override;
+           unsigned short rxBufferNElements,
+           const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
+           const ::arrus::framework::DataBufferSpec &outputBufferSpec) override;
 
     void start() override;
 
@@ -126,6 +131,7 @@ private:
     // TODO extract output buffer to some external class
     std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};
+
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
@@ -134,7 +140,7 @@ private:
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize,
-                   uint16_t rxBatchSize);
+                   uint16_t rxBatchSize, bool triggerSync);
 
     ProbeImplBase::RawHandle getProbeImpl() {
         return probe.value().get();

@@ -83,11 +83,8 @@ public:
         ius4oem->SetLNAGain(
             LNAGainValueMap::getInstance().getEnumValue(lnaGain));
         // Convert TGC values to [0, 1] range
-        if(cfg.getRxSettings().getTgcSamples().empty()) {
-            ius4oem->TGCDisable();
-        } else {
+        if(! cfg.getRxSettings().getTgcSamples().empty()) {
             const auto maxGain = pgaGain + lnaGain;
-            // TODO(pjarosik) extract a common function to compute normalized tgc samples
             const RxSettings::TGCCurve normalizedTGCSamples = getNormalizedTGCSamples(
                 cfg.getRxSettings().getTgcSamples(),
                 maxGain - Us4OEMImpl::TGC_ATTENUATION_RANGE,
