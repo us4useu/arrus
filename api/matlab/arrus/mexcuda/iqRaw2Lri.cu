@@ -11,6 +11,12 @@
 
 __constant__ float xElemConst[1024];
 
+
+__device__ float ownHypotf(float x, float y)
+{
+    return sqrtf(x*x + y*y);
+}
+
 __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw, 
                             float const * zPix, float const * xPix, 
                             float const sos, float const fs, float const fn, 
@@ -39,7 +45,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
         float xFoc	= txFoc * sinf(txAng) + txApCent;
         float zFoc	= txFoc * cosf(txAng);
         
-        txDist	= sqrtf((zPix[z] - zFoc)*(zPix[z] - zFoc) + (xPix[x] - xFoc)*(xPix[x] - xFoc));
+        txDist	= ownHypotf(zPix[z] - zFoc, xPix[x] - xFoc);
         //txDist	= txDist * sign(zPix[z] - zFoc) + txFoc;          // WARNING: sign()=0 => invalid txDist value
         txTang	= abs((xPix[x] - xFoc)) / max(abs(zPix[z] - zFoc),1e-12);
         txApod	= (fabsf(txTang) <= maxTang) ? 1.f : 0.f;
@@ -67,7 +73,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
 //         __syncthreads();
 
         
-        rxDist = sqrtf(zPix[z]*zPix[z] + (xPix[x] - xElemConst[iElem])*(xPix[x] - xElemConst[iElem]));
+        rxDist = ownHypotf(zPix[z], xPix[x] - xElemConst[iElem]);
         rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
         rxApod = (fabsf(rxTang) <= 0.5f) ? 1.f : 0.f;
         // 130us
@@ -102,8 +108,6 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
     iqLri[z + x*nZPix].x = pixRe / pixWgh * txApod;
     iqLri[z + x*nZPix].y = pixIm / pixWgh * txApod;
 }
-
-
 
 void mexFunction(int nlhs, mxArray * plhs[],
                  int nrhs, mxArray const * prhs[])
