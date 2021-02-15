@@ -36,18 +36,20 @@ class Pipeline:
             data = step._process(data)
         return data
 
-    def _initialize(self, data):
-        self.__call__(data)
-
-    def initialize(self, const_metadata):
+    def _initialize(self, const_metadata):
         input_shape = const_metadata.input_shape
         input_dtype = const_metadata.dtype
+        data = self.num_pkg.zeros(input_shape, dtype=input_dtype)+1000
         for step in self.steps:
-            const_metadata = step._prepare(const_metadata)
+            data = step._initialize(data)
+
+    def initialize(self, const_metadata):
+        output_const_metadata = const_metadata
+        for step in self.steps:
+            output_const_metadata = step._prepare(output_const_metadata)
         # Force cupy to recompile kernels before running the pipeline.
-        init_array = self.num_pkg.zeros(input_shape, dtype=input_dtype)+1000
-        self._initialize(init_array)
-        return const_metadata
+        self._initialize(const_metadata)
+        return output_const_metadata
 
     def set_placement(self, device):
         """
@@ -164,7 +166,7 @@ class Lambda(Operation):
         self.filter_pkg = filter_pkg
 
     def _initialize(self, data):
-        pass
+        return data
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
@@ -173,7 +175,7 @@ class Lambda(Operation):
         return self.func(data)
 
 
-class BandpassFilter:
+class BandpassFilter(Operation):
     """
     Bandpass filtering to apply to signal data.
 
@@ -225,7 +227,7 @@ class BandpassFilter:
         return result
 
 
-class Filter:
+class Filter(Operation):
     """
     Filter data in one dimension along the last axis.
 
@@ -258,7 +260,7 @@ class Filter:
         return result
 
 
-class QuadratureDemodulation:
+class QuadratureDemodulation(Operation):
     """
     Quadrature demodulation (I/Q decomposition).
     """
@@ -287,7 +289,7 @@ class QuadratureDemodulation:
         return self.mod_factor * data
 
 
-class Decimation:
+class Decimation(Operation):
     """
     Decimation + CIC (Cascade Integrator-Comb) filter.
 
@@ -388,7 +390,7 @@ class Decimation:
         return data_out
 
 
-class RxBeamforming:
+class RxBeamforming(Operation):
     """
     Classical rx beamforming (reconstructing scanline by scanline).
 
@@ -547,7 +549,7 @@ class RxBeamforming:
         return out.reshape((self.n_tx, self.n_samples))
 
 
-class EnvelopeDetection:
+class EnvelopeDetection(Operation):
     """
     Envelope detection (Hilbert transform).
 
@@ -570,7 +572,7 @@ class EnvelopeDetection:
         return self.xp.abs(data)
 
 
-class Transpose:
+class Transpose(Operation):
     """
     Data transposition.
     """
@@ -595,7 +597,7 @@ class Transpose:
         return self.xp.transpose(data, self.axes)
 
 
-class ScanConversion:
+class ScanConversion(Operation):
     """
     Scan conversion (interpolation to target mesh).
 
@@ -680,7 +682,7 @@ class ScanConversion:
         return self.interpolator(self.dst_points).reshape(self.dst_shape)
 
 
-class LogCompression:
+class LogCompression(Operation):
     """
     Converts data to decibel scale.
     """
@@ -702,7 +704,7 @@ class LogCompression:
         return 20 * np.log10(data)
 
 
-class DynamicRangeAdjustment:
+class DynamicRangeAdjustment(Operation):
     """
     Clips data values to given range.
     """
@@ -728,7 +730,7 @@ class DynamicRangeAdjustment:
         return self.xp.clip(data, a_min=self.min, a_max=self.max)
 
 
-class ToGrayscaleImg:
+class ToGrayscaleImg(Operation):
     """
     Converts data to grayscale image (uint8).
     """
@@ -748,7 +750,7 @@ class ToGrayscaleImg:
         return data.astype(self.xp.uint8)
 
 
-class Enqueue:
+class Enqueue(Operation):
     """
     Copies the output data from the previous stage to the provided queue
     and passes the input data unmodified for further processing.
@@ -821,9 +823,6 @@ class SelectFrames(Operation):
     def set_pkgs(self, **kwargs):
         pass
 
-    def _initialize(self, data):
-        pass
-
     def _prepare(self, const_metadata):
         input_shape = const_metadata.input_shape
         context = const_metadata.context
@@ -873,7 +872,7 @@ class Squeeze(Operation):
         return self.xp.squeeze(data)
 
 
-class RxBeamformingImg:
+class RxBeamformingImg(Operation):
     """
     Rx beamforming for synthetic aperture imaging.
 
@@ -989,7 +988,6 @@ class RxBeamformingImg:
         z_grid = np.expand_dims(self.z_grid, axis=(0, 1, 2))
 
         # (1, 1, 1, z_size)
-
         tx_distance = x_grid*np.sin(angles) + z_grid*np.cos(angles)
         # (ntx, 1, x_size, z_size)
         r1 = (x_grid-element_pos_x[0])*np.cos(angles) - z_grid*np.sin(angles)
@@ -1038,6 +1036,161 @@ class RxBeamformingImg:
             rf_rx = np.sum(rf_rx, axis=0)
             self.lri_buffer[i] = rf_rx
         return np.sum(self.lri_buffer, axis=0)/np.sum(self.tx_weights, axis=0)
+
+
+class ReconstructLri(Operation):
+    """
+    Rx beamforming for synthetic aperture imaging.
+
+    Expected input data shape: n_emissions, n_rx, n_samples
+    """
+
+    def __init__(self, x_grid, z_grid):
+        self.x_grid = x_grid
+        self.z_grid = z_grid
+        import cupy as cp
+        self.num_pkg = cp
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg is np:
+            raise ValueError("Currently reconstructLri operation is "
+                             "implemented for GPU only.")
+
+    def _prepare(self, const_metadata):
+        from pathlib import Path
+        import os
+        current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+        _sta_kernel = Path(os.path.join(current_dir, "sta.cu")).read_text()
+
+        self.sta_iq = self.num_pkg.RawKernel(_sta_kernel, "iq2RawLri")
+        self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
+
+        seq = const_metadata.context.sequence
+        probe_model = const_metadata.context.device.probe.model
+
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        start_sample = seq.rx_sample_range[0]
+
+        self.x_size = len(self.x_grid)
+        self.z_size = len(self.z_grid)
+        output_shape = (self.n_tx, self.x_size, self.z_size)
+        self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
+        x_block_size = min(self.x_size, 32)
+        z_block_size = min(self.z_size, 32)
+        self.block_size = (z_block_size, x_block_size, 1)
+        self.grid_size = (int((self.z_size-1)//z_block_size + 1),
+                          int((self.x_size-1)//x_block_size + 1),
+                          self.n_tx)
+        self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
+        self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
+        self.sos = self.num_pkg.float32(seq.speed_of_sound)
+        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
+        self.fn = self.num_pkg.float32(seq.pulse.center_frequency)
+        self.pitch = self.num_pkg.float32(probe_model.pitch)
+        tx_del_cent = None
+        rx_ap_orig_elem = None
+        if isinstance(seq, arrus.ops.imaging.PwiSequence):
+            self.tx_ang = self.num_pkg.asarray(seq.angles, dtype=self.num_pkg.float32)
+            if len(self.tx_ang) != self.n_tx:
+                raise ValueError(f"Invalid number of transmit angles, "
+                                 f"should be {self.tx_ang} (is {self.n_tx})")
+            self.tx_foc = self.num_pkg.asarray([self.num_pkg.inf]*self.n_tx, dtype=self.num_pkg.float32)
+            self.tx_ap_cent = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
+            tx_del_cent = 0.5*(probe_model.n_elements-1)*probe_model.pitch*np.abs(np.tan(seq.angles))/self.sos
+            rx_ap_orig_elem = 0
+        elif isinstance(seq, arrus.ops.imaging.StaSequence):
+            # TODO handle tx aperture size > 1 (diverging beams)
+            self.tx_ang = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
+            self.tx_foc = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
+            self.tx_ap_cent = (seq.tx_aperture_center_element-(probe_model.n_elements//2-1))*probe_model.pitch
+            self.tx_ap_cent = self.num_pkg.asarray(self.tx_ap_cent, dtype=self.num_pkg.float32)
+            tx_del_cent = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
+            rx_ap_cent_elem = seq.rx_aperture_center_element
+            rx_ap_size = seq.rx_aperture_size
+            drx = rx_ap_size//2-1 if rx_ap_size % 2 == 0 else rx_ap_size//2
+            rx_ap_orig_elem = rx_ap_cent_elem-drx
+        else:
+            raise ValueError(f"Unsupported sequence type: {type(seq)}")
+
+        probe_n_elements = probe_model.n_elements
+        # location of the rx aperture origin, relative to the probe center
+        # (half the length of the probe)
+        self.rx_ap_orig = (rx_ap_orig_elem-(probe_n_elements-1)/2)*self.pitch
+
+        self.rx_ap_orig = self.num_pkg.float32(self.rx_ap_orig)
+        self.max_tang = math.tan(math.asin(min(1, (self.sos/self.fn*2/3)/self.pitch)))
+        self.max_tang = self.num_pkg.float32(self.max_tang)
+        burst_factor = seq.pulse.n_periods / (2 * self.fn)
+        # TODO fix the start sample
+        self.initial_delay = -start_sample/65e6+burst_factor+tx_del_cent
+        self.initial_delay = self.num_pkg.asarray(self.initial_delay, dtype=self.num_pkg.float32)
+
+        return const_metadata.copy(input_shape=output_shape)
+
+    def _process(self, data):
+        data = self.num_pkg.ascontiguousarray(data)
+        params = (
+            self.output_buffer,
+            data,
+            self.n_tx, self.n_rx, self.n_samples,
+            self.z_pix, self.z_size,
+            self.x_pix, self.x_size,
+            self.sos, self.fs, self.fn,
+            self.tx_foc, self.tx_ang,
+            self.pitch, self.rx_ap_orig,
+            self.tx_ap_cent, self.max_tang,
+            self.initial_delay)
+        self.sta_iq(self.grid_size, self.block_size, params, shared_mem=512*8)
+        return self.output_buffer
+
+
+class Sum(Operation):
+    """
+    Sum of array elements over a given axis.
+
+    :param axis: axis along which a sum is performed
+    """
+
+    def __init__(self, axis=-1):
+        self.axis = axis
+        self.num_pkg = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.num_pkg = num_pkg
+
+    def _prepare(self, const_metadata):
+        output_shape = list(const_metadata.input_shape)
+        actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
+        del output_shape[actual_axis]
+        return const_metadata.copy(input_shape=tuple(output_shape))
+
+    def _process(self, data):
+        return self.num_pkg.sum(data, axis=self.axis)
+
+
+class Mean(Operation):
+    """
+    Average of array elements over a given axis.
+
+    :param axis: axis along which a average is computed
+    """
+
+    def __init__(self, axis=-1):
+        self.axis = axis
+        self.num_pkg = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.num_pkg = num_pkg
+
+    def _prepare(self, const_metadata):
+        output_shape = list(const_metadata.input_shape)
+        actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
+        del output_shape[actual_axis]
+        return const_metadata.copy(input_shape=tuple(output_shape))
+
+    def _process(self, data):
+        return self.num_pkg.mean(data, axis=self.axis)
 
 
 def _get_rx_aperture_origin(sequence):

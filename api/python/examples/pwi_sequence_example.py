@@ -24,17 +24,16 @@ from arrus.ops.imaging import (
 )
 from arrus.utils.imaging import (
     Pipeline,
-    Lambda,
     Transpose,
     BandpassFilter,
     Decimation,
     QuadratureDemodulation,
-    RxBeamformingImg,
     EnvelopeDetection,
     LogCompression,
-    DynamicRangeAdjustment,
     Enqueue,
-    SelectFrames
+    RxBeamformingImg,
+    ReconstructLri,
+    Mean
 )
 from arrus.utils.us4r import (
     RemapToLogicalOrder
@@ -52,8 +51,8 @@ def main():
 
     seq = PwiSequence(
         angles=np.asarray([0])*np.pi/180,
-        pulse=Pulse(center_frequency=6e6, n_periods=3, inverse=False),
-        rx_sample_range=(0, 4096),
+        pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
+        rx_sample_range=(0, 2048),
         downsampling_factor=2,
         speed_of_sound=1450,
         pri=200e-6,
@@ -79,6 +78,8 @@ def main():
                 QuadratureDemodulation(),
                 Decimation(decimation_factor=4, cic_order=2),
                 RxBeamformingImg(x_grid=x_grid, z_grid=z_grid),
+                # ReconstructLri(x_grid=x_grid, z_grid=z_grid),
+                # Mean(axis=0),
                 EnvelopeDetection(),
                 Transpose(),
                 LogCompression(),

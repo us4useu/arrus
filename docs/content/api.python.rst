@@ -160,6 +160,15 @@ B-mode imaging pipeline using cupy/numpy
 .. autoclass:: arrus.utils.imaging.Squeeze
     :show-inheritance:
 
+.. autoclass:: arrus.utils.imaging.ReconstructLri
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.imaging.Sum
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.imaging.Average
+    :show-inheritance:
+
 Logging
 -------
 .. autofunction:: arrus.set_clog_level
