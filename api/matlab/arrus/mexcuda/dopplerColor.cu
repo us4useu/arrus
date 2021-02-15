@@ -1,11 +1,9 @@
-#define _USE_MATH_DEFINES
-#include "math.h"
 #include "mex.h"
 #include "gpu/mxGPUArray.h"
 
 __global__ void dopplerColor(float * color, 
+                             float * power, 
                              float2 const * iqImg, 
-                             float const prf, 
                              int const nZPix, 
                              int const nXPix, 
                              int const nRep)
@@ -14,23 +12,43 @@ __global__ void dopplerColor(float * color,
     int x = blockIdx.y * blockDim.y + threadIdx.y;
     
     float2 iqPixCurr, iqPixPrev;
-    float auxRe = 0.f;
-    float auxIm = 0.f;
+    float auxPower;
+    float2 auxColor = {0.f, 0.f};
+    float2 wClut = {0.f, 0.f};
     
     if (z>=nZPix || x>=nXPix) {
         return;
     }
     
+    /* Wall Clutter estimation (constant component) */
+    for (int iRep=0; iRep<nRep; iRep++) {
+        wClut.x += iqImg[z + x * nZPix].x;
+        wClut.y += iqImg[z + x * nZPix].y;
+    }
+    wClut.x /= nRep;
+    wClut.y /= nRep;
+    
+    /* Color & Power estimation */
+    iqPixCurr = iqImg[z + x * nZPix];
+    iqPixCurr.x -= wClut.x;
+    iqPixCurr.y -= wClut.y;
+    
+    auxPower = iqPixCurr.x * iqPixCurr.x + iqPixCurr.y * iqPixCurr.y;
+    
     for (int iRep=1; iRep<nRep; iRep++) {
         
-        iqPixCurr = iqImg[z + x * nZPix +  iRep    * nZPix * nXPix];
-        iqPixPrev = iqImg[z + x * nZPix + (iRep-1) * nZPix * nXPix];
+        iqPixPrev = iqPixCurr;
+        iqPixCurr = iqImg[z + x * nZPix + iRep * nZPix * nXPix];
+        iqPixCurr.x -= wClut.x;
+        iqPixCurr.y -= wClut.y;
         
-        auxRe += iqPixCurr.x * iqPixPrev.x + iqPixCurr.y * iqPixPrev.y;
-        auxIm += iqPixCurr.y * iqPixPrev.x - iqPixCurr.x * iqPixPrev.y;
+        auxPower += iqPixCurr.x * iqPixCurr.x + iqPixCurr.y * iqPixCurr.y;
+        auxColor.x += iqPixCurr.x * iqPixPrev.x + iqPixCurr.y * iqPixPrev.y;
+        auxColor.y += iqPixCurr.y * iqPixPrev.x - iqPixCurr.x * iqPixPrev.y;
     }
     
-    color[z + x*nZPix] = atan2f(auxIm, auxRe) / (2 * M_PI) * prf;
+    color[z + x*nZPix] = atan2f(auxColor.y, auxColor.x);
+    power[z + x*nZPix] = auxPower / nRep;
 }
 
 
@@ -43,12 +61,13 @@ void mexFunction(int nlhs, mxArray * plhs[],
     
     /* Declare the variables */
     mxGPUArray * color;
+    mxGPUArray * power;
     mxGPUArray const * iqImg;
     
     float * dev_color;
+    float * dev_power;
     float2 const * dev_iqImg;
     
-    float prf;
     int nZPix;
     int nXPix;
     int nRep;
@@ -60,32 +79,26 @@ void mexFunction(int nlhs, mxArray * plhs[],
     char const * const invalidOutputMsgId = "dopplerColor:InvalidOutput";
     
     /* Validate mex inputs/outputs */
-    if (nrhs!=2) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "Two inputs required");
+    if (nrhs!=1) {
+        mexErrMsgIdAndTxt(invalidInputMsgId, "One input required");
     }
     
-    if (nlhs>1) {
-        mexErrMsgIdAndTxt(invalidOutputMsgId, "One output allowed");
+    if (nlhs>2) {
+        mexErrMsgIdAndTxt(invalidOutputMsgId, "Two outputs allowed");
     }
     
     if (!(mxIsGPUArray(prhs[0]))) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "iqImg must be gpuArray");
-    }
-    
-    if (!mxIsSingle(prhs[1]) || mxIsComplex(prhs[1]) || mxGetNumberOfElements(prhs[1]) != 1) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "prf must be single, real scalar");
+        mexErrMsgIdAndTxt(invalidInputMsgId, "Input must be gpuArray object containing single, complex 3D array");
     }
     
     /* Extract inputs from prhs */
     iqImg = mxGPUCreateFromMxArray(prhs[0]);
     
-    prf   = mxGetScalar(prhs[1]);
-    
     /* Validate inputs */
     if( mxGPUGetClassID(iqImg) != mxSINGLE_CLASS || 
        !mxGPUGetComplexity(iqImg) || 
         mxGPUGetNumberOfDimensions(iqImg) != 3) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "iqImg must be single, complex 3D array.");
+        mexErrMsgIdAndTxt(invalidInputMsgId, "Input must be gpuArray object containing single, complex 3D array");
     }
     
     /* Get some additional information */
@@ -100,24 +113,24 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mwSize nDimOut = 2;
     mwSize dimOut[2] = {nZPix, nXPix};
     
-    color = mxGPUCreateGPUArray(nDimOut,
-                                dimOut,
-                                mxSINGLE_CLASS,
-                                mxREAL,
-                                MX_GPU_DO_NOT_INITIALIZE);
+    color = mxGPUCreateGPUArray(nDimOut, dimOut, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
+    power = mxGPUCreateGPUArray(nDimOut, dimOut, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
     
     /* Get pointers on the device */
     dev_color = (float *)(mxGPUGetData(color));
+    dev_power = (float *)(mxGPUGetData(power));
     dev_iqImg = (float2 const *)(mxGPUGetDataReadOnly(iqImg));
     
     /* Execute CUDA kernel */
-    dopplerColor<<<blocksPerGrid, threadsPerBlock>>>(dev_color, dev_iqImg, prf, nZPix, nXPix, nRep);
+    dopplerColor<<<blocksPerGrid, threadsPerBlock>>>(dev_color, dev_power, dev_iqImg, nZPix, nXPix, nRep);
     
     /* Wrap the output */
     plhs[0] = mxGPUCreateMxArrayOnGPU(color);
+    plhs[1] = mxGPUCreateMxArrayOnGPU(power);
     
     /* Destroy the mxGPUArray objects */
     mxGPUDestroyGPUArray(color);
+    mxGPUDestroyGPUArray(power);
     mxGPUDestroyGPUArray(iqImg);
     
 }
