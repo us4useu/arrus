@@ -159,6 +159,7 @@ install(
 
 install(
 	FILES
+	examples/sta_sequence_example.py
 	examples/pwi_sequence_example.py
 	examples/lin_sequence_example.py
 	examples/custom_callback_example.py
