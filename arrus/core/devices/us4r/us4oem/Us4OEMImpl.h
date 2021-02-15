@@ -63,7 +63,7 @@ public:
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32 SAMPLE_DELAY = 240;
     static constexpr float RX_DELAY = 0.0;
-    static constexpr float RX_TIME_EPSILON = 0e-6f;
+    static constexpr float RX_TIME_EPSILON = 5e-6f;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
