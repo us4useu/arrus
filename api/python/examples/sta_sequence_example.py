@@ -48,7 +48,7 @@ def main():
         rx_aperture_center_element=63+32,
         rx_aperture_size=128,
         pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
-        rx_sample_range=(0, 1024),
+        rx_sample_range=(0, 2048),
         downsampling_factor=2,
         speed_of_sound=1450,
         pri=200e-6,
@@ -59,7 +59,7 @@ def main():
     display_input_queue = queue.Queue(1)
 
     x_grid = np.linspace(-15, 15, 256) * 1e-3
-    z_grid = np.linspace(0, 50, 256) * 1e-3
+    z_grid = np.linspace(0, 40, 256) * 1e-3
 
     scheme = Scheme(
         tx_rx_sequence=seq,
