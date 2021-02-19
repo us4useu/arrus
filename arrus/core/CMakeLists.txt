@@ -178,7 +178,7 @@ set(SRC_FILES
     ../common/logging/impl/LogSeverity.cpp
     api/arrus.h
     api/session.h
-    api/common.h api/io.h)
+    api/common.h api/io.h session/SessionController.cpp session/SessionController.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

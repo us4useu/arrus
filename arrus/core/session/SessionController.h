@@ -1,0 +1,14 @@
+//
+// Created by pjarosik on 10.02.2021.
+//
+
+#ifndef ARRUS_ARRUS_CORE_SESSION_SESSIONCONTROLLER_H
+#define ARRUS_ARRUS_CORE_SESSION_SESSIONCONTROLLER_H
+
+
+class SessionController {
+
+};
+
+
+#endif //ARRUS_ARRUS_CORE_SESSION_SESSIONCONTROLLER_H
