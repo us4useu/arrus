@@ -78,7 +78,7 @@ extern "C" __global__ void iq2RawLri(complex<float> *iqLri, const complex<float>
         rxApod = (fabsf(rxTang) <= maxTang) ? 1.0f : 0.0f;
         time = (txDist+rxDist)*sosInv + initialDelay;
         iSamp = time*fs;
-        if (iSamp >= 0 && iSamp < nSamp-2) {
+        if (iSamp >= 0 && iSamp <= nSamp-1) {
             offset = txOffset + iElem*nSamp;
             float originalIsamp = iSamp;
             interpWgh = modff(iSamp, &iSamp);
