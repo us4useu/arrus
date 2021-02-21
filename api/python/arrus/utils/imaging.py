@@ -789,7 +789,7 @@ class Enqueue(Operation):
         return const_metadata
 
     def _initialize(self, data):
-        pass
+        return data
 
     def _put_block(self, data):
         self.queue.put(self._copy_func(data))
