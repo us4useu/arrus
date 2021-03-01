@@ -126,6 +126,9 @@ class Session(AbstractSession):
         # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
         raise RuntimeError("NYI")
 
+    def close(self):
+        self._session_handle.close()
+
     def _create_py_devices(self, mock):
         # Create mock devices
 

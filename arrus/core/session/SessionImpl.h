@@ -32,6 +32,8 @@ public:
 
     void operator=(SessionImpl const &&) = delete;
 
+    void close() override;
+
 private:
     using DeviceMap = std::unordered_map<
         arrus::devices::DeviceId,

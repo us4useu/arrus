@@ -30,6 +30,8 @@ public:
     virtual arrus::devices::Device *
     getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 
+    virtual void close() = 0;
+
     virtual ~Session() = default;
 };
 

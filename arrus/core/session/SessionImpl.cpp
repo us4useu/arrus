@@ -103,5 +103,9 @@ SessionImpl::~SessionImpl() {
     ::arrus::getDefaultLogger()->log(LogSeverity::INFO, "Closing session.");
 }
 
+void SessionImpl::close() {
+    devices.clear();
+}
+
 
 }
