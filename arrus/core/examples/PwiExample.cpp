@@ -18,7 +18,7 @@ int main() noexcept {
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
         auto probe = us4r->getProbe(0);
-        // Total number of elements currently available probe has.
+
         unsigned nElements = probe->getModel().getNumberOfElements().product();
         std::cout << "Probe with " << nElements << " elements." << std::endl;
 
@@ -36,7 +36,7 @@ int main() noexcept {
             // (delays only for active tx elements will be needed).
             std::vector<float> delays(nElements, 0.0f);
             for(int d = 0; d < nElements; ++d) {
-                delays[d] = d*(i+1)*1e-8f;
+                delays[d] = d*i*1e-9f;
             }
             arrus::BitMask txAperture(nElements, true);
             txrxs.emplace_back(Tx(txAperture, delays, pulse),
