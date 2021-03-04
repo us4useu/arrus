@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <string>
 #include <condition_variable>
+#include <algorithm>
 
 #include "arrus/core/api/arrus.h"
 
@@ -14,34 +15,39 @@ int main() noexcept {
     using namespace ::arrus::framework;
     try {
         // TODO set path to us4r-lite configuration file
+        // TODO set appropriate aperture size
         auto settings = ::arrus::io::readSessionSettings("/path/to/set");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
         auto probe = us4r->getProbe(0);
-        // Total number of elements currently available probe has.
+
         unsigned nElements = probe->getModel().getNumberOfElements().product();
         std::cout << "Probe with " << nElements << " elements." << std::endl;
 
-        ::arrus::BitMask rxAperture(nElements, true);
+		constexpr int APERTURE_SIZE = 128;
+		// Rx aperture origin = 0, size = 128.
+        std::vector<bool> rxAperture(nElements, false);
+		for(int i = 0; i < APERTURE_SIZE; ++i) {
+			rxAperture[i] = true;
+		}
+		// NOTE: the below vector should have size == probe number of elements.
+		// This probably will be modified in the future 
+		// (delays only for active tx elements will be needed).
+        std::vector<float> delays(nElements, 0.0f);
 
         Pulse pulse(6e6, 2, false);
         ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 2048};
 
         std::vector<TxRx> txrxs;
 
-		// 10 plane waves
-        for(int i = 0; i < 10; ++i) {
-            // NOTE: the below vector should have size == probe number of elements.
-            // This probably will be modified in the future
-            // (delays only for active tx elements will be needed).
-            std::vector<float> delays(nElements, 0.0f);
-            for(int d = 0; d < nElements; ++d) {
-                delays[d] = d*(i+1)*1e-8f;
-            }
-            arrus::BitMask txAperture(nElements, true);
+		// Transmit using elements 0-127
+        for(int i = 0; i < APERTURE_SIZE; ++i) {
+            arrus::BitMask txAperture(nElements, false);
+			// Transmit pulse using single element.
+			txAperture[i] = true;
             txrxs.emplace_back(Tx(txAperture, delays, pulse),
-                               Rx(txAperture, sampleRange),
-                               200e-6f);
+                               Rx(rxAperture, sampleRange),
+                               100e-6f);
         }
 
         TxRxSequence seq(txrxs, {}, 500e-3f);

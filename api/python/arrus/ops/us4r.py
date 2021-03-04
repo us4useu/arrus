@@ -29,13 +29,17 @@ class Tx(Operation):
     :param pulse: an excitation to perform
     :param delays: an array of delays to set to active elements. Should have the \
         shape (n_a,), where n_a is a number of active elements determined by \
-        tx aperture. When None, firings are performed with no delay (delays=0) [s].
+        tx aperture. When None, firings are performed with no delay (delays=0) [s]\
+        The stored value is always of type numpy.ndarray.
     """
     aperture: np.ndarray
     excitation: Pulse
     delays: typing.Optional[np.ndarray] = None
 
     def __post_init__(self):
+        object.__setattr__(self, "delays", np.asarray(self.delays))
+        object.__setattr__(self, "aperture", np.asarray(self.aperture))
+
         if self.delays is not None and len(self.delays.shape) != 1:
             raise ValueError("The array of delays should be a vector of "
                              "shape (number of active elements,)")
@@ -53,7 +57,8 @@ class Rx(Operation):
 
     :param aperture: a set of RX channels that should be enabled - a binary
         mask, where 1 at location i means that the channel should be turned on, \
-        0 means that the channel should be turned off
+        0 means that the channel should be turned off. The stored value is \
+        always of type numpy.ndarray.
     :param sample_range: a range of samples to acquire [start, end), starts from 0
     :param downsampling_factor: a sampling frequency divider. For example, if \
         nominal sampling frequency (fs) is equal to 65e6 Hz, ``fs_divider=1``,\
@@ -69,6 +74,9 @@ class Rx(Operation):
     sample_range: tuple
     downsampling_factor: int = 1
     padding: tuple = (0, 0)
+
+    def __post_init__(self):
+        object.__setattr__(self, "aperture", np.asarray(self.aperture))
 
     def get_n_samples(self):
         start, end = self.sample_range
@@ -103,6 +111,9 @@ class TxRxSequence:
     ops: typing.List[TxRx]
     tgc_curve: np.ndarray
     sri: float = None
+
+    def __post_init__(self):
+        object.__setattr__(self, "tgc_curve", np.asarray(self.tgc_curve))
 
     def get_n_samples(self):
         """
