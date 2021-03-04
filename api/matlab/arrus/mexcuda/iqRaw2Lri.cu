@@ -1,18 +1,13 @@
 #define M_PI 3.14159265358979
-// #define _USE_MATH_DEFINES
-// #include "math.h"
 #include "mex.h"
 #include "gpu/mxGPUArray.h"
 
-// check size of the shared memory
-// check iSamp+1>=nSamp?
-
-// convex
 
 __constant__ float xElemConst[1024];
 
-// texture <float2, cudaTextureType1D, cudaReadModeElementType> sinCosTex;
-// texture <float, cudaTextureType1D, cudaReadModeElementType> rxApodTex;
+
+texture <float2, cudaTextureType1DLayered, cudaReadModeElementType> iqRawTex;
+
 
 __forceinline__ __device__ float ownHypotf(float x, float y)
 {
@@ -20,8 +15,7 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 }
 
 
-__global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw, 
-                            float const * zPix, float const * xPix, 
+__global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
                             float const sos, float const fs, float const fn, 
                             float const txFoc, float const txAng, 
                             float const txApCent, float const initDel, 
@@ -32,16 +26,19 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
     int z = blockIdx.x * blockDim.x + threadIdx.x;
     int x = blockIdx.y * blockDim.y + threadIdx.y;
     
-    float txDist, rxDist, txTang, rxTang, txApod, rxApod, time, iSamp, iSampMod, interpWgh;
-    float modSin, modCos, sampRe, sampIm, pixRe = 0.f, pixIm = 0.f, pixWgh = 0.f;
-    float const sosInv = 1 / sos;
-    float zDistInv, rngRxTangInv;
-    int offset;
-    
     if (z>=nZPix || x>=nXPix) {
         return;
     }
     
+    float txDist, rxDist, txTang, rxTang, txApod, rxApod, time, iSamp;
+    float modSin, modCos, sampRe, sampIm, pixRe = 0.f, pixIm = 0.f, pixWgh = 0.f;
+    float const omega = 2 * M_PI * fn;
+    float const sosInv = 1 / sos;
+    float const zDistInv = 1 / zPix[z];
+    float const rngRxTangInv = 2 / (maxRxTang - minRxTang); // inverted half range
+    float const centRxTang = (maxRxTang + minRxTang) * 0.5f;
+    float const nSigma = 2; // number of sigmas in half of the apodization Gaussian curve
+    float const twoSigSqrInv = nSigma * nSigma * 0.5f;
     
     if (!isinf(txFoc)) {
         /* STA */
@@ -64,71 +61,27 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float2 const * iqRaw,
         txApod = (r1 >= 0.f && r2 <= 0.f) ? 1.f : 0.f;
     }
     
-    zDistInv = 1 / zPix[z];
-    rngRxTangInv = 1 / (maxRxTang - minRxTang);
-    
-    const int nSin = 512;
-    float dPhase = 2 * M_PI / (nSin-1);
-    float currentPhase;
-    __shared__ float2 sincosShared[nSin];
-    int startSamp = threadIdx.x + threadIdx.y * blockDim.x;
-    int stepSamp = blockDim.x * blockDim.y;
-    for (int iSin=startSamp; iSin<nSin; iSin+=stepSamp) {
-        currentPhase = iSin * dPhase;
-        sincosShared[iSin].x = sinf(currentPhase);
-        sincosShared[iSin].y = cosf(currentPhase);
-    }
-	__syncthreads();
-    
-    
-//     extern __shared__ float2 iqRawShared[];
-//     int startSamp = threadIdx.x + threadIdx.y * blockDim.x;
-//     int stepSamp = blockDim.x * blockDim.y;
-    
     for (int iElem=0; iElem<nElem; iElem++) {
-        
-//         for (int jSamp=startSamp; jSamp<nSamp; jSamp+=stepSamp) {
-//             iqRawShared[jSamp] = iqRaw[jSamp + iElem*nSamp];
-//         }
-//         __syncthreads();
 
-        
-        rxDist = ownHypotf(zPix[z], xPix[x] - xElemConst[iElem]);   // 40us
+        rxDist = ownHypotf(zPix[z], xPix[x] - xElemConst[iElem]);   // +10us
         rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;          // 4us
-        rxApod = (rxTang >= minRxTang && rxTang <= maxRxTang) ? 1.f : 0.f;
-//         rxApod = tex1D(rxApodTex, (rxTang-minRxTang)*rngRxTangInv);
+        if (rxTang < minRxTang || rxTang > maxRxTang) continue;
+        rxApod = (rxTang-centRxTang)*rngRxTangInv;
+        rxApod = __expf(-rxApod*rxApod*twoSigSqrInv);
         
         time = (txDist + rxDist) * sosInv + initDel;
         iSamp = time * fs;
-        
-        
-        if (iSamp>=0.f && iSamp<=(float)nSamp) {
-            offset = iElem * nSamp;
-            interpWgh = modff(iSamp, &iSamp);
+        if (iSamp<0.f && iSamp>static_cast<float>(nSamp-1)) continue;
             
-            iSampMod = time * fn;
-            iSampMod = (iSampMod - truncf(iSampMod))*(float)nSin;
-            modSin = sincosShared[(int)iSampMod].x;      // 85us
-            modCos = sincosShared[(int)iSampMod].y;
+        float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iElem);
+        sampRe = iqSamp.x;
+        sampIm = iqSamp.y;
             
-//             float2 sincos = tex1D(sinCosTex, iSampMod);
-//             modSin = sincos.x;
-//             modCos = sincos.y;
+        __sincosf(omega * time, &modSin, &modCos);
             
-            sampRe = (iqRaw[offset + (int)iSamp  ].x * (1 - interpWgh)  // 60us
-                    + iqRaw[offset + (int)iSamp+1].x *      interpWgh );
-            sampIm = (iqRaw[offset + (int)iSamp  ].y * (1 - interpWgh)
-                    + iqRaw[offset + (int)iSamp+1].y *      interpWgh );
-            
-//             sampRe = (iqRawShared[(int)iSamp  ].x * (1 - interpWgh)
-//                     + iqRawShared[(int)iSamp+1].x *      interpWgh );
-//             sampIm = (iqRawShared[(int)iSamp  ].y * (1 - interpWgh)
-//                     + iqRawShared[(int)iSamp+1].y *      interpWgh );
-            
-            pixRe += (sampRe * modCos - sampIm * modSin) * rxApod; // 60-80us
-            pixIm += (sampRe * modSin + sampIm * modCos) * rxApod;
-            pixWgh += rxApod;
-        }
+        pixRe += (sampRe * modCos - sampIm * modSin) * rxApod; // 60-80us
+        pixIm += (sampRe * modSin + sampIm * modCos) * rxApod;
+        pixWgh += rxApod;
     }
     
     iqLri[z + x*nZPix].x = pixRe / pixWgh * txApod;
@@ -148,17 +101,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * zPix;
     mxGPUArray const * xPix;
     
-    mxGPUArray const * rxApod;
-    mxGPUArray const * sinCos;
-    
     float2 * dev_iqLri;
-    float2 const * dev_iqRaw;
+    void * dev_iqRaw;
     float const * dev_xElem;
     float const * dev_zPix;
     float const * dev_xPix;
-    
-    float const * dev_rxApod;
-    float2 const * dev_sinCos;
     
     float sos;
     float fs;
@@ -176,7 +123,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     int nZPix;
     int nXPix;
     
-    dim3 const threadsPerBlock = {32, 32, 1};
+    dim3 const threadsPerBlock = {16, 16, 1};
     dim3 blocksPerGrid;
     int sharedPerBlock;
     
@@ -184,21 +131,21 @@ void mexFunction(int nlhs, mxArray * plhs[],
     char const * const invalidOutputMsgId = "iqRaw2Lri:InvalidOutput";
     
     /* Validate mex inputs/outputs */
-    if (nrhs!=15) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "15 inputs required");
+    if (nrhs!=13) {
+        mexErrMsgIdAndTxt( invalidInputMsgId, "13 inputs required");
     }
     
     if (nlhs>1) {
         mexErrMsgIdAndTxt( invalidOutputMsgId, "One output allowed");
     }
     
-    for (int i=0; i<6; i++) {
+    for (int i=0; i<4; i++) {
         if (!(mxIsGPUArray(prhs[i]))) {
-            mexErrMsgIdAndTxt( invalidInputMsgId, "First 6 inputs must be gpuArray");
+            mexErrMsgIdAndTxt( invalidInputMsgId, "First 4 inputs must be gpuArray");
         }
     }
     
-    for (int i=6; i<15; i++) {
+    for (int i=4; i<13; i++) {
         if (!mxIsSingle(prhs[i]) || mxIsComplex(prhs[i]) || mxGetNumberOfElements(prhs[i]) != 1) {
             mexErrMsgIdAndTxt( invalidInputMsgId, "Last 9 inputs must be single, real scalars");
         }
@@ -211,19 +158,16 @@ void mexFunction(int nlhs, mxArray * plhs[],
     zPix  = mxGPUCreateFromMxArray(prhs[2]);
     xPix  = mxGPUCreateFromMxArray(prhs[3]);
     
-    rxApod = mxGPUCreateFromMxArray(prhs[4]);
-    sinCos = mxGPUCreateFromMxArray(prhs[5]);
+    sos   = mxGetScalar(prhs[4]);
+    fs    = mxGetScalar(prhs[5]);
+    fn    = mxGetScalar(prhs[6]);
     
-    sos   = mxGetScalar(prhs[6]);
-    fs    = mxGetScalar(prhs[7]);
-    fn    = mxGetScalar(prhs[8]);
-    
-    foc   = mxGetScalar(prhs[9]);
-    ang   = mxGetScalar(prhs[10]);
-    cent  = mxGetScalar(prhs[11]);
-    initDel	= mxGetScalar(prhs[12]);
-    minRxTang = mxGetScalar(prhs[13]);
-    maxRxTang = mxGetScalar(prhs[14]);
+    foc   = mxGetScalar(prhs[7]);
+    ang   = mxGetScalar(prhs[8]);
+    cent  = mxGetScalar(prhs[9]);
+    initDel	= mxGetScalar(prhs[10]);
+    minRxTang = mxGetScalar(prhs[11]);
+    maxRxTang = mxGetScalar(prhs[12]);
     
     
     /* Validate inputs */
@@ -243,14 +187,6 @@ void mexFunction(int nlhs, mxArray * plhs[],
         mexErrMsgIdAndTxt( invalidInputMsgId, "xPix must be single, real, horizontal vector.");
     }
     
-    if ((mxGPUGetClassID(rxApod) != mxSINGLE_CLASS) || mxGPUGetComplexity(rxApod) || !(mxGPUGetNumberOfDimensions(rxApod) == 2 && mxGPUGetDimensions(rxApod)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "rxApod must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(sinCos) != mxSINGLE_CLASS) || !mxGPUGetComplexity(sinCos) || !(mxGPUGetNumberOfDimensions(sinCos) == 2 && mxGPUGetDimensions(sinCos)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "sinCos must be single, complex, horizontal vector.");
-    }
-    
     if (mxGPUGetDimensions(iqRaw)[1] != mxGPUGetNumberOfElements(xElem)) {
         mexErrMsgIdAndTxt( invalidInputMsgId, "size(iqRaw,2) must be equal to length(xElem).");
     }
@@ -261,13 +197,9 @@ void mexFunction(int nlhs, mxArray * plhs[],
     nZPix = mxGPUGetNumberOfElements(zPix);
     nXPix = mxGPUGetNumberOfElements(xPix);
     
-    int nRxApod = mxGPUGetNumberOfElements(rxApod);
-    int nSinCos = mxGPUGetNumberOfElements(sinCos);
-    
     sharedPerBlock = 0;
-//     sharedPerBlock = (int)(nSamp*8);
-    blocksPerGrid = {(unsigned int)ceilf((float)nZPix/(float)threadsPerBlock.x), 
-                     (unsigned int)ceilf((float)nXPix/(float)threadsPerBlock.y), 1};
+    blocksPerGrid = {(unsigned int)ceilf(static_cast<float>(nZPix)/static_cast<float>(threadsPerBlock.x)), 
+                     (unsigned int)ceilf(static_cast<float>(nXPix)/static_cast<float>(threadsPerBlock.y)), 1};
     
     /* Create output mxGPUArray object */
     mwSize nDimOut = 2;
@@ -280,14 +212,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
                                 MX_GPU_DO_NOT_INITIALIZE);
     
     /* Get pointers on the device */
-    dev_iqLri = (float2 *)(mxGPUGetData(iqLri));
-    dev_iqRaw = (float2 const *)(mxGPUGetDataReadOnly(iqRaw));
-    dev_xElem = (float const *)(mxGPUGetDataReadOnly(xElem));
-    dev_zPix  = (float const *)(mxGPUGetDataReadOnly(zPix));
-    dev_xPix  = (float const *)(mxGPUGetDataReadOnly(xPix));
-    
-    dev_rxApod = (float const *)(mxGPUGetDataReadOnly(rxApod));
-    dev_sinCos = (float2 const *)(mxGPUGetDataReadOnly(sinCos));
+    dev_iqLri = static_cast<float2 *>(mxGPUGetData(iqLri));
+    dev_iqRaw = const_cast<void *>(mxGPUGetDataReadOnly(iqRaw));
+    dev_xElem = static_cast<float const *>(mxGPUGetDataReadOnly(xElem));
+    dev_zPix  = static_cast<float const *>(mxGPUGetDataReadOnly(zPix));
+    dev_xPix  = static_cast<float const *>(mxGPUGetDataReadOnly(xPix));
     
     /* set constant memory */
     if(nElem > 1024) {
@@ -295,36 +224,25 @@ void mexFunction(int nlhs, mxArray * plhs[],
     }
     cudaMemcpyToSymbol(xElemConst, dev_xElem, nElem*4, 0, cudaMemcpyDeviceToDevice);
     
-    /* configure shared memory */
-//     cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
-    
     /* configure texture reference */
-    size_t * offset;
+    iqRawTex.normalized  = false;
+    iqRawTex.addressMode[0] = cudaAddressModeBorder;
+    iqRawTex.filterMode  = cudaFilterModeLinear;
     
-    
-//     rxApodTex.normalized  = true;
-//     rxApodTex.addressMode[0] = cudaAddressModeBorder;
-//     rxApodTex.filterMode  = cudaFilterModeLinear;
-//     
-//     cudaChannelFormatDesc channelDesc0 = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
-//     cudaBindTexture(offset, rxApodTex, dev_rxApod, channelDesc0, nRxApod*4);
-//     if (*offset != 0) {
-//         mexErrMsgIdAndTxt( "texture", "offset");
-//     }
-//     
-//     
-//     sinCosTex.normalized  = true;
-//     sinCosTex.addressMode[0] = cudaAddressModeWrap;
-//     sinCosTex.filterMode  = cudaFilterModeLinear;
-//     
-//     cudaChannelFormatDesc channelDesc1 = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
-//     cudaBindTexture(offset, sinCosTex, dev_sinCos, channelDesc1, nSinCos*8);
-//     if (*offset != 0) {
-//         mexErrMsgIdAndTxt( "texture", "offset");
-//     }
+    cudaArray* cuArray;
+    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nElem);
+    cudaMalloc3DArray(&cuArray, &iqRawTex.channelDesc, cuArraySize, cudaArrayLayered);
+    cudaMemcpy3DParms cuArrayCopy = {0};
+    cuArrayCopy.srcPtr = make_cudaPitchedPtr(dev_iqRaw, nSamp * sizeof(float2), nSamp, 1);
+    cuArrayCopy.dstArray = cuArray;
+    cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nElem);
+    cuArrayCopy.kind = cudaMemcpyDeviceToDevice;
+    cudaMemcpy3D(&cuArrayCopy);
+
+    cudaBindTextureToArray(iqRawTex, cuArray);
     
     /* Execute CUDA kernel */
-    iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri, dev_iqRaw, dev_zPix, dev_xPix, 
+    iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri, dev_zPix, dev_xPix, 
                                                                   sos, fs, fn, foc, ang, cent, initDel, minRxTang, maxRxTang, 
                                                                   nSamp, nElem, nZPix, nXPix);
     
@@ -332,6 +250,9 @@ void mexFunction(int nlhs, mxArray * plhs[],
     plhs[0] = mxGPUCreateMxArrayOnGPU(iqLri);
     
     /* Destroy the mxGPUArray objects */
+    cudaUnbindTexture(iqRawTex);
+    cudaFreeArray(cuArray);
+    
     mxGPUDestroyGPUArray(iqLri);
     mxGPUDestroyGPUArray(iqRaw);
     mxGPUDestroyGPUArray(xElem);
