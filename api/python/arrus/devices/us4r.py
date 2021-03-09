@@ -100,6 +100,13 @@ class Us4R(Device):
     def set_kernel_context(self, kernel_context):
         self._current_sequence_context = kernel_context
 
+    def get_probe_model(self):
+        """
+        Returns probe model description.
+        """
+        return arrus.utils.core.convert_to_py_probe_model(
+            core_model=self._handle.getProbe(0).getModel())
+
     def _get_dto(self):
         probe_model = arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())

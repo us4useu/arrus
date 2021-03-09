@@ -29,7 +29,7 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     LogCompression,
     Enqueue,
-    Mean
+    Sum
 )
 from arrus.utils.us4r import (
     RemapToLogicalOrder
@@ -74,7 +74,7 @@ def main():
                 QuadratureDemodulation(),
                 Decimation(decimation_factor=4, cic_order=2),
                 ReconstructLri(x_grid=x_grid, z_grid=z_grid),
-                Mean(axis=0),
+                Sum(axis=0),
                 EnvelopeDetection(),
                 Transpose(),
                 LogCompression(),
