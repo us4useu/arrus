@@ -621,6 +621,7 @@ class ScanConversion(Operation):
         self.x_grid = x_grid.reshape(1, -1)
         self.z_grid = z_grid.reshape(1, -1)
         self.is_gpu = False
+        self.num_pkg = None
 
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg != np:
@@ -630,12 +631,71 @@ class ScanConversion(Operation):
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
+        if probe.is_convex_array():
+            self._process = self._process_convex
+            return self._prepare_convex(const_metadata)
+        else:
+            # linear array
+            self._process = self._process_linear_array
+            return self._prepare_linear_array(const_metadata)
+
+    def _prepare_linear_array(self, const_metadata: arrus.metadata.ConstMetadata):
+        # Determine interpolation function.
+        if self.num_pkg == np:
+            raise ValueError("Currently scan conversion for linear array "
+                             "probe is implemented only for GPU devices.")
+        import cupy as cp
+        import cupyx.scipy.ndimage
+        self.interp_function = cupyx.scipy.ndimage.map_coordinates
+
+        n_samples, n_scanlines = const_metadata.input_shape
+        print(f"input shape: {const_metadata.input_shape}")
+        seq = const_metadata.context.sequence
+        if not isinstance(seq, arrus.ops.imaging.LinSequence):
+            raise ValueError("Scan conversion works only with LinSequence.")
+
+        medium = const_metadata.context.medium
+        probe = const_metadata.context.device.probe.model
+
+        n_elements = probe.n_elements
+        if n_elements % 2 != 0:
+            raise ValueError("Even number of probe elements is required.")
+        pitch = probe.pitch
+        data_desc = const_metadata.data_description
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+        tx_center_elements = seq.tx_aperture_center_element
+        tx_center_diff = set(np.diff(tx_center_elements))
+        if len(tx_center_diff) != 1:
+            raise ValueError("Transmits should be done by consecutive "
+                             "center elements (got tx center elements: "
+                             f"{tx_center_elements}")
+        tx_center_diff = next(iter(tx_center_diff))
+        # Determine input grid.
+        input_x_grid_diff = tx_center_diff*pitch
+        input_x_grid_origin = tx_center_elements[0]-(n_elements-1)/2*pitch
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = data_desc.sampling_frequency
+        start_sample = seq.rx_sample_range[0]
+        input_z_grid_origin = start_sample/acq_fs*c/2
+        input_z_grid_diff = c/(fs*2)
+        interp_x_grid = (self.x_grid-input_x_grid_origin)/input_x_grid_diff
+        interp_z_grid = (self.z_grid-input_z_grid_origin)/input_z_grid_diff
+        self._interp_mesh = cp.asarray(np.meshgrid(interp_z_grid, interp_x_grid, indexing="ij"))
+
+        self.dst_shape = len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        return const_metadata.copy(input_shape=self.dst_shape)
+
+    def _process_linear_array(self, data):
+        return self.interp_function(data, self._interp_mesh, order=1)
+
+    def _prepare_convex(self, const_metadata: arrus.metadata.ConstMetadata):
+        probe = const_metadata.context.device.probe.model
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
-
-        if not probe.is_convex_array():
-            raise ValueError(
-                "Scan conversion currently works for convex probes data only.")
 
         n_samples, _ = const_metadata.input_shape
         seq = const_metadata.context.sequence
@@ -672,7 +732,7 @@ class ScanConversion(Operation):
         self.dst_shape = len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
         return const_metadata.copy(input_shape=self.dst_shape)
 
-    def _process(self, data):
+    def _process_convex(self, data):
         if self.is_gpu:
             data = data.get()
         data[np.isnan(data)] = 0.0
