@@ -12,6 +12,7 @@ import arrus.utils.us4r
 import time
 import numpy as np
 import queue
+from threading import Thread
 
 from arrus.ops.us4r import (
     Scheme,
@@ -32,7 +33,8 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     LogCompression,
     DynamicRangeAdjustment,
-    Enqueue
+    Enqueue,
+    ScanConversion
 )
 from arrus.utils.us4r import (
     RemapToLogicalOrder
@@ -41,18 +43,19 @@ from arrus.utils.gui import (
     Display2D
 )
 
-
 arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
+x_grid = np.arange(-15, 15, 0.1) * 1e-3
+z_grid = np.arange(0, 40, 0.1) * 1e-3
 
 def main():
     seq = LinSequence(
-        tx_aperture_center_element=np.arange(8, 183),
+        tx_aperture_center_element=np.arange(0, 192),
         tx_aperture_size=64,
-        tx_focus=28e-3,
-        pulse=Pulse(center_frequency=8e6, n_periods=3.5, inverse=False),
-        rx_aperture_center_element=np.arange(8, 183),
+        tx_focus=24e-3,
+        pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
+        rx_aperture_center_element=np.arange(0, 192),
         rx_aperture_size=64,
         rx_sample_range=(0, 2048),
         pri=200e-6,
@@ -68,7 +71,7 @@ def main():
         tx_rx_sequence=seq,
         rx_buffer_size=4,
         output_buffer=DataBufferSpec(type="FIFO", n_elements=12),
-        work_mode="ASYNC",
+        work_mode="HOST",
         processing=Pipeline(
             steps=(
                 RemapToLogicalOrder(),
@@ -79,8 +82,9 @@ def main():
                 RxBeamforming(),
                 EnvelopeDetection(),
                 Transpose(),
+                ScanConversion(x_grid, z_grid),
                 LogCompression(),
-                Enqueue(data_queue, block=False, ignore_full=True),
+                Enqueue(data_queue, block=False, ignore_full=True)
             ),
             placement="/GPU:0"
         )
