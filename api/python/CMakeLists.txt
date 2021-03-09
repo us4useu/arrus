@@ -111,26 +111,37 @@ configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
 
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
 	set(ARRUS_TARGET_SHARED_OBJECT_FILE "${PROJECT_BINARY_DIR}/arrus/core/Release/arrus-core.dll")
-elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
-	set(ARRUS_TARGET_SHARED_OBJECT_FILE "$<TARGET_FILE:arrus-core>")
-endif()
 
-add_custom_command(OUTPUT ${TIMESTAMP}
+    add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
         ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${CMAKE_CURRENT_BINARY_DIR}/arrus
-	COMMAND
-		${CMAKE_COMMAND} -E copy_directory
-		${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
-	COMMAND
-		${CMAKE_COMMAND} -E copy
-		${ARRUS_TARGET_SHARED_OBJECT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus
+    COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
+    COMMAND
+        ${CMAKE_COMMAND} -E copy
+        ${ARRUS_TARGET_SHARED_OBJECT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus
     COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     COMMAND
         ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
-    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} py_core
-)
+    DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} py_core)
+
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set(ARRUS_TARGET_SHARED_OBJECT_FILE "$<TARGET_FILE:arrus-core>")
+    add_custom_command(OUTPUT ${TIMESTAMP}
+      COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${CMAKE_CURRENT_BINARY_DIR}/arrus
+      COMMAND
+        ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
+      COMMAND
+        ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
+      DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} py_core)
+endif()
+
+
 
 add_custom_target(python_whl ALL DEPENDS ${TIMESTAMP})
 set_target_properties(

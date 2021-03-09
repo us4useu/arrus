@@ -128,6 +128,10 @@ install(
 ################################################################################
 # Embed external dependencies
 ################################################################################
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+	set(CMAKE_SKIP_RPATH TRUE)
+endif()
+
 if(ARRUS_EMBED_DEPS)
     # TODO Remove transitive dependency on boost (embed deps directly).
     message("Us4r API ROOT DIR: ${Us4_ROOT_DIR}")
@@ -140,6 +144,7 @@ if(ARRUS_EMBED_DEPS)
         DESTINATION
             ${ARRUS_LIB_INSTALL_DIR}
     )
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     install(
        FILES
             # TODO(pjarosik) make it more general (will not work for OS!=win)
@@ -154,5 +159,6 @@ if(ARRUS_EMBED_DEPS)
         DESTINATION
             ${ARRUS_BIN_INSTALL_DIR}
     )
+endif()
 endif()
 
