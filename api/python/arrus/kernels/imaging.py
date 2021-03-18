@@ -232,7 +232,7 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
     foc_defoc = 1 - 2*float(tx_focus > 0)
     tx_delays = tx_delays*foc_defoc
     tx_delays_center = tx_delays_center*foc_defoc
-    tx_delays_center = np.squeeze(tx_delays_center)
+    tx_delays_center = np.atleast_1d(np.squeeze(tx_delays_center))
     tx_aperture_delays = []
     tx_aperture_delays_center = []
 
