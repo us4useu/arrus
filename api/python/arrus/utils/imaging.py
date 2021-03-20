@@ -23,6 +23,8 @@ class Pipeline:
         self.steps = steps
         self._host_registered = None
         self._placement = None
+        self._stream = None  # GPU-related, prepared on initialization stage
+        self._input_buffer = None  # GPU-related, prepared on init. stage
         if placement is not None:
             self.set_placement(placement)
 
@@ -31,7 +33,10 @@ class Pipeline:
         :param data: numpy array with data to process
         :return:
         """
-        data = self.num_pkg.asarray(data)
+        if self._is_gpu:
+            self._input_buffer.set(data, stream=self._stream)
+            data = self._input_buffer
+
         for step in self.steps:
             data = step._process(data)
         return data
@@ -39,7 +44,9 @@ class Pipeline:
     def _initialize(self, const_metadata):
         input_shape = const_metadata.input_shape
         input_dtype = const_metadata.dtype
-        data = self.num_pkg.zeros(input_shape, dtype=input_dtype)+1000
+        self._input_buffer = self.num_pkg.zeros(
+            input_shape, dtype=input_dtype)+1000
+        data = self._input_buffer
         for step in self.steps:
             data = step._initialize(data)
 
@@ -71,9 +78,12 @@ class Pipeline:
             import cupy as cp
             import cupyx.scipy.ndimage as cupy_scipy_ndimage
             pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
+            self._stream = cp.cuda.Stream(non_blocking=True)
+            self._is_gpu = True
         elif self._placement == "CPU":
             import scipy.ndimage
             pkgs = dict(num_pkg=np, filter_pkg=scipy.ndimage)
+            self._is_gpu = False
         else:
             raise ValueError(f"Unsupported device: {device}")
         for step in self.steps:
