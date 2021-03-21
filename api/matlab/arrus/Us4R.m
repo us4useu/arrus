@@ -189,7 +189,11 @@ classdef Us4R < handle
                 'cicOrder', reconstructOperation.cicOrder, ...
                 'decimation', reconstructOperation.decimation, ...
                 'xGrid', reconstructOperation.xGrid, ...
-                'zGrid', reconstructOperation.zGrid);
+                'zGrid', reconstructOperation.zGrid, ...
+                'dopplerEnable', reconstructOperation.dopplerEnable, ...
+                'vectorEnable', reconstructOperation.vectorEnable, ...
+                'wcFilterACoeff', reconstructOperation.wcFilterACoeff, ...
+                'wcFilterBCoeff', reconstructOperation.wcFilterBCoeff);
             
             obj.rec.enable = true;
             
@@ -507,7 +511,11 @@ classdef Us4R < handle
                                 'cicOrder',         'cicOrd'; ...
                                 'decimation',       'dec'; ...
                                 'xGrid',            'xGrid'; ...
-                                'zGrid',            'zGrid'};
+                                'zGrid',            'zGrid'; ...
+                                'dopplerEnable',    'dopplerEnable'; ...
+                                'vectorEnable',     'vectorEnable'; ...
+                                'wcFilterACoeff',   'wcFiltA'; ...
+                                'wcFilterBCoeff',   'wcFiltB'};
 
             for iPar=1:size(recParamMapping,1)
                 obj.rec.(recParamMapping{iPar,2}) = [];
@@ -941,6 +949,8 @@ classdef Us4R < handle
                 rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
             end
 
+            rfRaw = single(rfRaw);
+            
             % Digital Down Conversion
             rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
 
@@ -951,7 +961,75 @@ classdef Us4R < handle
             if strcmp(obj.seq.type,'lin')
                 rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
             else
-                rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
+%                 rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
+                
+                tic;
+                xElem       = gpuArray(single(obj.sys.xElem));
+                zPix        = gpuArray(single(obj.rec.zGrid));
+                xPix        = gpuArray(single(obj.rec.xGrid));
+                sos         = single(obj.seq.c);
+                fs          = single(obj.seq.rxSampFreq / obj.rec.dec);
+                fn          = single(obj.seq.txFreq);
+                txFoc       = single(obj.seq.txFoc);
+                txAng       = single(obj.seq.txAng);
+                txApCent	= single(obj.seq.txApCent);
+                minRxTang	= single(tan(txAng)-0.5);
+                maxRxTang	= single(tan(txAng)+0.5);
+                initDel     = single(- obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+                toc;
+                
+                if ~obj.rec.dopplerEnable && ~obj.rec.vectorEnable
+                    % B-Mode
+                    rfBfr = iqRaw2Lri(rfRaw, xElem, zPix, xPix, txFoc, txAng, txApCent, minRxTang, maxRxTang, fs, fn, sos, initDel);
+                else
+                    % Duplex
+                    nXPix	= length(xPix);
+                    nZPix	= length(zPix);
+                    nRep	= size(rfRaw,3);
+                    
+                    if obj.rec.vectorEnable
+                        nProj = 2;
+                        % fixed value of rxAng!!!
+                        rxAng = 20*pi/180 * [-1;1] .* ones(1,nRep);
+                        minRxTang = single(tan(rxAng)-0.25);
+                        maxRxTang = single(tan(rxAng)+0.25);
+                    else
+                        nProj = 1;
+                    end
+                    
+                    tic;
+                    rfBfr	= complex(zeros(nZPix,nXPix,nRep,nProj,'single','gpuArray'));
+                    toc;
+                    
+                    tic;
+                    stepRep	= floor(2048/obj.sys.nElem);
+                    for iProj=1:nProj
+%                         rfBfr = iqRaw2Lri(rfRaw, xElem, zPix, xPix, txFoc, txAng, txApCent, minRxTang, maxRxTang, fs, fn, sos, initDel);
+                        for iRep=1:stepRep:nRep
+                            repSel = iRep : min(iRep+stepRep-1, nRep);
+                            rfBfr(:,:,repSel,iProj) = iqRaw2Lri(rfRaw(:,:,repSel), xElem, zPix, xPix, txFoc(repSel), txAng(repSel), txApCent(repSel), minRxTang(iProj,repSel), maxRxTang(iProj,repSel), fs, fn, sos, initDel);
+                        end
+                    end
+                    toc;
+                    
+                    % Wall Clutter Filtration
+                    wcFiltStepInit = obj.rec.wcFiltB(1)*[-1;1].*reshape(double(rfBfr(:,:,1,:)), [1,nZPix,nXPix,nProj]);
+                    rfBfrFlt = single(filter(obj.rec.wcFiltB, obj.rec.wcFiltA, double(rfBfr), wcFiltStepInit, 3));
+                    
+                    % Mean frequency estimator (in fact - it's a mean phase shift estimator)
+                    wcFiltInitZoneSize = 8;
+                    if nRep-wcFiltInitZoneSize < 2
+                        error('Not enough data for Color Doppler. Possibly nRep to small or wcFiltInitZoneSize to large.');
+                    end
+                    
+                    color = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
+                    power = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
+                    for iProj=1:nProj
+                        [color(:,:,1,iProj),power(:,:,1,iProj)] = dopplerColor(rfBfrFlt(:,:,(wcFiltInitZoneSize+1):end,iProj));
+                    end
+                    
+                    rfBfr = mean(mean(rfBfr,4),3);
+                end
             end
 
             %% Postprocessing
@@ -969,17 +1047,27 @@ classdef Us4R < handle
             % Scan conversion (for 'lin' mode)
             if strcmp(obj.seq.type,'lin')
                 envImg = scanConversion(envImg,obj.sys,obj.seq,obj.rec);
+                
+                % Doppler is not implemented for 'lin' mode
             end
             
             % Compression
             img = 20*log10(envImg);
             
+            if obj.rec.dopplerEnable || obj.rec.vectorEnable
+                power = 10*log10(power);
+            end
+            
             % Gather data from GPU
+            if obj.rec.dopplerEnable || obj.rec.vectorEnable
+                img = cat(4,img,power,color);
+            end
+            
             if obj.rec.gpuEnable
                 img = gather(img);
             end
-
-
+            
+            
         end
 
         function maskString = maskFormat(obj,maskLogical)

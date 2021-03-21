@@ -10,7 +10,11 @@ classdef Reconstruction < Operation
     % :param decimation: decimation factor
     % :param xGrid: (1, width) vector, x-coordinates of the image pixels [m]
     % :param zGrid: (1, depth) vector z-coordinates of the image pixels [m]
-
+    % :param dopplerEnable: boolean, enable color doppler reconstruction and duplex imaging
+    % :param vectorEnable: boolean, enable vector doppler reconstruction and duplex imaging
+    % :param wcFilterACoeff: 1-D filter denominator coefficient (Wall Clutter Filter for Color Doppler)
+    % :param wcFilterBCoeff: 1-D filter numerator coefficient (Wall Clutter Filter for Color Doppler)
+    
     properties
         filterEnable
         filterACoeff
@@ -21,6 +25,10 @@ classdef Reconstruction < Operation
         decimation
         xGrid
         zGrid
+        dopplerEnable = false
+        vectorEnable = false
+        wcFilterACoeff
+        wcFilterBCoeff
     end
     
     methods

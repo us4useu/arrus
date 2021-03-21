@@ -14,39 +14,22 @@ __global__ void dopplerColor(float * color,
     float2 iqPixCurr, iqPixPrev;
     float auxPower;
     float2 auxColor = {0.f, 0.f};
-    float2 wClut = {0.f, 0.f};
     
     if (z>=nZPix || x>=nXPix) {
         return;
     }
     
-    /* Wall Clutter estimation (constant component) */
-    for (int iRep=0; iRep<nRep; iRep++) {
-        wClut.x += iqImg[z + x * nZPix].x;
-        wClut.y += iqImg[z + x * nZPix].y;
-    }
-    wClut.x /= nRep;
-    wClut.y /= nRep;
-    
     /* Color & Power estimation */
     iqPixCurr = iqImg[z + x * nZPix];
-    iqPixCurr.x -= wClut.x;
-    iqPixCurr.y -= wClut.y;
-    
     auxPower = iqPixCurr.x * iqPixCurr.x + iqPixCurr.y * iqPixCurr.y;
-    
     for (int iRep=1; iRep<nRep; iRep++) {
-        
         iqPixPrev = iqPixCurr;
         iqPixCurr = iqImg[z + x * nZPix + iRep * nZPix * nXPix];
-        iqPixCurr.x -= wClut.x;
-        iqPixCurr.y -= wClut.y;
         
         auxPower += iqPixCurr.x * iqPixCurr.x + iqPixCurr.y * iqPixCurr.y;
         auxColor.x += iqPixCurr.x * iqPixPrev.x + iqPixCurr.y * iqPixPrev.y;
         auxColor.y += iqPixCurr.y * iqPixPrev.x - iqPixCurr.x * iqPixPrev.y;
     }
-    
     color[z + x*nZPix] = atan2f(auxColor.y, auxColor.x);
     power[z + x*nZPix] = auxPower / nRep;
 }
