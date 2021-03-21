@@ -146,12 +146,15 @@ def create_lin_sequence(context):
 
         if delays.shape == (1, 1):
             delays = delays.reshape((1, ))
+        elif len(delays) == 0:
+            delays = np.array([])
         else:
             delays = np.squeeze(delays)
 
         tx = Tx(tx_aperture, pulse, delays)
         rx_aperture, rx_padding = get_ap(rx_center, rx_ap_size)
-        rx = Rx(rx_aperture, actual_sample_range, downsampling_factor, rx_padding)
+        rx = Rx(rx_aperture, actual_sample_range, downsampling_factor,
+                rx_padding)
         txrxs.append(TxRx(tx, rx, pri))
     return TxRxSequence(txrxs, tgc_curve=tgc_curve, sri=sri)
 
@@ -238,9 +241,13 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
 
     for i, tx_aperture in enumerate(tx_apertures):
         tx_del = tx_delays[np.argwhere(tx_aperture), i]
-        tx_delay_shift = - np.min(tx_del)
-        tx_del = tx_del + tx_delay_shift
-        tx_del_cent = tx_delays_center[i] + tx_delay_shift
+        if len(tx_del) > 0:
+            tx_delay_shift = - np.min(tx_del)
+            tx_del = tx_del + tx_delay_shift
+            tx_del_cent = tx_delays_center[i] + tx_delay_shift
+        else:
+            tx_del = np.array([])
+            tx_del_cent = None
         tx_aperture_delays.append(tx_del)
         tx_aperture_delays_center.append(tx_del_cent)
 
@@ -248,9 +255,10 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
 
     # Equalize
     for i in range(len(tx_aperture_delays)):
-        tx_aperture_delays[i] = tx_aperture_delays[i] \
-                                - tx_aperture_delays_center[i] \
-                                + tx_delays_center_max
+        if len(tx_aperture_delays[i]) > 0:
+            tx_aperture_delays[i] = tx_aperture_delays[i] \
+                                  - tx_aperture_delays_center[i] \
+                                  + tx_delays_center_max
     return tx_apertures, tx_aperture_delays, tx_delays_center_max
 
 
