@@ -309,7 +309,7 @@ class RxBeamforming:
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
-        tx_angle = 0  # TODO use appropriate tx angle
+        tx_angle = 0
         start_sample = seq.rx_sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(seq)
 
@@ -351,6 +351,7 @@ class RxBeamforming:
                     np.cos(element_angle) - 1)
 
         tx_distance = radial_distance
+        print(element_x)
         rx_distance = np.sqrt(
             (x_distance - element_x) ** 2 + (z_distance - element_z) ** 2)
 
@@ -582,6 +583,8 @@ def _get_rx_aperture_origin(sequence):
     rx_aperture_center_element = np.array(sequence.rx_aperture_center_element)
     rx_aperture_origin = np.round(rx_aperture_center_element -
                                (rx_aperture_size - 1) / 2 + 1e-9)
+    if rx_aperture_size % 2 == 0:
+        rx_aperture_origin = rx_aperture_origin-0.5
     return rx_aperture_origin
 
 

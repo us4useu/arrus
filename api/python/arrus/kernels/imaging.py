@@ -126,6 +126,11 @@ def get_tx_aperture_center_coords(sequence, probe):
     pitch = probe.pitch
     curvature_radius = probe.curvature_radius
     tx_aperture_center_element = sequence.tx_aperture_center_element
+    tx_aperture_size = sequence.tx_aperture_size
+    if tx_aperture_size % 2 == 0:
+        # For aperture with even number of elements, move center between
+        # elements tx_aperture_center_element and tx_aperture_center_element+1
+        tx_aperture_center_element = tx_aperture_center_element+0.5
 
     element_position = np.arange(-(n_elements - 1) / 2,
                                  n_elements / 2)*pitch
