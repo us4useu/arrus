@@ -351,7 +351,6 @@ class RxBeamforming:
                     np.cos(element_angle) - 1)
 
         tx_distance = radial_distance
-        print(element_x)
         rx_distance = np.sqrt(
             (x_distance - element_x) ** 2 + (z_distance - element_z) ** 2)
 
