@@ -230,6 +230,22 @@ probe_adapter_models: [
 probe_models: [
     {
         id: {
+            manufacturer: "apex"
+            name: "tl094"
+        }
+        n_elements: 128,
+        pitch: 0.2e-3,
+        tx_frequency_range: {
+            begin: 6e6,
+            end: 14e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 50
+		}
+    },
+    {
+        id: {
             manufacturer: "esaote"
             name: "sl1543"
         }
