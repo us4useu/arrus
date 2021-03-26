@@ -379,6 +379,22 @@ probe_models: [
 probe_to_adapter_connections: [
     {
         probe_model_id: {
+            manufacturer: "apex"
+            name: "tl094"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 128
+        }
+    },
+    {
+        probe_model_id: {
             manufacturer: "esaote"
             name: "sl1543"
         }
