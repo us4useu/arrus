@@ -14,49 +14,54 @@ namespace arrus::devices {
 
 class ProbeImpl : public ProbeImplBase {
 
-public:
-    using Handle = std::unique_ptr<ProbeImpl>;
-    using RawHandle = PtrHandle<ProbeImpl>;
+ public:
+  using Handle = std::unique_ptr<ProbeImpl>;
+  using RawHandle = PtrHandle<ProbeImpl>;
 
-    ProbeImpl(const DeviceId &id, ProbeModel model,
-              ProbeAdapterImplBase::RawHandle adapter,
-              std::vector<ChannelIdx> channelMapping);
+  ProbeImpl(const DeviceId &id, ProbeModel model,
+            ProbeAdapterImplBase::RawHandle adapter,
+            std::vector<ChannelIdx> channelMapping);
 
-    const ProbeModel &getModel() const override {
-        return model;
-    }
+  const ProbeModel &getModel() const override {
+      return model;
+  }
 
-    /**
-     * tx and rx aperture are expected to be provided in flattened format.
-     *
-     * @param seq
-     * @param tgcSamples
-     */
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri,
-                    bool triggerSync = false) override;
+  /**
+   * tx and rx aperture are expected to be provided in flattened format.
+   *
+   * @param seq
+   * @param tgcSamples
+   */
+  std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+  setTxRxSequence(const std::vector<TxRxParameters> &seq,
+                  const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                  uint16 rxBatchSize, std::optional<float> sri,
+                  bool triggerSync = false) override;
 
-    Interval<Voltage> getAcceptedVoltageRange() override;
+  Interval<Voltage> getAcceptedVoltageRange() override;
 
-    void start() override;
+  void start() override;
 
-    void stop() override;
+  void stop() override;
 
-    void syncTrigger() override;
+  void syncTrigger() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer,
-                              const Us4RBuffer::Handle &us4rBuffer,
-                              bool isTriggerSync) override;
+  void registerOutputBuffer(Us4ROutputBuffer *buffer,
+                            const Us4RBuffer::Handle &us4rBuffer,
+                            bool isTriggerSync) override;
 
-    void setTgcCurve(const std::vector<float> &tgcCurve) override;
+  void setTgcCurve(const std::vector<float> &tgcCurve) override;
 
-private:
-    Logger::Handle logger;
-    ProbeModel model;
-    ProbeAdapterImplBase::RawHandle adapter;
-    std::vector<ChannelIdx> channelMapping;
+  static FrameChannelMapping::Handle remapFcm(
+      const FrameChannelMapping::Handle &adapterFcm,
+      const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels);
+
+ private:
+  Logger::Handle logger;
+  ProbeModel model;
+  ProbeAdapterImplBase::RawHandle adapter;
+  std::vector<ChannelIdx> channelMapping;
+
 };
 
 }
