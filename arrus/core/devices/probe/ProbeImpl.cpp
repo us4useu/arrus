@@ -152,27 +152,27 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(
     FrameChannelMappingBuilder builder(adapterFcm->getNumberOfLogicalFrames(),
                                        adapterFcm->getNumberOfLogicalChannels());
 
-    unsigned frameNumber = 0;
+    unsigned short frameNumber = 0;
     for (const auto &mapping : adapterActiveChannels) {
         // mapping[i] = dst probe adapter channel number
         // (e.g. from 0 to 256 (number of channels system have))
         // where i is the probe rx active element
 
         // pairs: channel position, adapter channel
-        std::vector<std::pair<size_t, ChannelIdx>> posChannel;
-        ChannelIdx rxChannels = mapping.size();
+        std::vector<std::pair<ChannelIdx, ChannelIdx>> posChannel;
+        size_t rxChannels = mapping.size();
         // adapterRxChannel[i] = dst adapter aperture channel number
         // (e.g. from 0 to 64 (aperture size)).
-        std::vector<size_t> adapterRxChannel(rxChannels, 0);
+        std::vector<ChannelIdx> adapterRxChannel(rxChannels, 0);
 
         std::transform(std::begin(mapping), std::end(mapping),
                        std::back_insert_iterator(posChannel),
                        [i = 0](ChannelIdx channel) mutable {
-                         return std::make_pair(i++, channel);
+                         return std::make_pair(static_cast<ChannelIdx>(i++), channel);
                        });
         std::sort(std::begin(posChannel), std::end(posChannel),
                   [](const auto &a, const auto &b) { return a.second < b.second; });
-        int i = 0;
+        ChannelIdx i = 0;
         for (const auto&[pos, ch] : posChannel) {
             adapterRxChannel[pos] = i++;
         }
