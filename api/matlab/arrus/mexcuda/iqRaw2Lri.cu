@@ -78,7 +78,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
             
             time = (txDist + rxDist) * sosInv + initDel;
             iSamp = time * fs;
-            if (iSamp<0.f && iSamp>static_cast<float>(nSamp-1)) continue;
+            if (iSamp<0.f || iSamp>static_cast<float>(nSamp-1)) continue;
             
             float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iElem + iTx*nElem);
             sampRe = iqSamp.x;
