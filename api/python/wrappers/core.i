@@ -85,6 +85,14 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Logger.h"
 
 %inline %{
+    struct GILReleaser {
+        GILReleaser(): save(PyEval_SaveThread()) {}
+        ~GILReleaser() {
+            PyEval_RestoreThread(save);
+        }
+        PyThreadState *save;
+    };
+
     std::shared_ptr<::arrus::Logging> LOGGING_FACTORY;
 
     // TODO consider moving the below function to %init
@@ -189,6 +197,28 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
     }
     return pitch[0];
 }
+
+size_t getTailAddress(std::shared_ptr<arrus::devices::HostBuffer> buffer) {
+//    size_t tailPtr = 0;
+//    std::cout << "Relasing python thread" << std::endl;
+//    Py_BEGIN_ALLOW_THREADS
+//    std::cout << "Python thread released" << std::endl;
+//    //{
+//    //    GILReleaser releaser;
+    return buffer->tailAddress(-1);
+    //}
+//    std::cout << "ACQ python thread" << std::endl;
+//    Py_END_ALLOW_THREADS
+//    std::cout << "ACQ thread realesed" << std::endl;
+//    return tailPtr;
+}
+
+void releaseTail(std::shared_ptr<arrus::devices::HostBuffer> buffer) {
+//    Py_BEGIN_ALLOW_THREADS
+    buffer->releaseTail(-1);
+//    Py_END_ALLOW_THREADS
+}
+
 %};
 
 // ------------------------------------------ COMMON

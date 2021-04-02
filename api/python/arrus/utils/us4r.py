@@ -201,7 +201,6 @@ class RemapToLogicalOrder:
             self._remap_fn = cpu_remap_fn
         else:
             # GPU
-            print("Using new GPU kernel")
             import cupy as cp
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
