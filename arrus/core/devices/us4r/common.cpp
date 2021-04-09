@@ -37,12 +37,28 @@ getNumberOfFrames(const std::vector<TxRxParamsSequence> &seqs) {
     return numberOfFrames;
 }
 
+template<typename T>
+std::vector<T> revertMapping(const std::vector<T> &mapping) {
+    std::vector<uint8_t> result(mapping.size());
+    for(int i = 0; i < mapping.size(); ++i) {
+        result[mapping[i]] = i;
+    }
+    return result;
+}
+
+/**
+ *
+ * @param seqs  us4oem ordinal -> tx/rx sequence
+ * @param us4oemL2PMappings us4oem ordinal -> us4oem logical to physical mapping
+ * @return
+ */
 std::tuple<
     std::vector<TxRxParamsSequence>,
     Eigen::Tensor<FrameChannelMapping::FrameNumber, 3>,
     Eigen::Tensor<int8, 3>
 >
-splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
+splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
+                            const std::vector<std::vector<uint8_t>> &us4oemL2PMappings) {
     using FrameNumber = FrameChannelMapping::FrameNumber;
     // All sequences must have the same length.
     ARRUS_REQUIRES_NON_EMPTY_IAE(seqs);
@@ -73,9 +89,17 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
         result.push_back(resSeq);
     }
 
+    std::vector<std::vector<uint8_t>> us4oemP2LMappings(us4oemL2PMappings.size());
+    int i = 0;
+    for(auto &mapping: us4oemL2PMappings) {
+        us4oemP2LMappings[i++] = revertMapping<uint8_t>(mapping);
+    }
+
     // us4oem ordinal number -> current frame idx
     std::vector<FrameNumber> currentFrameIdx(seqs.size(), 0);
+    // For each operation
     for(size_t opIdx = 0; opIdx < seqLength; ++opIdx) {
+        // For each module
         for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) {
             const auto &seq = seqs[seqIdx];
             const auto &op = seq[opIdx];
@@ -87,13 +111,16 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
             for(ChannelIdx ch = 0; ch < N_RX_CHANNELS; ++ch) {
                 ChannelIdx subaperture = 1;
                 for(ChannelIdx group = 0; group < N_GROUPS; ++group) {
-                    ChannelIdx addrIdx = group * N_RX_CHANNELS + ch;
-                    if(op.getRxAperture()[addrIdx]) {
+                    // Physical address
+                    ChannelIdx addrIdx = group*N_RX_CHANNELS + ch;
+                    // Logical address
+                    ChannelIdx logicalIdx = us4oemP2LMappings[seqIdx][addrIdx];
+                    if(op.getRxAperture()[logicalIdx]) {
                         // channel active
-                        subapertureIdxs[addrIdx] = subaperture++;
+                        subapertureIdxs[logicalIdx] = subaperture++;
                     } else {
                         // channel inactive
-                        subapertureIdxs[addrIdx] = 0;
+                        subapertureIdxs[logicalIdx] = 0;
                     }
                 }
             }
