@@ -187,8 +187,12 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         // keep operations with empty tx or rx aperture - they are still a part of the larger operation
     }
     // split operations if necessary
-
-    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(seqs);
+    std::vector<std::vector<uint8_t>> us4oemL2PChannelMappings;
+    for(auto &us4oem: us4oems) {
+        us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
+    }
+    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(
+        seqs, us4oemL2PChannelMappings);
 
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;

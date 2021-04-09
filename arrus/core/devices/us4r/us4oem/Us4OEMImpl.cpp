@@ -619,4 +619,8 @@ void Us4OEMImpl::enableSequencer() {
     this->ius4oem->EnableSequencer();
 }
 
+std::vector<uint8_t> Us4OEMImpl::getChannelMapping() {
+    return channelMapping;
+}
+
 }
