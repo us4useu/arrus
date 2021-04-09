@@ -41,7 +41,8 @@ std::tuple<
     Eigen::Tensor<FrameChannelMapping::FrameNumber, 3>,
     Eigen::Tensor<int8, 3>
 >
-splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs);
+splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
+                            const std::vector<std::vector<uint8_t>> &mappings);
 
 }
 
