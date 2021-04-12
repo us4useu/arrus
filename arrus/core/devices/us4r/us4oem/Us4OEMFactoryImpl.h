@@ -53,7 +53,7 @@ public:
         for(uint8_t physicalIdx : channelMapping) {
             // src - physical channel
             // dst - virtual channel
-            ius4oem->SetTxChannelMapping(virtualIdx++, physicalIdx);
+            ius4oem->SetTxChannelMapping(physicalIdx, virtualIdx++);
         }
         // Rx channel mapping
         // Check if the the permutation in channel mapping is the same

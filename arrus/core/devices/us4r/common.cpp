@@ -39,9 +39,9 @@ getNumberOfFrames(const std::vector<TxRxParamsSequence> &seqs) {
 
 template<typename T>
 std::vector<T> revertMapping(const std::vector<T> &mapping) {
-    std::vector<uint8_t> result(mapping.size());
+    std::vector<T> result(mapping.size());
     for(int i = 0; i < mapping.size(); ++i) {
-        result[mapping[i]] = i;
+        result[mapping[i]] = (uint8_t) i;
     }
     return result;
 }
@@ -111,10 +111,10 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
             for(ChannelIdx ch = 0; ch < N_RX_CHANNELS; ++ch) {
                 ChannelIdx subaperture = 1;
                 for(ChannelIdx group = 0; group < N_GROUPS; ++group) {
-                    // Physical address
-                    ChannelIdx addrIdx = group*N_RX_CHANNELS + ch;
-                    // Logical address
-                    ChannelIdx logicalIdx = us4oemP2LMappings[seqIdx][addrIdx];
+                    // Us4OEM Physical address
+                    ChannelIdx physicalIdx = group*N_RX_CHANNELS + ch;
+                    // Us4OEM Logical address
+                    ChannelIdx logicalIdx = us4oemP2LMappings[seqIdx][physicalIdx];
                     if(op.getRxAperture()[logicalIdx]) {
                         // channel active
                         subapertureIdxs[logicalIdx] = subaperture++;
