@@ -114,6 +114,10 @@ protected:
         us4oemsPtr.push_back(us4oems[0].get());
         us4oems.push_back(std::make_unique<::testing::NiceMock<MockUs4OEM>>(1));
         us4oemsPtr.push_back(us4oems[1].get());
+
+        ON_CALL(*us4oems[0], getChannelMapping()).WillByDefault(Return(defaultChannelMapping[0]));
+        ON_CALL(*us4oems[1], getChannelMapping()).WillByDefault(Return(defaultChannelMapping[1]));
+
         probeAdapter = std::make_unique<ProbeAdapterImpl>(
             DeviceId(DeviceType::ProbeAdapter, 0),
             ProbeAdapterModelId("test", "test"),
@@ -130,6 +134,7 @@ protected:
     std::vector<Us4OEMImplBase::RawHandle> us4oemsPtr;
     ProbeAdapterImpl::Handle probeAdapter;
     TGCCurve defaultTGCCurve;
+    std::vector<std::vector<uint8_t>> defaultChannelMapping = {getRange<uint8_t>(0, 128), getRange<uint8_t>(0, 128)};
 };
 
 class ProbeAdapter64ChannelsTest : public AbstractProbeAdapterImplTest {

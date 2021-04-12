@@ -40,7 +40,7 @@ getNumberOfFrames(const std::vector<TxRxParamsSequence> &seqs) {
 template<typename T>
 std::vector<T> revertMapping(const std::vector<T> &mapping) {
     std::vector<T> result(mapping.size());
-    for(int i = 0; i < mapping.size(); ++i) {
+    for(size_t i = 0; i < mapping.size(); ++i) {
         result[mapping[i]] = (uint8_t) i;
     }
     return result;

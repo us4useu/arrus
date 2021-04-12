@@ -32,6 +32,7 @@ namespace arrus::devices {
  * the second sequence will extended by NOP TxRxParameters.
  *
  * @param seqs tx/rx sequences to recalculate
+ * @param mappings tx/rx us4oem mappings to apply - in order to determien
  * @return recalculated sequences,
  *         a mapping (module, input op index, rx channel) -> output frame number,
  *         a mapping (module, input op index, rx channel) -> output frame rx channel
