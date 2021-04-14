@@ -47,28 +47,15 @@ extern "C" __global__ void iq2RawLri(complex<float> *iqLri, const complex<float>
     else {
         /* PWI */
         float lastElement = rxApOrig + (nElem-1)*pitch;
-        float r1 = (xPix[x]-rxApOrig) * cosf(txAng) - zPix[z] * sinf(txAng);
-        float r2 = (xPix[x]-lastElement) * cosf(txAng) - zPix[z] * sinf(txAng);
+        float r1 = (xPix[x]-rxApOrig)*cosf(txAng) - zPix[z]*sinf(txAng);
+        float r2 = (xPix[x]-lastElement)*cosf(txAng) - zPix[z]*sinf(txAng);
 
-        txDist = xPix[x] * sinf(txAng) + zPix[z] * cosf(txAng);
+        txDist = xPix[x]*sinf(txAng) + zPix[z]*cosf(txAng);
         txApod = (r1 >= 0.f && r2 <= 0.f) ? 1.0f : 0.0f;
     }
 
     zDistInv = 1 / zPix[z];
-    const int nSin = 512;
-    float dPhase = 2 * CUDART_PI_F / (nSin-1);
-    float currentPhase;
-    __shared__ float2 sincosShared[nSin];
-    int startSamp = threadIdx.x + threadIdx.y * blockDim.x;
-    int stepSamp = blockDim.x * blockDim.y;
-
-    for (int iSin = startSamp; iSin < nSin; iSin += stepSamp) {
-        currentPhase = iSin * dPhase;
-        sincosShared[iSin].x = sinf(currentPhase);
-        sincosShared[iSin].y = cosf(currentPhase);
-    }
-    __syncthreads();
-
+    float omega = 2 * CUDART_PI_F * fn;
     int txOffset = tx*nSamp*nElem;
 
     for (int iElem = 0; iElem < nElem; iElem++) {
@@ -78,16 +65,11 @@ extern "C" __global__ void iq2RawLri(complex<float> *iqLri, const complex<float>
         rxApod = (fabsf(rxTang) <= maxTang) ? 1.0f : 0.0f;
         time = (txDist+rxDist)*sosInv + initialDelay;
         iSamp = time*fs;
-        if (iSamp >= 0 && iSamp <= nSamp-1) {
+        if (iSamp >= 0 && iSamp < nSamp-1) {
             offset = txOffset + iElem*nSamp;
-            float originalIsamp = iSamp;
             interpWgh = modff(iSamp, &iSamp);
             int intSamp = int(iSamp);
-            iSampMod = time*fn;
-            iSampMod = (iSampMod - truncf(iSampMod))*(float)nSin;
-            modSin = sincosShared[(int)iSampMod].x;
-            modCos = sincosShared[(int)iSampMod].y;
-
+            __sincosf(omega*time, &modSin, &modCos);
             complex<float> modFactor = complex<float>(modCos, modSin);
             samp = iqRaw[offset+intSamp]*(1-interpWgh) + iqRaw[offset+intSamp+1]*interpWgh;
             pix += samp*modFactor*rxApod;
