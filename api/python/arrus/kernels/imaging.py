@@ -279,17 +279,22 @@ def create_pwi_sequence(context):
     pri = op.pri
     sri = op.sri
     fs = context.device.sampling_frequency/downsampling_factor
-    tgc_start = op.tgc_start
-    tgc_slope = op.tgc_slope
+
     angles = op.angles
     # medium parameters
     c = op.speed_of_sound
     if c is None:
         c = context.medium.speed_of_sound
 
-    tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
-        context,
-        arrus.ops.tgc.LinearTgc(tgc_start, tgc_slope))
+    tgc_start = op.tgc_start
+    tgc_slope = op.tgc_slope
+
+    if tgc_start is None or tgc_slope is None:
+        tgc_curve = op.tgc_curve
+    else:
+        tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
+            context,
+            arrus.ops.tgc.LinearTgc(tgc_start, tgc_slope))
 
     tx_aperture = np.ones(n_elem, dtype=bool)
     rx_aperture = np.ones(n_elem, dtype=bool)

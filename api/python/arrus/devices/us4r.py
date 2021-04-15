@@ -15,6 +15,7 @@ import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
 import arrus.ops.tgc
+from collections.abc import Iterable
 
 
 DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
@@ -65,7 +66,7 @@ class Us4R(Device):
                                  "uploaded.")
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
                 self._current_sequence_context, tgc_curve)
-        else:
+        elif not isinstance(tgc_curve, Iterable):
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
         self._handle.setTgcCurve(list(tgc_curve))
 
