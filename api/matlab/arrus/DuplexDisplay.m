@@ -2,7 +2,9 @@ classdef DuplexDisplay < handle
 
     properties(Access = private)
         hFig
+        hAxDuplex
         hImg
+        hQvr
         xGrid
         zGrid
         showTimes
@@ -29,10 +31,12 @@ classdef DuplexDisplay < handle
             % Create figure.
             obj.hFig = figure();
             for iAx=1:4
-                subplot(2,2,iAx);
+                
                 if iAx==2
+                    obj.hAxDuplex = subplot(2,2,iAx);
                     obj.hImg(iAx) = image  (xGrid*1e3, zGrid*1e3,[]);
                 else
+                    subplot(2,2,iAx);
                     obj.hImg(iAx) = imagesc(xGrid*1e3, zGrid*1e3,[]);
                 end
                 
@@ -51,6 +55,7 @@ classdef DuplexDisplay < handle
                 xlabel('x [mm]'), ylabel('z [mm]'), daspect([1 1 1]);
                 set(gca, 'XLim', xGrid([1 end])*1e3, 'YLim', zGrid([1 end])*1e3);
             end
+            obj.hQvr = nan;
         end
         
         function state = isOpen(obj)
@@ -112,26 +117,24 @@ classdef DuplexDisplay < handle
                 set(obj.hImg(3), 'CData', power);
                 set(obj.hImg(4), 'CData', color);
                 
-                
-                
                 if vectorEnable
                     % fixed sparsing coefficient!!!
-                    vecDec	= 6;
+                    vecDec	= 20;
                     
                     vXSel	= vecDec:vecDec:nXPix;
                     vZSel	= vecDec:vecDec:nZPix;
-                    vMultip	= vecDec*diff(obj.xGrid(1:2)*1e3)/pi;
+                    vMultip	= vecDec*diff(obj.xGrid(1:2)*1e3)/pi  /2;
                     
-                    if exist('hQvr','var')
-                        delete(hQvr);
+                    if ishandle(obj.hQvr)
+                        delete(obj.hQvr);
                     end
                     
-                    hold on;
-                    hQvr = quiver(  obj.xGrid(vXSel)*1e3, ...
-                                    obj.zGrid(vZSel)*1e3, ...
-                                    vMultip*colorX(vZSel,vXSel), ...
-                                    vMultip*colorZ(vZSel,vXSel),0,'Color','k');
-                    hQvr.Head.LineWidth = 1.5;
+                    axes(obj.hAxDuplex), hold on;
+                    obj.hQvr = quiver(	obj.xGrid(vXSel)*1e3, ...
+                                        obj.zGrid(vZSel)*1e3, ...
+                                        vMultip*colorX(vZSel,vXSel), ...
+                                        vMultip*colorZ(vZSel,vXSel),0,'Color','k');
+                    obj.hQvr.Head.LineWidth = 1.5;
                 end
                 
                 % TODO removed below pause
