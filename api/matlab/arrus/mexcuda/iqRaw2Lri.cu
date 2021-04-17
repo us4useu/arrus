@@ -1,7 +1,8 @@
 #define M_PI 3.14159265358979
 #include "mex.h"
 #include "gpu/mxGPUArray.h"
-// #include <string>
+#include <string>
+#include <iostream>
 
 __constant__ float xElemConst[1024];
 
@@ -96,30 +97,36 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
     }
 }
 
-// __host__ void checkData(void const * const data, std::string const name, bool const isComplex, int const nDims)
-// {
-//     std::string const invalidInputMsgId = "iqRaw2Lri:InvalidInput";
-//     
-//     if (mxGPUGetClassID(data) != mxSINGLE_CLASS) 
-//         mexErrMsgIdAndTxt( invalidInputMsgId, name + " must be single.");
-//     
-//     else if (!isComplex && mxGPUGetComplexity(data)) 
-//         mexErrMsgIdAndTxt( invalidInputMsgId, name + " must be real.");
-//     
-//     else if (isComplex && !mxGPUGetComplexity(data)) 
-//         mexErrMsgIdAndTxt( invalidInputMsgId, name + " must be complex.");
-//     
-//     else if (nDims==1 && !( mxGPUGetNumberOfDimensions(data) == 1 || 
-//                            (mxGPUGetNumberOfDimensions(data) == 2 && mxGPUGetDimensions(data)[0] == 1))) 
-//         mexErrMsgIdAndTxt( invalidInputMsgId, name + " must be 1D vector.");
-//     
-//     else if (nDims==2 && !(mxGPUGetNumberOfDimensions(data) == 2)) 
-//         mexErrMsgIdAndTxt( invalidInputMsgId, name + " must be 2D array.");
-//     
-//     else if (nDims==3 && !(mxGPUGetNumberOfDimensions(data) == 3)) 
-//         mexErrMsgIdAndTxt( invalidInputMsgId, name + " must be 3D array.");
-//     
-// }
+__host__ void checkData(mxGPUArray const * const data, char const * const name, bool const isComplex, int const nDims)
+{
+    char const * const invalidInputMsgId = "iqRaw2Lri:InvalidInput";
+    std::string invalidInputMsgTxt(name);
+    
+    if (mxGPUGetClassID(data) != mxSINGLE_CLASS) 
+        invalidInputMsgTxt += std::string(" must be single.");
+    
+    else if (!isComplex && mxGPUGetComplexity(data)) 
+        invalidInputMsgTxt += std::string(" must be real.");
+    
+    else if (isComplex && !mxGPUGetComplexity(data)) 
+        invalidInputMsgTxt += std::string(" must be complex.");
+    
+    else if (nDims==1 && !( mxGPUGetNumberOfDimensions(data) == 1 || 
+                           (mxGPUGetNumberOfDimensions(data) == 2 && mxGPUGetDimensions(data)[0] == 1))) 
+        invalidInputMsgTxt += std::string(" must be at most 1D vector.");
+    
+    else if (nDims==2 && !(mxGPUGetNumberOfDimensions(data) <= 2)) 
+        invalidInputMsgTxt += std::string(" must be at most 2D array.");
+    
+    else if (nDims==3 && !(mxGPUGetNumberOfDimensions(data) <= 3)) 
+        invalidInputMsgTxt += std::string(" must be at most 3D array.");
+    
+    else
+        return;
+    
+    std::cout << " " << std::endl; // This line prevents crash, no idea why?
+    mexErrMsgIdAndTxt( invalidInputMsgId, invalidInputMsgTxt.c_str());
+}
 
 void mexFunction(int nlhs, mxArray * plhs[],
                  int nrhs, mxArray const * prhs[])
@@ -204,41 +211,15 @@ void mexFunction(int nlhs, mxArray * plhs[],
     initDel	= mxGetScalar(prhs[12]);
     
     /* Validate inputs */
-    if ((mxGPUGetClassID(iqRaw) != mxSINGLE_CLASS) || !mxGPUGetComplexity(iqRaw) || mxGPUGetNumberOfDimensions(iqRaw) > 3) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "iqRaw must be single, complex 3D array.");
-    }
-    
-    if ((mxGPUGetClassID(xElem) != mxSINGLE_CLASS) || mxGPUGetComplexity(xElem) || !(mxGPUGetNumberOfDimensions(xElem) == 2 && mxGPUGetDimensions(xElem)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "xElem must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(zPix) != mxSINGLE_CLASS) || mxGPUGetComplexity(zPix) || !(mxGPUGetNumberOfDimensions(zPix) == 2 && mxGPUGetDimensions(zPix)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "zPix must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(xPix) != mxSINGLE_CLASS) || mxGPUGetComplexity(xPix) || !(mxGPUGetNumberOfDimensions(xPix) == 2 && mxGPUGetDimensions(xPix)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "xPix must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(foc) != mxSINGLE_CLASS) || mxGPUGetComplexity(foc) || !(mxGPUGetNumberOfDimensions(foc) == 2 && mxGPUGetDimensions(foc)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "foc must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(ang) != mxSINGLE_CLASS) || mxGPUGetComplexity(ang) || !(mxGPUGetNumberOfDimensions(ang) == 2 && mxGPUGetDimensions(ang)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "ang must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(cent) != mxSINGLE_CLASS) || mxGPUGetComplexity(cent) || !(mxGPUGetNumberOfDimensions(cent) == 2 && mxGPUGetDimensions(cent)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "cent must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(minRxTang) != mxSINGLE_CLASS) || mxGPUGetComplexity(minRxTang) || !(mxGPUGetNumberOfDimensions(minRxTang) == 2 && mxGPUGetDimensions(minRxTang)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "minRxTang must be single, real, horizontal vector.");
-    }
-    
-    if ((mxGPUGetClassID(maxRxTang) != mxSINGLE_CLASS) || mxGPUGetComplexity(maxRxTang) || !(mxGPUGetNumberOfDimensions(maxRxTang) == 2 && mxGPUGetDimensions(maxRxTang)[0] == 1)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "maxRxTang must be single, real, horizontal vector.");
-    }
+    checkData(iqRaw,     "iqRaw",     true,  3);
+    checkData(xElem,     "xElem",     false, 1);
+    checkData(zPix,      "zPix",      false, 1);
+    checkData(xPix,      "xPix",      false, 1);
+    checkData(foc,       "foc",       false, 1);
+    checkData(ang,       "ang",       false, 1);
+    checkData(cent,      "cent",      false, 1);
+    checkData(minRxTang, "minRxTang", false, 1);
+    checkData(maxRxTang, "maxRxTang", false, 1);
     
     if (mxGPUGetDimensions(iqRaw)[1] != mxGPUGetNumberOfElements(xElem)) {
         mexErrMsgIdAndTxt( invalidInputMsgId, "size(iqRaw,2) must be equal to length(xElem).");
