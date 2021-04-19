@@ -237,8 +237,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     }
     
     sharedPerBlock = 0;
-    blocksPerGrid = {(unsigned int)ceilf(static_cast<float>(nZPix)/static_cast<float>(threadsPerBlock.x)), 
-                     (unsigned int)ceilf(static_cast<float>(nXPix)/static_cast<float>(threadsPerBlock.y)), 1};
+    blocksPerGrid = {(nZPix+threadsPerBlock.x-1)/threadsPerBlock.x, 
+                     (nXPix+threadsPerBlock.y-1)/threadsPerBlock.y, 1};
     
     /* Create output mxGPUArray object */
     mwSize nDimOut = 3;
