@@ -97,9 +97,8 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
     }
 }
 
-__host__ void checkData(mxGPUArray const * const data, char const * const name, bool const isComplex, int const nDims)
+__host__ void checkData(mxGPUArray const * const data, char const * const name, bool const isComplex, int const nDims, char const * const invalidInputMsgId)
 {
-    char const * const invalidInputMsgId = "iqRaw2Lri:InvalidInput";
     std::string invalidInputMsgTxt(name);
     
     if (mxGPUGetClassID(data) != mxSINGLE_CLASS) 
@@ -211,15 +210,15 @@ void mexFunction(int nlhs, mxArray * plhs[],
     initDel	= mxGetScalar(prhs[12]);
     
     /* Validate inputs */
-    checkData(iqRaw,     "iqRaw",     true,  3);
-    checkData(xElem,     "xElem",     false, 1);
-    checkData(zPix,      "zPix",      false, 1);
-    checkData(xPix,      "xPix",      false, 1);
-    checkData(foc,       "foc",       false, 1);
-    checkData(ang,       "ang",       false, 1);
-    checkData(cent,      "cent",      false, 1);
-    checkData(minRxTang, "minRxTang", false, 1);
-    checkData(maxRxTang, "maxRxTang", false, 1);
+    checkData(iqRaw,     "iqRaw",     true,  3, invalidInputMsgId);
+    checkData(xElem,     "xElem",     false, 1, invalidInputMsgId);
+    checkData(zPix,      "zPix",      false, 1, invalidInputMsgId);
+    checkData(xPix,      "xPix",      false, 1, invalidInputMsgId);
+    checkData(foc,       "foc",       false, 1, invalidInputMsgId);
+    checkData(ang,       "ang",       false, 1, invalidInputMsgId);
+    checkData(cent,      "cent",      false, 1, invalidInputMsgId);
+    checkData(minRxTang, "minRxTang", false, 1, invalidInputMsgId);
+    checkData(maxRxTang, "maxRxTang", false, 1, invalidInputMsgId);
     
     if (mxGPUGetDimensions(iqRaw)[1] != mxGPUGetNumberOfElements(xElem)) {
         mexErrMsgIdAndTxt( invalidInputMsgId, "size(iqRaw,2) must be equal to length(xElem).");
@@ -268,7 +267,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     if(nElem > 1024) {
         mexErrMsgIdAndTxt(invalidInputMsgId, "xElem is too long, kernel supports xElem of up to 1024 elements");
     }
-    cudaMemcpyToSymbol(xElemConst, dev_xElem, nElem*4, 0, cudaMemcpyDeviceToDevice);
+    cudaMemcpyToSymbol(xElemConst, dev_xElem, nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     
     /* configure texture reference */
     iqRawTex.normalized  = false;
