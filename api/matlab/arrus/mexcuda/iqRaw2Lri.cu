@@ -23,7 +23,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
                             float const sos, float const initDel, 
                             int const nZPix, int const nXPix, 
                             int const nSamp, int const nElem, 
-                            int const nTx, int const nRepTx, int const nRepSeq)
+                            int const nTx)
 {
     int z = blockIdx.x * blockDim.x + threadIdx.x;
     int x = blockIdx.y * blockDim.y + threadIdx.y;
@@ -292,7 +292,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
                                                                   dev_foc, dev_ang, dev_cent, 
                                                                   dev_minRxTang, dev_maxRxTang, 
                                                                   fs, fn, sos, initDel, 
-                                                                  nZPix, nXPix, nSamp, nElem, nTx, 1, 1);
+                                                                  nZPix, nXPix, nSamp, nElem, nTx);
     
     /* Wrap the output */
     plhs[0] = mxGPUCreateMxArrayOnGPU(iqLri);
