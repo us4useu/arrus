@@ -25,7 +25,7 @@ public:
 
     void operator=(Us4OEMImplBase const &&) = delete;
 
-    virtual void syncTrigger() = 0;
+    void syncTrigger() override = 0;
 
     virtual bool isMaster() = 0;
 
@@ -36,12 +36,14 @@ public:
                     uint16 rxBatchSize, std::optional<float> sri,
                     bool triggerSync) = 0;
 
-    virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgc) = 0;
+    void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgc) override = 0;
 
     // TODO expose "registerUs4OEMOutputBuffer" function, keep this class hermetic
     virtual Ius4OEMRawHandle getIUs4oem() = 0;
 
     virtual void enableSequencer() = 0;
+
+    virtual std::vector<uint8_t> getChannelMapping() = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

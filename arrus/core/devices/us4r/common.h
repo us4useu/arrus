@@ -32,6 +32,7 @@ namespace arrus::devices {
  * the second sequence will extended by NOP TxRxParameters.
  *
  * @param seqs tx/rx sequences to recalculate
+ * @param mappings tx/rx us4oem mappings to apply - in order to determien
  * @return recalculated sequences,
  *         a mapping (module, input op index, rx channel) -> output frame number,
  *         a mapping (module, input op index, rx channel) -> output frame rx channel
@@ -41,7 +42,8 @@ std::tuple<
     Eigen::Tensor<FrameChannelMapping::FrameNumber, 3>,
     Eigen::Tensor<int8, 3>
 >
-splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs);
+splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
+                            const std::vector<std::vector<uint8_t>> &mappings);
 
 }
 
