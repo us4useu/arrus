@@ -274,6 +274,19 @@ endif ()
 ################################################################################
 # Create default configuration header.
 file(READ "${PROJECT_SOURCE_DIR}/arrus/cfg/default.dict" ARRUS_DEFAULT_DICT)
+
+# Split default dictionary string into multiple parts - necessary due to
+# relatively small string length limitations in MSVC.
+string(LENGTH ${ARRUS_DEFAULT_DICT} ARRUS_DEFAULT_DICT_LEN)
+set(ARRUS_DEFAULT_DICT_CURRENT_POS 0)
+set(ARRUS_DEFAULT_DICT_PART_SIZE 16000)
+set(ARRUS_DEFAULT_DICT_VALUE "")
+while(${ARRUS_DEFAULT_DICT_CURRENT_POS} LESS_EQUAL ${ARRUS_DEFAULT_DICT_LEN})
+    string(SUBSTRING ${ARRUS_DEFAULT_DICT} ${ARRUS_DEFAULT_DICT_CURRENT_POS} ${ARRUS_DEFAULT_DICT_PART_SIZE} ARRUS_DEFAULT_DICT_PART)
+    set(ARRUS_DEFAULT_DICT_VALUE "${ARRUS_DEFAULT_DICT_VALUE} R\"\"\"\"(${ARRUS_DEFAULT_DICT_PART})\"\"\"\"")
+    math(EXPR ARRUS_DEFAULT_DICT_CURRENT_POS "${ARRUS_DEFAULT_DICT_CURRENT_POS} + ${ARRUS_DEFAULT_DICT_PART_SIZE}" OUTPUT_FORMAT DECIMAL)
+endwhile()
+# Splitting done
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cfg/default.h.in ${CMAKE_CURRENT_BINARY_DIR}/cfg/default.h)
 
 
