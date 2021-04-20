@@ -6,7 +6,6 @@
 
 __constant__ float xElemConst[1024];
 
-
 texture <float2, cudaTextureType1DLayered, cudaReadModeElementType> iqRawTex;
 
 
@@ -147,7 +146,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * maxRxTang;
     
     float2 * dev_iqLri;
-    void * dev_iqRaw;
+    float2 const * dev_iqRaw;
     float const * dev_xElem;
     float const * dev_zPix;
     float const * dev_xPix;
@@ -252,7 +251,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     
     /* Get pointers on the device */
     dev_iqLri = static_cast<float2 *>(mxGPUGetData(iqLri));
-    dev_iqRaw = const_cast<void *>(mxGPUGetDataReadOnly(iqRaw));
+    dev_iqRaw = static_cast<float2 const *>(mxGPUGetDataReadOnly(iqRaw));
     dev_xElem = static_cast<float const *>(mxGPUGetDataReadOnly(xElem));
     dev_zPix  = static_cast<float const *>(mxGPUGetDataReadOnly(zPix));
     dev_xPix  = static_cast<float const *>(mxGPUGetDataReadOnly(xPix));
@@ -274,29 +273,44 @@ void mexFunction(int nlhs, mxArray * plhs[],
     iqRawTex.addressMode[0] = cudaAddressModeBorder;
     iqRawTex.filterMode  = cudaFilterModeLinear;
     
+    int nTxPerPart = (nElem*nTx <= 2048) ? nTx : 2048/nElem;
+    int nPart = (nTx+nTxPerPart-1)/nTxPerPart;
+    
     cudaArray* cuArray;
-    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nElem*nTx);
+    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nElem*nTxPerPart);
     cudaMalloc3DArray(&cuArray, &iqRawTex.channelDesc, cuArraySize, cudaArrayLayered);
-    cudaMemcpy3DParms cuArrayCopy = {0};
-    cuArrayCopy.srcPtr = make_cudaPitchedPtr(dev_iqRaw, nSamp * sizeof(float2), nSamp, 1);
-    cuArrayCopy.dstArray = cuArray;
-    cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nElem*nTx);
-    cuArrayCopy.kind = cudaMemcpyDeviceToDevice;
-    cudaMemcpy3D(&cuArrayCopy);
-
     cudaBindTextureToArray(iqRawTex, cuArray);
     
-    /* Execute CUDA kernel */
-    iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri, dev_zPix, dev_xPix, 
-                                                                  dev_foc, dev_ang, dev_cent, 
-                                                                  dev_minRxTang, dev_maxRxTang, 
-                                                                  fs, fn, sos, initDel, 
-                                                                  nZPix, nXPix, nSamp, nElem, nTx);
+    /* Kernel in loop - due to limited number of texture layers */
+    cudaMemcpy3DParms cuArrayCopy = {0};
+    cuArrayCopy.dstArray = cuArray;
+    cuArrayCopy.kind = cudaMemcpyDeviceToDevice;
+    for (int iPart=0; iPart<nPart; iPart++) {
+        
+        int nTxInThisPart = (iPart<(nPart-1)) ? nTxPerPart : (nTx-iPart*nTxPerPart);
+        
+        /* Prepare texture memory */
+        cuArrayCopy.srcPtr = make_cudaPitchedPtr(const_cast<float2 *>(dev_iqRaw)+iPart*nSamp*nElem*nTxPerPart, nSamp * sizeof(float2), nSamp, 1);
+        cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nElem*nTxInThisPart);
+        cudaMemcpy3D(&cuArrayCopy);
+        
+        /* Execute CUDA kernel */
+        iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
+                                                                      dev_zPix, dev_xPix, 
+                                                                      dev_foc       + iPart*nTxPerPart, 
+                                                                      dev_ang       + iPart*nTxPerPart, 
+                                                                      dev_cent      + iPart*nTxPerPart, 
+                                                                      dev_minRxTang + iPart*nTxPerPart, 
+                                                                      dev_maxRxTang + iPart*nTxPerPart, 
+                                                                      fs, fn, sos, initDel, 
+                                                                      nZPix, nXPix, nSamp, nElem, nTxInThisPart);
+        
+    }
     
     /* Wrap the output */
     plhs[0] = mxGPUCreateMxArrayOnGPU(iqLri);
     
-    /* Destroy the mxGPUArray objects */
+    /* Clean-up */
     cudaUnbindTexture(iqRawTex);
     cudaFreeArray(cuArray);
     
