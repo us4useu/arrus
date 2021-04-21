@@ -533,6 +533,13 @@ classdef Us4R < handle
 
             %% Fixed parameters
             obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
+            
+            if obj.rec.gpuEnable
+                obj.rec.cicFiltCoeff = gpuArray(single(1));
+                for iOrd=1:obj.rec.cicOrd
+                    obj.rec.cicFiltCoeff = conv(obj.rec.cicFiltCoeff, ones(1,obj.rec.dec,'single','gpuArray'), 'full');
+                end
+            end
         end
         
         function val = get(obj,paramName)
@@ -952,8 +959,16 @@ classdef Us4R < handle
             rfRaw = single(rfRaw);
             
             % Digital Down Conversion
-            rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
-
+%             if obj.rec.gpuEnable && obj.rec.iqEnable
+%                 rfRaw = digitalDownConv(rfRaw, ...
+%                                         single(obj.rec.cicFiltCoeff), ...
+%                                         single(obj.seq.rxSampFreq), ...
+%                                         single(obj.seq.txFreq), ...
+%                                         single(obj.rec.dec));
+%             else
+                rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
+%             end
+            
             % warning: both filtration and decimation introduce phase delay!
             % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
 
