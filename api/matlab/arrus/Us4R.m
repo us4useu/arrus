@@ -530,7 +530,11 @@ classdef Us4R < handle
             %% Resulting parameters
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
-
+            
+            if obj.rec.dopplerEnable || obj.rec.vectorEnable
+                [~,obj.rec.wcFiltStepInitState] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
+            end
+            
             %% Fixed parameters
             obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
             
@@ -1016,7 +1020,7 @@ classdef Us4R < handle
                     end
                     
                     % Wall Clutter Filtration
-                    wcFiltStepInit = obj.rec.wcFiltB(1)*[-1;1].*reshape(double(rfBfr(:,:,1,:)), [1,nZPix,nXPix,nProj]);
+                    wcFiltStepInit = obj.rec.wcFiltStepInitState.*reshape(double(rfBfr(:,:,1,:)), [1,nZPix,nXPix,nProj]);
                     rfBfrFlt = single(filter(obj.rec.wcFiltB, obj.rec.wcFiltA, double(rfBfr), wcFiltStepInit, 3));
                     
                     % Mean frequency estimator (in fact - it's a mean phase shift estimator)
