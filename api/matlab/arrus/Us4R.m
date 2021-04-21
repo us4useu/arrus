@@ -541,7 +541,7 @@ classdef Us4R < handle
             if obj.rec.gpuEnable
                 obj.rec.cicFiltCoeff = gpuArray(single(1));
                 for iOrd=1:obj.rec.cicOrd
-                    obj.rec.cicFiltCoeff = conv(obj.rec.cicFiltCoeff, ones(1,obj.rec.dec,'single','gpuArray'), 'full');
+                    obj.rec.cicFiltCoeff = conv(obj.rec.cicFiltCoeff, ones(1,obj.rec.dec,'single','gpuArray')/obj.rec.dec, 'full');
                 end
             end
         end
