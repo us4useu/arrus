@@ -28,6 +28,7 @@ __global__ void digitalDownConv(float2 * iqOut, float const * rfIn,
         iqLineShared[iSamp].x = 2 * rfIn[iSamp + iLine*nSampIn] * modCos;
         iqLineShared[iSamp].y = 2 * rfIn[iSamp + iLine*nSampIn] * modSin;
     }
+    __syncthreads();
     
     // Filtration and decimation
     for (int iSampOut=iSampStart; iSampOut<nSampOut; iSampOut+=iSampStep) {
