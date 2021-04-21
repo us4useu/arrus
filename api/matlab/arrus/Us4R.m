@@ -978,7 +978,6 @@ classdef Us4R < handle
             else
 %                 rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
                 
-                tic;
                 xElem       = gpuArray(single(obj.sys.xElem));
                 zPix        = gpuArray(single(obj.rec.zGrid));
                 xPix        = gpuArray(single(obj.rec.xGrid));
@@ -991,7 +990,6 @@ classdef Us4R < handle
                 minRxTang	= single(tan(txAng)-0.5);
                 maxRxTang	= single(tan(txAng)+0.5);
                 initDel     = single(- obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
-                toc;
                 
                 if ~obj.rec.dopplerEnable && ~obj.rec.vectorEnable
                     % B-Mode
@@ -1012,20 +1010,10 @@ classdef Us4R < handle
                         nProj = 1;
                     end
                     
-                    tic;
                     rfBfr	= complex(zeros(nZPix,nXPix,nRep,nProj,'single','gpuArray'));
-                    toc;
-                    
-                    tic;
-                    stepRep	= floor(2048/obj.sys.nElem);
                     for iProj=1:nProj
-%                         rfBfr = iqRaw2Lri(rfRaw, xElem, zPix, xPix, txFoc, txAng, txApCent, minRxTang, maxRxTang, fs, fn, sos, initDel);
-                        for iRep=1:stepRep:nRep
-                            repSel = iRep : min(iRep+stepRep-1, nRep);
-                            rfBfr(:,:,repSel,iProj) = iqRaw2Lri(rfRaw(:,:,repSel), xElem, zPix, xPix, txFoc(repSel), txAng(repSel), txApCent(repSel), minRxTang(iProj,repSel), maxRxTang(iProj,repSel), fs, fn, sos, initDel);
-                        end
+                        rfBfr(:,:,:,iProj) = iqRaw2Lri(rfRaw, xElem, zPix, xPix, txFoc, txAng, txApCent, minRxTang(iProj,:), maxRxTang(iProj,:), fs, fn, sos, initDel);
                     end
-                    toc;
                     
                     % Wall Clutter Filtration
                     wcFiltStepInit = obj.rec.wcFiltB(1)*[-1;1].*reshape(double(rfBfr(:,:,1,:)), [1,nZPix,nXPix,nProj]);
