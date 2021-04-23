@@ -120,12 +120,15 @@ public:
 
     void enableSequencer() override;
 
-private:
+    std::vector<uint8_t> getChannelMapping() override;
+
+ private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
     std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
+    // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
     std::vector<uint8_t> channelMapping;
     std::unordered_set<uint8_t> channelsMask;
     uint16 pgaGain, lnaGain;

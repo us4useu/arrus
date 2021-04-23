@@ -78,9 +78,10 @@ class PwiSequence:
     downsampling_factor: int
     speed_of_sound: float
     pri: float
-    tgc_start: float
-    tgc_slope: float
     sri: float
+    tgc_start: float = None
+    tgc_slope: float = None
+    tgc_curve: list = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass(frozen=True)

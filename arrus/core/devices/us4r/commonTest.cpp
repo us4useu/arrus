@@ -15,6 +15,8 @@ const uint32 DECIMATION_FACTOR = 3;
 const float PRI = 300e-6;
 const std::vector<bool> TX_APERTURE = getNTimes(true, 128);
 const std::vector<float> TX_DELAYS(128);
+const std::vector<std::vector<uint8_t>> DEFAULT_MAPPING1({getRange<uint8_t>(0, 128)});
+const std::vector<std::vector<uint8_t>> DEFAULT_MAPPING2({getRange<uint8_t>(0, 128), getRange<uint8_t>(0, 128)});
 
 constexpr int32 FCM_UNAVAILABLE_VALUE = static_cast<int32>(FrameChannelMapping::UNAVAILABLE);
 
@@ -44,7 +46,9 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsSingleOperationCorrectly) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
+
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(
+        in, DEFAULT_MAPPING1);
 
     std::vector<bool> expectedRxAperture0(128);
     expectedRxAperture0[1] = true;
@@ -89,7 +93,8 @@ TEST(SplitRxApertureIfNecessaryTest, DoesNotSplitOpIfNotNecessary) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(
+        in, DEFAULT_MAPPING1);
 
     std::vector<TxRxParamsSequence> expected{
         {
@@ -136,7 +141,8 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
             getStdTxRxParameters(rxAperture3)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(
+        in, DEFAULT_MAPPING1);
 
     // IN op 0
     std::vector<bool> expRxAperture0(128);
@@ -225,7 +231,8 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsFullRxApertureCorrectly) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in,
+                                                                         DEFAULT_MAPPING1);
 
     std::vector<bool> expectedRxAperture0(128);
     for(size_t i = 0; i < 32; ++i) {
@@ -304,7 +311,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
     }
 
     std::vector<TxRxParamsSequence> in = {seq0, seq1};
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING2);
 
     TxRxParamsSequence expectedSeq0;
     {

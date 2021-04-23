@@ -237,6 +237,61 @@ class BandpassFilter(Operation):
         return result
 
 
+class FirFilter(Operation):
+
+    def __init__(self, taps, num_pkg=None, filter_pkg=None):
+        """
+        Bandpass filter constructor.
+        :param bounds: determines filter's frequency boundaries,
+            e.g. setting 0.5 will give a bandpass filter
+            [0.5*center_frequency, 1.5*center_frequency].
+        """
+        self.taps = taps
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+        self.convolve1d_func = None
+        self.dumped = 0
+
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+
+    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        if self.xp == np:
+            raise ValueError("This operation is NYI for CPU")
+        import cupy as cp
+        self.taps = cp.asarray(self.taps).astype(cp.float32)
+        n_taps = len(self.taps)
+
+        n_frames, n_channels, n_samples = const_metadata.input_shape
+        total_n_samples = n_frames*n_channels*n_samples
+
+        fir_output_buffer = cp.zeros(const_metadata.input_shape, dtype=cp.float32)
+        from arrus.utils.fir import (
+            run_fir_int16,
+            get_default_grid_block_size_fir_int16,
+            get_default_shared_mem_size_fir_int16
+        )
+        grid_size, block_size = get_default_grid_block_size_fir_int16(
+            n_samples,
+            total_n_samples)
+        shared_memory_size = get_default_shared_mem_size_fir_int16(
+            n_samples, n_taps)
+
+        def gpu_convolve1d(data):
+            data = cp.ascontiguousarray(data)
+            run_fir_int16(
+                grid_size, block_size,
+                (fir_output_buffer, data, n_samples,
+                total_n_samples, self.taps, n_taps),
+                shared_memory_size)
+            return fir_output_buffer
+        self.convolve1d_func = gpu_convolve1d
+        return const_metadata
+
+    def _process(self, data):
+        return self.convolve1d_func(data)
+
 class Filter(Operation):
     """
     Filter data in one dimension along the last axis.
@@ -1148,8 +1203,8 @@ class ReconstructLri(Operation):
         self.z_size = len(self.z_grid)
         output_shape = (self.n_tx, self.x_size, self.z_size)
         self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
-        x_block_size = min(self.x_size, 32)
-        z_block_size = min(self.z_size, 32)
+        x_block_size = min(self.x_size, 16)
+        z_block_size = min(self.z_size, 16)
         self.block_size = (z_block_size, x_block_size, 1)
         self.grid_size = (int((self.z_size-1)//z_block_size + 1),
                           int((self.x_size-1)//x_block_size + 1),

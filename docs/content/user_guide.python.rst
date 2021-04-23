@@ -250,7 +250,17 @@ Currently, the default dictionary contains definitions of the following probes:
 - esaote:
 
   - probes: ``sl1543``, ``al2442``, ``sp2430``
-  - adpaters: ``esoate``, ``esaote2``, ``esaote3``
+  - adapters: ``esoate``, ``esaote2``, ``esaote3``
+
+- als:
+
+  - probes: ``l14-6a``
+  - adapters: ``esaote2``, ``esaote3``
+
+- apex:
+
+  - probes: ``tl094``
+  - adapters: ``esaote2``, ``esaote3``
 
 - ultrasonix:
 

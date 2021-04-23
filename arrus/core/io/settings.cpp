@@ -416,27 +416,33 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     std::unique_ptr<ap::Dictionary> d;
     if(!s->dictionary_file().empty()) {
         std::string dictionaryPathStr;
-        // 1. Try to use the parent directory of session settings.
-        auto dictP = sessionSettingsPath.parent_path() / s->dictionary_file();
-        if(boost::filesystem::is_regular_file(dictP)) {
-            dictionaryPathStr = dictP.string();
-        } else {
-            // 2. Try to use ARRUS_PATH, if available.
-            const char *arrusP = std::getenv(ARRUS_PATH_KEY);
-            if(arrusP != nullptr) {
-                boost::filesystem::path arrusDicP{arrusP};
-                arrusDicP = arrusDicP / s->dictionary_file();
-                if(boost::filesystem::is_regular_file(arrusDicP)) {
-                    dictionaryPathStr = arrusDicP.string();
+        // 1. Try to find the file relative to the current working directory.
+        if(boost::filesystem::is_regular_file(s->dictionary_file())) {
+            dictionaryPathStr = s->dictionary_file();
+        }
+        else {
+            // 2. Try to use the parent directory of session settings.
+            auto dictP = sessionSettingsPath.parent_path() / s->dictionary_file();
+            if(boost::filesystem::is_regular_file(dictP)) {
+                dictionaryPathStr = dictP.string();
+            } else {
+                // 3. Try to use ARRUS_PATH, if available.
+                const char *arrusP = std::getenv(ARRUS_PATH_KEY);
+                if(arrusP != nullptr) {
+                    boost::filesystem::path arrusDicP{arrusP};
+                    arrusDicP = arrusDicP / s->dictionary_file();
+                    if(boost::filesystem::is_regular_file(arrusDicP)) {
+                        dictionaryPathStr = arrusDicP.string();
+                    } else {
+                        throw IllegalArgumentException(
+                            ::arrus::format("Invalid path to dictionary: {}",
+                                            s->dictionary_file()));
+                    }
                 } else {
                     throw IllegalArgumentException(
                         ::arrus::format("Invalid path to dictionary: {}",
                                         s->dictionary_file()));
                 }
-            } else {
-                throw IllegalArgumentException(
-                    ::arrus::format("Invalid path to dictionary: {}",
-                                    s->dictionary_file()));
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
