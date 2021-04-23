@@ -757,12 +757,13 @@ class LogCompression(Operation):
     Converts data to decibel scale.
     """
     def __init__(self):
-        pass
+        self.num_pkg = None
+        self.is_gpu = False
 
-    def set_pkgs(self, **kwargs):
-        # Intentionally ignoring num. package -
-        # currently numpy is available only.
-        pass
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.num_pkg = num_pkg
+        if self.num_pkg != np:
+            self.is_gpu = True
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
@@ -859,6 +860,7 @@ class Enqueue(Operation):
         return const_metadata
 
     def _initialize(self, data):
+        # data.get()
         return data
 
     def _put_block(self, data):
