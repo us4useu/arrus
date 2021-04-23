@@ -173,8 +173,8 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(
         std::sort(std::begin(posChannel), std::end(posChannel),
                   [](const auto &a, const auto &b) { return a.second < b.second; });
         ChannelIdx i = 0;
-        for (const auto&[pos, ch] : posChannel) {
-            adapterRxChannel[pos] = i++;
+        for (const auto& pos_ch: posChannel) {
+            adapterRxChannel[std::get<0>(pos_ch)] = i++;
         }
         // probe aperture rx number -> adapter aperture rx number ->
         // physical channel
