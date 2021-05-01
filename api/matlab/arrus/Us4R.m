@@ -887,7 +887,8 @@ classdef Us4R < handle
                 end
                 Us4MEX(iArius, "SetTrigger", obj.seq.txPri*1e6, 1, obj.seq.nTrig-1);
                 
-                Us4MEX(iArius, "EnableSequencer");
+%                 Us4MEX(iArius, "EnableSequencer");      % loading parameters after TX/RX
+                Us4MEX(iArius, "EnableSequencer", 1);   % loading parameters during TX/RX
             end
             
             %% Program recording
