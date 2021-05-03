@@ -147,9 +147,9 @@ elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
             ${CMAKE_COMMAND} -E copy
             ${ARRUS_CORE_SO_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus
             COMMAND
-            patchelf ${CMAKE_CURRENT_BINARY_DIR}/arrus/${ARRUS_CORE_SO_FILE_NAME} --set-rpath '$$ORIGIN'
+            patchelf --set-rpath '$$ORIGIN' ${CMAKE_CURRENT_BINARY_DIR}/arrus/${ARRUS_CORE_SO_FILE_NAME} 
             COMMAND
-            patchelf ${CMAKE_CURRENT_BINARY_DIR}/arrus/${PY_CORE_SO_FILE_NAME} --set-rpath '$$ORIGIN'
+            patchelf --set-rpath '$$ORIGIN' ${CMAKE_CURRENT_BINARY_DIR}/arrus/${PY_CORE_SO_FILE_NAME} 
             COMMAND
             ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
             COMMAND
