@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="${PYTHON_PACKAGE_NAME}",
-    version="${PROJECT_VERSION}",
+    version="${ARRUS_PROJECT_VERSION}",
     author="us4us Ltd.",
     author_email="support@us4us.eu",
     description="API for Research/Remote Ultrasound",

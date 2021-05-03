@@ -3,65 +3,62 @@
 ################################################################################
 # - Targets
 ################################################################################
-if (ARRUS_BUILD_SWIG)
-    find_package(SWIG REQUIRED)
-    include(UseSWIG)
-    find_package(PythonInterp REQUIRED)
-    find_package(PythonLibs REQUIRED)
-    set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
-    if (MSVC)
-        set_property(
-                SOURCE wrappers/core.i
-                PROPERTY
-                GENERATED_COMPILE_OPTIONS /Od /EHsc
-        )
-    endif ()
-    swig_add_library(py_core
-            TYPE SHARED
-            LANGUAGE PYTHON
-            OUTPUT_DIR arrus
-            OUTFILE_DIR wrappers
-            SOURCES
-            wrappers/core.i
-            ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
-            ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
-            )
-
-    if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
-        set_target_properties(py_core
-                PROPERTIES
-                SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
-                RUNTIME_OUTPUT_DIRECTORY
-                "${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
-                )
-    elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
-        set_target_properties(py_core
-                PROPERTIES
-                SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
-                RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
-                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
-                ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
-                # Skip build rpath, RPATH will be set to $ORIGIN using patchelf
-                # when preparing whl package
-                SKIP_BUILD_RPATH ON
-                )
-    endif ()
-
-    target_include_directories(py_core
-            PRIVATE
-            ${PYTHON_INCLUDE_DIRS}
-            ${ARRUS_ROOT_DIR}
-            )
-
-    target_link_libraries(py_core
-            PRIVATE
-            arrus-core
-            Boost::Boost
-            fmt::fmt
-            ${PYTHON_LIBRARIES}
-            )
-
+find_package(SWIG REQUIRED)
+include(UseSWIG)
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs REQUIRED)
+set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
+if (MSVC)
+    set_property(
+            SOURCE wrappers/core.i
+            PROPERTY
+            GENERATED_COMPILE_OPTIONS /Od /EHsc
+    )
 endif ()
+swig_add_library(py_core
+        TYPE SHARED
+        LANGUAGE PYTHON
+        OUTPUT_DIR arrus
+        OUTFILE_DIR wrappers
+        SOURCES
+        wrappers/core.i
+        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
+        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
+        )
+
+if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+    set_target_properties(py_core
+            PROPERTIES
+            SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+            RUNTIME_OUTPUT_DIRECTORY
+            "${CMAKE_CURRENT_BINARY_DIR}/arrus/$<$<CONFIG:Debug>:>"
+            )
+elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+    set_target_properties(py_core
+            PROPERTIES
+            SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+            ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/arrus/"
+            # Skip build rpath, RPATH will be set to $ORIGIN using patchelf
+            # when preparing whl package
+            SKIP_BUILD_RPATH ON
+            )
+endif ()
+
+target_include_directories(py_core
+        PRIVATE
+        ${PYTHON_INCLUDE_DIRS}
+        ${ARRUS_ROOT_DIR}
+        )
+
+target_link_libraries(py_core
+        PRIVATE
+        arrus-core
+        Boost::Boost
+        fmt::fmt
+        ${PYTHON_LIBRARIES}
+        )
 ################################################################################
 # Python packaging
 ################################################################################
@@ -147,9 +144,9 @@ elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
             ${CMAKE_COMMAND} -E copy
             ${ARRUS_CORE_SO_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus
             COMMAND
-            patchelf --set-rpath '$$ORIGIN' ${CMAKE_CURRENT_BINARY_DIR}/arrus/${ARRUS_CORE_SO_FILE_NAME} 
+            patchelf --set-rpath '$$ORIGIN' ${CMAKE_CURRENT_BINARY_DIR}/arrus/${ARRUS_CORE_SO_FILE_NAME}
             COMMAND
-            patchelf --set-rpath '$$ORIGIN' ${CMAKE_CURRENT_BINARY_DIR}/arrus/${PY_CORE_SO_FILE_NAME} 
+            patchelf --set-rpath '$$ORIGIN' ${CMAKE_CURRENT_BINARY_DIR}/arrus/${PY_CORE_SO_FILE_NAME}
             COMMAND
             ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
             COMMAND
@@ -175,11 +172,11 @@ get_target_property(ARRUS_WHL_DIR python_whl PACKAGE_DIR)
 
 install(
         FILES
-        "${ARRUS_WHL_DIR}/${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-py3-none-any.whl"
+        "${ARRUS_WHL_DIR}/${PYTHON_PACKAGE_NAME}-${ARRUS_PROJECT_VERSION}-py3-none-any.whl"
         DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}
         RENAME
-        "${PYTHON_PACKAGE_NAME}-${PROJECT_VERSION}-py3-none-any.whl"
+        "${PYTHON_PACKAGE_NAME}-${ARRUS_PROJECT_VERSION}-py3-none-any.whl"
         COMPONENT
         python_whl
 )

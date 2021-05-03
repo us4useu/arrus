@@ -4,8 +4,11 @@ project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
 set(PROJECT_VERSION 0.5.13)
+set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 
 option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
+
+# TODO remove ARRUS_DEVELOP_VERSION, use ARRUS_APPEND_VERSION_SUFFIX_DATE
 if(ARRUS_DEVELOP_VERSION)
     set(PROJECT_FULL_VERSION "${PROJECT_VERSION}-dev")
 else()
@@ -39,13 +42,11 @@ option(ARRUS_BUILD_MATLAB "Build MATLAB API." OFF)
 option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)
 option(ARRUS_EMBED_DEPS "Embed dependencies (like us4r dlls) into the output package." OFF)
+option(ARRUS_APPEND_VERSION_SUFFIX_DATE "Append current timestamp to the ARRUS_PROJECT_VERSION." OFF)
 
-option(ARRUS_BUILD_SWIG "Build swig wrappers. \
-NOTE: this should turned on in order to build proper API. Turn it off \
-only for testing and development, for example to work on currently unsupported \
-platforms." ON)
-if(NOT ARRUS_BUILD_SWIG)
-    message(WARNING "BUILDING PACKAGE WITHOUT LOW-LEVEL API WRAPPERS!")
+if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
+    string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")
+    set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}-${ARRUS_PROJECT_VERSION_SUFFIX}")
 endif()
 
 # Determining host platform.
@@ -85,9 +86,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-if(ARRUS_BUILD_SWIG)
-    find_package(Us4 0.5.5 EXACT REQUIRED US4OEM HV256 DBARLite)
-endif()
+find_package(Us4 0.5.5 EXACT REQUIRED US4OEM HV256 DBARLite)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
