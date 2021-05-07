@@ -124,6 +124,15 @@ install(
         FILES ${CMAKE_CURRENT_BINARY_DIR}/VERSION.rst
         DESTINATION .
 )
+install(
+	FILES ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
+        DESTINATION .
+)
+install(
+	FILES ${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_LICENSES
+        DESTINATION .
+)
+
 ################################################################################
 # Embed external dependencies
 ################################################################################

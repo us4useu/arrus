@@ -171,14 +171,13 @@ set_target_properties(
 get_target_property(ARRUS_WHL_DIR python_whl PACKAGE_DIR)
 
 install(
-        FILES
-        "${ARRUS_WHL_DIR}/${PYTHON_PACKAGE_NAME}-${ARRUS_PROJECT_VERSION}-py3-none-any.whl"
+        DIRECTORY 
+           ${ARRUS_WHL_DIR}/
         DESTINATION
-        ${ARRUS_PYTHON_INSTALL_DIR}
-        RENAME
-        "${PYTHON_PACKAGE_NAME}-${ARRUS_PROJECT_VERSION}-py3-none-any.whl"
+           ${ARRUS_PYTHON_INSTALL_DIR}
         COMPONENT
         python_whl
+	FILES_MATCHING PATTERN "${PYTHON_PACKAGE_NAME}-*.whl"
 )
 
 install(
