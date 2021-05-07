@@ -1,0 +1,20 @@
+ARRUS SDK includes the following third-party open-source software:
+
+Boost library 1.7.0:
+- Boost Software License 1.0
+- https://www.boost.org/LICENSE_1_0.txt
+
+Google Protobuf 3.11:
+- https://github.com/protocolbuffers/protobuf/blob/v3.11.4/LICENSE
+
+Fmt 7.0.1:
+- MIT License
+- https://github.com/fmtlib/fmt/blob/7.0.1/LICENSE.rst
+
+Microsoft Guidelines Support Library 2.1.0:
+- MIT License
+- https://github.com/microsoft/GSL/blob/v2.1.0/LICENSE
+
+Eigen 3.3.7:
+- MPL 2.0 License
+- https://gitlab.com/libeigen/eigen/-/blob/master/COPYING.MPL2
