@@ -14,7 +14,8 @@ class Display2D:
     def __init__(self, metadata, value_range=None,
                  window_size=None, title=None, xlabel=None,
                  ylabel=None, cmap=None, interval=10,
-                 input_timeout=2):
+                 input_timeout=2, extent=None,
+                 show_colorbar=False):
         """
         2D display constructor.
 
@@ -25,6 +26,7 @@ class Display2D:
         :param ylabel: y label
         :param cmap: color map to apply
         :param interval: number of milliseconds between successive img updates
+        :param extent: OX/OZ extent: a list of [ox_min, ox_max, oz_max, oz_min]
         """
         self.metadata = metadata
         self.window_size = window_size
@@ -35,6 +37,8 @@ class Display2D:
         self.cmap = cmap
         self.input_timeout = input_timeout
         self.interval = interval
+        self.extent = extent
+        self.show_colorbar = show_colorbar
         self._prepare(metadata)
         self._current_queue = None
         self._anim = None
@@ -57,7 +61,8 @@ class Display2D:
         if self.value_range:
             vmin, vmax = self.value_range
             self._img = self._ax.imshow(empty, cmap=self.cmap,
-                                        vmin=vmin, vmax=vmax)
+                                        vmin=vmin, vmax=vmax,
+                                        extent=self.extent)
         else:
             # determine min max based on min max value of the input data type
             if np.issubdtype(empty.dtype, np.floating):
@@ -71,6 +76,8 @@ class Display2D:
             self._img = self._ax.imshow(empty, cmap=self.cmap,
                                         vmin=vmin, vmax=vmax)
             pass
+        if self.show_colorbar:
+            self._fig.colorbar(self._img)
 
     def start(self, queue):
         self._current_queue = queue
