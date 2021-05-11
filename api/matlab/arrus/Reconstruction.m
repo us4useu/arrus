@@ -10,7 +10,21 @@ classdef Reconstruction < Operation
     % :param decimation: decimation factor
     % :param xGrid: (1, width) vector, x-coordinates of the image pixels [m]
     % :param zGrid: (1, depth) vector z-coordinates of the image pixels [m]
-
+    % :param bmodeEnable: boolean, enable B-Mode reconstruction
+    % :param colorEnable: boolean, enable Color Doppler reconstruction and duplex imaging
+    % :param vectorEnable: boolean, enable Vector Doppler reconstruction and duplex imaging
+    % :param bmodeFrames: selects frames to be used in B-Mode reconstruction
+    % :param colorFrames: selects frames to be used in Color Doppler reconstruction
+    % :param vector0Frames: selects frames to be used in Vector Doppler reconstruction as 1st projection
+    % :param vector1Frames: selects frames to be used in Vector Doppler reconstruction as 2nd projection
+    % :param bmodeRxTangLim: rx tangent limits for B-Mode
+    % :param colorRxTangLim: rx tangent limits for Color Doppler
+    % :param vector0RxTangLim: rx tangent limits for Vector Doppler (1st projection)
+    % :param vector1RxTangLim: rx tangent limits for Vector Doppler (2nd projection)
+    % :param wcFilterACoeff: 1-D filter denominator coefficient (Wall Clutter Filter for Color/Vector Doppler)
+    % :param wcFilterBCoeff: 1-D filter numerator coefficient (Wall Clutter Filter for Color/Vector Doppler)
+    % :param wcFiltInitSize: number of initial filter output samples to be rejected
+    
     properties
         filterEnable
         filterACoeff
@@ -21,6 +35,20 @@ classdef Reconstruction < Operation
         decimation
         xGrid
         zGrid
+        bmodeEnable = true
+        colorEnable = false
+        vectorEnable = false
+        bmodeFrames
+        colorFrames
+        vector0Frames
+        vector1Frames
+        bmodeRxTangLim = [-0.5 0.5]
+        colorRxTangLim
+        vector0RxTangLim
+        vector1RxTangLim
+        wcFilterACoeff
+        wcFilterBCoeff
+        wcFiltInitSize = 0
     end
     
     methods

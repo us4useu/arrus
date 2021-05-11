@@ -43,4 +43,7 @@ for ord=1:proc.cicOrd
     rfOut = [rfOut(1,:,:); diff(rfOut)];
 end
 
+% Keep dynamic scale unaffected
+rfOut = rfOut / (proc.dec.^proc.cicOrd);
+
 end
