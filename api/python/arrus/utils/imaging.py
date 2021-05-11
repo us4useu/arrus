@@ -52,8 +52,11 @@ class Pipeline:
 
     def initialize(self, const_metadata):
         output_const_metadata = const_metadata
+        self._const_metadata_storage = []
+        self._const_metadata_storage.append(output_const_metadata.copy())
         for step in self.steps:
             output_const_metadata = step._prepare(output_const_metadata)
+            self._const_metadata_storage.append(output_const_metadata.copy())
         # Force cupy to recompile kernels before running the pipeline.
         self._initialize(const_metadata)
         return output_const_metadata
@@ -824,10 +827,8 @@ class LogCompression(Operation):
         return const_metadata
 
     def _process(self, data):
-        if not isinstance(data, np.ndarray):
-            data = data.get()
         data[data == 0] = 1e-9
-        return 20 * np.log10(data)
+        return 20*self.num_pkg.log10(data)
 
 
 class DynamicRangeAdjustment(Operation):
