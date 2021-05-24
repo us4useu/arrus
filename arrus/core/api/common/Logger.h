@@ -8,10 +8,6 @@ namespace arrus {
 
 /**
  * Basic logger instance that can be used in the arrus library.
- *
- * Currently, it is a simple wrapper over boost::severity_logger_mt.
- *
- * This class should not be available publicly.
  */
 class Logger {
 public:
