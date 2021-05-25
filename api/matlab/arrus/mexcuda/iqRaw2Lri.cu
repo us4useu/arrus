@@ -16,7 +16,9 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 
 
 __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
-                            float const * txFoc, float const * txAng, float const * txApCent, 
+                            float const * txFoc, float const * txAng, 
+                            float const * txApCentZ, float const * txApCentX, 
+                            int const * txApFstElem, int const * txApLstElem, 
                             float const minRxTang, float const maxRxTang, 
                             float const fs, float const fn, 
                             float const sos, float const initDel, 
@@ -31,11 +33,11 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         return;
     }
     
-    float txDist, rxDist, txTang, rxTang, txApod, rxApod, time, iSamp;
+    float txDist, rxDist, rxTang, txApod, rxApod, time, iSamp;
     float modSin, modCos, sampRe, sampIm, pixRe, pixIm, pixWgh;
     float const omega = 2 * M_PI * fn;
     float const sosInv = 1 / sos;
-    float const zDistInv = 1 / zPix[z];
+//     float const zDistInv = 1 / zPix[z];
     float const nSigma = 3; // number of sigmas in half of the apodization Gaussian curve
     float const twoSigSqrInv = nSigma * nSigma * 0.5f;
     float const rngRxTangInv = 2 / (maxRxTang - minRxTang); // inverted half range
@@ -45,23 +47,47 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         
         if (!isinf(txFoc[iTx])) {
             /* STA */
-            float xFoc	= txFoc[iTx] * sinf(txAng[iTx]) + txApCent[iTx];
-            float zFoc	= txFoc[iTx] * cosf(txAng[iTx]);
-            float minTxTang = (xFoc - xElemConst[0      ]) / zFoc;
-            float maxTxTang = (xFoc - xElemConst[nElem-1]) / zFoc;  // invalid tx aperture edges (temporary solution)!!!
+            float zFoc	= txApCentZ[iTx] + txFoc[iTx] * cosf(txAng[iTx]);
+            float xFoc	= txApCentX[iTx] + txFoc[iTx] * sinf(txAng[iTx]);
             
+            float pixFocArrang;
+            
+            if (txFoc[iTx] <= 0.f) {
+                /* Virtual Point Source BEHIND probe surface */
+                // Valid pixels are assumed to be always in front of the focal point (VSP)
+                pixFocArrang = 1.f;
+            }
+            else {
+                /* Virtual Point Source IN FRONT OF probe surface */
+                // Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
+                // to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
+                pixFocArrang = (((zPix[z]-zFoc)*(zFoc-txApCentZ[iTx]) + 
+                                 (xPix[x]-xFoc)*(xFoc-txApCentX[iTx])) >= 0.f) ? 1.f : -1.f;
+            }
             txDist	= ownHypotf(zPix[z] - zFoc, xPix[x] - xFoc);
-            //txDist	= txDist * sign(zPix[z] - zFoc) + txFoc[iTx];          // WARNING: sign()=0 => invalid txDist value
-            txTang	= (xPix[x] - xFoc) / (zPix[z] - zFoc);
-            txApod	= (txTang >= minTxTang && txTang <= maxTxTang) ? 1.f : 0.f;
+            txDist *= pixFocArrang; // Compensation for the Pix-Foc arrangement
+            txDist += txFoc[iTx]; // Compensation for the reference time being the moment when txApCent fires.
+            
+            // Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
+            // to determine if the pixel is in the sonified area (dot product >= 0).
+            // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
+            txApod = ( ( (-(xElemConst[txApFstElem[iTx]] - xFoc)*(zPix[z] - zFoc) + 
+                           (zElemConst[txApFstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) && 
+                       ( ( (xElemConst[txApLstElem[iTx]] - xFoc)*(zPix[z] - zFoc) - 
+                           (zElemConst[txApLstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
         }
         else {
             /* PWI */
-            float r1 = (xPix[x]-xElemConst[0      ]) * cosf(txAng[iTx]) - zPix[z] * sinf(txAng[iTx]);
-            float r2 = (xPix[x]-xElemConst[nElem-1]) * cosf(txAng[iTx]) - zPix[z] * sinf(txAng[iTx]);
+            txDist = (zPix[z] - txApCentZ[iTx]) * cosf(txAng[iTx]) + 
+                     (xPix[x] - txApCentX[iTx]) * sinf(txAng[iTx]);
             
-            txDist = xPix[x] * sinf(txAng[iTx]) + zPix[z] * cosf(txAng[iTx]);
-            txApod = (r1 >= 0.f && r2 <= 0.f) ? 1.f : 0.f;
+            // Projections of ApEdge-Pix vector on the rotated unit vector of tx direction (dot products) ...
+            // to determine if the pixel is in the sonified area (dot product >= 0).
+            // For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
+            txApod = ( ( (-(zPix[z]-zElemConst[txApFstElem[iTx]]) * sinf(txAng[iTx]) + 
+                           (xPix[x]-xElemConst[txApFstElem[iTx]]) * cosf(txAng[iTx])) >= 0.f ) && 
+                       ( ( (zPix[z]-zElemConst[txApLstElem[iTx]]) * sinf(txAng[iTx]) - 
+                           (xPix[x]-xElemConst[txApLstElem[iTx]]) * cosf(txAng[iTx])) >= 0.f ) ) ? 1.f : 0.f;
         }
         
         pixRe = 0.f;
@@ -70,8 +96,10 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         
         if (txApod != 0.f) {
             for (int iElem=0; iElem<nElem; iElem++) {
-                rxDist = ownHypotf(zPix[z], xPix[x] - xElemConst[iElem]);   // +10us
-                rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;          // 4us
+                rxDist = ownHypotf(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+//                 rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
+                rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+                rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
                 if (rxTang < minRxTang || rxTang > maxRxTang) continue;
                 rxApod = (rxTang-centRxTang)*rngRxTangInv;
                 rxApod = __expf(-rxApod*rxApod*twoSigSqrInv);
