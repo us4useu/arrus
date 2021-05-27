@@ -43,7 +43,7 @@ def create_sta_sequence(context):
     # Last active element
     r = min(n_elem-1, l+rx_ap_size)
     rx_aperture = np.zeros(n_elem, dtype=bool)
-    rx_aperture[l:r] = True
+    rx_aperture[l:(r+1)] = True
 
     tx_ap_cent_el = op.tx_aperture_center_element
     tx_ap_cent_el = np.array(tx_ap_cent_el)
