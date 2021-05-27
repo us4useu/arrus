@@ -390,11 +390,6 @@ classdef Us4R < handle
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
-            %% Warning: Convex & PWI/STA
-            if ~isnan(obj.sys.curvRadius) && ~strcmp(obj.seq.type,"lin")
-                warning('In this API version only LIN sequence is valid for convex arrays.');
-            end
-            
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
             obj.seq.rxDel       = 0e-6;
