@@ -584,8 +584,8 @@ classdef Us4R < handle
                 obj.seq.txAng          = gpuArray(single(obj.seq.txAng));
                 obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
                 obj.seq.txApCentX      = gpuArray(single(obj.seq.txApCentX));
-                obj.seq.txApFstElem    = gpuArray( int16(obj.seq.txApFstElem - 1));
-                obj.seq.txApLstElem    = gpuArray( int16(obj.seq.txApLstElem - 1));
+                obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
+                obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
                 obj.rec.bmodeRxTangLim =          single(obj.rec.bmodeRxTangLim);
                 obj.rec.colorRxTangLim =          single(obj.rec.colorRxTangLim);
                 obj.rec.vect0RxTangLim =          single(obj.rec.vect0RxTangLim);
