@@ -18,7 +18,7 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 
 
 __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
-                            float const * txFoc, float const * txAng, 
+                            float const * txFoc, float const * txAngZX, 
                             float const * txApCentZ, float const * txApCentX, 
                             int const * txApFstElem, int const * txApLstElem, 
                             float const minRxTang, float const maxRxTang, 
@@ -49,8 +49,8 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         
         if (!isinf(txFoc[iTx])) {
             /* STA */
-            float zFoc	= txApCentZ[iTx] + txFoc[iTx] * cosf(txAng[iTx]);
-            float xFoc	= txApCentX[iTx] + txFoc[iTx] * sinf(txAng[iTx]);
+            float zFoc	= txApCentZ[iTx] + txFoc[iTx] * cosf(txAngZX[iTx]);
+            float xFoc	= txApCentX[iTx] + txFoc[iTx] * sinf(txAngZX[iTx]);
             
             float pixFocArrang;
             
@@ -80,16 +80,16 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         }
         else {
             /* PWI */
-            txDist = (zPix[z] - txApCentZ[iTx]) * cosf(txAng[iTx]) + 
-                     (xPix[x] - txApCentX[iTx]) * sinf(txAng[iTx]);
+            txDist = (zPix[z] - txApCentZ[iTx]) * cosf(txAngZX[iTx]) + 
+                     (xPix[x] - txApCentX[iTx]) * sinf(txAngZX[iTx]);
             
             // Projections of ApEdge-Pix vector on the rotated unit vector of tx direction (dot products) ...
             // to determine if the pixel is in the sonified area (dot product >= 0).
             // For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
-            txApod = ( ( (-(zPix[z]-zElemConst[txApFstElem[iTx]]) * sinf(txAng[iTx]) + 
-                           (xPix[x]-xElemConst[txApFstElem[iTx]]) * cosf(txAng[iTx])) >= 0.f ) && 
-                       ( ( (zPix[z]-zElemConst[txApLstElem[iTx]]) * sinf(txAng[iTx]) - 
-                           (xPix[x]-xElemConst[txApLstElem[iTx]]) * cosf(txAng[iTx])) >= 0.f ) ) ? 1.f : 0.f;
+            txApod = ( ( (-(zPix[z]-zElemConst[txApFstElem[iTx]]) * sinf(txAngZX[iTx]) + 
+                           (xPix[x]-xElemConst[txApFstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f ) && 
+                       ( ( (zPix[z]-zElemConst[txApLstElem[iTx]]) * sinf(txAngZX[iTx]) - 
+                           (xPix[x]-xElemConst[txApLstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f ) ) ? 1.f : 0.f;
         }
         
         pixRe = 0.f;

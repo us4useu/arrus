@@ -461,10 +461,11 @@ classdef Us4R < handle
             else
                 obj.seq.txCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.txApCent);
             end
-            obj.seq.txApCentAng	= interp1(1:obj.sys.nElem, obj.sys.angElem, obj.seq.txCentElem);
             obj.seq.txApCentZ	= interp1(1:obj.sys.nElem, obj.sys.zElem,   obj.seq.txCentElem);
             obj.seq.txApCentX	= interp1(1:obj.sys.nElem, obj.sys.xElem,   obj.seq.txCentElem);
-
+            obj.seq.txApCentAng	= interp1(1:obj.sys.nElem, obj.sys.angElem, obj.seq.txCentElem);
+            obj.seq.txAngZX     = obj.seq.txApCentAng + obj.seq.txAng;
+            
             if isempty(obj.seq.rxApCent)
                 obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.rxCentElem);
             else
@@ -581,7 +582,7 @@ classdef Us4R < handle
                 obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
                 obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
                 obj.seq.txFoc          = gpuArray(single(obj.seq.txFoc));
-                obj.seq.txAng          = gpuArray(single(obj.seq.txAng));
+                obj.seq.txAngZX        = gpuArray(single(obj.seq.txAngZX));
                 obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
                 obj.seq.txApCentX      = gpuArray(single(obj.seq.txApCentX));
                 obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
@@ -673,18 +674,16 @@ classdef Us4R < handle
             end
             
             %% CALCULATE DELAYS
-            txAngCart	= obj.seq.txApCentAng + obj.seq.txAng;
-            
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
-                txDel       = (xElem.'           .* sin(txAngCart) + ...
-                               zElem.'           .* cos(txAngCart)) / obj.seq.c;    % [s] (nElem x nTx) delays for tx elements
-                txDelCent	= (obj.seq.txApCentX .* sin(txAngCart) + ...
-                               obj.seq.txApCentZ .* cos(txAngCart)) / obj.seq.c;    % [s] (1 x nTx) delays for tx aperture center
+                txDel       = (xElem.'           .* sin(obj.seq.txAngZX) + ...
+                               zElem.'           .* cos(obj.seq.txAngZX)) / obj.seq.c;      % [s] (nElem x nTx) delays for tx elements
+                txDelCent	= (obj.seq.txApCentX .* sin(obj.seq.txAngZX) + ...
+                               obj.seq.txApCentZ .* cos(obj.seq.txAngZX)) / obj.seq.c;      % [s] (1 x nTx) delays for tx aperture center
             else
                 % Focal point positions
-                xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(txAngCart);	% [m] (1 x nTx) x-position of the focal point
-                zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(txAngCart);	% [m] (1 x nTx) z-position of the focal point
+                xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(obj.seq.txAngZX);	% [m] (1 x nTx) x-position of the focal point
+                zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(obj.seq.txAngZX);	% [m] (1 x nTx) z-position of the focal point
                 
                 
                 % Delays due to the element - focal point distances
@@ -1148,7 +1147,7 @@ classdef Us4R < handle
                                 obj.rec.zGrid, ...
                                 obj.rec.xGrid, ...
                                 obj.seq.txFoc(selFrames), ...
-                                obj.seq.txAng(selFrames), ...
+                                obj.seq.txAngZX(selFrames), ...
                                 obj.seq.txApCentZ(selFrames), ...
                                 obj.seq.txApCentX(selFrames), ...
                                 obj.seq.txApFstElem(selFrames), ...
