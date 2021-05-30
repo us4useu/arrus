@@ -3,6 +3,7 @@
 #include "gpu/mxGPUArray.h"
 #include <string>
 #include <iostream>
+#include "utils.h"
 
 __constant__ float filtCoeffConst[1024];
 
@@ -168,13 +169,13 @@ void mexFunction(int nlhs, mxArray * plhs[],
     if(nCoeff > 1024) {
         mexErrMsgIdAndTxt(invalidInputMsgId, "filtCoeff is too long, kernel supports filtCoeff of up to 1024 elements");
     }
-    cudaMemcpyToSymbol(filtCoeffConst, dev_filtCoeff, nCoeff*sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    CUDA_ASSERT(cudaMemcpyToSymbol(filtCoeffConst, dev_filtCoeff, nCoeff*sizeof(float), 0, cudaMemcpyDeviceToDevice));
     
     /* Execute CUDA kernel */
     digitalDownConv<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqOut, dev_rfIn, 
                                                                         fs, fn, dec, 
                                                                         nSampIn, nSampOut, nCoeff);
-    
+    CUDA_ASSERT(cudaGetLastError());
     /* Wrap the output */
     plhs[0] = mxGPUCreateMxArrayOnGPU(iqOut);
     
