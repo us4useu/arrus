@@ -70,8 +70,14 @@ switch probeName
         probe.nElem	= 32;
         probe.pitch	= 0.31e-3;
         probe.maxVpp = 100;
+        probe.channelsMask = [];    
+    
+    case 'L14-6A' % APEX/ALS, linear
+        probe.nElem = 128;
+        probe.pitch = 0.256e-3;
+        probe.maxVpp = 100;
+        probe.probeMap = [94 91 88 84 81 78 74 71 68 64 61 58 54 51 48 44 41 38 36 34 31 28 27 24 21 20 18 15 12 9 5 2 188 185 181 178 175 171 168 165 161 158 155 151 148 145 141 138 135 131 136 128 125 121 129 118 115 122 111 113 110 107 104 100 95 92 89 85 82 79 75 72 69 65 62 59 55 52 49 45 42 39 43 35 32 29 33 25 22 23 19 17 14 11 8 4 190 187 184 180 177 174 170 167 164 160 157 154 150 147 144 140 137 134 143 130 127 124 133 120 117 123 114 119 112 108 105 101];
         probe.channelsMask = [];
-
     otherwise
         error(['Unhandled probe model ', probeName]);
         probe = [];
@@ -96,7 +102,7 @@ end
 
 %% Adapter type & channel mapping
 switch probeName
-    case {'AL2442','SL1543','SP2430','AC2541','5L128','10L128','5L64','10L32'}
+    case {'AL2442','SL1543','SP2430','AC2541','5L128','10L128','5L64','10L32', 'L14-6A'}
         if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
