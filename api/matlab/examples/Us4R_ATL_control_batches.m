@@ -1,7 +1,6 @@
 
 % path to the MATLAB API files
 addpath('../arrus');
-addpath('C:\Users\Public\us4oem-releases\ref-US4R-21\matlab\')
 
 txFrequency = 5e6;
 samplingFrequency = 65e6;
@@ -46,13 +45,13 @@ rec = Reconstruction(   'filterEnable',     true, ...
                     % TODO check target PRI
 us.upload(seqPWI,rec);
 
-us.prepareBuffer(27);
-us.acquireToBuffer(27);
+us.prepareBuffer(3);
+us.acquireToBuffer(3);
 
 triggerNumbers = [];
 timestamps = [];
 
-for i=1:25
+for i=1:3
     disp(['frame ', num2str(i)]);
     rf = us.popBufferElement();
     frameMetadata = rf(1, 1:1024*17:end);
@@ -66,19 +65,19 @@ for i=1:25
     % timestamps = [timestamps timestamp];
     % disp(size(rf));
     % imagesc(rf);
-%     rf = reshape(permute(reshape(rf,32,1024,2,17,100,2),[2 1 6 3 4 5]),1024,128,17,100);
-%     obj.hFig = figure();
-%     obj.hImg = imagesc(xGrid*1e3, zGrid*1e3,[]);
-%     colormap(gray);
-%     colorbar; 
-%     daspect([1 1 1]);
-%     set(gca,'CLim',[20 80]);
-% 
-%     for j = 1:100
-%         img = us.reconstructOffline(rf(:,:,:,j));
-%         set(obj.hImg, 'CData', img);
-%         pause(0.1);
-%     end
+    rf = reshape(permute(reshape(rf,32,1024,2,17,100,2),[2 1 6 3 4 5]),1024,128,17,100);
+    obj.hFig = figure();
+    obj.hImg = imagesc(xGrid*1e3, zGrid*1e3,[]);
+    colormap(gray);
+    colorbar; 
+    daspect([1 1 1]);
+    set(gca,'CLim',[20 80]);
+
+    for j = 1:100
+        img = us.reconstructOffline(rf(:,:,:,j));
+        set(obj.hImg, 'CData', img);
+        pause(0.1);
+    end
 end
 
 
