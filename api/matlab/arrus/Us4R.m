@@ -295,24 +295,12 @@ classdef Us4R < handle
         end
         
          function prepareBuffer(obj, nElements) 
-             nSamp	= obj.seq.nSamp;
-%              nSubTx	= obj.seq.nSubTx;
-%              nTx     = obj.seq.nTx;
-%              nRep	= obj.seq.nRep;
-%              nTrig	= nTx*nSubTx*nRep;
-             nTrig  = obj.seq.nTrig;
-             disp(nSamp*nTrig);
-             Us4MEX(0, "PrepareInternalBuffer", nElements, nSamp*nTrig);
+             Us4MEX(0, "PrepareInternalBuffer", nElements, obj.seq.nSamp*obj.seq.nTrig);
          end
          
          function acquireToBuffer(obj, nElements) 
-%              nSubTx	= obj.seq.nSubTx;
-%              nTx     = obj.seq.nTx;
-%              nRep	= obj.seq.nRep;
-%              nTrig	= nTx*nSubTx*nRep;
-             nTrig  = obj.seq.nTrig;
              obj.openSequence;
-             Us4MEX(0, "AcquireToInternalBuffer", nElements, obj.seq.txPri*nTrig);
+             Us4MEX(0, "AcquireToInternalBuffer", nElements, obj.seq.txPri*obj.seq.nTrig);
              obj.closeSequence;
          end
 
