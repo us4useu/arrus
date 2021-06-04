@@ -307,6 +307,10 @@ classdef Us4R < handle
          function [rf] = popBufferElement(obj)
              rf = Us4MEX(0, "PopInternalBufferElement");
          end
+         
+         function [img] = reconstructOffline(obj,rfRaw)
+             img = obj.execReconstr(rfRaw);
+         end
     end
     
     methods(Access = private, Static)
