@@ -1,28 +1,28 @@
+%% THIS MUST REMAIN UNCHANGED
+addpath('../arrus');    % path to the MATLAB API files
+nUs4OEM = 2;
 
+%% PARAMETERS
+% Acquisition parameters
 nSamples = 1024;
 nAngles = 17;
 nRepetitions = 100;
-nBatches = 5;
+nBatches = 100;
 
+txFrequency = 15e6;
+samplingFrequency = 65e6;
+
+% Imaging parameters
 xGrid = (-20:0.10:20)*1e-3;
 zGrid = (  0:0.10:50)*1e-3;
 
-% path to the MATLAB API files
-addpath('../arrus');
-addpath('C:\Users\Public\us4oem-releases\develop\matlab\')
-
-txFrequency = 5e6;
-samplingFrequency = 65e6;
-
 [filtB,filtA] = butter(2,[0.5 1.5]*txFrequency/(samplingFrequency/2),'bandpass');
 
-nUs4OEM = 2;
-
-%% Initialize the system, sequence, and reconstruction
+%% Initialize the system, sequence, reconstruction, and data buffer
 us	= Us4R('nUs4OEM',      nUs4OEM, ...
-           'probeName',   'L7-4', ...
+           'probeName',   'LA/20/128', ...
            'adapterType', 'atl/philips', ...
-           'voltage',      40, ...
+           'voltage',      10, ...
            'logTime',      true);
        
 seqPWI = PWISequence(	'txApertureCenter', 0*1e-3, ...
@@ -43,38 +43,43 @@ rec = Reconstruction(   'filterEnable',     true, ...
                         'filterACoeff',     filtA, ...
                         'filterBCoeff',     filtB, ...
                         'iqEnable',         true, ...
-                        'cicOrder',         2, ...
-                        'decimation',       4, ...
+                        'cicOrder',         1, ...
+                        'decimation',       1, ...
                         'xGrid',            xGrid, ...
                         'zGrid',            zGrid);
 
                     
-                    % TODO check target PRI
 us.upload(seqPWI,rec);
 
 us.prepareBuffer(nBatches);
+
+%% acquire data and transfer to buffer
 us.acquireToBuffer(nBatches);
 
-triggerNumbers = [];
-timestamps = [];
-
-for i=1:1
-    rf = us.popBufferElement();
-    frameMetadata = rf(:, 1);
-    % trigger number
-    triggerNumber = frameMetadata(1);
-    triggerNumbers = [triggerNumbers triggerNumber];
-    % frame timestamp - the time when the frame was actually acquired.
-    metadataInt8 = typecast(frameMetadata, 'int8');
-    timestamp = metadataInt8(9:16); % bytes 8-16 contains timestamp
-    timestamp = double(typecast(timestamp, 'uint64'))/65e6;
-    timestamps = [timestamps timestamp];
-    % disp(size(rf));
-    % imagesc(rf);
+%% load data from buffer to Matlab workspace & reorganize them
+rf = cell(nBatches,1);
+for iBatch=1:nBatches
+    rfBuff = us.popBufferElement();
+    
+    rfBuff = reshape(rfBuff,32,nSamples,2,nAngles,nRepetitions,2);
+    rfBuff = permute(rfBuff,[2 1 6 3 4 5]);
+    rfBuff = reshape(rfBuff,nSamples,128,nAngles,nRepetitions);
+    
+    rf{iBatch} = rfBuff;
 end
+clear rfBuff;
 
-rf = reshape(permute(reshape(rf,32,nSamples,2,nAngles,nRepetitions,2),[2 1 6 3 4 5]),nSamples,128,nAngles,nRepetitions);
-img = us.reconstructOffline(rf);
-figure, imagesc(xGrid,zGrid,img), colormap(gray), colorbar, daspect([1 1 1]), set(gca,'CLim',[20 80]);
+%% reconstruct an image from a selected data frame
+iBatch = 1;
+iRepetition = 1;
+
+img = us.reconstructOffline(rf{iBatch}(:,:,:,iRepetition));
+
+figure;
+imagesc(xGrid,zGrid,img);
+colormap(gray);
+colorbar;
+daspect([1 1 1]);
+set(gca,'CLim',[20 80]);
 
 
