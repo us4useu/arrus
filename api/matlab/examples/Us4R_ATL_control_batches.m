@@ -1,8 +1,7 @@
-%% THIS MUST REMAIN UNCHANGED
-nUs4OEM = 2;
 
 %% PARAMETERS
-% Acquisition parameters
+nUs4OEM = 2;    % This must remain unchanged
+
 nSamples = 1024;
 nAngles = 17;
 nRepetitions = 100;
@@ -13,7 +12,7 @@ txFrequency = 15e6;
 txAngles = linspace(-12, 12, nAngles)*pi/180;
 txPri = 59e-6;
 
-% Imaging parameters
+% Reconstruction parameters
 reconstrEnable = false;
 xGrid = (-7:0.05: 7)*1e-3;
 zGrid = ( 0:0.05:12)*1e-3;
@@ -27,9 +26,14 @@ us.acquireToBuffer(nBatches);
 
 %% load data from buffer to Matlab workspace & reorganize them
 rf = zeros(nSamples,128,nAngles,nRepetitions,nBatches,'int16');
+
+wb = waitbar(0, 'Data import');
 for iBatch=1:nBatches
     rf(:,:,:,:,iBatch) = getOldestBatchFromBuffer(us, nSamples, nAngles, nRepetitions);
+    
+    waitbar(iBatch/nBatches, wb);
 end
+close(wb);
 
 %% reconstruct images offline
 if reconstrEnable
@@ -48,7 +52,7 @@ if reconstrEnable
     colormap(gray);
     colorbar;
     daspect([1 1 1]);
-    set(gca,'CLim',[20 80]);
+    set(gca,'CLim',[0 80]);
 end
 
 %% --------------- SUBFUNCTIONS ---------------
@@ -108,3 +112,5 @@ rf = permute(rf,[2 1 6 3 4 5]);
 rf = reshape(rf,nSamples,128,nAngles,nRepetitions);
 
 end
+
+
