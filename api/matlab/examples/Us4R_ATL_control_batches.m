@@ -13,7 +13,7 @@ txFrequency = 15e6;
 samplingFrequency = 65e6;
 
 % Imaging parameters
-reconstrEnable = true;
+reconstrEnable = false;
 
 xGrid = (-20:0.10:20)*1e-3;
 zGrid = (  0:0.10:50)*1e-3;
