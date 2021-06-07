@@ -61,15 +61,8 @@ us.acquireToBuffer(nBatches);
 %% load data from buffer to Matlab workspace & reorganize them
 rf = zeros(nSamples,128,nAngles,nRepetitions,nBatches,'int16');
 for iBatch=1:nBatches
-    rfBuff = us.popBufferElement();
-    
-    rfBuff = reshape(rfBuff,32,nSamples,2,nAngles,nRepetitions,2);
-    rfBuff = permute(rfBuff,[2 1 6 3 4 5]);
-    rfBuff = reshape(rfBuff,nSamples,128,nAngles,nRepetitions);
-    
-    rf(:,:,:,:,iBatch) = rfBuff;
+    rf(:,:,:,:,iBatch) = getOldestBatchFromBuffer(us, nSamples, nAngles, nRepetitions);
 end
-clear rfBuff;
 
 %% reconstruct images offline
 if reconstrEnable
@@ -91,3 +84,14 @@ if reconstrEnable
     set(gca,'CLim',[20 80]);
 end
 
+%% --------------- SUBFUNCTIONS ---------------
+
+function [rf] = getOldestBatchFromBuffer(usObj, nSamples, nAngles, nRepetitions)
+
+rf = usObj.popBufferElement();
+
+rf = reshape(rf,32,nSamples,2,nAngles,nRepetitions,2);
+rf = permute(rf,[2 1 6 3 4 5]);
+rf = reshape(rf,nSamples,128,nAngles,nRepetitions);
+
+end
