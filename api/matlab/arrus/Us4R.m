@@ -480,7 +480,7 @@ classdef Us4R < handle
             nSubTx = zeros(1,obj.sys.nArius);
             for iArius=0:(obj.sys.nArius-1)
                 rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
-                % TODO Liczba subTX - tutaj powinno byc liczone wg
+                % TODO(PK) Liczba subTX - tutaj powinno byc raczej liczone
                 % faktycznych numerow kanalow - tj. trzeba jeszcze
                 % przemapowac rxApMask z kanalow adaptera na kanaly modulow
                 iSubTx = cumsum(reshape(rxApMaskSelect,obj.sys.nChArius,4,obj.seq.nTx),2);
@@ -873,10 +873,13 @@ classdef Us4R < handle
                     if obj.sys.adapType == -1
                         rxSubChanIdx = find(obj.seq.rxSubApMask(:,iFire+1,iArius+1));
                         rxSubChanMap = obj.sys.rxChannelMap(iArius+1,rxSubChanIdx);
-                        rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
+                        % rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
                         rxSubChanMap = 1+mod(rxSubChanMap-1,obj.sys.nChArius);
                         rxMapping = nan(1, 32);
-                        rxMapping(rxSubChanIdx) = rxSubChanMap;
+                        % rxMapping(rxSubChanIdx) = rxSubChanMap;
+                        % TODO PK it seems to me the below should be enough, instead of the above
+                        % commented line
+                        rxMapping(1:numel(rxSubChanMap)) = rxSubChanMap;
                         % Mapping inactive elements to inactive channels
                         % They are ommited in execSequence anyway
                         rxMapping(isnan(rxMapping)) = find(~any((1:obj.sys.nChArius).' == rxSubChanMap, 2));
