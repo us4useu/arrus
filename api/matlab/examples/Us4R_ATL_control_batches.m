@@ -13,6 +13,8 @@ txFrequency = 15e6;
 samplingFrequency = 65e6;
 
 % Imaging parameters
+reconstrEnable = true;
+
 xGrid = (-20:0.10:20)*1e-3;
 zGrid = (  0:0.10:50)*1e-3;
 
@@ -69,17 +71,23 @@ for iBatch=1:nBatches
 end
 clear rfBuff;
 
-%% reconstruct an image from a selected data frame
-iBatch = 1;
-iRepetition = 1;
-
-img = us.reconstructOffline(rf{iBatch}(:,:,:,iRepetition));
-
-figure;
-imagesc(xGrid,zGrid,img);
-colormap(gray);
-colorbar;
-daspect([1 1 1]);
-set(gca,'CLim',[20 80]);
-
+%% reconstruct images offline
+if reconstrEnable
+    img = zeros(numel(zGrid), numel(xGrid), nRepetitions, nBatches);
+    wb = waitbar(0, 'Reconstruction');
+    for iBatch=1:nBatches
+        for iRepetition=1:nRepetitions
+            img(:,:,iRepetition,iBatch) = us.reconstructOffline(rf(:,:,:,iRepetition,iBatch));
+        end
+        waitbar(iBatch/nBatches, wb);
+    end
+    close(wb);
+    
+    figure;
+    imagesc(xGrid,zGrid,img(:,:,1,1));
+    colormap(gray);
+    colorbar;
+    daspect([1 1 1]);
+    set(gca,'CLim',[20 80]);
+end
 
