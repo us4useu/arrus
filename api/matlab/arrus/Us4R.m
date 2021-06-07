@@ -567,12 +567,6 @@ classdef Us4R < handle
                 % Add location of the CUDA kernels
                 addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
                 
-                % Precalculate coefficients of CIC-mimicking FIR filter
-                obj.rec.cicFiltCoeff = gpuArray(single(1));
-                for iOrd=1:obj.rec.cicOrd
-                    obj.rec.cicFiltCoeff = conv(obj.rec.cicFiltCoeff, ones(1,obj.rec.dec,'single','gpuArray')/obj.rec.dec, 'full');
-                end
-                
                 % move reconstruction-related data to GPU
                 obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
                 obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
@@ -1013,15 +1007,7 @@ classdef Us4R < handle
             rfRaw = single(rfRaw);
             
             % Digital Down Conversion
-            if obj.rec.gpuEnable && obj.rec.iqEnable
-                rfRaw = digitalDownConv(rfRaw, ...
-                                        single(obj.rec.cicFiltCoeff), ...
-                                        single(obj.seq.rxSampFreq), ...
-                                        single(obj.seq.txFreq), ...
-                                        single(obj.rec.dec));
-            else
-                rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
-            end
+            rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
             
             % warning: both filtration and decimation introduce phase delay!
             % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
