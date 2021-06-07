@@ -57,7 +57,7 @@ us.prepareBuffer(nBatches);
 us.acquireToBuffer(nBatches);
 
 %% load data from buffer to Matlab workspace & reorganize them
-rf = cell(nBatches,1);
+rf = zeros(nSamples,128,nAngles,nRepetitions,nBatches,'int16');
 for iBatch=1:nBatches
     rfBuff = us.popBufferElement();
     
@@ -65,7 +65,7 @@ for iBatch=1:nBatches
     rfBuff = permute(rfBuff,[2 1 6 3 4 5]);
     rfBuff = reshape(rfBuff,nSamples,128,nAngles,nRepetitions);
     
-    rf{iBatch} = rfBuff;
+    rf(:,:,:,:,iBatch) = rfBuff;
 end
 clear rfBuff;
 
