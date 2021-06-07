@@ -294,23 +294,23 @@ classdef Us4R < handle
             obj.closeSequence;
         end
         
-         function prepareBuffer(obj, nElements) 
-             Us4MEX(0, "PrepareInternalBuffer", nElements, obj.seq.nSamp*obj.seq.nTrig);
-         end
-         
-         function acquireToBuffer(obj, nElements) 
-             obj.openSequence;
-             Us4MEX(0, "AcquireToInternalBuffer", nElements, obj.seq.txPri*obj.seq.nTrig);
-             obj.closeSequence;
-         end
-
-         function [rf] = popBufferElement(obj)
-             rf = Us4MEX(0, "PopInternalBufferElement");
-         end
-         
-         function [img] = reconstructOffline(obj,rfRaw)
-             img = obj.execReconstr(rfRaw);
-         end
+        function prepareBuffer(obj, nElements)
+            Us4MEX(0, "PrepareInternalBuffer", nElements, obj.seq.nSamp*obj.seq.nTrig);
+        end
+        
+        function acquireToBuffer(obj, nElements)
+            obj.openSequence;
+            Us4MEX(0, "AcquireToInternalBuffer", nElements, obj.seq.txPri*obj.seq.nTrig);
+            obj.closeSequence;
+        end
+        
+        function [rf] = popBufferElement(obj)
+            rf = Us4MEX(0, "PopInternalBufferElement");
+        end
+        
+        function [img] = reconstructOffline(obj,rfRaw)
+            img = obj.execReconstr(rfRaw);
+        end
     end
     
     methods(Access = private, Static)
