@@ -252,7 +252,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         if(totalSeqTime > op.getPri()) {
             throw IllegalArgumentException(
                 ::arrus::format(
-                    "Total time required for the data acquisition ({}) should not exceed PRI ({})",
+                    "Total time required for a single TX/RX ({}) should not exceed PRI ({})",
                     totalSeqTime, op.getPri()));
         }
         if(op.isNOP()) {
