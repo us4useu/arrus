@@ -71,7 +71,7 @@ public:
     // Other
     static constexpr float MIN_PRI = 100e-6f; // [s]
     static constexpr float MIN_RX_TIME = 60e-6f; // [s]
-    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 40e-6f; // [s]
+    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f; // [s]
     static constexpr float MAX_PRI = 1.0f;
 
     /**
