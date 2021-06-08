@@ -2,6 +2,7 @@ MATLAB API
 ----------
 
 Requirements:
+
 - MATLAB 2019a,
 - NVIDIA CUDA Toolkit 10.0.
 
