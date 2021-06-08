@@ -293,7 +293,24 @@ classdef Us4R < handle
             end
             obj.closeSequence;
         end
-
+        
+        function prepareBuffer(obj, nElements)
+            Us4MEX(0, "PrepareInternalBuffer", nElements, obj.seq.nSamp*obj.seq.nTrig);
+        end
+        
+        function acquireToBuffer(obj, nElements)
+            obj.openSequence;
+            Us4MEX(0, "AcquireToInternalBuffer", nElements, obj.seq.txPri*obj.seq.nTrig);
+            obj.closeSequence;
+        end
+        
+        function [rf] = popBufferElement(obj)
+            rf = Us4MEX(0, "PopInternalBufferElement");
+        end
+        
+        function [img] = reconstructOffline(obj,rfRaw)
+            img = obj.execReconstr(rfRaw);
+        end
     end
     
     methods(Access = private, Static)
@@ -864,13 +881,23 @@ classdef Us4R < handle
                     Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
                     Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
                     Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
-                    Us4MEX(iArius, "ScheduleReceive", iFire, iFire*obj.seq.nSamp, ...
+                    
+                end
+
+                Us4MEX(iArius, "EnableTransmit");
+            end
+            
+             %% Program recording
+            % ScheduleReceive should be done for every iTrig (not iFire)
+            % This loop will be probably used in the future
+            for iArius=0:(obj.sys.nArius-1)
+                for iTrig=0:(obj.seq.nTrig-1)
+                    iFire = mod(iTrig, obj.seq.nFire);
+                    Us4MEX(iArius, "ScheduleReceive", iTrig, iTrig*obj.seq.nSamp, ...
                                     obj.seq.nSamp, ... 
                                     obj.seq.startSample + obj.sys.trigTxDel, ...
                                     obj.seq.fsDivider-1, iFire);
                 end
-
-                Us4MEX(iArius, "EnableTransmit");
             end
             
             %% Program triggering
@@ -881,19 +908,11 @@ classdef Us4R < handle
                 end
                 Us4MEX(iArius, "SetTrigger", obj.seq.txPri*1e6, 1, obj.seq.nTrig-1);
                 
-%                 Us4MEX(iArius, "EnableSequencer");      % loading parameters after TX/RX
-                Us4MEX(iArius, "EnableSequencer", 1);   % loading parameters during TX/RX
+                Us4MEX(iArius, "EnableSequencer");      % loading parameters after TX/RX
+%                 Us4MEX(iArius, "EnableSequencer", 1);   % loading parameters during TX/RX
             end
             
-            %% Program recording
-            % ScheduleReceive should be done for every iTrig (not iFire)
-            % This loop will be probably used in the future
-%             for iArius=0:(obj.sys.nArius-1)
-%                 
-%                 for iTrig=0:(obj.seq.nTrig-1)
-%                     
-%                 end
-%             end
+           
         end
 
         function openSequence(obj)
