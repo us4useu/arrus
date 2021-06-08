@@ -18,6 +18,9 @@ public:
     MOCK_METHOD(void, TransferRXBufferToHost,
             (unsigned char * dstAddress, size_t length, size_t srcAddress),
     (override));
+    MOCK_METHOD(void, ReleaseTransferRxBufferToHost,
+        (unsigned char * dstAddress, size_t length, size_t srcAddress),
+    (override));
     MOCK_METHOD(void, SetPGAGain, (us4r::afe58jd18::PGA_GAIN gain), (override));
     MOCK_METHOD(void, SetLPFCutoff, (us4r::afe58jd18::LPF_PROG cutoff),
     (override));
