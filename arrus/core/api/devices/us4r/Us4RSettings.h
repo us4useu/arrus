@@ -69,6 +69,10 @@ public:
         return us4oemChannelsMask;
     }
 
+    ReprogrammingMode getReprogrammingMode() const {
+        return reprogrammingMode;
+    }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */

@@ -122,13 +122,12 @@ public:
                 us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
                 us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
         }
-
-
         return std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, ordinal),
             std::move(ius4oem), cfg.getActiveChannelGroups(),
             channelMapping, pgaGain, lnaGain,
-            cfg.getChannelsMask());
+            cfg.getChannelsMask(),
+            cfg.getReprogrammingMode());
     }
 
 private:

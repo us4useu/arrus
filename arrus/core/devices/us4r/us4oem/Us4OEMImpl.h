@@ -11,6 +11,7 @@
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
@@ -70,9 +71,8 @@ public:
     static constexpr size_t DDR_SIZE = 1ull << 32u;
     // Other
     static constexpr float MIN_PRI = 100e-6f; // [s]
-    static constexpr float MIN_RX_TIME = 60e-6f; // [s]
-    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f; // [s]
-    static constexpr float MAX_PRI = 1.0f;
+    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 36e-6f; // [s]
+    static constexpr float MAX_PRI = 1.0f; // [s]
 
     /**
      * Us4OEMImpl constructor.
@@ -86,7 +86,8 @@ public:
                const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping,
                uint16 pgaGain, uint16 lnaGain,
-               std::unordered_set<uint8_t> channelsMask);
+               std::unordered_set<uint8_t> channelsMask,
+               Us4OEMSettings::ReprogrammingMode reprogrammingMode);
 
     ~Us4OEMImpl() override;
 
@@ -125,18 +126,10 @@ public:
  private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
-    Logger::Handle logger;
-    IUs4OEMHandle ius4oem;
-    std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
-    // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
-    std::vector<uint8_t> channelMapping;
-    std::unordered_set<uint8_t> channelsMask;
-    uint16 pgaGain, lnaGain;
-
     std::tuple<
-        std::unordered_map<uint16, uint16>,
-        std::vector<Us4OEMImpl::Us4OEMBitMask>,
-        FrameChannelMapping::Handle>
+            std::unordered_map<uint16, uint16>,
+            std::vector<Us4OEMImpl::Us4OEMBitMask>,
+            FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 
     static float getRxTime(size_t nSamples, uint32 decimationFactor);
@@ -147,6 +140,16 @@ public:
     filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
+
+    Logger::Handle logger;
+    IUs4OEMHandle ius4oem;
+    std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
+    // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
+    std::vector<uint8_t> channelMapping;
+    std::unordered_set<uint8_t> channelsMask;
+    uint16 pgaGain, lnaGain;
+    Us4OEMSettings::ReprogrammingMode reprogrammingMode;
+    float getTxRxTime(float rxTime) const;
 };
 
 }

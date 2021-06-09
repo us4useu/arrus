@@ -21,12 +21,14 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                        const BitMask &activeChannelGroups,
                        std::vector<uint8_t> channelMapping,
                        uint16 pgaGain, uint16 lnaGain,
-                       std::unordered_set<uint8_t> channelsMask)
+                       std::unordered_set<uint8_t> channelsMask,
+                       Us4OEMSettings::ReprogrammingMode reprogrammingMode)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()},
       ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)),
       channelsMask(std::move(channelsMask)),
-      pgaGain(pgaGain), lnaGain(lnaGain) {
+      pgaGain(pgaGain), lnaGain(lnaGain),
+      reprogrammingMode(reprogrammingMode) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -245,15 +247,16 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         auto sampleRange = op.getRxSampleRange().asPair();
         auto endSample = std::get<1>(sampleRange);
         float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
-        rxTime = std::max(rxTime, MIN_RX_TIME);
 
-        float totalSeqTime = rxTime + SEQUENCER_REPROGRAMMING_TIME;
+        // Computing total TX/RX time
+        float txrxTime = 0.0f;
+        txrxTime = getTxRxTime(rxTime);
         // receive time + reprogramming time
-        if(totalSeqTime > op.getPri()) {
+        if(txrxTime > op.getPri()) {
             throw IllegalArgumentException(
                 ::arrus::format(
-                    "Total time required for a single TX/RX ({}) should not exceed PRI ({})",
-                    totalSeqTime, op.getPri()));
+                        "Total time required for a single TX/RX ({}) should not exceed PRI ({})",
+                        txrxTime, op.getPri()));
         }
         if(op.isNOP()) {
             ius4oem->SetActiveChannelGroup(emptyChannelGroups, opIdx);
@@ -404,6 +407,24 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         }
     }
     return {Us4OEMBuffer(rxBufferElements), std::move(fcm)};
+}
+
+float Us4OEMImpl::getTxRxTime(float rxTime) const {
+    float txrxTime = 0.0f;
+    if(reprogrammingMode == Us4OEMSettings::ReprogrammingMode::SEQUENTIAL) {
+        txrxTime = rxTime + SEQUENCER_REPROGRAMMING_TIME;
+    }
+    else if(reprogrammingMode == Us4OEMSettings::ReprogrammingMode::PARALLEL) {
+        txrxTime = std::max(rxTime, SEQUENCER_REPROGRAMMING_TIME);
+    }
+    else {
+        throw IllegalArgumentException(
+            ::arrus::format(
+                    "Unrecognized reprogramming mode: {}",
+                    static_cast<size_t>(reprogrammingMode))
+        );
+    }
+    return txrxTime;
 }
 
 std::tuple<
@@ -616,7 +637,16 @@ Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() {
 }
 
 void Us4OEMImpl::enableSequencer() {
-    this->ius4oem->EnableSequencer();
+    bool txConfOnTrigger = false;
+    switch(reprogrammingMode) {
+        case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL:
+            txConfOnTrigger = false;
+            break;
+        case Us4OEMSettings::ReprogrammingMode::PARALLEL:
+            txConfOnTrigger = true;
+            break;
+    }
+    this->ius4oem->EnableSequencer(txConfOnTrigger);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() {

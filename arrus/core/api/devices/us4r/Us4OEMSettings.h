@@ -31,15 +31,16 @@ public:
          * Total TX/RX time determines possible maximum PRF.
          * This mode minimizes signal noise at the expense of additional
          * reprogramming time (which decreases available PRF). */
-        SEQUENTIAL,
-        /* Us4OEM FPGA reprogramming starts when the data acquisition
-         * starts; both processes (reprogramming and data acquisition) are done
-         * in parallel. Total TX/RX time: max(rx time, reprogramming time).
+        SEQUENTIAL = 0,
+        /* Us4OEM FPGA reprogramming for the next TX starts when the the current
+         * TX is triggered; both processes (reprogramming for the next TX/RX
+         * and current TX/RX) are done in parallel. Total TX/RX time:
+         * max(rx time, reprogramming time).
          * Total TX/RX time determines possible maximum PRF.
          * This mode maximizes the possible PRF at the expense of additional
          * noise that may appear at the beginning of the data (emitted during
          * the FPGA reprogramming). */
-        PARALLEL
+        PARALLEL = 1
     };
 
     /**
@@ -89,6 +90,10 @@ public:
 
     const std::unordered_set<uint8> &getChannelsMask() const {
         return channelsMask;
+    }
+
+    ReprogrammingMode getReprogrammingMode() const {
+        return reprogrammingMode;
     }
 
 private:

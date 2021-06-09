@@ -5,7 +5,12 @@ package arrus.proto;
 import "io/proto/devices/us4r/RxSettings.proto";
 
 message Us4OEMSettings {
+  enum ReprogrammingMode {
+    SEQUENTIAL = 0;
+    PARALLEL = 1;
+  };
   repeated uint32 channel_mapping = 1;
   repeated bool active_channel_groups = 2;
   RxSettings rx_settings = 3;
+  ReprogrammingMode reprogramming_mode = 4;
 }

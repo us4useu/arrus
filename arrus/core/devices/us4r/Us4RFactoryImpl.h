@@ -67,12 +67,12 @@ public:
             // Rx settings will be validated by a specific device
             // (Us4OEMs validator)
 
-
             // Convert to Us4OEM settings
             auto[us4OEMSettings, adapterSettings] =
             us4RSettingsConverter->convertToUs4OEMSettings(
                 probeAdapterSettings, probeSettings, rxSettings,
-                settings.getChannelsMask());
+                settings.getChannelsMask(),
+                settings.getReprogrammingMode());
 
             // verify if the generated us4oemSettings.channelsMask is equal to us4oemChannelsMask field
             validateChannelsMasks(us4OEMSettings, settings.getUs4OEMChannelsMask());

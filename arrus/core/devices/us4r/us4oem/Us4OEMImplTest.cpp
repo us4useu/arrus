@@ -66,7 +66,8 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping,
             pgaGain, lnaGain,
-            std::unordered_set<uint8>()
+            std::unordered_set<uint8>(),
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
         );
     }
 
@@ -360,7 +361,8 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping,
             pgaGain, lnaGain,
-            std::unordered_set<uint8>()
+            std::unordered_set<uint8>(),
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
         );
     }
 
@@ -697,7 +699,8 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping,
             pgaGain, lnaGain,
-            channelsMask
+            channelsMask,
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
         );
 
     }
@@ -950,6 +953,47 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
         }
     }
 }
+
+// TX/RX reprogramming tests
+// TODO close this task
+class Us4OEMImplEsaote3ChannelsMaskTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+        ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
+    }
+
+    Us4OEMImpl::Handle createHandle(const std::unordered_set<uint8> &channelsMask) {
+        // This function can be called only once.
+
+        BitMask activeChannelGroups = {true, true, true, true,
+                                       true, true, true, true,
+                                       true, true, true, true,
+                                       true, true, true, true};
+
+        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
+
+        const uint16 pgaGain = DEFAULT_PGA_GAIN;
+        const uint16 lnaGain = DEFAULT_LNA_GAIN;
+        return std::make_unique<Us4OEMImpl>(
+                DeviceId(DeviceType::Us4OEM, 0),
+                // NOTE: due to the below move this function can be called only once
+                std::move(ius4oem), activeChannelGroups,
+                channelMapping,
+                pgaGain, lnaGain,
+                channelsMask,
+                Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
+        );
+
+    }
+
+    std::unique_ptr<IUs4OEM> ius4oem;
+    MockIUs4OEM *ius4oemPtr;
+    TGCCurve defaultTGCCurve;
+    uint16 defaultRxBufferSize = 1;
+    uint16 defaultBatchSize = 1;
+    std::optional<float> defaultSri = std::nullopt;
+};
 }
 
 int main(int argc, char **argv) {

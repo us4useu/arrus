@@ -38,5 +38,5 @@ message Us4RSettings {
   HVSettings hv = 9;
 
   repeated ChannelsMask us4oem_channels_mask = 10;
-
+  Us4OEMSettings.ReprogrammingMode reprogramming_mode = 11;
 }
