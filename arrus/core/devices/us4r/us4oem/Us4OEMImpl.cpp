@@ -212,14 +212,14 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
 
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
-    ARRUS_REQUIRES_AT_MOST(nOps * batchSize, 1024, ::arrus::format(
+    ARRUS_REQUIRES_AT_MOST(nOps, 1024, ::arrus::format(
         "Exceeded the maximum ({}) number of firings: {}", 1024, nOps));
     ARRUS_REQUIRES_AT_MOST(nOps * batchSize * rxBufferSize, 16384,
                            ::arrus::format(
                                "Exceeded the maximum ({}) number of triggers: {}",
                                16384, nOps * batchSize * rxBufferSize));
 
-    ius4oem->SetNumberOfFirings(nOps * batchSize);
+    ius4oem->SetNumberOfFirings(nOps);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
@@ -304,7 +304,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     // element == the result data frame of the given operations sequence
     // Buffer elements.
     // The below code fills the us4oem memory with the acquired data.
-    // us4oem rxdma output address
+    // us4oem RXDMA output address
     size_t outputAddress = 0;
     size_t transferAddressStart = 0;
 
@@ -314,16 +314,14 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         // Total number of samples in a single batch.
         unsigned int totalNSamples = 0;
         // Batch elements.
-        for(uint16 batchElementIdx = 0;
-            batchElementIdx < batchSize; ++batchElementIdx) {
+        for(uint16 seqIdx = 0; seqIdx < batchSize; ++seqIdx) {
             // Element operation.
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = opIdx + (batchElementIdx * nOps) +
-                         (batchIdx * nOps * batchSize);
+                firing = opIdx + seqIdx*nOps + batchIdx*batchSize*nOps;
                 auto const &op = seq[opIdx];
                 auto[startSample, endSample] = op.getRxSampleRange().asPair();
-                size_t nSamples = endSample - startSample;
-                size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
+                size_t nSamples = endSample-startSample;
+                size_t nBytes = nSamples*N_RX_CHANNELS*sizeof(OutputDType);
                 auto rxMapId = rxMappings.find(opIdx)->second;
 
                 ARRUS_REQUIRES_AT_MOST(
@@ -331,27 +329,20 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     ::arrus::format(
                         "Total data size cannot exceed 4GiB (device {})",
                         getDeviceId().toString()));
-
-                if(op.isRxNOP() && !this->isMaster()) {
-                    // TODO reduce the size of data acquired from master rx nops to small number of samples
-                    // (e.g. 64)
-                    ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
-                                             SAMPLE_DELAY + startSample,
-                                             op.getRxDecimationFactor() - 1,
-                                             rxMapId, nullptr);
-                } else {
+                ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
+                                         SAMPLE_DELAY + startSample,
+                                         op.getRxDecimationFactor() - 1,
+                                         rxMapId, nullptr);
+                if(!op.isRxNOP() || this->isMaster()) {
                     // Also, allows rx nops for master module.
                     // Master module gathers frame metadata, so we cannot miss any of them
-                    ius4oem->ScheduleReceive(firing, outputAddress, nSamples,
-                                             SAMPLE_DELAY + startSample,
-                                             op.getRxDecimationFactor() - 1,
-                                             rxMapId, nullptr);
+                    // All RX nops are just overwritten
                     outputAddress += nBytes;
                     totalNSamples += (unsigned) nSamples;
                 }
             }
         }
-        // The size of the chunk, in number of BYTES.
+        // The size of the chunk, in the number of BYTES.
         auto size = outputAddress - transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
@@ -381,18 +372,16 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     }
 
     // Program triggers
-    ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
+    ius4oem->SetNTriggers(nOps*batchSize*rxBufferSize);
     firing = 0;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
-        for(uint16 batchElementIdx = 0;
-            batchElementIdx < batchSize; ++batchElementIdx) {
+        for(uint16 seqIdx = 0; seqIdx < batchSize; ++seqIdx) {
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = (uint16) (opIdx + batchElementIdx * nOps +
-                                   batchIdx * nOps * batchSize);
+                firing = (uint16)(opIdx+ seqIdx*nOps + batchIdx*batchSize*nOps);
                 auto const &op = seq[opIdx];
                 // checkpoint only when it is the last operation of the last batch element
                 bool checkpoint = triggerSync && (opIdx == seq.size() - 1 &&
-                                                  batchElementIdx ==
+                                                  seqIdx ==
                                                   batchSize - 1);
                 float pri = op.getPri();
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
@@ -540,8 +529,7 @@ double Us4OEMImpl::getSamplingFrequency() {
 }
 
 float Us4OEMImpl::getRxTime(size_t nSamples, uint32 decimationFactor) {
-    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY / decimationFactor)
-           + Us4OEMImpl::RX_TIME_EPSILON;
+    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY / decimationFactor);
 }
 
 void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc) {
