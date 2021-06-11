@@ -71,6 +71,7 @@ public:
     static constexpr float SEQUENCER_REPROGRAMMING_TIME = 40e-6f; // [s]
     static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
     static constexpr float MAX_PRI = 1.0f; // [s]
+    static constexpr float RX_TIME_EPSILON = 5e-6; // [s]
 
     /**
      * Us4OEMImpl constructor.

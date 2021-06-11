@@ -561,7 +561,7 @@ double Us4OEMImpl::getSamplingFrequency() {
 }
 
 float Us4OEMImpl::getRxTime(size_t nSamples, uint32 decimationFactor) {
-    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY / decimationFactor);
+    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY / decimationFactor) + RX_TIME_EPSILON;
 }
 
 void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc) {
