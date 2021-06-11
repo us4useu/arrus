@@ -164,6 +164,7 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
         FILES
             # TODO(pjarosik) make it more general (will not work for OS!=win)
             ${Us4_ROOT_DIR_SANITIZED}/bin/us4OEMFirmwareUpdate.exe
+            ${Us4_ROOT_DIR_SANITIZED}/bin/Us4OEMStatus.exe
         DESTINATION
             ${ARRUS_BIN_INSTALL_DIR}
     )
