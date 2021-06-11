@@ -64,14 +64,12 @@ public:
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32 SAMPLE_DELAY = 240;
     static constexpr float RX_DELAY = 0.0;
-    static constexpr float RX_TIME_EPSILON = 5e-6f;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
-    // Other
-    static constexpr float MIN_PRI = 100e-6f; // [s]
     static constexpr float SEQUENCER_REPROGRAMMING_TIME = 36e-6f; // [s]
+    static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
     static constexpr float MAX_PRI = 1.0f; // [s]
 
     /**

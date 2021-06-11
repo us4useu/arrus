@@ -162,15 +162,6 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidPri) {
     };
     EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
-
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pri = Us4OEMImpl::MIN_PRI - 1e-6f))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsOnly) {
@@ -955,15 +946,14 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
 }
 
 // TX/RX reprogramming tests
-// TODO close this task
-class Us4OEMImplEsaote3ChannelsMaskTest : public ::testing::Test {
+class Us4OEMImplEsaote3ReprogrammingTest : public ::testing::Test {
 protected:
     void SetUp() override {
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
     }
 
-    Us4OEMImpl::Handle createHandle(const std::unordered_set<uint8> &channelsMask) {
+    Us4OEMImpl::Handle createHandle(Us4OEMSettings::ReprogrammingMode reprogrammingMode) {
         // This function can be called only once.
 
         BitMask activeChannelGroups = {true, true, true, true,
@@ -981,8 +971,8 @@ protected:
                 std::move(ius4oem), activeChannelGroups,
                 channelMapping,
                 pgaGain, lnaGain,
-                channelsMask,
-                Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
+                std::unordered_set<uint8>({}),
+                reprogrammingMode
         );
 
     }
@@ -994,6 +984,83 @@ protected:
     uint16 defaultBatchSize = 1;
     std::optional<float> defaultSri = std::nullopt;
 };
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToShortPRIForSequential) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time + reprogramming time -1us [s]
+                            // Assuming
+                            x.pri = 63e-6f + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME - 1e-6f,
+                            x.sampleRange = {0, 4096}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeSequential) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+
+    float pri = 63e-6f + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME;
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time + reprogramming time [s]
+                            x.pri = pri,
+                            x.sampleRange = {0, 4032}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_NO_THROW(SET_TX_RX_SEQUENCE(us4oem, seq));
+}
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeParallel) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
+
+    float pri = 63e-6f;
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time only
+                            x.pri = pri,
+                            x.sampleRange = {0, 4032}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_NO_THROW(SET_TX_RX_SEQUENCE(us4oem, seq));
+}
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
+
+    float pri = 63e-6f-1e-6f;
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time only
+                            x.pri = pri,
+                            x.sampleRange = {0, 4096}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
+}
+
+
 }
 
 int main(int argc, char **argv) {
