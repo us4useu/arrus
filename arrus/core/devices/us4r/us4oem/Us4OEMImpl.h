@@ -68,10 +68,10 @@ public:
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
-    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 40e-6f; // [s]
+    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f; // [s]
     static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
     static constexpr float MAX_PRI = 1.0f; // [s]
-    static constexpr float RX_TIME_EPSILON = 5e-6; // [s]
+    static constexpr float RX_TIME_EPSILON = 5e-6f; // [s]
 
     /**
      * Us4OEMImpl constructor.
