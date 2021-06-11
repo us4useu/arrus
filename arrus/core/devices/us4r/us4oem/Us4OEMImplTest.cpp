@@ -994,7 +994,10 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToShortPRIForSequential) {
                     (
                             // acquisition time + reprogramming time -1us [s]
                             // Assuming
-                            x.pri = 63e-6f + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME - 1e-6f,
+                            x.pri = 63e-6f
+                                + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME
+                                + Us4OEMImpl::RX_TIME_EPSILON
+                                - 1e-6f,
                             x.sampleRange = {0, 4096}
                     ))
                     .getTxRxParameters()
@@ -1006,7 +1009,8 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToShortPRIForSequential) {
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeSequential) {
     auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
 
-    float pri = 63e-6f + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME;
+    float pri = 63e-6f + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME
+        + Us4OEMImpl::RX_TIME_EPSILON;
 
     std::vector<TxRxParameters> seq = {
             ARRUS_STRUCT_INIT_LIST(
@@ -1025,7 +1029,7 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeSequential) {
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeParallel) {
     auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
 
-    float pri = 63e-6f;
+    float pri = 63e-6f + Us4OEMImpl::RX_TIME_EPSILON;
 
     std::vector<TxRxParameters> seq = {
             ARRUS_STRUCT_INIT_LIST(
@@ -1044,7 +1048,7 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeParallel) {
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
     auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
 
-    float pri = 63e-6f-1e-6f;
+    float pri = 63e-6f-1e-6f + Us4OEMImpl::RX_TIME_EPSILON;
 
     std::vector<TxRxParameters> seq = {
             ARRUS_STRUCT_INIT_LIST(
