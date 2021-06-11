@@ -1060,7 +1060,19 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
     EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
 }
 
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, ProperLowLevelApiParameterIsSetSequential) {
+    // Sequential
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+    EXPECT_CALL(*ius4oemPtr, EnableSequencer(0));
+    us4oem->enableSequencer();
+}
 
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, ProperLowLevelApiParameterIsSetParallel) {
+    // Sequential
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
+    EXPECT_CALL(*ius4oemPtr, EnableSequencer(1));
+    us4oem->enableSequencer();
+}
 }
 
 int main(int argc, char **argv) {
