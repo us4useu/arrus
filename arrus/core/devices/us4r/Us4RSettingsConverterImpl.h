@@ -14,7 +14,8 @@ public:
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
                             const ProbeSettings &probeSettings,
                             const RxSettings &rxSettings,
-                            const std::vector<ChannelIdx> &channelsMask) override {
+                            const std::vector<ChannelIdx> &channelsMask,
+                            Us4OEMSettings::ReprogrammingMode reprogrammingMode) override {
 
         // Assumption:
         // for each module there is N_RX_CHANNELS*k elements in mapping
@@ -125,7 +126,8 @@ public:
                     us4oemChannelMapping[i],
                     activeChannelGroups[i],
                     rxSettings,
-                    channelsMasks[i])
+                    channelsMasks[i],
+                    reprogrammingMode)
             );
         }
         return {result, ProbeAdapterSettings(

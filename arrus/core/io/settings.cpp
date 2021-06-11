@@ -314,7 +314,7 @@ std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
     return result;
 }
 
-
+Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode);
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                               const SettingsDictionary &dictionary) {
     std::optional<HVSettings> hvSettings;
@@ -356,9 +356,11 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
             auto activeChannelGroups = castTo<bool>(
                 std::begin(us4oem.active_channel_groups()),
                 std::end(us4oem.active_channel_groups()));
+            Us4OEMSettings::ReprogrammingMode reprogrammingMode =
+                    convertToReprogrammingMode(us4oem.reprogramming_mode());
             us4oemSettings.emplace_back(
                 channelMapping, activeChannelGroups, rxSettings,
-                us4oemChannelsMask[i]);
+                us4oemChannelsMask[i], reprogrammingMode);
         }
         return Us4RSettings(us4oemSettings, hvSettings);
     } else {
@@ -389,9 +391,22 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         for(auto &mask: us4r.us4oem_channels_mask()) {
             us4oemChannelsMask.push_back(readChannelsMask<uint8>(mask));
         }
+        auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
 
         return Us4RSettings(adapterSettings, probeSettings, rxSettings,
-                            hvSettings, channelsMask, us4oemChannelsMask);
+                            hvSettings, channelsMask, us4oemChannelsMask,
+                            reprogrammingMode);
+    }
+}
+Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
+    switch(mode) {
+        case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL:
+            return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
+        case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL:
+            return Us4OEMSettings::ReprogrammingMode::PARALLEL;
+        default:
+            throw std::runtime_error("Unknown reprogramming mode: "
+            + std::to_string(mode));
     }
 }
 
