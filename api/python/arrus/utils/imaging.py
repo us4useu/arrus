@@ -394,7 +394,7 @@ class Decimation(Operation):
         n_frames, n_channels, n_samples = const_metadata.input_shape
         total_n_samples = n_frames*n_channels*n_samples
 
-        output_shape = n_frames, n_channels, n_samples//self.decimation_factor
+        output_shape = n_frames, n_channels, math.ceil(n_samples/self.decimation_factor)
 
         # CIC FIR coefficients
         if self.impl == "fir":
