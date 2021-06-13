@@ -81,7 +81,7 @@ class Pipeline:
             import cupy as cp
             import cupyx.scipy.ndimage as cupy_scipy_ndimage
             pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
-            self._stream = cp.cuda.Stream(non_blocking=True)
+            self._stream = cp.cuda.Stream()
             self._is_gpu = True
         elif self._placement == "CPU":
             import scipy.ndimage
