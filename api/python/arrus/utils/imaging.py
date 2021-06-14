@@ -230,7 +230,7 @@ class Decimation:
         n_frames, n_channels, n_samples = const_metadata.input_shape
         total_n_samples = n_frames*n_channels*n_samples
 
-        output_shape = n_frames, n_channels, n_samples//self.decimation_factor
+        output_shape = n_frames, n_channels, math.ceil(n_samples/self.decimation_factor)
 
         # CIC FIR coefficients
         if self.impl == "fir":
@@ -281,14 +281,14 @@ class Decimation:
 
     def _fir_decimate(self, data):
         fir_output = self._fir_filter(data)
-        data_out = fir_output[:, :, 0:-1:self.decimation_factor]
+        data_out = fir_output[:, :, 0::self.decimation_factor]
         return data_out
 
     def _legacy_decimate(self, data):
         data_out = data
         for i in range(self.cic_order):
             data_out = self.xp.cumsum(data_out, axis=-1)
-        data_out = data_out[:, :, 0:-1:self.decimation_factor]
+        data_out = data_out[:, :, 0::self.decimation_factor]
         for i in range(self.cic_order):
             data_out[:, :, 1:] = self.xp.diff(data_out, axis=-1)
         return data_out
