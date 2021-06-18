@@ -20,6 +20,8 @@ class FirFilterTestCase(ArrusImagingTestCase):
         # Currently FirFilter supports only 3D arrays,
         # the filtering is done along the last axis.
         # So we need to reshape the data to proper sizes.
+        # Currently only np.int16 data is supported.
+        # Currently only np.float32 taps are supported.
         data = kwargs['data']
         data = np.array(data)
         if len(data.shape) > 3:
@@ -27,7 +29,9 @@ class FirFilterTestCase(ArrusImagingTestCase):
         if len(data.shape) < 3:
             dim_diff = 3-len(data.shape)
             data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
-            kwargs['data'] = data
+            data = data.astype(np.int16)
+            kwargs["data"] = data
+        kwargs["taps"] = np.asarray(kwargs["taps"]).astype(np.float32)
         result = super().run_op(**kwargs)
         return np.squeeze(result)
 
@@ -42,10 +46,11 @@ class FirFilterTestCase(ArrusImagingTestCase):
     def test_simple_1d_convolution_single_coeff(self):
         """A simple and easy to analyse test case."""
         # Given
-        data = np.arange(5)
-        filter_taps = np.array([1])
+        data = np.arange(5).astype(np.int16)
+        filter_taps = np.array([1]).astype(np.float32)
         # Run
         result = self.run_op(data=data, taps=filter_taps)
+        print(result.shape)
         # Expect
         np.testing.assert_equal(result, data)
 
@@ -62,7 +67,7 @@ class FirFilterTestCase(ArrusImagingTestCase):
         """ Test if the data is properly reversed in the convolution,
             i.e. sum(data[j-i] * coeffs[i]) """
         data = np.arange(5)
-        filter_taps = np.array([1, 2, 3])
+        filter_taps = np.array([3, 2, 1])
         # Run
         result = self.run_op(data=data, taps=filter_taps)
         # Expect
@@ -72,7 +77,7 @@ class FirFilterTestCase(ArrusImagingTestCase):
         # 3.    [1, 2, 3]
         # 4.       [1, 2, 3]
         # 5.          [1, 2]
-        np.testing.assert_equal(result, [3, 8, 14, 20, 9])
+        np.testing.assert_equal(result, [3, 8, 14, 20, 11])
 
 
 if __name__ == "__main__":
