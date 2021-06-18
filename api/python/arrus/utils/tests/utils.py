@@ -78,7 +78,7 @@ class ArrusImagingTestCase(ArrusTestCase):
 
         Currently the below list describes a list of parameters that are
         required. If the parameters `xyz` is None, TestCase.xyz will be used.
-        All the parameters not listed below will be passed to the
+        All the parameters not listed below will be passed to the operator constructor.
 
         Currently only GPU implementation can only be tested.
 
