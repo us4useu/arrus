@@ -156,6 +156,9 @@ class Operation:
         """
         raise ValueError("Calling abstract method")
 
+    def __call__(self, *args, **kwargs):
+        return self._process(*args, **kwargs)
+
 
 class Lambda(Operation):
     """
@@ -268,6 +271,9 @@ class FirFilter(Operation):
 
         n_frames, n_channels, n_samples = const_metadata.input_shape
         total_n_samples = n_frames*n_channels*n_samples
+
+        if total_n_samples == 0:
+            raise ValueError("Empty array is not supported")
 
         fir_output_buffer = cp.zeros(const_metadata.input_shape, dtype=cp.float32)
         from arrus.utils.fir import (

@@ -6,7 +6,6 @@ import collections.abc
 
 import arrus.utils.core
 import arrus.logging
-import arrus.core
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.exceptions
 import arrus.devices.probe
@@ -18,7 +17,7 @@ import arrus.ops.tgc
 from collections.abc import Iterable
 
 
-DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
+DEVICE_TYPE = DeviceType("Us4R")
 
 
 @dataclasses.dataclass(frozen=True)

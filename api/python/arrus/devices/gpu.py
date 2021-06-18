@@ -1,7 +1,6 @@
-import arrus.core
 from arrus.devices.device import Device, DeviceId, DeviceType
 
-DEVICE_TYPE = DeviceType("GPU", arrus.core.DeviceType_GPU)
+DEVICE_TYPE = DeviceType("GPU")
 
 
 class GPU(Device):

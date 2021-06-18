@@ -1,7 +1,6 @@
-import arrus.core
 from arrus.devices.device import Device, DeviceId, DeviceType
 
-DEVICE_TYPE = DeviceType("CPU", arrus.core.DeviceType_CPU)
+DEVICE_TYPE = DeviceType("CPU")
 
 
 class CPU(Device):
