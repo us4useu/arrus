@@ -30,21 +30,45 @@ class QuadratureDemodulationTestCase(ArrusImagingTestCase):
 
     # Corner cases:
 
-    def test_no_input_signal(self):
-        """Empty input array should not be accepted. """
-        with self.assertRaisesRegex(ValueError, "Empty array") as ctx:
-            self.run_op(data=[])
+    # def test_no_input_signal(self):
+    #     """Empty input array should not be accepted. """
+    #     with self.assertRaisesRegex(ValueError, "Empty array") as ctx:
+    #         self.run_op(data=[])
 
 
-    def test_simple_1d_convolution_single_coeff(self):
-        """A simple and easy to analyse test case."""
+    def test_0(self):
         # Given
-        data = np.arange(5).astype(np.int16)
+        data = [0]
         # Run
         result = self.run_op(data=data)
-        print(result.shape)
         # Expect
-        np.testing.assert_equal(result, data)
+        np.testing.assert_equal(result, 0j)
+
+
+    def test_1(self):
+        # Given
+        data = [1]
+        # Run
+        result = self.run_op(data=data)
+        # Expect
+        np.testing.assert_equal(result, 2+0j)
+
+    def test_m1(self):
+        # Given
+        data = [-1]
+        # Run
+        result = self.run_op(data=data)
+        # Expect
+        np.testing.assert_equal(result, -2+0j)
+
+
+    # def test_0(self):
+    #     # Given
+    #     data = [-1,0,1]
+    #     # Run
+    #     result = self.run_op(data=data)
+    #     # Expect
+    #     np.testing.assert_equal(result, [-2-0j, 0j, 2+0j])
 
 if __name__ == "__main__":
     unittest.main()
