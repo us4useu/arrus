@@ -353,6 +353,8 @@ class QuadratureDemodulation(Operation):
         fs = const_metadata.data_description.sampling_frequency
         fc = const_metadata.context.sequence.pulse.center_frequency
         _, _, n_samples = const_metadata.input_shape
+        if n_samples == 0:
+            raise ValueError("Empty array is not accepted.")
         t = (xp.arange(0, n_samples) / fs).reshape(1, 1, -1)
         self.mod_factor = (2 * xp.cos(-2 * xp.pi * fc * t)
                            + 2 * xp.sin(-2 * xp.pi * fc * t) * 1j)
