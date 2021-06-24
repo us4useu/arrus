@@ -836,10 +836,13 @@ class LogCompression(Operation):
             self.is_gpu = True
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        n_samples = const_metadata.input_shape[-1]
+        if n_samples == 0:
+            raise ValueError("Empty array is not accepted.")
         return const_metadata
 
     def _process(self, data):
-        data[data == 0] = 1e-9
+        data[data <= 0] = 1e-9
         return 20*self.num_pkg.log10(data)
 
 
