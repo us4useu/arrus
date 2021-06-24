@@ -54,7 +54,7 @@ class QuadratureDemodulationTestCase(ArrusImagingTestCase):
         # Expect
         np.testing.assert_equal(result, -2+0j)
 
-    def test_vct(self):
+    def test_1D(self):
         ''' Test use vector data.'''
 
         fs = self.context.device.sampling_frequency
@@ -74,8 +74,8 @@ class QuadratureDemodulationTestCase(ArrusImagingTestCase):
         # Expect
         np.testing.assert_equal(result, expected)
 
-    def test_arr(self):
-        ''' Test use array data.'''
+    def test_2D(self):
+        ''' Test use 2D array data.'''
 
         fs = self.context.device.sampling_frequency
         fc = self.context.sequence.pulse.center_frequency
@@ -83,6 +83,28 @@ class QuadratureDemodulationTestCase(ArrusImagingTestCase):
         # Given
         data = np.array([-1., 10, 0, -20, 1]).astype(np.float32)
         data = np.tile(data, (10,2))
+
+        n_samples = np.shape(data)[-1]
+        t = (np.arange(0, n_samples) / fs)
+        m = (  2 * np.cos(-2 * np.pi * fc * t)
+               + 2 * np.sin(-2 * np.pi * fc * t) * 1j)
+        m = m.astype(np.complex64)
+        expected = np.squeeze(m * data)
+        # Run
+        result = self.run_op(data=data)
+        # Expect
+        np.testing.assert_equal(result, expected)
+
+    def test_3D(self):
+        ''' Test use 3D array data.'''
+
+        fs = self.context.device.sampling_frequency
+        fc = self.context.sequence.pulse.center_frequency
+
+        # Given
+        data = np.array([-1., 10, 0, -20, 1]).astype(np.float32)
+        data = np.tile(data, (13,11,3))
+        print(data.shape)
 
         n_samples = np.shape(data)[-1]
         t = (np.arange(0, n_samples) / fs)
