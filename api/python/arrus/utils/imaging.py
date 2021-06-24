@@ -639,6 +639,10 @@ class EnvelopeDetection(Operation):
         self.xp = num_pkg
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+
+        n_samples = const_metadata.input_shape[-1]
+        if n_samples == 0:
+            raise ValueError("Empty array is not accepted.")
         return const_metadata.copy(is_iq_data=False, dtype="float32")
 
     def _process(self, data):
