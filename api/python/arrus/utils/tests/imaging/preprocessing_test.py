@@ -5,6 +5,9 @@ from arrus.utils.imaging import (
     QuadratureDemodulation,
     EnvelopeDetection,
     LogCompression,
+    DynamicRangeAdjustment,
+    ToGrayscaleImg,
+    ScanConversion,
 )
 
 
@@ -221,8 +224,75 @@ class LogCompressionTestCase(ArrusImagingTestCase):
         np.testing.assert_almost_equal(result, expected, decimal=12)
 
 
+class DynamicRangeAdjustmentTestCase(ArrusImagingTestCase):
+
+    def setUp(self) -> None:
+        self.op = DynamicRangeAdjustment
+        self.context = self.get_default_context()
+
+    def run_op(self, **kwargs):
+        data = kwargs['data']
+        data = np.array(data)
+        if len(data.shape) > 3:
+            raise ValueError("Currently data supports at most 3 dimensions.")
+        if len(data.shape) < 3:
+            dim_diff = 3-len(data.shape)
+            data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
+            kwargs["data"] = data
+        result = super().run_op(**kwargs)
+        return np.squeeze(result)
+
+    def test_clip(self):
+        # Given
+        data = np.arange(5)
+        expected = np.array([2,2,2,3,3])
+        # Run
+        result = self.run_op(data=data,min=2,max=3)
+        # Expect
+        np.testing.assert_equal(result, expected)
 
 
+class ToGrayscaleImgTestCase(ArrusImagingTestCase):
+
+    def setUp(self) -> None:
+        self.op = ToGrayscaleImg
+        self.context = self.get_default_context()
+
+    def run_op(self, **kwargs):
+        data = kwargs['data']
+        data = np.array(data)
+        if len(data.shape) > 3:
+            raise ValueError("Currently data supports at most 3 dimensions.")
+        if len(data.shape) < 3:
+            dim_diff = 3-len(data.shape)
+            data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
+            kwargs["data"] = data
+        result = super().run_op(**kwargs)
+        return np.squeeze(result)
+
+    def test_is_in_range(self):
+        # Given
+        data = np.arange(-10.,1024)
+        # expected = data - np.min(data)
+        # expected = expected/np.max(expected)*255
+        # Run
+        result = self.run_op(data=data)
+        # Expect
+        self.assertTrue((np.all(result >= 0))
+                        and (np.all(result <= 255))
+                        and result.dtype == 'uint8')
+
+
+    def test_correct(self):
+        # Given
+        data = np.arange(-128, 128)
+        expected = data - np.min(data)
+        expected = expected/np.max(expected)*255
+        # Run
+        result = self.run_op(data=data)
+        # Expect
+        # self.assertEqual(expected, result)
+        np.testing.assert_equal(expected, result)
 
 if __name__ == "__main__":
     unittest.main()
