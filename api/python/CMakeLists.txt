@@ -100,16 +100,25 @@ set(TEST_FILES
     "arrus/tests/us4oem_kernels_test.py"
 )
 
-set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
+set(SETUP_PY_IN  "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
 set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
+set(INIT_PY_IN  "${CMAKE_CURRENT_SOURCE_DIR}/arrus/__init__.py")
+set(INIT_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/tmp/__init__.py")
+
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
+configure_file(${INIT_PY_IN}  ${INIT_PY_OUT})
+
 
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
         ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${CMAKE_CURRENT_BINARY_DIR}/arrus
+	# Override __init__.py file with the correct Python package version.
+	COMMAND
+		${CMAKE_COMMAND} -E copy
+		${CMAKE_CURRENT_BINARY_DIR}/tmp/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/arrus
 	COMMAND
 		${CMAKE_COMMAND} -E copy_directory
 		${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
