@@ -16,6 +16,11 @@ class ProbeModelMock:
     n_elements: int
     pitch: float
     curvature_radius: float
+        
+    def __post_init__(self):
+        element_pos_x, element_pos_z = self._compute_element_position()
+        super().__setattr__("element_pos_x", element_pos_x)
+        super().__setattr__("element_pos_z", element_pos_z)
 
     # TODO move the below functions to some other package
     # (it should be part of image reconstruction implementation)
