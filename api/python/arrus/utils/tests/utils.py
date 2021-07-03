@@ -133,7 +133,12 @@ class ArrusImagingTestCase(ArrusTestCase):
         init_data = cp.zeros(data.shape, dtype=data.dtype) + 1000
         op_instance._initialize(init_data)
         # Now run the op for the given data:
-        return op_instance(data).get()
+        op_result = op_instance(data)
+        if isinstance(op_result, cp.ndarray):
+            op_result = op_result.get()
+        elif not isinstance(op_result, np.ndarray):
+            raise ValueError(f"Invalid output result type: {type(op_result)}")
+        return op_result
 
     def get_probe_model_instance(self, **kwargs):
         """
