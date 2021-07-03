@@ -122,7 +122,7 @@ def create_lin_sequence(context):
         end = center_element+right_half_size
         actual_end = min(n_elem-1, end)
         right_padding = abs(min(actual_end-end, 0))
-        aperture = np.zeros((n_elem, ), dtype=np.bool)
+        aperture = np.zeros((n_elem, ), dtype=bool)
         aperture[actual_origin:(actual_end+1)] = True
         return aperture, (left_padding, right_padding)
     tx_apertures, tx_delays, tx_delays_center = compute_tx_parameters(
@@ -172,7 +172,7 @@ def get_aperture_with_padding(center_element, size, probe_model):
     end = center_element+right_half_size
     actual_end = min(n_elem-1, end)
     right_padding = abs(min(actual_end-end, 0))
-    aperture = np.zeros((n_elem, ), dtype=np.bool)
+    aperture = np.zeros((n_elem, ), dtype=bool)
     aperture[int(actual_origin):(int(actual_end)+1)] = True
     return aperture, (left_padding, right_padding)
 
