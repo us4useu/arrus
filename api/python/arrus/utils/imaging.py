@@ -729,7 +729,6 @@ class ScanConversion(Operation):
         self.interp_function = cupyx.scipy.ndimage.map_coordinates
 
         n_samples, n_scanlines = const_metadata.input_shape
-        print(f"input shape: {const_metadata.input_shape}")
         seq = const_metadata.context.sequence
         if not isinstance(seq, arrus.ops.imaging.LinSequence):
             raise ValueError("Scan conversion works only with LinSequence.")

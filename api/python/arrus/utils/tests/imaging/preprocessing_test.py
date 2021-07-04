@@ -406,6 +406,38 @@ class ScanConversionLinearArrayTestCase(ArrusImagingTestCase):
         # Expect
         np.testing.assert_almost_equal(expected, result, decimal=0)
 
+    def test_zeros(self):
+        # Given
+        pitch = self.context.device.probe.model.pitch
+        fs = self.context.device.sampling_frequency
+        n_elements = self.context.device.probe.model.n_elements
+        probe_width = (n_elements-1)*pitch
+        c = self.context.sequence.speed_of_sound
+        txapcel = self.context.sequence.tx_aperture_center_element
+        n_scanlines = len(txapcel)
+        sample_range = self.context.sequence.rx_sample_range
+        n_samples = sample_range[1] - sample_range[0]
+        dz = c/fs/2
+        zmax = (sample_range[1] - 1)*dz
+        zmin = sample_range[0]*dz
+
+        nx_grid_samples = n_scanlines
+        nz_grid_samples = 8
+        x_grid = np.linspace(-probe_width/2, probe_width/2, nx_grid_samples)
+        z_grid = np.linspace(zmin, zmax, nz_grid_samples)
+        data = np.zeros(n_scanlines)
+        expected = data
+        data = np.tile(data, (n_samples, 1))
+        expected = np.tile(expected, (nz_grid_samples,1))
+
+        # Run
+        result = self.run_op(data=data,
+                             x_grid=x_grid,
+                             z_grid=z_grid,
+                             )
+        # Expect
+        np.testing.assert_equal(expected, result)
+
 
 
 class ScanConversionConvexArrayTestCase(ArrusImagingTestCase):
@@ -419,7 +451,7 @@ class ScanConversionConvexArrayTestCase(ArrusImagingTestCase):
             tx_focus = 50e-6,
             pulse=Pulse(center_frequency=6e6, n_periods=2,
                         inverse=False),
-            rx_sample_range=(0, 2048),
+            rx_sample_range=(32, 64),
             downsampling_factor=1,
             speed_of_sound=1490,
             pri=100e-6,
@@ -452,7 +484,39 @@ class ScanConversionConvexArrayTestCase(ArrusImagingTestCase):
         result = super().run_op(**kwargs)
         return np.squeeze(result)
 
-    def test_identic(self):
+    def test_zeros(self):
+        # Given
+        pitch = self.context.device.probe.model.pitch
+        fs = self.context.device.sampling_frequency
+        n_elements = self.context.device.probe.model.n_elements
+        probe_width = (n_elements-1)*pitch
+        c = self.context.sequence.speed_of_sound
+        txapcel = self.context.sequence.tx_aperture_center_element
+        n_scanlines = len(txapcel)
+        sample_range = self.context.sequence.rx_sample_range
+        n_samples = sample_range[1] - sample_range[0]
+        dz = c/fs/2
+        zmax = (sample_range[1] - 1)*dz
+        zmin = sample_range[0]*dz
+
+        nx_grid_samples = n_scanlines
+        nz_grid_samples = 8
+        x_grid = np.linspace(-probe_width/2, probe_width/2, nx_grid_samples)
+        z_grid = np.linspace(zmin, zmax, nz_grid_samples)
+        data = np.zeros(n_scanlines)
+        expected = data
+        data = np.tile(data, (n_samples, 1))
+        expected = np.tile(expected, (nz_grid_samples,1))
+
+        # Run
+        result = self.run_op(data=data,
+                             x_grid=x_grid,
+                             z_grid=z_grid,
+                             )
+        # Expect
+        np.testing.assert_equal(expected, result)
+
+    def test_onesbelt(self):
         # Given
         pitch = self.context.device.probe.model.pitch
         fs = self.context.device.sampling_frequency
@@ -472,51 +536,19 @@ class ScanConversionConvexArrayTestCase(ArrusImagingTestCase):
         x_grid = np.linspace(-probe_width/2, probe_width/2, nx_grid_samples)
         z_grid = np.linspace(zmin, zmax, nz_grid_samples)
         data = np.arange(n_scanlines)
-        expected = data
+        data = np.zeros(n_scanlines)
         data = np.tile(data, (n_samples, 1))
+        data[0:8,:] = np.ones(n_scanlines)
+        expected = np.zeros(n_scanlines)
         expected = np.tile(expected, (nz_grid_samples,1))
-
-        # Run
-        result = self.run_op(data=data,
-                             x_grid=x_grid,
-                             z_grid=z_grid,
-                             )
-
-        print('data:')
-        print(data)
-        print('result:')
-        print(result)
-        print('expected: ')
-        print(expected)
-        # Expect
-        np.testing.assert_equal(expected, result)
-
-    def test_lininterp(self):
-        # Given
-        pitch = self.context.device.probe.model.pitch
-        fs = self.context.device.sampling_frequency
-        n_elements = self.context.device.probe.model.n_elements
-        probe_width = (n_elements - 1) * pitch
-        c = self.context.sequence.speed_of_sound
-        txapcel = self.context.sequence.tx_aperture_center_element
-        n_scanlines = len(txapcel)
-        sample_range = self.context.sequence.rx_sample_range
-        n_samples = sample_range[1] - sample_range[0]
-        dz = c / fs / 2
-        zmax = (sample_range[1] - 1) * dz
-        zmin = sample_range[0] * dz
-
-        nx_grid_samples = n_scanlines*2
-        nz_grid_samples = n_samples
-        x_grid = np.linspace(-probe_width / 2, probe_width / 2, nx_grid_samples)
-        z_grid = np.linspace(zmin, zmax, nz_grid_samples)
-
-        data = np.arange(n_scanlines)
-        data = np.tile(data, (n_samples, 1))
-
-        expected = np.arange(0,n_scanlines,0.5)
-        expected = np.tile(expected, (n_samples, 1))
-        expected = expected.astype(int)
+        expected[1,0] = 1
+        expected[1,8] = 1
+        expected[2,1] = 1
+        expected[2,7] = 1
+        expected[3,1:3] = 1
+        expected[3,6:8] = 1
+        expected[4,2:7] = 1
+        expected[5,3:6] = 1
 
         # Run
         result = self.run_op(data=data,
@@ -531,8 +563,7 @@ class ScanConversionConvexArrayTestCase(ArrusImagingTestCase):
         # print(expected)
 
         # Expect
-        np.testing.assert_almost_equal(expected, result, decimal=0)
-
+        np.testing.assert_equal(expected, result)
 
 
 if __name__ == "__main__":
