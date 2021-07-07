@@ -91,6 +91,7 @@ classdef Us4R < handle
                  obj.sys.zElem = -probe.curvRadius * cos(obj.sys.angElem);
                  obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
              end
+             obj.sys.tangElem = tan(obj.sys.angElem);
              obj.sys.probeChannelsMask = probe.channelsMask;
 %             obj.sys.maxVpp = probe.maxVpp;
 
@@ -406,11 +407,6 @@ classdef Us4R < handle
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
-            %% Warning: Convex & PWI/STA
-            if ~isnan(obj.sys.curvRadius) && ~strcmp(obj.seq.type,"lin")
-                warning('In this API version only LIN sequence is valid for convex arrays.');
-            end
-            
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
             obj.seq.rxDel       = 0e-6;
@@ -477,10 +473,11 @@ classdef Us4R < handle
             else
                 obj.seq.txCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.txApCent);
             end
-            obj.seq.txApCentAng	= interp1(1:obj.sys.nElem, obj.sys.angElem, obj.seq.txCentElem);
             obj.seq.txApCentZ	= interp1(1:obj.sys.nElem, obj.sys.zElem,   obj.seq.txCentElem);
             obj.seq.txApCentX	= interp1(1:obj.sys.nElem, obj.sys.xElem,   obj.seq.txCentElem);
-
+            obj.seq.txApCentAng	= interp1(1:obj.sys.nElem, obj.sys.angElem, obj.seq.txCentElem);
+            obj.seq.txAngZX     = obj.seq.txApCentAng + obj.seq.txAng;
+            
             if isempty(obj.seq.rxApCent)
                 obj.seq.rxApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.rxCentElem);
             else
@@ -585,12 +582,18 @@ classdef Us4R < handle
                 addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
                 
                 % move reconstruction-related data to GPU
+                obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
                 obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
+                obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
                 obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
                 obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
                 obj.seq.txFoc          = gpuArray(single(obj.seq.txFoc));
-                obj.seq.txAng          = gpuArray(single(obj.seq.txAng));
-                obj.seq.txApCent       = gpuArray(single(obj.seq.txApCent));
+                obj.seq.txAngZX        = gpuArray(single(obj.seq.txAngZX));
+                obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
+                obj.seq.txApCentX      = gpuArray(single(obj.seq.txApCentX));
+                obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
+                obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
+                obj.seq.rxApFstElem    = gpuArray( int32(obj.seq.rxApOrig - 1));    % rxApOrig remains unchanged as it is used in data reorganization
                 obj.rec.bmodeRxTangLim =          single(obj.rec.bmodeRxTangLim);
                 obj.rec.colorRxTangLim =          single(obj.rec.colorRxTangLim);
                 obj.rec.vect0RxTangLim =          single(obj.rec.vect0RxTangLim);
@@ -626,8 +629,10 @@ classdef Us4R < handle
         
         function calcTxRxApMask(obj)
             % calcTxRxApMask appends the following fields to the in/out obj:
-            % obj.seq.txApOrig      - [element] (1 x nTx) number of probe element being the first in the tx aperture
-            % obj.seq.rxApOrig      - [element] (1 x nTx) number of probe element being the first in the rx aperture
+            % obj.seq.txApOrig      - [element] (1 x nTx) number of probe element being the origin of the tx aperture
+            % obj.seq.rxApOrig      - [element] (1 x nTx) number of probe element being the origin of the rx aperture
+            % obj.seq.txApFstElem	- [element] (1 x nTx) number of probe element being the first in the tx aperture
+            % obj.seq.txApLstElem	- [element] (1 x nTx) number of probe element being the last in the tx aperture
             % obj.seq.txApMask      - [logical] (nChTotal x nTx) tx aperture mask
             % obj.seq.rxApMask      - [logical] (nChTotal x nTx) rx aperture mask
             % obj.seq.rxElemId      - [element] (nChTotal x nTx) element numbering in the rx aperture
@@ -644,6 +649,9 @@ classdef Us4R < handle
             obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
             
+            obj.seq.txApFstElem = max(1,          obj.seq.txApOrig);
+            obj.seq.txApLstElem = min(max(iElem), obj.seq.txApOrig + obj.seq.txApSize - 1);
+            
             obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
             systemChannelsMask = true(size(obj.seq.txApMask));
             systemChannelsMask(obj.sys.probeMap(obj.sys.probeChannelsMask), :) = false;
@@ -652,7 +660,6 @@ classdef Us4R < handle
             obj.seq.rxApMask = obj.seq.rxApMask & systemChannelsMask;
             obj.seq.rxElemId = (iElem.' - obj.seq.rxApOrig + 1) .* obj.seq.rxApMask;
             obj.seq.rxElemId(isnan(obj.seq.rxElemId)) = 0;
-            
         end
 
         function calcTxDelays(obj)
@@ -674,18 +681,16 @@ classdef Us4R < handle
             end
             
             %% CALCULATE DELAYS
-            txAngCart	= obj.seq.txApCentAng + obj.seq.txAng;
-            
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
-                txDel       = (xElem.'           .* sin(txAngCart) + ...
-                               zElem.'           .* cos(txAngCart)) / obj.seq.c;    % [s] (nElem x nTx) delays for tx elements
-                txDelCent	= (obj.seq.txApCentX .* sin(txAngCart) + ...
-                               obj.seq.txApCentZ .* cos(txAngCart)) / obj.seq.c;    % [s] (1 x nTx) delays for tx aperture center
+                txDel       = (xElem.'           .* sin(obj.seq.txAngZX) + ...
+                               zElem.'           .* cos(obj.seq.txAngZX)) / obj.seq.c;      % [s] (nElem x nTx) delays for tx elements
+                txDelCent	= (obj.seq.txApCentX .* sin(obj.seq.txAngZX) + ...
+                               obj.seq.txApCentZ .* cos(obj.seq.txAngZX)) / obj.seq.c;      % [s] (1 x nTx) delays for tx aperture center
             else
                 % Focal point positions
-                xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(txAngCart);	% [m] (1 x nTx) x-position of the focal point
-                zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(txAngCart);	% [m] (1 x nTx) z-position of the focal point
+                xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(obj.seq.txAngZX);	% [m] (1 x nTx) x-position of the focal point
+                zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(obj.seq.txAngZX);	% [m] (1 x nTx) z-position of the focal point
                 
                 
                 % Delays due to the element - focal point distances
@@ -1039,68 +1044,23 @@ classdef Us4R < handle
                 
                 % B-Mode image reconstruction
                 if obj.rec.bmodeEnable
-                    rfBfr = iqRaw2Lri(  rfRaw(:,:,obj.rec.bmodeFrames), ...
-                                        obj.sys.xElem, ...
-                                        obj.rec.zGrid, ...
-                                        obj.rec.xGrid, ...
-                                        obj.seq.txFoc(obj.rec.bmodeFrames), ...
-                                        obj.seq.txAng(obj.rec.bmodeFrames), ...
-                                        obj.seq.txApCent(obj.rec.bmodeFrames), ...
-                                        obj.rec.bmodeRxTangLim(1), ...
-                                        obj.rec.bmodeRxTangLim(2), ...
-                                        obj.seq.rxSampFreq / obj.rec.dec, ...
-                                        obj.seq.txFreq, ...
-                                        obj.seq.c, ...
-                                        - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+                    rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
+                    
                     rfBfr = mean(rfBfr,3,'omitnan');
                 end
                 
                 % Color Doppler image reconstruction
                 if obj.rec.colorEnable
-                    rfBfrColor = iqRaw2Lri( rfRaw(:,:,obj.rec.colorFrames), ...
-                                            obj.sys.xElem, ...
-                                            obj.rec.zGrid, ...
-                                            obj.rec.xGrid, ...
-                                            obj.seq.txFoc(obj.rec.colorFrames), ...
-                                            obj.seq.txAng(obj.rec.colorFrames), ...
-                                            obj.seq.txApCent(obj.rec.colorFrames), ...
-                                            obj.rec.colorRxTangLim(1), ...
-                                            obj.rec.colorRxTangLim(2), ...
-                                            obj.seq.rxSampFreq / obj.rec.dec, ...
-                                            obj.seq.txFreq, ...
-                                            obj.seq.c, ...
-                                            - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+                    rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
+                    
                     [color,power] = dopplerColorImaging(rfBfrColor, obj.seq, obj.rec);
                 end
                 
                 % Vector Doppler image reconstruction
                 if obj.rec.vectorEnable
-                    rfBfrVect0 = iqRaw2Lri( rfRaw(:,:,obj.rec.vect0Frames), ...
-                                            obj.sys.xElem, ...
-                                            obj.rec.zGrid, ...
-                                            obj.rec.xGrid, ...
-                                            obj.seq.txFoc(obj.rec.vect0Frames), ...
-                                            obj.seq.txAng(obj.rec.vect0Frames), ...
-                                            obj.seq.txApCent(obj.rec.vect0Frames), ...
-                                            obj.rec.vect0RxTangLim(1), ...
-                                            obj.rec.vect0RxTangLim(2), ...
-                                            obj.seq.rxSampFreq / obj.rec.dec, ...
-                                            obj.seq.txFreq, ...
-                                            obj.seq.c, ...
-                                            - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
-                    rfBfrVect1 = iqRaw2Lri( rfRaw(:,:,obj.rec.vect1Frames), ...
-                                            obj.sys.xElem, ...
-                                            obj.rec.zGrid, ...
-                                            obj.rec.xGrid, ...
-                                            obj.seq.txFoc(obj.rec.vect1Frames), ...
-                                            obj.seq.txAng(obj.rec.vect1Frames), ...
-                                            obj.seq.txApCent(obj.rec.vect1Frames), ...
-                                            obj.rec.vect1RxTangLim(1), ...
-                                            obj.rec.vect1RxTangLim(2), ...
-                                            obj.seq.rxSampFreq / obj.rec.dec, ...
-                                            obj.seq.txFreq, ...
-                                            obj.seq.c, ...
-                                            - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+                    rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
+                    rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
+                    
                     [color,power] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.seq, obj.rec);
                 end
             end
@@ -1159,6 +1119,47 @@ classdef Us4R < handle
             
             maskString = join(string(double(maskLogical.')),"").';
             maskString = reverse(maskString);
+            
+        end
+        
+        function iqLri = runCudaReconstruction(obj,iqRaw,selFramesType)
+            
+            switch selFramesType
+                case 'bmode'
+                    selFrames = obj.rec.bmodeFrames;
+                    rxTangLim = obj.rec.bmodeRxTangLim;
+                case 'color'
+                    selFrames = obj.rec.colorFrames;
+                    rxTangLim = obj.rec.colorRxTangLim;
+                case 'vector0'
+                    selFrames = obj.rec.vect0Frames;
+                    rxTangLim = obj.rec.vect0RxTangLim;
+                case 'vector1'
+                    selFrames = obj.rec.vect1Frames;
+                    rxTangLim = obj.rec.vect1RxTangLim;
+                otherwise
+                    error('runCudaReconstruction: invalid modality name.');
+            end
+            
+            iqLri	= iqRaw2Lri(iqRaw(:,:,selFrames), ...
+                                obj.sys.zElem, ...
+                                obj.sys.xElem, ...
+                                obj.sys.tangElem, ...
+                                obj.rec.zGrid, ...
+                                obj.rec.xGrid, ...
+                                obj.seq.txFoc(selFrames), ...
+                                obj.seq.txAngZX(selFrames), ...
+                                obj.seq.txApCentZ(selFrames), ...
+                                obj.seq.txApCentX(selFrames), ...
+                                obj.seq.txApFstElem(selFrames), ...
+                                obj.seq.txApLstElem(selFrames), ...
+                                obj.seq.rxApFstElem(selFrames), ...
+                                rxTangLim(1), ...
+                                rxTangLim(2), ...
+                                obj.seq.rxSampFreq / obj.rec.dec, ...
+                                obj.seq.txFreq, ...
+                                obj.seq.c, ...
+                                - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
             
         end
         

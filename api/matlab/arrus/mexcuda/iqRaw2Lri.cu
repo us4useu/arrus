@@ -4,7 +4,9 @@
 #include <string>
 #include <iostream>
 
-__constant__ float xElemConst[1024];
+__constant__ float zElemConst[256];
+__constant__ float xElemConst[256];
+__constant__ float tangElemConst[256];
 
 texture <float2, cudaTextureType1DLayered, cudaReadModeElementType> iqRawTex;
 
@@ -16,12 +18,16 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 
 
 __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
-                            float const * txFoc, float const * txAng, float const * txApCent, 
+                            float const * txFoc, float const * txAngZX, 
+                            float const * txApCentZ, float const * txApCentX, 
+                            int const * txApFstElem, int const * txApLstElem, 
+                            int const * rxApOrigElem, 
                             float const minRxTang, float const maxRxTang, 
                             float const fs, float const fn, 
                             float const sos, float const initDel, 
                             int const nZPix, int const nXPix, 
                             int const nSamp, int const nElem, 
+                            int const nRx, 
                             int const nTx)
 {
     int z = blockIdx.x * blockDim.x + threadIdx.x;
@@ -31,11 +37,12 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         return;
     }
     
-    float txDist, rxDist, txTang, rxTang, txApod, rxApod, time, iSamp;
+    int iElem;
+    float txDist, rxDist, rxTang, txApod, rxApod, time, iSamp;
     float modSin, modCos, sampRe, sampIm, pixRe, pixIm, pixWgh;
     float const omega = 2 * M_PI * fn;
     float const sosInv = 1 / sos;
-    float const zDistInv = 1 / zPix[z];
+//     float const zDistInv = 1 / zPix[z];
     float const nSigma = 3; // number of sigmas in half of the apodization Gaussian curve
     float const twoSigSqrInv = nSigma * nSigma * 0.5f;
     float const rngRxTangInv = 2 / (maxRxTang - minRxTang); // inverted half range
@@ -45,23 +52,47 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         
         if (!isinf(txFoc[iTx])) {
             /* STA */
-            float xFoc	= txFoc[iTx] * sinf(txAng[iTx]) + txApCent[iTx];
-            float zFoc	= txFoc[iTx] * cosf(txAng[iTx]);
-            float minTxTang = (xFoc - xElemConst[0      ]) / zFoc;
-            float maxTxTang = (xFoc - xElemConst[nElem-1]) / zFoc;  // invalid tx aperture edges (temporary solution)!!!
+            float zFoc	= txApCentZ[iTx] + txFoc[iTx] * cosf(txAngZX[iTx]);
+            float xFoc	= txApCentX[iTx] + txFoc[iTx] * sinf(txAngZX[iTx]);
             
+            float pixFocArrang;
+            
+            if (txFoc[iTx] <= 0.f) {
+                /* Virtual Point Source BEHIND probe surface */
+                // Valid pixels are assumed to be always in front of the focal point (VSP)
+                pixFocArrang = 1.f;
+            }
+            else {
+                /* Virtual Point Source IN FRONT OF probe surface */
+                // Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
+                // to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
+                pixFocArrang = (((zPix[z]-zFoc)*(zFoc-txApCentZ[iTx]) + 
+                                 (xPix[x]-xFoc)*(xFoc-txApCentX[iTx])) >= 0.f) ? 1.f : -1.f;
+            }
             txDist	= ownHypotf(zPix[z] - zFoc, xPix[x] - xFoc);
-            //txDist	= txDist * sign(zPix[z] - zFoc) + txFoc[iTx];          // WARNING: sign()=0 => invalid txDist value
-            txTang	= (xPix[x] - xFoc) / (zPix[z] - zFoc);
-            txApod	= (txTang >= minTxTang && txTang <= maxTxTang) ? 1.f : 0.f;
+            txDist *= pixFocArrang; // Compensation for the Pix-Foc arrangement
+            txDist += txFoc[iTx]; // Compensation for the reference time being the moment when txApCent fires.
+            
+            // Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
+            // to determine if the pixel is in the sonified area (dot product >= 0).
+            // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
+            txApod = ( ( (-(xElemConst[txApFstElem[iTx]] - xFoc)*(zPix[z] - zFoc) + 
+                           (zElemConst[txApFstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) && 
+                       ( ( (xElemConst[txApLstElem[iTx]] - xFoc)*(zPix[z] - zFoc) - 
+                           (zElemConst[txApLstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
         }
         else {
             /* PWI */
-            float r1 = (xPix[x]-xElemConst[0      ]) * cosf(txAng[iTx]) - zPix[z] * sinf(txAng[iTx]);
-            float r2 = (xPix[x]-xElemConst[nElem-1]) * cosf(txAng[iTx]) - zPix[z] * sinf(txAng[iTx]);
+            txDist = (zPix[z] - txApCentZ[iTx]) * cosf(txAngZX[iTx]) + 
+                     (xPix[x] - txApCentX[iTx]) * sinf(txAngZX[iTx]);
             
-            txDist = xPix[x] * sinf(txAng[iTx]) + zPix[z] * cosf(txAng[iTx]);
-            txApod = (r1 >= 0.f && r2 <= 0.f) ? 1.f : 0.f;
+            // Projections of ApEdge-Pix vector on the rotated unit vector of tx direction (dot products) ...
+            // to determine if the pixel is in the sonified area (dot product >= 0).
+            // For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
+            txApod = ( ( (-(zPix[z]-zElemConst[txApFstElem[iTx]]) * sinf(txAngZX[iTx]) + 
+                           (xPix[x]-xElemConst[txApFstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f ) && 
+                       ( ( (zPix[z]-zElemConst[txApLstElem[iTx]]) * sinf(txAngZX[iTx]) - 
+                           (xPix[x]-xElemConst[txApLstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f ) ) ? 1.f : 0.f;
         }
         
         pixRe = 0.f;
@@ -69,9 +100,14 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
         pixWgh = 0.f;
         
         if (txApod != 0.f) {
-            for (int iElem=0; iElem<nElem; iElem++) {
-                rxDist = ownHypotf(zPix[z], xPix[x] - xElemConst[iElem]);   // +10us
-                rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;          // 4us
+            for (int iRx=0; iRx<nRx; iRx++) {
+                iElem = iRx + rxApOrigElem[iTx];
+                if (iElem<0 || iElem>=nElem) continue;
+                
+                rxDist = ownHypotf(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+//                 rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
+                rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+                rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
                 if (rxTang < minRxTang || rxTang > maxRxTang) continue;
                 rxApod = (rxTang-centRxTang)*rngRxTangInv;
                 rxApod = __expf(-rxApod*rxApod*twoSigSqrInv);
@@ -80,7 +116,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
                 iSamp = time * fs;
                 if (iSamp<0.f || iSamp>static_cast<float>(nSamp-1)) continue;
                 
-                float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iElem + iTx*nElem);
+                float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iRx + iTx*nRx);
                 sampRe = iqSamp.x;
                 sampIm = iqSamp.y;
                 
@@ -136,21 +172,33 @@ void mexFunction(int nlhs, mxArray * plhs[],
     /* Declare the variables */
     mxGPUArray * iqLri;
     mxGPUArray const * iqRaw;
+    mxGPUArray const * zElem;
     mxGPUArray const * xElem;
+    mxGPUArray const * tangElem;
     mxGPUArray const * zPix;
     mxGPUArray const * xPix;
     mxGPUArray const * foc;
     mxGPUArray const * ang;
-    mxGPUArray const * cent;
+    mxGPUArray const * centZ;
+    mxGPUArray const * centX;
+    mxGPUArray const * elemFst;
+    mxGPUArray const * elemLst;
+    mxGPUArray const * rxElemOrig;
     
     float2 * dev_iqLri;
     float2 const * dev_iqRaw;
+    float const * dev_zElem;
     float const * dev_xElem;
+    float const * dev_tangElem;
     float const * dev_zPix;
     float const * dev_xPix;
     float const * dev_foc;
     float const * dev_ang;
-    float const * dev_cent;
+    float const * dev_centZ;
+    float const * dev_centX;
+    int const * dev_elemFst;
+    int const * dev_elemLst;
+    int const * dev_rxElemOrig;
     
     float minRxTang;
     float maxRxTang;
@@ -163,6 +211,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     int nElem;
     int nZPix;
     int nXPix;
+    int nRx;
     int nTx;
     
     dim3 const threadsPerBlock = {16, 16, 1};
@@ -173,15 +222,15 @@ void mexFunction(int nlhs, mxArray * plhs[],
     char const * const invalidOutputMsgId = "iqRaw2Lri:InvalidOutput";
     
     /* Validate mex inputs/outputs */
-    if (nrhs!=13) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "13 inputs required");
+    if (nrhs!=19) {
+        mexErrMsgIdAndTxt( invalidInputMsgId, "19 inputs required");
     }
     
     if (nlhs>1) {
         mexErrMsgIdAndTxt( invalidOutputMsgId, "One output allowed");
     }
     
-//     for (int i=7; i<13; i++) {
+//     for (int i=13; i<19; i++) {
 //         if (!mxIsSingle(prhs[i]) || mxIsComplex(prhs[i]) || mxGetNumberOfElements(prhs[i]) != 1) {
 //             mexErrMsgIdAndTxt( invalidInputMsgId, "Last 6 inputs must be single, real scalars");
 //         }
@@ -189,36 +238,45 @@ void mexFunction(int nlhs, mxArray * plhs[],
     
     
     /* Extract inputs from prhs */
-    iqRaw = mxGPUCreateFromMxArray(prhs[0]);
-    xElem = mxGPUCreateFromMxArray(prhs[1]);
-    zPix  = mxGPUCreateFromMxArray(prhs[2]);
-    xPix  = mxGPUCreateFromMxArray(prhs[3]);
-    foc   = mxGPUCreateFromMxArray(prhs[4]);
-    ang   = mxGPUCreateFromMxArray(prhs[5]);
-    cent  = mxGPUCreateFromMxArray(prhs[6]);
+    iqRaw     = mxGPUCreateFromMxArray(prhs[0]);
+    zElem     = mxGPUCreateFromMxArray(prhs[1]);
+    xElem     = mxGPUCreateFromMxArray(prhs[2]);
+    tangElem  = mxGPUCreateFromMxArray(prhs[3]);
+    zPix      = mxGPUCreateFromMxArray(prhs[4]);
+    xPix      = mxGPUCreateFromMxArray(prhs[5]);
+    foc       = mxGPUCreateFromMxArray(prhs[6]);
+    ang       = mxGPUCreateFromMxArray(prhs[7]);
+    centZ     = mxGPUCreateFromMxArray(prhs[8]);
+    centX     = mxGPUCreateFromMxArray(prhs[9]);
+    elemFst   = mxGPUCreateFromMxArray(prhs[10]);
+    elemLst   = mxGPUCreateFromMxArray(prhs[11]);
+    rxElemOrig  = mxGPUCreateFromMxArray(prhs[12]);
     
-    minRxTang = mxGetScalar(prhs[7]);
-    maxRxTang = mxGetScalar(prhs[8]);
-    fs    = mxGetScalar(prhs[9]);
-    fn    = mxGetScalar(prhs[10]);
-    sos   = mxGetScalar(prhs[11]);
-    initDel	= mxGetScalar(prhs[12]);
+    minRxTang = mxGetScalar(prhs[13]);
+    maxRxTang = mxGetScalar(prhs[14]);
+    fs        = mxGetScalar(prhs[15]);
+    fn        = mxGetScalar(prhs[16]);
+    sos       = mxGetScalar(prhs[17]);
+    initDel   = mxGetScalar(prhs[18]);
     
     /* Validate inputs */
     checkData(iqRaw,     "iqRaw",     true,  3, invalidInputMsgId);
+    checkData(zElem,     "zElem",     false, 1, invalidInputMsgId);
     checkData(xElem,     "xElem",     false, 1, invalidInputMsgId);
+    checkData(tangElem,  "tangElem",  false, 1, invalidInputMsgId);
     checkData(zPix,      "zPix",      false, 1, invalidInputMsgId);
     checkData(xPix,      "xPix",      false, 1, invalidInputMsgId);
     checkData(foc,       "foc",       false, 1, invalidInputMsgId);
     checkData(ang,       "ang",       false, 1, invalidInputMsgId);
-    checkData(cent,      "cent",      false, 1, invalidInputMsgId);
-    
-    if (mxGPUGetDimensions(iqRaw)[1] != mxGPUGetNumberOfElements(xElem)) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "size(iqRaw,2) must be equal to length(xElem).");
-    }
+    checkData(centZ,     "centZ",     false, 1, invalidInputMsgId);
+    checkData(centX,     "centX",     false, 1, invalidInputMsgId);
+//     checkData(elemFst,   "elemFst",   false, 1, invalidInputMsgId); //int
+//     checkData(elemLst,   "elemLst",   false, 1, invalidInputMsgId); //int
+//     checkData(rxElemOrig,"rxElemOrig",false, 1, invalidInputMsgId); //int
     
     /* Get some additional information */
     nSamp = mxGPUGetDimensions(iqRaw)[0];
+    nRx   = mxGPUGetDimensions(iqRaw)[1];
     nElem = mxGPUGetNumberOfElements(xElem);
     nZPix = mxGPUGetNumberOfElements(zPix);
     nXPix = mxGPUGetNumberOfElements(xPix);
@@ -244,31 +302,39 @@ void mexFunction(int nlhs, mxArray * plhs[],
                                 MX_GPU_DO_NOT_INITIALIZE);
     
     /* Get pointers on the device */
-    dev_iqLri = static_cast<float2 *>(mxGPUGetData(iqLri));
-    dev_iqRaw = static_cast<float2 const *>(mxGPUGetDataReadOnly(iqRaw));
-    dev_xElem = static_cast<float const *>(mxGPUGetDataReadOnly(xElem));
-    dev_zPix  = static_cast<float const *>(mxGPUGetDataReadOnly(zPix));
-    dev_xPix  = static_cast<float const *>(mxGPUGetDataReadOnly(xPix));
-    dev_foc   = static_cast<float const *>(mxGPUGetDataReadOnly(foc));
-    dev_ang   = static_cast<float const *>(mxGPUGetDataReadOnly(ang));
-    dev_cent  = static_cast<float const *>(mxGPUGetDataReadOnly(cent));
+    dev_iqLri    = static_cast<float2 *>(mxGPUGetData(iqLri));
+    dev_iqRaw    = static_cast<float2 const *>(mxGPUGetDataReadOnly(iqRaw));
+    dev_zElem    = static_cast<float const *>(mxGPUGetDataReadOnly(zElem));
+    dev_xElem    = static_cast<float const *>(mxGPUGetDataReadOnly(xElem));
+    dev_tangElem = static_cast<float const *>(mxGPUGetDataReadOnly(tangElem));
+    dev_zPix     = static_cast<float const *>(mxGPUGetDataReadOnly(zPix));
+    dev_xPix     = static_cast<float const *>(mxGPUGetDataReadOnly(xPix));
+    dev_foc      = static_cast<float const *>(mxGPUGetDataReadOnly(foc));
+    dev_ang      = static_cast<float const *>(mxGPUGetDataReadOnly(ang));
+    dev_centZ    = static_cast<float const *>(mxGPUGetDataReadOnly(centZ));
+    dev_centX    = static_cast<float const *>(mxGPUGetDataReadOnly(centX));
+    dev_elemFst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemFst));
+    dev_elemLst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemLst));
+    dev_rxElemOrig  = static_cast<int const *>(mxGPUGetDataReadOnly(rxElemOrig));
     
     /* set constant memory */
-    if(nElem > 1024) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "xElem is too long, kernel supports xElem of up to 1024 elements");
+    if(nElem > 256) {
+        mexErrMsgIdAndTxt(invalidInputMsgId, "xElem is too long, kernel supports xElem of up to 256 elements");
     }
-    cudaMemcpyToSymbol(xElemConst, dev_xElem, nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    cudaMemcpyToSymbol(   zElemConst, dev_zElem,    nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    cudaMemcpyToSymbol(   xElemConst, dev_xElem,    nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    cudaMemcpyToSymbol(tangElemConst, dev_tangElem, nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     
     /* configure texture reference */
     iqRawTex.normalized  = false;
     iqRawTex.addressMode[0] = cudaAddressModeBorder;
     iqRawTex.filterMode  = cudaFilterModeLinear;
     
-    int nTxPerPart = (nElem*nTx <= 2048) ? nTx : 2048/nElem;
+    int nTxPerPart = (nRx*nTx <= 2048) ? nTx : 2048/nRx;
     int nPart = (nTx+nTxPerPart-1)/nTxPerPart;
     
     cudaArray* cuArray;
-    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nElem*nTxPerPart);
+    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nRx*nTxPerPart);
     cudaMalloc3DArray(&cuArray, &iqRawTex.channelDesc, cuArraySize, cudaArrayLayered);
     cudaBindTextureToArray(iqRawTex, cuArray);
     
@@ -281,18 +347,29 @@ void mexFunction(int nlhs, mxArray * plhs[],
         int nTxInThisPart = (iPart<(nPart-1)) ? nTxPerPart : (nTx-iPart*nTxPerPart);
         
         /* Prepare texture memory */
-        cuArrayCopy.srcPtr = make_cudaPitchedPtr(const_cast<float2 *>(dev_iqRaw)+iPart*nSamp*nElem*nTxPerPart, nSamp * sizeof(float2), nSamp, 1);
-        cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nElem*nTxInThisPart);
+        cuArrayCopy.srcPtr = make_cudaPitchedPtr(const_cast<float2 *>(dev_iqRaw)+iPart*nSamp*nRx*nTxPerPart, nSamp * sizeof(float2), nSamp, 1);
+        cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nRx*nTxInThisPart);
         cudaMemcpy3D(&cuArrayCopy);
         
         /* Execute CUDA kernel */
+//         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
+//                                                                       dev_zPix, dev_xPix, 
+//                                                                       dev_foc       + iPart*nTxPerPart, 
+//                                                                       dev_ang       + iPart*nTxPerPart, 
+//                                                                       dev_centX     + iPart*nTxPerPart, 
+//                                                                       minRxTang, maxRxTang, fs, fn, sos, initDel, 
+//                                                                       nZPix, nXPix, nSamp, nElem, nTxInThisPart);
         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
                                                                       dev_zPix, dev_xPix, 
                                                                       dev_foc       + iPart*nTxPerPart, 
                                                                       dev_ang       + iPart*nTxPerPart, 
-                                                                      dev_cent      + iPart*nTxPerPart, 
+                                                                      dev_centZ     + iPart*nTxPerPart, 
+                                                                      dev_centX     + iPart*nTxPerPart, 
+                                                                      dev_elemFst   + iPart*nTxPerPart, 
+                                                                      dev_elemLst   + iPart*nTxPerPart, 
+                                                                      dev_rxElemOrig + iPart*nTxPerPart, 
                                                                       minRxTang, maxRxTang, fs, fn, sos, initDel, 
-                                                                      nZPix, nXPix, nSamp, nElem, nTxInThisPart);
+                                                                      nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
         
     }
     
@@ -305,12 +382,18 @@ void mexFunction(int nlhs, mxArray * plhs[],
     
     mxGPUDestroyGPUArray(iqLri);
     mxGPUDestroyGPUArray(iqRaw);
+    mxGPUDestroyGPUArray(zElem);
     mxGPUDestroyGPUArray(xElem);
+    mxGPUDestroyGPUArray(tangElem);
     mxGPUDestroyGPUArray(zPix);
     mxGPUDestroyGPUArray(xPix);
     mxGPUDestroyGPUArray(foc);
     mxGPUDestroyGPUArray(ang);
-    mxGPUDestroyGPUArray(cent);
+    mxGPUDestroyGPUArray(centZ);
+    mxGPUDestroyGPUArray(centX);
+    mxGPUDestroyGPUArray(elemFst);
+    mxGPUDestroyGPUArray(elemLst);
+    mxGPUDestroyGPUArray(rxElemOrig);
     
     //cudaDeviceReset();
 }
