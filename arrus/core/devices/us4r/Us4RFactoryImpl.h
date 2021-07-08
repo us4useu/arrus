@@ -18,7 +18,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
-#include "arrus/core/devices/us4r/hv/HV256Factory.h"
+#include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactory.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 
 namespace arrus::devices {
@@ -31,7 +31,7 @@ public:
                     std::unique_ptr<IUs4OEMFactory> ius4oemFactory,
                     std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer,
                     std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter,
-                    std::unique_ptr<HV256Factory> hvFactory)
+                    std::unique_ptr<HighVoltageSupplierFactory> hvFactory)
         : ius4oemFactory(std::move(ius4oemFactory)),
           ius4oemInitializer(std::move(ius4oemInitializer)),
           us4oemFactory(std::move(us4oemFactory)),
@@ -168,17 +168,10 @@ private:
         return {std::move(us4oems), master};
     }
 
-    std::optional<HV256Impl::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
+    std::optional<HighVoltageSupplier::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
         if(settings.has_value()) {
             const auto &hvSettings = settings.value();
-            auto &manufacturer = hvSettings.getModelId().getManufacturer();
-            auto &name = hvSettings.getModelId().getName();
-            ARRUS_REQUIRES_EQUAL(name, "hv256", IllegalArgumentException(
-                ::arrus::format("Only us4us HV256 is supported only (got {})", name)));
-            ARRUS_REQUIRES_EQUAL(manufacturer, "us4us", IllegalArgumentException(
-                ::arrus::format("Only us4us HV256 is supported only (got {})", name)));
-
-            return hvFactory->getHV256(hvSettings, master);
+            return hvFactory->getHighVoltageSupplier(hvSettings, master);
         } else {
             return std::nullopt;
         }
@@ -190,7 +183,7 @@ private:
     std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter;
     std::unique_ptr<ProbeAdapterFactory> probeAdapterFactory;
     std::unique_ptr<ProbeFactory> probeFactory;
-    std::unique_ptr<HV256Factory> hvFactory;
+    std::unique_ptr<HighVoltageSupplierFactory> hvFactory;
 };
 
 }
