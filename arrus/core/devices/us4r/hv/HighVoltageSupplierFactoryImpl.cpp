@@ -27,12 +27,12 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     DeviceId id(DeviceType::HV, 0);
 
     if(name == "hv256")  {
-        std::unique_ptr<IDBAR> dbar(GetDBARLite(reinterpret_cast<II2CMaster *>(master)));
+        std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(master)));
         std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
         return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else if(name == "us4rpsc") {
-        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(reinterpret_cast<II2CMaster *>(master)));
+        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(master)));
         std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
         return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }

@@ -88,8 +88,7 @@ public:
                 probeAdapterFactory->getProbeAdapter(adapterSettings,
                                                      us4oemPtrs);
             // Create probe.
-            ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings,
-                                                                 adapter.get());
+            ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings, adapter.get());
 
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv));
