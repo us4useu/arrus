@@ -13,40 +13,6 @@ from arrus.utils.imaging import (
     ScanConversion)
 
 
-def get_n_scanlines(self):
-    txapcel = self.context.sequence.tx_aperture_center_element
-    n_scanlines = len(txapcel)
-    return n_scanlines
-
-
-def get_sample_range(self):
-    return self.context.sequence.rx_sample_range
-
-
-def get_n_samples(self):
-    sample_range = get_sample_range(self)
-    n_samples = sample_range[1] - sample_range[0]
-    return n_samples
-
-
-def get_grid_data(self, nx_grid_samples, nz_grid_samples):
-    pitch = self.context.device.probe.model.pitch
-    fs = self.context.device.sampling_frequency
-    n_elements = self.context.device.probe.model.n_elements
-    probe_width = (n_elements - 1) * pitch
-    c = self.context.sequence.speed_of_sound
-    txapcel = self.context.sequence.tx_aperture_center_element
-    n_scanlines = get_n_scanlines(self)
-    sample_range = get_sample_range(self)
-    n_samples = get_n_samples(self)
-    dz = c / fs / 2
-    zmax = (sample_range[1] - 1) * dz
-    zmin = sample_range[0] * dz
-    x_grid = np.linspace(-probe_width / 2, probe_width / 2, nx_grid_samples)
-    z_grid = np.linspace(zmin, zmax, nz_grid_samples)
-    return x_grid, z_grid
-
-
 class QuadratureDemodulationTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
@@ -378,17 +344,47 @@ class AbstractScanConversionTestCase(ArrusImagingTestCase):
         device = self.context.device
         self.context = self.get_default_context(sequence=sequence, device=device)
 
+    def get_n_scanlines(self):
+        txapcel = self.context.sequence.tx_aperture_center_element
+        n_scanlines = len(txapcel)
+        return n_scanlines
+
+    def get_sample_range(self):
+        return self.context.sequence.rx_sample_range
+
+    def get_n_samples(self):
+        sample_range = self.get_sample_range()
+        n_samples = sample_range[1] - sample_range[0]
+        return n_samples
+
+    def get_grid_data(self, nx_grid_samples, nz_grid_samples):
+        pitch = self.context.device.probe.model.pitch
+        fs = self.context.device.sampling_frequency
+        n_elements = self.context.device.probe.model.n_elements
+        probe_width = (n_elements - 1) * pitch
+        c = self.context.sequence.speed_of_sound
+        txapcel = self.context.sequence.tx_aperture_center_element
+        n_scanlines = self.get_n_scanlines()
+        sample_range = self.get_sample_range()
+        n_samples = self.get_n_samples()
+        dz = c / fs / 2
+        zmax = (sample_range[1] - 1) * dz
+        zmin = sample_range[0] * dz
+        x_grid = np.linspace(-probe_width / 2, probe_width / 2, nx_grid_samples)
+        z_grid = np.linspace(zmin, zmax, nz_grid_samples)
+        return x_grid, z_grid
+
 class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_identity(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         data = np.arange(n_scanlines)
         data = np.tile(data, (n_samples, 1))
 
@@ -404,13 +400,13 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_extrapolation_left(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         x_grid_moved_left = x_grid - (x_grid[-1]-x_grid[0])
         data = np.arange(n_scanlines)
         data = np.tile(data, (n_samples, 1))
@@ -425,13 +421,13 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_extrapolation_right(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         x_grid_moved_right = x_grid + (x_grid[-1] - x_grid[0] + x_grid[1] - x_grid[0])
         data = np.arange(n_scanlines)
         data = np.tile(data, (n_samples, 1))
@@ -447,13 +443,13 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_extrapolation_up(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         z_grid_moved_up = z_grid - z_grid[-1] - z_grid[1] + z_grid[0]
         data = np.arange(n_scanlines)
         data = np.tile(data, (n_samples, 1))
@@ -469,13 +465,13 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_extrapolation_down(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         z_grid_moved_down = z_grid + z_grid[-1] + z_grid[1] - z_grid[0]
         data = np.arange(n_scanlines)
         data = np.tile(data, (n_samples, 1))
@@ -491,13 +487,13 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_linear_interpolation_in_x_axis(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines * 2
         nz_grid_samples = n_samples
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         data = np.arange(n_scanlines)
         data = np.tile(data, (n_samples, 1))
 
@@ -514,13 +510,13 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_linear_interpolation_in_z_axis(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = n_samples * 2
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         data = np.arange(n_samples)[..., np.newaxis]
         data = np.tile(data, (1, n_scanlines))
 
@@ -537,13 +533,13 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_zeros(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         data = np.zeros(n_scanlines)
         data = np.tile(data, (n_samples, 1))
 
@@ -567,13 +563,13 @@ class ScanConversionConvexArrayTestCase(AbstractScanConversionTestCase):
 
     def test_zeros(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         data = np.zeros(n_scanlines)
         data = np.tile(data, (n_samples, 1))
 
@@ -589,13 +585,13 @@ class ScanConversionConvexArrayTestCase(AbstractScanConversionTestCase):
 
     def test_onesbelt(self):
         # Given
-        n_scanlines = get_n_scanlines(self)
-        n_samples = get_n_samples(self)
+        n_scanlines = self.get_n_scanlines()
+        n_samples = self.get_n_samples()
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
-        x_grid, z_grid = get_grid_data(self,
-                                       nx_grid_samples,
-                                       nz_grid_samples)
+        x_grid, z_grid = self.get_grid_data(
+                                   nx_grid_samples,
+                                   nz_grid_samples)
         data = np.zeros(n_scanlines)
         data = np.tile(data, (n_samples, 1))
         data[0:8, :] = np.ones(n_scanlines)
