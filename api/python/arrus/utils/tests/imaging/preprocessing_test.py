@@ -327,6 +327,41 @@ class ToGrayscaleImgTestCase(ArrusImagingTestCase):
         np.testing.assert_equal(expected, result)
 
 
+class AbstractScanConversionTestCase(ArrusImagingTestCase):
+
+    def setUp(self) -> None:
+        sequence = LinSequence(
+            tx_aperture_center_element=np.arange(0, 65, 8),
+            tx_aperture_size=32,
+            rx_aperture_center_element=np.arange(0, 65, 8),
+            rx_aperture_size=32,
+            tx_focus=50e-6,
+            pulse=Pulse(center_frequency=6e6, n_periods=2,
+                        inverse=False),
+            rx_sample_range=(0, 2048),
+            downsampling_factor=1,
+            speed_of_sound=1490,
+            pri=100e-6,
+            sri=50e-3,
+            tgc_start=0,
+            tgc_slope=12,
+        )
+        self.op = ScanConversion
+        self.context = self.get_default_context(sequence=sequence)
+
+    def run_op(self, **kwargs):
+        data = kwargs['data']
+        data = np.array(data)
+        if len(data.shape) > 2:
+            raise ValueError("Currently data supports at most 2 dimensions.")
+        if len(data.shape) < 2:
+            dim_diff = 2-len(data.shape)
+            data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
+            kwargs["data"] = data
+        result = super().run_op(**kwargs)
+        return np.squeeze(result)
+
+
 class ScanConversionLinearArrayTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
