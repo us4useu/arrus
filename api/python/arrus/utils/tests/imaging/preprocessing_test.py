@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from dataclasses import replace
 from arrus.ops.imaging import LinSequence
 from arrus.ops.us4r import Pulse
 from arrus.utils.tests.utils import ArrusImagingTestCase
@@ -361,40 +362,23 @@ class AbstractScanConversionTestCase(ArrusImagingTestCase):
         result = super().run_op(**kwargs)
         return np.squeeze(result)
 
+    def change_probe_radius(self, radius):
+        sequence = self.context.sequence
+        change_in_model = {'curvature_radius': radius}
+        model = replace(self.context.device.probe.model, **change_in_model)
+        change_in_probe = {'model': model}
+        probe = replace(self.context.device.probe, **change_in_probe)
+        change_in_device = {'probe': probe}
+        device = replace(self.context.device, **change_in_device)
+        self.context = self.get_default_context(sequence=sequence, device=device)
 
-class ScanConversionLinearArrayTestCase(ArrusImagingTestCase):
+    def change_rx_sample_range(self, rxrange):
+        change_in_sequence = {'rx_sample_range': rxrange}
+        sequence = replace(self.context.sequence, **change_in_sequence)
+        device = self.context.device
+        self.context = self.get_default_context(sequence=sequence, device=device)
 
-    def setUp(self) -> None:
-        sequence = LinSequence(
-            tx_aperture_center_element=np.arange(0, 65, 8),
-            tx_aperture_size=32,
-            rx_aperture_center_element=np.arange(0, 65, 8),
-            rx_aperture_size=32,
-            tx_focus=50e-6,
-            pulse=Pulse(center_frequency=6e6, n_periods=2,
-                        inverse=False),
-            rx_sample_range=(0, 2048),
-            downsampling_factor=1,
-            speed_of_sound=1490,
-            pri=100e-6,
-            sri=50e-3,
-            tgc_start=0,
-            tgc_slope=12,
-        )
-        self.op = ScanConversion
-        self.context = self.get_default_context(sequence=sequence)
-
-    def run_op(self, **kwargs):
-        data = kwargs['data']
-        data = np.array(data)
-        if len(data.shape) > 2:
-            raise ValueError("Currently data supports at most 2 dimensions.")
-        if len(data.shape) < 2:
-            dim_diff = 2-len(data.shape)
-            data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
-            kwargs["data"] = data
-        result = super().run_op(**kwargs)
-        return np.squeeze(result)
+class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
     def test_identity(self):
         # Given
@@ -574,47 +558,12 @@ class ScanConversionLinearArrayTestCase(ArrusImagingTestCase):
         np.testing.assert_equal(expected, result)
 
 
-class ScanConversionConvexArrayTestCase(ArrusImagingTestCase):
+class ScanConversionConvexArrayTestCase(AbstractScanConversionTestCase):
 
     def setUp(self) -> None:
-        sequence = LinSequence(
-            tx_aperture_center_element=np.arange(0, 65, 8),
-            tx_aperture_size=32,
-            rx_aperture_center_element=np.arange(0, 65, 8),
-            rx_aperture_size=32,
-            tx_focus=50e-6,
-            pulse=Pulse(center_frequency=6e6,
-                        n_periods=2,
-                        inverse=False),
-            rx_sample_range=(32, 64),
-            downsampling_factor=1,
-            speed_of_sound=1490,
-            pri=100e-6,
-            sri=50e-3,
-            tgc_start=0,
-            tgc_slope=12)
-
-        device = self.get_ultrasound_device(
-            probe=self.get_probe_model_instance(
-                n_elements=64,
-                pitch=0.2e-3,
-                curvature_radius=0.1),
-            sampling_frequency=65e6
-        )
-        self.op = ScanConversion
-        self.context = self.get_default_context(sequence=sequence, device=device)
-
-    def run_op(self, **kwargs):
-        data = kwargs['data']
-        data = np.array(data)
-        if len(data.shape) > 2:
-            raise ValueError("Currently data supports at most 2 dimensions.")
-        if len(data.shape) < 2:
-            dim_diff = 2 - len(data.shape)
-            data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
-            kwargs["data"] = data
-        result = super().run_op(**kwargs)
-        return np.squeeze(result)
+        super().setUp()
+        self.change_rx_sample_range((32, 64))
+        self.change_probe_radius(0.1)
 
     def test_zeros(self):
         # Given
