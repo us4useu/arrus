@@ -373,6 +373,7 @@ class AbstractScanConversionTestCase(ArrusImagingTestCase):
         x_grid = np.linspace(-probe_width / 2, probe_width / 2, nx_grid_samples)
         z_grid = np.linspace(zmin, zmax, nz_grid_samples)
         return x_grid, z_grid
+    
 
 class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 
