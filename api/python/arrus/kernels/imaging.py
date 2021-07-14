@@ -415,8 +415,6 @@ def _compute_pwi_tx_params(probe, sequence, c):
         op_delays = op_delays-delays_min
         op_center_delay = op_center_delay-delays_min
 
-        print(op_center_delay)
-
         tx_apertures.append(tx_aperture)
         tx_delays.append(op_delays)
         tx_center_delays.append(op_center_delay)
