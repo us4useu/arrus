@@ -71,6 +71,28 @@ class PwiSequence:
     :param sri: sequence repetition interval - the time between consecutive RF
       frames. When None, the time between consecutive RF frames is determined
       by the total pri only. [s]
+    :param tx_aperture_center_element: a list of TX aperture center positions (elements), \
+      the be the same length as the `angles` list. Optional, by default \
+      the center of the aperture is the center of the probe. If scalar, \
+      and number of angles > 1, the given value will be used for all TX angles.
+    :param tx_aperture_center: a list of TX aperture center physical positions, \
+      the be the same length as the `angles` list. Optional, by default \
+      the center of the aperture is the center of the probe. If scalar, \
+      and number of angles > 1, the given value will be used for all TX angles. [m]
+    :param rx_aperture_center_element: a list of RX aperture center positions, \
+      the be the same length as the `angles` list. Optional, by default \
+      the center of the aperture is the center of the probe. If scalar, \
+      and number of angles > 1, the given value will be used for all TX angles.
+    :param rx_aperture_center: a list of RX aperture center physical positions, \
+      the be the same length as the `angles` list. Optional, by default \
+      the center of the aperture is the center of the probe. If scalar, \
+      and number of angles > 1, the given value will be used for all TX angles [m].
+    :param tx_aperture_size: number of elements in TX aperture, by default \
+      all probe elements are used. If scalar, \
+      and number of angles > 1, the given value will be used for all TX angles.
+    :param rx_aperture_size: number of elements in RX aperture, by default \
+      all probe elements are used. If scalar, \
+      and number of angles > 1, the given value will be used for all TX angles.
     """
     angles: list
     pulse: arrus.ops.us4r.Pulse
@@ -82,6 +104,12 @@ class PwiSequence:
     tgc_start: float = None
     tgc_slope: float = None
     tgc_curve: list = dataclasses.field(default_factory=list)
+    tx_aperture_center_element: list = None
+    tx_aperture_center: list = None
+    tx_aperture_size: list = None
+    rx_aperture_center_element: list = None
+    rx_aperture_center: list = None
+    rx_aperture_size: list = None
 
 
 @dataclasses.dataclass(frozen=True)

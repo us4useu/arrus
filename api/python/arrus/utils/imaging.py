@@ -295,6 +295,7 @@ class FirFilter(Operation):
     def _process(self, data):
         return self.convolve1d_func(data)
 
+
 class Filter(Operation):
     """
     Filter data in one dimension along the last axis.
@@ -780,7 +781,8 @@ class ScanConversion(Operation):
         else:
             c = medium.speed_of_sound
 
-        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
+        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(
+            seq.tx_aperture_center_element, probe)
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
              probe.element_pos_z)

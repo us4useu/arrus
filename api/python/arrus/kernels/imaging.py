@@ -122,7 +122,7 @@ def create_lin_sequence(context):
         end = center_element+right_half_size
         actual_end = min(n_elem-1, end)
         right_padding = abs(min(actual_end-end, 0))
-        aperture = np.zeros((n_elem, ), dtype=np.bool)
+        aperture = np.zeros((n_elem, ), dtype=bool)
         aperture[actual_origin:(actual_end+1)] = True
         return aperture, (left_padding, right_padding)
     tx_apertures, tx_delays, tx_delays_center = compute_tx_parameters(
@@ -161,27 +161,25 @@ def create_lin_sequence(context):
 
 def get_aperture_with_padding(center_element, size, probe_model):
     n_elem = probe_model.n_elements
-    left_half_size = (size-1)//2  # e.g. size 32 -> 15, size 33 -> 16
-    right_half_size = size//2  # e.g. size 32 -> 16, size 33 -> 16
+    left_half_size = (size-1)/2  # e.g. size 32 -> 15, size 33 -> 16
     # left side:
-    origin = center_element-left_half_size  # e.g. center 0 -> origin -15
+    origin = int(round(center_element-left_half_size+1e-9))  # e.g. center 0 -> origin -15
     actual_origin = max(0, origin)
     left_padding = abs(min(origin, 0))  # origin -15 -> left padding 15
     # right side
     # aperture last element, e.g. center 0, size 32 -> 16
-    end = center_element+right_half_size
+    end = origin+size-1
     actual_end = min(n_elem-1, end)
     right_padding = abs(min(actual_end-end, 0))
-    aperture = np.zeros((n_elem, ), dtype=np.bool)
+    aperture = np.zeros((n_elem, ), dtype=bool)
     aperture[int(actual_origin):(int(actual_end)+1)] = True
     return aperture, (left_padding, right_padding)
 
 
-def get_tx_aperture_center_coords(sequence, probe):
+def get_tx_aperture_center_coords(tx_aperture_center_element, probe):
     n_elements = probe.n_elements
     pitch = probe.pitch
     curvature_radius = probe.curvature_radius
-    tx_aperture_center_element = sequence.tx_aperture_center_element
 
     element_position = np.arange(-(n_elements - 1) / 2,
                                  n_elements / 2)*pitch
@@ -191,6 +189,7 @@ def get_tx_aperture_center_coords(sequence, probe):
     else:
         angle = element_position / curvature_radius
 
+
     tx_aperture_center_angle = np.interp(tx_aperture_center_element,
                                          np.arange(0, n_elements), angle)
     tx_aperture_center_z = np.interp(tx_aperture_center_element,
@@ -199,7 +198,6 @@ def get_tx_aperture_center_coords(sequence, probe):
     tx_aperture_center_x = np.interp(tx_aperture_center_element,
                                      np.arange(0, n_elements),
                                      np.squeeze(probe.element_pos_x))
-
     return tx_aperture_center_angle, tx_aperture_center_x, tx_aperture_center_z
 
 
@@ -215,7 +213,7 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
     element_x, element_z = np.atleast_2d(element_x), np.atleast_2d(element_z)
 
     tx_center_angle, tx_center_x, tx_center_z = get_tx_aperture_center_coords(
-        sequence, probe)
+        tx_centers, probe)
     tx_center_angle = np.atleast_2d(tx_center_angle)
     tx_center_x = np.atleast_2d(tx_center_x)
     tx_center_z = np.atleast_2d(tx_center_z)
@@ -262,25 +260,81 @@ def compute_tx_parameters(sequence, probe, speed_of_sound):
     return tx_apertures, tx_aperture_delays, tx_delays_center_max
 
 
+# ---------------------- PWI
+def _get_pwi_aperture_description(probe, sequence):
+    n_elem = probe.n_elements
+    angles = sequence.angles
+    angles = np.array(angles)
+    n_angles = angles.size
+    # TX/RX aperture
+    def get_with_default(value, default):
+        value = value if value is not None else default
+        value = np.squeeze(np.array(value))
+        value = np.atleast_1d(value)
+        # A scalar value, and we have multiple angles - the value will be
+        # broadcasted to given number of angles.
+        if len(value) == 1 and n_angles > 1:
+            value = np.repeat(value, n_angles)
+        return value
+
+    if sequence.tx_aperture_center_element is not None and sequence.tx_aperture_center is not None:
+        raise ValueError("Only one of the following can be specified: "
+                         "tx_aperture_center_element, tx_aperture_center")
+    if sequence.rx_aperture_center_element is not None and sequence.rx_aperture_center is not None:
+        raise ValueError("Only one of the following can be specified: "
+                         "rx_aperture_center_element, rx_aperture_center")
+
+    default_ap_center = np.repeat(n_elem//2-1, n_angles)
+    default_ap_size = np.repeat(n_elem, n_angles)
+
+    # tx/rx_centers - tx/rx center ELEMENTS
+    element_pos_along_probe = (np.arange(0, n_elem)-(n_elem-1)/2)*probe.pitch
+    if sequence.tx_aperture_center is not None:
+        # Tx aperture center is the position ALONG THE PROBE CURVATURE
+        tx_centers = np.interp(sequence.tx_aperture_center, element_pos_along_probe, np.arange(0, n_elem))
+    else:
+        tx_centers = sequence.tx_aperture_center_element
+    tx_centers = get_with_default(tx_centers, default_ap_center)
+
+    if sequence.rx_aperture_center is not None:
+        rx_centers = np.interp(sequence.rx_aperture_center, element_pos_along_probe, np.arange(0, n_elem))
+    else:
+        rx_centers = sequence.rx_aperture_center_element
+    rx_centers = get_with_default(rx_centers, default_ap_center)
+
+    tx_sizes = get_with_default(sequence.tx_aperture_size, default_ap_size)
+    rx_sizes = get_with_default(sequence.rx_aperture_size, default_ap_size)
+    return tx_centers, tx_sizes, rx_centers, rx_sizes
+
+
 # -- PWI - plane wave imaging
 def create_pwi_sequence(context):
     # device parameters
-    n_elem = context.device.probe.model.n_elements
-    pitch = context.device.probe.model.pitch
+    probe_model = context.device.probe.model
+    n_elem = probe_model.n_elements
     # sequence parameters
-    op = context.op # PWI Sequence
+    op = context.op  # PWI Sequence
     if not isinstance(op, arrus.ops.imaging.PwiSequence):
         raise ValueError("This kernel is intended for Pwi sequence only.")
-    focus = None
-    # sample_range = op.rx_sample_range
     sample_range = op.rx_sample_range
     pulse = op.pulse
     downsampling_factor = op.downsampling_factor
     pri = op.pri
     sri = op.sri
-    fs = context.device.sampling_frequency/downsampling_factor
-
     angles = op.angles
+    angles = np.array(angles)
+
+    tx_centers, tx_sizes, rx_centers, rx_sizes = _get_pwi_aperture_description(
+        probe_model, op
+    )
+
+    # Validate TX/RX parameters length
+    sequence_aperture_params_len = {len(tx_centers), len(rx_centers),
+                                 len(tx_sizes), len(rx_sizes)}
+    if len(sequence_aperture_params_len) != 1:
+        raise ValueError(f"All parameters should have the same length, "
+                         f"found:{sequence_aperture_params_len}")
+
     # medium parameters
     c = op.speed_of_sound
     if c is None:
@@ -296,90 +350,82 @@ def create_pwi_sequence(context):
             context,
             arrus.ops.tgc.LinearTgc(tgc_start, tgc_slope))
 
-    tx_aperture = np.ones(n_elem, dtype=bool)
-    rx_aperture = np.ones(n_elem, dtype=bool)
-
     n_angles = np.size(angles)
-    delays = _compute_tx_rx_delays(angles, focus, pitch, n_elem, c)
+    tx_apertures, tx_delays, tx_center_delay = _compute_pwi_tx_params(
+        probe=context.device.probe.model, sequence=op, c=c)
     txrx = []
     for i_angle in range(n_angles):
-        angle_delays = delays[i_angle, :]
+        tx_aperture = tx_apertures[i_angle]
+        angle_delays = tx_delays[i_angle]
+
+        rx_center = rx_centers[i_angle]
+        rx_size = rx_sizes[i_angle]
+
+        rx_aperture, padding = get_aperture_with_padding(rx_center, rx_size, probe_model)
+
         tx = Tx(tx_aperture, pulse, angle_delays)
-        rx = Rx(rx_aperture, sample_range, downsampling_factor)
+        rx = Rx(rx_aperture, sample_range, downsampling_factor, padding=padding)
         txrx.append(TxRx(tx, rx, pri))
     return TxRxSequence(txrx, tgc_curve=tgc_curve, sri=sri)
 
 
-def _compute_tx_rx_delays(angles, focus, pitch, n_channels, c=1490):
+def _compute_pwi_tx_params(probe, sequence, c):
     """
     Computes tx rx delays for provided angle and focus.
 
     Currently used by PWI imaging.
     """
     # transducer indexes
-    x_i = np.linspace(0, n_channels - 1, n_channels)
-    # transducer coordinates
-    x_c = x_i*pitch
-    # convert angles to ndarray, angles.shape can not be equal ()
-    angles = np.array([angles])
-    n_angles = angles.size
+    angles = sequence.angles
+    tx_centers, tx_sizes, _, _ = _get_pwi_aperture_description(probe, sequence)
+    angles = np.squeeze(np.array(angles))
+    if angles.size == 0:
+        raise ValueError("The list of transmit angles should not be empty.")
 
-    # allocating memory for delays
-    delays = np.zeros(shape=(n_angles, n_channels))
+    # Probe element positions (x, z)
+    element_x, element_z = probe.element_pos_x, probe.element_pos_z
+    element_x, element_z = np.atleast_2d(element_x), np.atleast_2d(element_z)
 
-    angles = np.array(angles)
-    if angles.size != 0:
-        # reducing possible singleton dimensions of 'angles'
-        angles = np.squeeze(angles)
-        if angles.shape == ():
-            angles = np.array([angles])
-        # allocating memory for delays
-        delays = np.zeros(shape=(n_angles, n_channels))
-        # calculating delays for each angle
-        for i_angle in range(n_angles):
-            this_angle = angles[i_angle]
-            this_delays = x_c*np.sin(this_angle)/c
-            if this_angle < 0:
-                this_delays = this_delays-this_delays[-1]
-            delays[i_angle, :] = this_delays
-    else:
-        delays = np.zeros(shape=(1, n_channels))
+    tx_center_angles, tx_center_x, tx_center_z = \
+        get_tx_aperture_center_coords(tx_centers, probe)
 
-    focus = np.array(focus)
-    if focus.item() is None:
-        return delays
+    tx_angles = tx_center_angles+angles
+    tx_angles = np.atleast_2d(tx_angles).T
+    tx_center_x = np.atleast_2d(tx_center_x).T
+    tx_center_z = np.atleast_2d(tx_center_z).T
 
-    if focus.size == 0:
-        return delays
-    elif focus.size == 1:
-        xf = (n_channels - 1) * pitch / 2
-        yf = focus
-    elif focus.size == 2:
-        xf = focus[0] + (n_channels - 1) * pitch / 2
-        yf = focus[1]
-    else:
-        raise ValueError(f"Bad focus value: {focus}")
+    delays = (element_x*np.sin(tx_angles) + element_z*np.cos(tx_angles))/c
+    center_delays = (tx_center_x*np.sin(tx_angles)+tx_center_z*np.cos(tx_angles))/c
 
-    # distance between origin of coordinate system and focus
-    s0 = np.sqrt(yf**2+xf**2)
-    focus_sign = np.sign(yf)
+    tx_apertures = []
+    tx_delays = []
+    tx_center_delays = []
 
-    # cosinus of the angle between array (y=0) and focus position vector
-    if s0 == 0:
-        cos_alpha = 0
-    else:
-        cos_alpha = xf/s0
-    # distances between elements and focus
-    si = np.sqrt(s0**2 + x_c**2 - 2*s0*x_c*cos_alpha)
+    for i in range(angles.size):
+        tx_center = tx_centers[i]
+        tx_size = tx_sizes[i]
+        op_delays = delays[i]
+        op_center_delay = center_delays[i]
 
-    # focusing delays
-    delays_foc = (s0-si)/c
-    delays_foc = delays_foc*focus_sign
+        tx_aperture, _ = get_aperture_with_padding(tx_center, tx_size, probe)
+        # Move to positive values
+        op_delays = op_delays[tx_aperture]
 
-    # set min(delays_foc) as delay==0
-    d0 = np.min(delays_foc)
-    delays_foc = delays_foc - d0
+        delays_min = np.min(op_delays).item()
+        op_delays = op_delays-delays_min
+        op_center_delay = op_center_delay-delays_min
 
-    # full delays
-    delays = delays + delays_foc
-    return delays
+        print(op_center_delay)
+
+        tx_apertures.append(tx_aperture)
+        tx_delays.append(op_delays)
+        tx_center_delays.append(op_center_delay)
+
+    # The common delay applied for center of each TX aperture
+    # So we can use a single TX center delay when beamforming the data
+    tx_center_delay = np.max(tx_center_delays)
+    # Equalize
+    for i in range(angles.size):
+        tx_delays[i] = tx_delays[i]-tx_center_delays[i]+tx_center_delay
+
+    return tx_apertures, tx_delays, tx_center_delay
