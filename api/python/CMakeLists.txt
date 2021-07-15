@@ -92,7 +92,6 @@ set(SOURCE_FILES
         arrus/kernels/tgc.py
         arrus/utils/__init__.py
         arrus/utils/imaging.py
-        arrus/utils/parameters.py
         arrus/utils/us4r.py
         arrus/utils/us4r_remap_gpu.py
         arrus/utils/fir.py

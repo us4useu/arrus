@@ -1,18 +1,11 @@
 """ Arrus device handle. """
 import abc
 import dataclasses
-import arrus.core
 
 
 @dataclasses.dataclass(frozen=True)
 class DeviceType:
     type: str
-    core_repr: object
-
-
-# Currently available python devices.
-CPU = DeviceType("CPU", arrus.core.DeviceType_CPU)
-Us4R = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -60,3 +53,5 @@ class UltrasoundDeviceDTO(abc.ABC):
     @abc.abstractmethod
     def get_id(self):
         pass
+
+
