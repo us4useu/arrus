@@ -192,12 +192,12 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * tangElem;
     mxGPUArray const * zPix;
     mxGPUArray const * xPix;
-    mxGPUArray const * foc;
-    mxGPUArray const * ang;
+//     mxGPUArray const * foc;
+//     mxGPUArray const * ang;
     mxGPUArray const * centZ;
     mxGPUArray const * centX;
-    mxGPUArray const * elemFst;
-    mxGPUArray const * elemLst;
+//     mxGPUArray const * elemFst;
+//     mxGPUArray const * elemLst;
     mxGPUArray const * rxElemOrig;
     
     float2 * dev_iqLri;
@@ -207,12 +207,12 @@ void mexFunction(int nlhs, mxArray * plhs[],
     float const * dev_tangElem;
     float const * dev_zPix;
     float const * dev_xPix;
-    float const * dev_foc;
-    float const * dev_ang;
+//     float const * dev_foc;
+//     float const * dev_ang;
     float const * dev_centZ;
     float const * dev_centX;
-    int const * dev_elemFst;
-    int const * dev_elemLst;
+//     int const * dev_elemFst;
+//     int const * dev_elemLst;
     int const * dev_rxElemOrig;
     
     float minRxTang;
@@ -220,6 +220,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     float fs;
     float fn;
     float sos;
+        float sosInterf;
+        float timePrec;
     float initDel;
     
     int nSamp;
@@ -237,17 +239,17 @@ void mexFunction(int nlhs, mxArray * plhs[],
     char const * const invalidOutputMsgId = "iqRaw2Lri:InvalidOutput";
     
     /* Validate mex inputs/outputs */
-    if (nrhs!=19) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "19 inputs required");
+    if (nrhs!=17) {
+        mexErrMsgIdAndTxt( invalidInputMsgId, "17 inputs required");
     }
     
     if (nlhs>1) {
         mexErrMsgIdAndTxt( invalidOutputMsgId, "One output allowed");
     }
     
-//     for (int i=13; i<19; i++) {
+//     for (int i=19; i<17; i++) {
 //         if (!mxIsSingle(prhs[i]) || mxIsComplex(prhs[i]) || mxGetNumberOfElements(prhs[i]) != 1) {
-//             mexErrMsgIdAndTxt( invalidInputMsgId, "Last 6 inputs must be single, real scalars");
+//             mexErrMsgIdAndTxt( invalidInputMsgId, "Last 8 inputs must be single, real scalars");
 //         }
 //     }
     
@@ -259,20 +261,22 @@ void mexFunction(int nlhs, mxArray * plhs[],
     tangElem  = mxGPUCreateFromMxArray(prhs[3]);
     zPix      = mxGPUCreateFromMxArray(prhs[4]);
     xPix      = mxGPUCreateFromMxArray(prhs[5]);
-    foc       = mxGPUCreateFromMxArray(prhs[6]);
-    ang       = mxGPUCreateFromMxArray(prhs[7]);
-    centZ     = mxGPUCreateFromMxArray(prhs[8]);
-    centX     = mxGPUCreateFromMxArray(prhs[9]);
-    elemFst   = mxGPUCreateFromMxArray(prhs[10]);
-    elemLst   = mxGPUCreateFromMxArray(prhs[11]);
-    rxElemOrig  = mxGPUCreateFromMxArray(prhs[12]);
+//     foc       = mxGPUCreateFromMxArray(prhs[6]);
+//     ang       = mxGPUCreateFromMxArray(prhs[7]);
+    centZ     = mxGPUCreateFromMxArray(prhs[6]);
+    centX     = mxGPUCreateFromMxArray(prhs[7]);
+//     elemFst   = mxGPUCreateFromMxArray(prhs[10]);
+//     elemLst   = mxGPUCreateFromMxArray(prhs[11]);
+    rxElemOrig  = mxGPUCreateFromMxArray(prhs[8]);
     
-    minRxTang = mxGetScalar(prhs[13]);
-    maxRxTang = mxGetScalar(prhs[14]);
-    fs        = mxGetScalar(prhs[15]);
-    fn        = mxGetScalar(prhs[16]);
-    sos       = mxGetScalar(prhs[17]);
-    initDel   = mxGetScalar(prhs[18]);
+    minRxTang = mxGetScalar(prhs[9]);
+    maxRxTang = mxGetScalar(prhs[10]);
+    fs        = mxGetScalar(prhs[11]);
+    fn        = mxGetScalar(prhs[12]);
+    sos       = mxGetScalar(prhs[13]);
+        sosInterf = mxGetScalar(prhs[14]);
+        timePrec  = mxGetScalar(prhs[15]);
+    initDel   = mxGetScalar(prhs[16]);
     
     /* Validate inputs */
     checkData(iqRaw,     "iqRaw",     true,  3, invalidInputMsgId);
@@ -281,8 +285,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     checkData(tangElem,  "tangElem",  false, 1, invalidInputMsgId);
     checkData(zPix,      "zPix",      false, 1, invalidInputMsgId);
     checkData(xPix,      "xPix",      false, 1, invalidInputMsgId);
-    checkData(foc,       "foc",       false, 1, invalidInputMsgId);
-    checkData(ang,       "ang",       false, 1, invalidInputMsgId);
+//     checkData(foc,       "foc",       false, 1, invalidInputMsgId);
+//     checkData(ang,       "ang",       false, 1, invalidInputMsgId);
     checkData(centZ,     "centZ",     false, 1, invalidInputMsgId);
     checkData(centX,     "centX",     false, 1, invalidInputMsgId);
 //     checkData(elemFst,   "elemFst",   false, 1, invalidInputMsgId); //int
@@ -324,12 +328,12 @@ void mexFunction(int nlhs, mxArray * plhs[],
     dev_tangElem = static_cast<float const *>(mxGPUGetDataReadOnly(tangElem));
     dev_zPix     = static_cast<float const *>(mxGPUGetDataReadOnly(zPix));
     dev_xPix     = static_cast<float const *>(mxGPUGetDataReadOnly(xPix));
-    dev_foc      = static_cast<float const *>(mxGPUGetDataReadOnly(foc));
-    dev_ang      = static_cast<float const *>(mxGPUGetDataReadOnly(ang));
+//     dev_foc      = static_cast<float const *>(mxGPUGetDataReadOnly(foc));
+//     dev_ang      = static_cast<float const *>(mxGPUGetDataReadOnly(ang));
     dev_centZ    = static_cast<float const *>(mxGPUGetDataReadOnly(centZ));
     dev_centX    = static_cast<float const *>(mxGPUGetDataReadOnly(centX));
-    dev_elemFst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemFst));
-    dev_elemLst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemLst));
+//     dev_elemFst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemFst));
+//     dev_elemLst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemLst));
     dev_rxElemOrig  = static_cast<int const *>(mxGPUGetDataReadOnly(rxElemOrig));
     
     /* set constant memory */
@@ -371,19 +375,23 @@ void mexFunction(int nlhs, mxArray * plhs[],
 //                                                                       dev_zPix, dev_xPix, 
 //                                                                       dev_foc       + iPart*nTxPerPart, 
 //                                                                       dev_ang       + iPart*nTxPerPart, 
+//                                                                       dev_centZ     + iPart*nTxPerPart, 
 //                                                                       dev_centX     + iPart*nTxPerPart, 
+//                                                                       dev_elemFst   + iPart*nTxPerPart, 
+//                                                                       dev_elemLst   + iPart*nTxPerPart, 
+//                                                                       dev_rxElemOrig + iPart*nTxPerPart, 
 //                                                                       minRxTang, maxRxTang, fs, fn, sos, initDel, 
-//                                                                       nZPix, nXPix, nSamp, nElem, nTxInThisPart);
+//                                                                       nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
                                                                       dev_zPix, dev_xPix, 
-                                                                      dev_foc       + iPart*nTxPerPart, 
-                                                                      dev_ang       + iPart*nTxPerPart, 
+//                                                                       dev_foc       + iPart*nTxPerPart, 
+//                                                                       dev_ang       + iPart*nTxPerPart, 
                                                                       dev_centZ     + iPart*nTxPerPart, 
                                                                       dev_centX     + iPart*nTxPerPart, 
-                                                                      dev_elemFst   + iPart*nTxPerPart, 
-                                                                      dev_elemLst   + iPart*nTxPerPart, 
+//                                                                       dev_elemFst   + iPart*nTxPerPart, 
+//                                                                       dev_elemLst   + iPart*nTxPerPart, 
                                                                       dev_rxElemOrig + iPart*nTxPerPart, 
-                                                                      minRxTang, maxRxTang, fs, fn, sos, initDel, 
+                                                                      minRxTang, maxRxTang, fs, fn, sos, sosInterf, timePrec, initDel, 
                                                                       nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
         
     }
@@ -402,12 +410,12 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUDestroyGPUArray(tangElem);
     mxGPUDestroyGPUArray(zPix);
     mxGPUDestroyGPUArray(xPix);
-    mxGPUDestroyGPUArray(foc);
-    mxGPUDestroyGPUArray(ang);
+//     mxGPUDestroyGPUArray(foc);
+//     mxGPUDestroyGPUArray(ang);
     mxGPUDestroyGPUArray(centZ);
     mxGPUDestroyGPUArray(centX);
-    mxGPUDestroyGPUArray(elemFst);
-    mxGPUDestroyGPUArray(elemLst);
+//     mxGPUDestroyGPUArray(elemFst);
+//     mxGPUDestroyGPUArray(elemLst);
     mxGPUDestroyGPUArray(rxElemOrig);
     
     //cudaDeviceReset();
