@@ -1209,15 +1209,16 @@ class ReconstructLri(Operation):
         from pathlib import Path
         import os
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
-        _sta_kernel = Path(os.path.join(current_dir, "sta.cu")).read_text()
-        self.sta_iq = self.num_pkg.RawKernel(_sta_kernel, "iq2RawLri")
-        _pwi_convex_kernel = Path(os.path.join(current_dir, "pwi_convex.cu")).read_text()
-        self.pwi_convex_iq = self.num_pkg.RawKernel(_pwi_convex_kernel, "iqRaw2LriConvex")
+        _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri.cu")).read_text()
+        self._kernel = self.num_pkg.RawKernel(_kernel_source, "iqRaw2Lri")
+
+        # INPUT PARAMETERS.
+
+        # Input data shape.
         self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
 
         seq = const_metadata.context.sequence
         probe_model = const_metadata.context.device.probe.model
-
         acq_fs = (const_metadata.context.device.sampling_frequency / seq.downsampling_factor)
         start_sample = seq.rx_sample_range[0]
 
@@ -1233,105 +1234,57 @@ class ReconstructLri(Operation):
                           self.n_tx)
         self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
         self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
+
+        # System and transmit properties.
         self.sos = self.num_pkg.float32(seq.speed_of_sound)
         self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         self.fn = self.num_pkg.float32(seq.pulse.center_frequency)
         self.pitch = self.num_pkg.float32(probe_model.pitch)
-        tx_del_cent = None
 
-        # support for legacy kernels:
-        def legacy_rx_ap_orig(rx_ap_orig_elem):
-            probe_n_elements = probe_model.n_elements
-            # location of the rx aperture origin, relative to the probe center
-            # (half the length of the probe)
-            rx_ap_orig = (rx_ap_orig_elem-(probe_n_elements-1)/2)*self.pitch
-            return self.num_pkg.float32(rx_ap_orig)
+        # Probe description
+        element_pos_x = probe_model.element_pos_x
+        element_pos_z = probe_model.element_pos_z
+        element_angle_tang = np.tan(probe_model.element_angle)
+        self.x_elem = self.num_pkg.asarray(element_pos_x, dtype=self.num_pkg.float32)
+        self.z_elem = self.num_pkg.asarray(element_pos_z, dtype=self.num_pkg.float32)
+        self.tang_elem = self.num_pkg.asarray(element_angle_tang, dtype=self.num_pkg.float32)
+        self.n_elements = probe_model.n_elements
 
-        def legacy_max_tang():
-            max_tang = math.tan(math.asin(min(1, (self.sos/self.fn*2/3)/self.pitch)))
-            return self.num_pkg.float32(max_tang)
+        # TX aperture description
+        tx_centers, tx_sizes, rx_centers, rx_sizes = arrus.kernels.imaging._get_pwi_aperture_description(probe_model, seq) # TODO STA?
+        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.imaging.get_tx_aperture_center_coords(tx_centers, probe_model)
+        tx_center_angles = tx_center_angles + seq.angles
+        self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
+        self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
+        self.tx_ap_cent_z = self.num_pkg.asarray(tx_center_z, dtype=self.num_pkg.float32)
 
-        if isinstance(seq, arrus.ops.imaging.PwiSequence):
-            if probe_model.is_convex_array():
-                # TODO make it cleaner
+        # first/last probe element in TX aperture
+        tx_ap_origin = np.round(tx_centers-(tx_sizes-1)/2 + 1e-9).astype(np.int32)
+        rx_ap_origin = np.round(rx_centers-(rx_sizes-1)/2 + 1e-9).astype(np.int32)
+        tx_ap_first_elem = np.maximum(tx_ap_origin, 0)
+        tx_ap_last_elem = np.minimum(tx_ap_origin+tx_sizes-1, probe_model.n_elements-1)
+        self.tx_ap_first_elem = self.num_pkg.asarray(tx_ap_first_elem, dtype=self.num_pkg.int32)
+        self.tx_ap_last_elem = self.num_pkg.asarray(tx_ap_last_elem, dtype=self.num_pkg.int32)
+        self.rx_ap_origin = self.num_pkg.asarray(rx_ap_origin, dtype=self.num_pkg.int32)
 
-                # Probe position
-                element_pos_x = probe_model.element_pos_x
-                element_pos_z = probe_model.element_pos_z
-                element_angle_tang = np.tan(probe_model.element_angle)
-                self.x_elem = self.num_pkg.asarray(element_pos_x, dtype=self.num_pkg.float32)
-                self.z_elem = self.num_pkg.asarray(element_pos_z, dtype=self.num_pkg.float32)
-                self.tang_elem = self.num_pkg.asarray(element_angle_tang, dtype=self.num_pkg.float32)
-                self.n_elements = probe_model.n_elements
-
-                # TX aperture position
-                tx_centers, tx_sizes, rx_centers, rx_sizes = arrus.kernels.imaging._get_pwi_aperture_description(probe_model, seq)
-                tx_center_angles, tx_center_x, tx_center_z = \
-                    arrus.kernels.imaging.get_tx_aperture_center_coords(tx_centers, probe_model)
-                tx_center_angles = tx_center_angles + seq.angles
-
-                self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
-                self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
-                self.tx_ap_cent_z = self.num_pkg.asarray(tx_center_z, dtype=self.num_pkg.float32)
-
-                # fst/lst - first/last probe element in TX aperture
-                tx_ap_origin = np.round(tx_centers-(tx_sizes-1)/2 + 1e-9).astype(np.int32)
-                rx_ap_origin = np.round(rx_centers-(rx_sizes-1)/2 + 1e-9).astype(np.int32)
-                tx_ap_first_elem = np.maximum(tx_ap_origin, 0)
-                tx_ap_last_elem = np.minimum(tx_ap_origin+tx_sizes-1, probe_model.n_elements-1)
-
-                self.tx_ap_first_elem = self.num_pkg.asarray(tx_ap_first_elem, dtype=self.num_pkg.int32)
-                self.tx_ap_last_elem = self.num_pkg.asarray(tx_ap_last_elem, dtype=self.num_pkg.int32)
-
-                # RX aperture position
-                self.rx_ap_origin = self.num_pkg.asarray(rx_ap_origin, dtype=self.num_pkg.int32)
-
-                # Min/max tang
-                if self.rx_tang_limits is not None:
-                    self.min_tang, self.max_tang = self.rx_tang_limits
-                else:
-                    # Default:
-                    self.min_tang, self.max_tang = -0.5, 0.5
-
-                self.min_tang = self.num_pkg.float32(self.min_tang)
-                self.max_tang = self.num_pkg.float32(self.max_tang)
-                # initial delay - make sure it's calucated correctly
-                # calculate correct tx del cent
-                _, _, tx_del_cent = arrus.kernels.imaging._compute_pwi_tx_params(probe_model, seq, self.sos)
-
-                self._process = self._process_pwi_convex
-            else:
-                self.tx_ang = self.num_pkg.asarray(seq.angles, dtype=self.num_pkg.float32)
-                if len(self.tx_ang) != self.n_tx:
-                    raise ValueError(f"Invalid number of transmit angles, "
-                                    f"should be {self.tx_ang} (is {self.n_tx})")
-                self.tx_foc = self.num_pkg.asarray([self.num_pkg.inf]*self.n_tx, dtype=self.num_pkg.float32)
-                self.tx_ap_cent = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
-                tx_del_cent = 0.5*(probe_model.n_elements-1)*probe_model.pitch*np.abs(np.tan(seq.angles))/self.sos
-                rx_ap_orig_elem = 0
-                self.rx_ap_orig = legacy_rx_ap_orig(rx_ap_orig_elem)
-                self.max_tang = legacy_max_tang()
-
-
-        elif isinstance(seq, arrus.ops.imaging.StaSequence):
-            # TODO handle tx aperture size > 1 (diverging beams)
-            self.tx_ang = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
-            self.tx_foc = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
-            self.tx_ap_cent = (seq.tx_aperture_center_element-(probe_model.n_elements//2-1))*probe_model.pitch
-            self.tx_ap_cent = self.num_pkg.asarray(self.tx_ap_cent, dtype=self.num_pkg.float32)
-            tx_del_cent = self.num_pkg.zeros(self.n_tx, dtype=self.num_pkg.float32)
-            rx_ap_cent_elem = seq.rx_aperture_center_element
-            rx_ap_size = seq.rx_aperture_size
-            drx = rx_ap_size//2-1 if rx_ap_size % 2 == 0 else rx_ap_size//2
-            rx_ap_orig_elem = rx_ap_cent_elem-drx
-            self.rx_ap_orig = legacy_rx_ap_orig(rx_ap_orig_elem)
-            self.max_tang = legacy_max_tang()
+        # Min/max tang
+        if self.rx_tang_limits is not None:
+            self.min_tang, self.max_tang = self.rx_tang_limits
         else:
-            raise ValueError(f"Unsupported sequence type: {type(seq)}")
-        burst_factor = seq.pulse.n_periods / (2 * self.fn)
-        # TODO fix the start sample
+            # Default:
+            self.min_tang, self.max_tang = -0.5, 0.5
+
+        self.min_tang = self.num_pkg.float32(self.min_tang)
+        self.max_tang = self.num_pkg.float32(self.max_tang)
+
+        # PWI specific
+        self.tx_foc = self.num_pkg.asarray([self.num_pkg.inf]*self.n_tx, dtype=self.num_pkg.float32)
+        _, _, tx_del_cent = arrus.kernels.imaging._compute_pwi_tx_params(probe_model, seq, self.sos)
+
+        burst_factor = seq.pulse.n_periods / (2*self.fn)
         self.initial_delay = -start_sample/65e6+burst_factor+tx_del_cent
         self.initial_delay = self.num_pkg.asarray(self.initial_delay, dtype=self.num_pkg.float32)
+        # TODO STA
         return const_metadata.copy(input_shape=output_shape)
 
     def _process(self, data):
@@ -1339,36 +1292,18 @@ class ReconstructLri(Operation):
         params = (
             self.output_buffer,
             data,
-            self.n_tx, self.n_rx, self.n_samples,
-            self.z_pix, self.z_size,
-            self.x_pix, self.x_size,
-            self.sos, self.fs, self.fn,
-            self.tx_foc, self.tx_ang,
-            self.pitch, self.rx_ap_orig,
-            self.tx_ap_cent, self.max_tang,
-            self.initial_delay)
-        self.sta_iq(self.grid_size, self.block_size, params, shared_mem=512*8)
-        return self.output_buffer
-
-    def _process_pwi_convex(self, data):
-        data = self.num_pkg.ascontiguousarray(data)
-
-        params = (
-            self.output_buffer,
-            data,
-            # xelem, zelem - po prostu dane z probe
-            # tang elem - kat, tylko ze policzony z niego tangens
-            self.x_elem, self.z_elem, self.tang_elem, self.n_elements,
+            self.x_elem, self.z_elem, self.tang_elem, self.n_elements, # DONE
             self.n_tx, self.n_samples,
             self.z_pix, self.z_size,
             self.x_pix, self.x_size,
             self.sos, self.fs, self.fn,
-            self.tx_ang_zx, self.tx_ap_cent_z, self.tx_ap_cent_x,
+            self.tx_foc, self.tx_ang_zx,
+            self.tx_ap_cent_z, self.tx_ap_cent_x,
             self.tx_ap_first_elem, self.tx_ap_last_elem,
             self.rx_ap_origin, self.n_rx,
             self.min_tang, self.max_tang,
             self.initial_delay)
-        self.pwi_convex_iq(self.grid_size, self.block_size, params)
+        self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
 
 

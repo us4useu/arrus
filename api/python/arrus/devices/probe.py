@@ -37,7 +37,7 @@ class ProbeModel:
             x_pos = self.curvature_radius * np.sin(angle)
             z_pos = self.curvature_radius * np.cos(angle)
             z_pos = z_pos - np.min(z_pos)
-        return (x_pos, z_pos, angle)
+        return x_pos, z_pos, angle
 
     def is_convex_array(self):
         return not (math.isnan(self.curvature_radius)
