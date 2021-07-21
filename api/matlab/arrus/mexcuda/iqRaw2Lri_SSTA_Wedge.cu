@@ -17,6 +17,53 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 }
 
 
+__device__ float xRefract(	float const zElem, 
+                            float const xElem, 
+                            float const zPix, 
+                            float const xPix, 
+                            float const sosInterf, 
+                            float const sosSample,
+                            float const timePrec)
+{
+    float xRefractLo, sinRatioLo, xRefractHi, sinRatioHi, timeOld;
+    float xRefractNew, distInterf, distSample, sinRatioNew, timeNew;
+	
+    float const cRatio = sosInterf / sosSample;
+    
+    // Initial refraction points
+    xRefractLo = xElem;
+    sinRatioLo = 0.f;
+    
+    xRefractHi = xElem - zElem * (xPix - xElem) / (zPix - zElem);
+    sinRatioHi = 1.f;
+    
+    timeOld = ownHypotf(xRefractHi - xElem, zElem) / sosInterf
+            + ownHypotf(xPix - xRefractHi, zPix ) / sosSample;
+    
+    // Iterations
+    do {
+        xRefractNew = xRefractLo + (xRefractHi-xRefractLo)*(cRatio-sinRatioLo)/(sinRatioHi-sinRatioLo);
+        distInterf  = ownHypotf(xRefractNew - xElem, zElem);
+        distSample  = ownHypotf(xPix - xRefractNew, zPix);
+        sinRatioNew = ((xRefractNew - xElem) / distInterf) 
+                    / ((xPix - xRefractNew) / distSample);
+        timeNew     = distInterf / sosInterf + distSample / sosSample;
+        
+        if (sinRatioNew < cRatio) {
+            xRefractLo = xRefractNew;
+            sinRatioLo = sinRatioNew;
+        }
+        else {
+            xRefractHi = xRefractNew;
+            sinRatioHi = sinRatioNew;
+        }
+        timeOld = timeNew;
+    } while(fabs(timeNew-timeOld) > timePrec);
+    
+    return xRefractNew;
+}
+
+
 __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
                             float const * txFoc, float const * txAngZX, 
                             float const * txApCentZ, float const * txApCentX, 
