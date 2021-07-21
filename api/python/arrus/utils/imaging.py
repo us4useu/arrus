@@ -156,6 +156,9 @@ class Operation:
         """
         raise ValueError("Calling abstract method")
 
+    def __call__(self, *args, **kwargs):
+        return self._process(*args, **kwargs)
+
 
 class Lambda(Operation):
     """
@@ -269,6 +272,9 @@ class FirFilter(Operation):
         n_frames, n_channels, n_samples = const_metadata.input_shape
         total_n_samples = n_frames*n_channels*n_samples
 
+        if total_n_samples == 0:
+            raise ValueError("Empty array is not supported")
+
         fir_output_buffer = cp.zeros(const_metadata.input_shape, dtype=cp.float32)
         from arrus.utils.fir import (
             run_fir_int16,
@@ -348,6 +354,8 @@ class QuadratureDemodulation(Operation):
         fs = const_metadata.data_description.sampling_frequency
         fc = const_metadata.context.sequence.pulse.center_frequency
         _, _, n_samples = const_metadata.input_shape
+        if n_samples == 0:
+            raise ValueError("Empty array is not accepted.")
         t = (xp.arange(0, n_samples) / fs).reshape(1, 1, -1)
         self.mod_factor = (2 * xp.cos(-2 * xp.pi * fc * t)
                            + 2 * xp.sin(-2 * xp.pi * fc * t) * 1j)
@@ -632,6 +640,10 @@ class EnvelopeDetection(Operation):
         self.xp = num_pkg
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+
+        n_samples = const_metadata.input_shape[-1]
+        if n_samples == 0:
+            raise ValueError("Empty array is not accepted.")
         return const_metadata.copy(is_iq_data=False, dtype="float32")
 
     def _process(self, data):
@@ -718,7 +730,6 @@ class ScanConversion(Operation):
         self.interp_function = cupyx.scipy.ndimage.map_coordinates
 
         n_samples, n_scanlines = const_metadata.input_shape
-        print(f"input shape: {const_metadata.input_shape}")
         seq = const_metadata.context.sequence
         if not isinstance(seq, arrus.ops.imaging.LinSequence):
             raise ValueError("Scan conversion works only with LinSequence.")
@@ -826,10 +837,13 @@ class LogCompression(Operation):
             self.is_gpu = True
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        n_samples = const_metadata.input_shape[-1]
+        if n_samples == 0:
+            raise ValueError("Empty array is not accepted.")
         return const_metadata
 
     def _process(self, data):
-        data[data == 0] = 1e-9
+        data[data <= 0] = 1e-9
         return 20*self.num_pkg.log10(data)
 
 
