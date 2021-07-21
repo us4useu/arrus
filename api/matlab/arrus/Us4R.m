@@ -374,19 +374,6 @@ classdef Us4R < handle
     end
 
     methods(Access = private)
-        % TODO:
-        % Priority=Hi; usProbes.mat->function (DONE)
-        % Priority=Hi; exclude calcTxParams
-        % Priority=Hi; Rx aperture motion for LIN
-        % Priority=Hi; Rx aperture for STA/PWI
-        %               setSeqParams, calcTxParams,
-        %               programHW(nSubTx),
-        %               execSequence(reorganize).
-
-        % Priority=Hi; Check the param sizes
-
-        % Priority=Lo; scanConversion after envelope detection, scanConversion coordinates
-        % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
 
         function setSeqParams(obj,varargin)
 
