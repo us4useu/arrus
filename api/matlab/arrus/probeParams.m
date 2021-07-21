@@ -1,4 +1,4 @@
-function probe = probeParams(probeName,adapterType)
+function probe = probeParams(probeName,adapterType,interfaceName)
 
 %% Probe parameters
 switch probeName
@@ -168,6 +168,18 @@ switch probeName
             error(['No adapter of type ' adapterType ' available for the ' probeName ' probe.']);
         end
 end
+
+%% Interface (NDT wedge) parameters
+if nargin == 2 || strcmpi(interfaceName,'none')
+    probe.interfEnable = false;
+else
+    % interface name should be validated here!
+    
+    % interface parameters for each interface name should be defined here!
+    probe.interfEnable = true;
+    probe.interfSize = [];
+	probe.interfAng = [];
+    probe.interfSos = [];
 
 end
 
