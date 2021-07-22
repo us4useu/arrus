@@ -792,7 +792,7 @@ class ScanConversion(Operation):
         else:
             c = medium.speed_of_sound
 
-        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(
+        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_aperture_center(
             seq.tx_aperture_center_element, probe)
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
@@ -1251,8 +1251,16 @@ class ReconstructLri(Operation):
         self.n_elements = probe_model.n_elements
 
         # TX aperture description
-        tx_centers, tx_sizes, rx_centers, rx_sizes = arrus.kernels.imaging._get_pwi_aperture_description(probe_model, seq) # TODO STA?
-        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.imaging.get_tx_aperture_center_coords(tx_centers, probe_model)
+        # Convert the sequence to the positions of the aperture centers
+        tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
+            probe_model,
+            seq,
+            seq.speed_of_sound)
+        tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
+        rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
+        tx_center_delay = tx_rx_params["tx_center_delay"]
+
+        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.imaging.get_aperture_center(tx_centers, probe_model)
         tx_center_angles = tx_center_angles + seq.angles
         self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
         self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
@@ -1279,10 +1287,9 @@ class ReconstructLri(Operation):
 
         # PWI specific
         self.tx_foc = self.num_pkg.asarray([self.num_pkg.inf]*self.n_tx, dtype=self.num_pkg.float32)
-        _, _, tx_del_cent = arrus.kernels.imaging._compute_pwi_tx_params(probe_model, seq, self.sos)
 
         burst_factor = seq.pulse.n_periods / (2*self.fn)
-        self.initial_delay = -start_sample/65e6+burst_factor+tx_del_cent
+        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.asarray(self.initial_delay, dtype=self.num_pkg.float32)
         # TODO STA
         return const_metadata.copy(input_shape=output_shape)

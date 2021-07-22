@@ -62,7 +62,7 @@ class PwiSequenceTest(unittest.TestCase):
         context = ContextMock(device=self.default_device,
                               medium=self.default_medium,
                               op=self.default_sequence)
-        sequence = arrus.kernels.imaging.create_pwi_sequence(context)
+        sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
         # Expect
         tx_rxs = sequence.ops
         # should be 3 TX/RXs
@@ -101,11 +101,11 @@ class PwiSequenceTest(unittest.TestCase):
             self.assertEqual(tx_rx.rx.sample_range, input_sequence.rx_sample_range)
             self.assertEqual(tx_rx.rx.padding, (0, 0))
 
-    def test_linear_array_sl1543_parameters(self):
+    def test_reference_compliance_linear_array_sl1543_parameters(self):
         # TODO
         pass
 
-    def test_convex_array_ac2541_128_elements(self):
+    def test_reference_compliance_convex_array_ac2541_128_elements(self):
         n_elements = 192
         device = DeviceMock(ProbeMock(
             ProbeModel(model_id=ProbeModelId("esaote", "ac2541"),
@@ -129,7 +129,7 @@ class PwiSequenceTest(unittest.TestCase):
         context = ContextMock(device=device,
                               medium=self.default_medium,
                               op=input_sequence)
-        tx_rx_sequence = arrus.kernels.imaging.create_pwi_sequence(context)
+        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), 9)
         # TX/RX apertures:
@@ -165,7 +165,6 @@ class PwiSequenceTest(unittest.TestCase):
             np.testing.assert_almost_equal(expected_delays[i], tx_delays)
 
 
-
 class LinSequenceTest(unittest.TestCase):
 
     def skip_test_simple_sequence_with_paddings(self):
@@ -193,8 +192,10 @@ class LinSequenceTest(unittest.TestCase):
         tx_rx_sequence = arrus.kernels.imaging.create_lin_sequence(context)
 
         # expected delays
-        _, delays, _ = arrus.kernels.imaging.compute_tx_parameters(
+        tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
             seq, probe_model, speed_of_sound=medium.speed_of_sound)
+
+        delays = tx_rx_params["tx_delays"]
 
         # Expected aperture tx/rx 1
         expected_aperture = np.zeros((32,), dtype=bool)

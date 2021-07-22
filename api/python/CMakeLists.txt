@@ -98,7 +98,7 @@ set(SOURCE_FILES
         arrus/utils/interpolate.py
         arrus/utils/core.py
         arrus/utils/gui.py
-        arrus/utils/sta.cu)
+        )
 set(TEST_FILES
     arrus/kernels/tests/imaging_test.py)
 
