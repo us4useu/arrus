@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import arrus.kernels.imaging
 import arrus.ops.imaging
 import arrus.medium
@@ -39,19 +40,24 @@ class SimpleTxRxSequenceTest(unittest.TestCase):
                                       expected_delays_profile, n_elements,
                                       ops,
                                       expected_tx_elements=None,
-                                      expected_rx_elements=None):
+                                      expected_rx_elements=None,
+                                      center_elements=None):
 
         op_expected_tx_elements = expected_tx_elements
         op_expected_rx_elements = expected_rx_elements
 
-        for i, op in enumerate(ops):
+        if center_elements is None:
+            center_elements = np.arange(len(ops))
+
+        for i, op in zip(center_elements, ops):
             tx_aperture = op.tx.aperture
             rx_aperture = op.rx.aperture
             tx_delays = op.tx.delays
 
             # Aperture
             # e.g. i=0, 64-element aperture -> origin: -31, end: 33
-            aperture_origin = i - aperture_size // 2 + 1
+            aperture_origin = i - int(math.ceil(aperture_size/2)) + 1
+
             aperture_end = aperture_origin + aperture_size
             delays_start = -aperture_origin if aperture_origin < 0 else 0
             delays_end = aperture_size - (
@@ -382,6 +388,37 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
                                            expected_delays_profile,
                                            n_elements, ops)
 
+    def test_compliance_convex_array_esaote_ac2541(self):
+        """Tests convex array + LIN delays."""
+        n_elements = 192
+        device = DeviceMock(ProbeMock(
+            ProbeModel(model_id=ProbeModelId("esaote", "2541"),
+                       pitch=0.3e-3,
+                       n_elements=n_elements,
+                       curvature_radius=50e-3)))
+
+        n_elements = device.probe.model.n_elements
+        input_sequence = self.default_sequence
+        aperture_size = 32
+        input_sequence = dataclasses.replace(
+            input_sequence,
+            tx_focus=10e-3,
+            tx_aperture_center_element=np.arange(0, n_elements),
+            tx_aperture_size=aperture_size,
+            rx_aperture_center_element=np.arange(0, n_elements),
+            rx_aperture_size=aperture_size,
+            speed_of_sound=1540
+        )
+        context = ContextMock(device=device,
+                              medium=self.default_medium,
+                              op=input_sequence)
+        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        ops = tx_rx_sequence.ops
+        self.assertEqual(len(ops), n_elements)
+        expected_delays_profile = np.array([9.671847e-08, 1.883984e-07, 2.748402e-07, 3.55846e-07, 4.312216e-07, 5.007779e-07, 5.643331e-07, 6.217144e-07, 6.727603e-07, 7.173223e-07, 7.55267e-07, 7.86478e-07, 8.108577e-07, 8.283283e-07, 8.388334e-07, 8.42339e-07, 8.388334e-07, 8.283283e-07, 8.108577e-07, 7.86478e-07, 7.55267e-07, 7.173223e-07, 6.727603e-07, 6.217144e-07, 5.643331e-07, 5.007779e-07, 4.312216e-07, 3.55846e-07, 2.748402e-07, 1.883984e-07, 9.671847e-08, 5.082198e-21])
+        self.assert_ok_for_moving_aperture(aperture_size,
+                                           expected_delays_profile,
+                                           n_elements, ops)
 
 
 class StaSequenceTest(SimpleTxRxSequenceTest):
@@ -443,6 +480,76 @@ class StaSequenceTest(SimpleTxRxSequenceTest):
         self.assert_ok_for_moving_aperture(
             aperture_size, expected_delays_profile, n_elements, ops,
             expected_rx_elements=np.arange(n_elements))
+
+    def test_compliance_single_element_tx_aperture(self):
+        """Tests linear array + LIN delays."""
+        n_elements = 128
+        device = DeviceMock(ProbeMock(
+            ProbeModel(model_id=ProbeModelId("ultrasonix", "l14-5/38"),
+                       pitch=0.3048e-3,
+                       n_elements=n_elements,
+                       curvature_radius=0.0)))
+
+        n_elements = device.probe.model.n_elements
+        input_sequence = self.default_sequence
+        aperture_size = 1
+        input_sequence = dataclasses.replace(
+            input_sequence,
+            tx_focus=0e-3,
+            tx_aperture_center_element=np.arange(0, n_elements),
+            tx_aperture_size=aperture_size,
+            rx_aperture_center=0,
+            rx_aperture_center_element=None,
+            rx_aperture_size=n_elements,
+            speed_of_sound=1540
+        )
+        context = ContextMock(device=device,
+                              medium=self.default_medium,
+                              op=input_sequence)
+        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        ops = tx_rx_sequence.ops
+        self.assertEqual(len(ops), n_elements)
+        expected_delays_profile = np.array([0])
+        self.assert_ok_for_moving_aperture(
+            aperture_size, expected_delays_profile, n_elements, ops,
+            expected_rx_elements=np.arange(n_elements))
+
+    def test_compliance_convex_array_esaote_ac2541(self):
+        """Tests convex array + STA delays."""
+        n_elements = 192
+        device = DeviceMock(ProbeMock(
+            ProbeModel(model_id=ProbeModelId("esaote", "2541"),
+                       pitch=0.3e-3,
+                       n_elements=n_elements,
+                       curvature_radius=50e-3)))
+
+        n_elements = device.probe.model.n_elements
+        input_sequence = self.default_sequence
+        aperture_size = 128
+        aperture_center = np.arange(-15, 16, step=3)*1e-3
+        input_sequence = dataclasses.replace(
+            input_sequence,
+            tx_focus=-10e-3,
+            tx_aperture_center=aperture_center,
+            tx_aperture_center_element=None,
+            tx_aperture_size=aperture_size,
+            rx_aperture_center=aperture_center,
+            rx_aperture_center_element=None,
+            rx_aperture_size=aperture_size,
+            speed_of_sound=1540
+        )
+        context = ContextMock(device=device,
+                              medium=self.default_medium,
+                              op=input_sequence)
+
+        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        ops = tx_rx_sequence.ops
+        self.assertEqual(len(ops), len(aperture_center))
+        expected_delays_profile = np.array([6.277186e-06, 6.130122e-06, 5.983590e-06, 5.837612e-06, 5.692214e-06, 5.547423e-06, 5.403266e-06, 5.259772e-06, 5.116970e-06, 4.974892e-06, 4.833570e-06, 4.693038e-06, 4.553331e-06, 4.414486e-06, 4.276541e-06, 4.139537e-06, 4.003516e-06, 3.868520e-06, 3.734596e-06, 3.601792e-06, 3.470156e-06, 3.339741e-06, 3.210600e-06, 3.082790e-06, 2.956370e-06, 2.831401e-06, 2.707946e-06, 2.586072e-06, 2.465848e-06, 2.347345e-06, 2.230638e-06, 2.115805e-06, 2.002925e-06, 1.892081e-06, 1.783360e-06, 1.676850e-06, 1.572642e-06, 1.470831e-06, 1.371514e-06, 1.274789e-06, 1.180759e-06, 1.089527e-06, 1.001199e-06, 9.158811e-07, 8.336823e-07, 7.547116e-07, 6.790784e-07, 6.068922e-07, 5.382617e-07, 4.732946e-07, 4.120965e-07, 3.547708e-07, 3.014175e-07, 2.521329e-07, 2.070084e-07, 1.661303e-07, 1.295787e-07, 9.742690e-08, 6.974070e-08, 4.657782e-08, 2.798728e-08, 1.400893e-08, 4.673056e-09, 1.694066e-21, 1.694066e-21, 4.673056e-09, 1.400893e-08, 2.798728e-08, 4.657782e-08, 6.974070e-08, 9.742690e-08, 1.295787e-07, 1.661303e-07, 2.070084e-07, 2.521329e-07, 3.014175e-07, 3.547708e-07, 4.120965e-07, 4.732946e-07, 5.382617e-07, 6.068922e-07, 6.790784e-07, 7.547116e-07, 8.336823e-07, 9.158811e-07, 1.001199e-06, 1.089527e-06, 1.180759e-06, 1.274789e-06, 1.371514e-06, 1.470831e-06, 1.572642e-06, 1.676850e-06, 1.783360e-06, 1.892081e-06, 2.002925e-06, 2.115805e-06, 2.230638e-06, 2.347345e-06, 2.465848e-06, 2.586072e-06, 2.707946e-06, 2.831401e-06, 2.956370e-06, 3.082790e-06, 3.210600e-06, 3.339741e-06, 3.470156e-06, 3.601792e-06, 3.734596e-06, 3.868520e-06, 4.003516e-06, 4.139537e-06, 4.276541e-06, 4.414486e-06, 4.553331e-06, 4.693038e-06, 4.833570e-06, 4.974892e-06, 5.116970e-06, 5.259772e-06, 5.403266e-06, 5.547423e-06, 5.692214e-06, 5.837612e-06, 5.983590e-06, 6.130122e-06, 6.277186e-06])
+        self.assert_ok_for_moving_aperture(aperture_size,
+                                           expected_delays_profile,
+                                           n_elements, ops,
+                                           center_elements=np.arange(45, 146, 10))
 
 
 if __name__ == "__main__":
