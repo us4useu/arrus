@@ -53,7 +53,7 @@ class PwiSequenceTest(unittest.TestCase):
         )
         self.default_medium = None
 
-    def skip_test_linear_array_three_tx_rxs(self):
+    def test_linear_array_three_tx_rxs(self):
         # Given
         device = self.default_device
         n_elements = device.probe.model.n_elements
@@ -82,15 +82,18 @@ class PwiSequenceTest(unittest.TestCase):
         # angle: -pi/4 [rad]
         np.testing.assert_almost_equal(
             tx_rxs[0].tx.delays,
-            np.flip(expected_delays_pi_4))
+            np.flip(expected_delays_pi_4),
+            decimal=12)
         # angle: 0 [rad]
         np.testing.assert_almost_equal(
             tx_rxs[1].tx.delays,
-            np.repeat(tx_aperture_center_delay, len(expected_delays_pi_4)))
+            np.repeat(tx_aperture_center_delay, len(expected_delays_pi_4)),
+            decimal=12)
         # angle: pi/4 [rad]
         np.testing.assert_almost_equal(
             tx_rxs[2].tx.delays,
-            expected_delays_pi_4)
+            expected_delays_pi_4,
+            decimal=12)
         # - pulse:
         for tx_rx in tx_rxs:
             self.assertEqual(tx_rx.tx.excitation, input_sequence.pulse)
@@ -101,11 +104,54 @@ class PwiSequenceTest(unittest.TestCase):
             self.assertEqual(tx_rx.rx.sample_range, input_sequence.rx_sample_range)
             self.assertEqual(tx_rx.rx.padding, (0, 0))
 
-    def test_reference_compliance_linear_array_sl1543_parameters(self):
-        # TODO
-        pass
+    def test_reference_compliance_linear_array_ultrasonix_l14_5_38_parameters(self):
+        """Tests linear array + convex PWI delays."""
+        n_elements = 128
+        device = DeviceMock(ProbeMock(
+            ProbeModel(model_id=ProbeModelId("ultrasonix", "l14-5/38"),
+                       pitch=0.3048e-3,
+                       n_elements=n_elements,
+                       curvature_radius=0.0)))
+        n_elements = device.probe.model.n_elements
+        input_sequence = self.default_sequence
+        input_sequence = dataclasses.replace(
+            input_sequence,
+            angles=np.array([-10, 0, 10])*np.pi/180,
+            tx_aperture_center=0,
+            tx_aperture_center_element=None,
+            tx_aperture_size=n_elements,
+            rx_aperture_center=0,
+            rx_aperture_center_element=None,
+            rx_aperture_size=n_elements,
+            speed_of_sound=1450
+        )
+        context = ContextMock(device=device,
+                              medium=self.default_medium,
+                              op=input_sequence)
+        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        ops = tx_rx_sequence.ops
+        self.assertEqual(len(ops), 3)
+        # TX/RX apertures:
+        expected_apertures = np.zeros((len(ops), n_elements), dtype=bool)
+        expected_apertures[0, :] = True
+        expected_apertures[1, :] = True
+        expected_apertures[2, :] = True
+
+        expected_delays = [
+            np.array([4.635760e-06, 4.599258e-06, 4.562756e-06, 4.526254e-06, 4.489751e-06, 4.453249e-06, 4.416747e-06, 4.380245e-06, 4.343743e-06, 4.307241e-06, 4.270739e-06, 4.234237e-06, 4.197735e-06, 4.161233e-06, 4.124731e-06, 4.088229e-06, 4.051727e-06, 4.015225e-06, 3.978723e-06, 3.942221e-06, 3.905719e-06, 3.869217e-06, 3.832715e-06, 3.796213e-06, 3.759711e-06, 3.723209e-06, 3.686706e-06, 3.650204e-06, 3.613702e-06, 3.577200e-06, 3.540698e-06, 3.504196e-06, 3.467694e-06, 3.431192e-06, 3.394690e-06, 3.358188e-06, 3.321686e-06, 3.285184e-06, 3.248682e-06, 3.212180e-06, 3.175678e-06, 3.139176e-06, 3.102674e-06, 3.066172e-06, 3.029670e-06, 2.993168e-06, 2.956666e-06, 2.920164e-06, 2.883662e-06, 2.847159e-06, 2.810657e-06, 2.774155e-06, 2.737653e-06, 2.701151e-06, 2.664649e-06, 2.628147e-06, 2.591645e-06, 2.555143e-06, 2.518641e-06, 2.482139e-06, 2.445637e-06, 2.409135e-06, 2.372633e-06, 2.336131e-06, 2.299629e-06, 2.263127e-06, 2.226625e-06, 2.190123e-06, 2.153621e-06, 2.117119e-06, 2.080617e-06, 2.044114e-06, 2.007612e-06, 1.971110e-06, 1.934608e-06, 1.898106e-06, 1.861604e-06, 1.825102e-06, 1.788600e-06, 1.752098e-06, 1.715596e-06, 1.679094e-06, 1.642592e-06, 1.606090e-06, 1.569588e-06, 1.533086e-06, 1.496584e-06, 1.460082e-06, 1.423580e-06, 1.387078e-06, 1.350576e-06, 1.314074e-06, 1.277572e-06, 1.241070e-06, 1.204567e-06, 1.168065e-06, 1.131563e-06, 1.095061e-06, 1.058559e-06, 1.022057e-06, 9.855552e-07, 9.490532e-07, 9.125511e-07, 8.760491e-07, 8.395470e-07, 8.030450e-07, 7.665429e-07, 7.300409e-07, 6.935388e-07, 6.570368e-07, 6.205348e-07, 5.840327e-07, 5.475307e-07, 5.110286e-07, 4.745266e-07, 4.380245e-07, 4.015225e-07, 3.650204e-07, 3.285184e-07, 2.920164e-07, 2.555143e-07, 2.190123e-07, 1.825102e-07, 1.460082e-07, 1.095061e-07, 7.300409e-08, 3.650204e-08, 0.000000e+00]),
+            np.array([2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06, 2.317880e-06]),
+            np.array([0.000000e+00, 3.650204e-08, 7.300409e-08, 1.095061e-07, 1.460082e-07, 1.825102e-07, 2.190123e-07, 2.555143e-07, 2.920164e-07, 3.285184e-07, 3.650204e-07, 4.015225e-07, 4.380245e-07, 4.745266e-07, 5.110286e-07, 5.475307e-07, 5.840327e-07, 6.205348e-07, 6.570368e-07, 6.935388e-07, 7.300409e-07, 7.665429e-07, 8.030450e-07, 8.395470e-07, 8.760491e-07, 9.125511e-07, 9.490532e-07, 9.855552e-07, 1.022057e-06, 1.058559e-06, 1.095061e-06, 1.131563e-06, 1.168065e-06, 1.204567e-06, 1.241070e-06, 1.277572e-06, 1.314074e-06, 1.350576e-06, 1.387078e-06, 1.423580e-06, 1.460082e-06, 1.496584e-06, 1.533086e-06, 1.569588e-06, 1.606090e-06, 1.642592e-06, 1.679094e-06, 1.715596e-06, 1.752098e-06, 1.788600e-06, 1.825102e-06, 1.861604e-06, 1.898106e-06, 1.934608e-06, 1.971110e-06, 2.007612e-06, 2.044114e-06, 2.080617e-06, 2.117119e-06, 2.153621e-06, 2.190123e-06, 2.226625e-06, 2.263127e-06, 2.299629e-06, 2.336131e-06, 2.372633e-06, 2.409135e-06, 2.445637e-06, 2.482139e-06, 2.518641e-06, 2.555143e-06, 2.591645e-06, 2.628147e-06, 2.664649e-06, 2.701151e-06, 2.737653e-06, 2.774155e-06, 2.810657e-06, 2.847159e-06, 2.883662e-06, 2.920164e-06, 2.956666e-06, 2.993168e-06, 3.029670e-06, 3.066172e-06, 3.102674e-06, 3.139176e-06, 3.175678e-06, 3.212180e-06, 3.248682e-06, 3.285184e-06, 3.321686e-06, 3.358188e-06, 3.394690e-06, 3.431192e-06, 3.467694e-06, 3.504196e-06, 3.540698e-06, 3.577200e-06, 3.613702e-06, 3.650204e-06, 3.686706e-06, 3.723209e-06, 3.759711e-06, 3.796213e-06, 3.832715e-06, 3.869217e-06, 3.905719e-06, 3.942221e-06, 3.978723e-06, 4.015225e-06, 4.051727e-06, 4.088229e-06, 4.124731e-06, 4.161233e-06, 4.197735e-06, 4.234237e-06, 4.270739e-06, 4.307241e-06, 4.343743e-06, 4.380245e-06, 4.416747e-06, 4.453249e-06, 4.489751e-06, 4.526254e-06, 4.562756e-06, 4.599258e-06, 4.635760e-06])
+        ]
+        for i, op in enumerate(ops):
+            tx_aperture = op.tx.aperture
+            rx_aperture = op.rx.aperture
+            tx_delays = op.tx.delays
+            np.testing.assert_equal(np.argwhere(tx_aperture), np.argwhere(expected_apertures[i]))
+            np.testing.assert_equal(np.argwhere(rx_aperture), np.argwhere(expected_apertures[i]))
+            np.testing.assert_almost_equal(expected_delays[i], tx_delays, decimal=12)
 
     def test_reference_compliance_convex_array_ac2541_128_elements(self):
+        """ Tests aperture position and convex PWI delays."""
         n_elements = 192
         device = DeviceMock(ProbeMock(
             ProbeModel(model_id=ProbeModelId("esaote", "ac2541"),
@@ -162,12 +208,12 @@ class PwiSequenceTest(unittest.TestCase):
             tx_delays = op.tx.delays
             np.testing.assert_equal(np.argwhere(tx_aperture), np.argwhere(expected_apertures[i]))
             np.testing.assert_equal(np.argwhere(rx_aperture), np.argwhere(expected_apertures[i]))
-            np.testing.assert_almost_equal(expected_delays[i], tx_delays)
+            np.testing.assert_almost_equal(expected_delays[i], tx_delays, decimal=12)
 
 
 class LinSequenceTest(unittest.TestCase):
 
-    def skip_test_simple_sequence_with_paddings(self):
+    def test_simple_sequence_with_paddings(self):
         # three tx/rxs with aperture centers: 0, 16, 31
         seq = arrus.ops.imaging.LinSequence(
             tx_aperture_center_element=np.array([0, 15, 16, 31]),
@@ -189,11 +235,12 @@ class LinSequenceTest(unittest.TestCase):
             pitch=0.2e-3, n_elements=32, curvature_radius=0.0)
         device = DeviceMock(probe=ProbeMock(model=probe_model))
         context = ContextMock(device=device, medium=medium, op=seq)
-        tx_rx_sequence = arrus.kernels.imaging.create_lin_sequence(context)
+        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(
+            context)
 
         # expected delays
         tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-            seq, probe_model, speed_of_sound=medium.speed_of_sound)
+            probe_model, seq, c=medium.speed_of_sound)
 
         delays = tx_rx_params["tx_delays"]
 

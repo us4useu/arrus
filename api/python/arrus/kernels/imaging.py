@@ -194,12 +194,12 @@ def compute_tx_rx_params(probe, sequence, c):
     else:
         focus_x = tx_center_x + tx_focus*np.sin(tx_angle)  # [n_tx, 1]
         focus_z = tx_center_z + tx_focus*np.cos(tx_angle)  # [n_tx, 1]
-        tx_delays = np.sqrt((focus_x-element_x)**2
+        delays = np.sqrt((focus_x-element_x)**2
                           + (focus_z-element_z)**2) / c  # [n_tx, n_elem]
         center_delays = np.sqrt((focus_x-tx_center_x)**2
                               + (focus_z-tx_center_z)**2) / c  # [n_tx, 1]
         foc_defoc = 1 - 2*float(tx_focus > 0)
-        delays = tx_delays*foc_defoc
+        delays = delays*foc_defoc
         center_delays = center_delays*foc_defoc
         center_delays = np.atleast_1d(np.squeeze(center_delays))
 
