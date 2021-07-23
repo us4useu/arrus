@@ -190,5 +190,11 @@ class StaSequence(SimpleTxRxSequence):
     """
     A sequence of Tx/Rx operations for synthetic transmit aperture
     (diverging beams).
+
+    Requirements:
+    - tx focus has to be finite, non-positive.
     """
-    pass
+    def __post_init__(self):
+        super().__post_init__()
+        if self.tx_focus > 0 or np.isinf(self.tx_focus):
+            raise ValueError("TX focus has to be a non-positive value.")

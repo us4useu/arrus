@@ -270,10 +270,10 @@ def preprocess_sequence_parameters(probe_model, sequence):
     # Determine ndarray size.
     sizes = set([len(v) if isinstance(v, Collection) else 1
                  for _, v in tx_rxs.items()])
-    if len(sizes) > 2 or len(sizes) == 2 and 1 not in sizes:
+    if len(sizes) > 2 or (len(sizes) == 2 and 1 not in sizes):
         raise ValueError("All TX/RX parameters should be lists of the same "
                          f"sizes or scalars (found sizes: {sizes})")
-    if 1 in sizes:
+    if 1 in sizes and len(sizes) == 2:
         sizes.remove(1)
     dst_size = next(iter(sizes))
 

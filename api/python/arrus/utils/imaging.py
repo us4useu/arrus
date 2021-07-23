@@ -1286,12 +1286,10 @@ class ReconstructLri(Operation):
         self.max_tang = self.num_pkg.float32(self.max_tang)
 
         # PWI specific
-        self.tx_foc = self.num_pkg.asarray([self.num_pkg.inf]*self.n_tx, dtype=self.num_pkg.float32)
-
+        self.tx_foc = self.num_pkg.asarray([seq.tx_focus]*self.n_tx, dtype=self.num_pkg.float32)
         burst_factor = seq.pulse.n_periods / (2*self.fn)
         self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.asarray(self.initial_delay, dtype=self.num_pkg.float32)
-        # TODO STA
         return const_metadata.copy(input_shape=output_shape)
 
     def _process(self, data):
