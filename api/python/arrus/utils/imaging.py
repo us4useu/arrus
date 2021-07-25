@@ -10,55 +10,180 @@ import arrus.devices.gpu
 import arrus.kernels.imaging
 import queue
 import dataclasses
+import threading
+
+
+class BufferElement:
+    """
+    This class represents a single element of data buffer.
+    Acquiring the element when it's not released will end up with
+    an "buffer override" exception.
+    """
+
+    def __init__(self, pos, data):
+        self.pos = pos
+        self.data = data
+        self.size = self.data.nbytes
+        self.occupied = False
+        self._lock = threading.Lock()
+
+    def acquire(self):
+        with self._lock:
+            if self.occupied:
+                raise ValueError("GPU buffer override")
+            self.occupied = True
+
+    def release(self):
+        with self._lock:
+            self.occupied = False
+
+
+class BufferElementLockBased:
+    """
+    This class represents a single element of data buffer.
+    Acquiring the element when it's not released will block the caller
+    until the element is released.
+    """
+    def __init__(self, pos, data):
+        self.pos = pos
+        self.data = data
+        self.size = self.data.nbytes
+        self._semaphore = threading.Semaphore()
+        # The acquired semaphore means, that the buffer element is still
+        # in the use and cannot be filled with new data coming from producer.
+
+    def acquire(self):
+        self._semaphore.acquire()
+
+    def release(self):
+        self._semaphore.release()
+
+
+class Buffer:
+
+    def __init__(self, n_elements, shape, dtype, math_pkg, type="locked"):
+        element_type = None
+        if type == "locked":
+            element_type = BufferElementLockBased
+        elif type == "async":
+            element_type = BufferElement
+        else:
+            raise ValueError(f"Unrecognized buffer type: {type}")
+        self.input_array = [math_pkg.zeros(shape, dtype=dtype) for _ in range(n_elements)]
+        self.elements = [element_type(i, data) for i, data in enumerate(self.input_array)]
+        self.n_elements = n_elements
+
+    def acquire(self, pos):
+        element = self.elements[pos]
+        element.acquire()
+        return element
+
+    def release(self, pos):
+        self.elements[pos].release()
+
+
+class PipelineRunner:
+    """
+    Currently, the input buffer should be located in CPU device,
+    output buffer should be located on GPU.
+    """
+
+    def __init__(self, input_buffer, gpu_buffer, output_buffer, pipeline,
+                 output_callback_func):
+        import cupy as cp
+        self.input_buffer = self.__register_buffer(input_buffer)
+        self.gpu_buffer = gpu_buffer
+        # TODO call pipeline.prepare and get list of output metadatas
+        # for each output metadata create output buffer
+        # pipeline should return a list of output data arrays
+        self.out_buffer = self.__register_buffer(output_buffer)
+        self.pipeline = pipeline
+        self.data_stream = cp.cuda.Stream(non_blocking=True)
+        self.processing_stream = cp.cuda.Stream(non_blocking=True)
+        self._gpu_i = 0
+        self._out_i = 0
+        self.output_callback_func = output_callback_func
+
+    def process(self, input_element):
+        """
+        NOTE: currently this function is NOT thread-safe.
+
+        Returns an event that the new data has arrived.
+        """
+        gpu_element = self.gpu_buffer.acquire(self._gpu_i)
+        gpu_array = gpu_element.data
+        self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
+        gpu_array.set(input_element.data, stream=self.data_stream)
+        self.data_stream.launch_host_func(self.__release, input_element)
+        gpu_data_ready_event = self.data_stream.record()
+        self.processing_stream.wait_event(gpu_data_ready_event)
+        out_element = self.out_buffer.elements[self._out_i]
+        self._out_i = (self._out_i + 1) % self.out_buffer.n_elements
+        with self.processing_stream:
+            result = self.pipeline(gpu_array)
+            result.get(self.processing_stream, out=out_element.data)
+        self.processing_stream.launch_host_func(self.__release, gpu_element)
+        self.processing_stream.launch_host_func(self.output_callback_func,
+                                                out_element)
+
+    def stop(self):
+        # cleanup
+        self.__unregister_buffer(self.input_buffer)
+        self.__unregister_buffer(self.out_buffer)
+
+    def __release(self, element):
+        element.release()
+
+    def __register_buffer(self, buffer):
+        import cupy as cp
+        for element in buffer.elements:
+            cp.cuda.runtime.hostRegister(element.data.ctypes.data, element.size, 1)
+        return buffer
+
+    def __unregister_buffer(self, buffer):
+        import cupy as cp
+        for element in buffer.elements:
+            cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
 
 
 class Pipeline:
     """
     Imaging pipeline.
 
-    Processes given data,metadata using a given sequence of steps.
+    Processes given data using a given sequence of steps.
     The processing will be performed on a given device ('placement').
     """
     def __init__(self, steps, placement=None):
         self.steps = steps
-        self._host_registered = None
         self._placement = None
-        self._stream = None  # GPU-related, prepared on initialization stage
-        self._input_buffer = None  # GPU-related, prepared on init. stage
+        self._processing_stream = None
+        self._input_buffer = None
         if placement is not None:
             self.set_placement(placement)
 
     def __call__(self, data):
-        """
-        :param data: numpy array with data to process
-        :return:
-        """
-        if self._is_gpu:
-            self._input_buffer.set(data, stream=self._stream)
-            data = self._input_buffer
+        self.process(data)
 
+    def process(self, data):
         for step in self.steps:
-            data = step._process(data)
+            data = step.process(data)
         return data
 
-    def _initialize(self, const_metadata):
+    def __initialize(self, const_metadata):
         input_shape = const_metadata.input_shape
         input_dtype = const_metadata.dtype
         self._input_buffer = self.num_pkg.zeros(
             input_shape, dtype=input_dtype)+1000
         data = self._input_buffer
         for step in self.steps:
-            data = step._initialize(data)
+            data = step.__initialize(data)
 
-    def initialize(self, const_metadata):
+    def prepare(self, const_metadata):
         output_const_metadata = const_metadata
-        self._const_metadata_storage = []
-        self._const_metadata_storage.append(output_const_metadata.copy())
         for step in self.steps:
-            output_const_metadata = step._prepare(output_const_metadata)
-            self._const_metadata_storage.append(output_const_metadata.copy())
+            output_const_metadata = step.prepare(output_const_metadata)
         # Force cupy to recompile kernels before running the pipeline.
-        self._initialize(const_metadata)
+        self.__initialize(const_metadata)
         return output_const_metadata
 
     def set_placement(self, device):
@@ -81,7 +206,7 @@ class Pipeline:
             import cupy as cp
             import cupyx.scipy.ndimage as cupy_scipy_ndimage
             pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
-            self._stream = cp.cuda.Stream()
+            self._processing_stream = cp.cuda.Stream()
             self._is_gpu = True
         elif self._placement == "CPU":
             import scipy.ndimage
@@ -90,22 +215,11 @@ class Pipeline:
         else:
             raise ValueError(f"Unsupported device: {device}")
         for step in self.steps:
-            step.set_pkgs(**pkgs)
+            step.__set_pkgs(**pkgs)
         self.num_pkg = pkgs['num_pkg']
         self.filter_pkg = pkgs['filter_pkg']
 
-    def register_host_buffer(self, buffer):
-        if self._placement == "GPU":
-            import cupy as cp
-            for element in buffer.elements:
-                cp.cuda.runtime.hostRegister(element.data.ctypes.data, element.size, 1)
-            self._host_registered = buffer
 
-    def stop(self):
-        if self._host_registered is not None:
-            import cupy as cp
-            for element in self._host_registered.elements:
-                cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
 
 
 class Operation:
@@ -113,7 +227,30 @@ class Operation:
     An operation to perform in the imaging pipeline -- one data processing
     stage.
     """
-    def _initialize(self, data):
+
+    def prepare(self, const_metadata):
+        """
+        Function that will called when the processing pipeline is prepared.
+
+        :param const_metadata: const metadata describing output from the \
+          previous Operation.
+        :return: const metadata describing output of this Operation.
+        """
+        pass
+
+    def process(self, data):
+        """
+        Function that will be called when new data arrives.
+
+        :param data: input data
+        :return: output data
+        """
+        raise ValueError("Calling abstract method")
+
+    def __call__(self, *args, **kwargs):
+        return self.process(*args, **kwargs)
+
+    def __initialize(self, data):
         """
         Initialization function.
 
@@ -123,9 +260,9 @@ class Operation:
 
         :return: the processed data.
         """
-        return self._process(data)
+        return self.process(data)
 
-    def set_pkgs(self, **kwargs):
+    def __set_pkgs(self, **kwargs):
         """
         Provides to possibility to gather python packages for numerical
         processing and filtering.
@@ -137,34 +274,10 @@ class Operation:
         """
         pass
 
-    def _prepare(self, const_metadata):
-        """
-        Function that will called when the processing pipeline is prepared.
-
-        :param const_metadata: const metadata describing output from the \
-          previous Operation.
-        :return: const metadata describing output of this Operation.
-        """
-        pass
-
-    def _process(self, data):
-        """
-        Function that will be called when new data arrives.
-
-        :param data: input data
-        :return: output data
-        """
-        raise ValueError("Calling abstract method")
-
-    def __call__(self, *args, **kwargs):
-        return self._process(*args, **kwargs)
-
 
 class Lambda(Operation):
     """
     Custom function to perform on data from a given step.
-
-
     """
 
     def __init__(self, function):
@@ -177,17 +290,17 @@ class Lambda(Operation):
         self.func = function
         pass
 
-    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def _initialize(self, data):
+    def __initialize(self, data):
         return data
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
-    def _process(self, data):
+    def process(self, data):
         return self.func(data)
 
 
@@ -221,11 +334,11 @@ class BandpassFilter(Operation):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
         center_frequency = const_metadata.context.sequence.pulse.center_frequency
         sampling_frequency = const_metadata.data_description.sampling_frequency
@@ -237,7 +350,7 @@ class BandpassFilter(Operation):
         self.taps = self.xp.asarray(taps).astype(self.xp.float32)
         return const_metadata
 
-    def _process(self, data):
+    def process(self, data):
         result = self.filter_pkg.convolve1d(data, self.taps, axis=-1,
                                             mode='constant')
         return result
@@ -258,11 +371,11 @@ class FirFilter(Operation):
         self.convolve1d_func = None
         self.dumped = 0
 
-    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         if self.xp == np:
             raise ValueError("This operation is NYI for CPU")
         import cupy as cp
@@ -298,7 +411,7 @@ class FirFilter(Operation):
         self.convolve1d_func = gpu_convolve1d
         return const_metadata
 
-    def _process(self, data):
+    def process(self, data):
         return self.convolve1d_func(data)
 
 
@@ -321,15 +434,15 @@ class Filter(Operation):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         self.taps = self.xp.asarray(self.taps).astype(self.xp.float32)
         return const_metadata
 
-    def _process(self, data):
+    def process(self, data):
         result = self.filter_pkg.convolve1d(data, self.taps, axis=-1,
                                             mode='constant')
         return result
@@ -343,13 +456,13 @@ class QuadratureDemodulation(Operation):
         self.mod_factor = None
         self.xp = num_pkg
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
     def _is_prepared(self):
         return self.mod_factor is not None
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         xp = self.xp
         fs = const_metadata.data_description.sampling_frequency
         fc = const_metadata.context.sequence.pulse.center_frequency
@@ -362,7 +475,7 @@ class QuadratureDemodulation(Operation):
         self.mod_factor = self.mod_factor.astype(xp.complex64)
         return const_metadata.copy(is_iq_data=True, dtype="complex64")
 
-    def _process(self, data):
+    def process(self, data):
         return self.mod_factor * data
 
 
@@ -389,11 +502,11 @@ class Decimation(Operation):
         elif self.impl == "fir":
             self._decimate = self._fir_decimate
 
-    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg # not used by the GPU implementation (custom kernel for complex input data)
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         new_fs = (const_metadata.data_description.sampling_frequency
                   / self.decimation_factor)
         new_signal_description = arrus.metadata.EchoDataDescription(
@@ -449,7 +562,7 @@ class Decimation(Operation):
         return const_metadata.copy(data_desc=new_signal_description,
                                    input_shape=output_shape)
 
-    def _process(self, data):
+    def process(self, data):
         return self._decimate(data)
 
     def _fir_decimate(self, data):
@@ -483,7 +596,7 @@ class RxBeamforming(Operation):
         self.xp = num_pkg
         self.interp1d_func = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
         if self.xp is np:
             import scipy.interpolate
@@ -507,7 +620,7 @@ class RxBeamforming(Operation):
             import arrus.utils.interpolate
             self.interp1d_func = arrus.utils.interpolate.interp1d
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         # TODO verify that all angles, focal points are the same
         # TODO make sure start_sample is computed appropriately
         context = const_metadata.context
@@ -614,7 +727,7 @@ class RxBeamforming(Operation):
         # Create new output shape
         return const_metadata.copy(input_shape=(self.n_tx, self.n_samples))
 
-    def _process(self, data):
+    def process(self, data):
         data = data.copy().reshape(self.n_tx, self.n_rx * self.n_samples)
 
         self.interp1d_func(data, self.delays, self.buffer)
@@ -636,17 +749,17 @@ class EnvelopeDetection(Operation):
     def __init__(self, num_pkg=None):
         self.xp = num_pkg
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
 
         n_samples = const_metadata.input_shape[-1]
         if n_samples == 0:
             raise ValueError("Empty array is not accepted.")
         return const_metadata.copy(is_iq_data=False, dtype="float32")
 
-    def _process(self, data):
+    def process(self, data):
         if data.dtype != self.xp.complex64:
             raise ValueError(
                 f"Data type {data.dtype} is currently not supported.")
@@ -665,16 +778,16 @@ class Transpose(Operation):
         self.axes = axes
         self.xp = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         input_shape = const_metadata.input_shape
         axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
         output_shape = tuple(input_shape[ax] for ax in axes)
         return const_metadata.copy(input_shape=output_shape)
 
-    def _process(self, data):
+    def process(self, data):
         return self.xp.transpose(data, self.axes)
 
 
@@ -704,13 +817,13 @@ class ScanConversion(Operation):
         self.is_gpu = False
         self.num_pkg = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         if num_pkg != np:
             self.is_gpu = True
         # Ignoring provided num. package - currently CPU implementation is
         # available only.
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
         if probe.is_convex_array():
             self._process = self._process_convex
@@ -831,18 +944,18 @@ class LogCompression(Operation):
         self.num_pkg = None
         self.is_gpu = False
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.num_pkg = num_pkg
         if self.num_pkg != np:
             self.is_gpu = True
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         n_samples = const_metadata.input_shape[-1]
         if n_samples == 0:
             raise ValueError("Empty array is not accepted.")
         return const_metadata
 
-    def _process(self, data):
+    def process(self, data):
         data[data <= 0] = 1e-9
         return 20*self.num_pkg.log10(data)
 
@@ -863,13 +976,13 @@ class DynamicRangeAdjustment(Operation):
         self.max = max
         self.xp = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
-    def _process(self, data):
+    def process(self, data):
         return self.xp.clip(data, a_min=self.min, a_max=self.max)
 
 
@@ -881,13 +994,13 @@ class ToGrayscaleImg(Operation):
     def __init__(self):
         self.xp = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
-    def _process(self, data):
+    def process(self, data):
         data = data - self.xp.min(data)
         data = data/self.xp.max(data)*255
         return data.astype(self.xp.uint8)
@@ -921,17 +1034,17 @@ class Enqueue(Operation):
                 self._process = self._put_non_block
         self._copy_func = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         if num_pkg == np:
             self._copy_func = np.copy
         else:
             import cupy as cp
             self._copy_func = cp.asnumpy
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         return const_metadata
 
-    def _initialize(self, data):
+    def __initialize(self, data):
         # data.get()
         return data
 
@@ -964,10 +1077,10 @@ class SelectFrames(Operation):
         """
         self.frames = frames
 
-    def set_pkgs(self, **kwargs):
+    def __set_pkgs(self, **kwargs):
         pass
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         input_shape = const_metadata.input_shape
         context = const_metadata.context
         seq = context.sequence
@@ -994,7 +1107,7 @@ class SelectFrames(Operation):
         else:
             return const_metadata.copy(input_shape=output_shape)
 
-    def _process(self, data):
+    def process(self, data):
         return data[self.frames]
 
 
@@ -1005,14 +1118,14 @@ class Squeeze(Operation):
     def __init__(self):
         pass
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         output_shape = tuple(i for i in const_metadata.input_shape if i != 1)
         return const_metadata.copy(input_shape=output_shape)
 
-    def _process(self, data):
+    def process(self, data):
         return self.xp.squeeze(data)
 
 
@@ -1033,7 +1146,7 @@ class RxBeamformingImg(Operation):
         self.xp = num_pkg
         self.interp1d_func = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
         if self.xp is np:
             import scipy.interpolate
@@ -1055,7 +1168,7 @@ class RxBeamformingImg(Operation):
             import arrus.utils.interpolate
             self.interp1d_func = arrus.utils.interpolate.interp1d
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe_model = const_metadata.context.device.probe.model
 
         if probe_model.is_convex_array():
@@ -1170,7 +1283,7 @@ class RxBeamformingImg(Operation):
         return const_metadata.copy(input_shape=(len(self.x_grid),
                                                 len(self.z_grid)))
 
-    def _process(self, data):
+    def process(self, data):
         data = data.copy().reshape(self.n_tx, self.n_rx*self.n_samples)
         for i in range(self.n_tx):
             self.interp1d_func(data[i:(i+1)], self.samples[i:(i+1)].flatten(),
@@ -1200,12 +1313,12 @@ class ReconstructLri(Operation):
         self.num_pkg = cp
         self.rx_tang_limits = rx_tang_limits # Currently used only by Convex PWI implementation
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         if num_pkg is np:
             raise ValueError("Currently reconstructLri operation is "
                              "implemented for GPU only.")
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         from pathlib import Path
         import os
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
@@ -1294,7 +1407,7 @@ class ReconstructLri(Operation):
         # TODO STA
         return const_metadata.copy(input_shape=output_shape)
 
-    def _process(self, data):
+    def process(self, data):
         data = self.num_pkg.ascontiguousarray(data)
         params = (
             self.output_buffer,
@@ -1325,16 +1438,16 @@ class Sum(Operation):
         self.axis = axis
         self.num_pkg = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.num_pkg = num_pkg
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         output_shape = list(const_metadata.input_shape)
         actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
         return const_metadata.copy(input_shape=tuple(output_shape))
 
-    def _process(self, data):
+    def process(self, data):
         return self.num_pkg.sum(data, axis=self.axis)
 
 
@@ -1349,16 +1462,16 @@ class Mean(Operation):
         self.axis = axis
         self.num_pkg = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
+    def __set_pkgs(self, num_pkg, **kwargs):
         self.num_pkg = num_pkg
 
-    def _prepare(self, const_metadata):
+    def prepare(self, const_metadata):
         output_shape = list(const_metadata.input_shape)
         actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
         return const_metadata.copy(input_shape=tuple(output_shape))
 
-    def _process(self, data):
+    def process(self, data):
         return self.num_pkg.mean(data, axis=self.axis)
 
 

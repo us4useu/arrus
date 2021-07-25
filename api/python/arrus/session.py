@@ -132,7 +132,7 @@ class Session(AbstractSession):
                 raise ValueError("Currently only arrus.utils.imaging.Pipeline "
                                  "processing is supported only.")
             processing.register_host_buffer(buffer)
-            const_metadata = processing.initialize(const_metadata)
+            const_metadata = processing.prepare(const_metadata)
 
             self._current_processing = processing
 
@@ -140,7 +140,7 @@ class Session(AbstractSession):
                 processing(element.data)
 
             buffer.append_on_new_data_callback(processing_callback)
-
+        # TODO return multiple buffers for output data from all
         return buffer, const_metadata
 
     def __enter__(self):
