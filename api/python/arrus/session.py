@@ -3,6 +3,7 @@ import numpy as np
 import importlib
 import importlib.util
 import dataclasses
+from collections import deque
 
 import arrus.core
 import arrus.exceptions
@@ -16,6 +17,7 @@ import arrus.ops.us4r
 import arrus.ops.imaging
 import arrus.kernels.kernel
 import arrus.utils
+import arrus.utils.imaging
 import arrus.framework
 import time
 
@@ -131,16 +133,38 @@ class Session(AbstractSession):
             if not isinstance(processing, _imaging.Pipeline):
                 raise ValueError("Currently only arrus.utils.imaging.Pipeline "
                                  "processing is supported only.")
-            processing.register_host_buffer(buffer)
-            const_metadata = processing.prepare(const_metadata)
+            import cupy as cp
 
-            self._current_processing = processing
+            out_metadata = processing.prepare(const_metadata)
+            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
+                                     shape=const_metadata.input_shape,
+                                     dtype=const_metadata.dtype,
+                                     math_pkg=cp,
+                                     type="locked")
+            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=4,
+                                      shape=m.input_shape,
+                                      dtype=m.dtype, math_pkg=np,
+                                      type="locked")
+                               for m in out_metadata]
+            user_out_buffers = [deque() for _ in self.out_buffer]
+            callbacks = []
+            for user_buffer in user_out_buffers:
+                def buffer_callback(element):
+                    user_buffer.append(element.data.copy())
+                    element.release()
+                callbacks.append(buffer_callback)
 
-            def processing_callback(element):
-                processing(element.data)
-
-            buffer.append_on_new_data_callback(processing_callback)
-        # TODO return multiple buffers for output data from all
+            pipeline_wrapper = arrus.utils.imaging.PipelineWrapper(
+                buffer, self.gpu_buffer, self.out_buffer, processing,
+                callbacks)
+            self._current_processing = pipeline_wrapper
+            buffer.append_on_new_data_callback(pipeline_wrapper.process)
+            if len(out_metadata) == 1:
+                buffer = user_out_buffers[0]
+                const_metadata = out_metadata[0]
+            else:
+                buffer = user_out_buffers
+                const_metadata = out_metadata
         return buffer, const_metadata
 
     def __enter__(self):

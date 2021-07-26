@@ -1,6 +1,7 @@
 import time
 import unittest
 from collections import deque, namedtuple
+from collections.abc import Iterable
 import numpy as np
 import cupy as cp
 

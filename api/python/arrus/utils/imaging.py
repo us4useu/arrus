@@ -103,6 +103,8 @@ class PipelineRunner:
         self.pipeline = pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
+        if not isinstance(callbacks, Iterable):
+            callbacks = [callbacks]
         self.callbacks = callbacks
         self._process_lock = threading.Lock()
         self.cp = cp
@@ -227,10 +229,6 @@ class Pipeline:
         self.__initialize(const_metadata)
         if not isinstance(self.steps[-1], Pipeline):
             metadatas.append(const_metadata)
-        if len(metadatas) == 1:
-            metadatas = metadatas[0]
-        else:
-            metadatas = tuple(metadatas)
         return metadatas
 
     def set_placement(self, device):
