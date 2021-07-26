@@ -100,36 +100,41 @@ class PipelineRunner:
         self.pipeline = pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
+        self.cp = cp
         self._gpu_i = 0
         self._out_i = 0
         self.output_callback_func = output_callback_func
+        self.i = 0
+        self._process_lock = threading.Lock()
 
     def process(self, input_element):
-        """
-        NOTE: currently this function is NOT thread-safe.
-
-        Returns an event that the new data has arrived.
-        """
         gpu_element = self.gpu_buffer.acquire(self._gpu_i)
-        gpu_array = gpu_element.data
-        self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
-        gpu_array.set(input_element.data, stream=self.data_stream)
-        self.data_stream.launch_host_func(self.__release, input_element)
-        gpu_data_ready_event = self.data_stream.record()
-        self.processing_stream.wait_event(gpu_data_ready_event)
-        out_element = self.out_buffer.elements[self._out_i]
-        self._out_i = (self._out_i + 1) % self.out_buffer.n_elements
-        with self.processing_stream:
-            result = self.pipeline(gpu_array)
-            result.get(self.processing_stream, out=out_element.data)
-        self.processing_stream.launch_host_func(self.__release, gpu_element)
-        self.processing_stream.launch_host_func(self.output_callback_func,
-                                                out_element)
+        with self._process_lock:
+            gpu_array = gpu_element.data
+            self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
+            gpu_array.set(input_element.data, stream=self.data_stream)
+            self.data_stream.launch_host_func(self.__release, input_element)
+            gpu_data_ready_event = self.data_stream.record()
+            self.processing_stream.wait_event(gpu_data_ready_event)
+            out_element = self.out_buffer.elements[self._out_i]
+            self._out_i = (self._out_i + 1) % self.out_buffer.n_elements
+            with self.processing_stream:
+                result = self.pipeline(gpu_array)
+                self.processing_stream.launch_host_func(
+                    lambda element: element.acquire(), out_element)
+                result.get(self.processing_stream, out=out_element.data)
+            self.processing_stream.launch_host_func(self.__release, gpu_element)
+            self.processing_stream.launch_host_func(self.output_callback_func, (out_element, self.i))
+            self.i += 1
 
     def stop(self):
         # cleanup
         self.__unregister_buffer(self.input_buffer)
         self.__unregister_buffer(self.out_buffer)
+
+    def sync(self):
+        self.data_stream.synchronize()
+        self.processing_stream.synchronize()
 
     def __release(self, element):
         element.release()

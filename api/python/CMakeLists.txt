@@ -100,6 +100,7 @@ set(SOURCE_FILES
         arrus/utils/gui.py
         )
 set(TEST_FILES
+    arrus/utils/tests/pipeline_test.py
     arrus/kernels/tests/imaging_test.py)
 
 
