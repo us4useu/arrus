@@ -1,12 +1,14 @@
 import time
 import unittest
+from collections import deque, namedtuple
 import numpy as np
 import cupy as cp
 
 from arrus.utils.imaging import (
-    Buffer, BufferElement, PipelineRunner
+    Buffer, BufferElement, PipelineRunner, Pipeline, Lambda
 )
 
+MetadataMock = namedtuple("MetadataMock", ["input_shape", "dtype"])
 
 class PipelineRunnerTestCase(unittest.TestCase):
     """
@@ -29,7 +31,8 @@ class PipelineRunnerTestCase(unittest.TestCase):
 
     def __create_runner(self, data_shape,
                         in_buffer_size=2, gpu_buffer_size=2, out_buffer_size=2,
-                        pipeline=None, output_callback_function=None,
+                        n_out_buffers=1,
+                        pipeline=None, callbacks=None,
                         buffer_type="locked"):
         self.data_shape = data_shape
         self.dtype = np.int32
@@ -41,17 +44,18 @@ class PipelineRunnerTestCase(unittest.TestCase):
                                  shape=data_shape,
                                  dtype=self.dtype, math_pkg=cp,
                                  type=buffer_type)
-        self.out_buffer = Buffer(n_elements=out_buffer_size,
+        self.out_buffer = [Buffer(n_elements=out_buffer_size,
                                  shape=data_shape,
                                  dtype=self.dtype, math_pkg=np,
                                  type=buffer_type)
+                           for _ in range(n_out_buffers)]
 
         for i, element in enumerate(self.in_buffer.elements):
             element.data = np.zeros(data_shape, dtype=self.dtype)
 
         self.runner = PipelineRunner(
             self.in_buffer, self.gpu_buffer, self.out_buffer, pipeline,
-            output_callback_function)
+            callbacks)
         return self.runner
 
     def __run_increment_sync(self, buffer, n_runs):
@@ -84,10 +88,9 @@ class PipelineRunnerTestCase(unittest.TestCase):
         def compute_heavy_on_aux_data(data):
             res = aux_data*cp.int32(2)
             # And do the regular stuff on on the input data
-            return data + 1
+            return (data + 1, )
 
-        def copy_result(element_i):
-            element, i = element_i
+        def copy_result(element):
             result_arrays.append(element.data.copy())
             element.release()
 
@@ -95,22 +98,13 @@ class PipelineRunnerTestCase(unittest.TestCase):
         runner = self.__create_runner(
             data_shape=data_shape,
             pipeline=compute_heavy_on_aux_data,
-            output_callback_function=copy_result)
+            callbacks=copy_result)
         # Run
         n_runs = 10000
         self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
         # Verify THE result arrays are as expected.
         self.__verify_increment(n_runs=n_runs, buffer_size=buffer_size,
                                 result_arrays=result_arrays)
-
-    # def test_in_producer_faster_than_consumer_lock_based_multiple_times(self):
-    #     for i in range(30):
-    #         print(f"i: {i}")
-    #         self.setUp()
-    #         self.test_in_producer_faster_than_consumer_lock_based()
-    #         self.runner.sync()
-    #         self.tearDown()
-    #         time.sleep(3)
 
     def test_in_producer_faster_than_consumer_async(self):
         # The sized are reversed - we are doing some calculations on a small
@@ -120,27 +114,74 @@ class PipelineRunnerTestCase(unittest.TestCase):
         aux_data = cp.arange(0, aux_data_size*aux_data_size)
         aux_data = aux_data.reshape((aux_data_size, aux_data_size))
 
-        data_shape = (100, 100)
+        data_shape = (1000, 1000)
         result_arrays = []
 
         def compute_lightly_on_aux_data(data):
             res = aux_data + 1
-            return data # No computation on input data.
+            return (data, )  # No computation on input data.
 
         def copy_result(element):
             result_arrays.append(element.data.copy())
             element.release()
 
-        buffer_size = 2
         runner = self.__create_runner(
             data_shape=data_shape,
             pipeline=compute_lightly_on_aux_data,
-            output_callback_function=copy_result,
+            callbacks=copy_result,
             buffer_type="async")
         # Run
         n_runs = 20
         with self.assertRaisesRegex(ValueError, "override") as ctx:
             self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
+
+    def test_multi_output_pipeline(self):
+        data_shape = (1000, 1000)
+        results_1 = deque()
+        results_2 = deque()
+        pipeline = Pipeline(
+            steps=(
+                Lambda(lambda data: data+1),
+                Pipeline(
+                    steps=(
+                        Lambda(lambda data: data+1),
+                    ),
+                    placement="GPU:0"
+                ),
+                Lambda(lambda data: data)  # Identity function to bypass results
+            ),
+            placement="GPU:0"
+        )
+        pipeline.prepare(MetadataMock(input_shape=data_shape, dtype=cp.int32))
+
+        def copy_result_1(element):
+            results_1.append(element.data.copy())
+            element.release()
+
+        def copy_result_2(element):
+            results_2.append(element.data.copy())
+            element.release()
+
+        buffer_size = 2
+        runner = self.__create_runner(
+            data_shape=data_shape,
+            pipeline=pipeline,
+            n_out_buffers=2,
+            callbacks=(copy_result_1, copy_result_2))
+        # Run
+        n_runs = 500
+        self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
+        # Verify result 1
+        exp_value = 2
+        for array in results_1:
+            expected_array = np.zeros(data_shape, dtype=self.dtype) + exp_value
+            np.testing.assert_equal(expected_array, array)
+            exp_value += 1
+        exp_value = 1
+        for array in results_2:
+            expected_array = np.zeros(data_shape, dtype=self.dtype) + exp_value
+            np.testing.assert_equal(expected_array, array)
+            exp_value += 1
 
 
 if __name__ == "__main__":

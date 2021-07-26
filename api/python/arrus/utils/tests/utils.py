@@ -113,7 +113,7 @@ class ArrusImagingTestCase(ArrusTestCase):
         import cupy as cp
         import cupyx.scipy.ndimage as cupy_scipy_ndimage
         pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
-        op_instance.__set_pkgs(**pkgs)
+        op_instance.set_pkgs(**pkgs)
         data = cp.asarray(data)
 
         # Prepare and initialize (context)
@@ -131,7 +131,7 @@ class ArrusImagingTestCase(ArrusTestCase):
         )
         op_instance.prepare(const_metadata=const_metadata)
         init_data = cp.zeros(data.shape, dtype=data.dtype) + 1000
-        op_instance.__initialize(init_data)
+        op_instance.initialize(init_data)
         # Now run the op for the given data:
         op_result = op_instance(data)
         if isinstance(op_result, cp.ndarray):

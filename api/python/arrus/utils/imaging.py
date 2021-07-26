@@ -11,6 +11,8 @@ import arrus.kernels.imaging
 import queue
 import dataclasses
 import threading
+from collections import deque
+from collections.abc import Iterable
 
 
 class BufferElement:
@@ -88,24 +90,25 @@ class PipelineRunner:
     output buffer should be located on GPU.
     """
 
-    def __init__(self, input_buffer, gpu_buffer, output_buffer, pipeline,
-                 output_callback_func):
+    def __init__(self, input_buffer, gpu_buffer, output_buffers, pipeline,
+                 callbacks):
         import cupy as cp
         self.input_buffer = self.__register_buffer(input_buffer)
         self.gpu_buffer = gpu_buffer
-        # TODO call pipeline.prepare and get list of output metadatas
         # for each output metadata create output buffer
         # pipeline should return a list of output data arrays
-        self.out_buffer = self.__register_buffer(output_buffer)
+        self.out_buffers = self.__register_buffer(output_buffers)
+        if not isinstance(self.out_buffers, Iterable):
+            self.out_buffers = (self.out_buffers, )
         self.pipeline = pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
+        self.callbacks = callbacks
+        self._process_lock = threading.Lock()
         self.cp = cp
         self._gpu_i = 0
-        self._out_i = 0
-        self.output_callback_func = output_callback_func
+        self._out_i = [0]*len(self.out_buffers)
         self.i = 0
-        self._process_lock = threading.Lock()
 
     def process(self, input_element):
         gpu_element = self.gpu_buffer.acquire(self._gpu_i)
@@ -114,23 +117,28 @@ class PipelineRunner:
             self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
             gpu_array.set(input_element.data, stream=self.data_stream)
             self.data_stream.launch_host_func(self.__release, input_element)
+
             gpu_data_ready_event = self.data_stream.record()
+
             self.processing_stream.wait_event(gpu_data_ready_event)
-            out_element = self.out_buffer.elements[self._out_i]
-            self._out_i = (self._out_i + 1) % self.out_buffer.n_elements
             with self.processing_stream:
-                result = self.pipeline(gpu_array)
-                self.processing_stream.launch_host_func(
-                    lambda element: element.acquire(), out_element)
-                result.get(self.processing_stream, out=out_element.data)
+                results = self.pipeline(gpu_array)
+                # Write each result gpu array to given output array
+                for i, (result, out_buffer, callback) in enumerate(zip(results, self.out_buffers, self.callbacks)):
+                    out_i = self._out_i[i]
+                    out_element = out_buffer.elements[out_i]
+                    self._out_i[i] = (out_i+1) % out_buffer.n_elements
+                    self.processing_stream.launch_host_func(
+                        lambda element: element.acquire(), out_element)
+                    # TODO consider using a separate stream
+                    result.get(self.processing_stream, out=out_element.data)
+                    self.processing_stream.launch_host_func(callback, out_element)
             self.processing_stream.launch_host_func(self.__release, gpu_element)
-            self.processing_stream.launch_host_func(self.output_callback_func, (out_element, self.i))
-            self.i += 1
 
     def stop(self):
         # cleanup
         self.__unregister_buffer(self.input_buffer)
-        self.__unregister_buffer(self.out_buffer)
+        self.__unregister_buffer(self.out_buffers)
 
     def sync(self):
         self.data_stream.synchronize()
@@ -139,16 +147,25 @@ class PipelineRunner:
     def __release(self, element):
         element.release()
 
-    def __register_buffer(self, buffer):
+    def __register_buffer(self, buffers):
         import cupy as cp
-        for element in buffer.elements:
-            cp.cuda.runtime.hostRegister(element.data.ctypes.data, element.size, 1)
-        return buffer
+        if not isinstance(buffers, Iterable):
+            buffers = (buffers, )
+        for buffer in buffers:
+            for element in buffer.elements:
+                cp.cuda.runtime.hostRegister(element.data.ctypes.data,
+                                             element.size, 1)
+        if len(buffers) == 1:
+            buffers = next(iter(buffers))
+        return buffers
 
-    def __unregister_buffer(self, buffer):
+    def __unregister_buffer(self, buffers):
         import cupy as cp
-        for element in buffer.elements:
-            cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
+        if not isinstance(buffers, Iterable):
+            buffers = (buffers, )
+        for buffer in buffers:
+            for element in buffer.elements:
+                cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
 
 
 class Pipeline:
@@ -167,12 +184,19 @@ class Pipeline:
             self.set_placement(placement)
 
     def __call__(self, data):
-        self.process(data)
+        return self.process(data)
 
     def process(self, data):
+        outputs = deque()  # TODO avoid creating deque on each processing step
         for step in self.steps:
-            data = step.process(data)
-        return data
+            if step.endpoint:
+                step_outputs = step.process(data)
+                for output in step_outputs:
+                    outputs.append(output)
+            else:
+                data = step.process(data)
+        outputs.append(data)
+        return outputs
 
     def __initialize(self, const_metadata):
         input_shape = const_metadata.input_shape
@@ -181,15 +205,33 @@ class Pipeline:
             input_shape, dtype=input_dtype)+1000
         data = self._input_buffer
         for step in self.steps:
-            data = step.__initialize(data)
+            if not isinstance(step, Pipeline):
+                data = step.initialize(data)
 
     def prepare(self, const_metadata):
-        output_const_metadata = const_metadata
+        metadatas = deque()
+        current_metadata = const_metadata
         for step in self.steps:
-            output_const_metadata = step.prepare(output_const_metadata)
+            if isinstance(step, Pipeline):
+                child_metadatas = step.prepare(current_metadata)
+                if not isinstance(child_metadatas, Iterable):
+                    child_metadatas = (child_metadatas, )
+                for metadata in child_metadatas:
+                    metadatas.append(metadata)
+                current_metadata = metadatas[-1]
+                step.endpoint = True
+            else:
+                current_metadata = step.prepare(current_metadata)
+                step.endpoint = False
         # Force cupy to recompile kernels before running the pipeline.
         self.__initialize(const_metadata)
-        return output_const_metadata
+        if not isinstance(self.steps[-1], Pipeline):
+            metadatas.append(const_metadata)
+        if len(metadatas) == 1:
+            metadatas = metadatas[0]
+        else:
+            metadatas = tuple(metadatas)
+        return metadatas
 
     def set_placement(self, device):
         """
@@ -198,13 +240,20 @@ class Pipeline:
         :param device: device on which the pipeline should be executed
         """
         device_type = None
+        device_ordinal = 0
         if isinstance(device, str):
             # Device id
-            device_type = arrus.devices.device.get_device_type_str(device)
+            device_type, device_ordinal = arrus.devices.device.split_device_id_str(device)
         elif isinstance(device, arrus.devices.device.DeviceId):
             device_type = device.device_type.type
+            device_ordinal = device.ordinal
         elif isinstance(device, arrus.devices.device.Device):
             device_type = device.get_device_id().device_type.type
+            device_ordinal = device.get_device_id().ordinal
+
+        if device_ordinal != 0:
+            raise ValueError("Currently only GPU (or CPU) :0 are supported.")
+
         self._placement = device_type
         # Initialize steps with a proper library.
         if self._placement == "GPU":
@@ -212,19 +261,21 @@ class Pipeline:
             import cupyx.scipy.ndimage as cupy_scipy_ndimage
             pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
             self._processing_stream = cp.cuda.Stream()
-            self._is_gpu = True
         elif self._placement == "CPU":
             import scipy.ndimage
             pkgs = dict(num_pkg=np, filter_pkg=scipy.ndimage)
-            self._is_gpu = False
         else:
             raise ValueError(f"Unsupported device: {device}")
         for step in self.steps:
-            step.__set_pkgs(**pkgs)
+            if isinstance(step, Pipeline):
+                # Make sure the child pipeline has the same placement as parent
+                if step._placement != self._placement:
+                    raise ValueError("All pipelines should be placed on the "
+                                     "same processing device (e.g. GPU:0)")
+            else:
+                step.set_pkgs(**pkgs)
         self.num_pkg = pkgs['num_pkg']
         self.filter_pkg = pkgs['filter_pkg']
-
-
 
 
 class Operation:
@@ -255,7 +306,7 @@ class Operation:
     def __call__(self, *args, **kwargs):
         return self.process(*args, **kwargs)
 
-    def __initialize(self, data):
+    def initialize(self, data):
         """
         Initialization function.
 
@@ -267,7 +318,7 @@ class Operation:
         """
         return self.process(data)
 
-    def __set_pkgs(self, **kwargs):
+    def set_pkgs(self, **kwargs):
         """
         Provides to possibility to gather python packages for numerical
         processing and filtering.
@@ -295,11 +346,11 @@ class Lambda(Operation):
         self.func = function
         pass
 
-    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def __initialize(self, data):
+    def initialize(self, data):
         return data
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
@@ -339,7 +390,7 @@ class BandpassFilter(Operation):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
@@ -376,7 +427,7 @@ class FirFilter(Operation):
         self.convolve1d_func = None
         self.dumped = 0
 
-    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
@@ -439,7 +490,7 @@ class Filter(Operation):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
-    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
 
@@ -461,7 +512,7 @@ class QuadratureDemodulation(Operation):
         self.mod_factor = None
         self.xp = num_pkg
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
     def _is_prepared(self):
@@ -507,7 +558,7 @@ class Decimation(Operation):
         elif self.impl == "fir":
             self._decimate = self._fir_decimate
 
-    def __set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
         self.filter_pkg = filter_pkg # not used by the GPU implementation (custom kernel for complex input data)
 
@@ -601,7 +652,7 @@ class RxBeamforming(Operation):
         self.xp = num_pkg
         self.interp1d_func = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
         if self.xp is np:
             import scipy.interpolate
@@ -754,7 +805,7 @@ class EnvelopeDetection(Operation):
     def __init__(self, num_pkg=None):
         self.xp = num_pkg
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
@@ -783,7 +834,7 @@ class Transpose(Operation):
         self.axes = axes
         self.xp = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
     def prepare(self, const_metadata):
@@ -822,7 +873,7 @@ class ScanConversion(Operation):
         self.is_gpu = False
         self.num_pkg = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg != np:
             self.is_gpu = True
         # Ignoring provided num. package - currently CPU implementation is
@@ -949,7 +1000,7 @@ class LogCompression(Operation):
         self.num_pkg = None
         self.is_gpu = False
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.num_pkg = num_pkg
         if self.num_pkg != np:
             self.is_gpu = True
@@ -981,7 +1032,7 @@ class DynamicRangeAdjustment(Operation):
         self.max = max
         self.xp = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
@@ -999,7 +1050,7 @@ class ToGrayscaleImg(Operation):
     def __init__(self):
         self.xp = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
@@ -1039,7 +1090,7 @@ class Enqueue(Operation):
                 self._process = self._put_non_block
         self._copy_func = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg == np:
             self._copy_func = np.copy
         else:
@@ -1049,7 +1100,7 @@ class Enqueue(Operation):
     def prepare(self, const_metadata):
         return const_metadata
 
-    def __initialize(self, data):
+    def initialize(self, data):
         # data.get()
         return data
 
@@ -1082,7 +1133,7 @@ class SelectFrames(Operation):
         """
         self.frames = frames
 
-    def __set_pkgs(self, **kwargs):
+    def set_pkgs(self, **kwargs):
         pass
 
     def prepare(self, const_metadata):
@@ -1123,7 +1174,7 @@ class Squeeze(Operation):
     def __init__(self):
         pass
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
     def prepare(self, const_metadata):
@@ -1151,7 +1202,7 @@ class RxBeamformingImg(Operation):
         self.xp = num_pkg
         self.interp1d_func = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
         if self.xp is np:
             import scipy.interpolate
@@ -1318,7 +1369,7 @@ class ReconstructLri(Operation):
         self.num_pkg = cp
         self.rx_tang_limits = rx_tang_limits # Currently used only by Convex PWI implementation
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg is np:
             raise ValueError("Currently reconstructLri operation is "
                              "implemented for GPU only.")
@@ -1441,7 +1492,7 @@ class Sum(Operation):
         self.axis = axis
         self.num_pkg = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.num_pkg = num_pkg
 
     def prepare(self, const_metadata):
@@ -1465,7 +1516,7 @@ class Mean(Operation):
         self.axis = axis
         self.num_pkg = None
 
-    def __set_pkgs(self, num_pkg, **kwargs):
+    def set_pkgs(self, num_pkg, **kwargs):
         self.num_pkg = num_pkg
 
     def prepare(self, const_metadata):
