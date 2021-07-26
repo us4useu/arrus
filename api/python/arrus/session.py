@@ -1,4 +1,6 @@
 import abc
+import queue
+
 import numpy as np
 import importlib
 import importlib.util
@@ -146,25 +148,26 @@ class Session(AbstractSession):
                                       dtype=m.dtype, math_pkg=np,
                                       type="locked")
                                for m in out_metadata]
-            user_out_buffers = [deque() for _ in self.out_buffer]
-            callbacks = []
-            for user_buffer in user_out_buffers:
-                def buffer_callback(element):
-                    user_buffer.append(element.data.copy())
+            user_out_buffer = queue.Queue(maxsize=10)
+
+            def buffer_callback(elements):
+                user_elements = [None]*len(elements)
+                for i, element in enumerate(elements):
+                    user_elements[i] = element.data.copy()
                     element.release()
-                callbacks.append(buffer_callback)
 
             pipeline_wrapper = arrus.utils.imaging.PipelineWrapper(
                 buffer, self.gpu_buffer, self.out_buffer, processing,
-                callbacks)
+                buffer_callback)
             self._current_processing = pipeline_wrapper
             buffer.append_on_new_data_callback(pipeline_wrapper.process)
+
+            buffer = user_out_buffer
             if len(out_metadata) == 1:
-                buffer = user_out_buffers[0]
                 const_metadata = out_metadata[0]
             else:
-                buffer = user_out_buffers
                 const_metadata = out_metadata
+
         return buffer, const_metadata
 
     def __enter__(self):

@@ -91,7 +91,7 @@ class PipelineRunner:
     """
 
     def __init__(self, input_buffer, gpu_buffer, output_buffers, pipeline,
-                 callbacks):
+                 callback):
         import cupy as cp
         self.input_buffer = self.__register_buffer(input_buffer)
         self.gpu_buffer = gpu_buffer
@@ -103,9 +103,7 @@ class PipelineRunner:
         self.pipeline = pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
-        if not isinstance(callbacks, Iterable):
-            callbacks = [callbacks]
-        self.callbacks = callbacks
+        self.callback = callback
         self._process_lock = threading.Lock()
         self.cp = cp
         self._gpu_i = 0
@@ -123,18 +121,19 @@ class PipelineRunner:
             gpu_data_ready_event = self.data_stream.record()
 
             self.processing_stream.wait_event(gpu_data_ready_event)
+            out_elements = []
             with self.processing_stream:
                 results = self.pipeline(gpu_array)
                 # Write each result gpu array to given output array
-                for i, (result, out_buffer, callback) in enumerate(zip(results, self.out_buffers, self.callbacks)):
+                for i, (result, out_buffer) in enumerate(zip(results, self.out_buffers)):
                     out_i = self._out_i[i]
                     out_element = out_buffer.elements[out_i]
                     self._out_i[i] = (out_i+1) % out_buffer.n_elements
                     self.processing_stream.launch_host_func(
                         lambda element: element.acquire(), out_element)
-                    # TODO consider using a separate stream
                     result.get(self.processing_stream, out=out_element.data)
-                    self.processing_stream.launch_host_func(callback, out_element)
+                    out_elements.append(out_element)
+            self.processing_stream.launch_host_func(self.callback, out_elements)
             self.processing_stream.launch_host_func(self.__release, gpu_element)
 
     def stop(self):

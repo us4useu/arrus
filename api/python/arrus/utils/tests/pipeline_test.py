@@ -33,7 +33,7 @@ class PipelineRunnerTestCase(unittest.TestCase):
     def __create_runner(self, data_shape,
                         in_buffer_size=2, gpu_buffer_size=2, out_buffer_size=2,
                         n_out_buffers=1,
-                        pipeline=None, callbacks=None,
+                        pipeline=None, callback=None,
                         buffer_type="locked"):
         self.data_shape = data_shape
         self.dtype = np.int32
@@ -56,7 +56,7 @@ class PipelineRunnerTestCase(unittest.TestCase):
 
         self.runner = PipelineRunner(
             self.in_buffer, self.gpu_buffer, self.out_buffer, pipeline,
-            callbacks)
+            callback)
         return self.runner
 
     def __run_increment_sync(self, buffer, n_runs):
@@ -91,15 +91,15 @@ class PipelineRunnerTestCase(unittest.TestCase):
             # And do the regular stuff on on the input data
             return (data + 1, )
 
-        def copy_result(element):
-            result_arrays.append(element.data.copy())
-            element.release()
+        def callback(elements):
+            result_arrays.append(elements[0].data.copy())
+            elements[0].release()
 
         buffer_size = 2
         runner = self.__create_runner(
             data_shape=data_shape,
             pipeline=compute_heavy_on_aux_data,
-            callbacks=copy_result)
+            callback=callback)
         # Run
         n_runs = 10000
         self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
@@ -122,14 +122,14 @@ class PipelineRunnerTestCase(unittest.TestCase):
             res = aux_data + 1
             return (data, )  # No computation on input data.
 
-        def copy_result(element):
-            result_arrays.append(element.data.copy())
-            element.release()
+        def copy_result(elements):
+            result_arrays.append(elements[0].data.copy())
+            elements[0].release()
 
         runner = self.__create_runner(
             data_shape=data_shape,
             pipeline=compute_lightly_on_aux_data,
-            callbacks=copy_result,
+            callback=copy_result,
             buffer_type="async")
         # Run
         n_runs = 20
@@ -138,8 +138,7 @@ class PipelineRunnerTestCase(unittest.TestCase):
 
     def test_multi_output_pipeline(self):
         data_shape = (1000, 1000)
-        results_1 = deque()
-        results_2 = deque()
+        results = deque()
         pipeline = Pipeline(
             steps=(
                 Lambda(lambda data: data+1),
@@ -155,34 +154,30 @@ class PipelineRunnerTestCase(unittest.TestCase):
         )
         pipeline.prepare(MetadataMock(input_shape=data_shape, dtype=cp.int32))
 
-        def copy_result_1(element):
-            results_1.append(element.data.copy())
-            element.release()
-
-        def copy_result_2(element):
-            results_2.append(element.data.copy())
-            element.release()
+        def copy_results(elements):
+            copies = []
+            for element in elements:
+                copies.append(element.data.copy())
+                element.release()
+            results.append(copies)
 
         buffer_size = 2
         runner = self.__create_runner(
             data_shape=data_shape,
             pipeline=pipeline,
             n_out_buffers=2,
-            callbacks=(copy_result_1, copy_result_2))
+            callback=copy_results)
         # Run
         n_runs = 500
         self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
         # Verify result 1
-        exp_value = 2
-        for array in results_1:
-            expected_array = np.zeros(data_shape, dtype=self.dtype) + exp_value
-            np.testing.assert_equal(expected_array, array)
-            exp_value += 1
-        exp_value = 1
-        for array in results_2:
-            expected_array = np.zeros(data_shape, dtype=self.dtype) + exp_value
-            np.testing.assert_equal(expected_array, array)
-            exp_value += 1
+        for i, (array1, array2) in enumerate(results):
+            # +1 -> +1 -> output
+            expected_array_1 = np.zeros(data_shape, dtype=self.dtype) + i + 2
+            np.testing.assert_equal(expected_array_1, array1)
+            # +1 -> output
+            expected_array_2 = np.zeros(data_shape, dtype=self.dtype) + i + 1
+            np.testing.assert_equal(expected_array_2, array2)
 
 
 if __name__ == "__main__":
