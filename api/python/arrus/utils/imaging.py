@@ -219,7 +219,6 @@ class Pipeline:
                     child_metadatas = (child_metadatas, )
                 for metadata in child_metadatas:
                     metadatas.append(metadata)
-                current_metadata = metadatas[-1]
                 step.endpoint = True
             else:
                 current_metadata = step.prepare(current_metadata)
@@ -227,7 +226,7 @@ class Pipeline:
         # Force cupy to recompile kernels before running the pipeline.
         self.__initialize(const_metadata)
         if not isinstance(self.steps[-1], Pipeline):
-            metadatas.append(const_metadata)
+            metadatas.append(current_metadata)
         return metadatas
 
     def set_placement(self, device):

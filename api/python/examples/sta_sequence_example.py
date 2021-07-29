@@ -29,7 +29,7 @@ from arrus.utils.imaging import (
     EnvelopeDetection,
     LogCompression,
     Enqueue,
-    Sum
+    Mean
 )
 from arrus.utils.us4r import (
     RemapToLogicalOrder
@@ -44,22 +44,21 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 
 def main():
     seq = StaSequence(
-        tx_aperture_center_element=np.arange(0, 128)+32,
-        rx_aperture_center_element=63+32,
-        rx_aperture_size=128,
+        tx_aperture_center=np.linspace(-15, 15, 11)*1e-3,
+        tx_aperture_size=32,
+        tx_focus=-6e-3,
         pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
         rx_sample_range=(0, 2048),
         downsampling_factor=2,
         speed_of_sound=1450,
         pri=200e-6,
-        sri=200e-3,
         tgc_start=14,
         tgc_slope=2e2)
 
     display_input_queue = queue.Queue(1)
 
-    x_grid = np.linspace(-15, 15, 256) * 1e-3
-    z_grid = np.linspace(0, 40, 256) * 1e-3
+    x_grid = np.arange(-15, 15, 0.2) * 1e-3
+    z_grid = np.arange(5, 45, 0.2) * 1e-3
 
     scheme = Scheme(
         tx_rx_sequence=seq,
@@ -74,7 +73,7 @@ def main():
                 QuadratureDemodulation(),
                 Decimation(decimation_factor=4, cic_order=2),
                 ReconstructLri(x_grid=x_grid, z_grid=z_grid),
-                Sum(axis=0),
+                Mean(axis=0),
                 EnvelopeDetection(),
                 Transpose(),
                 LogCompression(),

@@ -138,6 +138,8 @@ class Session(AbstractSession):
             import cupy as cp
 
             out_metadata = processing.prepare(const_metadata)
+            for m in out_metadata:
+                print(f"Metadata: {m.input_shape}")
             self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
                                      shape=const_metadata.input_shape,
                                      dtype=const_metadata.dtype,
@@ -148,15 +150,27 @@ class Session(AbstractSession):
                                       dtype=m.dtype, math_pkg=np,
                                       type="locked")
                                for m in out_metadata]
-            user_out_buffer = queue.Queue(maxsize=10)
+            user_out_buffer = queue.Queue(maxsize=1)
 
             def buffer_callback(elements):
-                user_elements = [None]*len(elements)
-                for i, element in enumerate(elements):
-                    user_elements[i] = element.data.copy()
-                    element.release()
+                try:
+                    user_elements = [None]*len(elements)
+                    for i, element in enumerate(elements):
+                        user_elements[i] = element.data.copy()
+                        element.release()
 
-            pipeline_wrapper = arrus.utils.imaging.PipelineWrapper(
+                    # TODO parametrize?
+                    try:
+                        user_out_buffer.put_nowait(user_elements)
+                    except queue.Full:
+                        pass
+
+                except Exception as e:
+                    print(f"Exception: {type(e)}")
+                except:
+                    print("Unknown exception")
+
+            pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
                 buffer, self.gpu_buffer, self.out_buffer, processing,
                 buffer_callback)
             self._current_processing = pipeline_wrapper

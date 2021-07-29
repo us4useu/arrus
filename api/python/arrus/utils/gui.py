@@ -18,7 +18,10 @@ class Layer2D:
     metadata: object
     value_range: tuple
     cmap: str
+    output: int
     clip: str = "off"
+    value_func: object = None
+    mask_func: object = None
 
 
 class Display2D:
@@ -78,7 +81,7 @@ class Display2D:
         if self.title is not None:
             self._fig.canvas.set_window_title(self.title)
 
-        self.imgs = [None]*len(layers)
+        self.canvas = [None] * len(layers)
         self.clip_modes = [None]*len(layers)
         self.value_ranges = [None]*len(layers)
         clip_mode_map = {
@@ -90,7 +93,7 @@ class Display2D:
             metadata = layer.metadata
             value_range = layer.value_range
             cmap = layer.cmap
-            input_shape = metadata.input_shape
+            input_shape = metadata.input_shape[-2:]
             datatype = metadata.dtype
             empty = np.zeros(input_shape, dtype=datatype)
             if value_range:
@@ -107,7 +110,7 @@ class Display2D:
                     raise ValueError(f"Unsupported data type: {empty.dtype}")
             img = self._ax.imshow(empty, cmap=cmap, vmin=vmin, vmax=vmax,
                                   extent=self.extent)
-            self.imgs[i] = img
+            self.canvas[i] = img
             self.clip_modes[i] = clip_mode_map[layer.clip]
             self.value_ranges[i] = value_range
 
@@ -115,7 +118,7 @@ class Display2D:
             if len(layers) > 1:
                 raise ValueError("Colorbar for display with multiple layers "
                                  "is currently not supported.")
-            self._fig.colorbar(self.imgs[0])
+            self._fig.colorbar(self.canvas[0])
 
     def start(self, queue):
         self._current_queue = queue
@@ -125,9 +128,9 @@ class Display2D:
 
     def _update(self, frame):
         datas = self._current_queue.get(timeout=self.input_timeout)
-        for data, img, clip_mode, value_range in zip(datas, self.imgs, self.clip_modes, self.value_ranges):
-            if clip_mode == 1:
-                vmin, vmax = value_range
-                data[data > vmax] = None
-                data[data < vmin] = None
-            img.set_data(data)
+        for c, clip, vr, l in zip(self.canvas, self.clip_modes,
+                                  self.value_ranges, self.layers):
+            data = datas[l.output]
+            if l.value_func is not None:
+                data = l.value_func(data)
+            c.set_data(data)

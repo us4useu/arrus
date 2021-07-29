@@ -168,7 +168,7 @@ class RemapToLogicalOrder(arrus.utils.imaging.Operation):
     def _is_prepared(self):
         return self._transfers is not None and self._output_buffer is not None
 
-    def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         xp = self.xp
         # get shape, create an array with given shape
         # create required transfers
@@ -218,7 +218,7 @@ class RemapToLogicalOrder(arrus.utils.imaging.Operation):
 
         return const_metadata.copy(input_shape=self.output_shape)
 
-    def _process(self, data):
+    def process(self, data):
         self._remap_fn(data)
         return self._output_buffer
 
