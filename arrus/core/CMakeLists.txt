@@ -140,18 +140,19 @@ set(SRC_FILES
     common/interpolate.h
     # TODO(pjarosik) cleanup below
     api/common/macros.h
-        framework/graph/Graph.h
-        api/devices.h
+    framework/graph/Graph.h
+    api/devices.h
     api/framework.h
     api/ops/us4r/tgc.h
     devices/UltrasoundDevice.h
     api/devices/us4r/HVSettings.h
     api/devices/us4r/HVModelId.h
-    devices/us4r/hv/HV256Impl.h
-    devices/us4r/hv/HV256Factory.h
-    devices/us4r/hv/HV256Impl.cpp
-    devices/us4r/hv/HV256FactoryImpl.h
-    devices/us4r/hv/HV256FactoryImpl.cpp
+    devices/us4r/hv/HighVoltageSupplier.h
+    devices/us4r/hv/HighVoltageSupplier.h
+    devices/us4r/hv/HighVoltageSupplierFactory.h
+    devices/us4r/hv/HighVoltageSupplier.cpp
+    devices/us4r/hv/HighVoltageSupplierFactoryImpl.h
+    devices/us4r/hv/HighVoltageSupplierFactoryImpl.cpp
     api/devices/us4r/FrameChannelMapping.h
     devices/us4r/FrameChannelMappingImpl.cpp
     devices/us4r/FrameChannelMappingImpl.h
@@ -212,6 +213,8 @@ target_link_libraries(${TARGET_NAME}
     Us4::US4OEM
     Us4::HV256
     Us4::DBARLite
+    Us4::Us4RDBAR
+    Us4::Us4RPSC
     Boost::Boost
     protobuf::libprotobuf
     fmt::fmt
