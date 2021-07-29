@@ -162,9 +162,9 @@ class FilterWallClutter(arrus.utils.imaging.Operation):
 
 
 def main():
-    angle = 0
+    angle = 10
     n_angles = 32
-    center_frequency = 6e6
+    center_frequency = 8.6e6
     seq = PwiSequence(
         angles=np.array([angle]*n_angles)*np.pi/180,
         pulse=Pulse(center_frequency=center_frequency, n_periods=2,
@@ -173,12 +173,12 @@ def main():
         downsampling_factor=1,
         speed_of_sound=1540,
         pri=100e-6,
-        tgc_start=34,
-        tgc_slope=2e2)
+        tgc_start=24,
+        tgc_slope=0)
 
-    x_grid = np.arange(-15, 15, 0.2) * 1e-3
-    z_grid = np.arange(5, 20, 0.2) * 1e-3
-    taps = scipy.signal.firwin(64, np.array([0.7, 1.3])*center_frequency,
+    x_grid = np.arange(-15, 15, 0.15) * 1e-3
+    z_grid = np.arange(5, 20, 0.15) * 1e-3
+    taps = scipy.signal.firwin(32, np.array([0.5, 1.5])*center_frequency,
                                pass_zero=False, fs=65e6)
 
     scheme = Scheme(
@@ -190,8 +190,8 @@ def main():
             steps=(
                 RemapToLogicalOrder(),
                 Transpose(axes=(0, 2, 1)),
-                # FirFilter(taps),
-                BandpassFilter(),
+                FirFilter(taps),
+                # BandpassFilter(),
                 QuadratureDemodulation(),
                 Decimation(decimation_factor=4, cic_order=2),
                 ReconstructLri(x_grid=x_grid, z_grid=z_grid),
@@ -217,7 +217,7 @@ def main():
     # Here starts communication with the device.
     with arrus.Session(r"C:\Users\Public\us4r.prototxt") as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(50)
+        us4r.set_hv_voltage(60)
 
         # Upload sequence on the us4r-lite device.
         buffer, (doppler_metadata, bmode_metadata) = sess.upload(scheme)
@@ -226,17 +226,17 @@ def main():
             values = data[0]
             mask = data[0]
             mask2 = data[1]
-            mask = np.logical_and(mask > -15e-3, mask < 15e-3)
-            mask = np.logical_and(mask, mask2 < 40)
+            mask = np.logical_and(mask > -5e-3, mask < 5e-3)
+            mask = np.logical_or(mask, mask2 < 60)
             values[mask] = None
             return values
 
         display = Display2D(
             # The order of layers determines how the data is displayed.
             layers=(
-                Layer2D(metadata=bmode_metadata, value_range=(50, 90),
+                Layer2D(metadata=bmode_metadata, value_range=(20, 80),
                         cmap="gray", output=1),
-                Layer2D(metadata=doppler_metadata, value_range=(-50e-3, 50e-3),
+                Layer2D(metadata=doppler_metadata, value_range=(-100e-3, 100e-3),
                         cmap="bwr", output=0, value_func=value_func),
             )
         )
