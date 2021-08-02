@@ -20,7 +20,6 @@ class Layer2D:
     input: int = None
     value_func: object = None
 
-
 class Display2D:
     """
     A very simple implementation of the 2D display.
@@ -44,6 +43,11 @@ class Display2D:
         :param interval: number of milliseconds between successive img updates
         :param extent: OX/OZ extent: a tuple of (ox_min, ox_max, oz_max, oz_min)
         """
+        if "value_range" not in kwargs:
+            kwargs["value_range"] = None
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = None
+
         accepted_params = [
             {"metadata", "value_range", "cmap"},
             {"layers"}

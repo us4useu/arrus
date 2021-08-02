@@ -190,7 +190,7 @@ install(
         examples/custom_tx_rx_sequence.py
         examples/custom_callback.py
         examples/requirements.txt
-        examples/gpu_requirements.txt
+    examples/requirements.txt
         DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )

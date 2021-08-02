@@ -196,6 +196,5 @@ class StaSequence(SimpleTxRxSequence):
     """
     def __post_init__(self):
         super().__post_init__()
-        print(self.tx_focus)
         if self.tx_focus > 0 or np.isinf(self.tx_focus):
             raise ValueError("TX focus has to be a non-positive value.")
