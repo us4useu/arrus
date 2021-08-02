@@ -32,7 +32,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id,
                    Us4RImpl::Us4OEMs us4oems,
                    ProbeAdapterImplBase::Handle &probeAdapter,
                    ProbeImplBase::Handle &probe,
-                   std::optional<HV256Impl::Handle> hv)
+                   std::optional<HighVoltageSupplier::Handle> hv)
     : Us4R(id), logger{getLoggerFactory()->getLogger()},
       us4oems(std::move(us4oems)),
       probeAdapter(std::move(probeAdapter)),

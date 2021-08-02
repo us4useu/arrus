@@ -15,7 +15,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/probe/ProbeImplBase.h"
-#include "arrus/core/devices/us4r/hv/HV256Impl.h"
+#include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 
 #include "arrus/core/api/framework/DataBufferSpec.h"
@@ -34,14 +34,14 @@ public:
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
-             std::optional<HV256Impl::Handle> hv)
+             std::optional<HighVoltageSupplier::Handle> hv)
         : Us4R(id), us4oems(std::move(us4oems)), hv(std::move(hv)) {}
 
     Us4RImpl(const DeviceId &id,
              Us4OEMs us4oems,
              ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe,
-             std::optional<HV256Impl::Handle> hv);
+             std::optional<HighVoltageSupplier::Handle> hv);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -126,7 +126,7 @@ private:
     Us4OEMs us4oems;
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
-    std::optional<HV256Impl::Handle> hv;
+    std::optional<HighVoltageSupplier::Handle> hv;
     // will be used outside
     // TODO extract output buffer to some external class
     std::shared_ptr<Us4ROutputBuffer> buffer;
