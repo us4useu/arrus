@@ -184,11 +184,11 @@ install(
 
 install(
         FILES
-        examples/sta_sequence_example.py
-        examples/pwi_sequence_example.py
-        examples/lin_sequence_example.py
-        examples/custom_sequence_example.py
-        examples/custom_callback_example.py
+        examples/plane_wave_imaging.py
+        examples/classical_beamforming.py
+        examples/diverging_beams.py
+        examples/custom_tx_rx_sequence.py
+        examples/custom_callback.py
         examples/requirements.txt
         examples/gpu_requirements.txt
         DESTINATION

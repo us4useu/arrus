@@ -8,11 +8,82 @@ import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.kernels.imaging
+import arrus.utils.us4r
 import queue
 import dataclasses
 import threading
 from collections import deque
 from collections.abc import Iterable
+
+
+def get_extent(x_grid, z_grid):
+    """
+    A simple utility tool to get output image extents:
+
+    The output format is compatible with matplotlib:
+    [ox_min, ox_max, oz_max, oz_min]
+    """
+    return np.array([np.min(x_grid), np.max(x_grid),
+                     np.max(z_grid), np.min(z_grid)])
+
+
+def get_bmode_imaging(sequence, grid, placement="/GPU:0",
+                      decimation_factor=4, decimation_cic_order=2):
+    """
+    Returns a standard B-mode imaging pipeline.
+
+    :param sequence: TX/RX sequence for which the processing has to be performed
+    :param grid: output grid, a pair (x_grid, z_grid), where x_grid/z_grid
+      are the OX/OZ coordinates of consecutive grid points
+    :param placement: device on which the processing should be performed
+    :param decimation_factor: decimation factor to apply
+    :param decimation_cic_order: decimation CIC filter order
+    :return: B-mode imaging pipeline
+    """
+    x_grid, z_grid = grid
+    if isinstance(sequence, arrus.ops.imaging.LinSequence):
+        # Classical beamforming.
+        return Pipeline(
+            steps=(
+                # Channel data pre-processing.
+                RemapToLogicalOrder(),
+                Transpose(axes=(0, 2, 1)),
+                BandpassFilter(),
+                QuadratureDemodulation(),
+                Decimation(decimation_factor=decimation_factor,
+                           cic_order=decimation_cic_order),
+                # Data beamforming.
+                RxBeamforming(),
+                # Post-processing to B-mode image.
+                EnvelopeDetection(),
+                Transpose(),
+                ScanConversion(x_grid, z_grid),
+                LogCompression(),
+            ),
+            placement=placement)
+    elif isinstance(sequence, arrus.ops.imaging.PwiSequence) \
+      or isinstance(sequence, arrus.ops.imaging.StaSequence):
+        # Synthetic aperture imaging.
+        return Pipeline(
+            steps=(
+                # Channel data pre-processing.
+                RemapToLogicalOrder(),
+                Transpose(axes=(0, 2, 1)),
+                BandpassFilter(),
+                QuadratureDemodulation(),
+                Decimation(decimation_factor=decimation_factor,
+                           cic_order=decimation_cic_order),
+                # Data beamforming.
+                ReconstructLri(x_grid=x_grid, z_grid=z_grid),
+                Mean(axis=0),
+                # Post-processing to B-mode image.
+                EnvelopeDetection(),
+                Transpose(),
+                LogCompression()
+            ),
+            placement=placement)
+    else:
+        raise ValueError(f"Unrecognized imaging TX/RX sequence: {sequence}")
 
 
 class BufferElement:
@@ -111,16 +182,16 @@ class PipelineRunner:
         self.i = 0
 
     def process(self, input_element):
-        gpu_element = self.gpu_buffer.acquire(self._gpu_i)
         with self._process_lock:
+            gpu_element = self.gpu_buffer.acquire(self._gpu_i)
             gpu_array = gpu_element.data
             self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
             gpu_array.set(input_element.data, stream=self.data_stream)
             self.data_stream.launch_host_func(self.__release, input_element)
 
             gpu_data_ready_event = self.data_stream.record()
-
             self.processing_stream.wait_event(gpu_data_ready_event)
+
             out_elements = []
             with self.processing_stream:
                 results = self.pipeline(gpu_array)
@@ -133,8 +204,8 @@ class PipelineRunner:
                         lambda element: element.acquire(), out_element)
                     result.get(self.processing_stream, out=out_element.data)
                     out_elements.append(out_element)
-            self.processing_stream.launch_host_func(self.callback, out_elements)
             self.processing_stream.launch_host_func(self.__release, gpu_element)
+            self.processing_stream.launch_host_func(self.callback, out_elements)
 
     def stop(self):
         # cleanup
@@ -193,10 +264,10 @@ class Pipeline:
             if step.endpoint:
                 step_outputs = step.process(data)
                 for output in step_outputs:
-                    outputs.append(output)
+                    outputs.appendleft(output)
             else:
                 data = step.process(data)
-        outputs.append(data)
+        outputs.appendleft(data)
         return outputs
 
     def __initialize(self, const_metadata):
@@ -218,7 +289,7 @@ class Pipeline:
                 if not isinstance(child_metadatas, Iterable):
                     child_metadatas = (child_metadatas, )
                 for metadata in child_metadatas:
-                    metadatas.append(metadata)
+                    metadatas.appendleft(metadata)
                 step.endpoint = True
             else:
                 current_metadata = step.prepare(current_metadata)
@@ -226,7 +297,7 @@ class Pipeline:
         # Force cupy to recompile kernels before running the pipeline.
         self.__initialize(const_metadata)
         if not isinstance(self.steps[-1], Pipeline):
-            metadatas.append(current_metadata)
+            metadatas.appendleft(current_metadata)
         return metadatas
 
     def set_placement(self, device):
@@ -707,23 +778,20 @@ class RxBeamforming(Operation):
         start_sample = seq.rx_sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(seq)
 
-        _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
-            seq, probe_model, c)
 
-        burst_factor = n_periods / (2 * fc)
-        # -start_sample compensates the fact, that the data indices always start from 0
+        # -start_sample compensates the fact, that the data indices always
+        # start from 0
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
-            _, _, tx_delay_center = arrus.kernels.imaging.compute_tx_parameters(
-                seq, probe_model, c)
-            initial_delay += tx_delay_center + burst_factor
+            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
+                probe_model, seq, c)
+            tx_center_delay = tx_rx_params["tx_center_delay"]
+            initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
-
         radial_distance = (
-                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)
-                * c / 2
+                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)* c/2
         )
         x_distance = (radial_distance * np.sin(tx_angle)).reshape(1, -1)
         z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
@@ -878,11 +946,11 @@ class ScanConversion(Operation):
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
         if probe.is_convex_array():
-            self._process = self._process_convex
+            self.process = self._process_convex
             return self._prepare_convex(const_metadata)
         else:
             # linear array
-            self._process = self._process_linear_array
+            self.process = self._process_linear_array
             return self._prepare_linear_array(const_metadata)
 
     def _prepare_linear_array(self, const_metadata: arrus.metadata.ConstMetadata):
@@ -1532,4 +1600,160 @@ def _get_rx_aperture_origin(sequence):
                                (rx_aperture_size - 1) / 2 + 1e-9)
     return rx_aperture_origin
 
+
+# -------------------------------------------- RF frame remapping.
+# CPU remapping tools.
+@dataclasses.dataclass
+class Transfer:
+    src_frame: int
+    src_range: tuple
+    dst_frame: int
+    dst_range: tuple
+
+
+def __group_transfers(frame_channel_mapping):
+    result = []
+    frame_mapping = frame_channel_mapping.frames
+    channel_mapping = frame_channel_mapping.channels
+    if frame_mapping.size == 0 or channel_mapping.size == 0:
+        raise RuntimeError("Empty frame channel mappings")
+    # Number of logical frames
+    n_frames, n_channels = channel_mapping.shape
+    for dst_frame in range(n_frames):
+        current_dst_range = None
+        prev_src_frame = None
+        prev_src_channel = None
+        current_src_frame = None
+        current_src_range = None
+        for dst_channel in range(n_channels):
+            src_frame = frame_mapping[dst_frame, dst_channel]
+            src_channel = channel_mapping[dst_frame, dst_channel]
+            if src_channel < 0:
+                # Omit current channel.
+                # Negative src channel means, that the given channel
+                # is not available and should be treated as missing.
+                continue
+            if (prev_src_frame is None  # the first transfer
+                    # new src frame
+                    or src_frame != prev_src_frame
+                    # a gap in current frame
+                    or src_channel != prev_src_channel+1):
+                # Close current source range
+                if current_src_frame is not None:
+                    transfer = Transfer(
+                        src_frame=current_src_frame,
+                        src_range=tuple(current_src_range),
+                        dst_frame=dst_frame,
+                        dst_range=tuple(current_dst_range)
+                    )
+                    result.append(transfer)
+                # Start a new range
+                current_src_frame = src_frame
+                # [start, end)
+                current_src_range = [src_channel, src_channel + 1]
+                current_dst_range = [dst_channel, dst_channel + 1]
+            else:
+                # Continue current range
+                current_src_range[1] = src_channel + 1
+                current_dst_range[1] = dst_channel + 1
+            prev_src_frame = src_frame
+            prev_src_channel = src_channel
+        # End a range for current frame.
+        current_src_range = int(current_src_range[0]), int(current_src_range[1])
+        transfer = Transfer(
+            src_frame=int(current_src_frame),
+            src_range=tuple(current_src_range),
+            dst_frame=dst_frame,
+            dst_range=tuple(current_dst_range))
+        result.append(transfer)
+    return result
+
+
+def __remap(output_array, input_array, transfers):
+    input_array = input_array
+    for t in transfers:
+        dst_l, dst_r = t.dst_range
+        src_l, src_r = t.src_range
+        output_array[t.dst_frame, :, dst_l:dst_r] = \
+            input_array[t.src_frame, :, src_l:src_r]
+
+
+class RemapToLogicalOrder(Operation):
+    """
+    Remaps the order of the data to logical order defined by the us4r device.
+
+    If the batch size was equal 1, the raw ultrasound RF data with shape.
+    (n_frames, n_samples, n_channels).
+    A single metadata object will be returned.
+
+    If the batch size was > 1, the the raw ultrasound RF data with shape
+    (n_us4oems*n_samples*n_frames*n_batches, 32) will be reordered to
+    (batch_size, n_frames, n_samples, n_channels). A list of metadata objects
+    will be returned.
+    """
+
+    def __init__(self, num_pkg=None):
+        self._transfers = None
+        self._output_buffer = None
+        self.xp = num_pkg
+        self.remap = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def _is_prepared(self):
+        return self._transfers is not None and self._output_buffer is not None
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        xp = self.xp
+        # get shape, create an array with given shape
+        # create required transfers
+        # perform the transfers
+        fcm = const_metadata.data_description.custom["frame_channel_mapping"]
+        n_frames, n_channels = fcm.frames.shape
+        n_samples_set = {op.rx.get_n_samples()
+                         for op in const_metadata.context.raw_sequence.ops}
+        if len(n_samples_set) > 1:
+            raise arrus.exceptions.IllegalArgumentError(
+                f"Each tx/rx in the sequence should acquire the same number of "
+                f"samples (actual: {n_samples_set})")
+        n_samples = next(iter(n_samples_set))
+        self.output_shape = (n_frames, n_samples, n_channels)
+        self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
+
+        n_samples_raw, n_channels_raw = const_metadata.input_shape
+        self._input_shape = (n_samples_raw//n_samples, n_samples,
+                             n_channels_raw)
+        self.batch_size = fcm.batch_size
+
+        if xp == np:
+            # CPU
+            self._transfers = __group_transfers(fcm)
+            def cpu_remap_fn(data):
+                __remap(self._output_buffer,
+                        data.reshape(self._input_shape),
+                        transfers=self._transfers)
+            self._remap_fn = cpu_remap_fn
+        else:
+            # GPU
+            import cupy as cp
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
+            self._fcm_frames = cp.asarray(fcm.frames)
+            self._fcm_channels = cp.asarray(fcm.channels)
+            self.grid_size, self.block_size = get_default_grid_block_size(self._fcm_frames, n_samples)
+
+            def gpu_remap_fn(data):
+                run_remap(
+                    self.grid_size, self.block_size,
+                    [self._output_buffer, data,
+                     self._fcm_frames, self._fcm_channels,
+                     n_frames, n_samples, n_channels])
+
+            self._remap_fn = gpu_remap_fn
+
+        return const_metadata.copy(input_shape=self.output_shape)
+
+    def process(self, data):
+        self._remap_fn(data)
+        return self._output_buffer
 

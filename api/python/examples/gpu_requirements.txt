@@ -1,2 +1,2 @@
-cupy
-matplotlib
+cupy==9.0.0
+matplotlib==3.2.0

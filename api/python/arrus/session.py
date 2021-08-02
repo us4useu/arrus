@@ -5,7 +5,6 @@ import numpy as np
 import importlib
 import importlib.util
 import dataclasses
-from collections import deque
 
 import arrus.core
 import arrus.exceptions
@@ -60,7 +59,7 @@ class Session(AbstractSession):
     on the devices should be done withing the session context.
     """
 
-    def __init__(self, cfg_path: str = None,
+    def __init__(self, cfg_path: str="us4r.prototxt",
                  medium: arrus.medium.Medium = None):
         """
         Session constructor.
@@ -76,7 +75,7 @@ class Session(AbstractSession):
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
-        Uploads a given sequence of operations to perform on the device.
+        Uploads a given sequence on devices.
 
         :param scheme: scheme to upload
         :raises: ValueError when some of the input parameters are invalid
@@ -138,8 +137,6 @@ class Session(AbstractSession):
             import cupy as cp
 
             out_metadata = processing.prepare(const_metadata)
-            for m in out_metadata:
-                print(f"Metadata: {m.input_shape}")
             self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
                                      shape=const_metadata.input_shape,
                                      dtype=const_metadata.dtype,
@@ -158,8 +155,6 @@ class Session(AbstractSession):
                     for i, element in enumerate(elements):
                         user_elements[i] = element.data.copy()
                         element.release()
-
-                    # TODO parametrize?
                     try:
                         user_out_buffer.put_nowait(user_elements)
                     except queue.Full:
