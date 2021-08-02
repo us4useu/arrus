@@ -83,7 +83,7 @@ def main():
                     RemapToLogicalOrder(),
                     SelectFrames([0]),
                     Squeeze(),
-                    Lambda(lambda data: data-data.mean(axis=0).astype(np.int16))
+                    Lambda(lambda data: data-(data.mean(axis=0).astype(np.int16)))
                 ),
                 placement="/GPU:0"
             )
