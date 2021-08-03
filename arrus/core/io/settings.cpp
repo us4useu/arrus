@@ -57,14 +57,22 @@ std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
     google::protobuf::io::FileInputStream input(fd);
     input.SetCloseOnDelete(true);
     auto result = std::make_unique<T>();
-    google::protobuf::TextFormat::Parse(&input, result.get());
+    bool parseOk = google::protobuf::TextFormat::Parse(&input, result.get());
+    if(!parseOk) {
+        throw IllegalArgumentException(::arrus::format(
+            "Error while parsing file {}, please check error messages "
+            "that appeared the above.", filepath));
+    }
     return result;
 }
 
 template<typename T>
 std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
     auto result = std::make_unique<T>();
-    google::protobuf::TextFormat::ParseFromString(proto, result.get());
+    bool parseOk = google::protobuf::TextFormat::ParseFromString(proto, result.get());
+    if(!parseOk) {
+        throw IllegalArgumentException("Error while reading proto txt.");
+    }
     return result;
 }
 
@@ -477,7 +485,14 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                     ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
-        d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
+        try {
+            d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
+        }
+        catch(const IllegalArgumentException &e) {
+            throw IllegalArgumentException(
+                ::arrus::format("Error while reading ARRUS default "
+                                "dictionary. Message: {}", e.what()));
+        }
         logger->log(LogSeverity::INFO, "Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
