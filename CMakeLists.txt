@@ -43,6 +43,7 @@ option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)
 option(ARRUS_EMBED_DEPS "Embed dependencies (like us4r dlls) into the output package." OFF)
 option(ARRUS_APPEND_VERSION_SUFFIX_DATE "Append current timestamp to the ARRUS_PROJECT_VERSION." OFF)
+option(ARRUS_CUDA "Build with CUDA GPU support" OFF)
 
 if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
     string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")

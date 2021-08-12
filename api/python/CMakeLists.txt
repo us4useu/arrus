@@ -99,9 +99,18 @@ set(SOURCE_FILES
         arrus/utils/core.py
         arrus/utils/gui.py
         )
+
 set(TEST_FILES
-    arrus/utils/tests/pipeline_test.py
-    arrus/kernels/tests/imaging_test.py)
+    arrus/kernels/tests/imaging_test.py
+)
+
+if(ARRUS_CUDA)
+    # CUDA GPU specific tests.
+    # CuPy is required.
+    set(TEST_FILES
+        arrus/utils/tests/pipeline_test.py
+        ${TEST_FILES})
+endif()
 
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
