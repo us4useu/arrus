@@ -3,14 +3,14 @@
 
 
 #include "arrus/core/api/devices/us4r/HVSettings.h"
-#include "arrus/core/devices/us4r/hv/HV256Impl.h"
+#include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 
 namespace arrus::devices {
 
-class HV256Factory {
+class HighVoltageSupplierFactory {
 public:
-    virtual HV256Impl::Handle getHV256(const HVSettings &settings, IUs4OEM *master) = 0;
+    virtual HighVoltageSupplier::Handle getHighVoltageSupplier(const HVSettings &settings, IUs4OEM *master) = 0;
 };
 
 }

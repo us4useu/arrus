@@ -148,9 +148,9 @@ class Scheme:
       currently only arrus.utils.imaging is supported
     """
     tx_rx_sequence: TxRxSequence
-    rx_buffer_size: int
-    output_buffer: DataBufferSpec
-    work_mode: str
+    rx_buffer_size: int = 2
+    output_buffer: DataBufferSpec = DataBufferSpec(type="FIFO", n_elements=4)
+    work_mode: str = "HOST"
     processing: object = None
 
 

@@ -129,9 +129,9 @@ class ArrusImagingTestCase(ArrusTestCase):
             is_iq_data=data.dtype == cp.complex64,
             dtype=data.dtype
         )
-        op_instance._prepare(const_metadata=const_metadata)
+        op_instance.prepare(const_metadata=const_metadata)
         init_data = cp.zeros(data.shape, dtype=data.dtype) + 1000
-        op_instance._initialize(init_data)
+        op_instance.initialize(init_data)
         # Now run the op for the given data:
         op_result = op_instance(data)
         if isinstance(op_result, cp.ndarray):

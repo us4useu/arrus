@@ -54,7 +54,9 @@ class ProbeImpl : public ProbeImplBase {
 
   static FrameChannelMapping::Handle remapFcm(
       const FrameChannelMapping::Handle &adapterFcm,
-      const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels);
+      const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels,
+      const std::vector<ChannelIdx> &rxPaddingLeft,
+      const std::vector<ChannelIdx> &rxPaddingRight);
 
  private:
   Logger::Handle logger;

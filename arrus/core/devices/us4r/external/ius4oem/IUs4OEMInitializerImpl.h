@@ -1,6 +1,11 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMINITIALIZERIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMINITIALIZERIMPL_H
 
+#include <algorithm>
+#include <execution>
+#include <mutex>
+#include <iostream>
+
 #include "IUs4OEMInitializer.h"
 
 namespace arrus::devices {
@@ -18,19 +23,37 @@ public:
                       return x->GetID() < y->GetID();
                   });
 
-        for(auto &u : ius4oems) {
-            u->Initialize(1);
-        }
+        initializeUs4oems(ius4oems, 1);
         // Perform successive initialization levels.
         for(int level = 2; level <= 4; level++) {
             ius4oems[0]->Synchronize();
-            for(auto &u : ius4oems) {
-                u->Initialize(level);
-            }
+            initializeUs4oems(ius4oems, level);
         }
         // Us4OEMs are initialized here.
     }
+private:
+    void initializeUs4oems(std::vector<IUs4OEMHandle> &ius4oems, int level) {
+        std::vector<std::exception_ptr> exceptions;
+        std::mutex exceptions_mutex;
 
+        std::for_each(
+            std::execution::par_unseq, std::begin(ius4oems), std::end(ius4oems),
+            [&](IUs4OEMHandle &u) {
+                try {
+                    u->Initialize(level);
+                }
+                catch(...) {
+                    std::lock_guard guard(exceptions_mutex);
+                    exceptions.push_back(std::current_exception());
+                }
+            }
+        );
+        if(!exceptions.empty()) {
+            // TODO create a complete list of error messages
+            // now throw any of the exception
+            throw exceptions.front();
+        }
+    }
 };
 
 }

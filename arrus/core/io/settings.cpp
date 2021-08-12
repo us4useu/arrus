@@ -57,14 +57,22 @@ std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
     google::protobuf::io::FileInputStream input(fd);
     input.SetCloseOnDelete(true);
     auto result = std::make_unique<T>();
-    google::protobuf::TextFormat::Parse(&input, result.get());
+    bool parseOk = google::protobuf::TextFormat::Parse(&input, result.get());
+    if(!parseOk) {
+        throw IllegalArgumentException(::arrus::format(
+            "Error while parsing file {}, please check error messages "
+            "that appeared the above.", filepath));
+    }
     return result;
 }
 
 template<typename T>
 std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
     auto result = std::make_unique<T>();
-    google::protobuf::TextFormat::ParseFromString(proto, result.get());
+    bool parseOk = google::protobuf::TextFormat::ParseFromString(proto, result.get());
+    if(!parseOk) {
+        throw IllegalArgumentException("Error while reading proto txt.");
+    }
     return result;
 }
 
@@ -412,18 +420,34 @@ Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettin
 
 SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
+    // Read ARRUS_PATH.
+    const char *arrusPathStr = std::getenv(ARRUS_PATH_KEY);
+    boost::filesystem::path arrusPath;
+    if(arrusPathStr != nullptr) {
+        arrusPath = arrusPathStr;
+    }
     // Read and validate session.
     boost::filesystem::path sessionSettingsPath{filepath};
+    // Try with the provided path first.
     if(!boost::filesystem::is_regular_file(sessionSettingsPath)) {
-        throw IllegalArgumentException(
-            ::arrus::format("File not found {}.", filepath));
+        // Next, try with ARRUS_PATH.
+        if(!arrusPath.empty() && sessionSettingsPath.is_relative()) {
+            sessionSettingsPath = arrusPath / sessionSettingsPath;
+            if(!boost::filesystem::is_regular_file(sessionSettingsPath)) {
+                throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
+            }
+        }
+        else {
+            throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
+        }
     }
-    std::unique_ptr<ap::SessionSettings> s =
-        readProtoTxt<ap::SessionSettings>(filepath);
 
+    std::string settingsPathStr = sessionSettingsPath.string();
+    logger->log(LogSeverity::INFO, ::arrus::format("Using configuration file: {}", settingsPathStr));
+
+    std::unique_ptr<ap::SessionSettings> s = readProtoTxt<ap::SessionSettings>(settingsPathStr);
     //Validate.
-    SessionSettingsProtoValidator validator(
-        "session settings in " + filepath);
+    SessionSettingsProtoValidator validator("session settings in " + settingsPathStr);
     validator.validate(s);
     validator.throwOnErrors();
 
@@ -442,30 +466,33 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                 dictionaryPathStr = dictP.string();
             } else {
                 // 3. Try to use ARRUS_PATH, if available.
-                const char *arrusP = std::getenv(ARRUS_PATH_KEY);
-                if(arrusP != nullptr) {
-                    boost::filesystem::path arrusDicP{arrusP};
-                    arrusDicP = arrusDicP / s->dictionary_file();
+                if(!arrusPath.empty()) {
+                    boost::filesystem::path arrusDicP = arrusPath / s->dictionary_file();
                     if(boost::filesystem::is_regular_file(arrusDicP)) {
                         dictionaryPathStr = arrusDicP.string();
                     } else {
                         throw IllegalArgumentException(
-                            ::arrus::format("Invalid path to dictionary: {}",
-                                            s->dictionary_file()));
+                            ::arrus::format("Invalid path to dictionary: {}", s->dictionary_file()));
                     }
                 } else {
                     throw IllegalArgumentException(
-                        ::arrus::format("Invalid path to dictionary: {}",
-                                        s->dictionary_file()));
+                        ::arrus::format("Invalid path to dictionary: {}", s->dictionary_file()));
                 }
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::DEBUG,
-                    ::arrus::format("Read dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::INFO,
+                    ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
-        d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
+        try {
+            d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
+        }
+        catch(const IllegalArgumentException &e) {
+            throw IllegalArgumentException(
+                ::arrus::format("Error while reading ARRUS default "
+                                "dictionary. Message: {}", e.what()));
+        }
         logger->log(LogSeverity::INFO, "Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
@@ -476,12 +503,10 @@ SessionSettings readSessionSettings(const std::string &filepath) {
 
     Us4RSettings us4rSettings = readUs4RSettings(s->us4r(), dictionary);
     // TODO std move
-
     SessionSettings sessionSettings(us4rSettings);
 
     logger->log(LogSeverity::DEBUG,
-                arrus::format("Read settings from '{}': {}",
-                              filepath, ::arrus::toString(sessionSettings)));
+                arrus::format("Read settings from '{}': {}", filepath, ::arrus::toString(sessionSettings)));
 
     return sessionSettings;
 }

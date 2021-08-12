@@ -14,7 +14,7 @@ class DeviceId:
     ordinal: int
 
 
-def get_device_type_str(s):
+def split_device_id_str(s):
     """
     Extracts device type from given string id.
 
@@ -28,7 +28,7 @@ def get_device_type_str(s):
     if len(n) == 0:
         raise ValueError("No device provided in the id.")
     c = n[0].split(":")
-    return c[0]
+    return c[0], int(c[1])
 
 
 class Device(abc.ABC):

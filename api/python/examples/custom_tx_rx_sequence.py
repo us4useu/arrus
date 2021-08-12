@@ -15,7 +15,6 @@ import numpy as np
 from arrus.ops.us4r import (
     Scheme,
     Pulse,
-    DataBufferSpec,
     Tx,
     Rx,
     TxRx,
@@ -26,9 +25,6 @@ from arrus.utils.imaging import (
     SelectFrames,
     Squeeze,
     Lambda,
-    Enqueue
-)
-from arrus.utils.us4r import (
     RemapToLogicalOrder
 )
 from arrus.utils.gui import (
@@ -41,12 +37,11 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 
 def main():
     # Here starts communication with the device.
-    with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
+    with arrus.Session() as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(50)
+        us4r.set_hv_voltage(20)
 
         n_elements = us4r.get_probe_model().n_elements
-
         # Full transmit aperture, full receive aperture.
         seq = TxRxSequence(
             ops=[
@@ -78,43 +73,31 @@ def main():
             # Time between consecutive acquisitions, i.e. 1/frame rate.
             sri=50e-3
         )
-        # Output data buffer.
-        display_input_queue = queue.Queue(1)
-
         # Declare the complete scheme to execute on the devices.
         scheme = Scheme(
             # Run the provided sequence.
             tx_rx_sequence=seq,
-            # Size of the buffer located on Us4R modules.
-            rx_buffer_size=2,
-            # Output buffer description - i.e. the buffer on host PC for raw
-            # RF channel data.
-            output_buffer=DataBufferSpec(type="FIFO", n_elements=4),
-            # System work mode.
-            work_mode="HOST",
             # Processing pipeline to perform on the GPU device.
             processing=Pipeline(
                 steps=(
                     RemapToLogicalOrder(),
                     SelectFrames([0]),
                     Squeeze(),
-                    Lambda(lambda data: data-data.mean(axis=0)),
-                    Enqueue(display_input_queue, block=False, ignore_full=True)
+                    Lambda(lambda data: data-(data.mean(axis=0).astype(np.int16)))
                 ),
                 placement="/GPU:0"
             )
         )
-
         # Upload the scheme on the us4r-lite device.
-        buffer, const_metadata = sess.upload(scheme)
+        buffer, metadata = sess.upload(scheme)
         # Created 2D image display.
-        display = Display2D(const_metadata, value_range=(-100, 100))
+        display = Display2D(metadata=metadata, value_range=(-1000, 1000))
         # Start the scheme.
         sess.start_scheme()
         # Start the 2D display.
         # The 2D display will consume data put the the input queue.
         # The below function blocks current thread until the window is closed.
-        display.start(display_input_queue)
+        display.start(buffer)
 
         print("Display closed, stopping the script.")
 

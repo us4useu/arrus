@@ -140,7 +140,7 @@ public:
                     numberOfSamples, Us4OEMImpl::MIN_NSAMPLES,
                     Us4OEMImpl::MAX_NSAMPLES, firingStr);
                 ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(
-                    numberOfSamples, 64, firingStr);
+                    numberOfSamples, 64u, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     op.getRxDecimationFactor(), 0, 5, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
@@ -636,16 +636,10 @@ Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() {
 }
 
 void Us4OEMImpl::enableSequencer() {
-    bool txConfOnTrigger = false;
-    switch(reprogrammingMode) {
-        case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL:
-            txConfOnTrigger = false;
-            break;
-        case Us4OEMSettings::ReprogrammingMode::PARALLEL:
-            txConfOnTrigger = true;
-            break;
+    if(reprogrammingMode != Us4OEMSettings::ReprogrammingMode::SEQUENTIAL) {
+        throw std::runtime_error("For us4R-api version 0.5.x only SEQUENTIAL reprogramming mode is available");
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger);
+    this->ius4oem->EnableSequencer();
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() {
