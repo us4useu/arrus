@@ -1,4 +1,4 @@
-.. _api-main:
+.. _arrus-api:
 
 =============
 API Reference
@@ -29,11 +29,19 @@ Scheme
 Common Tx/Rx sequences
 ----------------------
 
+.. autoclass:: arrus.ops.imaging.SimpleTxRxSequence
+    :members:
+    :show-inheritance:
+
 .. autoclass:: arrus.ops.imaging.LinSequence
     :members:
     :show-inheritance:
 
 .. autoclass:: arrus.ops.imaging.PwiSequence
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.ops.imaging.StaSequence
     :members:
     :show-inheritance:
 
@@ -91,7 +99,7 @@ An instance of the following class is returned by the ``sesion.upload`` function
 
 Data buffers consists of multiple buffer elements.
 
-.. autoclass:: arrus.framework.BufferElement
+.. autoclass:: arrus.framework.DataBufferElement
     :members: data
     :show-inheritance:
 
@@ -121,10 +129,10 @@ B-mode imaging pipeline using cupy/numpy
 .. autoclass:: arrus.utils.imaging.Pipeline
     :show-inheritance:
 
-.. autoclass:: arrus.utils.imaging.BandpassFilter
+.. autoclass:: arrus.utils.imaging.FirFilter
     :show-inheritance:
 
-.. autoclass:: arrus.utils.imaging.Filter
+.. autoclass:: arrus.utils.imaging.BandpassFilter
     :show-inheritance:
 
 .. autoclass:: arrus.utils.imaging.QuadratureDemodulation
@@ -166,7 +174,7 @@ B-mode imaging pipeline using cupy/numpy
 .. autoclass:: arrus.utils.imaging.Sum
     :show-inheritance:
 
-.. autoclass:: arrus.utils.imaging.Average
+.. autoclass:: arrus.utils.imaging.Mean
     :show-inheritance:
 
 Logging

@@ -26,6 +26,7 @@ set(DOC_FILES
     "content/img/apertures.jpeg"
     "content/img/delays.jpeg"
     "content/img/scheme.jpeg"
+    "content/img/pwi-cysts.png"
     "content/misc/release_notes.rst"
     "content/misc/acknowledgments.rst"
     "content/misc/img/ncbr.png"
