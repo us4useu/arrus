@@ -1,7 +1,5 @@
 
 %% PARAMETERS
-nUs4OEM = 2;    % This must remain unchanged
-
 nSamples = 1024;
 nAngles = 17;
 nRepetitions = 100;
@@ -62,8 +60,7 @@ function [usObj] = initializeSystem(txVoltage,txFrequency,txAngles,nSamples,nRep
 %% System setup
 addpath('../arrus');    % path to the MATLAB API files
 
-usObj = Us4R(           'nUs4OEM',          2, ...
-                        'probeName',        'LA/20/128', ...
+usObj = Us4R(           'probeName',        'LA/20/128', ...
                         'adapterType',      'atl/philips', ...
                         'voltage',          txVoltage, ...
                         'logTime',          true);
