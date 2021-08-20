@@ -127,13 +127,8 @@ classdef Us4R < handle
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
                 
-                obj.sys.selElem = reshape((1:obj.sys.nChArius).' + (0:3)*obj.sys.nChArius*nArius, [], 1);  % [4 x nChannels]
-                obj.sys.selElem = repmat(obj.sys.selElem, 1, nArius);
-                obj.sys.selElem = reshape(obj.sys.selElem, 128, [], 2);
-                obj.sys.selElem(:, :, 2) = obj.sys.selElem(:, :, 2) + 32;
-                obj.sys.selElem(:, :, 1) = obj.sys.selElem(:, :, 1) + (0:(nArius/2-1))*64;
-                obj.sys.selElem(:, :, 2) = obj.sys.selElem(:, :, 2) + (0:(nArius/2-1))*64;
-                obj.sys.selElem = reshape(obj.sys.selElem, 128, []);
+                obj.sys.selElem = reshape((1:obj.sys.nChArius).' + (0:3)*obj.sys.nChArius*nArius, [], 1) ...
+                                + [(0:(nArius/2-1))*2, (0:(nArius/2-1))*2+1]*obj.sys.nChArius;  % [nchannels x nArius]
                 
                 obj.sys.actChan = [true(32, nArius); false(96, nArius)]; % [nchannels x nArius]
             else
