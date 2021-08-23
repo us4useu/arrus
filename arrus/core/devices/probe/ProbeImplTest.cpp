@@ -23,12 +23,16 @@ protected:
         fcmBuilder.setChannelMapping(1, 2, 3, 0);
         fcmBuilder.setChannelMapping(1, 3, 3, 1);
         fcm = fcmBuilder.build();
+        rxPaddingLeft = std::vector<ChannelIdx>(fcm->getNumberOfLogicalFrames(), 0);
+        rxPaddingRight = std::vector<ChannelIdx>(fcm->getNumberOfLogicalFrames(), 0);
     }
 
     constexpr static uint16_t N_FRAMES = 2;
     constexpr static uint16_t N_CHANNELS = 4;
 
     FrameChannelMapping::Handle fcm;
+    std::vector<ChannelIdx> rxPaddingLeft;
+    std::vector<ChannelIdx> rxPaddingRight;
 };
 
 TEST_F(ProbeImplFcmRemapTest, OneToOne) {
@@ -42,7 +46,7 @@ TEST_F(ProbeImplFcmRemapTest, OneToOne) {
     }
 
     // Expect
-    auto actualFcm = ProbeImpl::remapFcm(fcm, adapterActiveChannels);
+    auto actualFcm = ProbeImpl::remapFcm(fcm, adapterActiveChannels, rxPaddingLeft, rxPaddingRight);
 
     auto actualNFrames = actualFcm->getNumberOfLogicalFrames();
     auto actualNChannels = actualFcm->getNumberOfLogicalChannels();
@@ -69,7 +73,7 @@ TEST_F(ProbeImplFcmRemapTest, NonStandard) {
     };
 
     // Expect
-    auto actualFcm = ProbeImpl::remapFcm(fcm, adapterActiveChannels);
+    auto actualFcm = ProbeImpl::remapFcm(fcm, adapterActiveChannels, rxPaddingLeft, rxPaddingRight);
 
     auto actualNFrames = actualFcm->getNumberOfLogicalFrames();
     auto actualNChannels = actualFcm->getNumberOfLogicalChannels();

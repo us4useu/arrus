@@ -1,4 +1,4 @@
-.. _arrus-api-main:
+.. _arrus-api:
 
 =============
 API Reference

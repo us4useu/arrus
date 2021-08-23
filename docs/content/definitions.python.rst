@@ -1,4 +1,4 @@
-.. _arrus-api-main:
+.. _arrus-definitions:
 
 ========================
 Glossary and assumptions
@@ -145,9 +145,9 @@ RF sequences.
 Adopted coordinate system
 =========================
 
-The adopted coordinate system is shown in :numref:`fig-coordinate_system_def`.
+The adopted coordinate system is shown in :numref:`arrus-fig-coordinate-system`.
 
-.. _fig-coordinate_system_def:
+.. _arrus-fig-coordinate-system:
 .. figure:: img/coordinate_system.jpeg
 
      Adopted coordinate system in the imaging plane (left) and taking into
@@ -157,6 +157,6 @@ Important notes:
 
 * point coordinates are written in (z,x) or (z,x,y) format
 * point (0,0,0) is at the center of the probe’s surface,
-* the orientation of the coordinates' axes are shown in :numref:`fig-coordinate_system_def` ,
+* the orientation of the coordinates' axes are shown in :numref:`arrus-fig-coordinate-system` ,
 * angle :math:`\phi=0`  covers with the z-axis direction and positive
   :math:`\phi` direction is counter-clockwise.

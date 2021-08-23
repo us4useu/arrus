@@ -24,6 +24,8 @@ def main():
     parser.add_argument("--install_dir", dest="install_dir",
                         type=str, required=False,
                         default=os.environ.get(INSTALL_ENVIRON, None))
+    parser.add_argument("--config", dest="config",
+                        type=str, required=False, default="Release")
 
     args = parser.parse_args()
     src_dir = args.source_dir
@@ -42,7 +44,8 @@ def main():
     cmake_install_cmd = [
         "cmake",
         "--install", build_dir,
-        "--prefix", install_dir
+        "--prefix", install_dir,
+        "--config", args.config
     ]
     print("Calling: %s"%(" ".join(cmake_install_cmd)))
     result = subprocess.call(cmake_install_cmd)

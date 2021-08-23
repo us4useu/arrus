@@ -1,4 +1,6 @@
 import abc
+import queue
+
 import numpy as np
 import importlib
 import importlib.util
@@ -16,6 +18,7 @@ import arrus.ops.us4r
 import arrus.ops.imaging
 import arrus.kernels.kernel
 import arrus.utils
+import arrus.utils.imaging
 import arrus.framework
 import time
 
@@ -56,7 +59,7 @@ class Session(AbstractSession):
     on the devices should be done withing the session context.
     """
 
-    def __init__(self, cfg_path: str = None,
+    def __init__(self, cfg_path: str="us4r.prototxt",
                  medium: arrus.medium.Medium = None):
         """
         Session constructor.
@@ -72,7 +75,7 @@ class Session(AbstractSession):
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
-        Uploads a given sequence of operations to perform on the device.
+        Uploads a given sequence on devices.
 
         :param scheme: scheme to upload
         :raises: ValueError when some of the input parameters are invalid
@@ -131,15 +134,48 @@ class Session(AbstractSession):
             if not isinstance(processing, _imaging.Pipeline):
                 raise ValueError("Currently only arrus.utils.imaging.Pipeline "
                                  "processing is supported only.")
-            processing.register_host_buffer(buffer)
-            const_metadata = processing.initialize(const_metadata)
+            import cupy as cp
 
-            self._current_processing = processing
+            out_metadata = processing.prepare(const_metadata)
+            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
+                                     shape=const_metadata.input_shape,
+                                     dtype=const_metadata.dtype,
+                                     math_pkg=cp,
+                                     type="locked")
+            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=4,
+                                      shape=m.input_shape,
+                                      dtype=m.dtype, math_pkg=np,
+                                      type="locked")
+                               for m in out_metadata]
+            user_out_buffer = queue.Queue(maxsize=1)
 
-            def processing_callback(element):
-                processing(element.data)
+            def buffer_callback(elements):
+                try:
+                    user_elements = [None]*len(elements)
+                    for i, element in enumerate(elements):
+                        user_elements[i] = element.data.copy()
+                        element.release()
+                    try:
+                        user_out_buffer.put_nowait(user_elements)
+                    except queue.Full:
+                        pass
 
-            buffer.append_on_new_data_callback(processing_callback)
+                except Exception as e:
+                    print(f"Exception: {type(e)}")
+                except:
+                    print("Unknown exception")
+
+            pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
+                buffer, self.gpu_buffer, self.out_buffer, processing,
+                buffer_callback)
+            self._current_processing = pipeline_wrapper
+            buffer.append_on_new_data_callback(pipeline_wrapper.process)
+
+            buffer = user_out_buffer
+            if len(out_metadata) == 1:
+                const_metadata = out_metadata[0]
+            else:
+                const_metadata = out_metadata
 
         return buffer, const_metadata
 
