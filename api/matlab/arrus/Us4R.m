@@ -20,7 +20,6 @@ classdef Us4R < handle
     % 
     % Only one of the following parameters should be provided:
     %
-    % :param nUs4OEM: number of Us4OEM modules available in the us4R system. Required.
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Required.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
     % :param probeName: name of the probe to use. The parameter is required when ``probe`` is not provided.
@@ -37,11 +36,10 @@ classdef Us4R < handle
     methods
 
         function obj = Us4R(varargin)
-            [nArius, voltage, probeName, adapterType, interfaceName, logTime, probe] = Us4R.parseUs4RParams(varargin{:});
+            [voltage, probeName, adapterType, interfaceName, logTime, probe] = Us4R.parseUs4RParams(varargin{:});
 
             obj.logTime = logTime;
             % System parameters
-            obj.sys.nArius = nArius; % number of Arius modules
             obj.sys.nChArius = 32;
             
             obj.sys.trigTxDel = 240; % [samp] trigger to t0 (tx start) delay
@@ -51,6 +49,10 @@ classdef Us4R < handle
             if(isempty(probe))
                 probe = probeParams(probeName,adapterType,interfaceName);
             end
+            
+            obj.sys.nArius = probe.nUs4OEM; % number of Arius modules
+            nArius = obj.sys.nArius;
+            obj.sys.systemType = probe.systemType;
             
             % checking if voltage is safe
             isProperVoltageValue = @(x) ...
@@ -71,7 +73,7 @@ classdef Us4R < handle
             end
             
             
-            obj.sys.adapType = probe.adapType;                       % 0-old(00001111); 1-new(01010101);
+            obj.sys.adapType = probe.adapType;                      
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
             obj.sys.curvRadius = probe.curvRadius;
@@ -124,7 +126,7 @@ classdef Us4R < handle
                 
                 obj.sys.selElem = reshape(  (1:obj.sys.nChArius).' ...
                                           + (0:3)*obj.sys.nChArius*nArius, [], 1) ...
-                                          + (0:(nArius-1))*obj.sys.nChArius;
+                                          + (0:(nArius-1))*obj.sys.nChArius;  % [nchannels x nArius]
                 obj.sys.actChan = [true(96,nArius); false(32,nArius)];
                 
             elseif obj.sys.adapType == 2
@@ -136,8 +138,18 @@ classdef Us4R < handle
 %                 nChanTot = obj.sys.nChArius*4*nArius;
                 obj.sys.selElem = repmat((1:128).',[1 nArius]);
                 obj.sys.actChan = mod(ceil((1:128)' / obj.sys.nChArius) - 1, nArius) == (0:(nArius-1));
+            elseif obj.sys.adapType == 3
+                obj.sys.nChCont = obj.sys.nChArius * nArius;
+                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
+                
+                obj.sys.selElem = reshape((1:obj.sys.nChArius).' + (0:3)*obj.sys.nChArius*nArius, [], 1) ...
+                                + [(0:(nArius/2-1))*2, (0:(nArius/2-1))*2+1]*obj.sys.nChArius;  % [nchannels x nArius]
+                
+                obj.sys.actChan = [true(32, nArius); false(96, nArius)]; % [nchannels x nArius]
+            else
+                error("ARRUS:IllegalArgument", ['Unrecognized adapter type: ', obj.sys.adapType]);
             end
-            obj.sys.actChan = obj.sys.actChan & any(obj.sys.selElem == reshape(obj.sys.probeMap,1,1,[]),3);
+            obj.sys.actChan = obj.sys.actChan & any(obj.sys.selElem == reshape(obj.sys.probeMap, 1, 1, []),3);
 
         end
 
@@ -331,7 +343,7 @@ classdef Us4R < handle
     
     methods(Access = private, Static)
         
-       function [nArius, voltage, probeName, adapterType, interfaceName, logTime, probe] = parseUs4RParams(varargin)
+        function [voltage, probeName, adapterType, interfaceName, logTime, probe] = parseUs4RParams(varargin)
            paramsParser = inputParser;
            addParameter(paramsParser, 'nUs4OEM', []);
            addParameter(paramsParser, 'voltage', []);
@@ -343,9 +355,9 @@ classdef Us4R < handle
            parse(paramsParser, varargin{:});
 
            nArius = paramsParser.Results.nUs4OEM;
-           if(~isscalar(nArius))
-               error("ARRUS:IllegalArgument", ...
-               "Parameter nArius is required and should be a scalar");
+           % TODO remove the nUs4OEM parameter value
+           if(~isempty(nArius))
+               warning("Parameter 'nUs4OEM' is deprecated and will be ignored.");
            end
            voltage = paramsParser.Results.voltage;
            if(~isscalar(voltage))
@@ -856,6 +868,23 @@ classdef Us4R < handle
             clear Us4MEX;
             
             %% Program mappings, gains, and voltage
+            
+            
+            Us4MEX(0, "Initialize", obj.sys.systemType, obj.sys.nArius);
+            try
+                Us4MEX(0,"EnableHV");
+            catch
+                warning('1st "EnableHV" failed');
+                Us4MEX(0,"EnableHV");
+            end
+                
+            try
+                Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+            catch
+                warning('1st "SetHVVoltage" failed');
+                Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+            end
+            
             for iArius=0:(obj.sys.nArius-1)
                 % Set Rx channel mapping
 %                 for iChan=1:32
@@ -878,19 +907,7 @@ classdef Us4R < handle
                 Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
                 Us4MEX(iArius, "TGCEnable");
 
-                try
-                    Us4MEX(0,"EnableHV");
-                catch
-                    warning('1st "EnableHV" failed');
-                    Us4MEX(0,"EnableHV");
-                end
                 
-                try
-                    Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
-                catch
-                    warning('1st "SetHVVoltage" failed');
-                    Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
-                end
             end
             
             %% Program Tx/Rx sequence
@@ -1037,7 +1054,7 @@ classdef Us4R < handle
                 end
                 rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
                 
-            elseif obj.sys.adapType == 2 || obj.sys.adapType == 1 || obj.sys.adapType == -1
+            else
                 % "ultrasonix" or "new esaote" adapter type
                 rf0	= permute(rf,[2 1 3 4 6 5]);
                 rf0	= reshape(rf0,nSamp,nChan*nSubTx*nTx*nArius,nRep);
