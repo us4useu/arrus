@@ -1146,12 +1146,12 @@ class Enqueue(Operation):
         self.block = block
         self.ignore_full = ignore_full
         if self.block:
-            self._process = self._put_block
+            self.process = self._put_block
         else:
             if self.ignore_full:
-                self._process = self._put_ignore_full
+                self.process = self._put_ignore_full
             else:
-                self._process = self._put_non_block
+                self.process = self._put_non_block
         self._copy_func = None
 
     def set_pkgs(self, num_pkg, **kwargs):
