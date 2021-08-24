@@ -1216,7 +1216,11 @@ class SelectFrames(Operation):
         if isinstance(seq, arrus.ops.imaging.PwiSequence):
             # select appropriate angles
             output_angles = seq.angles[self.frames]
-            new_seq = dataclasses.replace(seq, angles=output_angles)
+            tx_aperture_center = seq.tx_aperture_center[self.frames]
+            rx_aperture_center = seq.rx_aperture_center[self.frames]
+            new_seq = dataclasses.replace(seq, angles=output_angles,
+                                          tx_aperture_center=tx_aperture_center,
+                                          rx_aperture_center=rx_aperture_center)
             new_context = const_metadata.context
             new_context = arrus.metadata.FrameAcquisitionContext(
                 device=new_context.device, sequence=new_seq,
@@ -1523,25 +1527,33 @@ class ReconstructLri(Operation):
         burst_factor = seq.pulse.n_periods / (2*self.fn)
         self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.asarray(self.initial_delay, dtype=self.num_pkg.float32)
+        self.max_tx = 64
+        self.actual_ntx = min(self.max_tx, self.n_tx)
+        self.n_iterations = (self.n_tx-1) // self.max_tx + 1
         return const_metadata.copy(input_shape=output_shape)
 
     def process(self, data):
         data = self.num_pkg.ascontiguousarray(data)
-        params = (
-            self.output_buffer,
-            data,
-            self.x_elem, self.z_elem, self.tang_elem, self.n_elements, # DONE
-            self.n_tx, self.n_samples,
-            self.z_pix, self.z_size,
-            self.x_pix, self.x_size,
-            self.sos, self.fs, self.fn,
-            self.tx_foc, self.tx_ang_zx,
-            self.tx_ap_cent_z, self.tx_ap_cent_x,
-            self.tx_ap_first_elem, self.tx_ap_last_elem,
-            self.rx_ap_origin, self.n_rx,
-            self.min_tang, self.max_tang,
-            self.initial_delay)
-        self._kernel(self.grid_size, self.block_size, params)
+        for i in range(self.n_iterations):
+            start = i*self.max_tx
+            end = (i+1)*self.max_tx
+            params = (
+                self.output_buffer[start:end],
+                data[start:end],
+                self.x_elem, self.z_elem, self.tang_elem, self.n_elements,
+                self.actual_ntx, self.n_samples,
+                self.z_pix, self.z_size,
+                self.x_pix, self.x_size,
+                self.sos, self.fs, self.fn,
+                self.tx_foc[start:end], self.tx_ang_zx[start:end],
+                self.tx_ap_cent_z[start:end], self.tx_ap_cent_x[start:end],
+                self.tx_ap_first_elem[start:end], self.tx_ap_last_elem[start:end],
+                self.rx_ap_origin[start:end], self.n_rx,
+                self.min_tang, self.max_tang,
+                self.initial_delay)
+            self._kernel(self.grid_size, self.block_size, params)
+            if self.n_tx > self.max_tx:
+                data[start:end].get()
         return self.output_buffer
 
 

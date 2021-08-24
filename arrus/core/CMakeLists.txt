@@ -213,8 +213,6 @@ target_link_libraries(${TARGET_NAME}
     Us4::US4OEM
     Us4::HV256
     Us4::DBARLite
-    Us4::Us4RDBAR
-    Us4::Us4RPSC
     Boost::Boost
     protobuf::libprotobuf
     fmt::fmt

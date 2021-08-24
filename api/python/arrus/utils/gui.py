@@ -30,7 +30,7 @@ class Display2D:
     """
     def __init__(self, window_size=None, title=None, xlabel=None,
                  ylabel=None, interval=10, input_timeout=2, extent=None,
-                 show_colorbar=False, **kwargs):
+                 show_colorbar=False, input=0, **kwargs):
         """
         2D display constructor.
 
