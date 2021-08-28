@@ -583,9 +583,10 @@ void Us4OEMImpl::setTGC(const ops::us4r::TGCCurve &tgc) {
              53.256f,
              54.0f};
         auto actualTGC = ::arrus::interpolate1d(
-            tgcChar,
-            ::arrus::getRange<float>(14, 55, 1.0),
-            tgc);
+            tgcChar, // observed
+            ::arrus::getRange<float>(14, 55, 1.0), // applied
+            tgc // expected observed
+        ); // -> values to apply
         for(auto &val: actualTGC) {
             val = (val - 14.0f) / 40.0f;
         }

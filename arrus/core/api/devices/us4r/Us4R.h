@@ -76,9 +76,51 @@ public:
     /**
      * Sets tgc curve points asynchronously.
      *
+     * Setting empty vector turns off analog TGC.
+     * Setting non-empty vector turns off DTGC and turns on analog TGC.
+     *
+     *
+     *
      * @param tgcCurvePoints tgc curve points to set.
+     * @param applyCharacteristic set it to true if you want to apply a pre-computed characteristic. True works only
+     *
      */
-    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints) = 0;
+    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic = true) = 0;
+
+    /**
+     * Sets low-pass filter cutoff frequency (AFE parameter).
+     *
+     * Available values: 10000000, 15000000, 20000000, 30000000, 35000000,
+     * 50000000 [Hz].
+     *
+     * @param value cutoff frequency to set [Hz]
+     */
+    virtual void setLpfCutoff(uint32 value) = 0;
+
+    /**
+     * Sets active termination value (AFE parameter).
+     *
+     * Available values: 50, 100, 200, 400 [Ohm].
+     * std::nullopt turns off active termination
+     *
+     * @param value active termination to set [Ohm]
+     */
+    virtual void setActiveTermination(std::optional<uint16> value) = 0;
+
+    /**
+     * Sets digital time gain compensation, measured in attenuation values
+     * (AFE parameter).
+     *
+     * Available values: 0, 6, 12, 18, 24, 30, 36, 42 [dB].
+     * std::nullopt turns off DTGC.
+     * Setting any other acceptable value turns off analog TGC and turns on
+     * DTGC.
+     *
+     * @param value DTGC attenuation to set [dB]
+     */
+    virtual void setDtgcAttenuation(std::optional<uint8> value) = 0;
+
+
 
     virtual void start() = 0;
     virtual void stop() = 0;
