@@ -15,14 +15,10 @@ public:
 
     virtual
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri,
-                    bool triggerSync) = 0;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync) = 0;
 
-    virtual
-    void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &,
-                              bool isTriggerSync) = 0;
+    virtual void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &, bool isTriggerSync) = 0;
 };
 
 }

@@ -74,24 +74,29 @@ public:
     virtual void disableHV() = 0;
 
     /**
-     * Sets tgc curve points asynchronously.
+     * Equivalent to setTgcCurve(curve, true).
+     */
+    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints) = 0;
+
+    /**
+     * Sets TGC curve points asynchronously.
      *
      * Setting empty vector turns off analog TGC.
      * Setting non-empty vector turns off DTGC and turns on analog TGC.
      *
-     *
+     * TGC curve can have up to 1022 samples.
      *
      * @param tgcCurvePoints tgc curve points to set.
-     * @param applyCharacteristic set it to true if you want to apply a pre-computed characteristic. True works only
-     *
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
      */
-    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic = true) = 0;
+    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic) = 0;
 
     /**
      * Sets low-pass filter cutoff frequency (AFE parameter).
      *
-     * Available values: 10000000, 15000000, 20000000, 30000000, 35000000,
-     * 50000000 [Hz].
+     * Available values: 10000000, 15000000, 20000000, 30000000, 35000000, 50000000 [Hz].
      *
      * @param value cutoff frequency to set [Hz]
      */
@@ -120,7 +125,23 @@ public:
      */
     virtual void setDtgcAttenuation(std::optional<uint8> value) = 0;
 
+    /**
+     * Sets low-noise amplifier gain (AFE parameter).
+     *
+     * Available values: 12, 18, 24 [dB].
+     *
+     * @param value gain to apply [dB]
+     */
+    virtual void setLnaGain(uint8 value) = 0;
 
+    /**
+     * Sets "programmable gain amplifier" gain (AFE parameter).
+     *
+     * Available values: 24, 30 [dB].
+     *
+     * @param value gain to apply [dB]
+     */
+    virtual void setPgaGain(uint8 value) = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;

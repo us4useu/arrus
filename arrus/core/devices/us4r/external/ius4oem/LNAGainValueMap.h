@@ -12,7 +12,7 @@ namespace arrus::devices {
 class LNAGainValueMap {
 
 public:
-    using ValueType = uint16;
+    using ValueType = uint8;
 
     static LNAGainValueMap &getInstance() {
         static LNAGainValueMap instance;

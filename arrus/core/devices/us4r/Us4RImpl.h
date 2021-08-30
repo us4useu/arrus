@@ -17,6 +17,7 @@
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
+#include "arrus/core/devices/us4r/TgcSettings.h"
 
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/Buffer.h"
@@ -28,20 +29,16 @@ public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
 
     enum class State {
-        STARTED, STOPPED
+        STARTED,
+        STOPPED
     };
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
-             std::optional<HighVoltageSupplier::Handle> hv)
-        : Us4R(id), us4oems(std::move(us4oems)), hv(std::move(hv)) {}
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv);
 
-    Us4RImpl(const DeviceId &id,
-             Us4OEMs us4oems,
-             ProbeAdapterImplBase::Handle &probeAdapter,
-             ProbeImplBase::Handle &probe,
-             std::optional<HighVoltageSupplier::Handle> hv);
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
+             ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -53,10 +50,8 @@ public:
         boost::algorithm::trim(tail);
         if(!tail.empty()) {
             throw IllegalArgumentException(
-                arrus::format(
-                    "Us4R devices allows access only to the top-level "
-                    "devices (got relative path: '{}')", path)
-            );
+                arrus::format("Us4R devices allows access only to the top-level devices (got relative path: '{}')",
+                              path));
         }
         DeviceId componentId = DeviceId::parse(root);
         return getDevice(componentId);
@@ -101,12 +96,8 @@ public:
         return probe.value().get();
     }
 
-    std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::devices::FrameChannelMapping>
-    >
-    upload(const ops::us4r::TxRxSequence &seq,
-           unsigned short rxBufferNElements,
+    std::pair<std::shared_ptr<arrus::framework::Buffer>,std::shared_ptr<arrus::devices::FrameChannelMapping>>
+    upload(const ops::us4r::TxRxSequence &seq, unsigned short rxBufferNElements,
            const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
            const ::arrus::framework::DataBufferSpec &outputBufferSpec) override;
 
@@ -114,13 +105,38 @@ public:
 
     void stop() override;
 
-    void setVoltage(Voltage voltage);
+    void setVoltage(Voltage voltage) override;
 
-    void disableHV();
+    void disableHV() override;
+
+    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
 
-private:
+    void setLpfCutoff(uint32 value) override;
+
+    void setActiveTermination(std::optional<uint16> value) override;
+
+    void setDtgcAttenuation(std::optional<uint8> value) override;
+
+    void setLnaGain(uint8 value) override;
+
+    void setPgaGain(uint8 value) override;
+
+ private:
+    UltrasoundDevice *getDefaultComponent();
+
+    void stopDevice();
+
+    void syncTrigger();
+
+    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize, bool triggerSync);
+
+    ProbeImplBase::RawHandle getProbeImpl() {
+        return probe.value().get();
+    }
+
     std::mutex deviceStateMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
@@ -130,21 +146,12 @@ private:
     // will be used outside
     // TODO extract output buffer to some external class
     std::shared_ptr<Us4ROutputBuffer> buffer;
+    // Fields describing current state.
     State state{State::STOPPED};
-
-    UltrasoundDevice *getDefaultComponent();
-
-    void stopDevice();
-
-    void syncTrigger();
-
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize,
-                   uint16_t rxBatchSize, bool triggerSync);
-
-    ProbeImplBase::RawHandle getProbeImpl() {
-        return probe.value().get();
-    }
+    // AFE parameters.
+    TgcSettings tgcSettings;
+    uint32 lpfCutoff;
+    uint16 activeTermination;
 };
 
 }

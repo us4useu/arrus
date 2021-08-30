@@ -99,10 +99,8 @@ public:
     void syncTrigger() override;
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri,
-                    bool triggerSync = false) override;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false) override;
 
     double getSamplingFrequency() override;
 
@@ -114,7 +112,7 @@ public:
 
     void stop() override;
 
-    void setTgcCurve(const ops::us4r::TGCCurve &tgc) override;
+    void setTgcCurve(const ops::us4r::TGCCurve &tgc, bool applyCharacteristic) override;
 
     Ius4OEMRawHandle getIUs4oem() override;
 
@@ -125,20 +123,16 @@ public:
  private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
-    std::tuple<
-            std::unordered_map<uint16, uint16>,
-            std::vector<Us4OEMImpl::Us4OEMBitMask>,
-            FrameChannelMapping::Handle>
+    std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 
     static float getRxTime(size_t nSamples, uint32 decimationFactor);
 
-    void setTGC(const ops::us4r::TGCCurve &tgc);
-
-    std::bitset<N_ADDR_CHANNELS>
-    filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
+    std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
+
+    float getTxRxTime(float rxTime) const;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -148,7 +142,6 @@ public:
     std::unordered_set<uint8_t> channelsMask;
     uint16 pgaGain, lnaGain;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
-    float getTxRxTime(float rxTime) const;
 };
 
 }

@@ -12,15 +12,14 @@ namespace arrus::devices {
 class DTGCAttenuationValueMap {
 
 public:
-    using ValueType = uint16;
+    using ValueType = uint8;
 
     static DTGCAttenuationValueMap &getInstance() {
         static DTGCAttenuationValueMap instance;
         return instance;
     }
 
-    us4r::afe58jd18::DIG_TGC_ATTENUATION
-    getEnumValue(const ValueType value) {
+    us4r::afe58jd18::DIG_TGC_ATTENUATION getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 

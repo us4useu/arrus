@@ -26,7 +26,7 @@ public:
 
     virtual void syncTrigger() = 0;
 
-    virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgcCurve) = 0;
+    virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgcCurve, bool applyCharacteristic) = 0;
 };
 
 }

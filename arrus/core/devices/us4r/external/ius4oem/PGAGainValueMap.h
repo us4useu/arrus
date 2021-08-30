@@ -12,7 +12,7 @@ namespace arrus::devices {
 class PGAGainValueMap {
 
 public:
-    using ValueType = uint16;
+    using ValueType = uint8;
 
     static PGAGainValueMap &getInstance() {
         static PGAGainValueMap instance;

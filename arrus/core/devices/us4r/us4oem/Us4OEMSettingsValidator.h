@@ -20,10 +20,9 @@ namespace arrus::devices {
 class Us4OEMSettingsValidator : public SettingsValidator<Us4OEMSettings> {
 public:
     explicit Us4OEMSettingsValidator(Ordinal moduleOrdinal)
-            : SettingsValidator<Us4OEMSettings>(
-            DeviceId(DeviceType::Us4OEM, moduleOrdinal)) {}
+            : SettingsValidator<Us4OEMSettings>(DeviceId(DeviceType::Us4OEM, moduleOrdinal)) {}
 
-    void validate(const Us4OEMSettings &obj) override {
+    void validate(const Us4OEMSettings &obj) {
         constexpr ChannelIdx RX_SIZE = Us4OEMImpl::N_RX_CHANNELS;
         constexpr ChannelIdx N_TX_CHANNELS = Us4OEMImpl::N_TX_CHANNELS;
         constexpr ChannelIdx N_RX_GROUPS = N_TX_CHANNELS / RX_SIZE;
@@ -38,10 +37,7 @@ public:
         // The size of the mapping:
         // Us4OEM mapping should include all channels, we don't want
         // the situation, where some o channels are not defined.
-        expectEqual("channel mapping",
-                              obj.getChannelMapping().size(),
-							  (size_t)N_TX_CHANNELS,
-                              "(size)");
+        expectEqual("channel mapping", obj.getChannelMapping().size(), (size_t)N_TX_CHANNELS, "(size)");
 
         if(obj.getChannelMapping().size() == (size_t)N_TX_CHANNELS) {
             auto &channelMapping = obj.getChannelMapping();
@@ -60,34 +56,20 @@ public:
                         missingValues.push_back(j);
                     }
                 }
-                expectTrue(
-                        "channel mapping",
-                        missingValues.empty(),
+                expectTrue("channel mapping", missingValues.empty(),
                         arrus::format(
-                                "Some of Us4OEM channels: '{}' "
-                                "are missing in the group of channels [{}, {}]",
-                                ::arrus::toString(missingValues),
-                                group * RX_SIZE, (group + 1) * RX_SIZE
-                        )
-                );
+                                "Some of Us4OEM channels: '{}' are missing in the group of channels [{}, {}]",
+                                ::arrus::toString(missingValues), group * RX_SIZE, (group + 1) * RX_SIZE));
             }
         }
         // TGC samples
         if(obj.getRxSettings().getDtgcAttenuation().has_value()) {
-            expectOneOf(
-                    "dtgc attenuation",
-                    obj.getRxSettings().getDtgcAttenuation().value(),
+            expectOneOf("dtgc attenuation", obj.getRxSettings().getDtgcAttenuation().value(),
                     DTGCAttenuationValueMap::getInstance().getAvailableValues()
             );
         }
-        expectOneOf(
-                "pga gain",
-                obj.getRxSettings().getPgaGain(),
-                PGAGainValueMap::getInstance().getAvailableValues());
-        expectOneOf(
-                "lna gain",
-                obj.getRxSettings().getLnaGain(),
-                LNAGainValueMap::getInstance().getAvailableValues());
+        expectOneOf("pga gain", obj.getRxSettings().getPgaGain(), PGAGainValueMap::getInstance().getAvailableValues());
+        expectOneOf("lna gain", obj.getRxSettings().getLnaGain(), LNAGainValueMap::getInstance().getAvailableValues());
 
         if(!obj.getRxSettings().getTgcSamples().empty()) {
             // Maximum/minimum number of samples.
