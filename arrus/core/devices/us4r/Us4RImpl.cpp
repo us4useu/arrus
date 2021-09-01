@@ -1,4 +1,5 @@
 #include "Us4RImpl.h"
+#include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
 #include <memory>
 #include <chrono>
@@ -28,19 +29,19 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     }
 }
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv)
-    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)) {
-
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+                   const RxSettings &rxSettings)
+    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)),
+      rxSettings(rxSettings) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
-                   ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv)
+                   ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
+                   const RxSettings &rxSettings)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
-      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)) {
-
+      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)), rxSettings(rxSettings) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-
 }
 
 void Us4RImpl::setVoltage(Voltage voltage) {
@@ -172,10 +173,8 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSi
         Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
         Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
 
-        actualSeq.push_back(
-            TxRxParameters(tx.getAperture(), tx.getDelays(), tx.getExcitation(),rx.getAperture(),
-                sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding)
-        );
+        actualSeq.push_back(TxRxParameters(tx.getAperture(), tx.getDelays(), tx.getExcitation(),rx.getAperture(),
+                            sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding));
         ++opIdx;
     }
     return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize, rxBatchSize, seq.getSri(),
@@ -187,55 +186,51 @@ void Us4RImpl::syncTrigger() {
 }
 
 // AFE parameters
-
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
     setTgcCurve(tgcCurvePoints, true);
 }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
-    // TODO AFE mutex
-    // TODO tutaj najpierw powinna byc walidacja, potem ustawianie
-    // Tylko informacja, ze poszlo cos nie tak w trakcie ustawiania parametru i parametry (wykrywac odpowiednia sytuacje)
+    RxSettings newRxSettings{rxSettings.getDtgcAttenuation(),
+                             rxSettings.getPgaGain(),
+                             rxSettings.getLnaGain(),
+                             tgcCurvePoints,
+                             rxSettings.getLpfCutoff(),
+                             rxSettings.getActiveTermination(),
+                             applyCharacteristic};
+    setRxSettings(rxSettings);
+}
 
-    // validate
-    // AFE mutex
-    // turn off dtgc
-    // set tgc curve
-    if(! tgcCurvePoints.empty()) {
-        setDtgcAttenuation(std::nullopt);
+void Us4RImpl::setRxSettings(const RxSettings &settings) {
+    RxSettingsValidator validator;
+    validator.validate(settings);
+    validator.throwOnErrors();
+
+    std::unique_lock<std::mutex> guard(afeParamsMutex);
+    bool isStateInconsistent = false;
+    bool isError = false;
+    try {
+        for(auto &us4oem: us4oems) {
+            us4oem->setRxSettings(settings);
+            // At least one us4OEM has been updated.
+            isStateInconsistent = true;
+        }
+        isStateInconsistent = false;
     }
-    for(auto &us4oem: us4oems) {
-        us4oem->setTgcCurve(tgcCurvePoints, applyCharacteristic);
+    catch(const std::exception &e) {
+        logger->log(LogSeverity::ERROR, ::arrus::format("Error while setting AFE parameters, msg: {}", e.what()));
+        isError = true;
+        throw e;
+    }
+    catch(...) {
+        logger->log(LogSeverity::ERROR, "Unknown error while setting AFE parameters.");
+        isError = true;
+    }
+    if(isStateInconsistent && isError) {
+        logger->log(LogSeverity::ERROR, "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
+                                        "were not properly configured.");
     }
 }
 
-void Us4RImpl::setLpfCutoff(uint32 value) {
-    for(auto &us4oem: us4oems) {
-        us4oem->setLpfCutoff(value);
-    }
-}
-void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
-    for(auto &us4oem: us4oems) {
-        us4oem->setActiveTermination(value);
-    }
-}
-void Us4RImpl::setDtgcAttenuation(std::optional<uint8> value) {
-    if(value.has_value()) {
-
-    }
-    for(auto &us4oem: us4oems) {
-        us4oem->setTgcCurve(tgcCurvePoints, applyCharacteristic);
-    }
-    for(auto &us4oem: us4oems) {
-        us4oem->setDtgcAttenuation(std::nullopt);
-    }
-
-}
-void Us4RImpl::setLnaGain(uint8 value) {
-
-}
-void Us4RImpl::setPgaGain(uint8 value) {
-
-}
 
 }

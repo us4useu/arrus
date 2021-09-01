@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <utility>
+#include <mutex>
 
 #include <boost/algorithm/string.hpp>
 
@@ -17,8 +18,6 @@
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
-#include "arrus/core/devices/us4r/TgcSettings.h"
-
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/Buffer.h"
 
@@ -35,10 +34,12 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv);
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+             const RxSettings &rxSettings);
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
-             ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv);
+             ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
+             const RxSettings &rxSettings);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -113,17 +114,9 @@ public:
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
 
-    void setLpfCutoff(uint32 value) override;
+    void setRxSettings(const RxSettings &settings) override;
 
-    void setActiveTermination(std::optional<uint16> value) override;
-
-    void setDtgcAttenuation(std::optional<uint8> value) override;
-
-    void setLnaGain(uint8 value) override;
-
-    void setPgaGain(uint8 value) override;
-
- private:
+private:
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
@@ -138,20 +131,16 @@ public:
     }
 
     std::mutex deviceStateMutex;
+    std::mutex afeParamsMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
     std::optional<HighVoltageSupplier::Handle> hv;
-    // will be used outside
-    // TODO extract output buffer to some external class
     std::shared_ptr<Us4ROutputBuffer> buffer;
-    // Fields describing current state.
     State state{State::STOPPED};
     // AFE parameters.
-    TgcSettings tgcSettings;
-    uint32 lpfCutoff;
-    uint16 activeTermination;
+    RxSettings rxSettings;
 };
 
 }

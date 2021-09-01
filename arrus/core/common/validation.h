@@ -57,8 +57,7 @@ class Validator {
             std::stringstream ss;
             decltype(errors.equal_range("")) r;
             int c = 0;
-            for(auto i = std::begin(errors);
-                i != std::end(errors); i = r.second) {
+            for(auto i = std::begin(errors); i != std::end(errors); i = r.second) {
                 if(c > 0) {
                     ss << ". ";
                 }
@@ -81,7 +80,6 @@ class Validator {
     }
 
 protected:
-
     /**
      * Checks is given value is equal to 'expected'.
      */

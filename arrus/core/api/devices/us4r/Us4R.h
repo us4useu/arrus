@@ -13,7 +13,7 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "FrameChannelMapping.h"
-
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
 
@@ -94,54 +94,11 @@ public:
     virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic) = 0;
 
     /**
-     * Sets low-pass filter cutoff frequency (AFE parameter).
+     * Sets a complete list of RxSettings on all Us4R components.
      *
-     * Available values: 10000000, 15000000, 20000000, 30000000, 35000000, 50000000 [Hz].
-     *
-     * @param value cutoff frequency to set [Hz]
+     * @param settings settings to apply
      */
-    virtual void setLpfCutoff(uint32 value) = 0;
-
-    /**
-     * Sets active termination value (AFE parameter).
-     *
-     * Available values: 50, 100, 200, 400 [Ohm].
-     * std::nullopt turns off active termination
-     *
-     * @param value active termination to set [Ohm]
-     */
-    virtual void setActiveTermination(std::optional<uint16> value) = 0;
-
-    /**
-     * Sets digital time gain compensation, measured in attenuation values
-     * (AFE parameter).
-     *
-     * Available values: 0, 6, 12, 18, 24, 30, 36, 42 [dB].
-     * std::nullopt turns off DTGC.
-     * Setting any other acceptable value turns off analog TGC and turns on
-     * DTGC.
-     *
-     * @param value DTGC attenuation to set [dB]
-     */
-    virtual void setDtgcAttenuation(std::optional<uint8> value) = 0;
-
-    /**
-     * Sets low-noise amplifier gain (AFE parameter).
-     *
-     * Available values: 12, 18, 24 [dB].
-     *
-     * @param value gain to apply [dB]
-     */
-    virtual void setLnaGain(uint8 value) = 0;
-
-    /**
-     * Sets "programmable gain amplifier" gain (AFE parameter).
-     *
-     * Available values: 24, 30 [dB].
-     *
-     * @param value gain to apply [dB]
-     */
-    virtual void setPgaGain(uint8 value) = 0;
+    virtual void setRxSettings(const RxSettings &settings) = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;

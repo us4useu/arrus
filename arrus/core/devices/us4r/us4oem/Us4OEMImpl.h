@@ -42,7 +42,7 @@ public:
     static constexpr Voltage MAX_VOLTAGE = 90; // 180 vpp
 
     // TGC constants.
-    static constexpr float TGC_ATTENUATION_RANGE = 40.0f;
+    static constexpr float TGC_ATTENUATION_RANGE = RxSettings::TGC_ATTENUATION_RANGE;
     static constexpr float TGC_SAMPLING_FREQUENCY = 1e6;
     static constexpr size_t TGC_N_SAMPLES = 1022;
 
@@ -81,12 +81,9 @@ public:
      * @param channelMapping a vector of N_TX_CHANNELS destination channels; must contain
      *  exactly N_TX_CHANNELS numbers
      */
-    Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
-               const BitMask &activeChannelGroups,
-               std::vector<uint8_t> channelMapping,
-               uint16 pgaGain, uint16 lnaGain,
-               std::unordered_set<uint8_t> channelsMask,
-               Us4OEMSettings::ReprogrammingMode reprogrammingMode);
+    Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
+               std::vector<uint8_t> channelMapping, RxSettings  rxSettings,
+               std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode);
 
     ~Us4OEMImpl() override;
 
@@ -119,8 +116,9 @@ public:
     void enableSequencer() override;
 
     std::vector<uint8_t> getChannelMapping() override;
+    void setRxSettings(const RxSettings &settings) override;
 
- private:
+private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
@@ -140,8 +138,9 @@ public:
     // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
     std::vector<uint8_t> channelMapping;
     std::unordered_set<uint8_t> channelsMask;
-    uint16 pgaGain, lnaGain;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
+    /** Current RX settings */
+    RxSettings rxSettings;
 };
 
 }

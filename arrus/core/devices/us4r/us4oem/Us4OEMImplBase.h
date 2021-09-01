@@ -42,6 +42,8 @@ public:
 
     virtual std::vector<uint8_t> getChannelMapping() = 0;
 
+    virtual void setRxSettings(const RxSettings& settings) = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };
