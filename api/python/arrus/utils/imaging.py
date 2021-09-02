@@ -1757,3 +1757,52 @@ class RemapToLogicalOrder(Operation):
         self._remap_fn(data)
         return self._output_buffer
 
+def get_grid(device, sequence, dx=None, dz=None):
+    '''
+    Simple utility tool for default grid generation. 
+    This should works for classical beamforming scheme.
+    
+    :param device: device on which the pipeline is executed
+    :param sequence: TX/RX sequence executing on the device
+    :param dx: (optional) grid step on horizondal (X)  axis
+    :param dz: (optional) grid step on vertical (Z)  axis
+    :return: xgrid and zgrid numpy arrays
+    
+    '''
+
+    # get needed data
+    fs = device.sampling_frequency
+    probe = device.get_probe_model()
+    nel = probe.n_elements
+    pitch = probe.pitch
+    r = probe.curvature_radius
+
+    [n0, n1] = sequence.rx_sample_range
+    ds = sequence.downsampling_factor
+    c = sequence.speed_of_sound
+    fc = sequence.pulse.center_frequency
+    
+    if dx is None:
+        dx = pitch/2
+        
+    if dz is None:
+        dz = 1/fc*c/2*4
+    
+    
+    # estimate alpha angles (in radians)
+    alpha = (nel-1)*pitch/2/r
+    
+    zmin = (n0-1)/fs*c/2*ds*np.cos(alpha) 
+    zmax = (n1-1)/fs*c/2*ds + r*(1-np.cos(alpha))
+    
+    print(zmin, zmax)
+    
+    xmin = (r+(n1-1)/fs*ds*c/2)*np.sin(-alpha)
+    xmax = (r+(n1-1)/fs*ds*c/2)*np.sin(alpha)
+
+    x_grid = np.arange(xmin, xmax, dx)
+    z_grid = np.arange(zmin, zmax, dz) 
+    
+    return x_grid, z_grid
+    
+    
