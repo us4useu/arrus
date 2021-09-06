@@ -239,13 +239,11 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
     uint32 lpfCutoff = proto.lpf_cutoff();
 
     std::optional<uint16> activeTermination;
-    if(proto.activeTermination__case() ==
-       proto::RxSettings::kActiveTermination) {
+    if(proto.activeTermination__case() == proto::RxSettings::kActiveTermination) {
         activeTermination = static_cast<uint16>(proto.active_termination());
     }
-
-    return RxSettings(dtgcAtt, pgaGain, lnaGain, tgcSamples, lpfCutoff,
-                      activeTermination);
+    // TODO apply characteristic parameter
+    return RxSettings(dtgcAtt, pgaGain, lnaGain, tgcSamples, lpfCutoff, activeTermination);
 }
 
 ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r,

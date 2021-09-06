@@ -24,7 +24,7 @@ public:
         // Only one of the following can be used.
         if(settings.getDtgcAttenuation().has_value()) {
             expectOneOf("dtgc attenuation",
-                        settings.getDtgcAttenuation(), DTGCAttenuationValueMap::getInstance().getAvailableValues());
+                        settings.getDtgcAttenuation().value(), DTGCAttenuationValueMap::getInstance().getAvailableValues());
         }
         if(!settings.getTgcSamples().empty()) {
             ARRUS_VALIDATOR_EXPECT_TRUE_M(

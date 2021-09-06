@@ -18,11 +18,8 @@ class Us4RSettings {
 public:
     using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
 
-    explicit Us4RSettings(
-        std::vector<Us4OEMSettings> us4OemSettings,
-        std::optional<HVSettings> hvSettings)
-        : us4oemSettings(std::move(us4OemSettings)),
-          hvSettings(std::move(hvSettings)) {}
+    explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings)
+        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)) {}
 
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,

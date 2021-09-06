@@ -52,7 +52,7 @@ public:
 
     RxSettings(const std::optional<uint16> &dtgcAttenuation, uint16 pgaGain, uint16 lnaGain,
                TGCCurve tgcSamples, uint32 lpfCutoff, const std::optional<uint16> &activeTermination,
-               bool applyTgcCharacteristic)
+               bool applyTgcCharacteristic = true)
             : dtgcAttenuation(dtgcAttenuation), pgaGain(pgaGain), lnaGain(lnaGain), tgcSamples(std::move(tgcSamples)),
               lpfCutoff(lpfCutoff), activeTermination(activeTermination),
               applyTgcCharacteristic(applyTgcCharacteristic) {}

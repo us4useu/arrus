@@ -50,8 +50,6 @@ public:
                          const Us4RBuffer::Handle &us4rBuffer,
                          bool isTriggerSync);
 
-    void setTgcCurve(const arrus::ops::us4r::TGCCurve &curve) override;
-
 private:
     Logger::Handle logger;
     ProbeAdapterModelId modelId;

@@ -39,8 +39,7 @@ class Us4RFactoryImpl : public Us4RFactory {
           probeFactory(std::move(probeFactory)),
           hvFactory(std::move(hvFactory)) {}
 
-    Us4R::Handle
-    getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
+    Us4R::Handle getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
         DeviceId id(DeviceType::Us4R, ordinal);
 
         // Validate us4r settings (general).
@@ -80,7 +79,7 @@ class Us4RFactoryImpl : public Us4RFactory {
             ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings, adapter.get());
 
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
-            return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv));
+            return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings);
         } else {
             // Custom Us4OEMs only
             auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings());

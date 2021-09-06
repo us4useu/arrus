@@ -34,8 +34,7 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
-             const RxSettings &rxSettings);
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv);
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
@@ -140,7 +139,7 @@ private:
     std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};
     // AFE parameters.
-    RxSettings rxSettings;
+    std::optional<RxSettings> rxSettings;
 };
 
 }

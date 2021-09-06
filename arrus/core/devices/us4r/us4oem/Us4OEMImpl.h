@@ -109,7 +109,7 @@ public:
 
     void stop() override;
 
-    void setTgcCurve(const ops::us4r::TGCCurve &tgc, bool applyCharacteristic) override;
+    void setTgcCurve(const ops::us4r::TGCCurve &tgc, bool applyCharacteristic);
 
     Ius4OEMRawHandle getIUs4oem() override;
 

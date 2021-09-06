@@ -29,10 +29,8 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     }
 }
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
-                   const RxSettings &rxSettings)
-    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)),
-      rxSettings(rxSettings) {
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv)
+    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
@@ -191,14 +189,18 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
 }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
-    RxSettings newRxSettings{rxSettings.getDtgcAttenuation(),
-                             rxSettings.getPgaGain(),
-                             rxSettings.getLnaGain(),
+    if(!rxSettings.has_value()) {
+        throw std::runtime_error("Us4RImpl object has no rx setting set.");
+    }
+    auto& rxSettingsValue = rxSettings.value();
+    RxSettings newRxSettings{rxSettingsValue.getDtgcAttenuation(),
+                             rxSettingsValue.getPgaGain(),
+                             rxSettingsValue.getLnaGain(),
                              tgcCurvePoints,
-                             rxSettings.getLpfCutoff(),
-                             rxSettings.getActiveTermination(),
+                             rxSettingsValue.getLpfCutoff(),
+                             rxSettingsValue.getActiveTermination(),
                              applyCharacteristic};
-    setRxSettings(rxSettings);
+    setRxSettings(newRxSettings);
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
