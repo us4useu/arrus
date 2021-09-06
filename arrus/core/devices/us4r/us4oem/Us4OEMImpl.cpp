@@ -180,6 +180,16 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     ARRUS_REQUIRES_AT_MOST(nOps * batchSize * rxBufferSize, 16384,
                            ::arrus::format("Exceeded the maximum ({}) number of triggers: {}",
                                            16384, nOps * batchSize * rxBufferSize));
+
+    // TODO prepare RxSettingsMutable
+    // TODO setTxRxSequence should not set TGC curve - it should be done simply by calling appropriate setter
+    this->rxSettings = RxSettings {rxSettings.getDtgcAttenuation(),
+                                   rxSettings.getPgaGain(),
+                                   rxSettings.getLnaGain(),
+                                   tgc,
+                                   rxSettings.getLpfCutoff(),
+                                   rxSettings.getActiveTermination(),
+                                   rxSettings.isApplyTgcCharacteristic()};
     setTgcCurve(this->rxSettings);
 
     ius4oem->SetNumberOfFirings(nOps * batchSize);
