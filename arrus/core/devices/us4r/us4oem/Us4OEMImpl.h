@@ -109,14 +109,14 @@ public:
 
     void stop() override;
 
-    void setTgcCurve(const ops::us4r::TGCCurve &tgc, bool applyCharacteristic);
+    void setTgcCurve(const RxSettings &cfg);
 
     Ius4OEMRawHandle getIUs4oem() override;
 
     void enableSequencer() override;
 
     std::vector<uint8_t> getChannelMapping() override;
-    void setRxSettings(const RxSettings &settings) override;
+    void setRxSettings(const RxSettings &newSettings) override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
@@ -131,6 +131,13 @@ private:
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
 
     float getTxRxTime(float rxTime) const;
+
+    // IUs4OEM AFE stters.
+    void setPgaGainAfe(uint16 value);
+    void setLnaGainAfe(uint16 value);
+    void setDtgcAttenuationAfe(std::optional<uint16> param);
+    void setLpfCutoffAfe(uint32 value);
+    void setActiveTerminationAfe(std::optional<uint16> param);
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;

@@ -180,7 +180,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     ARRUS_REQUIRES_AT_MOST(nOps * batchSize * rxBufferSize, 16384,
                            ::arrus::format("Exceeded the maximum ({}) number of triggers: {}",
                                            16384, nOps * batchSize * rxBufferSize));
-    setTgcCurve(tgc, true);
+    setTgcCurve(this->rxSettings);
 
     ius4oem->SetNumberOfFirings(nOps * batchSize);
     ius4oem->ClearScheduledReceive();
@@ -542,8 +542,11 @@ std::vector<uint8_t> Us4OEMImpl::getChannelMapping() {
 }
 
 // AFE setters
-void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc, bool applyCharacteristic) {
-    auto tgcMax = static_cast<float>(rxSettings.getPgaGain() + rxSettings.getPgaGain());
+void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
+    const ops::us4r::TGCCurve &tgc = afeCfg.getTgcSamples();
+    bool applyCharacteristic = afeCfg.isApplyTgcCharacteristic();
+
+    auto tgcMax = static_cast<float>(afeCfg.getPgaGain() + afeCfg.getPgaGain());
     auto tgcMin = tgcMax - TGC_ATTENUATION_RANGE;
     // Set.
     if(tgc.empty()) {
@@ -573,41 +576,62 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc, bool applyCharacter
     }
 }
 
-void Us4OEMImpl::setRxSettings(const RxSettings &cfg) {
-    // Keep the last setting first.
-    // RX settings must be set before TGC curve is set. The `setTgcCurve` function uses rxSettings stored in this class.
-    rxSettings = cfg;
+void Us4OEMImpl::setRxSettings(const RxSettings &newSettings) {
+    setPgaGainAfe(newSettings.getPgaGain());
+    setLnaGainAfe(newSettings.getLnaGain());
+    setTgcCurve(newSettings);
+    setDtgcAttenuationAfe(newSettings.getDtgcAttenuation());
+    setLpfCutoffAfe(newSettings.getLpfCutoff());
+    setActiveTerminationAfe(newSettings.getActiveTermination());
+    this->rxSettings = newSettings;
+}
 
-    auto pgaGain = rxSettings.getPgaGain();
-    auto lnaGain = rxSettings.getLnaGain();
-    ius4oem->SetPGAGain(PGAGainValueMap::getInstance().getEnumValue(pgaGain));
-    ius4oem->SetLNAGain(LNAGainValueMap::getInstance().getEnumValue(lnaGain));
-    setTgcCurve(rxSettings.getTgcSamples(), rxSettings.isApplyTgcCharacteristic());
+inline void Us4OEMImpl::setPgaGainAfe(uint16 value) {
+    if(value != this->rxSettings.getPgaGain()) {
+        ius4oem->SetPGAGain(PGAGainValueMap::getInstance().getEnumValue(value));
+    }
+}
 
-    // DTGC
-    if(rxSettings.getDtgcAttenuation().has_value()) {
-        ius4oem->SetDTGC(
-                us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
-                DTGCAttenuationValueMap::getInstance().getEnumValue(rxSettings.getDtgcAttenuation().value()));
+inline void Us4OEMImpl::setLnaGainAfe(uint16 value) {
+    if(value != this->rxSettings.getLnaGain()) {
+        ius4oem->SetLNAGain(LNAGainValueMap::getInstance().getEnumValue(value));
+    }
+}
+
+inline void Us4OEMImpl::setDtgcAttenuationAfe(std::optional<uint16> param) {
+    if(param == rxSettings.getDtgcAttenuation()) {
+        return;
+    }
+    if(param.has_value()) {
+        ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
+                DTGCAttenuationValueMap::getInstance().getEnumValue(param.value()));
     } else {
-        // DTGC value does not matter
+        // DTGC param does not matter
         ius4oem->SetDTGC(
                 us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
                 us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
     }
+}
 
-    // Filtering
-    ius4oem->SetLPFCutoff(LPFCutoffValueMap::getInstance().getEnumValue(rxSettings.getLpfCutoff()));
-
-    // Active termination
-    if(rxSettings.getActiveTermination().has_value()) {
-        ius4oem->SetActiveTermination(
-                us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
-                ActiveTerminationValueMap::getInstance().getEnumValue(rxSettings.getActiveTermination().value()));
-    } else {
-        ius4oem->SetActiveTermination(
-                us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS, us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
+inline void Us4OEMImpl::setLpfCutoffAfe(uint32 value) {
+    if(value != this->rxSettings.getLpfCutoff()) {
+        ius4oem->SetLPFCutoff(LPFCutoffValueMap::getInstance().getEnumValue(value));
     }
 }
+
+inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param) {
+    if(param == rxSettings.getActiveTermination()) {
+        return;
+    }
+    if(rxSettings.getActiveTermination().has_value()) {
+        ius4oem->SetActiveTermination(us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
+                                      ActiveTerminationValueMap::getInstance().getEnumValue(param.value()));
+    } else {
+        ius4oem->SetActiveTermination(us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
+                                      us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
+    }
+}
+
+
 
 }

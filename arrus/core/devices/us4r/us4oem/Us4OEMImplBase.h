@@ -33,8 +33,6 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync) = 0;
 
-    virtual void setTgcCurve(const ::arrus::ops::us4r::TGCCurve &tgc, bool applyCharacteristic) = 0;
-
     // TODO expose "registerUs4OEMOutputBuffer" function, keep this class hermetic
     virtual Ius4OEMRawHandle getIUs4oem() = 0;
 
