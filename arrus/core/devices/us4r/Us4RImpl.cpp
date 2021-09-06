@@ -5,6 +5,11 @@
 #include <chrono>
 #include <thread>
 
+#define ARRUS_ASSERT_RX_SETTINGS_SET() \
+    if(!rxSettings.has_value()) {      \
+        throw std::runtime_error("Us4RImpl object has no rx setting set."); \
+    }                                   \
+
 namespace arrus::devices {
 
 using ::arrus::ops::us4r::TxRxSequence;
@@ -189,16 +194,13 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
 }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
-    if(!rxSettings.has_value()) {
-        throw std::runtime_error("Us4RImpl object has no rx setting set.");
-    }
-    auto newRxSettings = rxSettings.value()
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
             .setTgcSamples(tgcCurvePoints)
             ->setApplyTgcCharacteristic(applyCharacteristic)
             ->build();
     setRxSettings(newRxSettings);
 }
-
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
     RxSettingsValidator validator;
@@ -215,6 +217,7 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
             isStateInconsistent = true;
         }
         isStateInconsistent = false;
+        this->rxSettings = settings;
     }
     catch(const std::exception &e) {
         logger->log(LogSeverity::ERROR, ::arrus::format("Error while setting AFE parameters, msg: {}", e.what()));
@@ -232,46 +235,36 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 }
 
 void Us4RImpl::setPgaGain(uint16 value) {
-    if(!rxSettings.has_value()) {
-        throw std::runtime_error("Us4RImpl object has no rx setting set.");
-    }
-    auto newRxSettings = rxSettings.value()
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
             .setPgaGain(value)
             ->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setLnaGain(uint16 value) {
-    if(!rxSettings.has_value()) {
-        throw std::runtime_error("Us4RImpl object has no rx setting set.");
-    }
-    auto newRxSettings = rxSettings.value()
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
             .setLnaGain(value)
             ->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setLpfCutoff(uint32 value) {
-    if(!rxSettings.has_value()) {
-        throw std::runtime_error("Us4RImpl object has no rx setting set.");
-    }
-    auto newRxSettings = rxSettings.value()
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
             .setLpfCutoff(value)
             ->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setDtgcAttenuation(std::optional<uint16> value) {
-    if(!rxSettings.has_value()) {
-        throw std::runtime_error("Us4RImpl object has no rx setting set.");
-    }
-    auto newRxSettings = rxSettings.value()
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
             .setDtgcAttenuation(value)
             ->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
-    if(!rxSettings.has_value()) {
-        throw std::runtime_error("Us4RImpl object has no rx setting set.");
-    }
-    auto newRxSettings = rxSettings.value()
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
             .setActiveTermination(value)
             ->build();
     setRxSettings(newRxSettings);

@@ -145,7 +145,7 @@ private:
     std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};
     // AFE parameters.
-    std::optional<RxSettingsBuilder> rxSettings;
+    std::optional<RxSettings> rxSettings;
 };
 
 }
