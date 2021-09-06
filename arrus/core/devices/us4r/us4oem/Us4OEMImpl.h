@@ -82,7 +82,7 @@ public:
      *  exactly N_TX_CHANNELS numbers
      */
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
-               std::vector<uint8_t> channelMapping, RxSettings  rxSettings,
+               std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode);
 
     ~Us4OEMImpl() override;
