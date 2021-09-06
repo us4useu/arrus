@@ -98,35 +98,35 @@ public:
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setPgaGain(uint16 value);
+    virtual void setPgaGain(uint16 value) = 0;
 
     /**
      * Sets LNA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setLnaGain(uint16 value);
+    virtual void setLnaGain(uint16 value) = 0;
 
     /**
      * Sets LPF cutoff.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setLpfCutoff(uint32 value);
+    virtual void setLpfCutoff(uint32 value) = 0;
 
     /**
      * Sets DTGC attenuation.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setDtgcAttenuation(std::optional<uint16> value);
+    virtual void setDtgcAttenuation(std::optional<uint16> value) = 0;
 
     /**
     * Sets active termination.
     *
     * See docs of arrus::devices::RxSettings for more information.
     */
-    virtual void setActiveTermination(std::optional<uint16> value);
+    virtual void setActiveTermination(std::optional<uint16> value) = 0;
 
     /**
      * Sets a complete list of RxSettings on all Us4R components.

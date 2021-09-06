@@ -20,6 +20,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h"
+#include "arrus/core/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
 
@@ -181,15 +182,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                            ::arrus::format("Exceeded the maximum ({}) number of triggers: {}",
                                            16384, nOps * batchSize * rxBufferSize));
 
-    // TODO prepare RxSettingsMutable
-    // TODO setTxRxSequence should not set TGC curve - it should be done simply by calling appropriate setter
-    this->rxSettings = RxSettings {rxSettings.getDtgcAttenuation(),
-                                   rxSettings.getPgaGain(),
-                                   rxSettings.getLnaGain(),
-                                   tgc,
-                                   rxSettings.getLpfCutoff(),
-                                   rxSettings.getActiveTermination(),
-                                   rxSettings.isApplyTgcCharacteristic()};
+    RxSettingsBuilder rxSettingsBuilder(this->rxSettings);
+    this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc)->build();
     setTgcCurve(this->rxSettings);
 
     ius4oem->SetNumberOfFirings(nOps * batchSize);
@@ -202,7 +196,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     const std::bitset<N_ACTIVE_CHANNEL_GROUPS> emptyChannelGroups;
 
     // Program Tx/rx sequence ("firings")
-
     for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
         logger->log(LogSeverity::TRACE, format("Setting tx/rx: {}", opIdx));
         auto const &op = seq[opIdx];

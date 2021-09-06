@@ -6,6 +6,8 @@
 #include "arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
+#include "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h"
 #include "arrus/core/common/validation.h"
 
 namespace arrus::devices {
@@ -20,11 +22,16 @@ public:
                 "At most one of the following parameters can be specified: dtgc attenuation, analog tgc curve.");
         expectOneOf("pga gain", settings.getPgaGain(), PGAGainValueMap::getInstance().getAvailableValues());
         expectOneOf("lna gain", settings.getLnaGain(), LNAGainValueMap::getInstance().getAvailableValues());
+        expectOneOf("lpf cutoff", settings.getLpfCutoff(), LPFCutoffValueMap::getInstance().getAvailableValues());
 
         // Only one of the following can be used.
         if(settings.getDtgcAttenuation().has_value()) {
             expectOneOf("dtgc attenuation",
                         settings.getDtgcAttenuation().value(), DTGCAttenuationValueMap::getInstance().getAvailableValues());
+        }
+        if(settings.getActiveTermination().has_value()) {
+            expectOneOf("active termination",
+                        settings.getActiveTermination().value(), ActiveTerminationValueMap::getInstance().getAvailableValues());
         }
         if(!settings.getTgcSamples().empty()) {
             ARRUS_VALIDATOR_EXPECT_TRUE_M(
