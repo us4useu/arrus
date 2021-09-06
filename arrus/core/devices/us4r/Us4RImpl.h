@@ -20,6 +20,7 @@
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/Buffer.h"
+#include "arrus/core/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
 
@@ -114,6 +115,11 @@ public:
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
 
     void setRxSettings(const RxSettings &settings) override;
+    void setPgaGain(uint16 value) override;
+    void setLnaGain(uint16 value) override;
+    void setLpfCutoff(uint32 value) override;
+    void setDtgcAttenuation(std::optional<uint16> value) override;
+    void setActiveTermination(std::optional<uint16> value) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -139,7 +145,7 @@ private:
     std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};
     // AFE parameters.
-    std::optional<RxSettings> rxSettings;
+    std::optional<RxSettingsBuilder> rxSettings;
 };
 
 }

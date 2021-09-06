@@ -192,16 +192,13 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyC
     if(!rxSettings.has_value()) {
         throw std::runtime_error("Us4RImpl object has no rx setting set.");
     }
-    auto& rxSettingsValue = rxSettings.value();
-    RxSettings newRxSettings{rxSettingsValue.getDtgcAttenuation(),
-                             rxSettingsValue.getPgaGain(),
-                             rxSettingsValue.getLnaGain(),
-                             tgcCurvePoints,
-                             rxSettingsValue.getLpfCutoff(),
-                             rxSettingsValue.getActiveTermination(),
-                             applyCharacteristic};
+    auto newRxSettings = rxSettings.value()
+            .setTgcSamples(tgcCurvePoints)
+            ->setApplyTgcCharacteristic(applyCharacteristic)
+            ->build();
     setRxSettings(newRxSettings);
 }
+
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
     RxSettingsValidator validator;
@@ -234,5 +231,50 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
     }
 }
 
+void Us4RImpl::setPgaGain(uint16 value) {
+    if(!rxSettings.has_value()) {
+        throw std::runtime_error("Us4RImpl object has no rx setting set.");
+    }
+    auto newRxSettings = rxSettings.value()
+            .setPgaGain(value)
+            ->build();
+    setRxSettings(newRxSettings);
+}
+void Us4RImpl::setLnaGain(uint16 value) {
+    if(!rxSettings.has_value()) {
+        throw std::runtime_error("Us4RImpl object has no rx setting set.");
+    }
+    auto newRxSettings = rxSettings.value()
+            .setLnaGain(value)
+            ->build();
+    setRxSettings(newRxSettings);
+}
+void Us4RImpl::setLpfCutoff(uint32 value) {
+    if(!rxSettings.has_value()) {
+        throw std::runtime_error("Us4RImpl object has no rx setting set.");
+    }
+    auto newRxSettings = rxSettings.value()
+            .setLpfCutoff(value)
+            ->build();
+    setRxSettings(newRxSettings);
+}
+void Us4RImpl::setDtgcAttenuation(std::optional<uint16> value) {
+    if(!rxSettings.has_value()) {
+        throw std::runtime_error("Us4RImpl object has no rx setting set.");
+    }
+    auto newRxSettings = rxSettings.value()
+            .setDtgcAttenuation(value)
+            ->build();
+    setRxSettings(newRxSettings);
+}
+void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
+    if(!rxSettings.has_value()) {
+        throw std::runtime_error("Us4RImpl object has no rx setting set.");
+    }
+    auto newRxSettings = rxSettings.value()
+            .setActiveTermination(value)
+            ->build();
+    setRxSettings(newRxSettings);
+}
 
 }

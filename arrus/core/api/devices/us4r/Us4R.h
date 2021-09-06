@@ -94,6 +94,41 @@ public:
     virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic) = 0;
 
     /**
+     * Sets PGA gain.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setPgaGain(uint16 value);
+
+    /**
+     * Sets LNA gain.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setLnaGain(uint16 value);
+
+    /**
+     * Sets LPF cutoff.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setLpfCutoff(uint32 value);
+
+    /**
+     * Sets DTGC attenuation.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setDtgcAttenuation(std::optional<uint16> value);
+
+    /**
+    * Sets active termination.
+    *
+    * See docs of arrus::devices::RxSettings for more information.
+    */
+    virtual void setActiveTermination(std::optional<uint16> value);
+
+    /**
      * Sets a complete list of RxSettings on all Us4R components.
      *
      * @param settings settings to apply
