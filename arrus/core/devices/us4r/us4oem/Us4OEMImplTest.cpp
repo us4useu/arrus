@@ -60,12 +60,11 @@ protected:
                                        true, true, true, true};
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
         uint16 lnaGain = DEFAULT_LNA_GAIN;
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, false);
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
         us4oem = std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             std::move(ius4oem), activeChannelGroups,
-            channelMapping,
-            rxSettings,
+            channelMapping, rxSettings,
             std::unordered_set<uint8>(),
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
         );
@@ -346,12 +345,11 @@ protected:
                                                                    112, 113, 114, 115, 116, 117, 118, 119,
                                                                    120, 121, 122, 123, 124, 125, 126, 127});
 
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, false);
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
         us4oem = std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             std::move(ius4oem), activeChannelGroups,
-            channelMapping,
-            rxSettings,
+            channelMapping, rxSettings,
             std::unordered_set<uint8>(),
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
         );
@@ -682,7 +680,7 @@ protected:
 
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
 
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, false);
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
         return std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             // NOTE: due to the below move this function can be called only once
@@ -959,7 +957,7 @@ protected:
 
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
 
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, false);
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
 
         return std::make_unique<Us4OEMImpl>(
                 DeviceId(DeviceType::Us4OEM, 0),

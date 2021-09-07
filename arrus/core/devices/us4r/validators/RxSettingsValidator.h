@@ -14,7 +14,7 @@ namespace arrus::devices {
 
 class RxSettingsValidator : public Validator<RxSettings> {
 public:
-    RxSettingsValidator() : Validator("rx settings") {}
+    RxSettingsValidator() : Validator("") {}
 
     void validate(const RxSettings &settings) override {
         ARRUS_VALIDATOR_EXPECT_TRUE_M(
@@ -39,10 +39,9 @@ public:
                             || (settings.getPgaGain() == 30 and settings.getLnaGain() == 24),
                     "Currently TGC characteristic can be automatically compensated only for "
                     "PGA gain = 30 and LNA gain = 24");
-            ARRUS_VALIDATOR_EXPECT_IN_RANGE(settings.getTgcSamples().size(),
-                                            size_t(0), size_t(Us4OEMImpl::TGC_N_SAMPLES));
+            expectInRange("tgc samples", settings.getTgcSamples().size(), size_t(0), size_t(Us4OEMImpl::TGC_N_SAMPLES));
             auto[min, max] = RxSettings::getTgcMinMax(settings.getPgaGain(), settings.getLnaGain());
-            ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_V(settings.getTgcSamples(), min, max);
+            expectAllInRange("tgc samples", settings.getTgcSamples(), std::max(min, 0.0f), max);
         }
     }
 };

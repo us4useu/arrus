@@ -54,7 +54,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
                           ::arrus::format("Following us4oem channels will be turned off: {}",
                                           ::arrus::toString(this->channelsMask)));
     }
-    setRxSettings(this->rxSettings);
+    setRxSettingsPrivate(this->rxSettings, true);
 }
 
 Us4OEMImpl::~Us4OEMImpl() {
@@ -549,7 +549,7 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
     const ops::us4r::TGCCurve &tgc = afeCfg.getTgcSamples();
     bool applyCharacteristic = afeCfg.isApplyTgcCharacteristic();
 
-    auto tgcMax = static_cast<float>(afeCfg.getPgaGain() + afeCfg.getPgaGain());
+    auto tgcMax = static_cast<float>(afeCfg.getPgaGain() + afeCfg.getLnaGain());
     auto tgcMin = tgcMax - TGC_ATTENUATION_RANGE;
     // Set.
     if(tgc.empty()) {
@@ -580,29 +580,33 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
 }
 
 void Us4OEMImpl::setRxSettings(const RxSettings &newSettings) {
-    setPgaGainAfe(newSettings.getPgaGain());
-    setLnaGainAfe(newSettings.getLnaGain());
+    setRxSettingsPrivate(newSettings, false);
+}
+
+void Us4OEMImpl::setRxSettingsPrivate(const RxSettings &newSettings, bool force) {
+    setPgaGainAfe(newSettings.getPgaGain(), force);
+    setLnaGainAfe(newSettings.getLnaGain(), force);
     setTgcCurve(newSettings);
-    setDtgcAttenuationAfe(newSettings.getDtgcAttenuation());
-    setLpfCutoffAfe(newSettings.getLpfCutoff());
-    setActiveTerminationAfe(newSettings.getActiveTermination());
+    setDtgcAttenuationAfe(newSettings.getDtgcAttenuation(), force);
+    setLpfCutoffAfe(newSettings.getLpfCutoff(), force);
+    setActiveTerminationAfe(newSettings.getActiveTermination(), force);
     this->rxSettings = newSettings;
 }
 
-inline void Us4OEMImpl::setPgaGainAfe(uint16 value) {
-    if(value != this->rxSettings.getPgaGain()) {
+inline void Us4OEMImpl::setPgaGainAfe(uint16 value, bool force) {
+    if(value != this->rxSettings.getPgaGain() || force) {
         ius4oem->SetPGAGain(PGAGainValueMap::getInstance().getEnumValue(value));
     }
 }
 
-inline void Us4OEMImpl::setLnaGainAfe(uint16 value) {
-    if(value != this->rxSettings.getLnaGain()) {
+inline void Us4OEMImpl::setLnaGainAfe(uint16 value, bool force) {
+    if(value != this->rxSettings.getLnaGain() || force) {
         ius4oem->SetLNAGain(LNAGainValueMap::getInstance().getEnumValue(value));
     }
 }
 
-inline void Us4OEMImpl::setDtgcAttenuationAfe(std::optional<uint16> param) {
-    if(param == rxSettings.getDtgcAttenuation()) {
+inline void Us4OEMImpl::setDtgcAttenuationAfe(std::optional<uint16> param, bool force) {
+    if(param == rxSettings.getDtgcAttenuation() && !force) {
         return;
     }
     if(param.has_value()) {
@@ -616,14 +620,14 @@ inline void Us4OEMImpl::setDtgcAttenuationAfe(std::optional<uint16> param) {
     }
 }
 
-inline void Us4OEMImpl::setLpfCutoffAfe(uint32 value) {
-    if(value != this->rxSettings.getLpfCutoff()) {
+inline void Us4OEMImpl::setLpfCutoffAfe(uint32 value, bool force) {
+    if(value != this->rxSettings.getLpfCutoff() || force) {
         ius4oem->SetLPFCutoff(LPFCutoffValueMap::getInstance().getEnumValue(value));
     }
 }
 
-inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param) {
-    if(param == rxSettings.getActiveTermination()) {
+inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, bool force) {
+    if(param == rxSettings.getActiveTermination() && !force) {
         return;
     }
     if(rxSettings.getActiveTermination().has_value()) {

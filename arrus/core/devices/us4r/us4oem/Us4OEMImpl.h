@@ -133,11 +133,12 @@ private:
     float getTxRxTime(float rxTime) const;
 
     // IUs4OEM AFE stters.
-    void setPgaGainAfe(uint16 value);
-    void setLnaGainAfe(uint16 value);
-    void setDtgcAttenuationAfe(std::optional<uint16> param);
-    void setLpfCutoffAfe(uint32 value);
-    void setActiveTerminationAfe(std::optional<uint16> param);
+    void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
+    void setPgaGainAfe(uint16 value, bool force);
+    void setLnaGainAfe(uint16 value, bool force);
+    void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
+    void setLpfCutoffAfe(uint32 value, bool force);
+    void setActiveTerminationAfe(std::optional<uint16> param, bool force);
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
