@@ -26,7 +26,7 @@ rst_epilog = """
 .. |api_language| replace:: ${LANGUAGE}
 .. |arrus_version| replace:: ${PROJECT_VERSION}
 .. |arrus| replace:: arrus
-.. _arrus: https://github.com/us4useu/arrus-public/releases/download/${PROJECT_FULL_VERSION}/arrus-${PROJECT_FULL_VERSION}.zip
+.. _arrus: https://github.com/us4useu/arrus-public/releases/${PROJECT_FULL_VERSION}
 """
 
 # -- General configuration ---------------------------------------------------
