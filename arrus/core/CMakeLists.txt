@@ -220,7 +220,9 @@ target_link_libraries(${TARGET_NAME}
     protobuf::libprotobuf
     fmt::fmt
     Eigen3::Eigen3
-    Microsoft.GSL::GSL)
+    Microsoft.GSL::GSL
+    ${ARRUS_OS_DEPS}
+)
 ################################################################################
 # Target compile options
 ################################################################################
