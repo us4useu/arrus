@@ -10,21 +10,20 @@ using namespace arrus::devices;
 struct TestUs4OEMSettings {
     std::vector<ChannelIdx> channelMapping{getRange<ChannelIdx>(0, 128)};
     BitMask activeChannelGroups{getNTimes<bool>(true, 16)};
-    std::optional<uint16> dtgcAttenuation{42};
+    std::optional<uint16> dtgcAttenuation{std::nullopt};
     uint16 pgaGain{30};
     uint16 lnaGain{24};
     RxSettings::TGCCurve tgcSamples{getRange<float>(30, 40, 0.5)};
     uint32 lpfCutoff{(int) 10e6};
     std::optional<uint16> activeTermination{50};
+    bool isApplyCharacteristic{true};
 
     std::vector<std::string> invalidParameters;
 
     Us4OEMSettings getUs4OEMSettings() const {
         return Us4OEMSettings(channelMapping, activeChannelGroups,
-                              RxSettings(
-                                      dtgcAttenuation, pgaGain,
-                                      lnaGain, tgcSamples,
-                                      lpfCutoff, activeTermination),
+                              RxSettings(dtgcAttenuation, pgaGain, lnaGain, tgcSamples, lpfCutoff, activeTermination,
+                                         isApplyCharacteristic),
                               std::unordered_set<uint8>());
     }
 

@@ -46,15 +46,11 @@ TEST_P(Us4OEMFactorySimpleParametersTest, VerifyUs4OEMFactorySimpleParameters) {
     ExpectedUs4RParameters us4rParameters = GetParam().second;
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetPGAGain(us4rParameters.pgaGain));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetLNAGain(us4rParameters.lnaGain));
-    EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                SetDTGC(us4rParameters.dtgcAttEnabled,
-                        us4rParameters.dtgcAttValue));
+    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(us4rParameters.dtgcAttEnabled, us4rParameters.dtgcAttValue));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetLPFCutoff(us4rParameters.lpfCutoff));
-    EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                SetActiveTermination(us4rParameters.activeTerminationEnabled,
-                                     us4rParameters.activeTerminationValue));
+    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(us4rParameters.activeTerminationEnabled,
+                                       us4rParameters.activeTerminationValue));
     Us4OEMFactoryImpl factory;
-
     factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings());
 }
 
@@ -62,13 +58,12 @@ INSTANTIATE_TEST_CASE_P
 
 (Us4OEMFactorySetsSimpleIUs4OEMProperties, Us4OEMFactorySimpleParametersTest,
  testing::Values(
-         std::pair{TestUs4OEMSettings{},
-                   ExpectedUs4RParameters{}},
-         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.pgaGain=24)),
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=42, x.tgcSamples={})), ExpectedUs4RParameters{}},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.pgaGain=24, x.dtgcAttenuation=42, x.tgcSamples={})),
                    ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (x.pgaGain=PGA_GAIN::PGA_GAIN_24dB))},
-         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lnaGain=12)),
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lnaGain=12, x.dtgcAttenuation=42, x.tgcSamples={})),
                    ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (x.lnaGain=LNA_GAIN_GBL::LNA_GAIN_GBL_12dB))},
-         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lpfCutoff=(int) 15e6)),
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lpfCutoff=(int)15e6, x.dtgcAttenuation=42, x.tgcSamples={})),
                    ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (x.lpfCutoff=LPF_PROG::LPF_PROG_15MHz))}
  ));
 
@@ -76,45 +71,33 @@ class Us4OEMFactoryOptionalParametersTest
         : public testing::TestWithParam<std::pair<TestUs4OEMSettings, ExpectedUs4RParameters>> {
 };
 
-TEST_P(Us4OEMFactoryOptionalParametersTest,
-       VerifyUs4OEMFactoryOptionalParameters) {
+TEST_P(Us4OEMFactoryOptionalParametersTest, VerifyUs4OEMFactoryOptionalParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
     if(GetParam().first.dtgcAttenuation.has_value()) {
         // NO disable
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetDTGC(EN_DIG_TGC::EN_DIG_TGC_DIS, _)).Times(0);
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetDTGC(EN_DIG_TGC::EN_DIG_TGC_EN,
-                            us4rParameters.dtgcAttValue));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(EN_DIG_TGC::EN_DIG_TGC_DIS, _)).Times(0);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(EN_DIG_TGC::EN_DIG_TGC_EN, us4rParameters.dtgcAttValue));
     } else {
         // NO enable
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetDTGC(EN_DIG_TGC::EN_DIG_TGC_EN, _)).Times(0);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(EN_DIG_TGC::EN_DIG_TGC_EN, _)).Times(0);
 
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetDTGC(EN_DIG_TGC::EN_DIG_TGC_DIS, _));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(EN_DIG_TGC::EN_DIG_TGC_DIS, _));
     }
 
     if(GetParam().first.activeTermination.has_value()) {
         // NO disable
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
-                                         us4rParameters.activeTerminationValue))
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
+                                           us4rParameters.activeTerminationValue))
                 .Times(0);
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN,
-                                         us4rParameters.activeTerminationValue));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN,
+                                           us4rParameters.activeTerminationValue));
     } else {
         // NO enable
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN, _))
-                .Times(0);
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS, _));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN, _)).Times(0);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS, _));
     }
     Us4OEMFactoryImpl factory;
-
     factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings());
 }
 
@@ -123,21 +106,19 @@ INSTANTIATE_TEST_CASE_P
 (Us4OEMFactorySetsOptionalIUs4OEMProperties,
  Us4OEMFactoryOptionalParametersTest,
  testing::Values(
-         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=0)),
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=0, x.tgcSamples={})),
                    ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters,
                                           (x.dtgcAttValue=DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_0dB))},
          std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation={})),
                    ExpectedUs4RParameters{}}, // Any value is accepted
-         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination=200)),
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination=200, x.tgcSamples={})),
                    ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters,
                                           (x.activeTerminationValue=GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200))},
-         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination={})),
-                   ExpectedUs4RParameters{}}
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination={})), ExpectedUs4RParameters{}}
  ));
 
 
-class Us4OEMFactoryTGCSamplesTest
-        : public testing::TestWithParam<std::pair<TestUs4OEMSettings, ExpectedUs4RParameters>> {
+class Us4OEMFactoryTGCSamplesTest : public testing::TestWithParam<std::pair<TestUs4OEMSettings, ExpectedUs4RParameters>> {
 };
 
 TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
@@ -152,11 +133,7 @@ TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), TGCEnable());
         // NO TGC disable
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), TGCDisable()).Times(0);
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                    TGCSetSamples(
-                            Pointwise(
-                                    FloatEq(),
-                                    us4rParameters.tgcSamplesNormalized), _));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), TGCSetSamples(Pointwise(FloatEq(), us4rParameters.tgcSamplesNormalized), _));
     }
 
     Us4OEMFactoryImpl factory;
@@ -170,16 +147,14 @@ INSTANTIATE_TEST_CASE_P
  Us4OEMFactoryTGCSamplesTest,
  testing::Values(
          // NO TGC
-         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                    x.tgcSamples={})),
-                   ExpectedUs4RParameters{}},
+         std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.tgcSamples={})), ExpectedUs4RParameters{}},
          // TGC samples set
          std::pair{ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
                     x.pgaGain=30,
                     x.lnaGain=24,
-                    x.tgcSamples={30, 35, 40})),
-                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (
-                    x.tgcSamplesNormalized={0.4, 0.525,0.65}))}
+                    x.tgcSamples={30, 35, 40},
+                    x.isApplyCharacteristic=false)),
+                   ARRUS_STRUCT_INIT_LIST(ExpectedUs4RParameters, (x.tgcSamplesNormalized={0.4, 0.525, 0.65}))}
  ));
 
 // Mappings.
@@ -262,7 +237,6 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
     // Run
     factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings());
 }
-
 }
 
 int main(int argc, char **argv) {

@@ -13,7 +13,7 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "FrameChannelMapping.h"
-
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
 
@@ -74,11 +74,66 @@ public:
     virtual void disableHV() = 0;
 
     /**
-     * Sets tgc curve points asynchronously.
-     *
-     * @param tgcCurvePoints tgc curve points to set.
+     * Equivalent to setTgcCurve(curve, true).
      */
     virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints) = 0;
+
+    /**
+     * Sets TGC curve points asynchronously.
+     *
+     * Setting empty vector turns off analog TGC.
+     * Setting non-empty vector turns off DTGC and turns on analog TGC.
+     *
+     * TGC curve can have up to 1022 samples.
+     *
+     * @param tgcCurvePoints tgc curve points to set.
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     */
+    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic) = 0;
+
+    /**
+     * Sets PGA gain.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setPgaGain(uint16 value) = 0;
+
+    /**
+     * Sets LNA gain.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setLnaGain(uint16 value) = 0;
+
+    /**
+     * Sets LPF cutoff.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setLpfCutoff(uint32 value) = 0;
+
+    /**
+     * Sets DTGC attenuation.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual void setDtgcAttenuation(std::optional<uint16> value) = 0;
+
+    /**
+    * Sets active termination.
+    *
+    * See docs of arrus::devices::RxSettings for more information.
+    */
+    virtual void setActiveTermination(std::optional<uint16> value) = 0;
+
+    /**
+     * Sets a complete list of RxSettings on all Us4R components.
+     *
+     * @param settings settings to apply
+     */
+    virtual void setRxSettings(const RxSettings &settings) = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;

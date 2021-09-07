@@ -53,9 +53,9 @@ INSTANTIATE_TEST_CASE_P
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeChannelGroups={
                  false, false, false, true, true, true, true, true,
                  true, false, true, true, true, true, true, true})),
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=6)),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=6, x.tgcSamples={})),
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation={})), // Turn off
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.pgaGain=24)),
+         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.pgaGain=24, x.isApplyCharacteristic=false)),
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lnaGain=24)),
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.lpfCutoff=(int) 15e6)),
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeTermination=200)),
@@ -163,6 +163,7 @@ INSTANTIATE_TEST_CASE_P
                 x.pgaGain = 24,
                 x.lnaGain = 12,
                 x.tgcSamples = {-1.0f},
+                x.isApplyCharacteristic = false,
                 x.invalidParameters = {"tgc samples"})),
          // Invalid TGC samples values (3) multiple wrong values
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
