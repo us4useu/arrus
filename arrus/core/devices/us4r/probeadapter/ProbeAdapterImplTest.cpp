@@ -100,7 +100,7 @@ public:
     MOCK_METHOD(void, stop, (), (override));
     MOCK_METHOD(void, syncTrigger, (), (override));
     MOCK_METHOD(bool, isMaster, (), (override));
-    MOCK_METHOD(void, setTgcCurve, (const ::arrus::ops::us4r::TGCCurve &tgc), (override));
+    MOCK_METHOD(void, setRxSettings, (const RxSettings &cfg), (override));
     MOCK_METHOD(Ius4OEMRawHandle, getIUs4oem, (), (override));
     MOCK_METHOD(void, enableSequencer, (), (override));
     MOCK_METHOD(std::vector<uint8_t>, getChannelMapping, (), (override));

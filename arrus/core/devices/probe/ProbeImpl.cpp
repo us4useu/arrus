@@ -143,10 +143,6 @@ void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
     adapter->registerOutputBuffer(buffer, us4rBuffer, isTriggerSync);
 }
 
-void ProbeImpl::setTgcCurve(const std::vector<float> &tgcCurve) {
-    adapter->setTgcCurve(tgcCurve);
-}
-
 // Remaps FCM according to given rx aperture active channels mappings.
 FrameChannelMapping::Handle ProbeImpl::remapFcm(
     const FrameChannelMapping::Handle &adapterFcm,
