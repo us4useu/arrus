@@ -1,171 +1,138 @@
 import unittest
 import numpy as np
-import scipy.io
-import arrus.tests.tools as tools
-import arrus.utils.parameters
-from arrus.utils.imaging import reconstruct_rf_img, compute_tx_delays
 
-class ReconstructRfImgEdgeCaseTest(unittest.TestCase):
-    """
-    Tests edge cases for RF frame reconstruction.
-    """
+from arrus.utils.tests.utils import ArrusImagingTestCase
+from arrus.utils.imaging import (
+    ReconstructLri,
+    RxBeamforming)
 
-    def setUp(self):
-        # Default parameter values.
-        self.x_grid = np.linspace(-3*1e-3, 3*1e-3, 16)
-        self.z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 64)
-        self.pitch = 0.245e-3
-        self.fs = 40e-6
-        self.fc = 5e-6
-        self.c = 1540
-        self.tx_aperture = 128
-        self.tx_focus = None
-        self.tx_angle = [0]
-        self.tx_mode = 'pwi'
-        self.n_pulse_periods = 0
 
+class PwiReconstrutionTestCase(ArrusImagingTestCase):
+
+    def setUp(self) -> None:
+        self.op = ReconstructLri
+        self.context = self.get_default_context()
+        print(self.context)
+        #self.x_grid = np.linspace(-3*1e-3, 3*1e-3, 16)
+        #self.z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 64)
+        #self.pitch = 0.245e-3
+        #self.fs = 40e-6
+        #self.fc = 5e-6
+        #self.c = 1540
+        #self.tx_aperture = 128
+        #self.tx_focus = None
+        #self.tx_angle = [0]
+        #self.tx_mode = 'pwi'
+        #self.n_pulse_periods = 0
+
+    def run_op(self, **kwargs):
+        data = kwargs['data']
+        data = np.array(data)
+        if len(data.shape) > 3:
+            raise ValueError("Currently data supports at most 3 dimensions.")
+        if len(data.shape) < 3:
+            dim_diff = 3-len(data.shape)
+            data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
+            kwargs["data"] = data
+        result = super().run_op(**kwargs)
+        return np.squeeze(result)
+
+    # Corner cases:
     def test_no_input_signal(self):
-        # Given:
-        rf = np.zeros((1024, 128, 1), dtype=np.int16)
+        """Empty input array should not be accepted. """
+        with self.assertRaisesRegex(ValueError, "Empty array") as ctx:
+            self.run_op(data=[], x_grid=[], z_grid=[])
 
-        actual = reconstruct_rf_img(
-            rf,
-            self.x_grid, self.z_grid,
-            self.pitch, self.fs, self.fc, self.c,
-            self.tx_aperture,
-            self.tx_focus, self.tx_angle, self.n_pulse_periods,
-            self.tx_mode)
+    # def test_0(self):
+    #     # Given
+    #     data = [0]
+    #     # Run
+    #     result = self.run_op(data=data)
+    #     # Expect
+    #     expected = 0j
+    #     np.testing.assert_equal(result, expected)
 
-        # Should be:
-        # We expect an array of all zeros (no input signal, no output signal).
-        np.testing.assert_equal(
-            actual=actual,
-            desired=np.zeros((len(self.z_grid), len(self.x_grid)))
-        )
+    # def test_1(self):
+    #     # Given
+    #     data = [1]
+    #     # Run
+    #     result = self.run_op(data=data)
+    #     # Expect
+    #     expected = 2+0j
+    #     np.testing.assert_equal(result, expected)
 
-    def test_single_input_channel(self):
-        # Given:
-        rf = np.zeros((1024, 1, 1), dtype=np.int16)
+    # def test_negative1(self):
+    #     # Given
+    #     data = [-1]
+    #     # Run
+    #     result = self.run_op(data=data)
+    #     # Expect
+    #     expected = -2+0j
+    #     np.testing.assert_equal(result, expected)
 
-        actual = reconstruct_rf_img(
-            rf,
-            self.x_grid, self.z_grid,
-            self.pitch, self.fs, self.fc, self.c,
-            self.tx_aperture,
-            self.tx_focus, self.tx_angle, self.n_pulse_periods,
-            self.tx_mode)
+    # def test_1D(self):
+    #     ''' Test uses vector data.'''
 
-        # Should be:
-        np.testing.assert_equal(
-            actual=actual,
-            desired=np.zeros((len(self.z_grid), len(self.x_grid)))
-        )
+    #     # Given
+    #     data = np.array([-1., 10, 0, -20, 1]).astype(np.float32)
 
+    #     # Run
+    #     result = self.run_op(data=data)
 
-class ComputeTxDelaysEdgeCaseTest(unittest.TestCase):
-    """
-    Tests edge cases for computing delays function.
-    """
+    #     # Expect
+    #     fs = self.context.device.sampling_frequency
+    #     fc = self.context.sequence.pulse.center_frequency
+    #     n_samples = np.shape(data)[-1]
+    #     t = (np.arange(0, n_samples) / fs)
+    #     m = (  2 * np.cos(-2 * np.pi * fc * t)
+    #            + 2 * np.sin(-2 * np.pi * fc * t) * 1j)
+    #     m = m.astype(np.complex64)
+    #     expected = np.squeeze(m * data)
+    #     np.testing.assert_equal(result, expected)
 
-# (angles, focus, pitch, c=1490, n_chanels=128
-    def setUp(self):
-        # Default parameter values.
-        self.angles = [-5, 0, 5]
-        self.focus = 50e-3
-        self.pitch = 0.3e-3
-        self.c = 1490
-        self.n_chanels = 128
+    # def test_2D(self):
+    #     ''' Test uses 2D array data.'''
 
-    def test_single_plane_wave(self):
-        # Given:
-        focus = []
-        angles = 0
+    #     # Given
+    #     data = np.array([-1., 10, 0, -20, 1]).astype(np.float32)
+    #     data = np.tile(data, (10, 2))
 
-        actual = compute_tx_delays(
-            angles,
-            focus,
-            self.pitch,
-            self.c,
-            self.n_chanels
-        )
+    #     # Run
+    #     result = self.run_op(data=data)
 
-        np.testing.assert_equal(
-            actual=actual,
-            desired=np.zeros((1, 128), dtype=np.int16)
-        )
+    #     # Expect
+    #     fs = self.context.device.sampling_frequency
+    #     fc = self.context.sequence.pulse.center_frequency
+    #     n_samples = np.shape(data)[-1]
+    #     t = (np.arange(0, n_samples) / fs)
+    #     m = (  2 * np.cos(-2 * np.pi * fc * t)
+    #            + 2 * np.sin(-2 * np.pi * fc * t) * 1j)
+    #     m = m.astype(np.complex64)
+    #     expected = np.squeeze(m * data)
+    #     np.testing.assert_equal(result, expected)
 
-    def test_positive_focus(self):
-        # Given:
-        focus = 1
-        angles = 0
-        pitch = 1
-        c = 1
-        n_chan = 3
+    # def test_3D(self):
+    #     ''' Test uses 3D array data.'''
 
-        actual = compute_tx_delays(
-            angles,
-            focus,
-            pitch,
-            c,
-            n_chan
-        )
+    #     # Given
+    #     data = np.array([-1., 10, 0, -20, 1]).astype(np.float32)
+    #     data = np.tile(data, (13, 11, 3))
 
-        np.testing.assert_almost_equal(
-            actual=actual,
-            desired=np.array([[0, np.sqrt(2)-1, 0]]),
-            decimal=15
-        )
+    #     # Run
+    #     result = self.run_op(data=data)
 
-
-    def test_negative_focus(self):
-        # Given:
-        focus = -1
-        angles = 0
-        pitch = 1
-        c = 1
-        n_chan = 3
-
-        actual = compute_tx_delays(
-            angles,
-            focus,
-            pitch,
-            c,
-            n_chan
-        )
-
-        np.testing.assert_almost_equal(
-            actual=actual,
-            desired=np.array([[np.sqrt(2)-1, 0, np.sqrt(2)-1]]),
-            decimal=15
-        )
-
-    def test_triple_plane_wave(self):
-        # Given:
-        focus = []
-        angles = [-5, 0, 5]
-        pitch = self.pitch
-        c = self.c
-        nchan = self.n_chanels
-
-        actual = compute_tx_delays(
-            angles,
-            focus,
-            self.pitch,
-            self.c,
-            nchan
-        )
-
-        desired = np.empty([3, nchan])
-        desired[0, :] = np.linspace(-(nchan-1), 0, nchan)*pitch/c*np.sin(angles[0])
-        desired[1, :] = np.zeros((1, nchan))
-        desired[2, :] = np.linspace(0, (nchan-1), nchan)*pitch/c*np.sin(angles[2])
-
-        np.testing.assert_almost_equal(
-            actual=actual,
-            desired=desired,
-            decimal=15
-        )
+    #     # Expect
+    #     fs = self.context.device.sampling_frequency
+    #     fc = self.context.sequence.pulse.center_frequency
+    #     n_samples = np.shape(data)[-1]
+    #     t = (np.arange(0, n_samples) / fs)
+    #     m = (  2 * np.cos(-2 * np.pi * fc * t)
+    #            + 2 * np.sin(-2 * np.pi * fc * t) * 1j)
+    #     m = m.astype(np.complex64)
+    #     expected = np.squeeze(m * data)
+    #     np.testing.assert_equal(result, expected)
 
 
 if __name__ == "__main__":
     unittest.main()
+
