@@ -9,8 +9,7 @@ namespace arrus::devices {
 template<typename D>
 class SettingsValidator : public Validator<D> {
 public:
-    explicit SettingsValidator(const DeviceId &id)
-    : Validator<D>(id.toString() + " settings") {}
+    explicit SettingsValidator(const DeviceId &id): Validator<D>(id.toString() + " settings") {}
 };
 
 }

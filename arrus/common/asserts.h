@@ -72,7 +72,7 @@ do {                                                      \
 } while(0)
 
 /**
- * Check if A >= B, otherwise throws arrus::IllegalArgumentException.
+ * Check if value in range [min, max], otherwise throws arrus::IllegalArgumentException.
  */
 #define ARRUS_REQUIRES_IN_CLOSED_INTERVAL(value, min, max, MSG) \
 do {                                                      \

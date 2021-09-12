@@ -42,7 +42,7 @@ public:
     static constexpr Voltage MAX_VOLTAGE = 90; // 180 vpp
 
     // TGC constants.
-    static constexpr float TGC_ATTENUATION_RANGE = 40.0f;
+    static constexpr float TGC_ATTENUATION_RANGE = RxSettings::TGC_ATTENUATION_RANGE;
     static constexpr float TGC_SAMPLING_FREQUENCY = 1e6;
     static constexpr size_t TGC_N_SAMPLES = 1022;
 
@@ -81,12 +81,9 @@ public:
      * @param channelMapping a vector of N_TX_CHANNELS destination channels; must contain
      *  exactly N_TX_CHANNELS numbers
      */
-    Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
-               const BitMask &activeChannelGroups,
-               std::vector<uint8_t> channelMapping,
-               uint16 pgaGain, uint16 lnaGain,
-               std::unordered_set<uint8_t> channelsMask,
-               Us4OEMSettings::ReprogrammingMode reprogrammingMode);
+    Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
+               std::vector<uint8_t> channelMapping, RxSettings rxSettings,
+               std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode);
 
     ~Us4OEMImpl() override;
 
@@ -99,10 +96,8 @@ public:
     void syncTrigger() override;
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq,
-                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri,
-                    bool triggerSync = false) override;
+    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false) override;
 
     double getSamplingFrequency() override;
 
@@ -114,31 +109,36 @@ public:
 
     void stop() override;
 
-    void setTgcCurve(const ops::us4r::TGCCurve &tgc) override;
+    void setTgcCurve(const RxSettings &cfg);
 
     Ius4OEMRawHandle getIUs4oem() override;
 
     void enableSequencer() override;
 
     std::vector<uint8_t> getChannelMapping() override;
+    void setRxSettings(const RxSettings &newSettings) override;
 
- private:
+private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
-    std::tuple<
-            std::unordered_map<uint16, uint16>,
-            std::vector<Us4OEMImpl::Us4OEMBitMask>,
-            FrameChannelMapping::Handle>
+    std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 
     static float getRxTime(size_t nSamples, uint32 decimationFactor);
 
-    void setTGC(const ops::us4r::TGCCurve &tgc);
-
-    std::bitset<N_ADDR_CHANNELS>
-    filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
+    std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
+
+    float getTxRxTime(float rxTime) const;
+
+    // IUs4OEM AFE stters.
+    void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
+    void setPgaGainAfe(uint16 value, bool force);
+    void setLnaGainAfe(uint16 value, bool force);
+    void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
+    void setLpfCutoffAfe(uint32 value, bool force);
+    void setActiveTerminationAfe(std::optional<uint16> param, bool force);
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -146,9 +146,9 @@ public:
     // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
     std::vector<uint8_t> channelMapping;
     std::unordered_set<uint8_t> channelsMask;
-    uint16 pgaGain, lnaGain;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
-    float getTxRxTime(float rxTime) const;
+    /** Current RX settings */
+    RxSettings rxSettings;
 };
 
 }

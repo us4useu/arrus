@@ -87,7 +87,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.6.7 EXACT REQUIRED US4OEM HV256 DBARLite)
+find_package(Us4 0.6.8 EXACT REQUIRED US4OEM HV256 DBARLite)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
@@ -96,6 +96,14 @@ set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(fmt REQUIRED)
 find_package(Microsoft.GSL REQUIRED)
 find_package(Eigen3 REQUIRED)
+
+# OS specific dependencies.
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+    set(ARRUS_OS_DEPS "")
+else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+    find_package(TBB REQUIRED)
+    set(ARRUS_OS_DEPS tbb)
+endif()
 ################################################################################
 # Sub-projects
 ################################################################################
