@@ -7,23 +7,17 @@ from arrus.utils.imaging import (
     RxBeamforming)
 
 
+
+
+
+
 class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
         self.op = ReconstructLri
         self.context = self.get_default_context()
-        print(self.context)
-        #self.x_grid = np.linspace(-3*1e-3, 3*1e-3, 16)
-        #self.z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 64)
-        #self.pitch = 0.245e-3
-        #self.fs = 40e-6
-        #self.fc = 5e-6
-        #self.c = 1540
-        #self.tx_aperture = 128
-        #self.tx_focus = None
-        #self.tx_angle = [0]
-        #self.tx_mode = 'pwi'
-        #self.n_pulse_periods = 0
+        self.x_grid = np.linspace(-3*1e-3, 3*1e-3, 8)
+        self.z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 8)
 
     def run_op(self, **kwargs):
         data = kwargs['data']
@@ -35,22 +29,45 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
             kwargs["data"] = data
         result = super().run_op(**kwargs)
+        #print(result)
         return np.squeeze(result)
 
     # Corner cases:
-    def test_no_input_signal(self):
-        """Empty input array should not be accepted. """
-        with self.assertRaisesRegex(ValueError, "Empty array") as ctx:
-            self.run_op(data=[], x_grid=[], z_grid=[])
+#    def test_no_input_signal(self):
+#        """Empty input array should not be accepted. """
+#        with self.assertRaisesRegex(ValueError, "Empty array") as ctx:
+#            #pass
+#        #    self.run_op(data=[], x_grid=[], z_grid=[])
+#            self.run_op(data=[], x_grid=self.x_grid, z_grid=self.z_grid)
 
-    # def test_0(self):
-    #     # Given
-    #     data = [0]
-    #     # Run
-    #     result = self.run_op(data=data)
-    #     # Expect
-    #     expected = 0j
-    #     np.testing.assert_equal(result, expected)
+
+
+    def test_empty(self):
+        # Given
+        data = []
+        # Run
+        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+        # Expect
+        expected_shape = (self.x_grid.size, self.z_grid.size )
+        print(expected_shape)
+        expected = np.zeros(expected_shape, dtype=complex)
+        np.testing.assert_equal(result, expected)
+
+    def test_0(self):
+        # Given
+        data = 0
+        # Run
+        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+        # Expect
+        expected_shape = (self.x_grid.size, self.z_grid.size )
+        print(expected_shape)
+        expected = np.zeros(expected_shape, dtype=complex)
+        np.testing.assert_equal(result, expected)
+
+
+
+
+
 
     # def test_1(self):
     #     # Given
