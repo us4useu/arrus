@@ -23,14 +23,14 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
 
     :param el_coords: coordinates of transducer elements (numpy array),
     :param dels: initial delays,
-    :param wire_coords: wire coordinates, 
+    :param wire_coords: wire coordinates,
     :param c: speed of sound,
-    :param fs: sampling frequency, 
-    :param wire_amp: amplitude of the wire 
-    :return: 2D numpy array of zeros and single pixel 
-             with amplitude equal to 'wire_amp' parameter. 
+    :param fs: sampling frequency,
+    :param wire_amp: amplitude of the wire
+    :return: 2D numpy array of zeros and single pixel
+             with amplitude equal to 'wire_amp' parameter.
     '''
-    
+
     # check input and get default parameters if needed
     if el_coords is None:
         el_coords = get_lin_coords()
@@ -52,8 +52,9 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
     nmax = 2*np.max(nsamp)
     data = np.zeros((nel,nmax))
     for i in range(nel):
-        data[i, nsamp[i]] = wire_amp
+        data[i, nsamp[i]-20:nsamp[i]+20] = wire_amp
 
+    print(nsamp.shape)
     return data
 #
 if __name__ == "__main__":

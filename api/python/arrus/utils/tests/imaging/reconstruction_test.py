@@ -7,16 +7,25 @@ from arrus.utils.imaging import (
     ReconstructLri,
     RxBeamforming)
 
-def get_probe_data(context):
+
+def get_wire_indexes(wire_coords, x_grid, z_grid,):
+    x = wire_coords[0]
+    z = wire_coords[1]
+    xi = np.abs(x_grid - x).argmin(axis=0)
+    zi = np.abs(z_grid - z).argmin(axis=0)
+    return (xi, zi)
+
+
+def get_system_parameters(context):
     '''
     Auxiliary tool for pull out selected probe parameters.
-
     '''
+    fs = context.device.sampling_frequency
     probe = context.device.probe.model
     n_elements = probe.n_elements
     pitch = probe.pitch
     curvature_radius = probe.curvature_radius
-    return n_elements, pitch, curvature_radius
+    return fs, n_elements, pitch, curvature_radius
 
 def show_image(data):
 
@@ -25,13 +34,13 @@ def show_image(data):
     ax = fig.add_subplot(111)
     ax.imshow(data)
 
-    aspect = 1/np.round(nsamp/ncol).astype(int)
-    ax.set_aspect(aspect)
+    #aspect = 1/np.round(nsamp/ncol).astype(int)
+    ax.set_aspect('auto')
     plt.show()
 
 
 
-def get_lin_coords(nel=128, pitch=0.2*1e-3):
+def get_lin_coords(n_elements=128, pitch=0.2*1e-3):
     '''
     Auxiliary tool for generating array transducer elements coordinates for linear array.
 
@@ -39,8 +48,8 @@ def get_lin_coords(nel=128, pitch=0.2*1e-3):
     :param pitch: distance between elements,
     :return: numpy array with elements coordinates (x,z)
     '''
-    elx = np.linspace(-(nel-1)*pitch/2, (nel-1)*pitch/2, nel)
-    elz = np.zeros(nel)
+    elx = np.linspace(-(n_elements-1)*pitch/2, (n_elements-1)*pitch/2, n_elements)
+    elz = np.zeros(n_elements)
     coords = np.array(list(zip(elx,elz)))
     return coords
 
@@ -84,6 +93,7 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
     for i in range(nel):
         data[i, nsamp[i]] = wire_amp
 
+
     return data
 
 
@@ -93,9 +103,9 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
     def setUp(self) -> None:
         self.op = ReconstructLri
         self.context = self.get_default_context()
-        self.x_grid = np.linspace(-3*1e-3, 3*1e-3, 8)
-        self.z_grid = np.linspace(9.5*1e-3, 11.*1e-3, 8)
-        get_probe_data(self.context)
+        fs, n_elements, pitch, curvature_radius = get_system_parameters(self.context)
+        self.x_grid = np.linspace(-5*1e-3, 5*1e-3, 128)
+        self.z_grid = np.linspace(0*1e-3, 10.*1e-3, 256)
 
     def run_op(self, **kwargs):
         data = kwargs['data']
@@ -107,17 +117,17 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
             kwargs["data"] = data
         result = super().run_op(**kwargs)
-        n_elements, pitch, curvature_radius = get_probe_data(self.context)
+        fs, n_elements, pitch, curvature_radius = get_system_parameters(self.context)
 
         return np.squeeze(result)
 
     # Corner cases:
-#    def test_no_input_signal(self):
+#    def test_empty_x_grid(self):
 #        """Empty input array should not be accepted. """
 #        with self.assertRaisesRegex(ValueError, "Empty array") as ctx:
 #            #pass
 #        #    self.run_op(data=[], x_grid=[], z_grid=[])
-#            self.run_op(data=[], x_grid=self.x_grid, z_grid=self.z_grid)
+#            self.run_op(data=0, x_grid=[], z_grid=self.z_grid)
 
 
 
@@ -138,6 +148,29 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
         # Expect
         expected_shape = (self.x_grid.size, self.z_grid.size )
+        expected = np.zeros(expected_shape, dtype=complex)
+        np.testing.assert_equal(result, expected)
+
+    def test_pwi_angle0(self):
+        # Given
+        wire_coords = (0, 5*1e-3)
+        fs, n_elements, pitch, curvature_radius = get_system_parameters(self.context)
+        el_coords = get_lin_coords(n_elements=n_elements, pitch=pitch)
+        data = gen_data(el_coords=el_coords,
+                         dels=None,
+                         wire_coords=wire_coords,
+                         c=1540,
+                         fs=65e6,
+                         wire_amp=100)
+
+        # Run
+        ix, iz = get_wire_indexes(wire_coords, self.x_grid, self.z_grid)
+        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+        print(f'wire value in reconstructed image {result[ix, iz]}')
+        show_image(np.abs(result.T))
+
+        # Expect
+        expected_shape = (self.x_grid.size, self.z_grid.size)
         expected = np.zeros(expected_shape, dtype=complex)
         np.testing.assert_equal(result, expected)
 
