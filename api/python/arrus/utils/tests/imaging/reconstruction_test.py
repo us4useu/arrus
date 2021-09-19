@@ -8,6 +8,11 @@ from arrus.utils.imaging import (
     RxBeamforming)
 
 
+def get_max_ndx(data):
+    s = data.shape
+    ix = np.argmax(data)
+    return np.unravel_index(ix, s)
+
 def get_wire_indexes(wire_coords, x_grid, z_grid,):
     x = wire_coords[0]
     z = wire_coords[1]
@@ -164,15 +169,26 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
                          wire_amp=100)
 
         # Run
-        ix, iz = get_wire_indexes(wire_coords, self.x_grid, self.z_grid)
         result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-        print(f'wire value in reconstructed image {result[ix, iz]}')
+        result = np.abs(result)
+
         show_image(np.abs(result.T))
+        show_image(data)
 
         # Expect
-        expected_shape = (self.x_grid.size, self.z_grid.size)
-        expected = np.zeros(expected_shape, dtype=complex)
-        np.testing.assert_equal(result, expected)
+        ix, iz = get_wire_indexes(wire_coords, self.x_grid, self.z_grid)
+        i, j = get_max_ndx(result)
+        #TODO kiedy jest instrukcja print, to result jest równy wszędzie 0?
+        print(i)
+        print(j)
+        #print(f'wire coordinates: {wire_coords}')
+        ##print(f'x_grid: {self.x_grid}')
+        #print(f'value at estimated wire indexes in reconstructed image: {result[ix, iz]}')
+        #print(f'max value in reconstructed image: {np.nanmax(result)}')
+
+        #expected_shape = (self.x_grid.size, self.z_grid.size)
+        #expected = np.zeros(expected_shape, dtype=complex)
+        #np.testing.assert_equal(result, expected)
 
 
 

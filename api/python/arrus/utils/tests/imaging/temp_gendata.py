@@ -1,6 +1,29 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def get_max(data):
+    s = data.shape
+    ndim = len(s)
+
+    mx = np.max(data)
+    ix = np.argmax(data)
+    print(mx)
+    print(ix)
+    print(np.unravel_index(ix, s))
+    plt.plot(data[0,:])
+    plt.show()
+    for idim in range(ndim):
+        dim = s[idim]
+        mx = np.max(data, axis=idim)
+        ix = np.argmax(data, axis=idim)
+
+    #i = np.argmax(data)
+    #ix, iz = np.unravel_index(i,s)
+    #print(ix)
+    #print(iz)
+
+
+
 def get_lin_coords(nel=128, pitch=0.2*1e-3):
     '''
     Auxiliary tool for generating array transducer elements coordinates for linear array.
@@ -54,7 +77,6 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
     for i in range(nel):
         data[i, nsamp[i]-20:nsamp[i]+20] = wire_amp
 
-    print(nsamp.shape)
     return data
 #
 if __name__ == "__main__":
@@ -62,11 +84,18 @@ if __name__ == "__main__":
     data = gen_data()
     nel, nsamp = np.shape(data)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.imshow(data.T)
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111)
+    #ax.imshow(data.T)
 
     aspect = 1/np.round(nsamp/nel).astype(int)
-    ax.set_aspect(aspect)
-    plt.show()
+    #ax.set_aspect(aspect)
+    #plt.show()
+    ix = np.argmax(data, axis=0)
+    
+    get_max(data)
+
+
+
+
 
