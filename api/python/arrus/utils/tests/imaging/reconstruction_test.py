@@ -9,9 +9,13 @@ from arrus.utils.imaging import (
 
 
 def get_max_ndx(data):
+    '''
+    The function returns indexes of max value in array.
+    '''
     s = data.shape
-    ix = np.argmax(data)
+    ix = np.nanargmax(data)
     return np.unravel_index(ix, s)
+
 
 def get_wire_indexes(wire_coords, x_grid, z_grid,):
     x = wire_coords[0]
@@ -23,7 +27,7 @@ def get_wire_indexes(wire_coords, x_grid, z_grid,):
 
 def get_system_parameters(context):
     '''
-    Auxiliary tool for pull out selected probe parameters.
+    The function returns selected probe parameters.
     '''
     fs = context.device.sampling_frequency
     probe = context.device.probe.model
@@ -32,17 +36,17 @@ def get_system_parameters(context):
     curvature_radius = probe.curvature_radius
     return fs, n_elements, pitch, curvature_radius
 
-def show_image(data):
 
+def show_image(data):
+    '''
+    Simple function for showing array image.
+    '''
     ncol, nsamp = np.shape(data)
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.imshow(data)
-
-    #aspect = 1/np.round(nsamp/ncol).astype(int)
     ax.set_aspect('auto')
     plt.show()
-
 
 
 def get_lin_coords(n_elements=128, pitch=0.2*1e-3):
@@ -63,7 +67,8 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
              c=1540, fs=65e6, wire_amp=100):
     '''
     Function for generation of artificial non-beamformed data
-    corresponding to single point (wire) within empty medium.
+    corresponding to single point (wire) within empty medium,
+    and single plane wave transmission at agnle 0 degrees.
 
     :param el_coords: coordinates of transducer elements (numpy array),
     :param dels: initial delays,
@@ -98,9 +103,7 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
     for i in range(nel):
         data[i, nsamp[i]] = wire_amp
 
-
     return data
-
 
 
 class PwiReconstrutionTestCase(ArrusImagingTestCase):
@@ -125,16 +128,6 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         fs, n_elements, pitch, curvature_radius = get_system_parameters(self.context)
 
         return np.squeeze(result)
-
-    # Corner cases:
-#    def test_empty_x_grid(self):
-#        """Empty input array should not be accepted. """
-#        with self.assertRaisesRegex(ValueError, "Empty array") as ctx:
-#            #pass
-#        #    self.run_op(data=[], x_grid=[], z_grid=[])
-#            self.run_op(data=0, x_grid=[], z_grid=self.z_grid)
-
-
 
     def test_empty(self):
         # Given
@@ -173,22 +166,37 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         result = np.abs(result)
 
         show_image(np.abs(result.T))
-        show_image(data)
+        #show_image(data)
 
         # Expect
-        ix, iz = get_wire_indexes(wire_coords, self.x_grid, self.z_grid)
+        # Indexes corresponding to wire coordinates
+        iwire, jwire = get_wire_indexes(wire_coords, self.x_grid, self.z_grid)
+        # indexes corresponding to max value of beamformed amplitude image
         i, j = get_max_ndx(result)
-        #TODO kiedy jest instrukcja print, to result jest równy wszędzie 0?
-        print(i)
-        print(j)
-        #print(f'wire coordinates: {wire_coords}')
-        ##print(f'x_grid: {self.x_grid}')
-        #print(f'value at estimated wire indexes in reconstructed image: {result[ix, iz]}')
-        #print(f'max value in reconstructed image: {np.nanmax(result)}')
+        # (arbitrary) tolerances for indexes of maximum value in beamformed image
+        xtol = 8
+        ztol = 8
 
-        #expected_shape = (self.x_grid.size, self.z_grid.size)
-        #expected = np.zeros(expected_shape, dtype=complex)
-        #np.testing.assert_equal(result, expected)
+        #TODO kiedy jest instrukcja print, to result jest równy wszędzie 0?
+        #print('')
+        #print(f'index i: {i}')
+        #print(f'index j: {j}')
+
+        #print(f'index iwire: {iwire}')
+        #print(f'index jwire: {jwire}')
+
+        #all_zeros = not result.any()
+        #if all_zeros:
+        #    print('all zeros')
+
+        idiff = np.abs(iwire-i)
+        jdiff = np.abs(jwire-j)
+        #print(f'i: {i}')
+        #print(f'j: {j}')
+        #print(f'idiff: {idiff}')
+        #print(f'jdiff: {jdiff}')
+        self.assertLessEqual(idiff, xtol)
+        self.assertLessEqual(jdiff, ztol)
 
 
 
