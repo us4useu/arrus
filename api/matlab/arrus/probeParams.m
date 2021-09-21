@@ -71,6 +71,17 @@ switch probeName
         probe.pitch	= 0.31e-3;
         probe.maxVpp = 100;
         probe.channelsMask = [];
+        
+        case '2.25L32' % Olympus NDT, linear
+            probe.nElem	= 32;
+            probe.pitch	= 1.00e-3;
+            probe.maxVpp = 100;
+            probe.channelsMask = [];
+        case '5L32' % Olympus NDT, linear
+            probe.nElem	= 32;
+            probe.pitch	= 0.60e-3;
+            probe.maxVpp = 100;
+            probe.channelsMask = [];
 
     otherwise
         error(['Unhandled probe model ', probeName]);
@@ -96,7 +107,7 @@ end
 
 %% Adapter type & channel mapping
 switch probeName
-    case {'AL2442','SL1543','SP2430','AC2541','5L128','10L128','5L64','10L32'}
+    case {'AL2442','SL1543','SP2430','AC2541','5L128','10L128','5L64','10L32','2.25L32','5L32'}
         if strcmp(adapterType, "esaote")
             probe.adapType      = 0;
             
@@ -240,9 +251,9 @@ else
     
     % interface parameters for each interface name should be defined here!
     probe.interfEnable = true;
-    probe.interfSize = [];
-	probe.interfAng = [];
-    probe.interfSos = [];
+    probe.interfSize = 21.0e-3;
+    probe.interfAng = 35.8*pi/180;
+    probe.interfSos = 2320;
 
 end
 
