@@ -1526,7 +1526,7 @@ class ReconstructLri(Operation):
         self.tx_foc = self.num_pkg.asarray([seq.tx_focus]*self.n_tx, dtype=self.num_pkg.float32)
         burst_factor = seq.pulse.n_periods / (2*self.fn)
         self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
-        self.initial_delay = self.num_pkg.asarray(self.initial_delay, dtype=self.num_pkg.float32)
+        self.initial_delay = self.num_pkg.float32(self.initial_delay)
         self.max_tx = 64
         self.actual_ntx = min(self.max_tx, self.n_tx)
         self.n_iterations = (self.n_tx-1) // self.max_tx + 1
