@@ -1108,6 +1108,12 @@ classdef Us4R < handle
                 if obj.rec.bmodeEnable
                     rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
                     
+                    if 0
+                        ccf = 1 - sqrt( var(real(rfBfr)./abs(rfBfr), 0, 3) + ...
+                                        var(imag(rfBfr)./abs(rfBfr), 0, 3) );
+                        rfBfr = rfBfr .* ccf;
+                    end
+                    
                     rfBfr = mean(rfBfr,3,'omitnan');
                 end
                 
