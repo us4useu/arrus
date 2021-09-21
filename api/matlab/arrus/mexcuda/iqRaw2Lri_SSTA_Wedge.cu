@@ -63,6 +63,39 @@ __device__ float xRefract(	float const zElem,
     return xRefractNew;
 }
 
+__device__ float secReflDel(float const zElemTx, 
+                            float const xElemTx, 
+                            float const zElemRx, 
+                            float const xElemRx, 
+                            float const sosInterf)
+{
+    float rAux, zAux, xAux, zElemRx1, xElemRx1, zElemRx2, xElemRx2, zElemRx3, xElemRx3;
+    
+	if (zElemTx == zElemRx && xElemTx == xElemRx) {
+        return 4.f * zElemTx / sosInterf;
+    }
+    else {
+        // elemRx1: image of elemRx reflected in a wedge-sample surface mirror
+        zElemRx1 = -zElemRx;
+        xElemRx1 =  xElemRx;
+        
+        // elemRx2: image of elemRx1 reflected in a wedge-probe surface mirror
+        rAux = ownHypotf(zElemRx - zElemTx, xElemRx - xElemTx);
+        zAux = zElemTx + (zElemRx1 - zElemTx) * (zElemRx - zElemTx) / rAux;
+        xAux = xElemTx + (xElemRx1 - xElemTx) * (xElemRx - xElemTx) / rAux;
+        
+        zElemRx2 = zElemRx1 + 2*(zAux - zElemRx1);
+        xElemRx2 = xElemRx1 + 2*(xAux - xElemRx1);
+        
+        // elemRx3: image of elemRx2 reflected in a wedge-sample surface mirror
+        zElemRx3 = -zElemRx2;
+        xElemRx3 =  xElemRx2;
+        
+        // 2nd reflection delay is the time necessary for elemTx-elemRx3 travel
+        return ownHypotf(zElemRx3 - zElemTx, xElemRx3 - xElemTx) / sosInterf;
+    }
+}
+
 
 __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
                             float const * txApCentZ, float const * txApCentX, 
@@ -128,6 +161,9 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
                 rxApod = __expf(-rxApod*rxApod*twoSigSqrInv);
                 
                 time = txTime + rxTime + initDel;
+//                 float secReflTime = secReflDel(txApCentZ[iTx], txApCentX[iTx],zElemConst[iElem], xElemConst[iElem],sosInterf) + initDel;
+//                 if (fabs(time - secReflTime) <= 1.f*initDel) continue;
+                
                 iSamp = time * fs;
                 if (iSamp<0.f || iSamp>static_cast<float>(nSamp-1)) continue;
                 
