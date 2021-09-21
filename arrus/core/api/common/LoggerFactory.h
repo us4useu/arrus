@@ -14,6 +14,8 @@ public:
 
     virtual Logger::Handle
     getLogger(const std::vector<arrus::Logger::Attribute> &attributes) = 0;
+
+    virtual ~LoggerFactory() = default;
 };
 
 }
