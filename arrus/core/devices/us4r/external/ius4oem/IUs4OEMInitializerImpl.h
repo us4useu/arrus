@@ -33,7 +33,7 @@ public:
     }
 private:
     void initializeUs4oems(std::vector<IUs4OEMHandle> &ius4oems, int level) {
-        std::vector<std::exception_ptr> exceptions;
+        std::vector<std::exception> exceptions;
         std::mutex exceptions_mutex;
 
         std::for_each(
@@ -42,9 +42,13 @@ private:
                 try {
                     u->Initialize(level);
                 }
+                catch(const std::exception &e) {
+                    std::lock_guard guard(exceptions_mutex);
+                    exceptions.push_back(e);
+                }
                 catch(...) {
                     std::lock_guard guard(exceptions_mutex);
-                    exceptions.push_back(std::current_exception());
+                    exceptions.push_back(std::runtime_error("Unknown exception during Us4OEM initialization."));
                 }
             }
         );
