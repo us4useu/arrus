@@ -10,7 +10,7 @@
 
 namespace arrus::devices {
 
-/*
+/**
  * AFE (RX) settings.
  *
  * Us4R AFE settings currently includes:
