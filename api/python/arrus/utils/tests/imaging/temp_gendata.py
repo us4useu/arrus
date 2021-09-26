@@ -1,6 +1,27 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+
+def get_max_ndx(data):
+    '''
+    The function returns indexes of max value in array.
+    '''
+    s = data.shape
+    ix = np.nanargmax(data)
+    return np.unravel_index(ix, s)
+
+def show_image(data):
+    '''
+    Simple function for showing array image.
+    '''
+    ncol, nsamp = np.shape(data)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.imshow(data)
+    ax.set_aspect('auto')
+    plt.show()
+
 def get_max(data):
     s = data.shape
     ndim = len(s)
@@ -17,12 +38,6 @@ def get_max(data):
         mx = np.max(data, axis=idim)
         ix = np.argmax(data, axis=idim)
 
-    #i = np.argmax(data)
-    #ix, iz = np.unravel_index(i,s)
-    #print(ix)
-    #print(iz)
-
-
 
 def get_lin_coords(nel=128, pitch=0.2*1e-3):
     '''
@@ -37,9 +52,16 @@ def get_lin_coords(nel=128, pitch=0.2*1e-3):
     coords = np.array(list(zip(elx,elz)))
     return coords
 
+def get_lin_delays(el_coords, angle=0, c=1540):
+    '''
+    The functtion generate delays of PWI scheme for linear array.
+    '''
+    delays = el_coords[:,0]*np.tan(angle)/c
+    delays = delays - np.min(delays)
+    return delays
 
-def gen_data(el_coords=None, dels=None, wire_coords=None,
-             c=1540, fs=65e6, wire_amp=100):
+def gen_data(el_coords=None, dels=None, wire_coords=(0, 5*1e-3),
+             c=1540, fs=65e6, wire_amp=100, wire_diameter=10):
     '''
     Function for generation of artificial non-beamformed data
     corresponding to single point (wire) within empty medium.
@@ -62,8 +84,8 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
     if dels is None:
         dels = np.zeros(nel)
 
-    if wire_coords is None:
-        wire_coords = (0, 5*1e-3)
+    #if wire_coords is None:
+    #    wire_coords = (0, 5*1e-3)
 
     # estimate distances between transducer elements and the 'wire'
     dist = np.zeros(nel)
@@ -75,27 +97,26 @@ def gen_data(el_coords=None, dels=None, wire_coords=None,
     nmax = 2*np.max(nsamp)
     data = np.zeros((nel,nmax))
     for i in range(nel):
-        data[i, nsamp[i]-20:nsamp[i]+20] = wire_amp
+        start = nsamp[i] - wire_diameter
+        stop = nsamp[i] + wire_diameter
+        data[i, start:stop] = wire_amp
 
     return data
 #
 if __name__ == "__main__":
 
-    data = gen_data()
-    nel, nsamp = np.shape(data)
-
-    #fig = plt.figure()
-    #ax = fig.add_subplot(111)
-    #ax.imshow(data.T)
-
-    aspect = 1/np.round(nsamp/nel).astype(int)
-    #ax.set_aspect(aspect)
-    #plt.show()
-    ix = np.argmax(data, axis=0)
-    
-    get_max(data)
+    angle_deg = 0
+    angle = angle_deg/180*np.pi
+    el_coords = get_lin_coords(192)
+    delays = get_lin_delays(el_coords, angle)
+    data = gen_data(el_coords, delays)
+    show_image(data)
 
 
-
-
+    angle_deg = 60
+    angle = angle_deg/180*np.pi
+    el_coords = get_lin_coords(192)
+    delays = get_lin_delays(el_coords, angle)
+    data = gen_data(el_coords, delays)
+    show_image(data)
 

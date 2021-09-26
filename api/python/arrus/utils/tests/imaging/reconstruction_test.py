@@ -125,7 +125,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
             kwargs["data"] = data
         result = super().run_op(**kwargs)
-        fs, n_elements, pitch, curvature_radius = get_system_parameters(self.context)
+        #fs, n_elements, pitch, curvature_radius = get_system_parameters(self.context)
 
         return np.squeeze(result)
 
@@ -165,7 +165,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
         result = np.abs(result)
 
-        show_image(np.abs(result.T))
+        #show_image(np.abs(result.T))
         #show_image(data)
 
         # Expect
@@ -177,29 +177,10 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         xtol = 8
         ztol = 8
 
-        #TODO kiedy jest instrukcja print, to result jest równy wszędzie 0?
-        #print('')
-        #print(f'index i: {i}')
-        #print(f'index j: {j}')
-
-        #print(f'index iwire: {iwire}')
-        #print(f'index jwire: {jwire}')
-
-        #all_zeros = not result.any()
-        #if all_zeros:
-        #    print('all zeros')
-
         idiff = np.abs(iwire-i)
         jdiff = np.abs(jwire-j)
-        #print(f'i: {i}')
-        #print(f'j: {j}')
-        #print(f'idiff: {idiff}')
-        #print(f'jdiff: {jdiff}')
         self.assertLessEqual(idiff, xtol)
         self.assertLessEqual(jdiff, ztol)
-
-
-
 
 
 
