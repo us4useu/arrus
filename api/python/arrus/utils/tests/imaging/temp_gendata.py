@@ -52,7 +52,7 @@ def get_lin_coords(nel=128, pitch=0.2*1e-3):
     coords = np.array(list(zip(elx,elz)))
     return coords
 
-def get_lin_delays(el_coords, angle=0, c=1540):
+def get_lin_txdelays(el_coords, angle=0, c=1540):
     '''
     The functtion generate delays of PWI scheme for linear array.
     '''
@@ -105,11 +105,12 @@ def gen_data(el_coords=None, dels=None, wire_coords=(0, 5*1e-3),
 #
 if __name__ == "__main__":
 
+    wire_coords = (10*1e-3, 5*1e-3)
     angle_deg = 0
     angle = angle_deg/180*np.pi
     el_coords = get_lin_coords(192)
-    delays = get_lin_delays(el_coords, angle)
-    data = gen_data(el_coords, delays)
+    delays = get_lin_txdelays(el_coords, angle)
+    data = gen_data(el_coords, delays, wire_coords)
     show_image(data)
 
 
