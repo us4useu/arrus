@@ -30,7 +30,7 @@ def _search_for_single_pattern(pattern, content):
 
 
 def get_required_firmware_version(install_dir):
-    with open(os.path.join(install_dir, "Version.rst")) as f:
+    with open(os.path.join(install_dir, "VERSION.rst")) as f:
         content = f.readlines()
     arrus_version = content[0].strip()
     # Search for firmware version.
