@@ -128,13 +128,11 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         nrow = np.round((zbot - ztop)/ds + 1).astype(int)
         self.x_grid = np.linspace(-probe_width/2, probe_width/2, ncol)
         self.z_grid = np.linspace(ztop, zbot , nrow)
-        print(self.x_grid.shape)
-        print(self.z_grid.shape)
 
 
     def run_op(self, **kwargs):
         data = kwargs['data']
-        data = np.array(data)
+        data = np.array(data).astype(np.complex64)
         if len(data.shape) > 3:
             raise ValueError("Currently data supports at most 3 dimensions.")
         if len(data.shape) < 3:
@@ -167,43 +165,43 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         np.testing.assert_equal(result, expected)
 
 
-    def test_pwi_angle0_wire_in_the_middle(self):
-        # Given
-        wire_coords = (0, 5*1e-3)
-
-        #el_coords = self.get_lin_coords()
-        data = self.gen_data(txdelays=None,
-                             wire_coords=wire_coords,
-                             wire_amp=100,
-                             wire_radius=4)
-
-        # Run
-        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-        result = np.abs(result)
-        # show_image(np.abs(result.T))
-        # show_image(data)
-
-        # Expect
-        # Indexes corresponding to wire coordinates
-        iwire, jwire = self.get_wire_indexes(wire_coords)
-
-        # indexes corresponding to max value of beamformed amplitude image
-        i, j = get_max_ndx(result)
-
-        # information about indexes (for debugging)
-        #print(f'expected wire row index value: {iwire}')
-        #print(f'obtained wire row index value: {i}')
-        #print(f'expected wire column index value: {jwire}')
-        #print(f'obtained wire column index valuej: {j}')
-
-        # (arbitrary) tolerances for indexes of maximum value in beamformed image
-        xtol = 8
-        ztol = 8
-
-        idiff = np.abs(iwire-i)
-        jdiff = np.abs(jwire-j)
-        self.assertLessEqual(idiff, xtol)
-        self.assertLessEqual(jdiff, ztol)
+#    def test_pwi_angle0_wire_in_the_middle(self):
+#        # Given
+#        wire_coords = (0, 5*1e-3)
+#
+#        #el_coords = self.get_lin_coords()
+#        data = self.gen_data(txdelays=None,
+#                             wire_coords=wire_coords,
+#                             wire_amp=100,
+#                             wire_radius=4)
+#
+#        # Run
+#        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+#        result = np.abs(result)
+#        # show_image(np.abs(result.T))
+#        # show_image(data)
+#
+#        # Expect
+#        # Indexes corresponding to wire coordinates
+#        iwire, jwire = self.get_wire_indexes(wire_coords)
+#
+#        # indexes corresponding to max value of beamformed amplitude image
+#        i, j = get_max_ndx(result)
+#
+#        # information about indexes (for debugging)
+#        #print(f'expected wire row index value: {iwire}')
+#        #print(f'obtained wire row index value: {i}')
+#        #print(f'expected wire column index value: {jwire}')
+#        #print(f'obtained wire column index valuej: {j}')
+#
+#        # (arbitrary) tolerances for indexes of maximum value in beamformed image
+#        xtol = 8
+#        ztol = 8
+#
+#        idiff = np.abs(iwire-i)
+#        jdiff = np.abs(jwire-j)
+#        self.assertLessEqual(idiff, xtol)
+#        self.assertLessEqual(jdiff, ztol)
 
 #
 #    def test_pwi_angle0_wire_on_the_left(self):
@@ -251,9 +249,16 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
     def test_pwi_angle0(self):
         # Given
-        wire_coords = (-5*1e-3, 20*1e-3)
-        wire_x = np.arange(-5,6,20)*1e-3
-        wire_z = np.arange(5,46,40)*1e-3
+        max_x = np.max(self.x_grid)
+        min_x = np.max(self.x_grid)
+        max_z = np.max(self.z_grid)
+        min_z = np.max(self.z_grid)
+        xmargin = (max_x-min_x)*0.1
+        zmargin = (max_z-min_z)*0.1
+
+        wire_x = np.arange(min_x+xmargin, max_x-xmargin, 1)
+        wire_z = np.arange(min_z+zmargin, max_z-zmargin, 5)
+
         for x in wire_x:
             for z in wire_z:
                 wire_coords = (x, z)
@@ -278,14 +283,14 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
                 i, j = get_max_ndx(result)
 
                 # information about indexes (for debugging)
-                print('----------------------------')
-                print(f'current wire: ({x},{z})')
-                print(f'expected wire row index value: {iwire}')
-                print(f'obtained wire row index value: {i}')
-                print(f'expected wire column index value: {jwire}')
-                print(f'obtained wire column index valuej: {j}')
-                print('')
-                print('')
+                #print('----------------------------')
+                #print(f'current wire: ({x},{z})')
+                #print(f'expected wire row index value: {iwire}')
+                #print(f'obtained wire row index value: {i}')
+                #print(f'expected wire column index value: {jwire}')
+                #print(f'obtained wire column index valuej: {j}')
+                #print('')
+                #print('')
 
                 # (arbitrary) tolerances for indexes of maximum value in beamformed image
                 xtol = 16
@@ -383,17 +388,17 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         '''
         The function returns selected system.
         '''
-        if parameter is 'sampling_frequency':
+        if parameter == 'sampling_frequency':
             return self.context.device.sampling_frequency
-        if parameter is 'center_frequency':
+        if parameter == 'center_frequency':
             return self.context.sequence.pulse.center_frequency
-        if parameter is 'n_elements':
+        if parameter == 'n_elements':
             return self.context.device.probe.model.n_elements
-        if parameter is 'pitch':
+        if parameter == 'pitch':
             return self.context.device.probe.model.pitch
-        if parameter is 'curvature_radius':
+        if parameter == 'curvature_radius':
             return self.context.device.probe.model.curvature_radius
-        if parameter is 'speed_of_sound':
+        if parameter == 'speed_of_sound':
             return self.context.sequence.speed_of_sound
 
 
