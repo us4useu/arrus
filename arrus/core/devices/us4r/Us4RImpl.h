@@ -31,14 +31,16 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HV256Impl::Handle> hv)
-        : Us4R(id), us4oems(std::move(us4oems)), hv(std::move(hv)) {}
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems,  std::optional<HV256Impl::Handle> hv,
+             std::vector<unsigned short> channelsMask)
+        : Us4R(id), us4oems(std::move(us4oems)), hv(std::move(hv)), channelsMask(std::move(channelsMask)) {}
 
     Us4RImpl(const DeviceId &id,
              Us4OEMs us4oems,
              ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe,
-             std::optional<HV256Impl::Handle> hv);
+             std::optional<HV256Impl::Handle> hv,
+             std::vector<unsigned short> channelsMask);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -115,6 +117,8 @@ public:
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
 
+    std::vector<unsigned short> getChannelsMask() override;
+
 private:
     std::mutex deviceStateMutex;
     Logger::Handle logger;
@@ -122,10 +126,11 @@ private:
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
     std::optional<HV256Impl::Handle> hv;
-    // will be used outside
-    // TODO extract output buffer to some external class
     std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};
+
+    std::vector<unsigned short> channelsMask;
+
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();

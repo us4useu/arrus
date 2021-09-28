@@ -204,6 +204,13 @@ class Us4R(Device):
         # TODO use sampling frequency from the us4r device
         return 65e6
 
+    @property
+    def channels_mask(self):
+        """
+        Returns a list of system channels that are masked in the configuration.
+        """
+        return self._handle.getChannelsMask()
+
     def upload(self, seq: arrus.ops.Operation,
                rx_buffer_size=2, host_buffer_size=2,
                rx_batch_size=1) -> HostBuffer:

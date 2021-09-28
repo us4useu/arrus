@@ -30,12 +30,14 @@ Us4RImpl::Us4RImpl(const DeviceId &id,
                    Us4RImpl::Us4OEMs us4oems,
                    ProbeAdapterImplBase::Handle &probeAdapter,
                    ProbeImplBase::Handle &probe,
-                   std::optional<HV256Impl::Handle> hv)
+                   std::optional<HV256Impl::Handle> hv,
+                   std::vector<unsigned short> channelsMask)
     : Us4R(id), logger{getLoggerFactory()->getLogger()},
       us4oems(std::move(us4oems)),
       probeAdapter(std::move(probeAdapter)),
       probe(std::move(probe)),
-      hv(std::move(hv)) {
+      hv(std::move(hv)),
+      channelsMask(std::move(channelsMask)) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -195,6 +197,8 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
     this->getDefaultComponent()->setTgcCurve(tgcCurvePoints);
 }
 
-
+std::vector<unsigned short> Us4RImpl::getChannelsMask() {
+    return channelsMask;
+}
 
 }

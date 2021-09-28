@@ -19,6 +19,7 @@ using namespace ::arrus;
 namespace std {
 %template(VectorBool) vector<bool>;
 %template(VectorFloat) vector<float>;
+%template(VectorUInt16) vector<unsigned short>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
 
