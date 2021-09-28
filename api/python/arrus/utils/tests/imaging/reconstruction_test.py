@@ -125,9 +125,11 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         ncol = np.round(probe_width/ds).astype(int)+1
         ztop = 0
         zbot = 50*1e-3
-        nrow = np.round((zbot - ztop)/ds).astype(int)
+        nrow = np.round((zbot - ztop)/ds + 1).astype(int)
         self.x_grid = np.linspace(-probe_width/2, probe_width/2, ncol)
         self.z_grid = np.linspace(ztop, zbot , nrow)
+        print(self.x_grid.shape)
+        print(self.z_grid.shape)
 
 
     def run_op(self, **kwargs):
@@ -247,49 +249,52 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
 
 
-#    def test_pwi_angle0(self):
-#        # Given
-#        wire_coords = (-5*1e-3, 20*1e-3)
-#        wire_x = np.arange(-5,6,20)*1e-3
-#        wire_z = np.arange(5,46,40)*1e-3
-#        for x in wire_x:
-#            for z in wire_z:
-#                wire_coords = (x, z)
-#
-#                #el_coords = self.get_lin_coords()
-#                data = self.gen_data(txdelays=None,
-#                                     wire_coords=wire_coords,
-#                                     wire_amp=100,
-#                                     wire_radius=4)
-#
-#                # Run
-#                result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-#                result = np.abs(result)
-#                #show_image(np.abs(result.T))
-#                # show_image(data)
-#
-#                # Expect
-#                # Indexes corresponding to wire coordinates
-#                iwire, jwire = self.get_wire_indexes(wire_coords)
-#
-#                # indexes corresponding to max value of beamformed amplitude image
-#                i, j = get_max_ndx(result)
-#
-#                # information about indexes (for debugging)
-#                print(f'current wire: ({x},{z})')
-#                print(f'expected wire row index value: {iwire}')
-#                print(f'obtained wire row index value: {i}')
-#                print(f'expected wire column index value: {jwire}')
-#                print(f'obtained wire column index valuej: {j}')
-#
-#                # (arbitrary) tolerances for indexes of maximum value in beamformed image
-#                xtol = 16
-#                ztol = 16
-#
-#                idiff = np.abs(iwire-i)
-#                jdiff = np.abs(jwire-j)
-#                self.assertLessEqual(idiff, xtol)
-#                self.assertLessEqual(jdiff, ztol)
+    def test_pwi_angle0(self):
+        # Given
+        wire_coords = (-5*1e-3, 20*1e-3)
+        wire_x = np.arange(-5,6,20)*1e-3
+        wire_z = np.arange(5,46,40)*1e-3
+        for x in wire_x:
+            for z in wire_z:
+                wire_coords = (x, z)
+
+                #el_coords = self.get_lin_coords()
+                data = self.gen_data(txdelays=None,
+                                     wire_coords=wire_coords,
+                                     wire_amp=100,
+                                     wire_radius=4)
+
+                # Run
+                result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+                result = np.abs(result)
+                #show_image(np.abs(result.T))
+                # show_image(data)
+
+                # Expect
+                # Indexes corresponding to wire coordinates
+                iwire, jwire = self.get_wire_indexes(wire_coords)
+
+                # indexes corresponding to max value of beamformed amplitude image
+                i, j = get_max_ndx(result)
+
+                # information about indexes (for debugging)
+                print('----------------------------')
+                print(f'current wire: ({x},{z})')
+                print(f'expected wire row index value: {iwire}')
+                print(f'obtained wire row index value: {i}')
+                print(f'expected wire column index value: {jwire}')
+                print(f'obtained wire column index valuej: {j}')
+                print('')
+                print('')
+
+                # (arbitrary) tolerances for indexes of maximum value in beamformed image
+                xtol = 16
+                ztol = 16
+
+                idiff = np.abs(iwire-i)
+                jdiff = np.abs(jwire-j)
+                self.assertLessEqual(idiff, xtol)
+                self.assertLessEqual(jdiff, ztol)
 
 
 
