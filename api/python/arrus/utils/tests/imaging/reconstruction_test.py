@@ -238,7 +238,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
     def test_pwi_angle0(self):
         # Given
-        angle = 0
+        angle = 0*np.pi/180
         self.context = self.get_pwi_context(angle=angle)
         max_x = np.max(self.x_grid)
         min_x = np.min(self.x_grid)
@@ -247,9 +247,8 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         xmargin = (max_x-min_x)*0.1
         zmargin = (max_z-min_z)*0.1
         wire_x = np.linspace(min_x+xmargin, max_x-xmargin, 10)
+        wire_x = np.array([0])
         wire_z = np.linspace(min_z+zmargin, max_z-zmargin, 10)
-        print(wire_x)
-        print(wire_z)
 
         for x in wire_x:
             for z in wire_z:
@@ -272,18 +271,18 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
                 i, j = get_max_ndx(result)
 
                 # information about indexes (for debugging)
-                #print('----------------------------')
-                #print(f'current wire: ({x},{z})')
-                #print(f'expected wire row index value: {iwire}')
-                #print(f'obtained wire row index value: {i}')
-                #print(f'expected wire column index value: {jwire}')
-                #print(f'obtained wire column index valuej: {j}')
-                #print('')
-                #print('')
+                print('----------------------------')
+                print(f'current wire: ({x},{z})')
+                print(f'expected wire row index value (x): {iwire}')
+                print(f'obtained wire row index value (x): {i}')
+                print(f'expected wire column index value (z): {jwire}')
+                print(f'obtained wire column index valuej (z): {j}')
+                print('')
+                print('')
 
                 # (arbitrary) tolerances for indexes of maximum value in beamformed image
-                xtol = 16
-                ztol = 16
+                xtol = 32
+                ztol = 32
 
                 idiff = np.abs(iwire-i)
                 jdiff = np.abs(jwire-j)
@@ -359,6 +358,8 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         el_coords = self.get_lin_coords()
         delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
         delays = delays - np.min(delays)
+        #delays = delays + np.max(delays)
+        #delays = np.flipud(delays)
         return delays
 
 
@@ -406,7 +407,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
     def gen_pwi_data(self, angle,
                      wire_coords=(0, 5*1e-3),
                      wire_amp=100,
-                     wire_radius=10):
+                     wire_radius=8):
         txdelays = self.get_lin_txdelays(angle)
         data = self.gen_data(txdelays=txdelays,
                              wire_coords=wire_coords,
