@@ -246,8 +246,10 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         min_z = np.min(self.z_grid)
         xmargin = (max_x-min_x)*0.1
         zmargin = (max_z-min_z)*0.1
-        wire_x = np.arange(min_x+xmargin, max_x-xmargin, 1)
-        wire_z = np.arange(min_z+zmargin, max_z-zmargin, 5)
+        wire_x = np.linspace(min_x+xmargin, max_x-xmargin, 10)
+        wire_z = np.linspace(min_z+zmargin, max_z-zmargin, 10)
+        print(wire_x)
+        print(wire_z)
 
         for x in wire_x:
             for z in wire_z:
@@ -259,8 +261,8 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
                 # Run
                 result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
                 result = np.abs(result)
-                show_image(np.abs(result.T))
-                # show_image(data)
+                #show_image(np.abs(result.T))
+                #show_image(data)
 
                 # Expect
                 # Indexes corresponding to wire coordinates in beamformed image
@@ -270,14 +272,14 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
                 i, j = get_max_ndx(result)
 
                 # information about indexes (for debugging)
-                print('----------------------------')
-                print(f'current wire: ({x},{z})')
-                print(f'expected wire row index value: {iwire}')
-                print(f'obtained wire row index value: {i}')
-                print(f'expected wire column index value: {jwire}')
-                print(f'obtained wire column index valuej: {j}')
-                print('')
-                print('')
+                #print('----------------------------')
+                #print(f'current wire: ({x},{z})')
+                #print(f'expected wire row index value: {iwire}')
+                #print(f'obtained wire row index value: {i}')
+                #print(f'expected wire column index value: {jwire}')
+                #print(f'obtained wire column index valuej: {j}')
+                #print('')
+                #print('')
 
                 # (arbitrary) tolerances for indexes of maximum value in beamformed image
                 xtol = 16
@@ -410,6 +412,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
                              wire_coords=wire_coords,
                              wire_amp=wire_amp,
                              wire_radius=wire_radius)
+        return data
 
 
     def get_system_parameter(self, parameter):
