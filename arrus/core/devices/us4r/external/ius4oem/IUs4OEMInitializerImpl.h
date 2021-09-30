@@ -2,7 +2,6 @@
 #define ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMINITIALIZERIMPL_H
 
 #include <algorithm>
-#include <execution>
 #include <mutex>
 #include <iostream>
 
@@ -36,8 +35,7 @@ private:
         std::vector<std::exception> exceptions;
         std::mutex exceptions_mutex;
 
-        std::for_each(
-            std::execution::par_unseq, std::begin(ius4oems), std::end(ius4oems),
+        std::for_each(std::begin(ius4oems), std::end(ius4oems),
             [&](IUs4OEMHandle &u) {
                 try {
                     u->Initialize(level);
@@ -45,6 +43,8 @@ private:
                 catch(const std::exception &e) {
                     std::lock_guard guard(exceptions_mutex);
                     exceptions.push_back(e);
+		    // TODO fix the list of std exceptions
+		    std::cout << e.what() << std::endl;
                 }
                 catch(...) {
                     std::lock_guard guard(exceptions_mutex);
