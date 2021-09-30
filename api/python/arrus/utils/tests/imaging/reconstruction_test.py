@@ -104,7 +104,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         xmargin = (max_x-min_x)*0.2
         zmargin = (max_z-min_z)*0.2
         wire_x = np.linspace(min_x+xmargin, max_x-xmargin, 10)
-        #wire_x = np.array([0])
+        wire_x = np.array([min_x+xmargin])
         wire_z = np.linspace(min_z+zmargin, max_z-zmargin, 10)
 
         self.angle = angle
@@ -209,18 +209,32 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         return coords
 
 
-    #def get_lin_txdelays(self, angle):
+    #def get_lin_txdelays(self):
     #    '''
     #    The functtion generate delays of PWI scheme for linear array.
     #    '''
     #    speed_of_sound = self.get_system_parameter('speed_of_sound')
     #    el_coords = self.get_lin_coords()
+    #    angle = self.angle
     #    delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
     #    delays = delays - np.min(delays)
     #    #delays = delays + np.max(delays)
     #    #delays = np.flipud(delays)
     #    return delays
 
+    #def get_delays(self):
+    #    wire_coords = self.wire_coods
+    #    speed_of_sound = get_system_parameter('speed_of_sound')
+    #    el_coords = self.get_lin_coords
+    #    txdelays = get_lin_txdelays()
+    #    
+    #    # estimate distances between transducer elements and the 'wire'
+    #    dist = np.zeros(nel)
+    #    for i in range(nel):
+    #        dist[i] = np.sqrt((el_coords[i, 0]-wire_coords[0])**2
+    #                         +(el_coords[i, 1]-wire_coords[1])**2)
+
+    #    
 
     def get_pwi_txdelay(self):
         '''
