@@ -20,14 +20,6 @@ def get_max_ndx(data):
     return np.unravel_index(ix, s)
 
 
-#def get_wire_indexes(wire_coords, x_grid, z_grid,):
-#    x = wire_coords[0]
-#    z = wire_coords[1]
-#    xi = np.abs(x_grid - x).argmin(axis=0)
-#    zi = np.abs(z_grid - z).argmin(axis=0)
-#    return (xi, zi)
-
-
 
 def show_image(data):
     '''
@@ -41,69 +33,11 @@ def show_image(data):
     plt.show()
 
 
-#def get_lin_coords(n_elements=128, pitch=0.2*1e-3):
-#    '''
-#    Auxiliary tool for generating array transducer elements coordinates for linear array.
-#
-#    :param nel: number of elements,
-#    :param pitch: distance between elements,
-#    :return: numpy array with elements coordinates (x,z)
-#    '''
-#    elx = np.linspace(-(n_elements-1)*pitch/2, (n_elements-1)*pitch/2, n_elements)
-#    elz = np.zeros(n_elements)
-#    coords = np.array(list(zip(elx,elz)))
-#    return coords
-
-
-#def gen_data(el_coords=None, dels=None, wire_coords=(0, 5*1e-3),
-#             c=1540, fs=65e6, wire_amp=100, wire_diameter=10):
-#    '''
-#    Function for generation of artificial non-beamformed data
-#    corresponding to single point (wire) within empty medium.
-#
-#    :param el_coords: coordinates of transducer elements (numpy array),
-#    :param dels: initial delays,
-#    :param wire_coords: wire coordinates,
-#    :param c: speed of sound,
-#    :param fs: sampling frequency,
-#    :param wire_amp: amplitude of the wire
-#    :return: 2D numpy array of zeros and single pixel
-#             with amplitude equal to 'wire_amp' parameter.
-#    '''
-#
-#    # check input and get default parameters if needed
-#    if el_coords is None:
-#        el_coords = get_lin_coords()
-#
-#    nel, _  = np.shape(el_coords)
-#    if dels is None:
-#        dels = np.zeros(nel)
-#
-#    #if wire_coords is None:
-#    #    wire_coords = (0, 5*1e-3)
-#
-#    # estimate distances between transducer elements and the 'wire'
-#    dist = np.zeros(nel)
-#    for i in range(nel):
-#        dist[i] = np.sqrt((el_coords[i, 0]-wire_coords[0])**2
-#                         +(el_coords[i, 1]-wire_coords[1])**2)
-#    # create output array
-#    nsamp = np.floor((2*dist/c + dels)*fs + 1).astype(int)
-#    nmax = 2*np.max(nsamp)
-#    data = np.zeros((nel,nmax))
-#    for i in range(nel):
-#        start = nsamp[i] - wire_diameter
-#        stop = nsamp[i] + wire_diameter
-#        data[i, start:stop] = wire_amp
-#
-#    return data
-
 
 class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
         self.op = ReconstructLri
-        #self.context = self.get_default_context()
         self.context = self.get_pwi_context(angle=0)
         n_elements = self.get_system_parameter('n_elements')
         pitch = self.get_system_parameter('pitch')
@@ -117,6 +51,10 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         nrow = np.round((zbot - ztop)/ds + 1).astype(int)
         self.x_grid = np.linspace(-probe_width/2, probe_width/2, ncol)
         self.z_grid = np.linspace(ztop, zbot , nrow)
+        # set arbitrary tolerances (in samples) i.e. possible differences
+        # between expected and obtained maxima in b-mode image of a wire
+        self.xtol = 32
+        self.ztol = 32
 
 
     def run_op(self, **kwargs):
@@ -154,109 +92,30 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         np.testing.assert_equal(result, expected)
 
 
-#    def test_pwi_angle0_wire_in_the_middle(self):
-#        # Given
-#        wire_coords = (0, 5*1e-3)
-#
-#        #el_coords = self.get_lin_coords()
-#        data = self.gen_data(txdelays=None,
-#                             wire_coords=wire_coords,
-#                             wire_amp=100,
-#                             wire_radius=4)
-#
-#        # Run
-#        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-#        result = np.abs(result)
-#        # show_image(np.abs(result.T))
-#        # show_image(data)
-#
-#        # Expect
-#        # Indexes corresponding to wire coordinates
-#        iwire, jwire = self.get_wire_indexes(wire_coords)
-#
-#        # indexes corresponding to max value of beamformed amplitude image
-#        i, j = get_max_ndx(result)
-#
-#        # information about indexes (for debugging)
-#        #print(f'expected wire row index value: {iwire}')
-#        #print(f'obtained wire row index value: {i}')
-#        #print(f'expected wire column index value: {jwire}')
-#        #print(f'obtained wire column index valuej: {j}')
-#
-#        # (arbitrary) tolerances for indexes of maximum value in beamformed image
-#        xtol = 8
-#        ztol = 8
-#
-#        idiff = np.abs(iwire-i)
-#        jdiff = np.abs(jwire-j)
-#        self.assertLessEqual(idiff, xtol)
-#        self.assertLessEqual(jdiff, ztol)
-
-#
-#    def test_pwi_angle0_wire_on_the_left(self):
-#        # Given
-#        wire_coords = (-5*1e-3, 20*1e-3)
-#
-#        #el_coords = self.get_lin_coords()
-#        data = self.gen_data(txdelays=None,
-#                             wire_coords=wire_coords,
-#                             wire_amp=100,
-#                             wire_radius=4)
-#
-#        # Run
-#        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-#        result = np.abs(result)
-#        #show_image(np.abs(result.T))
-#        # show_image(data)
-#
-#        # Expect
-#        # Indexes corresponding to wire coordinates
-#        #iwire, jwire = get_wire_indexes(wire_coords, self.x_grid, self.z_grid)
-#        iwire, jwire = self.get_wire_indexes(wire_coords)
-#
-#        # indexes corresponding to max value of beamformed amplitude image
-#        i, j = get_max_ndx(result)
-#
-#        # information about indexes (for debugging)
-#        #print(f'expected wire row index value: {iwire}')
-#        #print(f'obtained wire row index value: {i}')
-#        #print(f'expected wire column index value: {jwire}')
-#        #print(f'obtained wire column index valuej: {j}')
-#
-#        # (arbitrary) tolerances for indexes of maximum value in beamformed image
-#        xtol = 8
-#        ztol = 8
-#
-#        idiff = np.abs(iwire-i)
-#        jdiff = np.abs(jwire-j)
-#        self.assertLessEqual(idiff, xtol)
-#        self.assertLessEqual(jdiff, ztol)
-
-
-
-
-
     def test_pwi_angle0(self):
         # Given
-        angle = 0*np.pi/180
+        print_wire_info = 0
+        angle = -10*np.pi/180
         self.context = self.get_pwi_context(angle=angle)
         max_x = np.max(self.x_grid)
         min_x = np.min(self.x_grid)
         max_z = np.max(self.z_grid)
         min_z = np.min(self.z_grid)
-        xmargin = (max_x-min_x)*0.1
-        zmargin = (max_z-min_z)*0.1
+        xmargin = (max_x-min_x)*0.2
+        zmargin = (max_z-min_z)*0.2
         wire_x = np.linspace(min_x+xmargin, max_x-xmargin, 10)
-        wire_x = np.array([0])
+        #wire_x = np.array([0])
         wire_z = np.linspace(min_z+zmargin, max_z-zmargin, 10)
+
+        self.angle = angle
+        self.wire_amp = 100
+        self.wire_radius = 1
 
         for x in wire_x:
             for z in wire_z:
                 wire_coords = (x, z)
-                data = self.gen_pwi_data(angle=angle,
-                                     wire_coords=wire_coords,
-                                     wire_amp=100,
-                                     wire_radius=4)
+                self.wire_coords = wire_coords
+                data = self.gen_pwi_data()
                 # Run
                 result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
                 result = np.abs(result)
@@ -265,29 +124,29 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
                 # Expect
                 # Indexes corresponding to wire coordinates in beamformed image
-                iwire, jwire = self.get_wire_indexes(wire_coords)
+                iwire, jwire = self.get_wire_indexes()
 
                 # indexes corresponding to max value of beamformed amplitude image
                 i, j = get_max_ndx(result)
 
                 # information about indexes (for debugging)
-                print('----------------------------')
-                print(f'current wire: ({x},{z})')
-                print(f'expected wire row index value (x): {iwire}')
-                print(f'obtained wire row index value (x): {i}')
-                print(f'expected wire column index value (z): {jwire}')
-                print(f'obtained wire column index valuej (z): {j}')
-                print('')
-                print('')
+                if print_wire_info:
+                    print('----------------------------')
+                    print(f'current wire: ({x},{z})')
+                    print(f'max value in reult array: {np.nanmax(result)}')
+                    print(f'expected wire row index value (x): {iwire}')
+                    print(f'obtained wire row index value (x): {i}')
+                    print(f'expected wire column index value (z): {jwire}')
+                    print(f'obtained wire column index valuej (z): {j}')
+                    print('')
+                    print('')
 
                 # (arbitrary) tolerances for indexes of maximum value in beamformed image
-                xtol = 32
-                ztol = 32
 
                 idiff = np.abs(iwire-i)
                 jdiff = np.abs(jwire-j)
-                self.assertLessEqual(idiff, xtol)
-                self.assertLessEqual(jdiff, ztol)
+                self.assertLessEqual(idiff, self.xtol)
+                self.assertLessEqual(jdiff, self.ztol)
 
 
 
@@ -325,9 +184,9 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             device=device,
             )
 
-    def get_wire_indexes(self, wire_coords):
-        x = wire_coords[0]
-        z = wire_coords[1]
+    def get_wire_indexes(self):
+        x = self.wire_coords[0]
+        z = self.wire_coords[1]
         xi = np.abs(self.x_grid - x).argmin(axis=0)
         zi = np.abs(self.z_grid - z).argmin(axis=0)
         return (xi, zi)
@@ -350,23 +209,45 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         return coords
 
 
-    def get_lin_txdelays(self, angle):
+    #def get_lin_txdelays(self, angle):
+    #    '''
+    #    The functtion generate delays of PWI scheme for linear array.
+    #    '''
+    #    speed_of_sound = self.get_system_parameter('speed_of_sound')
+    #    el_coords = self.get_lin_coords()
+    #    delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
+    #    delays = delays - np.min(delays)
+    #    #delays = delays + np.max(delays)
+    #    #delays = np.flipud(delays)
+    #    return delays
+
+
+    def get_pwi_txdelay(self):
         '''
-        The functtion generate delays of PWI scheme for linear array.
+        Function enumerate txdelay i.e. time between the first element excitation
+        and the moment when wave front reach the wire.
         '''
         speed_of_sound = self.get_system_parameter('speed_of_sound')
         el_coords = self.get_lin_coords()
-        delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
-        delays = delays - np.min(delays)
-        #delays = delays + np.max(delays)
-        #delays = np.flipud(delays)
-        return delays
+        angle = self.angle
+        wire_x = self.wire_coords[0]
+        wire_z = self.wire_coords[1]
+        if angle < 0:
+            xe = el_coords[0,0]
+        else:
+            xe = el_coords[-1,0]
 
+        xe = 0
+        # estimate txdelay i.e. from start of the transmission to moment 
+        # when wave front reach the wire
+        a = np.abs(angle)
+        path = wire_z/np.cos(a)  \
+               + (np.abs(wire_x-xe) \
+                  - wire_z*np.tan(a))*np.sin(a)
+        delay = path/speed_of_sound
+        return delay
 
-    def gen_data(self, txdelays=None,
-                 wire_coords=(0, 5*1e-3),
-                 wire_amp=100,
-                 wire_radius=10):
+    def gen_data(self, txdelays=None):
         '''
         Function for generation of artificial non-beamformed data
         corresponding to single point (wire) within empty medium.
@@ -379,12 +260,17 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
                  with amplitude equal to 'wire_amp' parameter.
         '''
 
+        # get needed parameters
+        angle = self.angle
+        wire_coords = self.wire_coords
+        wire_amp = self.wire_amp
+        wire_radius = self.wire_radius
         c = self.get_system_parameter('speed_of_sound')
         fs = self.get_system_parameter('sampling_frequency')
-
-        # check input and get default parameters if needed
         el_coords = self.get_lin_coords()
         nel, _  = np.shape(el_coords)
+
+        # check input and get default parameters if needed
         if txdelays is None:
             txdelays = np.zeros(nel)
 
@@ -394,7 +280,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             dist[i] = np.sqrt((el_coords[i, 0]-wire_coords[0])**2
                              +(el_coords[i, 1]-wire_coords[1])**2)
         # create output array
-        nsamp = np.floor((2*dist/c + txdelays)*fs + 1).astype(int)
+        nsamp = np.floor((dist/c + txdelays)*fs + 1).astype(int)
         nmax = 2*np.max(nsamp)
         data = np.zeros((nel,nmax))
         for i in range(nel):
@@ -404,16 +290,15 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
         return data
 
-    def gen_pwi_data(self, angle,
-                     wire_coords=(0, 5*1e-3),
-                     wire_amp=100,
-                     wire_radius=8):
-        txdelays = self.get_lin_txdelays(angle)
-        data = self.gen_data(txdelays=txdelays,
-                             wire_coords=wire_coords,
-                             wire_amp=wire_amp,
-                             wire_radius=wire_radius)
+    def gen_pwi_data(self):
+        angle = self.angle
+        wire_coords = self.wire_coords
+        wire_amp = self.wire_amp
+        wire_radius = self.wire_radius
+        txdelay = self.get_pwi_txdelay()
+        data = self.gen_data(txdelays=txdelay)
         return data
+
 
 
     def get_system_parameter(self, parameter):
