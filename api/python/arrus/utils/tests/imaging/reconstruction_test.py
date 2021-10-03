@@ -356,14 +356,14 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         for i in range(nel):
             dist[i] = np.sqrt((el_coords[i, 0]-wire_coords[0])**2
                              +(el_coords[i, 1]-wire_coords[1])**2)
-            apod[i] = wire_coords[1]/dist[i]
+            apod[i] = (wire_coords[1]/dist[i])**4
 
         # create output array
         data = np.zeros((nel,nmax))
         for irx in range(nel):
             for itx in range(nel):
                 path = dist[irx] + dist[itx]
-                weight = (apod[irx]*apod[itx])**4
+                weight = apod[irx]*apod[itx]
                 nsamp = np.floor((path/c+txdelays[itx])*fs + 1).astype(int)
                 start = nsamp - wire_radius
                 stop = nsamp + wire_radius
