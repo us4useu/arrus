@@ -71,7 +71,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         self.wire_radius = 0
 
         # set if print some info or not
-        self.verbose = False
+        self.verbose = True
 
 
 
@@ -146,6 +146,14 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
 #                         TOOLS 
 #--------------------------------------------------------------------------
 
+    def get_pulse_length(self):
+       fs = self.get_system_parameter('sampling_frequency')
+       fc = self.get_system_parameter('center_frequency')
+       c = self.get_system_parameter('speed_of_sound')
+       n_periods = self.get_system_parameter('n_periods')
+       pulse_length = np.round(fs/fc*n_periods).astype(int)
+       return pulse_length
+
     def get_pwi_context(self, angle):
         '''
         Function generate context data for pwi tests.
@@ -198,7 +206,6 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         elz = np.zeros(n_elements)
         coords = np.array(list(zip(elx,elz)))
         return coords
-
 
     def get_pwi_txdelays(self):
         '''
@@ -319,6 +326,8 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             return self.context.sequence.speed_of_sound
         if parameter == 'rx_sample_range':
             return self.context.sequence.rx_sample_range
+        if parameter == 'n_periods':
+            return self.context.sequence.pulse.n_periods
 
 
     def get_syntetic_pwi_data(self):
@@ -347,6 +356,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         c = self.get_system_parameter('speed_of_sound')
         fs = self.get_system_parameter('sampling_frequency')
         nmax = 2*self.get_system_parameter('rx_sample_range')[1]
+        pulse_length = self.get_pulse_length()
         el_coords = self.get_lin_el_coords()
         nel, _  = np.shape(el_coords)
 
@@ -364,7 +374,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             for itx in range(nel):
                 path = dist[irx] + dist[itx]
                 weight = apod[irx]*apod[itx]
-                nsamp = np.floor((path/c+txdelays[itx])*fs + 1).astype(int)
+                nsamp = np.floor((path/c + txdelays[itx])*fs + 1).astype(int)
                 start = nsamp - wire_radius
                 stop = nsamp + wire_radius
                 data[irx, start:stop+1] +=  wire_amp*weight
