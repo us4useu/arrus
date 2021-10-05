@@ -270,4 +270,8 @@ void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     setRxSettings(newRxSettings);
 }
 
+void Us4RImpl::trigger() {
+    this->us4oems[0]->syncTrigger();
+}
+
 }

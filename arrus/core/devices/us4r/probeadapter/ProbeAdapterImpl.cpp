@@ -410,7 +410,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, cons
                     for (auto &us4oem: this->us4oems) {
                         us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                     }
-                    getMasterUs4oem()->syncTrigger();
+//                    getMasterUs4oem()->syncTrigger(); TODO consider redefining HOST work mode
                 };
             }
             outputBuffer->registerReleaseFunction(transferIdx + (i * rxBufferNElements), releaseFunc);
