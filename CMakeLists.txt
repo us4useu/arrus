@@ -101,8 +101,7 @@ find_package(Eigen3 REQUIRED)
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     set(ARRUS_OS_DEPS "")
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
-    find_package(TBB REQUIRED)
-    set(ARRUS_OS_DEPS tbb)
+    set(ARRUS_OS_DEPS "")
 endif()
 ################################################################################
 # Sub-projects
