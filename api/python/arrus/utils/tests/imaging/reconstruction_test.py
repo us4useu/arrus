@@ -11,6 +11,8 @@ from arrus.utils.imaging import (
     RxBeamforming)
 
 
+
+
 def get_max_ndx(data):
     '''
     The function returns indexes of max value in array.
@@ -32,13 +34,10 @@ def show_image(data):
     ax.set_aspect('auto')
     plt.show()
 
-
-
-class PwiReconstrutionTestCase(ArrusImagingTestCase):
+class ReconstructionTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
         self.op = ReconstructLri
-        self.context = self.get_pwi_context(angle=0)
         n_elements = self.get_system_parameter('n_elements')
         pitch = self.get_system_parameter('pitch')
         probe_width = (n_elements-1)*pitch
@@ -88,59 +87,6 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         return np.squeeze(result)
 
 
-    def test_empty(self):
-        # Given
-        data = []
-        # Run
-        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-        # Expect
-        expected_shape = (self.x_grid.size, self.z_grid.size )
-        expected = np.zeros(expected_shape, dtype=complex)
-        np.testing.assert_equal(result, expected)
-
-
-    def test_0(self):
-        # Given
-        data = 0
-        # Run
-        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-        # Expect
-        expected_shape = (self.x_grid.size, self.z_grid.size )
-        expected = np.zeros(expected_shape, dtype=complex)
-        np.testing.assert_equal(result, expected)
-
-
-
-    def test_pwi_angles(self):
-        # Given
-        max_x = np.max(self.x_grid)
-        min_x = np.min(self.x_grid)
-        max_z = np.max(self.z_grid)
-        min_z = np.min(self.z_grid)
-        xmargin = (max_x-min_x)*0.1
-        zmargin = (max_z-min_z)*0.1
-        wire_x = np.linspace(min_x+xmargin, max_x-xmargin, 10)
-        wire_z = np.linspace(min_z+zmargin, max_z-zmargin, 10)
-
-
-        for angle in self.angles:
-            self.angle = angle
-            self.context = self.get_pwi_context(angle=angle)
-            for x in wire_x:
-                for z in wire_z:
-                    wire_coords = (x, z)
-                    self.wire_coords = wire_coords
-                    #data = self.gen_pwi_data()
-                    data = self.get_syntetic_pwi_data()
-                    # Run
-                    result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
-                    result = np.abs(result)
-                    #show_image(np.abs(result.T))
-                    #show_image(data)
-                    idiff, jdiff = self.get_coords_difference(result, verbose=self.verbose)
-                    self.assertLessEqual(idiff, self.xtol)
-                    self.assertLessEqual(jdiff, self.ztol)
-
 
 #--------------------------------------------------------------------------
 #                         TOOLS 
@@ -154,34 +100,6 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
        pulse_length = np.round(fs/fc*n_periods).astype(int)
        return pulse_length
 
-    def get_pwi_context(self, angle):
-        '''
-        Function generate context data for pwi tests.
-        '''
-        sequence = PwiSequence(
-            angles=np.array([angle])*np.pi/180,
-            pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
-            rx_sample_range=(0, 1024*4),
-            downsampling_factor=1,
-            speed_of_sound=1450,
-            pri=200e-6,
-            tgc_start=14,
-            tgc_slope=2e2,
-            )
-        probe = self.get_probe_model_instance(
-            n_elements=128,
-            pitch=0.2e-3,
-            curvature_radius=0.0
-            )
-        device = self.get_ultrasound_device(
-            probe=probe,
-            sampling_frequency=65e6
-            )
-
-        return self.get_default_context(
-            sequence=sequence,
-            device=device,
-            )
 
     def get_wire_indexes(self):
         x = self.wire_coords[0]
@@ -207,106 +125,6 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         coords = np.array(list(zip(elx,elz)))
         return coords
 
-    def get_pwi_txdelays(self):
-        '''
-        The functtion generate transmit delays of PWI scheme for linear array.
-        '''
-        speed_of_sound = self.get_system_parameter('speed_of_sound')
-        el_coords = self.get_lin_el_coords()
-        angle = self.angle
-        delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
-        return delays
-
-    #def get_delays(self):
-    #    wire_coords = self.wire_coods
-    #    speed_of_sound = get_system_parameter('speed_of_sound')
-    #    el_coords = self.get_lin_coords
-    #    txdelays = get_lin_txdelays()
-    #    
-    #    # estimate distances between transducer elements and the 'wire'
-    #    dist = np.zeros(nel)
-    #    for i in range(nel):
-    #        dist[i] = np.sqrt((el_coords[i, 0]-wire_coords[0])**2
-    #                         +(el_coords[i, 1]-wire_coords[1])**2)
-
-        
-
-    #def get_pwi_txdelay(self):
-    #    '''
-    #    Function enumerate txdelay i.e. time between the first element excitation
-    #    and the moment when wave front reach the wire.
-    #    '''
-    #    speed_of_sound = self.get_system_parameter('speed_of_sound')
-    #    el_coords = self.get_lin_coords()
-    #    angle = self.angle
-    #    wire_x = self.wire_coords[0]
-    #    wire_z = self.wire_coords[1]
-    #    if angle < 0:
-    #        xe = el_coords[0,0]
-    #    else:
-    #        xe = el_coords[-1,0]
-
-    #    xe = 0
-    #    # estimate txdelay i.e. from start of the transmission to moment 
-    #    # when wave front reach the wire
-    #    a = np.abs(angle)
-    #    path = wire_z/np.cos(a)  \
-    #           + (np.abs(wire_x-xe) \
-    #              - wire_z*np.tan(a))*np.sin(a)
-    #    delay = path/speed_of_sound
-    #    return delay
-
-    #def gen_data(self, txdelays=None):
-    #    '''
-    #    Function for generation of artificial non-beamformed data
-    #    corresponding to single point (wire) within empty medium.
-
-    #    :param txdelays: initial delays,
-    #    '''
-
-    #    # get needed parameters
-    #    angle = self.angle
-    #    wire_coords = self.wire_coords
-    #    wire_amp = self.wire_amp
-    #    wire_radius = self.wire_radius
-    #    c = self.get_system_parameter('speed_of_sound')
-    #    fs = self.get_system_parameter('sampling_frequency')
-    #    el_coords = self.get_lin_coords()
-    #    nel, _  = np.shape(el_coords)
-
-    #    # check input and get default parameters if needed
-    #    if txdelays is None:
-    #        txdelays = np.zeros(nel)
-
-    #    # estimate distances between transducer elements and the 'wire'
-    #    dist = np.zeros(nel)
-    #    for i in range(nel):
-    #        dist[i] = np.sqrt((el_coords[i, 0]-wire_coords[0])**2
-    #                         +(el_coords[i, 1]-wire_coords[1])**2)
-    #    # create output array
-    #    nsamp = np.floor((dist/c + txdelays)*fs + 1).astype(int)
-    #    nmax = 2*np.max(nsamp)
-    #    data = np.zeros((nel,nmax))
-    #    for i in range(nel):
-    #        start = nsamp[i] - wire_radius
-    #        stop = nsamp[i] + wire_radius
-    #        data[i, start:stop] = wire_amp
-
-    #    return data
-
-    #def gen_pwi_data(self):
-    #    '''
-    #    Function generates non-beamformed pwi data. 
-    #    '''
-    #    #angle = self.angle
-    #    #wire_coords = self.wire_coords
-    #    #wire_amp = self.wire_amp
-    #    #wire_radius = self.wire_radius
-    #    txdelay = self.get_pwi_txdelay()
-    #    data = self.gen_data(txdelays=txdelay)
-    #    return data
-
-
 
     def get_system_parameter(self, parameter):
         '''
@@ -330,9 +148,6 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
             return self.context.sequence.pulse.n_periods
 
 
-    def get_syntetic_pwi_data(self):
-        txdelays = self.get_pwi_txdelays()
-        return self.get_syntetic_data(txdelays=txdelays)
 
     def get_syntetic_data(self, txdelays=None):
         '''
@@ -400,7 +215,7 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
         z = np.round(z*1e3, 1)
         maxval = np.nanmax(result)
         dx, dz = self.get_grid_resolution()
-        
+
         # Expect
         # Indexes corresponding to wire coordinates in beamformed image
         iwire, jwire = self.get_wire_indexes()
@@ -434,6 +249,116 @@ class PwiReconstrutionTestCase(ArrusImagingTestCase):
 
         return idiff, jdiff
 
+
+
+class PwiReconstructionTestCase(ReconstructionTestCase):
+
+    def setUp(self) -> None:
+        self.context = self.get_pwi_context(angle=0)
+        super().setUp()
+
+
+    def test_0(self):
+        # Given
+        data = 0
+        # Run
+        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+        # Expect
+        expected_shape = (self.x_grid.size, self.z_grid.size )
+        expected = np.zeros(expected_shape, dtype=complex)
+        np.testing.assert_equal(result, expected)
+
+
+    def test_empty(self):
+        # Given
+        data = []
+        # Run
+        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+        # Expect
+        expected_shape = (self.x_grid.size, self.z_grid.size )
+        expected = np.zeros(expected_shape, dtype=complex)
+        np.testing.assert_equal(result, expected)
+
+    def test_pwi_angles(self):
+        # Given
+        max_x = np.max(self.x_grid)
+        min_x = np.min(self.x_grid)
+        max_z = np.max(self.z_grid)
+        min_z = np.min(self.z_grid)
+        xmargin = (max_x-min_x)*0.1
+        zmargin = (max_z-min_z)*0.1
+        wire_x = np.linspace(min_x+xmargin, max_x-xmargin, 10)
+        wire_z = np.linspace(min_z+zmargin, max_z-zmargin, 10)
+
+
+        for angle in self.angles:
+            self.angle = angle
+            self.context = self.get_pwi_context(angle=angle)
+            for x in wire_x:
+                for z in wire_z:
+                    wire_coords = (x, z)
+                    self.wire_coords = wire_coords
+                    #data = self.gen_pwi_data()
+                    data = self.get_syntetic_pwi_data()
+                    # Run
+                    result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+                    result = np.abs(result)
+                    #show_image(np.abs(result.T))
+                    #show_image(data)
+                    idiff, jdiff = self.get_coords_difference(result, verbose=self.verbose)
+                    self.assertLessEqual(idiff, self.xtol)
+                    self.assertLessEqual(jdiff, self.ztol)
+
+#--------------------------------------------------------------------------
+#                         TOOLS 
+#--------------------------------------------------------------------------
+
+
+    def get_pwi_context(self, angle):
+        '''
+        Function generate context data for pwi tests.
+        '''
+        sequence = PwiSequence(
+            angles=np.array([angle])*np.pi/180,
+            pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
+            rx_sample_range=(0, 1024*4),
+            downsampling_factor=1,
+            speed_of_sound=1450,
+            pri=200e-6,
+            tgc_start=14,
+            tgc_slope=2e2,
+            )
+        probe = self.get_probe_model_instance(
+            n_elements=128,
+            pitch=0.2e-3,
+            curvature_radius=0.0
+            )
+        device = self.get_ultrasound_device(
+            probe=probe,
+            sampling_frequency=65e6
+            )
+
+        return self.get_default_context(
+            sequence=sequence,
+            device=device,
+            )
+
+
+    def get_syntetic_pwi_data(self):
+        txdelays = self.get_pwi_txdelays()
+        return self.get_syntetic_data(txdelays=txdelays)
+
+
+
+    def get_pwi_txdelays(self):
+        '''
+        The functtion generate transmit delays of PWI scheme for linear array.
+        '''
+        speed_of_sound = self.get_system_parameter('speed_of_sound')
+        el_coords = self.get_lin_el_coords()
+        angle = self.angle
+        delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
+        return delays
 
 if __name__ == "__main__":
     unittest.main()
