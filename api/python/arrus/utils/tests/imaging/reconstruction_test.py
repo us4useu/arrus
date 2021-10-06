@@ -4,7 +4,7 @@ import numpy as np
 import cupy as cp
 from arrus.utils.tests.utils import ArrusImagingTestCase
 from arrus.ops.us4r import Scheme, Pulse
-from arrus.ops.imaging import PwiSequence
+from arrus.ops.imaging import PwiSequence, LinSequence
 from arrus.utils.imaging import get_bmode_imaging, get_extent
 from arrus.utils.imaging import (
     ReconstructLri,
@@ -37,6 +37,7 @@ def show_image(data):
 class ReconstructionTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
+        device = self.get_device()
         self.op = ReconstructLri
         n_elements = self.get_system_parameter('n_elements')
         pitch = self.get_system_parameter('pitch')
@@ -70,7 +71,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         self.wire_radius = 0
 
         # set if print some info or not
-        self.verbose = True
+        self.verbose = False
 
 
 
@@ -91,6 +92,19 @@ class ReconstructionTestCase(ArrusImagingTestCase):
 #--------------------------------------------------------------------------
 #                         TOOLS 
 #--------------------------------------------------------------------------
+
+    def get_device(self):
+        probe = self.get_probe_model_instance(
+            n_elements=128,
+            pitch=0.2e-3,
+            curvature_radius=0.0
+            )
+        device = self.get_ultrasound_device(
+            probe=probe,
+            sampling_frequency=65e6
+            )
+        return device
+
 
     def get_pulse_length(self):
        fs = self.get_system_parameter('sampling_frequency')
@@ -254,7 +268,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
 class PwiReconstructionTestCase(ReconstructionTestCase):
 
     def setUp(self) -> None:
-        self.context = self.get_pwi_context(angle=0)
+        self.context = self.get_context(angle=0)
         super().setUp()
 
 
@@ -293,7 +307,7 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
 
         for angle in self.angles:
             self.angle = angle
-            self.context = self.get_pwi_context(angle=angle)
+            self.context = self.get_context(angle=angle)
             for x in wire_x:
                 for z in wire_z:
                     wire_coords = (x, z)
@@ -314,10 +328,11 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
 #--------------------------------------------------------------------------
 
 
-    def get_pwi_context(self, angle):
+    def get_context(self, angle):
         '''
         Function generate context data for pwi tests.
         '''
+        device = self.get_device()
         sequence = PwiSequence(
             angles=np.array([angle])*np.pi/180,
             pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
@@ -327,15 +342,6 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
             pri=200e-6,
             tgc_start=14,
             tgc_slope=2e2,
-            )
-        probe = self.get_probe_model_instance(
-            n_elements=128,
-            pitch=0.2e-3,
-            curvature_radius=0.0
-            )
-        device = self.get_ultrasound_device(
-            probe=probe,
-            sampling_frequency=65e6
             )
 
         return self.get_default_context(
@@ -349,7 +355,6 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
         return self.get_syntetic_data(txdelays=txdelays)
 
 
-
     def get_pwi_txdelays(self):
         '''
         The functtion generate transmit delays of PWI scheme for linear array.
@@ -359,6 +364,70 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
         angle = self.angle
         delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
         return delays
+
+
+class BfrReconstructionTestCase(ReconstructionTestCase):
+
+    def setUp(self) -> None:
+        self.context = self.get_context()
+        super().setUp()
+
+
+    def test_0(self):
+        # Given
+        data = 0
+        # Run
+        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+        # Expect
+        expected_shape = (self.x_grid.size, self.z_grid.size )
+        expected = np.zeros(expected_shape, dtype=complex)
+        np.testing.assert_equal(result, expected)
+
+
+    def test_empty(self):
+        # Given
+        data = []
+        # Run
+        result = self.run_op(data=data, x_grid=self.x_grid, z_grid=self.z_grid)
+        # Expect
+        expected_shape = (self.x_grid.size, self.z_grid.size )
+        expected = np.zeros(expected_shape, dtype=complex)
+        np.testing.assert_equal(result, expected)
+
+
+
+#--------------------------------------------------------------------------
+#                         TOOLS 
+#--------------------------------------------------------------------------
+
+
+    def get_context(self):
+
+        device = self.get_device()
+        n_elements = device.probe.model.n_elements
+        sequence = LinSequence(
+            tx_aperture_center_element=np.arange(0, n_elements),
+            tx_aperture_size=64,
+            tx_focus=24e-3,
+            pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
+            rx_aperture_center_element=np.arange(0, n_elements),
+            rx_aperture_size=64,
+            rx_sample_range=(0, 2048),
+            pri=200e-6,
+            tgc_start=14,
+            tgc_slope=2e2,
+            downsampling_factor=1,
+            speed_of_sound=1450,
+            )
+
+
+        return self.get_default_context(
+            sequence=sequence,
+            device=device,
+            )
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
