@@ -135,8 +135,7 @@ def getBranchName() {
 }
 
 def isDevelopOnOff() {
-    return "ON";
-    // return env.BRANCH_NAME == "develop" ? "ON" : "OFF";
+    return env.BRANCH_NAME == "develop" ? "ON" : "OFF";
 }
 
 def getBuildName(build) {
