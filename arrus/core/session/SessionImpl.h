@@ -59,7 +59,7 @@ private:
     arrus::devices::Us4RFactory::Handle us4rFactory;
     std::recursive_mutex stateMutex;
     std::optional<ops::us4r::Scheme> currentScheme;
-    State state;
+    State state{State::STOPPED};
 };
 
 
