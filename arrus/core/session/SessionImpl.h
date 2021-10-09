@@ -2,8 +2,9 @@
 #define ARRUS_CORE_SESSION_SESSIONIMPL_H
 
 #include <unordered_map>
-#include <arrus/core/devices/us4r/Us4RFactory.h>
+#include <mutex>
 
+#include <arrus/core/devices/us4r/Us4RFactory.h>
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/common/hash.h"
 #include "arrus/core/devices/DeviceId.h"
@@ -30,6 +31,8 @@ public:
 
     void stopScheme() override;
 
+    void run() override;
+
     SessionImpl(SessionImpl const &) = delete;
 
     void operator=(SessionImpl const &) = delete;
@@ -39,6 +42,11 @@ public:
     void operator=(SessionImpl const &&) = delete;
 
 private:
+    enum class State {
+        STARTED,
+        STOPPED
+    };
+
     using DeviceMap = std::unordered_map<
         arrus::devices::DeviceId,
         arrus::devices::Device::Handle,
@@ -49,6 +57,9 @@ private:
 
     DeviceMap devices;
     arrus::devices::Us4RFactory::Handle us4rFactory;
+    std::recursive_mutex stateMutex;
+    std::optional<ops::us4r::Scheme> currentScheme;
+    State state;
 };
 
 

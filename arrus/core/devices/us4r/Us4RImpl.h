@@ -106,6 +106,8 @@ public:
 
     void stop() override;
 
+    void trigger();
+
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;
@@ -125,8 +127,6 @@ private:
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
-
-    void syncTrigger();
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize, bool triggerSync);

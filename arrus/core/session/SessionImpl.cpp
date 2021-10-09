@@ -106,6 +106,10 @@ SessionImpl::~SessionImpl() {
 }
 
 UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
+    if(state == State::STARTED) {
+        throw IllegalStateException("Stop the scheme first, before uploading new scheme");
+    }
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
@@ -114,18 +118,40 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
     metadataMap.emplace("frameChannelMapping", std::move(fcm));
     auto constMetadata = std::make_shared<UploadConstMetadata>(metadataMap);
+    currentScheme = scheme;
     return UploadResult(buffer, constMetadata);
 }
 
 void SessionImpl::startScheme() {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->start();
+    state = State::STARTED;
 }
 
 void SessionImpl::stopScheme() {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->stop();
+    state = State::STOPPED;
 }
 
+void SessionImpl::run() {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
+    if(!currentScheme.has_value()) {
+        throw IllegalStateException("Upload scheme before running.");
+    }
+    if(state == State::STOPPED) {
+        startScheme();
+    } else {
+        if(currentScheme.value().getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL) {
+            auto us4r = (::arrus::devices::Us4RImpl *)getDevice(DeviceId(DeviceType::Us4R, 0));
+            us4r->trigger();
+        }
+        else {
+            throw IllegalStateException("Scheme already started.");
+        }
+    }
+}
 
 }

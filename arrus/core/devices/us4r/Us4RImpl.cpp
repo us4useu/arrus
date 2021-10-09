@@ -184,7 +184,7 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSi
                                            triggerSync);
 }
 
-void Us4RImpl::syncTrigger() {
+void Us4RImpl::trigger() {
     this->getDefaultComponent()->syncTrigger();
 }
 
