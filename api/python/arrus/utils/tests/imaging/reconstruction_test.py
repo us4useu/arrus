@@ -38,6 +38,7 @@ def plot_line(data):
     ax.plot(data)
     plt.show()
 
+
 def show_surface(data):
     '''
     Simple function for showing a surface (not work properly for now).
@@ -61,7 +62,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         # define x_grid vector
         ncol = np.round(probe_width/ds).astype(int)+1
         self.x_grid = np.linspace(-probe_width/2, probe_width/2, ncol)
-        
+
         # define z_grid vector
         ztop = 0
         zbot = 50*1e-3
@@ -75,7 +76,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         self.xtol = np.round(xtolerance_mm/ds*1e-3).astype(int)
         self.ztol = np.round(ztolerance_mm/ds*1e-3).astype(int)
 
-
         # set wire parameters
         self.wire_amp = 100
         self.wire_radius = 0
@@ -83,7 +83,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
 
         # set if print some info or not
         self.verbose = False
-
 
 
     def run_op(self, **kwargs):
@@ -97,8 +96,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
             kwargs["data"] = data
         result = super().run_op(**kwargs)
         return np.squeeze(result)
-
-
 
 #--------------------------------------------------------------------------
 #                         TOOLS 
@@ -125,6 +122,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
        pulse_length = np.round(fs/fc*n_periods).astype(int)
        return pulse_length
 
+
     def get_pulse_waveform(self):
        fs = self.get_system_parameter('sampling_frequency')
        fc = self.get_system_parameter('center_frequency')
@@ -133,12 +131,14 @@ class ReconstructionTestCase(ArrusImagingTestCase):
        pulse = np.sin(2*np.pi*fc*t)*np.hanning(pulse_length)
        return pulse
 
+
     def get_wire_indexes(self):
         x = self.wire_coords[0]
         z = self.wire_coords[1]
         xi = np.abs(self.x_grid - x).argmin(axis=0)
         zi = np.abs(self.z_grid - z).argmin(axis=0)
         return (xi, zi)
+
 
     def get_lin_el_coords(self, n_elements=None):
         '''
@@ -187,7 +187,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
             return self.context.sequence.tx_aperture_size
 
 
-
     def get_syntetic_data(self, aperture=None, txdelays=None):
         '''
         Function for generation of artificial non-beamformed data
@@ -197,7 +196,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         :return: 2D numpy array of zeros and single pixel
                  with amplitude equal to 'wire_amp' parameter.
         '''
-
 
         # get needed parameters
         #angle = self.angle
@@ -301,7 +299,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         return idiff, jdiff
 
 
-
 class PwiReconstructionTestCase(ReconstructionTestCase):
 
     def setUp(self) -> None:
@@ -335,6 +332,7 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
         expected = np.zeros(expected_shape, dtype=complex)
         np.testing.assert_equal(result, expected)
 
+
     def test_pwi_angles(self):
         # Given
         max_x = np.max(self.x_grid)
@@ -351,9 +349,7 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
         #wire_z = np.array([10e-3])
         #self.angles = np.array([-20])*np.pi/180
 
-
         for angle in self.angles:
-            #self.angle = angle
             self.context = self.get_context(angle=angle)
             for x in wire_x:
                 for z in wire_z:
@@ -374,7 +370,6 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
 #--------------------------------------------------------------------------
 #                         TOOLS 
 #--------------------------------------------------------------------------
-
 
     def get_context(self, angle):
         '''
@@ -478,7 +473,6 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
                 result = self.run_op(data=data)
                 result = np.abs(result)
                 #show_image(result.T)
-                #show_surface(result)
                 #plot_line(result.T[:,64])
                 idiff, jdiff = self.get_coords_difference(result)
                 self.assertLessEqual(idiff, self.xtol)
@@ -488,7 +482,6 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
 #--------------------------------------------------------------------------
 #                         TOOLS 
 #--------------------------------------------------------------------------
-
 
     def get_context(self, tx_focus):
         '''
@@ -515,6 +508,7 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
             device=device,
             )
 
+
     def get_bfr_txdelays(self):
         '''
         The function generate transmit delays of BFR  scheme for linear array.
@@ -535,6 +529,7 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
             device=device,
             )
 
+
     def get_syntetic_bfr_data(self):
         '''
         The function generate syntetic  data for  BFR  scheme on the linear array.
@@ -554,7 +549,6 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
                                 txdelays=txdelays,
                                 )
         return data.astype(np.float32)
-
 
 
 if __name__ == "__main__":
