@@ -639,6 +639,8 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
     }
 }
 
-
+float Us4OEMImpl::getFPGATemperature() {
+    return ius4oem->GetFPGATemp();
+}
 
 }

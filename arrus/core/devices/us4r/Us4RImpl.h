@@ -120,6 +120,7 @@ public:
     void setLpfCutoff(uint32 value) override;
     void setDtgcAttenuation(std::optional<uint16> value) override;
     void setActiveTermination(std::optional<uint16> value) override;
+    uint8_t getNumberOfUs4OEMs() override;
 
 private:
     UltrasoundDevice *getDefaultComponent();

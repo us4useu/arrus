@@ -138,6 +138,8 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
 
+    virtual uint8_t getNumberOfUs4OEMs() = 0;
+
     Us4R(Us4R const&) = delete;
     Us4R(Us4R const&&) = delete;
     void operator=(Us4R const&) = delete;
