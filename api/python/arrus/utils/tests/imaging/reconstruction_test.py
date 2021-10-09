@@ -6,11 +6,7 @@ from arrus.utils.tests.utils import ArrusImagingTestCase
 from arrus.ops.us4r import Scheme, Pulse
 from arrus.ops.imaging import PwiSequence, LinSequence
 from arrus.utils.imaging import get_bmode_imaging, get_extent
-from arrus.utils.imaging import (
-    ReconstructLri,
-    RxBeamforming)
-
-
+from arrus.utils.imaging import ReconstructLri, RxBeamforming
 
 
 def get_max_ndx(data):
@@ -22,26 +18,30 @@ def get_max_ndx(data):
     return np.unravel_index(ix, s)
 
 
-
 def show_image(data):
     '''
     Simple function for showing array image.
     '''
-    #ncol, nsamp = np.shape(data)
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    #data = 20*np.log10(1e-6+ data/data.max())
     ax.imshow(data)
     ax.set_aspect('auto')
     plt.show()
 
+
 def plot_line(data):
+    '''
+    Simple function for a data line.
+    '''
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.plot(data)
     plt.show()
 
 def show_surface(data):
+    '''
+    Simple function for showing a surface (not work properly for now).
+    '''
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     ax.imshow(data)
@@ -51,7 +51,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
         device = self.get_device()
-        #self.op = ReconstructLri
         n_elements = self.get_system_parameter('n_elements')
         pitch = self.get_system_parameter('pitch')
         probe_width = (n_elements-1)*pitch
@@ -62,6 +61,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         # define x_grid vector
         ncol = np.round(probe_width/ds).astype(int)+1
         self.x_grid = np.linspace(-probe_width/2, probe_width/2, ncol)
+        
         # define z_grid vector
         ztop = 0
         zbot = 50*1e-3
@@ -75,9 +75,6 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         self.xtol = np.round(xtolerance_mm/ds*1e-3).astype(int)
         self.ztol = np.round(ztolerance_mm/ds*1e-3).astype(int)
 
-        # set range of angles used in pwi scheme
-        angles = np.array([-10,0,10])*np.pi/180
-        self.angles = angles
 
         # set wire parameters
         self.wire_amp = 100
@@ -128,6 +125,13 @@ class ReconstructionTestCase(ArrusImagingTestCase):
        pulse_length = np.round(fs/fc*n_periods).astype(int)
        return pulse_length
 
+    def get_pulse_waveform(self):
+       fs = self.get_system_parameter('sampling_frequency')
+       fc = self.get_system_parameter('center_frequency')
+       pulse_length = self.get_pulse_length()
+       t = np.linspace(0, (pulse_length-1)/fs, pulse_length)
+       pulse = np.sin(2*np.pi*fc*t)*np.hanning(pulse_length)
+       return pulse
 
     def get_wire_indexes(self):
         x = self.wire_coords[0]
@@ -220,16 +224,17 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         for i in aperture:
             dist[i] = np.sqrt((el_coords[i, 0]-wire_coords[0])**2
                              +(el_coords[i, 1]-wire_coords[1])**2)
-            #apod[i] = (wire_coords[1]/dist[i])**4
             cos_alpha = wire_coords[1]/dist[i]
             alpha = np.arccos(cos_alpha)
-            apod[i] = np.sinc(alpha)
+            apod[i] = np.sinc(alpha)**2
 
         # create output array
         aperture_n_elements = np.size(aperture)
         data = np.zeros((aperture_n_elements,nmax))
+        pulse = self.get_pulse_waveform()
         for i in range(aperture_n_elements):
             irx = aperture[i]
+            dataline = np.zeros(nmax)
             for j in range(aperture_n_elements):
                 itx = aperture[j]
                 path = dist[irx] + dist[itx]
@@ -237,9 +242,9 @@ class ReconstructionTestCase(ArrusImagingTestCase):
                 nsamp = np.floor((path/c + txdelays[j])*fs + 1).astype(int)
                 start = nsamp - wire_radius
                 stop = nsamp + wire_radius
-                data[i, start:stop+1] +=  wire_amp*weight
-                #data[i, start:stop+1] +=  wire_amp
-
+                dataline[start:stop+1] +=  wire_amp*weight
+            dataline = np.convolve(dataline, pulse, mode='same')
+            data[i, :] = dataline
         return data
 
 
@@ -304,6 +309,10 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
         self.op = ReconstructLri
         super().setUp()
 
+        # set range of angles used in pwi scheme
+        angles = np.array([-10,0,10])*np.pi/180
+        self.angles = angles
+
 
     def test_0(self):
         # Given
@@ -340,7 +349,7 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
         # 3 lines below are temporary - for testing only
         #wire_x = np.array([0])
         #wire_z = np.array([10e-3])
-        #self.angles = np.array([0])
+        #self.angles = np.array([-20])*np.pi/180
 
 
         for angle in self.angles:
@@ -424,6 +433,7 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
         # define x_grid vector
         ncol = n_emissions
         self.x_grid = np.linspace(-roi_width/2, roi_width/2, ncol)
+
         # define z_grid vector
         ztop = 0
         zbot = 50*1e-3
@@ -434,17 +444,15 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
     def test_0(self):
         # Given
         data = 0
-
         # Run
         result = self.run_op(data=data)
-
         # Expect
         expected_shape = (self.x_grid.size, self.z_grid.size )
         expected = np.zeros(expected_shape, dtype=complex)
         np.testing.assert_equal(result, expected)
 
 
-    # TODO: RxBeamforming nie obsluguje pustych danych na wejsciu?
+    # TODO: Czy RxBeamforming nie obsluguje pustych danych na wejsciu?
     #def test_empty(self):
     #    # Given
     #    data = []
@@ -456,22 +464,26 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
     #    np.testing.assert_equal(result, expected)
 
 
-    def test_x(self):
+    def test_bfr_focusing(self):
         # Given
-        self.context = self.get_context(tx_focus=20e-3)
-        self.wire_coords = (5e-3, 10e-3)
-        data = self.get_syntetic_bfr_data()
+        tx_focuses = np.array([ 20, 30, 40])*1e-3
+        wire_xs = np.array([-5,0,5])*1e-3
+        for tx_focus in tx_focuses:
+            self.context = self.get_context(tx_focus=tx_focus)
+            for wire_x in wire_xs:
+                self.wire_coords = (wire_x, tx_focus)
+                data = self.get_syntetic_bfr_data()
 
-        # Run
-        result = self.run_op(data=data)
-        result = np.abs(result)
-        #show_image(result.T)
-        #show_surface(result)
-        idiff, jdiff = self.get_coords_difference(result)
-        self.assertLessEqual(idiff, self.xtol)
-        self.assertLessEqual(jdiff, self.ztol)
-
-
+                # Run
+                result = self.run_op(data=data)
+                result = np.abs(result)
+                #show_image(result.T)
+                #show_surface(result)
+                #plot_line(result.T[:,64])
+                idiff, jdiff = self.get_coords_difference(result)
+                self.assertLessEqual(idiff, self.xtol)
+                self.assertLessEqual(jdiff, self.ztol)
+                #plot_line(self.get_pulse_waveform())
 
 #--------------------------------------------------------------------------
 #                         TOOLS 
@@ -479,7 +491,9 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
 
 
     def get_context(self, tx_focus):
-
+        '''
+        Function generate context data for bfr tests.
+        '''
         device = self.get_device()
         n_elements = device.probe.model.n_elements
         sequence = LinSequence(
@@ -503,7 +517,7 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
 
     def get_bfr_txdelays(self):
         '''
-        The function generate transmit delays of PWI scheme for linear array.
+        The function generate transmit delays of BFR  scheme for linear array.
         '''
         speed_of_sound = self.get_system_parameter('speed_of_sound')
         tx_aperture_size = self.get_system_parameter('tx_aperture_size')
@@ -522,6 +536,9 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
             )
 
     def get_syntetic_bfr_data(self):
+        '''
+        The function generate syntetic  data for  BFR  scheme on the linear array.
+        '''
         tx_aperture_size = self.get_system_parameter('tx_aperture_size')
         txdelays = self.get_bfr_txdelays()
         data0 = self.get_syntetic_data(aperture=np.arange(0, tx_aperture_size), txdelays=txdelays)
@@ -537,9 +554,6 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
                                 txdelays=txdelays,
                                 )
         return data.astype(np.float32)
-
-
-
 
 
 
