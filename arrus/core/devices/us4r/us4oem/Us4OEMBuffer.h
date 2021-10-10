@@ -8,6 +8,27 @@
 
 namespace arrus::devices {
 
+class Us4OEMBufferElementPart {
+public:
+    Us4OEMBufferElementPart(size_t address, size_t size, uint16 firing)
+            : address(address), size(size), firing(firing) {}
+
+    size_t getAddress() const {
+        return address;
+    }
+    size_t getSize() const {
+        return size;
+    }
+    uint16 getFiring() const {
+        return firing;
+    }
+
+private:
+    size_t address;
+    size_t size;
+    uint16 firing;
+};
+
 /**
  * A description of a single us4oem buffer element.
  *
@@ -19,11 +40,10 @@ namespace arrus::devices {
 class Us4OEMBufferElement {
 public:
 
-    Us4OEMBufferElement(size_t address, size_t size, uint16 firing,
-                        framework::NdArray::Shape elementShape,
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing, framework::NdArray::Shape elementShape,
                         framework::NdArray::DataType dataType)
-                        : address(address), size(size), firing(firing),
-                          elementShape(std::move(elementShape)), dataType(dataType) {}
+                        : address(address), size(size), firing(firing), elementShape(std::move(elementShape)),
+                        dataType(dataType) {}
 
     [[nodiscard]] size_t getAddress() const {
         return address;
@@ -36,7 +56,7 @@ public:
     [[nodiscard]] uint16 getFiring() const {
         return firing;
     }
-    // TODO store ndarray here with placement on the us4oem module
+
     [[nodiscard]] const framework::NdArray::Shape &getElementShape() const {
         return elementShape;
     }
@@ -51,6 +71,7 @@ private:
     uint16 firing;
     framework::NdArray::Shape elementShape;
     framework::NdArray::DataType dataType;
+    std::vector<Us4OEMBufferElementPart> parts;
 };
 
 /**
