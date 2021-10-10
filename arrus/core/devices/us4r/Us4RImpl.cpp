@@ -13,6 +13,7 @@
 namespace arrus::devices {
 
 using ::arrus::ops::us4r::TxRxSequence;
+using ::arrus::ops::us4r::Scheme;
 using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
@@ -95,8 +96,8 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
     }
 
     // Upload and register buffers.
-    bool isTriggerSync = workMode == ::arrus::ops::us4r::Scheme::WorkMode::HOST;
-    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, 1, isTriggerSync);
+    bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
+    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, 1, useTriggerSync);
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -115,7 +116,7 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
     }
     // Create output buffer.
     this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements);
-    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, isTriggerSync);
+    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
     return {this->buffer, std::move(fcm)};
 }
 
@@ -184,7 +185,7 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSi
                                            triggerSync);
 }
 
-void Us4RImpl::syncTrigger() {
+void Us4RImpl::trigger() {
     this->getDefaultComponent()->syncTrigger();
 }
 
