@@ -133,7 +133,7 @@ private:
 
     float getTxRxTime(float rxTime) const;
 
-    // IUs4OEM AFE stters.
+    // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
     void setPgaGainAfe(uint16 value, bool force);
     void setLnaGainAfe(uint16 value, bool force);
