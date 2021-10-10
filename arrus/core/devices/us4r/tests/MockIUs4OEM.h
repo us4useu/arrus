@@ -8,6 +8,8 @@
 class MockIUs4OEM : public IUs4OEM {
 public:
     MOCK_METHOD(unsigned int, GetID, (), (override));
+    MOCK_METHOD(uint32_t, GetFirmwareVersion, (), (override));
+    MOCK_METHOD(uint32_t, GetTxFirmwareVersion, (), (override));
     MOCK_METHOD(bool, IsPowereddown, (), (override));
     MOCK_METHOD(void, Initialize, (int), (override));
     MOCK_METHOD(void, Synchronize, (), (override));
@@ -17,6 +19,9 @@ public:
     MOCK_METHOD(void, ClearScheduledReceive, (), (override));
     MOCK_METHOD(void, TransferRXBufferToHost,
             (unsigned char * dstAddress, size_t length, size_t srcAddress),
+    (override));
+    MOCK_METHOD(void, ReleaseTransferRxBufferToHost,
+        (unsigned char * dstAddress, size_t length, size_t srcAddress),
     (override));
     MOCK_METHOD(void, SetPGAGain, (us4r::afe58jd18::PGA_GAIN gain), (override));
     MOCK_METHOD(void, SetLPFCutoff, (us4r::afe58jd18::LPF_PROG cutoff),
@@ -64,7 +69,7 @@ public:
     MOCK_METHOD(void, SetRxDelay,
             (const float delay, const unsigned short firing), (override));
     MOCK_METHOD(void, EnableTransmit, (), (override));
-    MOCK_METHOD(void, EnableSequencer, (), (override));
+    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger), (override));
     MOCK_METHOD(void, SetRxChannelMapping,
             ( const std::vector<uint8_t> & mapping, const uint16_t rxMapId),
     (override));
@@ -113,6 +118,7 @@ public:
     MOCK_METHOD(void, EnableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, SyncReceive, (), (override));
     MOCK_METHOD(void, ResetCallbacks, (), (override));
+    MOCK_METHOD(float, GetFPGATemp, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

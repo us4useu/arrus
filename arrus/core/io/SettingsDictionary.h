@@ -16,7 +16,12 @@ class SettingsDictionary {
     public:
     [[nodiscard]] ProbeAdapterSettings
     getAdapterSettings(const ProbeAdapterModelId &adapterModelId) const {
-        return adaptersMap.at(convertIdToString(adapterModelId));
+        std::string idStr = convertIdToString(adapterModelId);
+        try {
+            return adaptersMap.at(idStr);
+        } catch(const std::out_of_range &) {
+            throw IllegalArgumentException(::arrus::format("Adapter model not found: {}", idStr));
+        }
     }
 
     void insertAdapterSettings(ProbeAdapterSettings &&adapter) {
@@ -28,9 +33,18 @@ class SettingsDictionary {
     [[nodiscard]] ProbeSettings
     getProbeSettings(const ProbeModelId &probeModelId,
                      const ProbeAdapterModelId &adapterModelId) const {
-        std::string key =
-            convertIdToString(probeModelId) +
-            convertIdToString(adapterModelId);
+        std::string probeModelIdStr = convertIdToString(probeModelId);
+        std::string adapterModelIdStr = convertIdToString(adapterModelId);
+        std::string key = probeModelIdStr + adapterModelIdStr;
+        try {
+            return probesMap.at(key);
+        } catch(const std::out_of_range &) {
+            throw IllegalArgumentException(::arrus::format(
+                "There is no defined setting in the dictionary "
+                "for pair: ({}, {}), ({}, {})",
+                probeModelId.getManufacturer(), probeModelId.getName(),
+                adapterModelId.getManufacturer(), adapterModelId.getName()));
+        }
         return probesMap.at(key);
     }
 
@@ -43,7 +57,13 @@ class SettingsDictionary {
     }
 
     [[nodiscard]] ProbeModel getProbeModel(const ProbeModelId &id) const {
-        return modelsMap.at(convertIdToString(id));
+        std::string idStr = convertIdToString(id);
+        try {
+            return modelsMap.at(idStr);
+        }
+        catch(const std::out_of_range &) {
+            throw IllegalArgumentException(::arrus::format("Probe model not found: {}", idStr));
+        }
     }
 
     void insertProbeModel(const ProbeModel &probeModel) {

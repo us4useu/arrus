@@ -46,7 +46,7 @@ Uninstall ARIUS drivers (if previously installed)
 If ARIUS drivers are installed on your computer, uninstall them first. ARIUS
 drivers are the legacy drivers that were required before the 0.4.3 version.
 
-1. Open the Windows Device Manager, uninstall all ``ARIUS`` and ``WinDriver1290``
+1. Open the Windows Device Manager, uninstall all ``ARIUS`` or ``WinDriver1290`` or ``us4oem``
    devices available in the "Jungo Connectivity" node. **Check
    "Delete the driver software for this device"**.
 

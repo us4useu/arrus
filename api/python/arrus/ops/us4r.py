@@ -143,14 +143,14 @@ class Scheme:
     :param rx_buffer_size: number of elements the rx buffer (allocated on \
       us4r ddr internal memory) should consists of
     :param output_buffer: specification of the output buffer
-    :param work_mode: determines the system work mode, available values: 'ASYNC', 'HOST'
+    :param work_mode: determines the system work mode, available values: 'ASYNC', 'HOST', 'MANUAL'
     :param processing: data processing to perform on the raw channel RF data \
       currently only arrus.utils.imaging is supported
     """
     tx_rx_sequence: TxRxSequence
-    rx_buffer_size: int
-    output_buffer: DataBufferSpec
-    work_mode: str
+    rx_buffer_size: int = 2
+    output_buffer: DataBufferSpec = DataBufferSpec(type="FIFO", n_elements=4)
+    work_mode: str = "HOST"
     processing: object = None
 
 

@@ -1,18 +1,11 @@
 """ Arrus device handle. """
 import abc
 import dataclasses
-import arrus.core
 
 
 @dataclasses.dataclass(frozen=True)
 class DeviceType:
     type: str
-    core_repr: object
-
-
-# Currently available python devices.
-CPU = DeviceType("CPU", arrus.core.DeviceType_CPU)
-Us4R = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -21,7 +14,7 @@ class DeviceId:
     ordinal: int
 
 
-def get_device_type_str(s):
+def split_device_id_str(s):
     """
     Extracts device type from given string id.
 
@@ -35,7 +28,7 @@ def get_device_type_str(s):
     if len(n) == 0:
         raise ValueError("No device provided in the id.")
     c = n[0].split(":")
-    return c[0]
+    return c[0], int(c[1])
 
 
 class Device(abc.ABC):
@@ -60,3 +53,5 @@ class UltrasoundDeviceDTO(abc.ABC):
     @abc.abstractmethod
     def get_id(self):
         pass
+
+

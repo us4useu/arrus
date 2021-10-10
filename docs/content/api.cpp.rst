@@ -1,3 +1,5 @@
+.. _arrus-api:
+
 =================
 C++ API Reference
 =================
@@ -74,7 +76,11 @@ Devices
 
 .. doxygenclass:: arrus::devices::Us4R
     :project: arrus
-    :members: setVoltage, disableHV
+    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings
+
+.. doxygenclass:: arrus::devices::RxSettings
+    :members:
+
 
 Output data
 ===========

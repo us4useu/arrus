@@ -59,14 +59,14 @@ protected:
                                        true, true, true, true,
                                        true, true, true, true};
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
-        uint16 pgaGain = DEFAULT_PGA_GAIN;
         uint16 lnaGain = DEFAULT_LNA_GAIN;
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
         us4oem = std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             std::move(ius4oem), activeChannelGroups,
-            channelMapping,
-            pgaGain, lnaGain,
-            std::unordered_set<uint8>()
+            channelMapping, rxSettings,
+            std::unordered_set<uint8>(),
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
         );
     }
 
@@ -157,15 +157,6 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidPri) {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
             (x.pri = Us4OEMImpl::MAX_PRI + 1e-6f))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pri = Us4OEMImpl::MIN_PRI - 1e-6f))
             .getTxRxParameters()
     };
     EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
@@ -353,14 +344,14 @@ protected:
                                                                    104, 105, 106, 107, 108, 109, 110, 111,
                                                                    112, 113, 114, 115, 116, 117, 118, 119,
                                                                    120, 121, 122, 123, 124, 125, 126, 127});
-        uint16 pgaGain = DEFAULT_PGA_GAIN;
-        uint16 lnaGain = DEFAULT_LNA_GAIN;
+
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
         us4oem = std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             std::move(ius4oem), activeChannelGroups,
-            channelMapping,
-            pgaGain, lnaGain,
-            std::unordered_set<uint8>()
+            channelMapping, rxSettings,
+            std::unordered_set<uint8>(),
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
         );
     }
 
@@ -689,16 +680,13 @@ protected:
 
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
 
-        const uint16 pgaGain = DEFAULT_PGA_GAIN;
-        const uint16 lnaGain = DEFAULT_LNA_GAIN;
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
         return std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
             // NOTE: due to the below move this function can be called only once
             std::move(ius4oem), activeChannelGroups,
-            channelMapping,
-            pgaGain, lnaGain,
-            channelsMask
-        );
+            channelMapping, rxSettings, channelsMask,
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
 
     }
 
@@ -949,6 +937,124 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
             }
         }
     }
+}
+
+// TX/RX reprogramming tests
+class Us4OEMImplEsaote3ReprogrammingTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+        ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
+    }
+
+    Us4OEMImpl::Handle createHandle(Us4OEMSettings::ReprogrammingMode reprogrammingMode) {
+        // This function can be called only once.
+
+        BitMask activeChannelGroups = {true, true, true, true,
+                                       true, true, true, true,
+                                       true, true, true, true,
+                                       true, true, true, true};
+
+        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
+
+        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
+
+        return std::make_unique<Us4OEMImpl>(
+                DeviceId(DeviceType::Us4OEM, 0),
+                // NOTE: due to the below move this function can be called only once
+                std::move(ius4oem), activeChannelGroups,
+                channelMapping, rxSettings,
+                std::unordered_set<uint8>({}),
+                reprogrammingMode
+        );
+
+    }
+
+    std::unique_ptr<IUs4OEM> ius4oem;
+    MockIUs4OEM *ius4oemPtr;
+    TGCCurve defaultTGCCurve;
+    uint16 defaultRxBufferSize = 1;
+    uint16 defaultBatchSize = 1;
+    std::optional<float> defaultSri = std::nullopt;
+};
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToShortPRIForSequential) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time + reprogramming time -1us [s]
+                            // Assuming
+                            x.pri = 63e-6f
+                                + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME
+                                + Us4OEMImpl::RX_TIME_EPSILON
+                                - 1e-6f,
+                            x.sampleRange = {0, 4096}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeSequential) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+
+    float pri = 63e-6f + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME
+        + Us4OEMImpl::RX_TIME_EPSILON;
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time + reprogramming time [s]
+                            x.pri = pri,
+                            x.sampleRange = {0, 4032}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_NO_THROW(SET_TX_RX_SEQUENCE(us4oem, seq));
+}
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeParallel) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
+
+    float pri = 63e-6f + Us4OEMImpl::RX_TIME_EPSILON;
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time only
+                            x.pri = pri,
+                            x.sampleRange = {0, 4032}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_NO_THROW(SET_TX_RX_SEQUENCE(us4oem, seq));
+}
+
+TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
+    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
+
+    float pri = 63e-6f-1e-6f + Us4OEMImpl::RX_TIME_EPSILON;
+
+    std::vector<TxRxParameters> seq = {
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            // acquisition time only
+                            x.pri = pri,
+                            x.sampleRange = {0, 4096}
+                    ))
+                    .getTxRxParameters()
+    };
+
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
 }
 }
 

@@ -1,6 +1,11 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMINITIALIZERIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_EXTERNAL_IUS4OEM_IUS4OEMINITIALIZERIMPL_H
 
+#include <algorithm>
+#include <mutex>
+#include <iostream>
+#include <future>
+
 #include "IUs4OEMInitializer.h"
 
 namespace arrus::devices {
@@ -18,19 +23,28 @@ public:
                       return x->GetID() < y->GetID();
                   });
 
-        for(auto &u : ius4oems) {
-            u->Initialize(1);
-        }
+        initializeUs4oems(ius4oems, 1);
         // Perform successive initialization levels.
         for(int level = 2; level <= 4; level++) {
             ius4oems[0]->Synchronize();
-            for(auto &u : ius4oems) {
-                u->Initialize(level);
-            }
+            initializeUs4oems(ius4oems, level);
         }
         // Us4OEMs are initialized here.
     }
+private:
 
+    void initializeUs4oems(std::vector<IUs4OEMHandle> &ius4oems, int level) {
+        std::vector<std::future<void>> results;
+
+        for(IUs4OEMHandle &ius4oem : ius4oems) {
+            std::future<void> result = std::async(std::launch::async, [&ius4oem, level]() {ius4oem->Initialize(level);});
+            results.push_back(std::move(result));
+        }
+        for(auto &result: results) {
+            result.wait();
+            result.get(); // wait and throw exception if necessary.
+        }
+    }
 };
 
 }

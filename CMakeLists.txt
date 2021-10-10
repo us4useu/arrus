@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.5.13)
+set(PROJECT_VERSION 0.7.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 
 option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
@@ -43,6 +43,7 @@ option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)
 option(ARRUS_EMBED_DEPS "Embed dependencies (like us4r dlls) into the output package." OFF)
 option(ARRUS_APPEND_VERSION_SUFFIX_DATE "Append current timestamp to the ARRUS_PROJECT_VERSION." OFF)
+option(ARRUS_CUDA "Build with CUDA GPU support" OFF)
 
 if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
     string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")
@@ -86,7 +87,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.5.5 EXACT REQUIRED US4OEM HV256 DBARLite)
+find_package(Us4 0.6.8 EXACT REQUIRED US4OEM HV256 DBARLite)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
@@ -95,6 +96,13 @@ set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(fmt REQUIRED)
 find_package(Microsoft.GSL REQUIRED)
 find_package(Eigen3 REQUIRED)
+
+# OS specific dependencies.
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+    set(ARRUS_OS_DEPS "")
+else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+    set(ARRUS_OS_DEPS "")
+endif()
 ################################################################################
 # Sub-projects
 ################################################################################
@@ -164,6 +172,7 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
         FILES
             # TODO(pjarosik) make it more general (will not work for OS!=win)
             ${Us4_ROOT_DIR_SANITIZED}/bin/us4OEMFirmwareUpdate.exe
+            ${Us4_ROOT_DIR_SANITIZED}/bin/Us4OEMStatus.exe
         DESTINATION
             ${ARRUS_BIN_INSTALL_DIR}
     )

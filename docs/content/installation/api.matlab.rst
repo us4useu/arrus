@@ -1,7 +1,10 @@
 MATLAB API
 ----------
 
-MATLAB 2018b is required.
+Requirements:
+
+- MATLAB 2019a,
+- NVIDIA CUDA Toolkit 10.0.
 
 Add ``matlab\arrus`` subdirectory to the MATLAB search paths.
 

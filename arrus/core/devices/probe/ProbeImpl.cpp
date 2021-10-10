@@ -71,6 +71,11 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     // probe's rx aperture element number -> adapter rx aperture channel number
     // Where each element and channel is the active bit element/channel number.
     std::vector<std::vector<ChannelIdx>> rxApertureChannelMappings;
+
+    // TODO the below list is used only in the remapFcm function, consider simplifying it
+    std::vector<ChannelIdx> rxPaddingLeft;
+    std::vector<ChannelIdx> rxPaddingRight;
+
     for (const auto &op: seq) {
         logger->log(LogSeverity::TRACE, arrus::format(
             "Setting tx/rx {}", ::arrus::toString(op)));
@@ -103,13 +108,16 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                 op.getRxDecimationFactor(), op.getPri(),
                                 op.getRxPadding());
         rxApertureChannelMappings.push_back(rxApertureChannelMapping);
+
+        rxPaddingLeft.push_back(op.getRxPadding()[0]);
+        rxPaddingRight.push_back(op.getRxPadding()[1]);
     }
 
     auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples,
                                                  rxBufferSize, rxBatchSize,
                                                  sri, triggerSync);
     FrameChannelMapping::Handle actualFcm = remapFcm(
-        fcm, rxApertureChannelMappings);
+        fcm, rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
     return std::make_tuple(std::move(buffer), std::move(actualFcm));
 }
 
@@ -131,18 +139,16 @@ void ProbeImpl::syncTrigger() {
 
 void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer,
                                      const Us4RBuffer::Handle &us4rBuffer,
-                                     bool isTriggerSync) {
-    adapter->registerOutputBuffer(buffer, us4rBuffer, isTriggerSync);
-}
-
-void ProbeImpl::setTgcCurve(const std::vector<float> &tgcCurve) {
-    adapter->setTgcCurve(tgcCurve);
+                                     ::arrus::ops::us4r::Scheme::WorkMode workMode) {
+    adapter->registerOutputBuffer(buffer, us4rBuffer, workMode);
 }
 
 // Remaps FCM according to given rx aperture active channels mappings.
 FrameChannelMapping::Handle ProbeImpl::remapFcm(
     const FrameChannelMapping::Handle &adapterFcm,
-    const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels)
+    const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels,
+    const std::vector<ChannelIdx> &rxPaddingLeft,
+    const std::vector<ChannelIdx> &rxPaddingRight)
 {
     auto nOps = adapterActiveChannels.size();
     if (adapterFcm->getNumberOfLogicalFrames() != nOps) {
@@ -154,16 +160,18 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(
 
     unsigned short frameNumber = 0;
     for (const auto &mapping : adapterActiveChannels) {
-        // mapping[i] = dst probe adapter channel number
+        // mapping[i] = dst adapter channel number
         // (e.g. from 0 to 256 (number of channels system have))
         // where i is the probe rx active element
+        auto paddingLeft = rxPaddingLeft[frameNumber];
+        auto paddingRight = rxPaddingRight[frameNumber];
 
         // pairs: channel position, adapter channel
         std::vector<std::pair<ChannelIdx, ChannelIdx>> posChannel;
-        size_t rxChannels = mapping.size();
         // adapterRxChannel[i] = dst adapter aperture channel number
         // (e.g. from 0 to 64 (aperture size)).
-        std::vector<ChannelIdx> adapterRxChannel(rxChannels, 0);
+        auto nRxChannels = mapping.size();
+        std::vector<ChannelIdx> adapterRxChannel(nRxChannels, 0);
 
         std::transform(std::begin(mapping), std::end(mapping),
                        std::back_insert_iterator(posChannel),
@@ -178,11 +186,16 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(
         }
         // probe aperture rx number -> adapter aperture rx number ->
         // physical channel
-        for (ChannelIdx pch = 0; pch < rxChannels; ++pch) {
-            auto[physicalFrame, physicalChannel] =
-            adapterFcm->getLogical(frameNumber, adapterRxChannel[pch]);
-            builder.setChannelMapping(frameNumber, pch,
-                                      physicalFrame, physicalChannel);
+        auto nChannels = adapterFcm->getNumberOfLogicalChannels();
+        for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
+            if(pch >= paddingLeft && pch < (nChannels-paddingRight)) {
+                auto[physicalFrame, physicalChannel] =
+                    adapterFcm->getLogical(frameNumber, adapterRxChannel[pch-paddingLeft]+paddingLeft);
+
+                builder.setChannelMapping(frameNumber, pch,
+                                          physicalFrame, physicalChannel);
+            }
+
         }
         ++frameNumber;
     }

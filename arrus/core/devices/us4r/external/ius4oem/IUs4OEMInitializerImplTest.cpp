@@ -10,6 +10,7 @@ namespace {
 using namespace arrus::devices;
 using ::testing::Return;
 using ::testing::InSequence;
+using ::testing::Sequence;
 
 // Test if the input array is approprietaly sorted
 TEST(IUs4OEMInitializerImplTest, Us4OEMsSortedApproprietaly) {
@@ -45,24 +46,24 @@ TEST(IUs4OEMInitializerImplTest, Us4OEMsInitializedProperly) {
     ON_CALL(GET_MOCK_PTR(ius4oems[1]), GetID)
             .WillByDefault(Return(0));
 
-    // The actual order: 1, 0
     {
-        InSequence seq;
+        Sequence us4oem0Seq;
+        Sequence us4oem1Seq;
 
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(1));
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(1));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(1)).InSequence(us4oem1Seq);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(1)).InSequence(us4oem0Seq);
 
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Synchronize());
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(2));
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(2));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Synchronize()).InSequence(us4oem1Seq, us4oem0Seq);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(2)).InSequence(us4oem1Seq);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(2)).InSequence(us4oem0Seq);
 
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Synchronize());
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(3));
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(3));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Synchronize()).InSequence(us4oem1Seq, us4oem0Seq);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(3)).InSequence(us4oem1Seq);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(3)).InSequence(us4oem0Seq);
 
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Synchronize());
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(4));
-        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(4));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Synchronize()).InSequence(us4oem1Seq, us4oem0Seq);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[1]), Initialize(4)).InSequence(us4oem1Seq);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oems[0]), Initialize(4)).InSequence(us4oem0Seq);
     }
 
     IUs4OEMInitializerImpl initializer;

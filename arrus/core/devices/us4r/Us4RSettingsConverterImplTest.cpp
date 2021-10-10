@@ -86,7 +86,8 @@ TEST_P(MappingsTest, CorrectlyConvertsMappingsToUs4OEMSettings) {
 
     auto[us4oemSettings, newAdapterSettings] =
     converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, std::vector<ChannelIdx>());
+                                      rxSettings, std::vector<ChannelIdx>(),
+                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
 
 //    std::cerr << "output probe adapter settings: " << std::endl;
 //    for(auto [m, ch] : newAdapterSettings.getChannelMapping()) {
@@ -429,7 +430,8 @@ TEST_P(ActiveChannelsTest, CorrectlyGeneratesActiveChannelGroups) {
 
     auto[us4oemSettings, newAdapterSettings] =
     converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, std::vector<ChannelIdx>());
+                                      rxSettings, std::vector<ChannelIdx>(),
+                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
 
     EXPECT_EQ(us4oemSettings.size(), testCase.expectedUs4OEMMasks.size());
 
@@ -627,7 +629,8 @@ TEST_P(ChannelMaskingTest, CorrectlyMasksChannels) {
 
     auto[us4oemSettings, newAdapterSettings] =
     converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, mappings.channelsMask);
+                                      rxSettings, mappings.channelsMask,
+                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
 
     std::vector<std::unordered_set<uint8>> channelsMasks;
     std::transform(
@@ -734,7 +737,8 @@ TEST(ChannelsMaskingTest, ChecksIfChannelMaskElementsDoNotExceedNumberOfProbeEle
     std::vector<ChannelIdx> channelsMask({10, 20, 192});
 
     EXPECT_THROW(converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, channelsMask),
+                                      rxSettings, channelsMask,
+                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL),
                  ::arrus::IllegalArgumentException);
 
 }

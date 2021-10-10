@@ -13,6 +13,7 @@ import yaml
 import ctypes
 import time
 from pathlib import Path
+from sys import exit
 
 PROJECT_VERSION = "${PROJECT_VERSION}"
 FIRMWARE_VERSION = "${Us4OEM_FIRMWARE_VERSION}"

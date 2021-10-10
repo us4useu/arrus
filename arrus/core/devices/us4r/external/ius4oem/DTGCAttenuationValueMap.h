@@ -19,8 +19,7 @@ public:
         return instance;
     }
 
-    us4r::afe58jd18::DIG_TGC_ATTENUATION
-    getEnumValue(const ValueType value) {
+    us4r::afe58jd18::DIG_TGC_ATTENUATION getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 

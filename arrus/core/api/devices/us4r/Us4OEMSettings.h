@@ -23,6 +23,27 @@ public:
     using ChannelMapping = std::vector<ChannelIdx>;
 
     /**
+     * Determines when the us4OEM FPGA reprogramming starts.
+     */
+    enum class ReprogrammingMode {
+        /* Us4OEM FPGA reprogramming starts after signal data acquisition is
+         * ended. Total TX/RX time: rx time + reprogramming time.
+         * Total TX/RX time determines possible maximum PRF.
+         * This mode minimizes signal noise at the expense of additional
+         * reprogramming time (which decreases available PRF). */
+        SEQUENTIAL = 0,
+        /* Us4OEM FPGA reprogramming for the next TX starts when the the current
+         * TX is triggered; both processes (reprogramming for the next TX/RX
+         * and current TX/RX) are done in parallel. Total TX/RX time:
+         * max(rx time, reprogramming time).
+         * Total TX/RX time determines possible maximum PRF.
+         * This mode maximizes the possible PRF at the expense of additional
+         * noise that may appear at the beginning of the data (emitted during
+         * the FPGA reprogramming). */
+        PARALLEL = 1
+    };
+
+    /**
      * Us4OEM Settings constructor.
      *
      * @param activeChannelGroups determines which groups of channels should be
@@ -40,15 +61,19 @@ public:
      * @param rxSettings initial rx settings to apply
      * @param channelMask channels that should be always turned off,
      *   CHANNEL NUMBERS STARTS FROM 0
+     * @param reprogrammingMode us4OEM reprogramming mode
      */
     Us4OEMSettings(ChannelMapping channelMapping,
                    BitMask activeChannelGroups,
                    RxSettings rxSettings,
-                   std::unordered_set<uint8> channelsMask)
+                   std::unordered_set<uint8> channelsMask,
+                   ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL)
             : channelMapping(std::move(channelMapping)),
               activeChannelGroups(std::move(activeChannelGroups)),
               rxSettings(std::move(rxSettings)),
-              channelsMask(std::move(channelsMask)){}
+              channelsMask(std::move(channelsMask)),
+              reprogrammingMode(reprogrammingMode)
+              {}
 
 
     const std::vector<ChannelIdx> &getChannelMapping() const {
@@ -67,11 +92,16 @@ public:
         return channelsMask;
     }
 
+    ReprogrammingMode getReprogrammingMode() const {
+        return reprogrammingMode;
+    }
+
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
     RxSettings rxSettings;
     std::unordered_set<uint8> channelsMask;
+    ReprogrammingMode reprogrammingMode;
 };
 
 }

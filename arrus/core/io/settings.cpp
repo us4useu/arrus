@@ -57,14 +57,22 @@ std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
     google::protobuf::io::FileInputStream input(fd);
     input.SetCloseOnDelete(true);
     auto result = std::make_unique<T>();
-    google::protobuf::TextFormat::Parse(&input, result.get());
+    bool parseOk = google::protobuf::TextFormat::Parse(&input, result.get());
+    if(!parseOk) {
+        throw IllegalArgumentException(::arrus::format(
+            "Error while parsing file {}, please check error messages "
+            "that appeared the above.", filepath));
+    }
     return result;
 }
 
 template<typename T>
 std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
     auto result = std::make_unique<T>();
-    google::protobuf::TextFormat::ParseFromString(proto, result.get());
+    bool parseOk = google::protobuf::TextFormat::ParseFromString(proto, result.get());
+    if(!parseOk) {
+        throw IllegalArgumentException("Error while reading proto txt.");
+    }
     return result;
 }
 
@@ -231,13 +239,11 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
     uint32 lpfCutoff = proto.lpf_cutoff();
 
     std::optional<uint16> activeTermination;
-    if(proto.activeTermination__case() ==
-       proto::RxSettings::kActiveTermination) {
+    if(proto.activeTermination__case() == proto::RxSettings::kActiveTermination) {
         activeTermination = static_cast<uint16>(proto.active_termination());
     }
-
-    return RxSettings(dtgcAtt, pgaGain, lnaGain, tgcSamples, lpfCutoff,
-                      activeTermination);
+    // TODO apply characteristic parameter
+    return RxSettings(dtgcAtt, pgaGain, lnaGain, tgcSamples, lpfCutoff, activeTermination);
 }
 
 ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r,
@@ -314,7 +320,7 @@ std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
     return result;
 }
 
-
+Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode);
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                               const SettingsDictionary &dictionary) {
     std::optional<HVSettings> hvSettings;
@@ -356,9 +362,11 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
             auto activeChannelGroups = castTo<bool>(
                 std::begin(us4oem.active_channel_groups()),
                 std::end(us4oem.active_channel_groups()));
+            Us4OEMSettings::ReprogrammingMode reprogrammingMode =
+                    convertToReprogrammingMode(us4oem.reprogramming_mode());
             us4oemSettings.emplace_back(
                 channelMapping, activeChannelGroups, rxSettings,
-                us4oemChannelsMask[i]);
+                us4oemChannelsMask[i], reprogrammingMode);
         }
         return Us4RSettings(us4oemSettings, hvSettings);
     } else {
@@ -389,26 +397,55 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         for(auto &mask: us4r.us4oem_channels_mask()) {
             us4oemChannelsMask.push_back(readChannelsMask<uint8>(mask));
         }
+        auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
 
         return Us4RSettings(adapterSettings, probeSettings, rxSettings,
-                            hvSettings, channelsMask, us4oemChannelsMask);
+                            hvSettings, channelsMask, us4oemChannelsMask,
+                            reprogrammingMode);
+    }
+}
+Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
+    switch(mode) {
+        case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL:
+            return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
+        case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL:
+            return Us4OEMSettings::ReprogrammingMode::PARALLEL;
+        default:
+            throw std::runtime_error("Unknown reprogramming mode: "
+            + std::to_string(mode));
     }
 }
 
 SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
+    // Read ARRUS_PATH.
+    const char *arrusPathStr = std::getenv(ARRUS_PATH_KEY);
+    boost::filesystem::path arrusPath;
+    if(arrusPathStr != nullptr) {
+        arrusPath = arrusPathStr;
+    }
     // Read and validate session.
     boost::filesystem::path sessionSettingsPath{filepath};
+    // Try with the provided path first.
     if(!boost::filesystem::is_regular_file(sessionSettingsPath)) {
-        throw IllegalArgumentException(
-            ::arrus::format("File not found {}.", filepath));
+        // Next, try with ARRUS_PATH.
+        if(!arrusPath.empty() && sessionSettingsPath.is_relative()) {
+            sessionSettingsPath = arrusPath / sessionSettingsPath;
+            if(!boost::filesystem::is_regular_file(sessionSettingsPath)) {
+                throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
+            }
+        }
+        else {
+            throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
+        }
     }
-    std::unique_ptr<ap::SessionSettings> s =
-        readProtoTxt<ap::SessionSettings>(filepath);
 
+    std::string settingsPathStr = sessionSettingsPath.string();
+    logger->log(LogSeverity::INFO, ::arrus::format("Using configuration file: {}", settingsPathStr));
+
+    std::unique_ptr<ap::SessionSettings> s = readProtoTxt<ap::SessionSettings>(settingsPathStr);
     //Validate.
-    SessionSettingsProtoValidator validator(
-        "session settings in " + filepath);
+    SessionSettingsProtoValidator validator("session settings in " + settingsPathStr);
     validator.validate(s);
     validator.throwOnErrors();
 
@@ -427,30 +464,33 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                 dictionaryPathStr = dictP.string();
             } else {
                 // 3. Try to use ARRUS_PATH, if available.
-                const char *arrusP = std::getenv(ARRUS_PATH_KEY);
-                if(arrusP != nullptr) {
-                    boost::filesystem::path arrusDicP{arrusP};
-                    arrusDicP = arrusDicP / s->dictionary_file();
+                if(!arrusPath.empty()) {
+                    boost::filesystem::path arrusDicP = arrusPath / s->dictionary_file();
                     if(boost::filesystem::is_regular_file(arrusDicP)) {
                         dictionaryPathStr = arrusDicP.string();
                     } else {
                         throw IllegalArgumentException(
-                            ::arrus::format("Invalid path to dictionary: {}",
-                                            s->dictionary_file()));
+                            ::arrus::format("Invalid path to dictionary: {}", s->dictionary_file()));
                     }
                 } else {
                     throw IllegalArgumentException(
-                        ::arrus::format("Invalid path to dictionary: {}",
-                                        s->dictionary_file()));
+                        ::arrus::format("Invalid path to dictionary: {}", s->dictionary_file()));
                 }
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::DEBUG,
-                    ::arrus::format("Read dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::INFO,
+                    ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
-        d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
+        try {
+            d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
+        }
+        catch(const IllegalArgumentException &e) {
+            throw IllegalArgumentException(
+                ::arrus::format("Error while reading ARRUS default "
+                                "dictionary. Message: {}", e.what()));
+        }
         logger->log(LogSeverity::INFO, "Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
@@ -461,12 +501,10 @@ SessionSettings readSessionSettings(const std::string &filepath) {
 
     Us4RSettings us4rSettings = readUs4RSettings(s->us4r(), dictionary);
     // TODO std move
-
     SessionSettings sessionSettings(us4rSettings);
 
     logger->log(LogSeverity::DEBUG,
-                arrus::format("Read settings from '{}': {}",
-                              filepath, ::arrus::toString(sessionSettings)));
+                arrus::format("Read settings from '{}': {}", filepath, ::arrus::toString(sessionSettings)));
 
     return sessionSettings;
 }

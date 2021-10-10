@@ -7,6 +7,7 @@ import platform
 import requests
 import errno
 import logging
+from datetime import date
 
 COLOR_ERROR = '\033[91m'
 COLOR_END = '\033[0m'
@@ -58,29 +59,29 @@ def main():
 
     if install_dir is None:
         raise ValueError("%s environment variable should be declared "
-                         "or provided as input parameter."
-                         %(INSTALL_ENVIRON))
+                         "or provided as input parameter." %(INSTALL_ENVIRON))
 
     publish(install_dir, token, src_branch_name, repository_name, build_id)
 
 
 def publish(install_dir, token, src_branch_name, repository_name, build_id):
+    timestamp = date.today().strftime("%Y%m%d")
     version = get_version(install_dir)
     if src_branch_name == "master" \
             or VERSION_TAG_PATTERN.match(src_branch_name):
         release_tag = version
+        package_name = "arrus-" + release_tag
     elif src_branch_name == "develop":
         release_tag = version + "-dev"
+        # Note: the same pattern is used in the root CMakeLists.txt
+        package_name = "arrus-" + version + "-dev-" + timestamp
     else:
-        raise ValueError(
-            "Releases from branch %s are not allowed to be published!")
-
-    package_name = "arrus-" + release_tag
-    archive_path = os.path.join(install_dir, f"arrus-{version}.zip")
+        raise ValueError("Releases from branch %s are not allowed to be published!")
 
     package_name += ".zip"
+    archive_path = os.path.join(install_dir, f"arrus-{version}.zip")
 
-    release_description = "build: %s, host: %s" % (build_id, platform.node())
+    release_description = f"date: {timestamp}, tag: {release_tag}, build: {build_id}, host: {platform.node()}"
     response = create_release(repository_name, release_tag, token, release_description)
 
     if not response.ok:
@@ -93,8 +94,9 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
             r = get_release_by_tag(repository_name, release_tag, token)
             r.raise_for_status()
             release_id = r.json()["id"]
-            r = edit_release(repository_name, release_id, release_tag,
-                             token, release_description)
+            description_body = r.json()["body"]
+            release_description = description_body + "\n" + release_description
+            r = edit_release(repository_name, release_id, release_tag, token, release_description)
             r.raise_for_status()
         else:
             print(resp)
@@ -107,13 +109,9 @@ def publish(install_dir, token, src_branch_name, repository_name, build_id):
     r.raise_for_status()
     current_assets = r.json()
 
-    if len(current_assets) > 1:
-        raise RuntimeError("Release %d contains more than one asset!" % release_id)
-
-    if len(current_assets) == 1:
-        asset_id = current_assets[0]["id"]
-        r = delete_asset(repository_name, asset_id, token)
-
+    existing_assets = [asset for asset in current_assets if asset["name"] == package_name]
+    if len(existing_assets) > 0:
+        raise RuntimeError(f"Release {release_id} contains more than one asset with name: {package_name}")
     with open(archive_path, "rb") as f:
         data = f.read()
         r = upload_asset(repository_name, release_id, package_name, token, data)

@@ -16,11 +16,10 @@ namespace arrus::devices {
 
 class Us4RSettings {
 public:
-    explicit Us4RSettings(
-        std::vector<Us4OEMSettings> us4OemSettings,
-        std::optional<HVSettings> hvSettings)
-        : us4oemSettings(std::move(us4OemSettings)),
-          hvSettings(std::move(hvSettings)) {}
+    using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
+
+    explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings)
+        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)) {}
 
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,
@@ -28,13 +27,15 @@ public:
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
         std::vector<ChannelIdx> channelsMask,
-        std::vector<std::vector<uint8>> us4oemChannelsMask)
+        std::vector<std::vector<uint8>> us4oemChannelsMask,
+        ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL)
         : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
           hvSettings(std::move(hvSettings)),
           channelsMask(std::move(channelsMask)),
-          us4oemChannelsMask(std::move(us4oemChannelsMask)){}
+          us4oemChannelsMask(std::move(us4oemChannelsMask)),
+          reprogrammingMode(reprogrammingMode) {}
 
     const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
@@ -65,6 +66,10 @@ public:
         return us4oemChannelsMask;
     }
 
+    ReprogrammingMode getReprogrammingMode() const {
+        return reprogrammingMode;
+    }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -88,6 +93,9 @@ private:
      * The administrator has to provide us4oem channels masks that confirms to
      * the system us4r channels, and this way we reduce the chance of mistake. */
     std::vector<std::vector<uint8>> us4oemChannelsMask;
+    /** Reprogramming mode applied to all us4OEMs.
+     * See Us4OEMSettings::ReprogrammingMode docs for more information.*/
+    ReprogrammingMode reprogrammingMode;
 };
 
 }

@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <utility>
+#include <mutex>
 
 #include <boost/algorithm/string.hpp>
 
@@ -15,11 +16,11 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/probe/ProbeImplBase.h"
-#include "arrus/core/devices/us4r/hv/HV256Impl.h"
+#include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
-
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/Buffer.h"
+#include "arrus/core/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
 
@@ -28,20 +29,17 @@ public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
 
     enum class State {
-        STARTED, STOPPED
+        STARTED,
+        STOPPED
     };
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems,
-             std::optional<HV256Impl::Handle> hv)
-        : Us4R(id), us4oems(std::move(us4oems)), hv(std::move(hv)) {}
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv);
 
-    Us4RImpl(const DeviceId &id,
-             Us4OEMs us4oems,
-             ProbeAdapterImplBase::Handle &probeAdapter,
-             ProbeImplBase::Handle &probe,
-             std::optional<HV256Impl::Handle> hv);
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
+             ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
+             const RxSettings &rxSettings);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -53,10 +51,8 @@ public:
         boost::algorithm::trim(tail);
         if(!tail.empty()) {
             throw IllegalArgumentException(
-                arrus::format(
-                    "Us4R devices allows access only to the top-level "
-                    "devices (got relative path: '{}')", path)
-            );
+                arrus::format("Us4R devices allows access only to the top-level devices (got relative path: '{}')",
+                              path));
         }
         DeviceId componentId = DeviceId::parse(root);
         return getDevice(componentId);
@@ -101,12 +97,8 @@ public:
         return probe.value().get();
     }
 
-    std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::devices::FrameChannelMapping>
-    >
-    upload(const ops::us4r::TxRxSequence &seq,
-           unsigned short rxBufferNElements,
+    std::pair<std::shared_ptr<arrus::framework::Buffer>,std::shared_ptr<arrus::devices::FrameChannelMapping>>
+    upload(const ops::us4r::TxRxSequence &seq, unsigned short rxBufferNElements,
            const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
            const ::arrus::framework::DataBufferSpec &outputBufferSpec) override;
 
@@ -114,37 +106,47 @@ public:
 
     void stop() override;
 
-    void setVoltage(Voltage voltage);
+    void trigger();
 
-    void disableHV();
+    void setVoltage(Voltage voltage) override;
+
+    void disableHV() override;
+
+    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
 
-private:
-    std::mutex deviceStateMutex;
-    Logger::Handle logger;
-    Us4OEMs us4oems;
-    std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
-    std::optional<ProbeImplBase::Handle> probe;
-    std::optional<HV256Impl::Handle> hv;
-    // will be used outside
-    // TODO extract output buffer to some external class
-    std::shared_ptr<Us4ROutputBuffer> buffer;
-    State state{State::STOPPED};
+    void setRxSettings(const RxSettings &settings) override;
+    void setPgaGain(uint16 value) override;
+    void setLnaGain(uint16 value) override;
+    void setLpfCutoff(uint32 value) override;
+    void setDtgcAttenuation(std::optional<uint16> value) override;
+    void setActiveTermination(std::optional<uint16> value) override;
+    uint8_t getNumberOfUs4OEMs() override;
 
+private:
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
 
-    void syncTrigger();
-
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize,
-                   uint16_t rxBatchSize, bool triggerSync);
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize, bool triggerSync);
 
     ProbeImplBase::RawHandle getProbeImpl() {
         return probe.value().get();
     }
+
+    std::mutex deviceStateMutex;
+    std::mutex afeParamsMutex;
+    Logger::Handle logger;
+    Us4OEMs us4oems;
+    std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
+    std::optional<ProbeImplBase::Handle> probe;
+    std::optional<HighVoltageSupplier::Handle> hv;
+    std::shared_ptr<Us4ROutputBuffer> buffer;
+    State state{State::STOPPED};
+    // AFE parameters.
+    std::optional<RxSettings> rxSettings;
 };
 
 }

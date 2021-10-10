@@ -39,6 +39,9 @@ class DataBufferElement:
     def size(self):
         return self._size
 
+    def release(self):
+        self._element_handle.release()
+
     def _create_np_array(self, element):
         ndarray = element.getData()
         if ndarray.getDataType() != arrus.core.NdArray.DataType_INT16:
@@ -63,12 +66,16 @@ class DataBuffer:
         self._buffer_handle = buffer_handle
         self._callbacks = []
         self._register_internal_callback()
-        self._elements = self._wrap_elements()
+        self.elements = self._wrap_elements()
+        self.n_elements = len(self.elements)
 
     def append_on_new_data_callback(self, callback):
         """
         Append to the list of callbacks that should be run when new data
         arrives.
+
+        Note: the callback function should explicitly release buffer element
+        using
 
         :param callback: a callback function, should take one parameter -- DataBufferElement instance
         """
@@ -81,18 +88,13 @@ class DataBuffer:
 
     def _callback(self, element):
         pos = element.getPosition()
-        py_element = self._elements[pos]
+        py_element = self.elements[pos]
         for cbk in self._callbacks:
             cbk(py_element)
-        element.release()
 
     def _wrap_elements(self):
         return [DataBufferElement(self._buffer_handle.getElement(i))
                 for i in range(self._buffer_handle.getNumberOfElements())]
-
-    @property
-    def elements(self):
-        return self._elements
 
 
 class LegacyBuffer:

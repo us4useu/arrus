@@ -92,15 +92,26 @@ set(SOURCE_FILES
         arrus/kernels/tgc.py
         arrus/utils/__init__.py
         arrus/utils/imaging.py
-        arrus/utils/parameters.py
         arrus/utils/us4r.py
         arrus/utils/us4r_remap_gpu.py
         arrus/utils/fir.py
         arrus/utils/interpolate.py
         arrus/utils/core.py
         arrus/utils/gui.py
-        arrus/utils/sta.cu
         )
+
+set(TEST_FILES
+    arrus/kernels/tests/imaging_test.py
+)
+
+if(ARRUS_CUDA)
+    # CUDA GPU specific tests.
+    # CuPy is required.
+    set(TEST_FILES
+        arrus/utils/tests/pipeline_test.py
+        ${TEST_FILES})
+endif()
+
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
 set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
@@ -182,14 +193,26 @@ install(
 
 install(
         FILES
-        examples/sta_sequence_example.py
-        examples/pwi_sequence_example.py
-        examples/lin_sequence_example.py
-        examples/custom_sequence_example.py
-        examples/custom_callback_example.py
+        examples/plane_wave_imaging.py
+        examples/classical_beamforming.py
+        examples/diverging_beams.py
+        examples/custom_tx_rx_sequence.py
+        examples/custom_callback.py
         examples/requirements.txt
-        examples/gpu_requirements.txt
+    examples/requirements.txt
         DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
-
+################################################################################
+# Tests
+################################################################################
+if(ARRUS_RUN_TESTS)
+    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
+    install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
+    foreach(TEST_FILE IN LISTS TEST_FILES)
+        add_test(
+            NAME ${TEST_FILE}
+            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE})
+    endforeach()
+endif()
