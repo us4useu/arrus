@@ -104,6 +104,7 @@ public:
     MOCK_METHOD(Ius4OEMRawHandle, getIUs4oem, (), (override));
     MOCK_METHOD(void, enableSequencer, (), (override));
     MOCK_METHOD(std::vector<uint8_t>, getChannelMapping, (), (override));
+    MOCK_METHOD(float, getFPGATemperature, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {

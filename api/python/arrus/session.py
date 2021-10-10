@@ -201,6 +201,17 @@ class Session(AbstractSession):
         if self._current_processing is not None:
             self._current_processing.stop()
 
+    def run(self):
+        """
+        Runs the uploaded scheme.
+
+        The behaviour of this method depends on the work mode:
+        - MANUAL: triggers execution of batch of sequences only ONCE,
+        - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
+         The run function can be called only once (before the scheme is stopped).
+        """
+        self._session_handle.run()
+
     def get_device(self, path: str):
         """
         Returns a device identified by a given id.

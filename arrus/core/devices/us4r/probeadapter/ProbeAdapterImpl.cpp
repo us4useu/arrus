@@ -12,6 +12,7 @@
 namespace arrus::devices {
 
 using namespace ::arrus::ops::us4r;
+using ::arrus::ops::us4r::Scheme;
 
 ProbeAdapterImpl::ProbeAdapterImpl(DeviceId deviceId,
                                    ProbeAdapterModelId modelId,
@@ -292,18 +293,18 @@ void ProbeAdapterImpl::syncTrigger() {
 }
 
 void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
-                                            bool isTriggerSync) {
+                                            ::arrus::ops::us4r::Scheme::WorkMode workMode) {
     Ordinal us4oemOrdinal = 0;
     for (auto &us4oem: us4oems) {
         auto us4oemBuffer = us4rBuffer->getUs4oemBuffer(us4oemOrdinal);
-        registerOutputBuffer(buffer, us4oemBuffer, us4oem,
-                             isTriggerSync);
+        registerOutputBuffer(buffer, us4oemBuffer, us4oem, workMode);
         ++us4oemOrdinal;
     }
 }
 
 void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &us4oemBuffer,
-                                            Us4OEMImplBase::RawHandle us4oem, bool isTriggerSync) {
+                                            Us4OEMImplBase::RawHandle us4oem,
+                                            ::arrus::ops::us4r::Scheme::WorkMode workMode) {
     // Each transfer should have the same size.
     std::unordered_set<size_t> sizes;
     for (auto &element: us4oemBuffer.getElements()) {
@@ -398,7 +399,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, cons
 
         for (size_t i = 0; i < nRepeats; ++i) {
             std::function<void()> releaseFunc;
-            if (!isTriggerSync) {
+            if (workMode == Scheme::WorkMode::ASYNC || workMode == Scheme::WorkMode::MANUAL) {
+                // The TX/RX is triggered by us4OEM or user.
                 releaseFunc = [this, nUs4OEM, startFiring, endFiring]() {
                     for (auto &us4oem: this->us4oems) {
                         us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
