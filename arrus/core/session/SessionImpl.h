@@ -8,6 +8,7 @@
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/common/hash.h"
 #include "arrus/core/devices/DeviceId.h"
+#include "arrus/common/utils.h"
 
 namespace arrus::session {
 
@@ -40,12 +41,19 @@ public:
     SessionImpl(SessionImpl const &&) = delete;
 
     void operator=(SessionImpl const &&) = delete;
+    void close() override;
 
 private:
-    enum class State {
-        STARTED,
-        STOPPED
-    };
+    ARRUS_DEFINE_ENUM_WITH_TO_STRING(
+            State,
+            // The connection with devices is established, but the input sources do not produce
+            // any new data right now.
+            (STOPPED)
+            // All the input sources are producing new data.
+            (STARTED)
+            // The connection with devices is closed.
+            (CLOSED)
+    );
 
     using DeviceMap = std::unordered_map<
         arrus::devices::DeviceId,
