@@ -85,7 +85,7 @@ public:
         std::vector<Transfer> transfers;
         size_t address = 0;
         size_t size = 0;
-        size_t firing = 0; // the firing that finishes given transfer
+        uint16 firing = 0; // the firing that finishes given transfer
         for(auto &part: parts) {
             // Assumption: size of each part is less than the possible maximum
             if(size + part.getSize() > MAX_TRANSFER_SIZE) {
@@ -103,7 +103,7 @@ public:
     }
 
     void pageLockDstMemory() {
-        for(size_t dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
+        for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
             size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // bytes addressed
             for(auto &transfer: elementTransfers) {
@@ -116,7 +116,7 @@ public:
     }
 
     void programTransfers(size_t nSrcPoints, size_t nDstPoints) {
-        for(size_t dstIdx = 0, srcIdx = 0; dstIdx < nDstPoints; ++dstIdx, srcIdx = (srcIdx+1) % nSrcPoints) {
+        for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < nDstPoints; ++dstIdx, srcIdx = (srcIdx+1) % nSrcPoints) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
             size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // bytes addressed
             for(size_t localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
@@ -134,7 +134,7 @@ public:
 // TODO replace macros with templates after refactoring us4r-api
 #define ON_NEW_DATA_CALLBACK_signal_true \
     dstBuffer->signal(us4oemOrdinal, currentDstIdx); \
-    currentDstIdx = (currentDstIdx + srcNElements) % dstNElements;
+    currentDstIdx = (int16)((currentDstIdx + srcNElements) % dstNElements);
 
 #define ON_NEW_DATA_CALLBACK_signal_false
 
@@ -144,13 +144,13 @@ public:
 // Strategy 1: change sequencer firings definition, so the next firing will trigger the next portion of transfers
 // (nSrc < nDst && nDst <= 256)
 #define ON_NEW_DATA_CALLBACK_strategy_1 \
-    currentTransferIdx = (currentTransferIdx + srcNTransfers) % dstNTransfers; \
+    currentTransferIdx = (int16)((currentTransferIdx + srcNTransfers) % dstNTransfers); \
     ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, currentTransferIdx, nullptr);
 
 // Strategy 2: change transfer definition, so in the next call this transfer will write to subsequent dst element
 // (nDst > 256)
 #define ON_NEW_DATA_CALLBACK_strategy_2 \
-    uint16 nextElementIdx = (currentDstIdx + srcNElements) % dstNElements; \
+    uint16 nextElementIdx = (int16)((currentDstIdx + srcNElements) % dstNElements); \
     auto nextDstAddress = dstBuffer->getAddress(nextElementIdx, us4oemOrdinal); \
     nextDstAddress += transfer.address;                                    \
     ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src);
@@ -173,12 +173,12 @@ public:
         // Here schedule transfers only from the start points (nSrc calls), dst pointers will be incremented
         // appropriately (if necessary).
         uint16 elementFirstFiring = 0;
-        for(size_t srcIdx = 0; srcIdx < srcNTransfers; ++srcIdx) {
+        for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
             size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // bytes addressed
             uint16 elementLastFiring = srcBuffer->getElement(srcIdx).getFiring();
             // for each element's part transfer:
             uint16 transferFirstFiring = 0;
-            for(size_t localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
+            for(uint16 localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
                 auto &transfer = elementTransfers[localTransferIdx];
                 size_t transferIdx = srcIdx*nTransfersPerElement + localTransferIdx; // global transfer idx
                 size_t src = addressSrc + transfer.address;

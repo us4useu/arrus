@@ -14,7 +14,7 @@ int main() noexcept {
     using namespace ::arrus::framework;
     try {
         // TODO set path to us4r-lite configuration file
-        auto settings = ::arrus::io::readSessionSettings("/path/to/set");
+        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
         auto probe = us4r->getProbe(0);
@@ -44,7 +44,7 @@ int main() noexcept {
                                200e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, 500e-3f);
+        TxRxSequence seq(txrxs, {}, 5e-3f);
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
         Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
 
@@ -90,15 +90,15 @@ int main() noexcept {
         buffer->registerOnNewDataCallback(callback);
         buffer->registerOnOverflowCallback(overflowCallback);
 
-        session->startScheme();
-
-        // Wait for callback to signal that we hit 10-th iteration.
-        std::mutex mutex;
-        std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock);
-
-        // Stop the system.
-        session->stopScheme();
+//        session->startScheme();
+//
+//        // Wait for callback to signal that we hit 10-th iteration.
+//        std::mutex mutex;
+//        std::unique_lock<std::mutex> lock(mutex);
+//        cv.wait(lock);
+//
+//        // Stop the system.
+//        session->stopScheme();
 
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;

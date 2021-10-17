@@ -17,7 +17,6 @@ namespace arrus::ops::us4r {
  */
 class TxRx {
 public:
-    // TODO(pjarosik) remove default constructor!!! Currently required by py swig wrapper
     TxRx():tx(std::vector<bool>{}, std::vector<float>{}, Pulse(0, 0, false)),
            rx(std::vector<bool>{}, std::make_pair<unsigned int, unsigned int>((unsigned int)0, (unsigned int)0)),
            pri(0.0f)

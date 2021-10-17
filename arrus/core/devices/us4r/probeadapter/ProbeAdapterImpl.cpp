@@ -1,12 +1,12 @@
 #include "ProbeAdapterImpl.h"
 
+#include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/external/eigen/Dense.h"
 #include "arrus/core/devices/us4r/common.h"
 #include "arrus/core/common/validation.h"
 #include "arrus/core/common/aperture.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 #include "arrus/common/utils.h"
-#include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
 
 #undef ERROR
 

@@ -1101,7 +1101,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     }
 }
 // ------------------------------------------ TODO Test that all other parameters are passed unmodified
-
+}
 
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG(arrus::Logging);

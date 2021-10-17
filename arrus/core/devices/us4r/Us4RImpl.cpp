@@ -264,7 +264,7 @@ void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
 }
 
 uint8_t Us4RImpl::getNumberOfUs4OEMs() {
-    return us4oems.size();
+    return (uint8_t)us4oems.size();
 }
 
 }
