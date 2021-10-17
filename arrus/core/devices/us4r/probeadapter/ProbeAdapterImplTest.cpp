@@ -25,7 +25,6 @@ using ::testing::ByMove;
 using ::testing::AllOf;
 using ::arrus::framework::NdArray;
 
-
 const ChannelIdx DEFAULT_NCHANNELS = 64;
 
 struct TestTxRxParams {
@@ -67,8 +66,8 @@ std::vector<float> getDefaultTxDelays(ChannelIdx nchannels) {
 }
 
 std::tuple<
-    Us4OEMBuffer,
-    FrameChannelMapping::Handle>
+        Us4OEMBuffer,
+        FrameChannelMapping::Handle>
 createEmptySetTxRxResult(FrameChannelMapping::FrameNumber nFrames, ChannelIdx nChannels) {
     FrameChannelMappingBuilder builder(nFrames, nChannels);
     for(int i = 0; i < nFrames; ++i) {
@@ -83,15 +82,15 @@ createEmptySetTxRxResult(FrameChannelMapping::FrameNumber nFrames, ChannelIdx nC
 class MockUs4OEM : public Us4OEMImplBase {
 public:
     explicit MockUs4OEM(Ordinal id)
-        : Us4OEMImplBase(DeviceId(DeviceType::Us4OEM, id)) {}
+            : Us4OEMImplBase(DeviceId(DeviceType::Us4OEM, id)) {}
 
     MOCK_METHOD(
-        (std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>),
-        setTxRxSequence,
-        (const TxRxParamsSequence &seq, const ::arrus::ops::us4r::TGCCurve &tgc,
-         uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri,
-         bool triggerSync),
-        (override));
+            (std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>),
+            setTxRxSequence,
+            (const TxRxParamsSequence &seq, const::arrus::ops::us4r::TGCCurve &tgc,
+                    uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri,
+                    bool triggerSync),
+            (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
     MOCK_METHOD(double, getSamplingFrequency, (), (override));
     MOCK_METHOD(void, startTrigger, (), (override));
@@ -120,9 +119,9 @@ protected:
         ON_CALL(*us4oems[1], getChannelMapping()).WillByDefault(Return(defaultChannelMapping[1]));
 
         probeAdapter = std::make_unique<ProbeAdapterImpl>(
-            DeviceId(DeviceType::ProbeAdapter, 0),
-            ProbeAdapterModelId("test", "test"),
-            us4oemsPtr, getNChannels(), getChannelMapping());
+                DeviceId(DeviceType::ProbeAdapter, 0),
+                ProbeAdapterModelId("test", "test"),
+                us4oemsPtr, getNChannels(), getChannelMapping());
     }
 
     virtual ProbeAdapterImpl::ChannelMapping getChannelMapping() = 0;
@@ -156,10 +155,10 @@ TEST_F(ProbeAdapter64ChannelsTest, ChecksRxApertureSize) {
     BitMask rxAperture(128, false);
 
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.rxAperture = rxAperture))
+                    .getTxRxParameters()
     };
 
     // Throw: nchannels = 64, rx aperture size = 128
@@ -171,10 +170,10 @@ TEST_F(ProbeAdapter64ChannelsTest, ChecksTxApertureSize) {
     BitMask txAperture(32, false);
 
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txAperture = txAperture))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.txAperture = txAperture))
+                    .getTxRxParameters()
     };
 
     // Throw: nchannels = 64, aperture size = 32
@@ -186,10 +185,10 @@ TEST_F(ProbeAdapter64ChannelsTest, ChecksTxDelaysSize) {
     std::vector<float> txDelays(65, false);
 
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txDelays = txDelays))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.txDelays = txDelays))
+                    .getTxRxParameters()
     };
 
     // Throw: nchannels = 64, number of delays = 65
@@ -228,15 +227,14 @@ class ProbeAdapterChannelMapping1Test : public AbstractProbeAdapterImplTest {
 #define US4OEM_MOCK_SET_TX_RX_SEQUENCE() \
     setTxRxSequence(_, _, _, _, _, _)
 
-
 TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectly) {
     BitMask txAperture(64, false);
     ::arrus::setValuesInRange(txAperture, 20, 40, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txAperture = txAperture))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.txAperture = txAperture))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 20, 32, true);
@@ -253,10 +251,10 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesRxAperturesCorrectly) {
     BitMask rxAperture(64, false);
     ::arrus::setValuesInRange(rxAperture, 15, 51, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.rxAperture = rxAperture))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_ADDR_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 15, 32, true);
@@ -277,10 +275,10 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxDelaysCorrectly) {
         delays[i] = i * 5e-6;
     }
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txDelays = delays))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.txDelays = delays))
+                    .getTxRxParameters()
     };
 
     std::vector<float> delays0(Us4OEMImpl::N_TX_CHANNELS, 0);
@@ -304,10 +302,10 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectlySingleUs4
     BitMask txAperture(64, false);
     ::arrus::setValuesInRange(txAperture, 10, 21, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txAperture = txAperture))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.txAperture = txAperture))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_ADDR_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 10, 21, true);
@@ -325,10 +323,10 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectlySingleUs4
     BitMask txAperture(64, false);
     ::arrus::setValuesInRange(txAperture, 42, 61, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txAperture = txAperture))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (x.txAperture = txAperture))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_ADDR_CHANNELS, false);
     EXPECT_SEQUENCE_PROPERTY(0,
@@ -366,14 +364,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesCorrectlySin
     BitMask txAperture(getNChannels(), false);
     ::arrus::setValuesInRange(txAperture, 65, 80, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture,
-                x.rxAperture = getDefaultRxAperture(getNChannels()),
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture,
+                            x.rxAperture = getDefaultRxAperture(getNChannels()),
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 33, 48, true);
@@ -391,14 +389,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesCorrectlyTwo
     BitMask txAperture(getNChannels(), false);
     ::arrus::setValuesInRange(txAperture, 128 + 14, 128 + 40, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture,
-                x.rxAperture = getDefaultRxAperture(getNChannels()),
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture,
+                            x.rxAperture = getDefaultRxAperture(getNChannels()),
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 64 + 14, 64 + 32, true);
@@ -417,14 +415,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesCorrectlyThr
     BitMask txAperture(getNChannels(), false);
     ::arrus::setValuesInRange(txAperture, 16, 80, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture,
-                x.rxAperture = getDefaultRxAperture(getNChannels()),
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture,
+                            x.rxAperture = getDefaultRxAperture(getNChannels()),
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 16, 48, true);
@@ -444,17 +442,17 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesWithGapsCorr
     ::arrus::setValuesInRange(txAperture, 0 + 8, 160 + 30, true);
 
     txAperture[0 + 14] = txAperture[0 + 17]
-        = txAperture[32 + 23] = txAperture[32 + 24]
-        = txAperture[64 + 25] = txAperture[160 + 7] = false;
+            = txAperture[32 + 23] = txAperture[32 + 24]
+            = txAperture[64 + 25] = txAperture[160 + 7] = false;
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture,
-                x.rxAperture = getDefaultRxAperture(getNChannels()),
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture,
+                            x.rxAperture = getDefaultRxAperture(getNChannels()),
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 8, 96, true);
@@ -481,17 +479,17 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesAperturesCorrectlyForMu
     // There should be two apertures: [16, 80], [80, 100] with two gaps: 18, 55
 
     txAperture[0 + 14] = txAperture[0 + 17]
-        = txAperture[32 + 23] = txAperture[32 + 24]
-        = txAperture[64 + 25] = txAperture[160 + 7] = false;
+            = txAperture[32 + 23] = txAperture[32 + 24]
+            = txAperture[64 + 25] = txAperture[160 + 7] = false;
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture,
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture,
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 8, 96, true);
@@ -511,20 +509,20 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesAperturesCorrectlyForMu
 
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(
 
-        0,
+            0,
     // Tx aperture should stay the same.
     // Rx aperture should be adjusted appropriately.
-        ElementsAre(
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp0),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp00)
+            ElementsAre(
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp0),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp00)
+                    ),
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp0),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp01)
+                    )
             ),
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp0),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp01)
-            )
-        ),
-        2
+            2
     );
 
     BitMask expectedTxAp1(Us4OEMImpl::N_TX_CHANNELS, false);
@@ -538,17 +536,17 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesAperturesCorrectlyForMu
     BitMask expectedRxAp11(Us4OEMImpl::N_ADDR_CHANNELS, false);
     // second aperture should be empty
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(
-        1,
-        ElementsAre(
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp1),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp10)
+            1,
+            ElementsAre(
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp1),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp10)
+                    ),
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp1),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp11))
             ),
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp1),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp11))
-        ),
-        2
+            2
     );
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
@@ -565,17 +563,17 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesAperturesCorrectlyForMu
     rxAperture[0 + 18] = rxAperture[64 + 23] = false;
 
     txAperture[0 + 14] = txAperture[0 + 17]
-        = txAperture[32 + 23] = txAperture[32 + 24]
-        = txAperture[64 + 25] = txAperture[160 + 7] = false;
+            = txAperture[32 + 23] = txAperture[32 + 24]
+            = txAperture[64 + 25] = txAperture[160 + 7] = false;
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture,
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture,
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 9, 96, true);
@@ -591,20 +589,20 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesAperturesCorrectlyForMu
     expectedRxAp01[32 + 18] = false;
 
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(
-        0,
+            0,
     // Tx aperture should stay the same.
     // Rx aperture should be adjusted appropriately.
-        ElementsAre(
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp0),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp00)
+            ElementsAre(
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp0),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp00)
+                    ),
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp0),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp01)
+                    )
             ),
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp0),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp01)
-            )
-        ),
-        2
+            2
     );
 
     BitMask expectedTxAp1(Us4OEMImpl::N_TX_CHANNELS, false);
@@ -616,17 +614,17 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesAperturesCorrectlyForMu
     BitMask expectedRxAp11(Us4OEMImpl::N_ADDR_CHANNELS, false);
 
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(
-        1,
-        ElementsAre(
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp1),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp10)
+            1,
+            ElementsAre(
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp1),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp10)
+                    ),
+                    AllOf(
+                            Property(&TxRxParameters::getTxAperture, expectedTxAp1),
+                            Property(&TxRxParameters::getRxAperture, expectedRxAp11))
             ),
-            AllOf(
-                Property(&TxRxParameters::getTxAperture, expectedTxAp1),
-                Property(&TxRxParameters::getRxAperture, expectedRxAp11))
-        ),
-        2
+            2
     );
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
@@ -638,34 +636,34 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesTwoOperation
     BitMask txAperture1(getNChannels(), false);
     ::arrus::setValuesInRange(txAperture1, 23, 64 + 23, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture0,
-                x.rxAperture = getDefaultRxAperture(getNChannels()),
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters(),
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = txAperture1,
-                x.rxAperture = getDefaultRxAperture(getNChannels()),
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture0,
+                            x.rxAperture = getDefaultRxAperture(getNChannels()),
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters(),
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = txAperture1,
+                            x.rxAperture = getDefaultRxAperture(getNChannels()),
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     BitMask expectedTxAp00(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp00, 20, 32 + 20, true);
     BitMask expectedTxAp01(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp01, 23, 32 + 23, true);
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(
-        0,
-        ElementsAre(
-            Property(&TxRxParameters::getTxAperture, expectedTxAp00),
-            Property(&TxRxParameters::getTxAperture, expectedTxAp01)
-        ),
-        2
+            0,
+            ElementsAre(
+                    Property(&TxRxParameters::getTxAperture, expectedTxAp00),
+                    Property(&TxRxParameters::getTxAperture, expectedTxAp01)
+            ),
+            2
     );
 
     BitMask expectedTxAp10(Us4OEMImpl::N_TX_CHANNELS, false);
@@ -673,12 +671,12 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesTwoOperation
     BitMask expectedTxAp11(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp11, 0, 32, true);
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(
-        1,
-        ElementsAre(
-            Property(&TxRxParameters::getTxAperture, expectedTxAp10),
-            Property(&TxRxParameters::getTxAperture, expectedTxAp11)
-        ),
-        2
+            1,
+            ElementsAre(
+                    Property(&TxRxParameters::getTxAperture, expectedTxAp10),
+                    Property(&TxRxParameters::getTxAperture, expectedTxAp11)
+            ),
+            2
     );
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
@@ -689,14 +687,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     BitMask rxAperture(getNChannels(), false);
     ::arrus::setValuesInRange(rxAperture, 16, 72, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = getDefaultTxAperture(getNChannels()),
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = getDefaultTxAperture(getNChannels()),
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
@@ -713,17 +711,18 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
         builder1.setChannelMapping(0, i, 0, i);
     }
     auto fcm1 = builder1.build();
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
+    Us4OEMBuffer
+            us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
     EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res0))));
+            .WillOnce(Return(ByMove(std::move(res0))));
     EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res1))));
+            .WillOnce(Return(ByMove(std::move(res1))));
 
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
+    auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
     EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
     EXPECT_EQ(72 - 16, fcm->getNumberOfLogicalChannels());
@@ -754,20 +753,20 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     // Still, the input rx aperture stays as is.
 
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = getDefaultTxAperture(getNChannels()),
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = getDefaultTxAperture(getNChannels()),
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0, j = -1; i < 32; ++i) {
         int currentJ = -1;
         // channels were marked by the us4oem that are missing
-        if(i != 20-16 && i != 30-16 && i <= 25) {
+        if(i != 20 - 16 && i != 30 - 16 && i <= 25) {
             currentJ = ++j;
         }
         builder0.setChannelMapping(0, i, 0, currentJ);
@@ -777,27 +776,28 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     FrameChannelMappingBuilder builder1(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0, j = -1; i < 32; ++i) {
         int currentJ = -1;
-        if(i != 40-32) {
+        if(i != 40 - 32) {
             currentJ = ++j;
         }
         builder1.setChannelMapping(0, i, 0, currentJ);
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
+    Us4OEMBuffer
+            us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
     EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res0))));
+            .WillOnce(Return(ByMove(std::move(res0))));
     EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res1))));
+            .WillOnce(Return(ByMove(std::move(res1))));
 
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
+    auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
     EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
-    EXPECT_EQ(73-16, fcm->getNumberOfLogicalChannels());
+    EXPECT_EQ(73 - 16, fcm->getNumberOfLogicalChannels());
 
     std::vector<FrameChannelMapping::FrameNumber> expectedFrames;
     for(int i = 16; i < 32; ++i) {
@@ -810,14 +810,15 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
         expectedFrames.push_back(0);
     }
     std::vector<int8> expectedChannels = {
-        0, 1, 2, 3, -1, 4, 5, 6, 7, 8, 9, 10, 11, 12, -1, 13,
-        0, 1, 2, 3, 4, 5, 6, 7, -1, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-        29, 30,
-        14, 15, 16, 17, 18, 19, 20, 21, 22
+            0, 1, 2, 3, -1, 4, 5, 6, 7, 8, 9, 10, 11, 12, -1, 13,
+            0, 1, 2, 3, 4, 5, 6, 7, -1, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+            28,
+            29, 30,
+            14, 15, 16, 17, 18, 19, 20, 21, 22
     };
 
-    for(int i = 0; i < 73-16; ++i) {
-        auto [frame, channel] = fcm->getLogical(0, i);
+    for(int i = 0; i < 73 - 16; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
         EXPECT_EQ(expectedFrames[i], frame);
         EXPECT_EQ(expectedChannels[i], channel);
     }
@@ -832,14 +833,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
     // Still, the input rx aperture stays as is.
 
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = getDefaultTxAperture(getNChannels()),
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels())
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = getDefaultTxAperture(getNChannels()),
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels())
+                    ))
+                    .getTxRxParameters()
     };
     // FCM from the us4oem:0
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
@@ -853,7 +854,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
     // First frame:
     for(int i = 0, j = -1; i < 32; ++i) {
         int currentJ = -1;
-        if(i != 16+3) {
+        if(i != 16 + 3) {
             currentJ = ++j;
             builder1.setChannelMapping(0, i, 0, currentJ);
         } else {
@@ -864,29 +865,28 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
     for(int i = 0; i < 32; ++i) {
         if(i < 16) {
             builder1.setChannelMapping(1, i, 1, i);
-        }
-        else {
+        } else {
             builder1.setChannelMapping(1, i, 1, FrameChannelMapping::UNAVAILABLE);
         }
     }
     auto fcm1 = builder1.build();
 
     Us4OEMBuffer us4oemBuffer({
-        Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}),
-        ::arrus::framework::NdArray::DataType::INT16)}, {});
+                                      Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}),
+                                                          ::arrus::framework::NdArray::DataType::INT16)}, {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
     EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res0))));
+            .WillOnce(Return(ByMove(std::move(res0))));
     EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res1))));
+            .WillOnce(Return(ByMove(std::move(res1))));
 
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
+    auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
     EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
-    EXPECT_EQ(128-48, fcm->getNumberOfLogicalChannels());
+    EXPECT_EQ(128 - 48, fcm->getNumberOfLogicalChannels());
 
     std::vector<FrameChannelMapping::FrameNumber> expectedFrames;
     std::vector<int8> expectedChannels;
@@ -894,32 +894,32 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
     // Us4OEM:1, frame 1, channels 0-16
     for(int i = 48; i < 64; ++i) {
         expectedFrames.push_back(1);
-        expectedChannels.push_back(i-48);
+        expectedChannels.push_back(i - 48);
     }
     // Us4OEM:0
     for(int i = 64; i < 96; ++i) {
         expectedFrames.push_back(0);
-        expectedChannels.push_back(i-64);
+        expectedChannels.push_back(i - 64);
     }
     // Us4OEM:1, frame 1, channels 16-32
-    for(int i = 96; i < 96+15; ++i) { // 15 because there will be one -1
+    for(int i = 96; i < 96 + 15; ++i) { // 15 because there will be one -1
         expectedFrames.push_back(1);
-        if(i == 99 && expectedChannels[expectedChannels.size()-1] != FrameChannelMapping::UNAVAILABLE) {
+        if(i == 99 && expectedChannels[expectedChannels.size() - 1] != FrameChannelMapping::UNAVAILABLE) {
             expectedChannels.push_back(FrameChannelMapping::UNAVAILABLE);
             --i;
         } else {
-            expectedChannels.push_back(i-96+16);
+            expectedChannels.push_back(i - 96 + 16);
         }
     }
     // Us4OEM:1, frame 2
-    for(int i = 96+16; i < 128; ++i) {
+    for(int i = 96 + 16; i < 128; ++i) {
         expectedFrames.push_back(2);
-        expectedChannels.push_back(i-(96+16));
+        expectedChannels.push_back(i - (96 + 16));
     }
 
     // VALIDATE
-    for(int i = 0; i < 128-48; ++i) {
-        auto [frame, channel] = fcm->getLogical(0, i);
+    for(int i = 0; i < 128 - 48; ++i) {
+        auto[frame, channel] = fcm->getLogical(0, i);
         EXPECT_EQ(expectedFrames[i], frame);
         EXPECT_EQ(expectedChannels[i], channel);
     }
@@ -930,15 +930,15 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     BitMask rxAperture(getNChannels(), false);
     ::arrus::setValuesInRange(rxAperture, 0, 16, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = getDefaultTxAperture(getNChannels()),
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels()),
-                x.rxPadding = {16, 0}
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = getDefaultTxAperture(getNChannels()),
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels()),
+                            x.rxPadding = {16, 0}
+                    ))
+                    .getTxRxParameters()
     };
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
@@ -960,11 +960,11 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
     EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res0))));
+            .WillOnce(Return(ByMove(std::move(res0))));
     EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res1))));
+            .WillOnce(Return(ByMove(std::move(res1))));
 
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
+    auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
     EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
     EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding
@@ -978,7 +978,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     for(int i = 16; i < 32; ++i) {
         auto[frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(0, frame);
-        ASSERT_EQ(channel, i-16);
+        ASSERT_EQ(channel, i - 16);
     }
 }
 
@@ -987,15 +987,15 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     BitMask rxAperture(getNChannels(), false);
     ::arrus::setValuesInRange(rxAperture, 0, 49, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = getDefaultTxAperture(getNChannels()),
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels()),
-                x.rxPadding = {15, 0}
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = getDefaultTxAperture(getNChannels()),
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels()),
+                            x.rxPadding = {15, 0}
+                    ))
+                    .getTxRxParameters()
     };
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
@@ -1007,8 +1007,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     for(int i = 0; i < 32; ++i) {
         if(i < 17) {
             builder1.setChannelMapping(0, i, 0, i);
-        }
-        else {
+        } else {
             builder1.setChannelMapping(0, i, 0, FrameChannelMapping::UNAVAILABLE);
         }
     }
@@ -1020,11 +1019,11 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
     EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res0))));
+            .WillOnce(Return(ByMove(std::move(res0))));
     EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res1))));
+            .WillOnce(Return(ByMove(std::move(res1))));
 
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
+    auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
     EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
     EXPECT_EQ(64, fcm->getNumberOfLogicalChannels()); // 49 active + 15 rx padding
@@ -1033,15 +1032,15 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
         auto[frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
     }
-    for(int i = 15; i < 15+32; ++i) {
+    for(int i = 15; i < 15 + 32; ++i) {
         auto[frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, i - 15);
     }
-    for(int i = 15+32; i < 64; ++i) {
+    for(int i = 15 + 32; i < 64; ++i) {
         auto[frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(1, frame);
-        ASSERT_EQ(channel, i-(15+32));
+        ASSERT_EQ(channel, i - (15 + 32));
     }
 }
 
@@ -1049,15 +1048,15 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     BitMask rxAperture(getNChannels(), false);
     ::arrus::setValuesInRange(rxAperture, 176, 192, true);
     std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (
-                x.txAperture = getDefaultTxAperture(getNChannels()),
-                x.rxAperture = rxAperture,
-                x.txDelays = getDefaultTxDelays(getNChannels()),
-                x.rxPadding = {0, 16}
-            ))
-            .getTxRxParameters()
+            ARRUS_STRUCT_INIT_LIST(
+                    TestTxRxParams,
+                    (
+                            x.txAperture = getDefaultTxAperture(getNChannels()),
+                            x.rxAperture = rxAperture,
+                            x.txDelays = getDefaultTxDelays(getNChannels()),
+                            x.rxPadding = {0, 16}
+                    ))
+                    .getTxRxParameters()
     };
     FrameChannelMappingBuilder builder0(0, Us4OEMImpl::N_RX_CHANNELS);
     // No output
@@ -1067,25 +1066,24 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     for(int i = 0; i < 32; ++i) {
         if(i < 16) {
             builder1.setChannelMapping(0, i, 0, i);
-        }
-        else {
+        } else {
             builder1.setChannelMapping(0, i, 0, FrameChannelMapping::UNAVAILABLE);
         }
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}),NdArray::DataType::INT16)},
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
                               {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
     EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res0))));
+            .WillOnce(Return(ByMove(std::move(res0))));
     EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-        .WillOnce(Return(ByMove(std::move(res1))));
+            .WillOnce(Return(ByMove(std::move(res1))));
 
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
+    auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
     EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
     EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding

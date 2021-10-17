@@ -13,6 +13,8 @@
 #include <gsl/span>
 #include <boost/range/combine.hpp>
 
+#include "arrus/core/api/arrus.h"
+
 namespace arrus {
 
 template <typename T> inline T&& identity(T&& t) { return std::forward<T>(t); }
@@ -196,7 +198,7 @@ inline V getUnique(const std::vector<T> &input, std::function<V(const T&)> acces
     std::unordered_set<V> values;
     std::transform(std::begin(input), std::end(input), std::inserter(values, std::end(values)), accessor);
     if (values.size() > 1) {
-        throw ::arrus::IllegalArgumentException("Non unique input values.");
+        throw IllegalArgumentException("Non unique input values.");
     }
     // This is the size of a single element produced by this us4oem.
     return *std::begin(values);
