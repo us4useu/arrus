@@ -324,9 +324,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             lastPriExtend = sri.value() - totalPri;
         } else {
             // TODO move this condition to sequence validator
-            throw IllegalArgumentException(
-                    arrus::format("Sequence repetition interval {} cannot be set, sequence total pri is equal {}",
-                                  sri.value(), totalPri));
+            throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
+                                                  "sequence total pri is equal {}", sri.value(), totalPri));
         }
     }
 
@@ -359,9 +358,7 @@ float Us4OEMImpl::getTxRxTime(float rxTime) const {
     } else if(reprogrammingMode == Us4OEMSettings::ReprogrammingMode::PARALLEL) {
         txrxTime = std::max(rxTime, SEQUENCER_REPROGRAMMING_TIME);
     } else {
-        throw IllegalArgumentException(::arrus::format("Unrecognized reprogramming mode: {}",
-                                                       static_cast<size_t>(reprogrammingMode))
-        );
+        throw IllegalArgumentException(format("Unrecognized reprogramming mode: {}",static_cast<size_t>(reprogrammingMode)));
     }
     return txrxTime;
 }
