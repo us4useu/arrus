@@ -2,6 +2,8 @@
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPLBASE_H
 
 #include <vector>
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/devices/TxRxParameters.h"

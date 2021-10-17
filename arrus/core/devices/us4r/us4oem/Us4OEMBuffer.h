@@ -30,11 +30,11 @@ private:
 };
 
 /**
- * A description of a single us4oem buffer element.
+ * A description of a single us4oem buffer element (which is now a batch of sequences).
  *
  * An element is described by:
  * - src address
- * - size - size of the element (bytes)
+ * - size - size of the element (in bytes)
  * - firing - a firing which ends the acquiring Tx/Rx sequence
  */
 class Us4OEMBufferElement {
@@ -71,17 +71,20 @@ private:
     uint16 firing;
     framework::NdArray::Shape elementShape;
     framework::NdArray::DataType dataType;
-    std::vector<Us4OEMBufferElementPart> parts;
 };
 
 /**
  * A class describing a structure of a buffer that is located in the Us4OEM
  * memory.
+ *
+ * - All elements are assumed to have the same parts.
+ * - All part addresses are relative to the beginning of each element.
  */
 class Us4OEMBuffer {
 public:
-    explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements)
-        : elements(std::move(elements)) {}
+    explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements,
+                          std::vector<Us4OEMBufferElementPart> elementParts)
+        : elements(std::move(elements)), elementParts(std::move(elementParts)) {}
 
     [[nodiscard]] const Us4OEMBufferElement &getElement(size_t i) const {
         return elements[i];
@@ -95,8 +98,13 @@ public:
         return elements;
     }
 
+    [[nodiscard]] const std::vector<Us4OEMBufferElementPart> &getElementParts() const {
+        return elementParts;
+    }
+
 private:
     std::vector<Us4OEMBufferElement> elements;
+    std::vector<Us4OEMBufferElementPart> elementParts;
 };
 
 }

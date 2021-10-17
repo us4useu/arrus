@@ -72,6 +72,8 @@ public:
     static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
     static constexpr float MAX_PRI = 1.0f; // [s]
     static constexpr float RX_TIME_EPSILON = 5e-6f; // [s]
+    // 2^14 descriptors * 2^12 (4096, minimum page size) bytes
+    static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14+12); // bytes
 
     /**
      * Us4OEMImpl constructor.

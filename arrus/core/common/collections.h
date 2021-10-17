@@ -8,11 +8,14 @@
 #include <type_traits>
 #include <bitset>
 #include <stdexcept>
+#include <iterator>
 
 #include <gsl/span>
 #include <boost/range/combine.hpp>
 
 namespace arrus {
+
+template <typename T> inline T&& identity(T&& t) { return std::forward<T>(t); }
 
 /**
  * Returns an array of range [start, end).
@@ -186,6 +189,17 @@ inline T reduce(InputIt first, InputIt last, T init, BinaryOp binaryOp) {
         result = binaryOp(result, *it);
     }
     return result;
+}
+
+template <typename T, typename V>
+inline V getUnique(const std::vector<T> &input, std::function<V(const T&)> accessor = ::arrus::identity) {
+    std::unordered_set<V> values;
+    std::transform(std::begin(input), std::end(input), std::inserter(values, std::end(values)), accessor);
+    if (values.size() > 1) {
+        throw ::arrus::IllegalArgumentException("Non unique input values.");
+    }
+    // This is the size of a single element produced by this us4oem.
+    return *std::begin(values);
 }
 
 }

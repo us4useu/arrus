@@ -55,7 +55,7 @@ private:
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
 
-    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4OEMBuffer &us4oemBuffer,
+    void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
                               Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
 
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {

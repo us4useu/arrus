@@ -265,8 +265,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     size_t transferAddressStart = 0;
     uint16 firing = 0;
     std::vector<Us4OEMBufferElement> rxBufferElements;
+    // Assumption: all elements consists of the same parts.
+    std::vector<Us4OEMBufferElementPart> rxBufferElementParts;
+
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
-        std::vector<Us4OEMBufferElementPart> parts;
         // Total number of samples in a single batch.
         unsigned int totalNSamples = 0;
         // Sequences.
@@ -288,10 +290,12 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
 
                 if(!op.isRxNOP() || this->isMaster()) {
+                    if(batchIdx == 0) {
+                        rxBufferElementParts.emplace_back(outputAddress, nBytes, firing);
+                    }
                     // Also, allows rx nops for master module.
                     // Master module gathers frame metadata, so we cannot miss any of it.
                     // All RX nops are just overwritten.
-                    parts.emplace_back(outputAddress, nBytes, firing);
                     outputAddress += nBytes;
                     totalNSamples += (unsigned) nSamples;
                 }
@@ -345,7 +349,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             }
         }
     }
-    return {Us4OEMBuffer(rxBufferElements), std::move(fcm)};
+    return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
 }
 
 float Us4OEMImpl::getTxRxTime(float rxTime) const {
@@ -461,12 +465,10 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             result.emplace(opId, rxMapId);
             // Set channel mapping
             ARRUS_REQUIRES_TRUE(rxMapping.size() == N_RX_CHANNELS,
-                                arrus::format("Invalid size of the RX channel mapping to set: {}",
-                                              rxMapping.size()));
+                    arrus::format("Invalid size of the RX channel mapping to set: {}", rxMapping.size()));
             ARRUS_REQUIRES_TRUE(
                     rxMapId < 128,
-                    arrus::format("128 different rx mappings can be loaded only, deviceId: {}.",
-                                  getDeviceId().toString()));
+                    arrus::format("128 different rx mappings can be loaded only, deviceId: {}.", getDeviceId().toString()));
             ius4oem->SetRxChannelMapping(rxMapping, rxMapId);
             ++rxMapId;
         } else {
