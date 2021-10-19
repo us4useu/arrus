@@ -1,6 +1,5 @@
 #include "ProbeAdapterImpl.h"
 
-#include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/external/eigen/Dense.h"
 #include "arrus/core/devices/us4r/common.h"
 #include "arrus/core/common/validation.h"
@@ -36,26 +35,23 @@ public:
 
     void validate(const TxRxParamsSequence &txRxs) override {
         const auto nSamples = txRxs[0].getNumberOfSamples();
-        size_t nActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()),
-                                                   std::end(txRxs[0].getRxAperture()), 0)
-                + txRxs[0].getRxPadding().sum();
+        size_t nActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()), std::end(txRxs[0].getRxAperture()), 0);
+        nActiveRxChannels += txRxs[0].getRxPadding().sum();
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs[firing];
             auto firingStr = ::arrus::format("firing {}", firing);
-            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getRxAperture().size(), size_t(nChannels), firingStr);
-            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getTxAperture().size(), size_t(nChannels), firingStr);
-            ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-                    op.getTxDelays().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(nChannels), firingStr);
 
             ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
                                           "Each Rx should acquire the same number of samples.");
             size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[firing].getRxAperture()),
-                                                          std::end(txRxs[firing].getRxAperture()), 0)
-                    + txRxs[firing].getRxPadding().sum();
+                                                          std::end(txRxs[firing].getRxAperture()), 0);
+            currActiveRxChannels += txRxs[firing].getRxPadding().sum();
             ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
                                           "Each rx aperture should have the same size.");
+
             if(hasErrors()) {
                 return;
             }
@@ -123,18 +119,14 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         const auto &txDelays = op.getTxDelays();
 
         // TODO change the below to an 'assert'
-        ARRUS_REQUIRES_TRUE(txAperture.size() == rxAperture.size()
-                                    && txAperture.size() == numberOfChannels,
-                            arrus::format(
-                                    "Tx and Rx apertures should have a size: {}",
-                                    numberOfChannels));
+        ARRUS_REQUIRES_TRUE(txAperture.size() == rxAperture.size() && txAperture.size() == numberOfChannels,
+                            format("Tx and Rx apertures should have a size: {}", numberOfChannels));
 
         for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
             txApertures[ordinal][opNumber].resize(Us4OEMImpl::N_ADDR_CHANNELS);
             rxApertures[ordinal][opNumber].resize(Us4OEMImpl::N_ADDR_CHANNELS);
             txDelaysList[ordinal][opNumber].resize(Us4OEMImpl::N_ADDR_CHANNELS);
         }
-
         size_t activeAdapterCh = 0;
         bool isRxNop = true;
         std::vector<size_t> activeUs4oemCh(us4oems.size(), 0);
@@ -233,18 +225,14 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                 // if dstModuleChannel is unavailable, set channel mapping to -1 and continue
                 // unavailable dstModuleChannel means, that the given channel was virtual
                 // and has no assigned value.
-                ARRUS_REQUIRES_DATA_TYPE_E(
-                        dstModuleChannel, int8,
-                        ::arrus::ArrusException(
-                                "Invalid dstModuleChannel data type, "
-                                "rx aperture is outise."));
+                ARRUS_REQUIRES_DATA_TYPE_E(dstModuleChannel, int8,ArrusException("Invalid dstModuleChannel data type"));
                 if(FrameChannelMapping::isChannelUnavailable((int8) dstModuleChannel)) {
                     outFcBuilder.setChannelMapping(frameIdx, activeRxChIdx + op.getRxPadding()[0], 0,
                                                    FrameChannelMapping::UNAVAILABLE);
                 } else {
                     // Otherwise, we have an actual channel.
                     ARRUS_REQUIRES_TRUE_E(dstModule >= 0 && dstModuleChannel >= 0,
-                                          arrus::ArrusException("Dst module and dst channel should be non-negative"));
+                                          ArrusException("Dst module and dst channel should be non-negative"));
 
                     auto dstOp = opDstSplittedOp(dstModule, frameIdx, dstModuleChannel);
                     auto dstChannel = opDestSplittedCh(dstModule, frameIdx, dstModuleChannel);
@@ -320,9 +308,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     if (elementSize == 0) {
         return;
     }
-
-    Us4OEMDataTransferRegistrar transferRegistrar{bufferDst, &bufferSrc, us4oem};
-    transferRegistrar.registerTransfers();
+    transferRegistrar = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, &bufferSrc, us4oem);
+    transferRegistrar->registerTransfers();
 
     // Register buffer element release functions.
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;

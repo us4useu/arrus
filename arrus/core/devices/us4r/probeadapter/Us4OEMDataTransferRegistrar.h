@@ -105,7 +105,7 @@ public:
     void pageLockDstMemory() {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
-            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // bytes addressed
+            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // byte-addressed
             for(auto &transfer: elementTransfers) {
                 uint8 *dst = addressDst + transfer.address;
                 size_t src = addressSrc + transfer.address;
@@ -118,7 +118,7 @@ public:
     void programTransfers(size_t nSrcPoints, size_t nDstPoints) {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < nDstPoints; ++dstIdx, srcIdx = (srcIdx+1) % nSrcPoints) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
-            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // bytes addressed
+            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // byte-addressed
             for(size_t localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
                 auto &transfer = elementTransfers[localTransferIdx];
                 size_t transferIdx = srcIdx * nTransfersPerElement + localTransferIdx; // global transfer idx
@@ -132,36 +132,36 @@ public:
 
 // ON NEW DATA CALLBACK POLICIES
 // TODO replace macros with templates after refactoring us4r-api
-#define ON_NEW_DATA_CALLBACK_signal_true \
+#define ARRUS_ON_NEW_DATA_CALLBACK_signal_true \
     dstBuffer->signal(us4oemOrdinal, currentDstIdx); \
     currentDstIdx = (int16)((currentDstIdx + srcNElements) % dstNElements);
 
-#define ON_NEW_DATA_CALLBACK_signal_false
+#define ARRUS_ON_NEW_DATA_CALLBACK_signal_false
 
 // Strategy 0: keep transfers as they are (nSrc == nDst)
-#define ON_NEW_DATA_CALLBACK_strategy_0
+#define ARRUS_ON_NEW_DATA_CALLBACK_strategy_0
 
 // Strategy 1: change sequencer firings definition, so the next firing will trigger the next portion of transfers
 // (nSrc < nDst && nDst <= 256)
-#define ON_NEW_DATA_CALLBACK_strategy_1 \
+#define ARRUS_ON_NEW_DATA_CALLBACK_strategy_1 \
     currentTransferIdx = (int16)((currentTransferIdx + srcNTransfers) % dstNTransfers); \
     ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, currentTransferIdx, nullptr);
 
 // Strategy 2: change transfer definition, so in the next call this transfer will write to subsequent dst element
 // (nDst > 256)
-#define ON_NEW_DATA_CALLBACK_strategy_2 \
+#define ARRUS_ON_NEW_DATA_CALLBACK_strategy_2 \
     uint16 nextElementIdx = (int16)((currentDstIdx + srcNElements) % dstNElements); \
     auto nextDstAddress = dstBuffer->getAddress(nextElementIdx, us4oemOrdinal); \
     nextDstAddress += transfer.address;                                    \
     ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src);
 
 
-#define ON_NEW_DATA_CALLBACK(signal, strategy) \
+#define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy) \
 [=, currentDstIdx = srcIdx, currentTransferIdx = transferIdx] () mutable { \
     try {                            \
         ius4oem->MarkEntriesAsReadyForReceive(transferFirstFiring, transferLastFiring); \
-        ON_NEW_DATA_CALLBACK_strategy_##strategy                             \
-        ON_NEW_DATA_CALLBACK_signal_##signal                       \
+        ARRUS_ON_NEW_DATA_CALLBACK_strategy_##strategy                             \
+        ARRUS_ON_NEW_DATA_CALLBACK_signal_##signal                       \
     } \
     catch (const std::exception &e) { \
         logger->log(LogSeverity::ERROR, format("Us4OEM {}: callback exception: {}", us4oemOrdinal, e.what())); \
@@ -192,17 +192,17 @@ public:
                 std::function<void()> callback;
                 if(isLastTransfer) {
                     switch(strategy) {
-                        case 0: callback = ON_NEW_DATA_CALLBACK(true, 0); break;
-                        case 1: callback = ON_NEW_DATA_CALLBACK(true, 1); break;
-                        case 2: callback = ON_NEW_DATA_CALLBACK(true, 2); break;
+                        case 0: callback = ARRUS_ON_NEW_DATA_CALLBACK(true, 0); break;
+                        case 1: callback = ARRUS_ON_NEW_DATA_CALLBACK(true, 1); break;
+                        case 2: callback = ARRUS_ON_NEW_DATA_CALLBACK(true, 2); break;
                         default: throw std::runtime_error("Unknown registrar strategy");
                     }
                 }
                 else {
                     switch(strategy) {
-                        case 0: callback = ON_NEW_DATA_CALLBACK(false, 0); break;
-                        case 1: callback = ON_NEW_DATA_CALLBACK(false, 1); break;
-                        case 2: callback = ON_NEW_DATA_CALLBACK(false, 2); break;
+                        case 0: callback = ARRUS_ON_NEW_DATA_CALLBACK(false, 0); break;
+                        case 1: callback = ARRUS_ON_NEW_DATA_CALLBACK(false, 1); break;
+                        case 2: callback = ARRUS_ON_NEW_DATA_CALLBACK(false, 2); break;
                         default: throw std::runtime_error("Unknown registrar strategy");
                     }
                 }

@@ -11,6 +11,7 @@
 #include "arrus/common/asserts.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
+#include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
 
 namespace arrus::devices {
 
@@ -22,10 +23,8 @@ public:
     using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
     using ChannelMapping = ProbeAdapterSettings::ChannelMapping;
 
-    ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,
-                     std::vector<Us4OEMImplBase::RawHandle> us4oems,
-                     ChannelIdx numberOfChannels,
-                     ChannelMapping channelMapping);
+    ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,std::vector<Us4OEMImplBase::RawHandle> us4oems,
+                     ChannelIdx numberOfChannels, ChannelMapping channelMapping);
 
     [[nodiscard]] ChannelIdx getNumberOfChannels() const override {
         return numberOfChannels;
@@ -49,18 +48,19 @@ public:
                               ::arrus::ops::us4r::Scheme::WorkMode workMode) override;
 
 private:
-    Logger::Handle logger;
-    ProbeAdapterModelId modelId;
-    std::vector<Us4OEMImplBase::RawHandle> us4oems;
-    ChannelIdx numberOfChannels;
-    ChannelMapping channelMapping;
-
     void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
                               Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
 
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {
         return this->us4oems[0];
     }
+
+    Logger::Handle logger;
+    ProbeAdapterModelId modelId;
+    std::vector<Us4OEMImplBase::RawHandle> us4oems;
+    ChannelIdx numberOfChannels;
+    ChannelMapping channelMapping;
+    std::shared_ptr<Us4OEMDataTransferRegistrar> transferRegistrar;
 };
 
 }
