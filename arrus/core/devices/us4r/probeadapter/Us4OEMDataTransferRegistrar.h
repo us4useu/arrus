@@ -54,10 +54,8 @@ public:
         ARRUS_REQUIRES_AT_MOST(srcNTransfers, MAX_N_TRANSFERS, "Exceeded maximum number of transfers.");
 
         // If true: create only nSrc transfers, the callback function will reprogram the appropriate number transfers.
-        reprogramTransfers = dstNTransfers > MAX_N_TRANSFERS;
 
         if(dstNTransfers > MAX_N_TRANSFERS) {
-            reprogramTransfers = true;
             strategy = 2;
         }
         else if(dstNTransfers > srcNTransfers) {
@@ -75,8 +73,9 @@ public:
         pageLockDstMemory();
 
         // Send page descriptors to us4OEM DMA.
-        size_t nSrcPoints = srcNTransfers;
-        size_t nDstPoints = reprogramTransfers ? srcNTransfers : dstNTransfers;
+        size_t nSrcPoints = srcNElements;
+        size_t nDstPoints = strategy == 2 ? srcNElements : dstNElements;
+
         programTransfers(nSrcPoints, nDstPoints);
         scheduleTransfers();
     }
@@ -121,7 +120,7 @@ public:
             size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // byte-addressed
             for(size_t localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
                 auto &transfer = elementTransfers[localTransferIdx];
-                size_t transferIdx = srcIdx * nTransfersPerElement + localTransferIdx; // global transfer idx
+                size_t transferIdx = dstIdx * nTransfersPerElement + localTransferIdx; // global transfer idx
                 uint8 *dst = addressDst + transfer.address;
                 size_t src = addressSrc + transfer.address;
                 size_t size = transfer.size;
@@ -177,7 +176,7 @@ public:
             size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // bytes addressed
             uint16 elementLastFiring = srcBuffer->getElement(srcIdx).getFiring();
             // for each element's part transfer:
-            uint16 transferFirstFiring = 0;
+            uint16 transferFirstFiring = elementFirstFiring;
             for(uint16 localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
                 auto &transfer = elementTransfers[localTransferIdx];
                 size_t transferIdx = srcIdx*nTransfersPerElement + localTransferIdx; // global transfer idx
@@ -186,7 +185,6 @@ public:
                 // transfer.firing - firing offset within element
                 uint16 transferLastFiring = elementFirstFiring + transfer.firing;
 
-                std::function<void()> onNewDataCallback;
                 bool isLastTransfer = localTransferIdx == nTransfersPerElement-1;
 
                 std::function<void()> callback;
@@ -206,14 +204,13 @@ public:
                         default: throw std::runtime_error("Unknown registrar strategy");
                     }
                 }
-                ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, onNewDataCallback);
+                ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
 
                 transferFirstFiring = transferLastFiring + 1;
             }
             elementFirstFiring = elementLastFiring + 1;
         }
     }
-
 
 private:
     Logger::Handle logger;

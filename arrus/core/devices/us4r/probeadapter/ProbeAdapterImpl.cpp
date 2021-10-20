@@ -277,6 +277,11 @@ void ProbeAdapterImpl::syncTrigger() {
 void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                                             Scheme::WorkMode workMode) {
     Ordinal us4oemOrdinal = 0;
+
+    if(transferRegistrar.size() < us4oems.size()) {
+        transferRegistrar.resize(us4oems.size());
+    }
+
     for(auto &us4oem: us4oems) {
         auto us4oemBuffer = us4rBuffer->getUs4oemBuffer(us4oemOrdinal);
         registerOutputBuffer(buffer, us4oemBuffer, us4oem, workMode);
@@ -291,14 +296,11 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4R
  */
 void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
                                             Us4OEMImplBase *us4oem, Scheme::WorkMode workMode) {
+    auto us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
     auto ius4oem = us4oem->getIUs4oem();
     auto &elementsSrc = bufferSrc.getElements();
     const auto nElementsSrc = bufferSrc.getNumberOfElements();
     const size_t nElementsDst = bufferDst->getNumberOfElements();
-
-    if (bufferDst->getNumberOfElements() % bufferSrc.getNumberOfElements() != 0) {
-        throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
-    }
 
     size_t elementSize = ::arrus::getUnique<Us4OEMBufferElement, size_t>(
             elementsSrc,
@@ -308,16 +310,17 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     if (elementSize == 0) {
         return;
     }
-    transferRegistrar = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, &bufferSrc, us4oem);
-    transferRegistrar->registerTransfers();
+    transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, &bufferSrc, us4oem);
+    transferRegistrar[us4oemOrdinal]->registerTransfers();
 
     // Register buffer element release functions.
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
-    for(auto &srcElement: bufferSrc.getElements()) {
+    for(int i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
+        auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getFiring();
-        for(size_t i = 0; i < nRepeats; ++i) {
+        for(size_t j = 0; j < nRepeats; ++j) {
             std::function<void()> releaseFunc;
             if(isTriggerRequired) {
                 releaseFunc = [this, startFiring, endFiring]() {
@@ -334,6 +337,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
                     }
                 };
             }
+            bufferDst->registerReleaseFunction(j*nElementsSrc+i, releaseFunc);
         }
         startFiring = endFiring+1;
     }

@@ -25,12 +25,12 @@ int main() noexcept {
         ::arrus::BitMask rxAperture(nElements, true);
 
         Pulse pulse(6e6, 2, false);
-        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 2048};
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 8192};
 
         std::vector<TxRx> txrxs;
 
 		// 10 plane waves
-        for(int i = 0; i < 10; ++i) {
+        for(int i = 0; i < 4; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
@@ -39,12 +39,10 @@ int main() noexcept {
                 delays[d] = d*i*1e-9f;
             }
             arrus::BitMask txAperture(nElements, true);
-            txrxs.emplace_back(Tx(txAperture, delays, pulse),
-                               Rx(txAperture, sampleRange),
-                               200e-6f);
+            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(txAperture, sampleRange), 200e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, 5e-3f);
+        TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 32);
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
         Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
 
@@ -66,7 +64,7 @@ int main() noexcept {
                                      ")" << std::endl;
 
                 // Stop the system after 10-th frame.
-                if(i == 9) {
+                if(i == 3) {
                     cv.notify_one();
                 }
                 ptr->release();
@@ -90,15 +88,15 @@ int main() noexcept {
         buffer->registerOnNewDataCallback(callback);
         buffer->registerOnOverflowCallback(overflowCallback);
 
-//        session->startScheme();
-//
-//        // Wait for callback to signal that we hit 10-th iteration.
-//        std::mutex mutex;
-//        std::unique_lock<std::mutex> lock(mutex);
-//        cv.wait(lock);
-//
-//        // Stop the system.
-//        session->stopScheme();
+        session->startScheme();
+
+        // Wait for callback to signal that we hit 10-th iteration.
+        std::mutex mutex;
+        std::unique_lock<std::mutex> lock(mutex);
+        cv.wait(lock);
+
+        // Stop the system.
+        session->stopScheme();
 
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;

@@ -60,7 +60,7 @@ private:
     std::vector<Us4OEMImplBase::RawHandle> us4oems;
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
-    std::shared_ptr<Us4OEMDataTransferRegistrar> transferRegistrar;
+    std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
 };
 
 }
