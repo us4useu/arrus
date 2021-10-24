@@ -25,16 +25,57 @@ Plane Wave Imaging
 #. Go to |api_language|/examples directory.
 #. Run ``python plane_wave_imaging.py``
 
+This scrip implement 'plane wave imaging' scheme, 
+where the image is formed by combining a couple low-resolution images into one high-resolution image.
+Each low-resolution image is formed using data acquired after transmission of a plane wave at a different angle.
 After starting the script, you should be able to see an output similar to the below one:
 
 .. figure:: img/pwi-cysts.png
 
-    Plane wave imaging python script output. Phantom: ATS549, cysts.
+    Plane wave imaging python script output. Phantom: ATS549, cysts. Probe: L14-5/38 from Ultrasonix.
 
 
-.. Diverging Beams
+Classical Beamforming
+=====================
 
-.. Classical Beamforming
+
+#. Go to |api_language|/examples directory.
+#. Run ``python classical_beamforming.py``
+
+
+This script implement classical transmit-receive scheme, 
+where the image is formed using line by line scanning.
+After starting the script, you should be able to see an output image similar to the below one:
+
+.. figure:: img/bmode_bfr_phantom_cysts.png
+
+    Classical beamforming script output image. Phantom: ATS549, cysts. Probe: L14-5/38 from Ultrasonix. 
+
+
+Diverging Beams
+===============
+
+
+#. Go to |api_language|/examples directory.
+#. Run ``python diverging_beams.py``
+
+
+
+This script implement diverging beams transmit-receive scheme, 
+where the image is formed using data acquired after couple transmissions of diverging beams 
+with different virtual focuses. 
+After starting the script, you should be able to see an output image similar to the below one:
+
+.. figure:: img/bmode_div_phantom_cysts.png
+
+    Diverging beams scheme script output image. Phantom: ATS549, cysts. Probe: L14-5/38 from Ultrasonix. 
+
+
+Others
+======
+
+The /examples directory contain addtional scripts ``custom_callback.py`` and ``custom_tx_rx_sequence.py``
+which show how to construct custom sequences and callbacks. 
 
 .. Custom TX/RX Sequence
 
