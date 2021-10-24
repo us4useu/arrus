@@ -30,7 +30,7 @@ where the image is formed by combining a couple low-resolution images into one h
 Each low-resolution image is formed using data acquired after transmission of a plane wave at a different angle.
 After starting the script, you should be able to see an output similar to the below one:
 
-.. figure:: img/pwi-cysts.png
+.. figure:: img/bmode_pwi_phantom_cysts.png
 
     Plane wave imaging python script output. Phantom: ATS549, cysts. Probe: L14-5/38 from Ultrasonix.
 
