@@ -147,6 +147,8 @@ class Session(AbstractSession):
                                       dtype=m.dtype, math_pkg=np,
                                       type="locked")
                                for m in out_metadata]
+            # Wait for all the initialization done in by the Pipeline.
+            cp.cuda.Stream.null.synchronize()
             user_out_buffer = queue.Queue(maxsize=1)
 
             def buffer_callback(elements):
@@ -159,7 +161,6 @@ class Session(AbstractSession):
                         user_out_buffer.put_nowait(user_elements)
                     except queue.Full:
                         pass
-
                 except Exception as e:
                     print(f"Exception: {type(e)}")
                 except:
