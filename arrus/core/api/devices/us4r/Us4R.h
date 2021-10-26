@@ -144,7 +144,16 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
 
+    /**
+     * Returns the number of us4OEM modules that are used in this us4R system.
+     */
     virtual uint8_t getNumberOfUs4OEMs() = 0;
+
+    /**
+     * Returns us4R device sampling frequency.
+     */
+    virtual float getSamplingFrequency() const = 0;
+
 
     Us4R(Us4R const&) = delete;
     Us4R(Us4R const&&) = delete;

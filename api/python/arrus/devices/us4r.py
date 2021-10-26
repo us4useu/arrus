@@ -94,8 +94,11 @@ class Us4R(Device):
         """
         Device sampling frequency [Hz].
         """
-        # TODO use sampling frequency from the us4r device
-        return 65e6
+        return self._handle.getSamplingFrequency()
+
+    @property
+    def n_us4oems(self):
+        return self._handle.getNumberOfUs4OEMs()
 
     def set_kernel_context(self, kernel_context):
         self._current_sequence_context = kernel_context

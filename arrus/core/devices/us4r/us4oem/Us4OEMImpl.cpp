@@ -480,7 +480,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     return {result, outputRxApertures, fcmBuilder.build()};
 }
 
-double Us4OEMImpl::getSamplingFrequency() {
+float Us4OEMImpl::getSamplingFrequency() {
     return Us4OEMImpl::SAMPLING_FREQUENCY;
 }
 

@@ -267,4 +267,8 @@ void Us4RImpl::setTestPattern(Us4OEM::RxTestPattern pattern) {
     }
 }
 
+float Us4RImpl::getSamplingFrequency() const {
+    return us4oems[0]->getSamplingFrequency();
+}
+
 }

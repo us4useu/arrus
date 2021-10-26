@@ -24,7 +24,7 @@ public:
 
     ~Us4OEM() override = default;
 
-    virtual double getSamplingFrequency() = 0;
+    virtual float getSamplingFrequency() = 0;
 
     virtual float getFPGATemperature() = 0;
 
