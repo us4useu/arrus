@@ -124,6 +124,8 @@ public:
     void setActiveTermination(std::optional<uint16> value) override;
     uint8_t getNumberOfUs4OEMs() override;
 
+    void setTestPattern(Us4OEM::RxTestPattern pattern) override;
+
 private:
     UltrasoundDevice *getDefaultComponent();
 

@@ -135,6 +135,12 @@ public:
      */
     virtual void setRxSettings(const RxSettings &settings) = 0;
 
+    /**
+     * If active is true, turns off probe's RX data acquisition and turns on test patterns generation.
+     * Otherwise turns off test patterns generation and turns on probe's RX data acquisition.
+     */
+    virtual void setTestPattern(Us4OEM::RxTestPattern pattern) = 0;
+
     virtual void start() = 0;
     virtual void stop() = 0;
 

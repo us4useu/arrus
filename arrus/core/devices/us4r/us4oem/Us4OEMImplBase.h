@@ -44,6 +44,8 @@ public:
 
     virtual void setRxSettings(const RxSettings& settings) = 0;
 
+    virtual void setTestPattern(RxTestPattern pattern) = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

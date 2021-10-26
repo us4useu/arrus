@@ -121,6 +121,8 @@ public:
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
 
+    void setTestPattern(RxTestPattern pattern) override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 

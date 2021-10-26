@@ -202,7 +202,6 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 
     std::unique_lock<std::mutex> guard(afeParamsMutex);
     bool isStateInconsistent = false;
-    bool isError = false;
     try {
         for(auto &us4oem: us4oems) {
             us4oem->setRxSettings(settings);
@@ -212,18 +211,12 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
         isStateInconsistent = false;
         this->rxSettings = settings;
     }
-    catch(const std::exception &e) {
-        logger->log(LogSeverity::ERROR, ::arrus::format("Error while setting AFE parameters, msg: {}", e.what()));
-        isError = true;
-        throw e;
-    }
     catch(...) {
-        logger->log(LogSeverity::ERROR, "Unknown error while setting AFE parameters.");
-        isError = true;
-    }
-    if(isStateInconsistent && isError) {
-        logger->log(LogSeverity::ERROR, "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
-                                        "were not properly configured.");
+        if(isStateInconsistent) {
+            logger->log(LogSeverity::ERROR, "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
+                                            "were not properly configured.");
+        }
+        throw;
     }
 }
 
@@ -265,6 +258,13 @@ void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
 
 uint8_t Us4RImpl::getNumberOfUs4OEMs() {
     return (uint8_t)us4oems.size();
+}
+
+void Us4RImpl::setTestPattern(Us4OEM::RxTestPattern pattern) {
+    // TODO make the below exception safe
+    for(auto &us4oem: us4oems) {
+        us4oem->setTestPattern(pattern);
+    }
 }
 
 }

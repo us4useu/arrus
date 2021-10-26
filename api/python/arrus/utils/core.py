@@ -124,6 +124,13 @@ def convert_to_core_scheme(scheme):
                              workMode=core_work_mode)
 
 
+def convert_to_test_pattern(test_pattern_str):
+    return {
+        "OFF": arrus.core.Us4OEM.RxTestPattern_OFF,
+        "RAMP": arrus.core.Us4OEM.RxTestPattern_RAMP
+    }[test_pattern_str]
+
+
 def convert_from_tuple(core_tuple):
     """
     Converts arrus core tuple to python tuple.

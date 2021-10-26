@@ -635,4 +635,17 @@ float Us4OEMImpl::getFPGATemperature() {
     return ius4oem->GetFPGATemp();
 }
 
+void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
+    switch(pattern) {
+        case RxTestPattern::RAMP:
+            ius4oem->EnableTestPatterns();
+            break;
+        case RxTestPattern::OFF:
+            ius4oem->DisableTestPatterns();
+            break;
+        default:
+            throw IllegalArgumentException("Unrecognized test pattern");
+    }
+}
+
 }

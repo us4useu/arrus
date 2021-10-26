@@ -107,6 +107,13 @@ class Us4R(Device):
         return arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
 
+    def set_test_pattern(self, pattern):
+        """
+        Sets given test ADC test patter to be run by Us4OEM components.
+        """
+        test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
+        self._handle.setTestPattern(test_pattern_core)
+
     def _get_dto(self):
         probe_model = arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
