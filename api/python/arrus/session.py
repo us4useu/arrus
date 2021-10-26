@@ -213,6 +213,16 @@ class Session(AbstractSession):
         """
         self._session_handle.run()
 
+    def close(self):
+        """
+        Closes session.
+
+        This method disconnects with all the devices available during this session.
+        Sets the state of the session to closed, any subsequent call to the object
+        methods (e.g. upload, startScheme..) will result in exception.
+        """
+        self._session_handle.close()
+
     def get_device(self, path: str):
         """
         Returns a device identified by a given id.
