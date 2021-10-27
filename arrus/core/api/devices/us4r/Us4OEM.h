@@ -13,9 +13,18 @@ public:
     using Handle = std::unique_ptr<Us4OEM>;
     using RawHandle = PtrHandle<Us4OEM>;
 
+   /**
+    * Us4OEM ADC test pattern state.
+    */
+    enum class RxTestPattern {
+        OFF,
+        /** Ramp (sawtooth data pattern). */
+        RAMP,
+    };
+
     ~Us4OEM() override = default;
 
-    virtual double getSamplingFrequency() = 0;
+    virtual float getSamplingFrequency() = 0;
 
     virtual float getFPGATemperature() = 0;
 

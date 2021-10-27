@@ -181,7 +181,8 @@ set(SRC_FILES
     api/arrus.h
     api/session.h
     api/common.h api/io.h
-        devices/us4r/validators/RxSettingsValidator.h)
+    devices/us4r/validators/RxSettingsValidator.h
+    devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -239,8 +240,7 @@ target_compile_definitions(${TARGET_NAME} PRIVATE
 if (ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
 
-    set(ARRUS_CORE_DEVICES_TESTS_SRCS
-        devices/DeviceId.cpp common/logging.cpp)
+    set(ARRUS_CORE_DEVICES_TESTS_SRCS devices/DeviceId.cpp common/logging.cpp)
     # core::devices test
     create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/utilsTest.cpp)
@@ -250,26 +250,25 @@ if (ARRUS_RUN_TESTS)
     set(US4OEM_FACTORY_IMPL_TEST_DEPS devices/DeviceId.cpp common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
         devices/TxRxParameters.cpp devices/us4r/FrameChannelMappingImpl.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "${US4OEM_FACTORY_IMPL_TEST_DEPS}")
-#    #    create_core_test(devices/us4r/Us4RFactoryImplTest.cpp devic)
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
     create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
-#
+
     set(US4OEM_IMPL_TEST_DEPS common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
-        devices/us4r/common.cpp
-        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
+        devices/us4r/common.cpp devices/TxRxParameters.cpp devices/DeviceId.cpp
+        devices/us4r/FrameChannelMappingImpl.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
 
     set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
         devices/us4r/common.cpp
         devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/probeadapter/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
     create_core_test(devices/probe/ProbeImplTest.cpp
         "devices/probe/ProbeImpl.cpp;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
-    create_core_test(
-        io/settingsTest.cpp
+    create_core_test(io/settingsTest.cpp
         "" # no additional source files
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")

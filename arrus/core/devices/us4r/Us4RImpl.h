@@ -122,7 +122,12 @@ public:
     void setLpfCutoff(uint32 value) override;
     void setDtgcAttenuation(std::optional<uint16> value) override;
     void setActiveTermination(std::optional<uint16> value) override;
+
     uint8_t getNumberOfUs4OEMs() override;
+
+    void setTestPattern(Us4OEM::RxTestPattern pattern) override;
+
+    float getSamplingFrequency() const override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -130,7 +135,7 @@ private:
     void stopDevice();
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize, bool triggerSync);
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync);
 
     ProbeImplBase::RawHandle getProbeImpl() {
         return probe.value().get();

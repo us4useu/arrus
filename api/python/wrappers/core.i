@@ -239,6 +239,7 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceId.h"
 %include "arrus/core/api/devices/Device.h"
 %include "arrus/core/api/devices/DeviceWithComponents.h"
+%include "arrus/core/api/devices/us4r/Us4OEM.h"
 %include "arrus/core/api/devices/us4r/Us4R.h"
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"

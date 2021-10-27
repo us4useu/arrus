@@ -111,6 +111,7 @@ class TxRxSequence:
     ops: typing.List[TxRx]
     tgc_curve: np.ndarray
     sri: float = None
+    n_repeats: int = 1
 
     def __post_init__(self):
         object.__setattr__(self, "tgc_curve", np.asarray(self.tgc_curve))
