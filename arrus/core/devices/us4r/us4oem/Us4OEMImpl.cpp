@@ -54,6 +54,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
                           ::arrus::format("Following us4oem channels will be turned off: {}",
                                           ::arrus::toString(this->channelsMask)));
     }
+    setTestPattern(RxTestPattern::OFF);
     setRxSettingsPrivate(this->rxSettings, true);
 }
 
