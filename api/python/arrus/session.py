@@ -92,6 +92,8 @@ class Session(AbstractSession):
         kernel_context = self._create_kernel_context(seq, us_device_dto, medium)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
 
+        batch_size = raw_seq.n_repeats
+
         actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
@@ -119,7 +121,7 @@ class Session(AbstractSession):
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
         n_samples = next(iter(n_samples))
-        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=1)
+        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=batch_size)
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
 
@@ -300,7 +302,7 @@ class Session(AbstractSession):
         # TODO: We assume here, that each frame has the same number of samples!
         # This might not be case in further improvements.
         n_frames = np.max(fcm.frames) + 1
-        return n_frames * n_samples * rx_batch_size, n_channels
+        return n_frames*n_samples*rx_batch_size, n_channels
 
 
 
