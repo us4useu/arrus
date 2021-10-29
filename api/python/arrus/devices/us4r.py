@@ -94,8 +94,11 @@ class Us4R(Device):
         """
         Device sampling frequency [Hz].
         """
-        # TODO use sampling frequency from the us4r device
-        return 65e6
+        return self._handle.getSamplingFrequency()
+
+    @property
+    def n_us4oems(self):
+        return self._handle.getNumberOfUs4OEMs()
 
     def set_kernel_context(self, kernel_context):
         self._current_sequence_context = kernel_context
@@ -106,6 +109,13 @@ class Us4R(Device):
         """
         return arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
+
+    def set_test_pattern(self, pattern):
+        """
+        Sets given test ADC test patter to be run by Us4OEM components.
+        """
+        test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
+        self._handle.setTestPattern(test_pattern_core)
 
     def _get_dto(self):
         probe_model = arrus.utils.core.convert_to_py_probe_model(

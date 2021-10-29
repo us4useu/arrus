@@ -111,6 +111,7 @@ class TxRxSequence:
     ops: typing.List[TxRx]
     tgc_curve: np.ndarray
     sri: float = None
+    n_repeats: int = 1
 
     def __post_init__(self):
         object.__setattr__(self, "tgc_curve", np.asarray(self.tgc_curve))
@@ -143,7 +144,7 @@ class Scheme:
     :param rx_buffer_size: number of elements the rx buffer (allocated on \
       us4r ddr internal memory) should consists of
     :param output_buffer: specification of the output buffer
-    :param work_mode: determines the system work mode, available values: 'ASYNC', 'HOST'
+    :param work_mode: determines the system work mode, available values: 'ASYNC', 'HOST', 'MANUAL'
     :param processing: data processing to perform on the raw channel RF data \
       currently only arrus.utils.imaging is supported
     """

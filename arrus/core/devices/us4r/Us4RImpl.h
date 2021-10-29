@@ -106,6 +106,8 @@ public:
 
     void stop() override;
 
+    void trigger();
+
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;
@@ -122,15 +124,19 @@ public:
     void setActiveTermination(std::optional<uint16> value) override;
     void trigger() override;
 
+    uint8_t getNumberOfUs4OEMs() override;
+
+    void setTestPattern(Us4OEM::RxTestPattern pattern) override;
+
+    float getSamplingFrequency() const override;
+
 private:
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
 
-    void syncTrigger();
-
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize, bool triggerSync);
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync);
 
     ProbeImplBase::RawHandle getProbeImpl() {
         return probe.value().get();

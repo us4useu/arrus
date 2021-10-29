@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <mutex>
 #include <iostream>
+#include <future>
 
 #include "IUs4OEMInitializer.h"
 
@@ -31,31 +32,17 @@ public:
         // Us4OEMs are initialized here.
     }
 private:
-    void initializeUs4oems(std::vector<IUs4OEMHandle> &ius4oems, int level) {
-        std::vector<std::exception> exceptions;
-        std::mutex exceptions_mutex;
 
-        std::for_each(std::begin(ius4oems), std::end(ius4oems),
-            [&](IUs4OEMHandle &u) {
-                try {
-                    u->Initialize(level);
-                }
-                catch(const std::exception &e) {
-                    std::lock_guard guard(exceptions_mutex);
-                    exceptions.push_back(e);
-		    // TODO fix the list of std exceptions
-		    std::cout << e.what() << std::endl;
-                }
-                catch(...) {
-                    std::lock_guard guard(exceptions_mutex);
-                    exceptions.push_back(std::runtime_error("Unknown exception during Us4OEM initialization."));
-                }
-            }
-        );
-        if(!exceptions.empty()) {
-            // TODO create a complete list of error messages
-            // now throw any of the exception
-            throw exceptions.front();
+    void initializeUs4oems(std::vector<IUs4OEMHandle> &ius4oems, int level) {
+        std::vector<std::future<void>> results;
+
+        for(IUs4OEMHandle &ius4oem : ius4oems) {
+            std::future<void> result = std::async(std::launch::async, [&ius4oem, level]() {ius4oem->Initialize(level);});
+            results.push_back(std::move(result));
+        }
+        for(auto &result: results) {
+            result.wait();
+            result.get(); // wait and throw exception if necessary.
         }
     }
 };

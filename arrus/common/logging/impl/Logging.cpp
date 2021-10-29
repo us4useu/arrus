@@ -9,6 +9,7 @@
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", arrus::LogSeverity)
 BOOST_LOG_ATTRIBUTE_KEYWORD(deviceIdLogAttr, "DeviceId", std::string)
+BOOST_LOG_ATTRIBUTE_KEYWORD(componentIdLogAttr, "ComponentId", std::string)
 
 namespace arrus {
 
@@ -36,6 +37,10 @@ addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
         << expr::if_(expr::has_attr(deviceIdLogAttr))
         [
             expr::stream << "[" << deviceIdLogAttr << "]"
+        ]
+        << expr::if_(expr::has_attr(componentIdLogAttr))
+        [
+            expr::stream << "[" << componentIdLogAttr << "]"
         ]
         << " " << severity << ": "
         << expr::smessage;

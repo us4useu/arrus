@@ -13,6 +13,7 @@
 namespace arrus::devices {
 
 using ::arrus::ops::us4r::TxRxSequence;
+using ::arrus::ops::us4r::Scheme;
 using ::arrus::ops::us4r::Tx;
 using ::arrus::ops::us4r::Rx;
 using ::arrus::ops::us4r::Pulse;
@@ -71,32 +72,25 @@ void Us4RImpl::disableHV() {
 }
 
 std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
-Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
-                 unsigned short rxBufferNElements,
-                 const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
+Us4RImpl::upload(const TxRxSequence &seq, unsigned short rxBufferNElements, const Scheme::WorkMode &workMode,
                  const DataBufferSpec &outputBufferSpec) {
-
     unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
 
     // Validate input parameters.
-    ARRUS_REQUIRES_EQUAL(
-        getDefaultComponent(), probe.value().get(),
-        ::arrus::IllegalArgumentException(
-            "Currently TxRx sequence upload is available for system with probes only."));
+    ARRUS_REQUIRES_EQUAL(getDefaultComponent(), probe.value().get(),
+        IllegalArgumentException("Currently TxRx sequence upload is available for system with probes only."));
     if ((hostBufferNElements % rxBufferNElements) != 0) {
-        throw ::arrus::IllegalArgumentException(
-            ::arrus::format(
+        throw IllegalArgumentException(format(
                 "The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
                 hostBufferNElements, rxBufferNElements));
     }
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if (this->state == State::STARTED) {
-        throw ::arrus::IllegalStateException("The device is running, uploading sequence is forbidden.");
+        throw IllegalStateException("The device is running, uploading sequence is forbidden.");
     }
-
     // Upload and register buffers.
-    bool isTriggerSync = workMode == ::arrus::ops::us4r::Scheme::WorkMode::HOST;
-    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, 1, isTriggerSync);
+    bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
+    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync);
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -115,7 +109,7 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
     }
     // Create output buffer.
     this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements);
-    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, isTriggerSync);
+    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
     return {this->buffer, std::move(fcm)};
 }
 
@@ -164,8 +158,7 @@ Us4RImpl::~Us4RImpl() {
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize,
-                         bool triggerSync) {
+Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync) {
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
@@ -180,15 +173,15 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSi
                             sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding));
         ++opIdx;
     }
-    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize, rxBatchSize, seq.getSri(),
+    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
                                            triggerSync);
 }
 
-void Us4RImpl::syncTrigger() {
+void Us4RImpl::trigger() {
     this->getDefaultComponent()->syncTrigger();
 }
 
-// AFE parameters
+// AFE parameter setters.
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
     setTgcCurve(tgcCurvePoints, true);
 }
@@ -209,7 +202,6 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 
     std::unique_lock<std::mutex> guard(afeParamsMutex);
     bool isStateInconsistent = false;
-    bool isError = false;
     try {
         for(auto &us4oem: us4oems) {
             us4oem->setRxSettings(settings);
@@ -219,18 +211,12 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
         isStateInconsistent = false;
         this->rxSettings = settings;
     }
-    catch(const std::exception &e) {
-        logger->log(LogSeverity::ERROR, ::arrus::format("Error while setting AFE parameters, msg: {}", e.what()));
-        isError = true;
-        throw e;
-    }
     catch(...) {
-        logger->log(LogSeverity::ERROR, "Unknown error while setting AFE parameters.");
-        isError = true;
-    }
-    if(isStateInconsistent && isError) {
-        logger->log(LogSeverity::ERROR, "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
-                                        "were not properly configured.");
+        if(isStateInconsistent) {
+            logger->log(LogSeverity::ERROR, "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
+                                            "were not properly configured.");
+        }
+        throw;
     }
 }
 
@@ -270,8 +256,19 @@ void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     setRxSettings(newRxSettings);
 }
 
-void Us4RImpl::trigger() {
-    this->us4oems[0]->syncTrigger();
+uint8_t Us4RImpl::getNumberOfUs4OEMs() {
+    return (uint8_t)us4oems.size();
+}
+
+void Us4RImpl::setTestPattern(Us4OEM::RxTestPattern pattern) {
+    // TODO make the below exception safe
+    for(auto &us4oem: us4oems) {
+        us4oem->setTestPattern(pattern);
+    }
+}
+
+float Us4RImpl::getSamplingFrequency() const {
+    return us4oems[0]->getSamplingFrequency();
 }
 
 }

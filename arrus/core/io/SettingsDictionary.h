@@ -45,7 +45,6 @@ class SettingsDictionary {
                 probeModelId.getManufacturer(), probeModelId.getName(),
                 adapterModelId.getManufacturer(), adapterModelId.getName()));
         }
-        return probesMap.at(key);
     }
 
     void insertProbeSettings(ProbeSettings &&probe,

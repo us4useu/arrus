@@ -72,6 +72,8 @@ public:
     static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
     static constexpr float MAX_PRI = 1.0f; // [s]
     static constexpr float RX_TIME_EPSILON = 5e-6f; // [s]
+    // 2^14 descriptors * 2^12 (4096, minimum page size) bytes
+    static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14+12); // bytes
 
     /**
      * Us4OEMImpl constructor.
@@ -99,7 +101,7 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false) override;
 
-    double getSamplingFrequency() override;
+    float getSamplingFrequency() override;
 
     Interval<Voltage> getAcceptedVoltageRange() override {
         return Interval<Voltage>(MIN_VOLTAGE, MAX_VOLTAGE);
@@ -117,6 +119,9 @@ public:
 
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
+    float getFPGATemperature() override;
+
+    void setTestPattern(RxTestPattern pattern) override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
@@ -132,7 +137,7 @@ private:
 
     float getTxRxTime(float rxTime) const;
 
-    // IUs4OEM AFE stters.
+    // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
     void setPgaGainAfe(uint16 value, bool force);
     void setLnaGainAfe(uint16 value, bool force);

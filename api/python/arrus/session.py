@@ -92,6 +92,8 @@ class Session(AbstractSession):
         kernel_context = self._create_kernel_context(seq, us_device_dto, medium)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
 
+        batch_size = raw_seq.n_repeats
+
         actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
@@ -119,7 +121,7 @@ class Session(AbstractSession):
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
         n_samples = next(iter(n_samples))
-        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=1)
+        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=batch_size)
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
 
@@ -147,6 +149,8 @@ class Session(AbstractSession):
                                       dtype=m.dtype, math_pkg=np,
                                       type="locked")
                                for m in out_metadata]
+            # Wait for all the initialization done in by the Pipeline.
+            cp.cuda.Stream.null.synchronize()
             user_out_buffer = queue.Queue(maxsize=1)
 
             def buffer_callback(elements):
@@ -159,7 +163,6 @@ class Session(AbstractSession):
                         user_out_buffer.put_nowait(user_elements)
                     except queue.Full:
                         pass
-
                 except Exception as e:
                     print(f"Exception: {type(e)}")
                 except:
@@ -200,6 +203,27 @@ class Session(AbstractSession):
         time.sleep(_STOP_TIME)
         if self._current_processing is not None:
             self._current_processing.stop()
+
+    def run(self):
+        """
+        Runs the uploaded scheme.
+
+        The behaviour of this method depends on the work mode:
+        - MANUAL: triggers execution of batch of sequences only ONCE,
+        - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
+         The run function can be called only once (before the scheme is stopped).
+        """
+        self._session_handle.run()
+
+    def close(self):
+        """
+        Closes session.
+
+        This method disconnects with all the devices available during this session.
+        Sets the state of the session to closed, any subsequent call to the object
+        methods (e.g. upload, startScheme..) will result in exception.
+        """
+        self._session_handle.close()
 
     def get_device(self, path: str):
         """
@@ -278,7 +302,7 @@ class Session(AbstractSession):
         # TODO: We assume here, that each frame has the same number of samples!
         # This might not be case in further improvements.
         n_frames = np.max(fcm.frames) + 1
-        return n_frames * n_samples * rx_batch_size, n_channels
+        return n_frames*n_samples*rx_batch_size, n_channels
 
 
 

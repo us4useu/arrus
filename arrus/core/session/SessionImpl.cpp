@@ -25,6 +25,24 @@ namespace arrus::session {
 
 using namespace arrus::devices;
 
+#define ASSERT_STATE(expectedState) \
+do {                                    \
+    if(this->state != expectedState)  { \
+                                        \
+        throw ::arrus::IllegalStateException(::arrus::format("Invalid session state, should be: {}", \
+                                             toString(expectedState))); \
+    }                                   \
+} while(0)
+
+#define ASSERT_STATE_NOT(excludedState) \
+do {                                    \
+    if(this->state == excludedState)  { \
+                                        \
+        throw ::arrus::IllegalStateException(::arrus::format("Invalid session state, should not be: {}", \
+                                             toString(excludedState))); \
+    }                                   \
+} while(0)
+
 Session::Handle createSession(const SessionSettings &sessionSettings) {
     return std::make_unique<SessionImpl>(
         sessionSettings,
@@ -48,9 +66,8 @@ Session::Handle createSession(const std::string& filepath) {
 SessionImpl::SessionImpl(const SessionSettings &sessionSettings,
                          Us4RFactory::Handle us4RFactory)
     : us4rFactory(std::move(us4RFactory)) {
-    getDefaultLogger()->log(LogSeverity::DEBUG,
-                            arrus::format("Configuring session: {}",
-                                          toString(sessionSettings)));
+    getDefaultLogger()->log(LogSeverity::DEBUG, arrus::format("Configuring session: {}",
+                                                              ::arrus::toString(sessionSettings)));
     devices = configureDevices(sessionSettings);
 }
 
@@ -100,12 +117,13 @@ SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
 }
 
 SessionImpl::~SessionImpl() {
-    ::arrus::getDefaultLogger()->log(LogSeverity::INFO, "Closing session.");
-    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
-    us4r->stop();
+    this->close();
 }
 
 UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
+    ASSERT_STATE(State::STOPPED);
+
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
@@ -114,18 +132,58 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
     metadataMap.emplace("frameChannelMapping", std::move(fcm));
     auto constMetadata = std::make_shared<UploadConstMetadata>(metadataMap);
+    currentScheme = scheme;
     return UploadResult(buffer, constMetadata);
 }
 
 void SessionImpl::startScheme() {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
+    ASSERT_STATE(State::STOPPED);
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->start();
+    state = State::STARTED;
 }
 
 void SessionImpl::stopScheme() {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
+    ASSERT_STATE(State::STARTED);
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->stop();
+    state = State::STOPPED;
 }
 
+void SessionImpl::run() {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
+    ASSERT_STATE_NOT(State::CLOSED);
+
+    if(!currentScheme.has_value()) {
+        throw IllegalStateException("Upload scheme before running.");
+    }
+    if(state == State::STOPPED) {
+        startScheme();
+    } else {
+        if(currentScheme.value().getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL) {
+            auto us4r = (::arrus::devices::Us4RImpl *)getDevice(DeviceId(DeviceType::Us4R, 0));
+            us4r->trigger();
+        }
+        else {
+            throw IllegalStateException("Scheme already started.");
+        }
+    }
+}
+
+void SessionImpl::close() {
+    std::lock_guard<std::recursive_mutex> guard(stateMutex);
+    if(this->state == State::CLOSED) {
+        getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Session already closed."));
+        return;
+    }
+    if(this->state == State::STARTED) {
+        stopScheme();
+    }
+    getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Closing session."));
+    this->devices.clear();
+    this->state = State::CLOSED;
+}
 
 }

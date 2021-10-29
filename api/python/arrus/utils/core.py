@@ -3,6 +3,9 @@ import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
 
+_UINT16_MIN = 0
+_UINT16_MAX = 2**16-1
+
 
 def convert_to_core_sequence(seq):
     """
@@ -37,8 +40,6 @@ def convert_to_core_sequence(seq):
             rx.downsampling_factor,
             arrus.core.PairChannelIdx(int(rx.padding[0]), int(rx.padding[1]))
         )
-
-
         core_txrx = arrus.core.TxRx(core_tx, core_rx, op.pri)
         arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
 
@@ -51,7 +52,13 @@ def convert_to_core_sequence(seq):
                 "samples are supported only.")
 
     sri = -1 if seq.sri is None else seq.sri
-    core_seq = arrus.core.TxRxSequence(core_seq, seq.tgc_curve.tolist(), sri)
+    if seq.n_repeats < _UINT16_MIN or seq.n_repeats > _UINT16_MAX:
+        raise arrus.exceptions.IllegalArgumentError(
+            f"Parameter n_repeats should be in range "
+            f"[{_UINT16_MIN}, {_UINT16_MAX}]"
+        )
+    core_seq = arrus.core.TxRxSequence(core_seq, seq.tgc_curve.tolist(), sri,
+                                       seq.n_repeats)
     return core_seq
 
 
@@ -109,11 +116,19 @@ def convert_to_core_scheme(scheme):
 
     core_work_mode = {
         "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
-        "HOST": arrus.core.Scheme.WorkMode_HOST
+        "HOST": arrus.core.Scheme.WorkMode_HOST,
+        "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
     }[scheme.work_mode]
 
     return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
                              workMode=core_work_mode)
+
+
+def convert_to_test_pattern(test_pattern_str):
+    return {
+        "OFF": arrus.core.Us4OEM.RxTestPattern_OFF,
+        "RAMP": arrus.core.Us4OEM.RxTestPattern_RAMP
+    }[test_pattern_str]
 
 
 def convert_from_tuple(core_tuple):
