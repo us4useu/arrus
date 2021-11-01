@@ -8,9 +8,10 @@
 namespace arrus::devices {
 
 FrameChannelMappingImpl::FrameChannelMappingImpl(
-        Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping)
+        Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
+        std::vector<uint32> frameOffsets)
     : us4oemMapping(std::move(us4oemMapping)), frameMapping(std::move(frameMapping)),
-    channelMapping(std::move(channelMapping)) {
+    channelMapping(std::move(channelMapping)), frameOffsets(std::move(frameOffsets)) {
 
     ARRUS_REQUIRES_TRUE_E(frameMapping.rows() == channelMapping.rows()
                           && frameMapping.cols() == channelMapping.cols()
@@ -18,6 +19,8 @@ FrameChannelMappingImpl::FrameChannelMappingImpl(
                           && frameMapping.cols() == us4oemMapping.cols(),
                           ArrusException("All channel mapping structures should have the same shape"));
 }
+
+FrameChannelMappingImpl::~FrameChannelMappingImpl() = default;
 
 std::tuple<FrameChannelMapping::Us4OEMNumber, FrameChannelMapping::FrameNumber, int8>
 FrameChannelMappingImpl::getLogical(FrameNumber frame, ChannelIdx channel) {
@@ -39,7 +42,9 @@ ChannelIdx FrameChannelMappingImpl::getNumberOfLogicalChannels() {
     return static_cast<ChannelIdx>(frameMapping.cols());
 }
 
-FrameChannelMappingImpl::~FrameChannelMappingImpl() = default;
+uint32 FrameChannelMappingImpl::getFirstFrame(uint8 us4oem) {
+    return frameOffsets[us4oem];
+}
 
 void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel,
                                                    uint8 us4oem, FrameNumber physicalFrame, int8 physicalChannel) {
@@ -49,7 +54,8 @@ void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, Cha
 }
 
 FrameChannelMappingImpl::Handle FrameChannelMappingBuilder::build() {
-    return std::make_unique<FrameChannelMappingImpl>(this->us4oemMapping, this->frameMapping, this->channelMapping);
+    return std::make_unique<FrameChannelMappingImpl>(this->us4oemMapping, this->frameMapping, this->channelMapping,
+                                                     this->frameOffsets);
 }
 
 FrameChannelMappingBuilder::FrameChannelMappingBuilder(FrameNumber nFrames, ChannelIdx nChannels)
@@ -60,6 +66,10 @@ FrameChannelMappingBuilder::FrameChannelMappingBuilder(FrameNumber nFrames, Chan
     us4oemMapping.fill(0);
     frameMapping.fill(0);
     channelMapping.fill(FrameChannelMapping::UNAVAILABLE);
+}
+
+void FrameChannelMappingBuilder::setFrameOffsets(const std::vector<uint32> &offsets) {
+    FrameChannelMappingBuilder::frameOffsets = offsets;
 }
 
 }

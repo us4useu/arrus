@@ -62,27 +62,34 @@ def convert_to_core_sequence(seq):
     return core_seq
 
 
-def convert_fcm_to_np_arrays(fcm):
+def convert_fcm_to_np_arrays(fcm, n_us4oems):
     """
     Converts frame channel mapping to a tupple of numpy arrays.
 
     :param fcm: arrus.core.FrameChannelMapping
     :return: a pair of numpy arrays: fcm_frame, fcm_channel
     """
+    fcm_us4oem = np.zeros(
+        (fcm.getNumberOfLogicalFrames(), fcm.getNumberOfLogicalChannels()),
+        dtype=np.uint8)
     fcm_frame = np.zeros(
         (fcm.getNumberOfLogicalFrames(), fcm.getNumberOfLogicalChannels()),
         dtype=np.int16)
     fcm_channel = np.zeros(
         (fcm.getNumberOfLogicalFrames(), fcm.getNumberOfLogicalChannels()),
         dtype=np.int8)
+    frame_offsets = np.zeros(n_us4oems, dtype=np.uint32)
     for frame in range(fcm.getNumberOfLogicalFrames()):
         for channel in range(fcm.getNumberOfLogicalChannels()):
             frame_channel = fcm.getLogical(frame, channel)
-            src_frame = frame_channel[0]
-            src_channel = frame_channel[1]
+            src_us4oem = frame_channel[0]
+            src_frame = frame_channel[1]
+            src_channel = frame_channel[2]
+            fcm_us4oem[frame, channel] = src_us4oem
             fcm_frame[frame, channel] = src_frame
             fcm_channel[frame, channel] = src_channel
-    return fcm_frame, fcm_channel
+    frame_offsets = [fcm.getFirstFrame(i) for i in range(n_us4oems)]
+    return fcm_us4oem, fcm_frame, fcm_channel, frame_offsets
 
 
 def convert_to_py_probe_model(core_model):

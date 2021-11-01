@@ -105,9 +105,14 @@ class Session(AbstractSession):
         ###
         # -- Constant metadata
         # --- FCM
-        fcm_frame, fcm_channel = arrus.utils.core.convert_fcm_to_np_arrays(fcm)
+        fcm_us4oems, fcm_frame, fcm_channel, frame_offsets = \
+            arrus.utils.core.convert_fcm_to_np_arrays(fcm, us_device.n_us4oems)
         fcm = arrus.devices.us4r.FrameChannelMapping(
-            frames=fcm_frame, channels=fcm_channel, batch_size=1)
+            us4oems=fcm_us4oems,
+            frames=fcm_frame,
+            channels=fcm_channel,
+            frame_offsets=frame_offsets,
+            batch_size=1)
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq, us_device_dto, medium)

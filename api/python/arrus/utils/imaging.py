@@ -1733,6 +1733,11 @@ class RemapToLogicalOrder(Operation):
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
+            # 32 - number of us4OEM rx channels
+            frame_offsets = [fcm.frame_offsets*n_samples*32
+                             for us4oem in range(us4r.n_us4oems)]
+            self._frame_offsets = cp.asarray(frame_offsets)
+
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size

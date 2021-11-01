@@ -187,12 +187,16 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     std::vector<FrameChannelMapping::Handle> fcMappings;
     // section -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> outputTransfers;
+    uint32 currentFrameOffset = 0;
+    std::vector<uint32> frameOffsets{static_cast<unsigned int>(us4oems.size()), 0};
 
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
         auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
                                                           batchSize, sri, triggerSync);
+        frameOffsets[us4oemOrdinal] = currentFrameOffset;
+        currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
         fcMappings.push_back(std::move(fcMapping));
         // fcMapping is not valid anymore here
         us4RBufferBuilder.pushBack(buffer);
@@ -246,6 +250,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         }
         ++frameIdx;
     }
+    outFcBuilder.setFrameOffsets(frameOffsets);
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
 }
 

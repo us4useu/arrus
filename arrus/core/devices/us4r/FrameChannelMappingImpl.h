@@ -22,9 +22,12 @@ public:
     /**
      * Takes ownership for the provided frames.
      */
-    FrameChannelMappingImpl(Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping);
+    FrameChannelMappingImpl(Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
+                            std::vector<uint32> frameOffsets = {0});
 
     std::tuple<Us4OEMNumber, FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) override;
+
+    uint32 getFirstFrame(uint8 us4oem) override;
 
     FrameNumber getNumberOfLogicalFrames() override;
 
@@ -37,6 +40,7 @@ private:
     Us4OEMMapping us4oemMapping;
     FrameMapping frameMapping;
     ChannelMapping channelMapping;
+    std::vector<uint32> frameOffsets;
 };
 
 class FrameChannelMappingBuilder {
@@ -50,12 +54,14 @@ public:
                            Us4OEMNumber us4oem, FrameNumber physicalFrame, int8 physicalChannel);
 
     FrameChannelMappingImpl::Handle build();
+    void setFrameOffsets(const std::vector<uint32> &frameOffsets);
 
 private:
     // logical (frame, number) -> physical (frame, number)
     FrameChannelMappingImpl::Us4OEMMapping us4oemMapping;
     FrameChannelMappingImpl::FrameMapping frameMapping;
     FrameChannelMappingImpl::ChannelMapping channelMapping;
+    std::vector<uint32> frameOffsets = {0};
 };
 
 }

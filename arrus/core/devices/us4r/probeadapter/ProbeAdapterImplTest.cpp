@@ -746,6 +746,10 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
         EXPECT_EQ(0, frame);
         EXPECT_EQ(channel, i - 32);
     }
+
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistributedOperationWithGaps) {
@@ -827,6 +831,9 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
         EXPECT_EQ(expectedFrames[i], frame);
         EXPECT_EQ(expectedChannels[i], channel);
     }
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAperture) {
@@ -931,6 +938,9 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
         EXPECT_EQ(expectedFrames[i], frame);
         EXPECT_EQ(expectedChannels[i], channel);
     }
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 // Currently padding impacts the output frame channel mapping
@@ -987,6 +997,8 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
         ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, i - 16);
     }
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
 }
 
 // The same as above, but with aperture using two modules
@@ -1049,6 +1061,8 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
         ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, i - (15 + 32));
     }
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightSide) {
@@ -1103,6 +1117,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
         auto[us4oem, frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
     }
+    EXPECT_EQ(0, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 // ------------------------------------------ TODO Test that all other parameters are passed unmodified
 }

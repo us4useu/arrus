@@ -30,6 +30,18 @@ public:
      */
     virtual std::tuple<arrus::uint8, unsigned short, arrus::int8> getLogical(FrameNumber frame, ChannelIdx channel) = 0;
 
+    /**
+     * Returns the number of frame where the given us4OEM data starts.
+     * The frame number is computed taking into account the batch size and the number of frames in the
+     * sequence of data produced by preceding us4OEM modules. That is, assuming the same number of samples
+     * is acquired in each RF frame, you can get the address where us4oem data starts using the following
+     * formula: the frame number * number of samples * 32 (number of us4OEM RX channels).
+     *
+     * @param us4oem us4oem ordinal number (0, 1, ...)
+     * @return the number of frame, which starts portion of data acquired by the given us4OEM.
+     */
+    virtual arrus::uint32 getFirstFrame(arrus::uint8 us4oem) = 0;
+
     virtual FrameNumber getNumberOfLogicalFrames() = 0;
     virtual ChannelIdx getNumberOfLogicalChannels() = 0;
 
