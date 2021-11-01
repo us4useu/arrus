@@ -22,12 +22,12 @@ FrameChannelMappingImpl::FrameChannelMappingImpl(
 
 FrameChannelMappingImpl::~FrameChannelMappingImpl() = default;
 
-std::tuple<FrameChannelMapping::Us4OEMNumber, FrameChannelMapping::FrameNumber, int8>
+FrameChannelMappingAddress
 FrameChannelMappingImpl::getLogical(FrameNumber frame, ChannelIdx channel) {
     auto us4oem = us4oemMapping(frame, channel);
     auto physicalFrame = frameMapping(frame, channel);
     auto physicalChannel = channelMapping(frame, channel);
-    return {us4oem, physicalFrame, physicalChannel};
+    return FrameChannelMappingAddress{us4oem, physicalFrame, physicalChannel};
 }
 
 FrameChannelMapping::FrameNumber FrameChannelMappingImpl::getNumberOfLogicalFrames() {

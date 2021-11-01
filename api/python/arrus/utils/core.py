@@ -82,13 +82,14 @@ def convert_fcm_to_np_arrays(fcm, n_us4oems):
     for frame in range(fcm.getNumberOfLogicalFrames()):
         for channel in range(fcm.getNumberOfLogicalChannels()):
             frame_channel = fcm.getLogical(frame, channel)
-            src_us4oem = frame_channel[0]
-            src_frame = frame_channel[1]
-            src_channel = frame_channel[2]
+            src_us4oem = frame_channel.getUs4oem()
+            src_frame = frame_channel.getFrame()
+            src_channel = frame_channel.getChannel()
             fcm_us4oem[frame, channel] = src_us4oem
             fcm_frame[frame, channel] = src_frame
             fcm_channel[frame, channel] = src_channel
-    frame_offsets = [fcm.getFirstFrame(i) for i in range(n_us4oems)]
+    frame_offsets = [fcm.getStartFrame(i) for i in range(n_us4oems)]
+    frame_offsets = np.array(frame_offsets)
     return fcm_us4oem, fcm_frame, fcm_channel, frame_offsets
 
 

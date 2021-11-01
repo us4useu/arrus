@@ -7,6 +7,45 @@
 
 namespace arrus::devices {
 
+
+/**
+ * A tuple that describes position of a given channel in a sequence
+ * of frames produced by us4OEM modules.
+ */
+class FrameChannelMappingAddress {
+
+public:
+    FrameChannelMappingAddress(uint8 us4oem, unsigned short frame, int8 channel)
+    : us4oem(us4oem), frame(frame), channel(channel) {}
+
+    uint8 getUs4oem() const {
+        return us4oem;
+    }
+
+    unsigned short getFrame() const {
+        return frame;
+    }
+
+    int8 getChannel() const {
+        return channel;
+    }
+
+    bool operator==(const FrameChannelMappingAddress &rhs) const {
+        return us4oem == rhs.us4oem &&
+               frame == rhs.frame &&
+               channel == rhs.channel;
+    }
+
+    bool operator!=(const FrameChannelMappingAddress &rhs) const {
+        return !(rhs == *this);
+    }
+
+private:
+    arrus::uint8 us4oem;
+    unsigned short frame;
+    arrus::int8 channel;
+};
+
 /**
  * Frame channel mapping: logical (frame, channel) -> physical (frame, channel)
  */
@@ -28,7 +67,7 @@ public:
      * @param channel logical channel number
      * @return a tuple: us4oem module number, frame number (within a single sequence), channel number
      */
-    virtual std::tuple<arrus::uint8, unsigned short, arrus::int8> getLogical(FrameNumber frame, ChannelIdx channel) = 0;
+    virtual FrameChannelMappingAddress getLogical(FrameNumber frame, ChannelIdx channel) = 0;
 
     /**
      * Returns the number of frame where the given us4OEM data starts.

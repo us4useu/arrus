@@ -425,7 +425,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     frameNumber = opId;
                 }
                 fcmBuilder.setChannelMapping(frameNumber, onChannel,
-                                             getDeviceId().getOrdinal(), frameNumber, (int8) (mapping.size() - 1));
+                                             static_cast<FrameChannelMapping::Us4OEMNumber>(getDeviceId().getOrdinal()),
+                                             frameNumber, (int8) (mapping.size() - 1));
                 ++onChannel;
             }
             ++channel;

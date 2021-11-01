@@ -7,6 +7,7 @@ namespace {
 
 using namespace arrus;
 using namespace arrus::devices;
+using ::arrus::devices::FrameChannelMappingAddress;
 
 class ProbeImplFcmRemapTest : public ::testing::Test {
 protected:
@@ -54,15 +55,15 @@ TEST_F(ProbeImplFcmRemapTest, OneToOne) {
     EXPECT_EQ(actualNFrames, N_FRAMES);
     EXPECT_EQ(actualNChannels, N_CHANNELS);
 
-    EXPECT_EQ(actualFcm->getLogical(0, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 1)));
-    EXPECT_EQ(actualFcm->getLogical(0, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 0), (FrameChannelMappingAddress(0, 0, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 1), (FrameChannelMappingAddress(0, 0, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 2), (FrameChannelMappingAddress(0, 1, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 3), (FrameChannelMappingAddress(0, 1, 1)));
 
-    EXPECT_EQ(actualFcm->getLogical(1, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 1)));
-    EXPECT_EQ(actualFcm->getLogical(1, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 0), (FrameChannelMappingAddress(0, 2, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 1), (FrameChannelMappingAddress(0, 2, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 2), (FrameChannelMappingAddress(0, 3, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 3), (FrameChannelMappingAddress(0, 3, 1)));
 }
 
 TEST_F(ProbeImplFcmRemapTest, NonStandard) {
@@ -81,16 +82,16 @@ TEST_F(ProbeImplFcmRemapTest, NonStandard) {
     EXPECT_EQ(actualNFrames, N_FRAMES);
     EXPECT_EQ(actualNChannels, N_CHANNELS);
 
-    EXPECT_EQ(actualFcm->getLogical(0, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 1)));
-    EXPECT_EQ(actualFcm->getLogical(0, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 0), (FrameChannelMappingAddress(0, 0, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 1), (FrameChannelMappingAddress(0, 0, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 3), (FrameChannelMappingAddress(0, 1, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 2), (FrameChannelMappingAddress(0, 1, 1)));
 
     // Change
-    EXPECT_EQ(actualFcm->getLogical(1, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 1)));
-    EXPECT_EQ(actualFcm->getLogical(1, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 3), (FrameChannelMappingAddress(0, 2, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 1), (FrameChannelMappingAddress(0, 2, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 2), (FrameChannelMappingAddress(0, 3, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 0), (FrameChannelMappingAddress(0, 3, 1)));
 }
 
 }

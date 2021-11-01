@@ -3,12 +3,44 @@
 
 #include <vector>
 #include <utility>
+#include <type_traits>
 #include <Eigen/Dense>
 
 
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 
+// Make the FrameChannelMappingAddress available for structure binding
+namespace std {
+
+template<> struct tuple_size<::arrus::devices::FrameChannelMappingAddress>: integral_constant<size_t, 3> {};
+
+template<>
+struct tuple_element<0, ::arrus::devices::FrameChannelMappingAddress> {
+    using type = ::arrus::devices::FrameChannelMapping::Us4OEMNumber;
+};
+
+template<>
+struct tuple_element<1, ::arrus::devices::FrameChannelMappingAddress> {
+    using type = ::arrus::devices::FrameChannelMapping::FrameNumber;
+};
+
+template<>
+struct tuple_element<2, ::arrus::devices::FrameChannelMappingAddress> {
+    using type = int8_t;
+};
+
+template<std::size_t Index>
+std::tuple_element_t<Index, ::arrus::devices::FrameChannelMappingAddress> get(
+    const ::arrus::devices::FrameChannelMappingAddress& address)
+{
+    static_assert(Index < 3, "Index out of bounds for FrameChannelMappingAddress");
+    if constexpr (Index == 0) return address.getUs4oem();
+    if constexpr (Index == 1) return address.getFrame();
+    if constexpr (Index == 2) return address.getChannel();
+}
+
+}
 
 namespace arrus::devices {
 
@@ -25,7 +57,7 @@ public:
     FrameChannelMappingImpl(Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
                             std::vector<uint32> frameOffsets = {0});
 
-    std::tuple<Us4OEMNumber, FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) override;
+    FrameChannelMappingAddress getLogical(FrameNumber frame, ChannelIdx channel) override;
 
     uint32 getFirstFrame(uint8 us4oem) override;
 
