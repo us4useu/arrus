@@ -5,6 +5,8 @@
 #include <utility>
 #include <Eigen/Dense>
 
+
+#include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 
 
@@ -13,20 +15,16 @@ namespace arrus::devices {
 class FrameChannelMappingImpl : public FrameChannelMapping {
 public:
     using Handle = std::unique_ptr<FrameChannelMappingImpl>;
+    using Us4OEMMapping = Eigen::Matrix<Us4OEMNumber, Eigen::Dynamic, Eigen::Dynamic>;
     using FrameMapping = Eigen::Matrix<FrameNumber, Eigen::Dynamic, Eigen::Dynamic>;
     using ChannelMapping = Eigen::Matrix<int8, Eigen::Dynamic, Eigen::Dynamic>;
 
     /**
      * Takes ownership for the provided frames.
      */
-    FrameChannelMappingImpl(FrameMapping &frameMapping, ChannelMapping &channelMapping);
+    FrameChannelMappingImpl(Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping);
 
-    /**
-     * @param frame logical frame to acquire
-     * @param channel channel in the logical frame to acquire
-     * @return frame and channel number of the physical signal data (the one returned by us4r device)
-     */
-    std::pair<FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) override;
+    std::tuple<Us4OEMNumber, FrameNumber, int8> getLogical(FrameNumber frame, ChannelIdx channel) override;
 
     FrameNumber getNumberOfLogicalFrames() override;
 
@@ -35,7 +33,8 @@ public:
     ~FrameChannelMappingImpl() override;
 
 private:
-    // logical (frame, number) -> physical (frame, number)
+    // logical (frame, number) -> physical (us4oem, frame, number)
+    Us4OEMMapping us4oemMapping;
     FrameMapping frameMapping;
     ChannelMapping channelMapping;
 };
@@ -43,16 +42,18 @@ private:
 class FrameChannelMappingBuilder {
 public:
     using FrameNumber = FrameChannelMapping::FrameNumber;
+    using Us4OEMNumber = FrameChannelMapping::Us4OEMNumber;
 
     FrameChannelMappingBuilder(FrameNumber nFrames, ChannelIdx nChannels);
 
-    void setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel,
-                           FrameNumber physicalFrame, int8 physicalChannel);
+    void setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel, // ->
+                           Us4OEMNumber us4oem, FrameNumber physicalFrame, int8 physicalChannel);
 
     FrameChannelMappingImpl::Handle build();
 
 private:
     // logical (frame, number) -> physical (frame, number)
+    FrameChannelMappingImpl::Us4OEMMapping us4oemMapping;
     FrameChannelMappingImpl::FrameMapping frameMapping;
     FrameChannelMappingImpl::ChannelMapping channelMapping;
 };

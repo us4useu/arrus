@@ -13,15 +13,15 @@ protected:
     void SetUp() override {
 
         FrameChannelMappingBuilder fcmBuilder(N_FRAMES, N_CHANNELS);
-        fcmBuilder.setChannelMapping(0, 0, 0, 0);
-        fcmBuilder.setChannelMapping(0, 1, 0, 1);
-        fcmBuilder.setChannelMapping(0, 2, 1, 0);
-        fcmBuilder.setChannelMapping(0, 3, 1, 1);
+        fcmBuilder.setChannelMapping(0, 0, 0, 0, 0);
+        fcmBuilder.setChannelMapping(0, 1, 0, 0, 1);
+        fcmBuilder.setChannelMapping(0, 2, 0, 1, 0);
+        fcmBuilder.setChannelMapping(0, 3, 0, 1, 1);
 
-        fcmBuilder.setChannelMapping(1, 0, 2, 0);
-        fcmBuilder.setChannelMapping(1, 1, 2, 1);
-        fcmBuilder.setChannelMapping(1, 2, 3, 0);
-        fcmBuilder.setChannelMapping(1, 3, 3, 1);
+        fcmBuilder.setChannelMapping(1, 0, 0, 2, 0);
+        fcmBuilder.setChannelMapping(1, 1, 0, 2, 1);
+        fcmBuilder.setChannelMapping(1, 2, 0, 3, 0);
+        fcmBuilder.setChannelMapping(1, 3, 0, 3, 1);
         fcm = fcmBuilder.build();
         rxPaddingLeft = std::vector<ChannelIdx>(fcm->getNumberOfLogicalFrames(), 0);
         rxPaddingRight = std::vector<ChannelIdx>(fcm->getNumberOfLogicalFrames(), 0);
@@ -54,15 +54,15 @@ TEST_F(ProbeImplFcmRemapTest, OneToOne) {
     EXPECT_EQ(actualNFrames, N_FRAMES);
     EXPECT_EQ(actualNChannels, N_CHANNELS);
 
-    EXPECT_EQ(actualFcm->getLogical(0, 0), (std::pair<uint16, int8_t>(0, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 1), (std::pair<uint16, int8_t>(0, 1)));
-    EXPECT_EQ(actualFcm->getLogical(0, 2), (std::pair<uint16, int8_t>(1, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 3), (std::pair<uint16, int8_t>(1, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 1)));
 
-    EXPECT_EQ(actualFcm->getLogical(1, 0), (std::pair<uint16, int8_t>(2, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 1), (std::pair<uint16, int8_t>(2, 1)));
-    EXPECT_EQ(actualFcm->getLogical(1, 2), (std::pair<uint16, int8_t>(3, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 3), (std::pair<uint16, int8_t>(3, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 1)));
 }
 
 TEST_F(ProbeImplFcmRemapTest, NonStandard) {
@@ -81,16 +81,16 @@ TEST_F(ProbeImplFcmRemapTest, NonStandard) {
     EXPECT_EQ(actualNFrames, N_FRAMES);
     EXPECT_EQ(actualNChannels, N_CHANNELS);
 
-    EXPECT_EQ(actualFcm->getLogical(0, 0), (std::pair<uint16, int8_t>(0, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 1), (std::pair<uint16, int8_t>(0, 1)));
-    EXPECT_EQ(actualFcm->getLogical(0, 3), (std::pair<uint16, int8_t>(1, 0)));
-    EXPECT_EQ(actualFcm->getLogical(0, 2), (std::pair<uint16, int8_t>(1, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 0, 1)));
+    EXPECT_EQ(actualFcm->getLogical(0, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 0)));
+    EXPECT_EQ(actualFcm->getLogical(0, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 1, 1)));
 
     // Change
-    EXPECT_EQ(actualFcm->getLogical(1, 3), (std::pair<uint16, int8_t>(2, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 1), (std::pair<uint16, int8_t>(2, 1)));
-    EXPECT_EQ(actualFcm->getLogical(1, 2), (std::pair<uint16, int8_t>(3, 0)));
-    EXPECT_EQ(actualFcm->getLogical(1, 0), (std::pair<uint16, int8_t>(3, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 3), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 1), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 2, 1)));
+    EXPECT_EQ(actualFcm->getLogical(1, 2), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 0)));
+    EXPECT_EQ(actualFcm->getLogical(1, 0), (std::tuple<FrameChannelMapping::Us4OEMNumber, uint16, int8_t>(0, 3, 1)));
 }
 
 }

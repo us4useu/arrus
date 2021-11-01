@@ -1713,38 +1713,33 @@ class RemapToLogicalOrder(Operation):
         n_frames, n_channels = fcm.frames.shape
         n_samples_set = {op.rx.get_n_samples()
                          for op in const_metadata.context.raw_sequence.ops}
+
+        # get (unique) number of samples in a frame
         if len(n_samples_set) > 1:
             raise arrus.exceptions.IllegalArgumentError(
                 f"Each tx/rx in the sequence should acquire the same number of "
                 f"samples (actual: {n_samples_set})")
         n_samples = next(iter(n_samples_set))
-        self.output_shape = (n_frames, n_samples, n_channels)
+        batch_size = fcm.batch_size
+        self.output_shape = (batch_size, n_frames, n_samples, n_channels)
         self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
-
-        n_samples_raw, n_channels_raw = const_metadata.input_shape
-        self._input_shape = (n_samples_raw//n_samples, n_samples,
-                             n_channels_raw)
-        self.batch_size = fcm.batch_size
-
         if xp == np:
             # CPU
-            self._transfers = __group_transfers(fcm)
-            def cpu_remap_fn(data):
-                __remap(self._output_buffer,
-                        data.reshape(self._input_shape),
-                        transfers=self._transfers)
-            self._remap_fn = cpu_remap_fn
+            raise ValueError(f"'{type(self).__name__}' is not implemented for CPU")
         else:
             # GPU
             import cupy as cp
             from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
-            self.grid_size, self.block_size = get_default_grid_block_size(self._fcm_frames, n_samples)
+            self._fcm_us4oems = cp.asarray(fcm.us4oems)
+            self.grid_size, self.block_size = get_default_grid_block_size(
+                self._fcm_frames, n_samples,
+                batch_size
+            )
 
             def gpu_remap_fn(data):
-                run_remap(
-                    self.grid_size, self.block_size,
+                run_remap(self.grid_size, self.block_size,
                     [self._output_buffer, data,
                      self._fcm_frames, self._fcm_channels,
                      n_frames, n_samples, n_channels])

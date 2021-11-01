@@ -69,9 +69,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                                   uint16 batchSize, std::optional<float> sri,
                                   bool triggerSync) {
     // Validate input sequence
-    ProbeAdapterTxRxValidator validator(
-            ::arrus::format("{} tx rx sequence", getDeviceId().toString()),
-            numberOfChannels);
+    ProbeAdapterTxRxValidator validator(::arrus::format("{} tx rx sequence", getDeviceId().toString()),
+                                        numberOfChannels);
     validator.validate(seq);
     validator.throwOnErrors();
 
@@ -106,8 +105,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         txDelaysList.emplace(ordinal, std::vector<std::vector<float>>(seq.size()));
     }
 
-    // Split Tx, Rx apertures and tx delays into sub-apertures specific for
-    // each us4oem module.
+    // Split Tx, Rx apertures and tx delays into sub-apertures specific for each us4oem module.
     uint32 opNumber = 0;
 
     uint32 frameNumber = 0;
@@ -118,9 +116,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
         const auto &rxAperture = op.getRxAperture();
         const auto &txDelays = op.getTxDelays();
 
-        // TODO change the below to an 'assert'
         ARRUS_REQUIRES_TRUE(txAperture.size() == rxAperture.size() && txAperture.size() == numberOfChannels,
-                            format("Tx and Rx apertures should have a size: {}", numberOfChannels));
+                            format("TX and RX apertures should have a size: {}", numberOfChannels));
 
         for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
             txApertures[ordinal][opNumber].resize(Us4OEMImpl::N_ADDR_CHANNELS);
@@ -145,9 +142,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
             // FC Mapping stuff
             if(op.getRxAperture()[ach]) {
                 isRxNop = false;
-                frameModule(frameNumber, activeAdapterCh + op.getRxPadding()[0]) = dstModule;
-                frameChannel(frameNumber, activeAdapterCh + op.getRxPadding()[0]) =
-                        static_cast<int32>(activeUs4oemCh[dstModule]);
+                frameModule(frameNumber, activeAdapterCh+op.getRxPadding()[0]) = dstModule;
+                frameChannel(frameNumber, activeAdapterCh+op.getRxPadding()[0]) = (int32)(activeUs4oemCh[dstModule]);
                 ++activeAdapterCh;
                 ++activeUs4oemCh[dstModule];
             }
@@ -185,24 +181,18 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     for(auto &us4oem: us4oems) {
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
     }
-    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(
-            seqs, us4oemL2PChannelMappings);
+    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(seqs, us4oemL2PChannelMappings);
 
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;
-    FrameChannelMapping::FrameNumber totalNumberOfFrames = 0;
-    std::vector<FrameChannelMapping::FrameNumber> frameOffsets(seqs.size(), 0);
-
     // section -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> outputTransfers;
 
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto[buffer, fcMapping] = us4oem->setTxRxSequence(
-                splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,  batchSize, sri, triggerSync);
-        frameOffsets[us4oemOrdinal] = totalNumberOfFrames;
-        totalNumberOfFrames += fcMapping->getNumberOfLogicalFrames();
+        auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
+                                                          batchSize, sri, triggerSync);
         fcMappings.push_back(std::move(fcMapping));
         // fcMapping is not valid anymore here
         us4RBufferBuilder.pushBack(buffer);
@@ -227,24 +217,29 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                 // and has no assigned value.
                 ARRUS_REQUIRES_DATA_TYPE_E(dstModuleChannel, int8,ArrusException("Invalid dstModuleChannel data type"));
                 if(FrameChannelMapping::isChannelUnavailable((int8) dstModuleChannel)) {
-                    outFcBuilder.setChannelMapping(frameIdx, activeRxChIdx + op.getRxPadding()[0], 0,
-                                                   FrameChannelMapping::UNAVAILABLE);
+                    outFcBuilder.setChannelMapping(frameIdx, activeRxChIdx + op.getRxPadding()[0],
+                                                   0, 0, FrameChannelMapping::UNAVAILABLE);
                 } else {
                     // Otherwise, we have an actual channel.
                     ARRUS_REQUIRES_TRUE_E(dstModule >= 0 && dstModuleChannel >= 0,
                                           ArrusException("Dst module and dst channel should be non-negative"));
 
+                    // dstOp, dstChannel - frame and channel after considering that the aperture ops are
+                    // into multiple smaller ops for each us4oem separately.
+                    // dstOp, dstChannel - frame and channel of a given module
                     auto dstOp = opDstSplittedOp(dstModule, frameIdx, dstModuleChannel);
                     auto dstChannel = opDestSplittedCh(dstModule, frameIdx, dstModuleChannel);
-                    FrameChannelMapping::FrameNumber destFrame = 0;
-                    int8 destFrameChannel = -1;
+                    FrameChannelMapping::Us4OEMNumber us4oem = 0;
+                    FrameChannelMapping::FrameNumber dstFrame = 0;
+                    int8 dstFrameChannel = -1;
                     if(!FrameChannelMapping::isChannelUnavailable(dstChannel)) {
                         auto res = fcMappings[dstModule]->getLogical(dstOp, dstChannel);
-                        destFrame = res.first;
-                        destFrameChannel = res.second;
+                        us4oem = std::get<0>(res);
+                        dstFrame = std::get<1>(res);
+                        dstFrameChannel = std::get<2>(res);
                     }
                     outFcBuilder.setChannelMapping(frameIdx, activeRxChIdx + op.getRxPadding()[0],
-                                                   destFrame + frameOffsets[dstModule], destFrameChannel);
+                                                   us4oem, dstFrame, dstFrameChannel);
                 }
                 ++activeRxChIdx;
             }
@@ -317,7 +312,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
-    for(int i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
+    for(size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getFiring();
         for(size_t j = 0; j < nRepeats; ++j) {

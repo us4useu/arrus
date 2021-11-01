@@ -402,9 +402,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
                 isRxNop = false;
-                ARRUS_REQUIRES_TRUE_E(
-                        onChannel < N_RX_CHANNELS,
-                        ArrusException("Up to 32 active rx channels can be set."));
+                ARRUS_REQUIRES_TRUE_E(onChannel < N_RX_CHANNELS, ArrusException("Up to 32 active rx channels can be set."));
 
                 // Physical channel number, values 0-31
                 auto rxChannel = channelMapping[channel];
@@ -427,7 +425,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     frameNumber = opId;
                 }
                 fcmBuilder.setChannelMapping(frameNumber, onChannel,
-                                             frameNumber, (int8) (mapping.size() - 1));
+                                             getDeviceId().getOrdinal(), frameNumber, (int8) (mapping.size() - 1));
                 ++onChannel;
             }
             ++channel;
@@ -463,10 +461,9 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             result.emplace(opId, rxMapId);
             // Set channel mapping
             ARRUS_REQUIRES_TRUE(rxMapping.size() == N_RX_CHANNELS,
-                    arrus::format("Invalid size of the RX channel mapping to set: {}", rxMapping.size()));
-            ARRUS_REQUIRES_TRUE(
-                    rxMapId < 128,
-                    arrus::format("128 different rx mappings can be loaded only, deviceId: {}.", getDeviceId().toString()));
+                    format("Invalid size of the RX channel mapping to set: {}", rxMapping.size()));
+            ARRUS_REQUIRES_TRUE(rxMapId < 128,
+                    format("128 different rx mappings can be loaded only, deviceId: {}.", getDeviceId().toString()));
             ius4oem->SetRxChannelMapping(rxMapping, rxMapId);
             ++rxMapId;
         } else {
