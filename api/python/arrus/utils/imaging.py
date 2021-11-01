@@ -1734,23 +1734,22 @@ class RemapToLogicalOrder(Operation):
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
             # 32 - number of us4OEM rx channels, 2 - number of bytes per sample
-            frame_offsets = fcm.frame_offsets*n_samples*32*2
+            frame_offsets = fcm.frame_offsets*n_samples*32
+
             # TODO constant memory
             self._frame_offsets = cp.asarray(frame_offsets)
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size
             )
-
             def gpu_remap_fn(data):
                 run_remap(self.grid_size, self.block_size,
                     [self._output_buffer, data,
                      self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
                      self._frame_offsets,
-                     n_frames, n_samples, n_channels])
+                     batch_size, n_frames, n_samples, n_channels])
 
             self._remap_fn = gpu_remap_fn
-
         return const_metadata.copy(input_shape=self.output_shape)
 
     def process(self, data):

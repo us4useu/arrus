@@ -67,7 +67,7 @@ public:
      * @param channel logical channel number
      * @return a tuple: us4oem module number, frame number (within a single sequence), channel number
      */
-    virtual FrameChannelMappingAddress getLogical(FrameNumber frame, ChannelIdx channel) = 0;
+    virtual FrameChannelMappingAddress getLogical(FrameNumber frame, ChannelIdx channel) const = 0;
 
     /**
      * Returns the number of frame where the given us4OEM data starts.
@@ -79,10 +79,15 @@ public:
      * @param us4oem us4oem ordinal number (0, 1, ...)
      * @return the number of frame, which starts portion of data acquired by the given us4OEM.
      */
-    virtual arrus::uint32 getFirstFrame(arrus::uint8 us4oem) = 0;
+    virtual arrus::uint32 getFirstFrame(arrus::uint8 us4oem) const = 0;
 
-    virtual FrameNumber getNumberOfLogicalFrames() = 0;
-    virtual ChannelIdx getNumberOfLogicalChannels() = 0;
+    /**
+     * Returns the list of frame offsets ('position of first us4oem frame'). See `getFirstFrame` for more information.
+     */
+    virtual const std::vector<uint32> & getFrameOffsets() const = 0;
+
+    virtual FrameNumber getNumberOfLogicalFrames() const = 0;
+    virtual ChannelIdx getNumberOfLogicalChannels() const = 0;
 
     /**
      * Returns true if the given PHYSICAL channel number is unavailable.

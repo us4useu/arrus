@@ -2,6 +2,7 @@ import cupy as cp
 
 # TODO strategy for case batch size == 1
 
+
 _arrus_remap_str = r'''
     // Naive implementation of data remapping (physical -> logical order).
     extern "C" 
@@ -9,7 +10,7 @@ _arrus_remap_str = r'''
                                 const short* fcmFrames, 
                                 const char* fcmChannels, 
                                 const unsigned char *fcmUs4oems,
-                                const int frameOffsets,
+                                const unsigned int *frameOffsets,
                                 // Output shape
                                 const unsigned nSequences, const unsigned nFrames, const unsigned nSamples, const unsigned nChannels)
     {
@@ -17,8 +18,8 @@ _arrus_remap_str = r'''
         int sample = blockIdx.y * 32 + threadIdx.y; // logical sample
         int frame = blockIdx.z; // logical frame, global in the whole batch of sequences
         // Determine sequence number (in batch) and frame number (within sequence)
-        int sequence = frame / batchSize;
-        int localFrame = frame % batchSize;
+        int sequence = frame / nFrames;
+        int localFrame = frame % nFrames;
         if(channel >= nChannels || sample >= nSamples || localFrame >= nFrames || sequence >= nSequences) {
             // outside the range
             return;
@@ -43,7 +44,7 @@ _arrus_remap_str = r'''
         int us4oem = fcmUs4oems[channel + nChannels*localFrame];
         int us4oemOffset = frameOffsets[us4oem];
         
-        int indexIn = us4oemOffset // nbytes
+        int indexIn = us4oemOffset // number of samples
                     // physicalFrame should be calculated relative to the us4oem module begin (first acquired frame should be 0)
                     + physicalFrame*nSamples*32 
                     + sample*32 

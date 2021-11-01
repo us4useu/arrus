@@ -57,13 +57,15 @@ public:
     FrameChannelMappingImpl(Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
                             std::vector<uint32> frameOffsets = {0});
 
-    FrameChannelMappingAddress getLogical(FrameNumber frame, ChannelIdx channel) override;
+    FrameChannelMappingAddress getLogical(FrameNumber frame, ChannelIdx channel) const override;
 
-    uint32 getFirstFrame(uint8 us4oem) override;
+    uint32 getFirstFrame(uint8 us4oem) const override;
 
-    FrameNumber getNumberOfLogicalFrames() override;
+    const std::vector<uint32> & getFrameOffsets() const override;
 
-    ChannelIdx getNumberOfLogicalChannels() override;
+    FrameNumber getNumberOfLogicalFrames() const override;
+
+    ChannelIdx getNumberOfLogicalChannels() const override;
 
     ~FrameChannelMappingImpl() override;
 
@@ -79,6 +81,13 @@ class FrameChannelMappingBuilder {
 public:
     using FrameNumber = FrameChannelMapping::FrameNumber;
     using Us4OEMNumber = FrameChannelMapping::Us4OEMNumber;
+
+    static FrameChannelMappingBuilder like(const FrameChannelMapping &mapping) {
+        FrameChannelMappingBuilder builder{mapping.getNumberOfLogicalFrames(),
+                                           mapping.getNumberOfLogicalChannels()};
+        builder.setFrameOffsets(mapping.getFrameOffsets());
+        return builder;
+    }
 
     FrameChannelMappingBuilder(FrameNumber nFrames, ChannelIdx nChannels);
 

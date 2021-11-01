@@ -88,8 +88,8 @@ def convert_fcm_to_np_arrays(fcm, n_us4oems):
             fcm_us4oem[frame, channel] = src_us4oem
             fcm_frame[frame, channel] = src_frame
             fcm_channel[frame, channel] = src_channel
-    frame_offsets = [fcm.getStartFrame(i) for i in range(n_us4oems)]
-    frame_offsets = np.array(frame_offsets)
+    frame_offsets = [fcm.getFirstFrame(i) for i in range(n_us4oems)]
+    frame_offsets = np.array(frame_offsets, dtype=np.uint32)
     return fcm_us4oem, fcm_frame, fcm_channel, frame_offsets
 
 

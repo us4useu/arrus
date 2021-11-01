@@ -1,6 +1,7 @@
 #include "FrameChannelMappingImpl.h"
 
 #include <utility>
+#include <iostream>
 
 #include "arrus/common/asserts.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -23,27 +24,31 @@ FrameChannelMappingImpl::FrameChannelMappingImpl(
 FrameChannelMappingImpl::~FrameChannelMappingImpl() = default;
 
 FrameChannelMappingAddress
-FrameChannelMappingImpl::getLogical(FrameNumber frame, ChannelIdx channel) {
+FrameChannelMappingImpl::getLogical(FrameNumber frame, ChannelIdx channel) const {
     auto us4oem = us4oemMapping(frame, channel);
     auto physicalFrame = frameMapping(frame, channel);
     auto physicalChannel = channelMapping(frame, channel);
     return FrameChannelMappingAddress{us4oem, physicalFrame, physicalChannel};
 }
 
-FrameChannelMapping::FrameNumber FrameChannelMappingImpl::getNumberOfLogicalFrames() {
+FrameChannelMapping::FrameNumber FrameChannelMappingImpl::getNumberOfLogicalFrames() const {
     ARRUS_REQUIRES_TRUE(frameMapping.rows() >= 0 && frameMapping.rows() <= std::numeric_limits<uint16>::max(),
                         "FCM number of logical frames exceeds the maximum number of frames (uint16::max).");
     return static_cast<FrameChannelMapping::FrameNumber>(frameMapping.rows());
 }
 
-ChannelIdx FrameChannelMappingImpl::getNumberOfLogicalChannels() {
+ChannelIdx FrameChannelMappingImpl::getNumberOfLogicalChannels() const {
     ARRUS_REQUIRES_TRUE(frameMapping.cols() >= 0 && frameMapping.cols() <= std::numeric_limits<uint16>::max(),
                         "FCM number of logical channels exceeds the maximum number of channels (uint16::max).");
     return static_cast<ChannelIdx>(frameMapping.cols());
 }
 
-uint32 FrameChannelMappingImpl::getFirstFrame(uint8 us4oem) {
+uint32 FrameChannelMappingImpl::getFirstFrame(uint8 us4oem) const {
     return frameOffsets[us4oem];
+}
+
+const std::vector<uint32> & FrameChannelMappingImpl::getFrameOffsets() const {
+    return frameOffsets;
 }
 
 void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel,
@@ -69,7 +74,7 @@ FrameChannelMappingBuilder::FrameChannelMappingBuilder(FrameNumber nFrames, Chan
 }
 
 void FrameChannelMappingBuilder::setFrameOffsets(const std::vector<uint32> &offsets) {
-    FrameChannelMappingBuilder::frameOffsets = offsets;
+    this->frameOffsets = offsets;
 }
 
 }

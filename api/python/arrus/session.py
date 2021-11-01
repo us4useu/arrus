@@ -126,9 +126,9 @@ class Session(AbstractSession):
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
         n_samples = next(iter(n_samples))
-        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=batch_size)
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
+        input_shape = buffer.elements[0].data.shape
 
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
@@ -142,7 +142,6 @@ class Session(AbstractSession):
                 raise ValueError("Currently only arrus.utils.imaging.Pipeline "
                                  "processing is supported only.")
             import cupy as cp
-
             out_metadata = processing.prepare(const_metadata)
             self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
                                      shape=const_metadata.input_shape,
@@ -172,7 +171,6 @@ class Session(AbstractSession):
                     print(f"Exception: {type(e)}")
                 except:
                     print("Unknown exception")
-
             pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
                 buffer, self.gpu_buffer, self.out_buffer, processing,
                 buffer_callback)

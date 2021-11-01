@@ -152,8 +152,7 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
     if (adapterFcm->getNumberOfLogicalFrames() != nOps) {
         throw std::runtime_error("Inconsistent mapping and op number of probe's Rx apertures");
     }
-    FrameChannelMappingBuilder builder(adapterFcm->getNumberOfLogicalFrames(),
-                                       adapterFcm->getNumberOfLogicalChannels());
+    FrameChannelMappingBuilder builder = FrameChannelMappingBuilder::like(*adapterFcm);
 
     unsigned short frameNumber = 0;
     for (const auto &mapping : adapterActiveChannels) {
