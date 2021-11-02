@@ -1184,6 +1184,49 @@ class Enqueue(Operation):
         return data
 
 
+class SelectSequence(Operation):
+    """
+    Selects frames for a given sequence for further processing.
+    """
+
+    def __init__(self, frames):
+        """
+        Constructor.
+
+        :param frames: frames to select
+        """
+        self.frames = frames
+
+    def set_pkgs(self, **kwargs):
+        pass
+
+    def prepare(self, const_metadata):
+        input_shape = const_metadata.input_shape
+        context = const_metadata.context
+        seq = context.sequence
+        n_frames = len(self.frames)
+
+        input_n_frames, d2, d3 = input_shape
+        output_shape = (n_frames, d2, d3)
+        # TODO make this op less prone to changes in op implementation
+        if isinstance(seq, arrus.ops.imaging.PwiSequence):
+            # select appropriate angles
+            output_angles = seq.angles[self.frames]
+            new_seq = dataclasses.replace(seq, angles=output_angles)
+            new_context = const_metadata.context
+            new_context = arrus.metadata.FrameAcquisitionContext(
+                device=new_context.device, sequence=new_seq,
+                raw_sequence=new_context.raw_sequence,
+                medium=new_context.medium, custom_data=new_context.custom_data)
+            return const_metadata.copy(input_shape=output_shape,
+                                       context=new_context)
+        else:
+            return const_metadata.copy(input_shape=output_shape)
+
+    def process(self, data):
+        return data[self.frames]
+
+
 class SelectFrames(Operation):
     """
     Selects frames for a given sequence for further processing.
@@ -1229,6 +1272,9 @@ class SelectFrames(Operation):
 
     def process(self, data):
         return data[self.frames]
+
+# Alias
+SelectFrame = SelectFrames
 
 
 class Squeeze(Operation):
