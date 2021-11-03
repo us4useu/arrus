@@ -19,28 +19,45 @@ classdef DuplexDisplay < handle
     end
     
     methods 
-        function obj = DuplexDisplay(proc, dynamicRange, powerThreshold, subplotEnable, cineLoopLength)
+        function obj = DuplexDisplay(varargin)
             
-            if nargin < 5
-                cineLoopLength = 0;
+            % Input parser
+            dispParParser = inputParser;
+            addParameter(dispParParser, 'reconstructionObject', []);
+            addParameter(dispParParser, 'dynamicRange', [0 60]);
+            addParameter(dispParParser, 'powerThreshold', -inf);
+            addParameter(dispParParser, 'subplotEnable', false);
+            addParameter(dispParParser, 'cineLoopLength', 0);
+            parse(dispParParser, varargin{:});
+            
+            proc           = dispParParser.Results.reconstructionObject;
+            dynamicRange   = dispParParser.Results.dynamicRange;
+            powerThreshold = dispParParser.Results.powerThreshold;
+            subplotEnable  = dispParParser.Results.subplotEnable;
+            cineLoopLength = dispParParser.Results.cineLoopLength;
+            
+            if isempty(proc)
+                error("ARRUS:IllegalArgument", "reconstructionObject is an obligatory input.");
+            elseif ~isa(proc,'Reconstruction')
+                error("ARRUS:IllegalArgument", "reconstructionObject must be of class Reconstruction.");
             end
             
-            if nargin < 4
-                subplotEnable = false;
+            if ~all(size(dynamicRange) == [1 2]) || ~isnumerical(dynamicRange)
+                error("ARRUS:IllegalArgument", "dynamicRange must be a 2-element numerical vector: [min max]");
             end
             
-            if nargin < 3
-                powerThreshold = -inf;
+            if ~isscalar(powerThreshold) || ~isnumerical(powerThreshold)
+                error("ARRUS:IllegalArgument", "powerThreshold must be a numerical scalar.");
             end
             
-            if nargin < 2
-                dynamicRange = [0 60];
-            else 
-                if ~all(size(dynamicRange) == [1 2])
-                    error("ARRUS:IllegalArgument", ...
-                        "Invalid dimensions of dynamic range vector, should be: [min max]")
-                end
+            if ~isscalar(subplotEnable) || ~islogical(subplotEnable)
+                error("ARRUS:IllegalArgument", "subplotEnable must be a logical scalar.");
             end
+            
+            if ~isscalar(cineLoopLength) || ~isnumerical(cineLoopLength) || mod(cineLoopLength,1)~=0
+                error("ARRUS:IllegalArgument", "cineLoopLength must be an integer scalar.");
+            end
+            
             
             obj.xGrid = proc.xGrid;
             obj.zGrid = proc.zGrid;
