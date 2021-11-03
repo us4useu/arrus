@@ -12,10 +12,18 @@ classdef DuplexDisplay < handle
         showTimes
         dynamicRange
         powerThreshold
+        
+        cineLoop
+        cineLoopLength
+        cineLoopIndex
     end
     
     methods 
-        function obj = DuplexDisplay(proc, dynamicRange, powerThreshold, subplotEnable)
+        function obj = DuplexDisplay(proc, dynamicRange, powerThreshold, subplotEnable, cineLoopLength)
+            
+            if nargin < 5
+                cineLoopLength = 0;
+            end
             
             if nargin < 4
                 subplotEnable = false;
@@ -78,6 +86,14 @@ classdef DuplexDisplay < handle
             end
             
             obj.hQvr = nan;
+            
+            % Prepare cineLoop
+            obj.cineLoopLength = cineLoopLength;
+            if obj.cineLoopLength > 0
+                cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
+                obj.cineLoop = nan(numel(obj.zGrid), numel(obj.zGrid), obj.cineLoopLength, cineLoopLayersNumber);
+                obj.cineLoopIndex = 0;
+            end
         end
         
         function state = isOpen(obj)
@@ -171,6 +187,13 @@ classdef DuplexDisplay < handle
                 % reaction to that close.
                 % That was an issue on MATLAB 2018b, testenv2.
                 pause(0.01);
+                
+                % update cineLoop
+                if obj.cineLoopLength > 0
+                    obj.cineLoopIndex = mod(obj.cineLoopIndex, obj.cineLoopLength) + 1;
+                    obj.cineLoop(:,:,obj.cineLoopIndex,:) = data;
+                end
+                
             catch ME
                 if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
                     disp('Display was closed.');
@@ -179,6 +202,15 @@ classdef DuplexDisplay < handle
                 end
             end
         end
+        
+        function cineLoop = getCineLoop(obj)
+            if obj.cineLoopLength > 0
+                cineLoop = circshift(obj.cineLoop, -obj.cineLoopIndex, 3);
+            else
+                cineLoop = [];
+            end
+        end
+        
     end    
 end
 
