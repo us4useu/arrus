@@ -317,7 +317,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
-    for(int i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
+    for(size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getFiring();
         for(size_t j = 0; j < nRepeats; ++j) {
