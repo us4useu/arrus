@@ -16,6 +16,8 @@ classdef DuplexDisplay < handle
         cineLoop
         cineLoopLength
         cineLoopIndex
+        
+        persistence
     end
     
     methods 
@@ -28,6 +30,7 @@ classdef DuplexDisplay < handle
             addParameter(dispParParser, 'powerThreshold', -inf);
             addParameter(dispParParser, 'subplotEnable', false);
             addParameter(dispParParser, 'cineLoopLength', 1);
+            addParameter(dispParParser, 'persistence', 1);
             parse(dispParParser, varargin{:});
             
             proc           = dispParParser.Results.reconstructionObject;
@@ -35,6 +38,7 @@ classdef DuplexDisplay < handle
             powerThreshold = dispParParser.Results.powerThreshold;
             subplotEnable  = dispParParser.Results.subplotEnable;
             cineLoopLength = dispParParser.Results.cineLoopLength;
+            persistence    = dispParParser.Results.persistence;
             
             if isempty(proc)
                 error("ARRUS:IllegalArgument", "reconstructionObject is an obligatory input.");
@@ -58,6 +62,21 @@ classdef DuplexDisplay < handle
                 error("ARRUS:IllegalArgument", "cineLoopLength must be a positive integer scalar.");
             end
             
+            if ~isvector(persistence) || ~isnumerical(persistence)
+                error("ARRUS:IllegalArgument", "persistence must be a numerical scalar or vector.");
+            elseif isscalar(persistence) && (persistence<1 || mod(persistence,1)~=0)
+                error("ARRUS:IllegalArgument", "persistence must be a positive integer if it is a scalar.");
+            end
+            
+            if isscalar(persistence)
+                persistence = ones(1,persistence);
+            end
+            
+            if numel(persistence)>cineLoopLength
+                warning("cineLoopLength increased to fit the persistence.");
+                cineLoopLength = numel(persistence);
+            end
+            
             
             obj.xGrid = proc.xGrid;
             obj.zGrid = proc.zGrid;
@@ -66,6 +85,12 @@ classdef DuplexDisplay < handle
             obj.dynamicRange = dynamicRange;
             obj.powerThreshold = powerThreshold;
             obj.cineLoopLength = cineLoopLength;
+            obj.persistence = reshape(persistence,1,1,[]) / sum(persistence);
+            
+            % Prepare cineLoop
+            cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
+            obj.cineLoop = nan(numel(obj.zGrid), numel(obj.zGrid), obj.cineLoopLength, cineLoopLayersNumber);
+            obj.cineLoopIndex = 0;
             
             % Create figure.
             obj.hFig = figure();
@@ -105,10 +130,6 @@ classdef DuplexDisplay < handle
             
             obj.hQvr = nan;
             
-            % Prepare cineLoop
-            cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
-            obj.cineLoop = nan(numel(obj.zGrid), numel(obj.zGrid), obj.cineLoopLength, cineLoopLayersNumber);
-            obj.cineLoopIndex = 0;
         end
         
         function state = isOpen(obj)
@@ -126,12 +147,16 @@ classdef DuplexDisplay < handle
             try
                 [nZPix,nXPix,~,~] = size(data);
                 
-                bmode = data(:,:,:,1);
                 % update cineLoop
                 obj.cineLoopIndex = mod(obj.cineLoopIndex, obj.cineLoopLength) + 1;
                 obj.cineLoop(:,:,obj.cineLoopIndex,:) = data;
+                
+                % persistence
+                index = mod(obj.cineLoopIndex-(0:(numel(obj.persistence)-1))-1,obj.cineLoopLength)+1;
+                bmode = sum(obj.cineLoop(:,:,index,1) .* obj.persistence, 3, 'omitnan');
                 bmode(isnan(bmode)) = -inf;
                 
+                % conversion to RGB
                 bmodeRGB = (bmode - obj.dynamicRange(1)) / diff(obj.dynamicRange);
                 bmodeRGB = max(0,min(1,bmodeRGB));
                 bmodeRGB = bmodeRGB .* ones(1,1,3);   % colormap = gray
