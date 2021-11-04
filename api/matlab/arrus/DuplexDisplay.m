@@ -27,7 +27,7 @@ classdef DuplexDisplay < handle
             addParameter(dispParParser, 'dynamicRange', [0 60]);
             addParameter(dispParParser, 'powerThreshold', -inf);
             addParameter(dispParParser, 'subplotEnable', false);
-            addParameter(dispParParser, 'cineLoopLength', 0);
+            addParameter(dispParParser, 'cineLoopLength', 1);
             parse(dispParParser, varargin{:});
             
             proc           = dispParParser.Results.reconstructionObject;
@@ -54,8 +54,8 @@ classdef DuplexDisplay < handle
                 error("ARRUS:IllegalArgument", "subplotEnable must be a logical scalar.");
             end
             
-            if ~isscalar(cineLoopLength) || ~isnumerical(cineLoopLength) || mod(cineLoopLength,1)~=0
-                error("ARRUS:IllegalArgument", "cineLoopLength must be an integer scalar.");
+            if ~isscalar(cineLoopLength) || ~isnumerical(cineLoopLength) || mod(cineLoopLength,1)~=0 || cineLoopLength<1
+                error("ARRUS:IllegalArgument", "cineLoopLength must be a positive integer scalar.");
             end
             
             
@@ -65,6 +65,7 @@ classdef DuplexDisplay < handle
             obj.vectorEnable = proc.vectorEnable;
             obj.dynamicRange = dynamicRange;
             obj.powerThreshold = powerThreshold;
+            obj.cineLoopLength = cineLoopLength;
             
             % Create figure.
             obj.hFig = figure();
@@ -105,12 +106,9 @@ classdef DuplexDisplay < handle
             obj.hQvr = nan;
             
             % Prepare cineLoop
-            obj.cineLoopLength = cineLoopLength;
-            if obj.cineLoopLength > 0
-                cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
-                obj.cineLoop = nan(numel(obj.zGrid), numel(obj.zGrid), obj.cineLoopLength, cineLoopLayersNumber);
-                obj.cineLoopIndex = 0;
-            end
+            cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
+            obj.cineLoop = nan(numel(obj.zGrid), numel(obj.zGrid), obj.cineLoopLength, cineLoopLayersNumber);
+            obj.cineLoopIndex = 0;
         end
         
         function state = isOpen(obj)
@@ -129,6 +127,9 @@ classdef DuplexDisplay < handle
                 [nZPix,nXPix,~,~] = size(data);
                 
                 bmode = data(:,:,:,1);
+                % update cineLoop
+                obj.cineLoopIndex = mod(obj.cineLoopIndex, obj.cineLoopLength) + 1;
+                obj.cineLoop(:,:,obj.cineLoopIndex,:) = data;
                 bmode(isnan(bmode)) = -inf;
                 
                 bmodeRGB = (bmode - obj.dynamicRange(1)) / diff(obj.dynamicRange);
@@ -204,12 +205,6 @@ classdef DuplexDisplay < handle
                 % reaction to that close.
                 % That was an issue on MATLAB 2018b, testenv2.
                 pause(0.01);
-                
-                % update cineLoop
-                if obj.cineLoopLength > 0
-                    obj.cineLoopIndex = mod(obj.cineLoopIndex, obj.cineLoopLength) + 1;
-                    obj.cineLoop(:,:,obj.cineLoopIndex,:) = data;
-                end
                 
             catch ME
                 if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
