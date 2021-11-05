@@ -17,8 +17,8 @@ from collections.abc import Iterable
 
 import cupy
 if cupy.__version__ < "9.0.0":
-    raise Exception(f'The version of cupy module is too low. '
-                    f'Try install the version ''9.0.0'' or higher.')
+    raise Exception(f"The version of cupy module is too low. "
+                    f"Try install the version ''9.0.0'' or higher.")
 
 
 def get_extent(x_grid, z_grid):
