@@ -38,6 +38,7 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
 
     for (int iTx = 0; iTx < nTx; ++iTx) {
         int txOffset = iTx*nSamp*nRx;
+
         if (!isinf(txFoc[iTx])) {
             /* STA */
             float zFoc = txApCentZ[iTx] + txFoc[iTx]*cosf(txAngZX[iTx]);
@@ -83,10 +84,10 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
                         (xPix[x] - xElem[txApLstElem[iTx]])*cosf(txAngZX[iTx])) >= 0.f)) ? 1.f : 0.f;
         }
         pixWgh = 0.0f;
-        pix.real(0);
-        pix.imag(0);
-        if (txApod != 0.0f) {
+        pix.real(0.0f);
+        pix.imag(0.0f);
 
+        if (txApod != 0.0f) {
             for (int iRx = 0; iRx < nRx; iRx++) {
                 iElem = iRx + rxApOrigElem[iTx];
                 if (iElem < 0 || iElem >= nElem) continue;
@@ -120,7 +121,7 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
             iqLri[z + x*nZPix + iTx*nZPix*nXPix] = complex<float>(0.0f, 0.0f);
         }
         else {
-            iqLri[z + x*nZPix + iTx*nZPix*nXPix] = pix/pixWgh*txApod;
+            iqLri[z + x * nZPix + iTx * nZPix * nXPix] = pix/pixWgh*txApod;
         }
     }
 
