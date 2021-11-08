@@ -71,10 +71,10 @@ class SimpleTxRxSequence:
     downsampling_factor: int = 1
     tx_aperture_center_element: list = None
     tx_aperture_center: list = None
-    tx_aperture_size: list = None
+    tx_aperture_size: int = None
     rx_aperture_center_element: list = None
     rx_aperture_center: list = None
-    rx_aperture_size: list = None
+    rx_aperture_size: int = None
     tgc_start: float = None
     tgc_slope: float = None
     tgc_curve: list = None
