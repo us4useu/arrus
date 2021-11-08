@@ -112,7 +112,7 @@ class Session(AbstractSession):
             frames=fcm_frame,
             channels=fcm_channel,
             frame_offsets=frame_offsets,
-            batch_size=1)
+            batch_size=batch_size)
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq, us_device_dto, medium)
