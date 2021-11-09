@@ -15,6 +15,11 @@ import threading
 from collections import deque
 from collections.abc import Iterable
 
+import cupy
+if cupy.__version__ < "9.0.0":
+    raise Exception(f"The version of cupy module is too low. "
+                    f"Try install the version ''9.0.0'' or higher.")
+
 
 def get_extent(x_grid, z_grid):
     """
@@ -1260,10 +1265,25 @@ class SelectFrames(Operation):
         input_n_frames, d2, d3 = input_shape
         output_shape = (n_frames, d2, d3)
         # TODO make this op less prone to changes in op implementation
-        if isinstance(seq, arrus.ops.imaging.PwiSequence):
+        if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
             # select appropriate angles
-            output_angles = seq.angles[self.frames]
-            new_seq = dataclasses.replace(seq, angles=output_angles)
+            angles = self._limit_params(seq.angles, self.frames)
+            tx_focus = self._limit_params(seq.tx_focus, self.frames)
+            tx_aperture_center_element = self._limit_params(seq.tx_aperture_center_element,
+                                                            self.frames)
+            tx_aperture_center = self._limit_params(seq.tx_aperture_center, self.frames)
+            rx_aperture_center_element = self._limit_params(seq.rx_aperture_center_element,
+                                                            self.frames)
+            rx_aperture_center = self._limit_params(seq.rx_aperture_center, self.frames)
+
+            new_seq = dataclasses.replace(
+                seq,
+                angles=angles,
+                tx_focus=tx_focus,
+                tx_aperture_center_element=tx_aperture_center_element,
+                tx_aperture_center=tx_aperture_center,
+                rx_aperture_center_element=rx_aperture_center_element,
+                rx_aperture_center=rx_aperture_center)
             new_context = const_metadata.context
             new_context = arrus.metadata.FrameAcquisitionContext(
                 device=new_context.device, sequence=new_seq,
@@ -1276,6 +1296,13 @@ class SelectFrames(Operation):
 
     def process(self, data):
         return data[self.frames]
+
+    def _limit_params(self, value, frames):
+        if value is not None and hasattr(value, "__len__") and len(value) > 1:
+            return value[frames]
+        else:
+            return value
+
 
 # Alias
 SelectFrame = SelectFrames
