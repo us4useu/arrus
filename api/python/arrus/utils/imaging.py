@@ -267,7 +267,8 @@ class Pipeline:
                     outputs.appendleft(output)
             else:
                 data = step.process(data)
-        outputs.appendleft(data)
+        if not self._is_last_endpoint:
+            outputs.appendleft(data)
         return outputs
 
     def __initialize(self, const_metadata):
@@ -298,6 +299,9 @@ class Pipeline:
         self.__initialize(const_metadata)
         if not isinstance(self.steps[-1], Pipeline):
             metadatas.appendleft(current_metadata)
+            self._is_last_endpoint = False
+        else:
+            self._is_last_endpoint = True
         return metadatas
 
     def set_placement(self, device):
@@ -1779,11 +1783,19 @@ class RemapToLogicalOrder(Operation):
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
-            # 32 - number of us4OEM rx channels, 2 - number of bytes per sample
-            frame_offsets = fcm.frame_offsets*n_samples*32
-
-            # TODO constant memory
+            frame_offsets = fcm.frame_offsets
+            #  TODO constant memory
             self._frame_offsets = cp.asarray(frame_offsets)
+            # For each us4OEM, get number of physical frames this us4OEM gathers.
+            # Note: this is the max number of us4OEM IN USE.
+            n_us4oems = cp.max(self._fcm_us4oems).get()+1
+            n_frames_us4oems = []
+            for us4oem in range(n_us4oems):
+                n_frames_us4oem = cp.max(self._fcm_frames[self._fcm_us4oems == us4oem])
+                n_frames_us4oems.append(n_frames_us4oem)
+
+            #  TODO constant memory
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)+1
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size
@@ -1793,6 +1805,7 @@ class RemapToLogicalOrder(Operation):
                     [self._output_buffer, data,
                      self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
                      self._frame_offsets,
+                     self._n_frames_us4oems,
                      batch_size, n_frames, n_samples, n_channels])
 
             self._remap_fn = gpu_remap_fn

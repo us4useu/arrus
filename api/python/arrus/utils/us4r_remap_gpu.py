@@ -10,45 +10,51 @@ _arrus_remap_str = r'''
                                 const short* fcmFrames, 
                                 const char* fcmChannels, 
                                 const unsigned char *fcmUs4oems,
+                                // Number of sample, that starts given us4oEM data
                                 const unsigned int *frameOffsets,
+                                const unsigned int *nFramesUs4OEM,
                                 // Output shape
-                                const unsigned nSequences, const unsigned nFrames, const unsigned nSamples, const unsigned nChannels)
+                                const unsigned nSequences, const unsigned nFrames, 
+                                const unsigned nSamples, const unsigned nChannels)
     {
-        int channel = blockIdx.x * 32 + threadIdx.x; // logical channel
-        int sample = blockIdx.y * 32 + threadIdx.y; // logical sample
+        int channel = blockIdx.x*32 + threadIdx.x; // logical channel
+        int sample = blockIdx.y*32 + threadIdx.y; // logical sample
         int frame = blockIdx.z; // logical frame, global in the whole batch of sequences
         // Determine sequence number (in batch) and frame number (within sequence)
         int sequence = frame / nFrames;
         int localFrame = frame % nFrames;
+        
         if(channel >= nChannels || sample >= nSamples || localFrame >= nFrames || sequence >= nSequences) {
             // outside the range
             return;
         }
+        
         // FCM describes here a single sequence 
         int physicalChannel = fcmChannels[channel + nChannels*localFrame];
         if(physicalChannel < 0) {
             // channel is turned off
             return;
         }
-        
         // [sequence, frame, sample, channel]
-        int indexOut = sequence*nFrames*nSamples*nChannels 
-                     + frame*nSamples*nChannels
-                     + sample*nChannels 
-                     + channel;
-        
+        size_t indexOut = sequence*nFrames*nSamples*nChannels 
+                        + localFrame*nSamples*nChannels
+                        + sample*nChannels 
+                        + channel;
+            
+        // FCM describes here a single sequence
         int physicalFrame = fcmFrames[channel + nChannels*localFrame];
         // 32 - number of channels in the physical mapping
         // [us4oem, sequence, physicalFrame, sample, physicalChannel]
         
         int us4oem = fcmUs4oems[channel + nChannels*localFrame];
         int us4oemOffset = frameOffsets[us4oem];
+        int nPhysicalFrames = nFramesUs4OEM[us4oem];
         
-        int indexIn = us4oemOffset // number of samples
-                    // physicalFrame should be calculated relative to the us4oem module begin (first acquired frame should be 0)
-                    + physicalFrame*nSamples*32 
-                    + sample*32 
-                    + physicalChannel; 
+        size_t indexIn = us4oemOffset*nSamples*32
+                       + sequence*nPhysicalFrames*nSamples*32
+                       + physicalFrame*nSamples*32 
+                       + sample*32 
+                       + physicalChannel; 
         out[indexOut] = in[indexIn];
     }'''
 
