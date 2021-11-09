@@ -84,6 +84,8 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
                         (xPix[x] - xElem[txApLstElem[iTx]])*cosf(txAngZX[iTx])) >= 0.f)) ? 1.f : 0.f;
         }
         pixWgh = 0.0f;
+        pix.real(0.0f);
+        pix.imag(0.0f);
 
         if (txApod != 0.0f) {
             for (int iRx = 0; iRx < nRx; iRx++) {
