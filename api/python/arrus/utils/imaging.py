@@ -18,7 +18,7 @@ from collections.abc import Iterable
 import cupy
 if cupy.__version__ < "9.0.0":
     raise Exception(f"The version of cupy module is too low. "
-                    f"Try install the version ''9.0.0'' or higher.")
+                    f"Use version ''9.0.0'' or higher.")
 
 
 def get_extent(x_grid, z_grid):
@@ -1193,18 +1193,105 @@ class Enqueue(Operation):
         return data
 
 
+class SelectSequenceRaw(Operation):
+
+    def __init__(self, sequence):
+        if isinstance(sequence, Iterable) and len(sequence) > 1:
+            raise ValueError("Only a single sequence can be selected")
+        self.sequence = sequence
+        self.output = None
+        self.num_pkg = None
+        self.positions = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.num_pkg = num_pkg
+
+    def prepare(self, const_metadata):
+        context = const_metadata.context
+        seq = context.sequence
+        raw_seq = context.raw_sequence
+        n_seq = len(self.sequence)
+
+        # For each us4oem, compute tuples: (src_start, dst_start, src_end, dst_end)
+        # Where each value is the number of rows (we assume 32 columns, i.e. RX channels)
+        n_samples_set = {op.rx.get_n_samples() for op in raw_seq.ops}
+
+        if len(n_samples_set) > 1:
+            raise arrus.exceptions.IllegalArgumentError(
+                f"Each tx/rx in the sequence should acquire the same number of "
+                f"samples (actual: {n_samples_set})")
+        n_samples = next(iter(n_samples_set))
+
+        fcm = const_metadata.data_description.custom["frame_channel_mapping"]
+        fcm_us4oems = fcm.us4oems
+        fcm_frames = fcm.frames
+        # TODO update frame offsets
+        us4oems = set(fcm.us4oems.flatten().tolist())
+        sorted(us4oems)
+
+        self.positions = []
+        dst_start = 0
+        dst_end = 0
+        frame_offsets = []
+        current_frame = 0  # Current physical frame.
+        for us4oem in us4oems:
+            n_frames = self.num_pkg.max(fcm_frames[fcm_us4oems == us4oem])+1
+            us4oem_offset = fcm.frame_offsets[us4oem]
+            # NOTE: below we use only a single sequence
+            src_start = us4oem_offset*n_samples+self.sequence[0]*n_frames*n_samples
+            src_end = src_start+n_frames*n_samples
+            dst_end = dst_start+n_frames*n_samples
+            self.positions.append((src_start, dst_start, src_end, dst_end))
+            frame_offsets.append(current_frame)
+            current_frame += n_frames
+            dst_start = dst_end
+
+        output_shape = (dst_end, 32)
+        self.output = self.num_pkg.zeros(output_shape, dtype=np.int16)
+
+        # Update const metadata
+        new_seq = dataclasses.replace(seq, n_repeats=n_seq)
+        new_raw_seq = dataclasses.replace(raw_seq, n_repeats=n_seq)
+        new_context = arrus.metadata.FrameAcquisitionContext(
+            device=context.device, sequence=new_seq,
+            raw_sequence=new_raw_seq, medium=context.medium,
+            custom_data=context.custom_data)
+
+        # Update FCM (change the batch_size)
+        data_desc = const_metadata.data_description
+        data_desc_custom = data_desc.custom
+        new_data_desc_custom = data_desc_custom.copy()
+        fcm = data_desc_custom["frame_channel_mapping"]
+        new_fcm = dataclasses.replace(fcm, batch_size=1,
+                                      frame_offsets=frame_offsets)
+        new_data_desc_custom["frame_channel_mapping"] = new_fcm
+        new_data_desc = dataclasses.replace(data_desc, custom=new_data_desc_custom)
+
+        return const_metadata.copy(input_shape=output_shape,
+                                   context=new_context,
+                                   data_desc=new_data_desc)
+
+    def process(self, data):
+        for src_start, dst_start, src_end, dst_end in self.positions:
+            self.output[dst_start:dst_end, :] = data[src_start:src_end, :]
+        return self.output
+
+
 class SelectSequence(Operation):
     """
-    Selects frames for a given sequence for further processing.
+    Selects sequences for a given batch for further processing.
+
+    This operator modifies input context so the appropriate
+    number of sequences is properly set.
+
+    :param frames: sequences to select
     """
 
-    def __init__(self, frames):
-        """
-        Constructor.
-
-        :param frames: frames to select
-        """
-        self.frames = frames
+    def __init__(self, sequence):
+        if not isinstance(sequence, Iterable):
+            # Wrap into an array
+            sequence = [sequence]
+        self.sequence = sequence
 
     def set_pkgs(self, **kwargs):
         pass
@@ -1213,27 +1300,22 @@ class SelectSequence(Operation):
         input_shape = const_metadata.input_shape
         context = const_metadata.context
         seq = context.sequence
-        n_frames = len(self.frames)
+        raw_seq = context.raw_sequence
+        n_seq = len(self.sequence)
 
-        input_n_frames, d2, d3 = input_shape
-        output_shape = (n_frames, d2, d3)
-        # TODO make this op less prone to changes in op implementation
-        if isinstance(seq, arrus.ops.imaging.PwiSequence):
-            # select appropriate angles
-            output_angles = seq.angles[self.frames]
-            new_seq = dataclasses.replace(seq, angles=output_angles)
-            new_context = const_metadata.context
-            new_context = arrus.metadata.FrameAcquisitionContext(
-                device=new_context.device, sequence=new_seq,
-                raw_sequence=new_context.raw_sequence,
-                medium=new_context.medium, custom_data=new_context.custom_data)
-            return const_metadata.copy(input_shape=output_shape,
-                                       context=new_context)
-        else:
-            return const_metadata.copy(input_shape=output_shape)
+        output_shape = input_shape[1:]
+        output_shape = (n_seq, ) + output_shape
+        new_seq = dataclasses.replace(seq, n_repeats=n_seq)
+        new_raw_seq = dataclasses.replace(raw_seq, n_repeats=n_seq)
+        new_context = arrus.metadata.FrameAcquisitionContext(
+            device=context.device, sequence=new_seq,
+            raw_sequence=new_raw_seq, medium=context.medium,
+            custom_data=context.custom_data)
+        return const_metadata.copy(input_shape=output_shape,
+                                   context=new_context)
 
     def process(self, data):
-        return data[self.frames]
+        return data[self.sequence]
 
 
 class SelectFrames(Operation):
@@ -1299,7 +1381,7 @@ class SelectFrames(Operation):
 
     def _limit_params(self, value, frames):
         if value is not None and hasattr(value, "__len__") and len(value) > 1:
-            return value[frames]
+            return np.array(value)[frames]
         else:
             return value
 

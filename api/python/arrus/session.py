@@ -143,12 +143,12 @@ class Session(AbstractSession):
                                  "processing is supported only.")
             import cupy as cp
             out_metadata = processing.prepare(const_metadata)
-            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
+            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=2,
                                      shape=const_metadata.input_shape,
                                      dtype=const_metadata.dtype,
                                      math_pkg=cp,
                                      type="locked")
-            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=4,
+            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=2,
                                       shape=m.input_shape,
                                       dtype=m.dtype, math_pkg=np,
                                       type="locked")
