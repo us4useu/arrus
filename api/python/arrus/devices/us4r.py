@@ -28,9 +28,14 @@ class FrameChannelMapping:
 
     :param frames: a mapping: (logical frame, logical channel) -> physical frame
     :param channels: a mapping: (logical frame, logical channel) -> physical channel
+    :param us4oems: a mapping: (logical frame, logical channel) -> us4OEM number
+    :param frame_offsets: frame starting number for each us4OEM available in the system
+    :param batch_size: number of sequences in a single batch
     """
     frames: np.ndarray
     channels: np.ndarray
+    us4oems: np.ndarray
+    frame_offsets: np.ndarray
     batch_size: int = 1
 
 

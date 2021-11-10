@@ -105,9 +105,14 @@ class Session(AbstractSession):
         ###
         # -- Constant metadata
         # --- FCM
-        fcm_frame, fcm_channel = arrus.utils.core.convert_fcm_to_np_arrays(fcm)
+        fcm_us4oems, fcm_frame, fcm_channel, frame_offsets = \
+            arrus.utils.core.convert_fcm_to_np_arrays(fcm, us_device.n_us4oems)
         fcm = arrus.devices.us4r.FrameChannelMapping(
-            frames=fcm_frame, channels=fcm_channel, batch_size=1)
+            us4oems=fcm_us4oems,
+            frames=fcm_frame,
+            channels=fcm_channel,
+            frame_offsets=frame_offsets,
+            batch_size=batch_size)
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq, us_device_dto, medium)
@@ -121,9 +126,9 @@ class Session(AbstractSession):
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
         n_samples = next(iter(n_samples))
-        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=batch_size)
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
+        input_shape = buffer.elements[0].data.shape
 
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
@@ -137,14 +142,13 @@ class Session(AbstractSession):
                 raise ValueError("Currently only arrus.utils.imaging.Pipeline "
                                  "processing is supported only.")
             import cupy as cp
-
             out_metadata = processing.prepare(const_metadata)
-            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
+            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=2,
                                      shape=const_metadata.input_shape,
                                      dtype=const_metadata.dtype,
                                      math_pkg=cp,
                                      type="locked")
-            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=4,
+            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=2,
                                       shape=m.input_shape,
                                       dtype=m.dtype, math_pkg=np,
                                       type="locked")
@@ -167,7 +171,6 @@ class Session(AbstractSession):
                     print(f"Exception: {type(e)}")
                 except:
                     print("Unknown exception")
-
             pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
                 buffer, self.gpu_buffer, self.out_buffer, processing,
                 buffer_callback)

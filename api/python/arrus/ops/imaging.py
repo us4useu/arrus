@@ -60,6 +60,8 @@ class SimpleTxRxSequence:
     :param sri: sequence repetition interval - the time between consecutive RF \
       frames. When None, the time between consecutive RF frames is determined \
       by the total pri only. [s]
+    :param n_repeats: size of a single batch -- how many times this sequence should be \
+      repeated before data is transferred to computer (integer)
     """
     pulse: arrus.ops.us4r.Pulse
     rx_sample_range: tuple
@@ -78,6 +80,7 @@ class SimpleTxRxSequence:
     tgc_start: float = None
     tgc_slope: float = None
     tgc_curve: list = None
+    n_repeats: int = 1
 
     def __post_init__(self):
         # Validation
