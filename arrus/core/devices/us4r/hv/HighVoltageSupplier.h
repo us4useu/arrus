@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include <idbar.h>
-#include <ihv.h>
+#include <idbarLite.h>
+#include <ihv256.h>
 
 #include "arrus/core/common/logging.h"
 #include "arrus/common/format.h"
@@ -19,8 +19,8 @@ public:
     using Handle = std::unique_ptr<HighVoltageSupplier>;
 
     HighVoltageSupplier(const DeviceId &id, HVModelId modelId,
-                        std::unique_ptr<IDBAR> dbar,
-                        std::unique_ptr<IHV> hv);
+                        std::unique_ptr<IDBARLite> dbar,
+                        std::unique_ptr<IHV256> hv);
 
     void setVoltage(Voltage voltage) {
         try {
@@ -55,8 +55,8 @@ public:
 private:
     Logger::Handle logger;
     HVModelId modelId;
-    std::unique_ptr<IDBAR> dbar;
-    std::unique_ptr<IHV> hv;
+    std::unique_ptr<IDBARLite> dbar;
+    std::unique_ptr<IHV256> hv;
 };
 
 

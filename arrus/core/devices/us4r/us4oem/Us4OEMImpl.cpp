@@ -8,6 +8,7 @@
 #include "arrus/common/format.h"
 #include "arrus/common/utils.h"
 #include "arrus/core/common/collections.h"
+#include "arrus/core/api/common/exceptions.h"
 #include "arrus/common/asserts.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/common/hash.h"
@@ -521,14 +522,10 @@ Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() {
 }
 
 void Us4OEMImpl::enableSequencer() {
-    bool txConfOnTrigger = false;
-    switch(reprogrammingMode) {
-        case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL:txConfOnTrigger = false;
-            break;
-        case Us4OEMSettings::ReprogrammingMode::PARALLEL:txConfOnTrigger = true;
-            break;
+    if(reprogrammingMode == Us4OEMSettings::ReprogrammingMode::PARALLEL) {
+        throw ArrusException("Reprogramming mode parallel not available in this release.");
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger);
+    this->ius4oem->EnableSequencer();
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() {
@@ -631,7 +628,7 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
 }
 
 float Us4OEMImpl::getFPGATemperature() {
-    return ius4oem->GetFPGATemp();
+    throw ArrusException("FPGA temperature not available in this release.");
 }
 
 void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
