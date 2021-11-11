@@ -46,11 +46,11 @@ classdef DuplexDisplay < handle
                 error("ARRUS:IllegalArgument", "reconstructionObject must be of class Reconstruction.");
             end
             
-            if ~all(size(dynamicRange) == [1 2]) || ~isnumerical(dynamicRange)
+            if ~all(size(dynamicRange) == [1 2]) || ~isnumeric(dynamicRange)
                 error("ARRUS:IllegalArgument", "dynamicRange must be a 2-element numerical vector: [min max]");
             end
             
-            if ~isscalar(powerThreshold) || ~isnumerical(powerThreshold)
+            if ~isscalar(powerThreshold) || ~isnumeric(powerThreshold)
                 error("ARRUS:IllegalArgument", "powerThreshold must be a numerical scalar.");
             end
             
@@ -58,11 +58,11 @@ classdef DuplexDisplay < handle
                 error("ARRUS:IllegalArgument", "subplotEnable must be a logical scalar.");
             end
             
-            if ~isscalar(cineLoopLength) || ~isnumerical(cineLoopLength) || mod(cineLoopLength,1)~=0 || cineLoopLength<1
+            if ~isscalar(cineLoopLength) || ~isnumeric(cineLoopLength) || mod(cineLoopLength,1)~=0 || cineLoopLength<1
                 error("ARRUS:IllegalArgument", "cineLoopLength must be a positive integer scalar.");
             end
             
-            if ~isvector(persistence) || ~isnumerical(persistence)
+            if ~isvector(persistence) || ~isnumeric(persistence)
                 error("ARRUS:IllegalArgument", "persistence must be a numerical scalar or vector.");
             elseif isscalar(persistence) && (persistence<1 || mod(persistence,1)~=0)
                 error("ARRUS:IllegalArgument", "persistence must be a positive integer if it is a scalar.");
