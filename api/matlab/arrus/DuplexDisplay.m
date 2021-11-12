@@ -29,7 +29,7 @@ classdef DuplexDisplay < handle
             % Input parser
             dispParParser = inputParser;
             addParameter(dispParParser, 'reconstructionObject', []);
-            addParameter(dispParParser, 'dynamicRange', [0 60]);
+            addParameter(dispParParser, 'dynamicRange', [0 80]);
             addParameter(dispParParser, 'powerThreshold', -inf);
             addParameter(dispParParser, 'subplotEnable', false);
             addParameter(dispParParser, 'cineLoopLength', 1);
@@ -38,12 +38,12 @@ classdef DuplexDisplay < handle
             addParameter(dispParParser, 'bmodeAutoTgcResp', 0);
             parse(dispParParser, varargin{:});
             
-            proc           = dispParParser.Results.reconstructionObject;
-            dynamicRange   = dispParParser.Results.dynamicRange;
-            powerThreshold = dispParParser.Results.powerThreshold;
-            subplotEnable  = dispParParser.Results.subplotEnable;
-            cineLoopLength = dispParParser.Results.cineLoopLength;
-            persistence    = dispParParser.Results.persistence;
+            proc             = dispParParser.Results.reconstructionObject;
+            dynamicRange     = dispParParser.Results.dynamicRange;
+            powerThreshold   = dispParParser.Results.powerThreshold;
+            subplotEnable    = dispParParser.Results.subplotEnable;
+            cineLoopLength   = dispParParser.Results.cineLoopLength;
+            persistence      = dispParParser.Results.persistence;
             bmodeTgc         = dispParParser.Results.bmodeTgc;
             bmodeAutoTgcResp = dispParParser.Results.bmodeAutoTgcResp;
             
@@ -73,9 +73,7 @@ classdef DuplexDisplay < handle
                 error("ARRUS:IllegalArgument", "persistence must be a numerical scalar or vector.");
             elseif isscalar(persistence) && (persistence<1 || mod(persistence,1)~=0)
                 error("ARRUS:IllegalArgument", "persistence must be a positive integer if it is a scalar.");
-            end
-            
-            if isscalar(persistence)
+            elseif isscalar(persistence)
                 persistence = ones(1,persistence);
             end
             
