@@ -119,7 +119,7 @@ classdef DuplexDisplay < handle
                 
                 for iAx=1:4
                     obj.hAx(iAx) = subplot(2,2,iAx);
-                    obj.hImg(iAx) = image(obj.xGrid*1e3, obj.zGrid*1e3, []);
+                    obj.hImg(iAx) = imagesc(obj.xGrid*1e3, obj.zGrid*1e3, []);
                     colormap(gca,subplotColorMaps(:,:,iAx));
                     colorbar;
                     xlabel('x [mm]');
@@ -131,7 +131,7 @@ classdef DuplexDisplay < handle
                 end
             else
                 obj.hAx = axes();
-                obj.hImg = image(obj.xGrid*1e3, obj.zGrid*1e3, []);
+                obj.hImg = imagesc(obj.xGrid*1e3, obj.zGrid*1e3, []);
                 colormap(gca,gray);
                 colorbar;
                 xlabel('x [mm]');
