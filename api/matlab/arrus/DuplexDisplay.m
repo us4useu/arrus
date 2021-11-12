@@ -18,6 +18,9 @@ classdef DuplexDisplay < handle
         cineLoopIndex
         
         persistence
+        
+        bmodeTgc
+        bmodeAutoTgcResp
     end
     
     methods 
@@ -31,6 +34,8 @@ classdef DuplexDisplay < handle
             addParameter(dispParParser, 'subplotEnable', false);
             addParameter(dispParParser, 'cineLoopLength', 1);
             addParameter(dispParParser, 'persistence', 1);
+            addParameter(dispParParser, 'bmodeTgc', 0);
+            addParameter(dispParParser, 'bmodeAutoTgcResp', 0);
             parse(dispParParser, varargin{:});
             
             proc           = dispParParser.Results.reconstructionObject;
@@ -39,6 +44,8 @@ classdef DuplexDisplay < handle
             subplotEnable  = dispParParser.Results.subplotEnable;
             cineLoopLength = dispParParser.Results.cineLoopLength;
             persistence    = dispParParser.Results.persistence;
+            bmodeTgc         = dispParParser.Results.bmodeTgc;
+            bmodeAutoTgcResp = dispParParser.Results.bmodeAutoTgcResp;
             
             if isempty(proc)
                 error("ARRUS:IllegalArgument", "reconstructionObject is an obligatory input.");
@@ -77,6 +84,13 @@ classdef DuplexDisplay < handle
                 cineLoopLength = numel(persistence);
             end
             
+            if ~isscalar(bmodeTgc) || ~isnumeric(bmodeTgc)
+                error("ARRUS:IllegalArgument", "bmodeTgc must be a numerical scalar.");
+            end
+            
+            if ~isscalar(bmodeAutoTgcResp) || ~isnumeric(bmodeAutoTgcResp) || bmodeAutoTgcResp<0 || bmodeAutoTgcResp>1
+                error("ARRUS:IllegalArgument", "bmodeAutoTgcResp must be a numerical scalar in <0,1> range.");
+            end
             
             obj.xGrid = proc.xGrid;
             obj.zGrid = proc.zGrid;
@@ -86,6 +100,8 @@ classdef DuplexDisplay < handle
             obj.powerThreshold = powerThreshold;
             obj.cineLoopLength = cineLoopLength;
             obj.persistence = reshape(persistence,1,1,[]) / sum(persistence);
+            obj.bmodeTgc = bmodeTgc * obj.zGrid(:) / obj.zGrid(end);
+            obj.bmodeAutoTgcResp = bmodeAutoTgcResp;
             
             % Prepare cineLoop
             cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
@@ -154,9 +170,22 @@ classdef DuplexDisplay < handle
                 % persistence
                 index = mod(obj.cineLoopIndex-(0:(numel(obj.persistence)-1))-1,obj.cineLoopLength)+1;
                 bmode = sum(obj.cineLoop(:,:,index,1) .* obj.persistence, 3, 'omitnan');
-                bmode(isnan(bmode)) = -inf;
+                
+                % time gain compensation
+                if obj.bmodeAutoTgcResp ~= 0
+                    % linear regression of bmode average brightness profile
+                    n = numel(obj.zGrid);
+                    x = obj.zGrid(:);
+                    y = mean(bmode,2,'omitnan');
+                    a = (n*sum(x.*y) - sum(x)*sum(y)) / (n*sum(x.^2) - sum(x)^2); % [dB/m]
+                    
+                    obj.bmodeTgc = obj.bmodeTgc * (1 - obj.bmodeAutoTgcResp) + ...
+                                  (a * obj.zGrid(:)) * obj.bmodeAutoTgcResp;
+                end
+                bmode = bmode + obj.bmodeTgc;
                 
                 % conversion to RGB
+                bmode(isnan(bmode)) = -inf;
                 bmodeRGB = (bmode - obj.dynamicRange(1)) / diff(obj.dynamicRange);
                 bmodeRGB = max(0,min(1,bmodeRGB));
                 bmodeRGB = bmodeRGB .* ones(1,1,3);   % colormap = gray
