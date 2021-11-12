@@ -178,7 +178,7 @@ classdef DuplexDisplay < handle
                     a = (n*sum(x.*y) - sum(x)*sum(y)) / (n*sum(x.^2) - sum(x)^2); % [dB/m]
                     
                     obj.bmodeTgc = obj.bmodeTgc * (1 - obj.bmodeAutoTgcResp) + ...
-                                  (a * obj.zGrid(:)) * obj.bmodeAutoTgcResp;
+                                  (-a * obj.zGrid(:)) * obj.bmodeAutoTgcResp;
                 end
                 bmode = bmode + obj.bmodeTgc;
                 
