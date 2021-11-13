@@ -795,7 +795,6 @@ class RxBeamformingPhasedScanning(Operation):
         lambd = c / fc
         max_tang = abs(math.tan(
             math.asin(min(1, 2 / 3 * lambd / probe_model.pitch))))
-        print(f"MAX TANG: {max_tang}")
 
         self.fc = cp.float32(fc)
         self.fs = cp.float32(fs)
@@ -829,15 +828,11 @@ class RxBeamformingPhasedScanning(Operation):
         data = self.num_pkg.ascontiguousarray(data)
         params = (
             self.output_buffer, data,
-            self.delays,
             self.n_tx, self.n_rx, self.n_samples,
             self.tx_angles,
             self.init_delay, self.start_time,
             self.c, self.fs, self.fc, self.max_tang)
         self._kernel(self.grid_size, self.block_size, params)
-        # import matplotlib.pyplot as plt
-        # plt.imshow(self.delays.get())
-        # plt.show()
         return self.output_buffer
 
 
@@ -1242,7 +1237,7 @@ class ScanConversion(Operation):
             (self.radGridIn, self.azimuthGridIn), data, method="linear",
             bounds_error=False, fill_value=0)
         result = self.interpolator(self.dst_points).reshape(self.dst_shape)
-        return self.num_pkg.asarray(result)
+        return self.num_pkg.asarray(result).astype(np.float32)
 
 
 class LogCompression(Operation):

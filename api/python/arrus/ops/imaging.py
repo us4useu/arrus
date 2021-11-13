@@ -167,7 +167,6 @@ class LinSequence(SimpleTxRxSequence):
         super().__post_init__()
         if self.tx_focus <= 0 or np.isinf(self.tx_focus):
             raise ValueError("TX focus has to be a positive value.")
-        assert_is_scalar("angles", self.angles)
 
 
 @dataclasses.dataclass(frozen=True)

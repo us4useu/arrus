@@ -10,7 +10,6 @@ __constant__ float xElemConst[256]; // [m]
 // to the center of TX/RX aperture
 extern "C"
 __global__ void beamformPhasedArray(complex<float> *output, const complex<float> *input,
-                                    float* delays, // DEBUG
                                     const unsigned nTx, const unsigned nRx, const unsigned nSamples,
                                     const float *txAngles, // [rad]
                                     const float initDelay, const float startTime,
