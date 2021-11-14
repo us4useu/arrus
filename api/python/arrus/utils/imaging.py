@@ -1092,7 +1092,7 @@ class ScanConversion(Operation):
             # - multiple different aperture positions
             elif len(tx_centers) > 1 and len(tx_angles) == 1:
                 self.process = self._process_linear_array
-                return self._prepare_phased_array(const_metadata)
+                return self._prepare_linear_array(const_metadata)
             else:
                 raise ValueError("The given combination of TX/RX parameters is "
                                  "not supported by ScanConversion")
@@ -1118,16 +1118,14 @@ class ScanConversion(Operation):
             raise ValueError("Even number of probe elements is required.")
         pitch = probe.pitch
         data_desc = const_metadata.data_description
-        if seq.speed_of_sound is not None:
-            c = seq.speed_of_sound
-        else:
-            c = medium.speed_of_sound
-        tx_center_diff = set(np.diff(tx_aperture_center_element))
-        if len(tx_center_diff) != 1:
+        c = _get_speed_of_sound(const_metadata.context)
+        tx_center_diff = np.diff(tx_aperture_center_element)
+        # Check if tx aperture centers are evenly spaced.
+        if not np.allclose(tx_center_diff, [tx_center_diff[0]]*len(tx_center_diff)):
             raise ValueError("Transmits should be done by consecutive "
                              "center elements (got tx center elements: "
                              f"{tx_aperture_center_element}")
-        tx_center_diff = next(iter(tx_center_diff))
+        tx_center_diff = tx_center_diff[0]
         # Determine input grid.
         input_x_grid_diff = tx_center_diff*pitch
         input_x_grid_origin = tx_aperture_center_element[0]-(n_elements-1)/2*pitch
@@ -1195,7 +1193,8 @@ class ScanConversion(Operation):
         self.interpolator = scipy.interpolate.RegularGridInterpolator(
             (self.radGridIn, self.azimuthGridIn), data, method="linear",
             bounds_error=False, fill_value=0)
-        return self.interpolator(self.dst_points).reshape(self.dst_shape)
+        result = self.interpolator(self.dst_points).reshape(self.dst_shape)
+        return self.num_pkg.asarray(result).astype(np.float32)
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
