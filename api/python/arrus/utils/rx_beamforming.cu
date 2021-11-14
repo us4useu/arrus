@@ -67,17 +67,20 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
             b = input[signalOffset + sInt + 1];
             currentResult = (1.0f - ratio) * a + ratio * b;
         }
+        else if(sInt == nSamples-1) {
+            currentResult = input[signalOffset + sInt];
+        }
         else {
             continue;
         }
-        __sincosf(2.0f * CUDART_PI_F*fc*time, &modSin, &modCos);
+        __sincosf(2.0f*CUDART_PI_F*fc*time, &modSin, &modCos);
         modFactor = complex<float>(modCos, modSin);
-        result = currentResult*modFactor;
+        result += currentResult*modFactor;
         ++pixWgh;
     }
     if(pixWgh == 0.0f) {
         output[sample + scanline*nSamples] = complex<float>(0.0f, 0.0f);
     } else {
-        output[sample + scanline*nSamples] = result;
+        output[sample + scanline*nSamples] = result/pixWgh;
     }
 }
