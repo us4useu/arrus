@@ -103,7 +103,7 @@ classdef DuplexDisplay < handle
             
             % Prepare cineLoop
             cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
-            obj.cineLoop = nan(numel(obj.zGrid), numel(obj.zGrid), obj.cineLoopLength, cineLoopLayersNumber);
+            obj.cineLoop = nan(numel(obj.zGrid), numel(obj.xGrid), obj.cineLoopLength, cineLoopLayersNumber);
             obj.cineLoopIndex = 0;
             
             % Create figure.
