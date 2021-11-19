@@ -21,7 +21,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
                             float const * txFoc, float const * txAngZX, 
                             float const * txApCentZ, float const * txApCentX, 
                             int const * txApFstElem, int const * txApLstElem, 
-                            int const * rxApOrigElem, 
+                            int const * rxApOrigElem, int const * nSampOmit, 
                             float const minRxTang, float const maxRxTang, 
                             float const fs, float const fn, 
                             float const sos, float const initDel, 
@@ -114,7 +114,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
                 
                 time = (txDist + rxDist) * sosInv + initDel;
                 iSamp = time * fs;
-                if (iSamp<0.f || iSamp>static_cast<float>(nSamp-1)) continue;
+                if (iSamp<static_cast<float>(nSampOmit[iTx]) || iSamp>static_cast<float>(nSamp-1)) continue;
                 
                 float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iRx + iTx*nRx);
                 sampRe = iqSamp.x;
@@ -184,6 +184,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * elemFst;
     mxGPUArray const * elemLst;
     mxGPUArray const * rxElemOrig;
+    mxGPUArray const * nSampOmit;
     
     float2 * dev_iqLri;
     float2 const * dev_iqRaw;
@@ -199,6 +200,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     int const * dev_elemFst;
     int const * dev_elemLst;
     int const * dev_rxElemOrig;
+    int const * dev_nSampOmit;
     
     float minRxTang;
     float maxRxTang;
@@ -222,8 +224,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     char const * const invalidOutputMsgId = "iqRaw2Lri:InvalidOutput";
     
     /* Validate mex inputs/outputs */
-    if (nrhs!=19) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "19 inputs required");
+    if (nrhs!=20) {
+        mexErrMsgIdAndTxt( invalidInputMsgId, "20 inputs required");
     }
     
     if (nlhs>1) {
@@ -251,13 +253,14 @@ void mexFunction(int nlhs, mxArray * plhs[],
     elemFst   = mxGPUCreateFromMxArray(prhs[10]);
     elemLst   = mxGPUCreateFromMxArray(prhs[11]);
     rxElemOrig  = mxGPUCreateFromMxArray(prhs[12]);
+    nSampOmit  = mxGPUCreateFromMxArray(prhs[13]);
     
-    minRxTang = mxGetScalar(prhs[13]);
-    maxRxTang = mxGetScalar(prhs[14]);
-    fs        = mxGetScalar(prhs[15]);
-    fn        = mxGetScalar(prhs[16]);
-    sos       = mxGetScalar(prhs[17]);
-    initDel   = mxGetScalar(prhs[18]);
+    minRxTang = mxGetScalar(prhs[14]);
+    maxRxTang = mxGetScalar(prhs[15]);
+    fs        = mxGetScalar(prhs[16]);
+    fn        = mxGetScalar(prhs[17]);
+    sos       = mxGetScalar(prhs[18]);
+    initDel   = mxGetScalar(prhs[19]);
     
     /* Validate inputs */
     checkData(iqRaw,     "iqRaw",     true,  3, invalidInputMsgId);
@@ -273,6 +276,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
 //     checkData(elemFst,   "elemFst",   false, 1, invalidInputMsgId); //int
 //     checkData(elemLst,   "elemLst",   false, 1, invalidInputMsgId); //int
 //     checkData(rxElemOrig,"rxElemOrig",false, 1, invalidInputMsgId); //int
+//     checkData(nSampOmit,"nSampOmit",false, 1, invalidInputMsgId); //int
     
     /* Get some additional information */
     nSamp = mxGPUGetDimensions(iqRaw)[0];
@@ -316,6 +320,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     dev_elemFst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemFst));
     dev_elemLst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemLst));
     dev_rxElemOrig  = static_cast<int const *>(mxGPUGetDataReadOnly(rxElemOrig));
+    dev_nSampOmit  = static_cast<int const *>(mxGPUGetDataReadOnly(nSampOmit));
     
     /* set constant memory */
     if(nElem > 256) {
@@ -368,6 +373,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
                                                                       dev_elemFst   + iPart*nTxPerPart, 
                                                                       dev_elemLst   + iPart*nTxPerPart, 
                                                                       dev_rxElemOrig + iPart*nTxPerPart, 
+                                                                      dev_nSampOmit + iPart*nTxPerPart, 
                                                                       minRxTang, maxRxTang, fs, fn, sos, initDel, 
                                                                       nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
         
@@ -394,6 +400,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUDestroyGPUArray(elemFst);
     mxGPUDestroyGPUArray(elemLst);
     mxGPUDestroyGPUArray(rxElemOrig);
+    mxGPUDestroyGPUArray(nSampOmit);
     
     //cudaDeviceReset();
 }
