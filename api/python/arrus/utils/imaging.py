@@ -914,7 +914,7 @@ class RxBeamformingLin(Operation):
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
         radial_distance = (
-                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)* c/2
+                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs) * c/2
         )
         x_distance = (radial_distance * np.sin(tx_angle)).reshape(1, -1)
         z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
@@ -1128,13 +1128,14 @@ class ScanConversion(Operation):
         tx_center_diff = tx_center_diff[0]
         # Determine input grid.
         input_x_grid_diff = tx_center_diff*pitch
-        input_x_grid_origin = tx_aperture_center_element[0]-(n_elements-1)/2*pitch
+        input_x_grid_origin = (tx_aperture_center_element[0]-(n_elements-1)/2)*pitch
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
         start_sample = seq.rx_sample_range[0]
         input_z_grid_origin = start_sample/acq_fs*c/2
         input_z_grid_diff = c/(fs*2)
+        # Map x_grid and z_grid to the RF frame coordinates.
         interp_x_grid = (self.x_grid-input_x_grid_origin)/input_x_grid_diff
         interp_z_grid = (self.z_grid-input_z_grid_origin)/input_z_grid_diff
         self._interp_mesh = cp.asarray(np.meshgrid(interp_z_grid, interp_x_grid, indexing="ij"))
