@@ -28,14 +28,15 @@ classdef DuplexDisplay < handle
             
             % Input parser
             dispParParser = inputParser;
-            addParameter(dispParParser, 'reconstructionObject', []);
-            addParameter(dispParParser, 'dynamicRange', [0 80]);
-            addParameter(dispParParser, 'powerThreshold', -inf);
-            addParameter(dispParParser, 'subplotEnable', false);
-            addParameter(dispParParser, 'cineLoopLength', 1);
-            addParameter(dispParParser, 'persistence', 1);
-            addParameter(dispParParser, 'bmodeTgc', 0);
-            addParameter(dispParParser, 'bmodeAutoTgcResp', 0);
+            addRequired( dispParParser, 'reconstructionObject',         @(x) assert(isscalar(x) && isa(x,'Reconstruction'),                 "reconstructionObject is an obligatory scalar input of class Reconstruction."));
+            addParameter(dispParParser, 'dynamicRange',         [0 80], @(x) assert(isnumeric(x) && all(size(x) == [1 2]),                  "dynamicRange must be a 2-element numerical vector: [min max]."));
+            addParameter(dispParParser, 'powerThreshold',       -inf,   @(x) assert(isnumeric(x) && isscalar(x),                            "powerThreshold must be a numerical scalar."));
+            addParameter(dispParParser, 'subplotEnable',        false,  @(x) assert(islogical(x) && isscalar(x),                            "subplotEnable must be a logical scalar."));
+            addParameter(dispParParser, 'cineLoopLength',       1,      @(x) assert(isnumeric(x) && isscalar(x) && mod(x,1)==0 && x>=1,     "cineLoopLength must be a positive integer scalar."));
+            addParameter(dispParParser, 'persistence',          1,      @(x) assert(isnumeric(x) && ((isvector(x) && numel(x)>1) || ...
+                                                                                                     (isscalar(x) && mod(x,1)==0 && x>=1)), "persistence must be a positive integer scalar or numerical vector."));
+            addParameter(dispParParser, 'bmodeTgc',             0,      @(x) assert(isnumeric(x) && isscalar(x),                            "bmodeTgc must be a numerical scalar."));
+            addParameter(dispParParser, 'bmodeAutoTgcResp',     0,      @(x) assert(isnumeric(x) && isscalar(x) && x>=0 && x<=1,            "bmodeAutoTgcResp must be a numerical scalar in <0,1> range."));
             parse(dispParParser, varargin{:});
             
             proc             = dispParParser.Results.reconstructionObject;
@@ -47,47 +48,13 @@ classdef DuplexDisplay < handle
             bmodeTgc         = dispParParser.Results.bmodeTgc;
             bmodeAutoTgcResp = dispParParser.Results.bmodeAutoTgcResp;
             
-            if isempty(proc)
-                error("ARRUS:IllegalArgument", "reconstructionObject is an obligatory input.");
-            elseif ~isa(proc,'Reconstruction')
-                error("ARRUS:IllegalArgument", "reconstructionObject must be of class Reconstruction.");
-            end
-            
-            if ~all(size(dynamicRange) == [1 2]) || ~isnumeric(dynamicRange)
-                error("ARRUS:IllegalArgument", "dynamicRange must be a 2-element numerical vector: [min max]");
-            end
-            
-            if ~isscalar(powerThreshold) || ~isnumeric(powerThreshold)
-                error("ARRUS:IllegalArgument", "powerThreshold must be a numerical scalar.");
-            end
-            
-            if ~isscalar(subplotEnable) || ~islogical(subplotEnable)
-                error("ARRUS:IllegalArgument", "subplotEnable must be a logical scalar.");
-            end
-            
-            if ~isscalar(cineLoopLength) || ~isnumeric(cineLoopLength) || mod(cineLoopLength,1)~=0 || cineLoopLength<1
-                error("ARRUS:IllegalArgument", "cineLoopLength must be a positive integer scalar.");
-            end
-            
-            if ~isvector(persistence) || ~isnumeric(persistence)
-                error("ARRUS:IllegalArgument", "persistence must be a numerical scalar or vector.");
-            elseif isscalar(persistence) && (persistence<1 || mod(persistence,1)~=0)
-                error("ARRUS:IllegalArgument", "persistence must be a positive integer if it is a scalar.");
-            elseif isscalar(persistence)
+            if isscalar(persistence)
                 persistence = ones(1,persistence);
             end
             
             if numel(persistence)>cineLoopLength
                 warning("cineLoopLength increased to fit the persistence.");
                 cineLoopLength = numel(persistence);
-            end
-            
-            if ~isscalar(bmodeTgc) || ~isnumeric(bmodeTgc)
-                error("ARRUS:IllegalArgument", "bmodeTgc must be a numerical scalar.");
-            end
-            
-            if ~isscalar(bmodeAutoTgcResp) || ~isnumeric(bmodeAutoTgcResp) || bmodeAutoTgcResp<0 || bmodeAutoTgcResp>1
-                error("ARRUS:IllegalArgument", "bmodeAutoTgcResp must be a numerical scalar in <0,1> range.");
             end
             
             obj.xGrid = proc.xGrid;
