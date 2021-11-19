@@ -166,7 +166,7 @@ classdef DuplexDisplay < handle
                 obj.cineLoop(:,:,obj.cineLoopIndex,:) = data;
                 
                 % persistence
-                index = mod(obj.cineLoopIndex-(0:(numel(obj.persistence)-1))-1,obj.cineLoopLength)+1;
+                index = mod(obj.cineLoopIndex - (0:(numel(obj.persistence) - 1)) - 1, obj.cineLoopLength) + 1;
                 bmode = sum(obj.cineLoop(:,:,index,1) .* obj.persistence, 3, 'omitnan');
                 
                 % time gain compensation
