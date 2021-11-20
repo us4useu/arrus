@@ -11,13 +11,14 @@ Release notes
 - Python API:
 
     - Fixed linear scanning for tx apertures starting from channels > 0.
+    - Added phased array scanning example.  
 
 0.6.3
 .....
 
 - Python API: 
 
-    - Added phased array scanning & example.
+    - Added phased array scanning.
     - Added definition for the probe adapter atl/philips-us4r4.
     - Improved IQ raw to LRI CUDA kernel performance.
     - Increased the maximum allowable voltage for Esaote probes to 90 V.
