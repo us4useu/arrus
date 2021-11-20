@@ -198,6 +198,7 @@ install(
         examples/diverging_beams.py
         examples/custom_tx_rx_sequence.py
         examples/custom_callback.py
+	examples/phased_array_scanning.py
         examples/requirements.txt
     examples/requirements.txt
         DESTINATION
