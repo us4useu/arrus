@@ -174,11 +174,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * tangElem;
     mxGPUArray const * zPix;
     mxGPUArray const * xPix;
+    mxGPUArray const * rxApod;
     mxGPUArray const * foc;
     mxGPUArray const * ang;
     mxGPUArray const * centZ;
     mxGPUArray const * centX;
-    mxGPUArray const * rxApod;
     mxGPUArray const * elemFst;
     mxGPUArray const * elemLst;
     mxGPUArray const * rxElemOrig;
@@ -191,11 +191,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     float const * dev_tangElem;
     float const * dev_zPix;
     float const * dev_xPix;
+    float const * dev_rxApod;
     float const * dev_foc;
     float const * dev_ang;
     float const * dev_centZ;
     float const * dev_centX;
-    float const * dev_rxApod;
     int const * dev_elemFst;
     int const * dev_elemLst;
     int const * dev_rxElemOrig;
@@ -246,11 +246,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     tangElem  = mxGPUCreateFromMxArray(prhs[3]);
     zPix      = mxGPUCreateFromMxArray(prhs[4]);
     xPix      = mxGPUCreateFromMxArray(prhs[5]);
-    foc       = mxGPUCreateFromMxArray(prhs[6]);
-    ang       = mxGPUCreateFromMxArray(prhs[7]);
-    centZ     = mxGPUCreateFromMxArray(prhs[8]);
-    centX     = mxGPUCreateFromMxArray(prhs[9]);
-    rxApod    = mxGPUCreateFromMxArray(prhs[10]);
+    rxApod    = mxGPUCreateFromMxArray(prhs[6]);
+    foc       = mxGPUCreateFromMxArray(prhs[7]);
+    ang       = mxGPUCreateFromMxArray(prhs[8]);
+    centZ     = mxGPUCreateFromMxArray(prhs[9]);
+    centX     = mxGPUCreateFromMxArray(prhs[10]);
     elemFst   = mxGPUCreateFromMxArray(prhs[11]);
     elemLst   = mxGPUCreateFromMxArray(prhs[12]);
     rxElemOrig= mxGPUCreateFromMxArray(prhs[13]);
@@ -270,11 +270,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     checkData(tangElem,  "tangElem",  false, 1, invalidInputMsgId);
     checkData(zPix,      "zPix",      false, 1, invalidInputMsgId);
     checkData(xPix,      "xPix",      false, 1, invalidInputMsgId);
+    checkData(rxApod,    "rxApod",    false, 1, invalidInputMsgId);
     checkData(foc,       "foc",       false, 1, invalidInputMsgId);
     checkData(ang,       "ang",       false, 1, invalidInputMsgId);
     checkData(centZ,     "centZ",     false, 1, invalidInputMsgId);
     checkData(centX,     "centX",     false, 1, invalidInputMsgId);
-    checkData(rxApod,    "rxApod",    false, 1, invalidInputMsgId);
 //     checkData(elemFst,   "elemFst",   false, 1, invalidInputMsgId); //int
 //     checkData(elemLst,   "elemLst",   false, 1, invalidInputMsgId); //int
 //     checkData(rxElemOrig,"rxElemOrig",false, 1, invalidInputMsgId); //int
@@ -316,11 +316,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     dev_tangElem = static_cast<float const *>(mxGPUGetDataReadOnly(tangElem));
     dev_zPix     = static_cast<float const *>(mxGPUGetDataReadOnly(zPix));
     dev_xPix     = static_cast<float const *>(mxGPUGetDataReadOnly(xPix));
+    dev_rxApod   = static_cast<float const *>(mxGPUGetDataReadOnly(rxApod));
     dev_foc      = static_cast<float const *>(mxGPUGetDataReadOnly(foc));
     dev_ang      = static_cast<float const *>(mxGPUGetDataReadOnly(ang));
     dev_centZ    = static_cast<float const *>(mxGPUGetDataReadOnly(centZ));
     dev_centX    = static_cast<float const *>(mxGPUGetDataReadOnly(centX));
-    dev_rxApod   = static_cast<float const *>(mxGPUGetDataReadOnly(rxApod));
     dev_elemFst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemFst));
     dev_elemLst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemLst));
     dev_rxElemOrig  = static_cast<int const *>(mxGPUGetDataReadOnly(rxElemOrig));
@@ -411,11 +411,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUDestroyGPUArray(tangElem);
     mxGPUDestroyGPUArray(zPix);
     mxGPUDestroyGPUArray(xPix);
+    mxGPUDestroyGPUArray(rxApod);
     mxGPUDestroyGPUArray(foc);
     mxGPUDestroyGPUArray(ang);
     mxGPUDestroyGPUArray(centZ);
     mxGPUDestroyGPUArray(centX);
-    mxGPUDestroyGPUArray(rxApod);
     mxGPUDestroyGPUArray(elemFst);
     mxGPUDestroyGPUArray(elemLst);
     mxGPUDestroyGPUArray(rxElemOrig);
