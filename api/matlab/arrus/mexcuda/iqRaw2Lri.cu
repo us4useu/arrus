@@ -130,27 +130,36 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
     }
 }
 
-__host__ void checkData(mxGPUArray const * const data, char const * const name, bool const isComplex, int const nDims, char const * const invalidInputMsgId)
+__host__ void checkData(mxGPUArray const * const data, 
+                        char const * const name, 
+                        bool const mustBeInt, 
+                        bool const mustBeComplex, 
+                        int const mustBeNDim, 
+                        char const * const invalidInputMsgId)
 {
     std::string invalidInputMsgTxt(name);
     
-    if (mxGPUGetClassID(data) != mxSINGLE_CLASS) 
+    if (mustBeInt && mxGPUGetClassID(data) != mxINT32_CLASS) 
+        invalidInputMsgTxt += std::string(" must be int32.");
+    
+    else if (!mustBeInt && mxGPUGetClassID(data) != mxSINGLE_CLASS) 
         invalidInputMsgTxt += std::string(" must be single.");
     
-    else if (!isComplex && mxGPUGetComplexity(data)) 
+    else if (!mustBeComplex && mxGPUGetComplexity(data)) 
         invalidInputMsgTxt += std::string(" must be real.");
     
-    else if (isComplex && !mxGPUGetComplexity(data)) 
+    else if (mustBeComplex && !mxGPUGetComplexity(data)) 
         invalidInputMsgTxt += std::string(" must be complex.");
     
-    else if (nDims==1 && !( mxGPUGetNumberOfDimensions(data) == 1 || 
-                           (mxGPUGetNumberOfDimensions(data) == 2 && mxGPUGetDimensions(data)[0] == 1))) 
+    else if (mustBeNDim==1 && !( mxGPUGetNumberOfDimensions(data) == 1 || 
+                                (mxGPUGetNumberOfDimensions(data) == 2 && 
+                                 mxGPUGetDimensions(data)[0] == 1))) 
         invalidInputMsgTxt += std::string(" must be at most 1D vector.");
     
-    else if (nDims==2 && !(mxGPUGetNumberOfDimensions(data) <= 2)) 
+    else if (mustBeNDim==2 && !(mxGPUGetNumberOfDimensions(data) <= 2)) 
         invalidInputMsgTxt += std::string(" must be at most 2D array.");
     
-    else if (nDims==3 && !(mxGPUGetNumberOfDimensions(data) <= 3)) 
+    else if (mustBeNDim==3 && !(mxGPUGetNumberOfDimensions(data) <= 3)) 
         invalidInputMsgTxt += std::string(" must be at most 3D array.");
     
     else
@@ -264,21 +273,21 @@ void mexFunction(int nlhs, mxArray * plhs[],
     initDel   = mxGetScalar(prhs[20]);
     
     /* Validate inputs */
-    checkData(iqRaw,     "iqRaw",     true,  3, invalidInputMsgId);
-    checkData(zElem,     "zElem",     false, 1, invalidInputMsgId);
-    checkData(xElem,     "xElem",     false, 1, invalidInputMsgId);
-    checkData(tangElem,  "tangElem",  false, 1, invalidInputMsgId);
-    checkData(zPix,      "zPix",      false, 1, invalidInputMsgId);
-    checkData(xPix,      "xPix",      false, 1, invalidInputMsgId);
-    checkData(rxApod,    "rxApod",    false, 1, invalidInputMsgId);
-    checkData(foc,       "foc",       false, 1, invalidInputMsgId);
-    checkData(ang,       "ang",       false, 1, invalidInputMsgId);
-    checkData(centZ,     "centZ",     false, 1, invalidInputMsgId);
-    checkData(centX,     "centX",     false, 1, invalidInputMsgId);
-//     checkData(elemFst,   "elemFst",   false, 1, invalidInputMsgId); //int
-//     checkData(elemLst,   "elemLst",   false, 1, invalidInputMsgId); //int
-//     checkData(rxElemOrig,"rxElemOrig",false, 1, invalidInputMsgId); //int
-//     checkData(nSampOmit,"nSampOmit",false, 1, invalidInputMsgId); //int
+    checkData(iqRaw,     "iqRaw",     false, true,  3, invalidInputMsgId);
+    checkData(zElem,     "zElem",     false, false, 1, invalidInputMsgId);
+    checkData(xElem,     "xElem",     false, false, 1, invalidInputMsgId);
+    checkData(tangElem,  "tangElem",  false, false, 1, invalidInputMsgId);
+    checkData(zPix,      "zPix",      false, false, 1, invalidInputMsgId);
+    checkData(xPix,      "xPix",      false, false, 1, invalidInputMsgId);
+    checkData(rxApod,    "rxApod",    false, false, 1, invalidInputMsgId);
+    checkData(foc,       "foc",       false, false, 1, invalidInputMsgId);
+    checkData(ang,       "ang",       false, false, 1, invalidInputMsgId);
+    checkData(centZ,     "centZ",     false, false, 1, invalidInputMsgId);
+    checkData(centX,     "centX",     false, false, 1, invalidInputMsgId);
+    checkData(elemFst,   "elemFst",   true,  false, 1, invalidInputMsgId);
+    checkData(elemLst,   "elemLst",   true,  false, 1, invalidInputMsgId);
+    checkData(rxElemOrig,"rxElemOrig",true,  false, 1, invalidInputMsgId);
+    checkData(nSampOmit, "nSampOmit", true,  false, 1, invalidInputMsgId);
     
     /* Get some additional information */
     nSamp = mxGPUGetDimensions(iqRaw)[0];
