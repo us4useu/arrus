@@ -65,14 +65,13 @@ std::vector<float> getDefaultTxDelays(ChannelIdx nchannels) {
     return getNTimes(0.0f, nchannels);
 }
 
-std::tuple<
-        Us4OEMBuffer,
-        FrameChannelMapping::Handle>
-createEmptySetTxRxResult(FrameChannelMapping::FrameNumber nFrames, ChannelIdx nChannels) {
+std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+createEmptySetTxRxResult(FrameChannelMapping::Us4OEMNumber us4oem, FrameChannelMapping::FrameNumber nFrames,
+                         ChannelIdx nChannels) {
     FrameChannelMappingBuilder builder(nFrames, nChannels);
     for(int i = 0; i < nFrames; ++i) {
         for(int j = 0; j < nChannels; ++j) {
-            builder.setChannelMapping(i, j, i, j);
+            builder.setChannelMapping(i, j, us4oem, i, j);
         }
     }
     Us4OEMBuffer buffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
@@ -92,7 +91,7 @@ public:
                     bool triggerSync),
             (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
-    MOCK_METHOD(double, getSamplingFrequency, (), (override));
+    MOCK_METHOD(float, getSamplingFrequency, (), (override));
     MOCK_METHOD(void, startTrigger, (), (override));
     MOCK_METHOD(void, stopTrigger, (), (override));
     MOCK_METHOD(void, start, (), (override));
@@ -104,6 +103,7 @@ public:
     MOCK_METHOD(void, enableSequencer, (), (override));
     MOCK_METHOD(std::vector<uint8_t>, getChannelMapping, (), (override));
     MOCK_METHOD(float, getFPGATemperature, (), (override));
+    MOCK_METHOD(void, setTestPattern, (Us4OEMImpl::RxTestPattern), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
@@ -215,7 +215,7 @@ class ProbeAdapterChannelMapping1Test : public AbstractProbeAdapterImplTest {
         do {                                                         \
             \
             EXPECT_CALL(*(us4oems[deviceId].get()), setTxRxSequence(matcher, _, _, _, _, _)) \
-                .WillOnce(Return(ByMove(createEmptySetTxRxResult(nFrames, 32)))); \
+                .WillOnce(Return(ByMove(createEmptySetTxRxResult(deviceId, nFrames, 32)))); \
         } while(0)
 
 #define EXPECT_SEQUENCE_PROPERTY(deviceId, matcher) \
@@ -508,7 +508,6 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesAperturesCorrectlyForMu
     expectedRxAp01[18 + 32] = false;
 
     EXPECT_SEQUENCE_PROPERTY_NFRAMES(
-
             0,
     // Tx aperture should stay the same.
     // Rx aperture should be adjusted appropriately.
@@ -699,16 +698,16 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
         if(i < 24) {
-            builder0.setChannelMapping(0, i, 0, i);
+            builder0.setChannelMapping(0, i, 0, 0, i);
         } else {
-            builder0.setChannelMapping(0, i, 0, -1);
+            builder0.setChannelMapping(0, i, 0, 0, -1);
         }
     }
     auto fcm0 = builder0.build();
 
     FrameChannelMappingBuilder builder1(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
-        builder1.setChannelMapping(0, i, 0, i);
+        builder1.setChannelMapping(0, i, 1, 0, i);
     }
     auto fcm1 = builder1.build();
     Us4OEMBuffer
@@ -728,28 +727,35 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     EXPECT_EQ(72 - 16, fcm->getNumberOfLogicalChannels());
 
     for(int i = 0; i < 16; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        EXPECT_EQ(0, us4oem);
         EXPECT_EQ(0, frame);
         EXPECT_EQ(channel, i);
     }
 
     for(int i = 16; i < 16 + 32; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
-        EXPECT_EQ(1, frame);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        EXPECT_EQ(1, us4oem);
+        EXPECT_EQ(0, frame);
         EXPECT_EQ(channel, i - 16);
     }
 
     for(int i = 16 + 32; i < 56; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        EXPECT_EQ(0, us4oem);
         EXPECT_EQ(0, frame);
         EXPECT_EQ(channel, i - 32);
     }
+
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistributedOperationWithGaps) {
     BitMask rxAperture(getNChannels(), false);
     ::arrus::setValuesInRange(rxAperture, 16, 73, true);
-    // Channels 20, 30 and 40 were masked for given us4oem and data is missing
+    // Channels 20, 30 and 40 were masked for given us4oem and data is missing.
     // Still, the input rx aperture stays as is.
 
     std::vector<TxRxParameters> seq = {
@@ -769,7 +775,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
         if(i != 20 - 16 && i != 30 - 16 && i <= 25) {
             currentJ = ++j;
         }
-        builder0.setChannelMapping(0, i, 0, currentJ);
+        builder0.setChannelMapping(0, i, 0, 0, currentJ);
     }
     auto fcm0 = builder0.build();
 
@@ -779,20 +785,18 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
         if(i != 40 - 32) {
             currentJ = ++j;
         }
-        builder1.setChannelMapping(0, i, 0, currentJ);
+        builder1.setChannelMapping(0, i, 1, 0, currentJ);
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer
-            us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
+                              {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
-    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res0))));
-    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res1))));
+    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res0))));
+    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res1))));
 
     auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
@@ -800,13 +804,17 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     EXPECT_EQ(73 - 16, fcm->getNumberOfLogicalChannels());
 
     std::vector<FrameChannelMapping::FrameNumber> expectedFrames;
+    std::vector<FrameChannelMapping::Us4OEMNumber> expectedUs4oems;
     for(int i = 16; i < 32; ++i) {
+        expectedUs4oems.push_back(0);
         expectedFrames.push_back(0);
     }
     for(int i = 32; i < 64; ++i) {
-        expectedFrames.push_back(1);
+        expectedUs4oems.push_back(1);
+        expectedFrames.push_back(0);
     }
     for(int i = 64; i < 73; ++i) {
+        expectedUs4oems.push_back(0);
         expectedFrames.push_back(0);
     }
     std::vector<int8> expectedChannels = {
@@ -818,10 +826,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     };
 
     for(int i = 0; i < 73 - 16; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        EXPECT_EQ(expectedUs4oems[i], us4oem);
         EXPECT_EQ(expectedFrames[i], frame);
         EXPECT_EQ(expectedChannels[i], channel);
     }
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAperture) {
@@ -846,7 +858,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     // The second op is Rx NOP.
     for(int i = 0; i < 32; ++i) {
-        builder0.setChannelMapping(0, i, 0, i);
+        builder0.setChannelMapping(0, i, 0, 0, i);
     }
     auto fcm0 = builder0.build();
 
@@ -856,54 +868,55 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
         int currentJ = -1;
         if(i != 16 + 3) {
             currentJ = ++j;
-            builder1.setChannelMapping(0, i, 0, currentJ);
+            builder1.setChannelMapping(0, i, 1, 0, currentJ);
         } else {
-            builder1.setChannelMapping(0, i, 0, FrameChannelMapping::UNAVAILABLE);
+            builder1.setChannelMapping(0, i, 1, 0, FrameChannelMapping::UNAVAILABLE);
         }
     }
     // Second frame:
     for(int i = 0; i < 32; ++i) {
         if(i < 16) {
-            builder1.setChannelMapping(1, i, 1, i);
+            builder1.setChannelMapping(1, i, 1, 1, i);
         } else {
-            builder1.setChannelMapping(1, i, 1, FrameChannelMapping::UNAVAILABLE);
+            builder1.setChannelMapping(1, i, 1, 1, FrameChannelMapping::UNAVAILABLE);
         }
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({
-                                      Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}),
-                                                          ::arrus::framework::NdArray::DataType::INT16)}, {});
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
+                              {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
-    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res0))));
-    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res1))));
+    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res0))));
+    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res1))));
 
     auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
     EXPECT_EQ(1, fcm->getNumberOfLogicalFrames());
     EXPECT_EQ(128 - 48, fcm->getNumberOfLogicalChannels());
 
+    std::vector<FrameChannelMapping::Us4OEMNumber> expectedUs4oems;
     std::vector<FrameChannelMapping::FrameNumber> expectedFrames;
     std::vector<int8> expectedChannels;
 
-    // Us4OEM:1, frame 1, channels 0-16
+    // Us4OEM:1, frame 0, channels 0-16
     for(int i = 48; i < 64; ++i) {
-        expectedFrames.push_back(1);
+        expectedUs4oems.push_back(1);
+        expectedFrames.push_back(0);
         expectedChannels.push_back(i - 48);
     }
     // Us4OEM:0
     for(int i = 64; i < 96; ++i) {
+        expectedUs4oems.push_back(0);
         expectedFrames.push_back(0);
         expectedChannels.push_back(i - 64);
     }
-    // Us4OEM:1, frame 1, channels 16-32
+    // Us4OEM:1, frame 0, channels 16-32
     for(int i = 96; i < 96 + 15; ++i) { // 15 because there will be one -1
-        expectedFrames.push_back(1);
+        expectedUs4oems.push_back(1);
+        expectedFrames.push_back(0);
         if(i == 99 && expectedChannels[expectedChannels.size() - 1] != FrameChannelMapping::UNAVAILABLE) {
             expectedChannels.push_back(FrameChannelMapping::UNAVAILABLE);
             --i;
@@ -911,18 +924,23 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
             expectedChannels.push_back(i - 96 + 16);
         }
     }
-    // Us4OEM:1, frame 2
+    // Us4OEM:1, frame 1
     for(int i = 96 + 16; i < 128; ++i) {
-        expectedFrames.push_back(2);
+        expectedUs4oems.push_back(1);
+        expectedFrames.push_back(1);
         expectedChannels.push_back(i - (96 + 16));
     }
 
     // VALIDATE
     for(int i = 0; i < 128 - 48; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        EXPECT_EQ(expectedUs4oems[i], us4oem);
         EXPECT_EQ(expectedFrames[i], frame);
         EXPECT_EQ(expectedChannels[i], channel);
     }
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 // Currently padding impacts the output frame channel mapping
@@ -943,9 +961,9 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
         if(i < 16) {
-            builder0.setChannelMapping(0, i, 0, i);
+            builder0.setChannelMapping(0, i, 0, 0, i);
         } else {
-            builder0.setChannelMapping(0, i, 0, -1);
+            builder0.setChannelMapping(0, i, 0, 0, -1);
         }
     }
     auto fcm0 = builder0.build();
@@ -959,10 +977,8 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
-    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res0))));
-    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res1))));
+    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res0))));
+    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res1))));
 
     auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
@@ -970,16 +986,19 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding
 
     for(int i = 0; i < 16; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
     }
 
     for(int i = 16; i < 32; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(0, us4oem);
         ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, i - 16);
     }
+    // Make sure the correct frame offsets are set.
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
 }
 
 // The same as above, but with aperture using two modules
@@ -999,16 +1018,16 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     };
     FrameChannelMappingBuilder builder0(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
-        builder0.setChannelMapping(0, i, 0, i);
+        builder0.setChannelMapping(0, i, 0, 0, i);
     }
     auto fcm0 = builder0.build();
 
     FrameChannelMappingBuilder builder1(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
         if(i < 17) {
-            builder1.setChannelMapping(0, i, 0, i);
+            builder1.setChannelMapping(0, i, 1, 0, i);
         } else {
-            builder1.setChannelMapping(0, i, 0, FrameChannelMapping::UNAVAILABLE);
+            builder1.setChannelMapping(0, i, 1, 0, FrameChannelMapping::UNAVAILABLE);
         }
     }
     auto fcm1 = builder1.build();
@@ -1018,10 +1037,8 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
-    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res0))));
-    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res1))));
+    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res0))));
+    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res1))));
 
     auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
@@ -1029,19 +1046,23 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     EXPECT_EQ(64, fcm->getNumberOfLogicalChannels()); // 49 active + 15 rx padding
 
     for(int i = 0; i < 15; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
     }
     for(int i = 15; i < 15 + 32; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(0, us4oem);
         ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, i - 15);
     }
     for(int i = 15 + 32; i < 64; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(1, frame);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(1, us4oem);
+        ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, i - (15 + 32));
     }
+    EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
+    EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 
 TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightSide) {
@@ -1065,9 +1086,9 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     FrameChannelMappingBuilder builder1(1, Us4OEMImpl::N_RX_CHANNELS);
     for(int i = 0; i < 32; ++i) {
         if(i < 16) {
-            builder1.setChannelMapping(0, i, 0, i);
+            builder1.setChannelMapping(0, i, 1, 0, i);
         } else {
-            builder1.setChannelMapping(0, i, 0, FrameChannelMapping::UNAVAILABLE);
+            builder1.setChannelMapping(0, i, 1, 0, FrameChannelMapping::UNAVAILABLE);
         }
     }
     auto fcm1 = builder1.build();
@@ -1078,10 +1099,8 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
-    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res0))));
-    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE())
-            .WillOnce(Return(ByMove(std::move(res1))));
+    EXPECT_CALL(*(us4oems[0].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res0))));
+    EXPECT_CALL(*(us4oems[1].get()), US4OEM_MOCK_SET_TX_RX_SEQUENCE()).WillOnce(Return(ByMove(std::move(res1))));
 
     auto[buffer, fcm] = SET_TX_RX_SEQUENCE(probeAdapter, seq);
 
@@ -1089,14 +1108,16 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding
 
     for(int i = 0; i < 16; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
+        ASSERT_EQ(1, us4oem);
         ASSERT_EQ(0, frame);
         ASSERT_EQ(channel, i);
     }
     for(int i = 16; i < 32; ++i) {
-        auto[frame, channel] = fcm->getLogical(0, i);
+        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
         ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
     }
+    EXPECT_EQ(0, fcm->getFirstFrame(1)); // Us4OEM:1
 }
 // ------------------------------------------ TODO Test that all other parameters are passed unmodified
 }

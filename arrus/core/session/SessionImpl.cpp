@@ -146,7 +146,6 @@ void SessionImpl::startScheme() {
 
 void SessionImpl::stopScheme() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
-    ASSERT_STATE(State::STARTED);
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->stop();
     state = State::STOPPED;

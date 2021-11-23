@@ -145,9 +145,6 @@ using namespace arrus::devices;
 %shared_ptr(arrus::framework::BufferElement);
 %shared_ptr(arrus::framework::DataBuffer);
 
-namespace std {
-    %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
-};
 namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
 };

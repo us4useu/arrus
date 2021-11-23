@@ -111,7 +111,8 @@ def process_simple_tx_rx_sequence(context):
         rx = Rx(rx_aperture, sample_range, op.downsampling_factor,
                 padding=rx_padding)
         txrx.append(TxRx(tx, rx, op.pri))
-    return TxRxSequence(txrx, tgc_curve=tgc_curve, sri=op.sri)
+    return TxRxSequence(txrx, tgc_curve=tgc_curve, sri=op.sri,
+                        n_repeats=op.n_repeats)
 
 
 def get_aperture_center(tx_aperture_center_element, probe):

@@ -358,7 +358,7 @@ probe_models: [
         },
         voltage_range: {
 			begin: 0,
-			end: 75
+			end: 90
 		}
     },
     {
@@ -375,7 +375,7 @@ probe_models: [
         },
         voltage_range: {
     	    begin: 0,
-    		end: 75
+    		end: 90
     	}
     },
     {
@@ -391,7 +391,7 @@ probe_models: [
         },
         voltage_range: {
 			begin: 0,
-			end: 75
+			end: 90
 		}
     },
     {
@@ -407,7 +407,7 @@ probe_models: [
         },
         voltage_range: {
 			begin: 0,
-			end: 75
+			end: 90
 		}
     },
     {
