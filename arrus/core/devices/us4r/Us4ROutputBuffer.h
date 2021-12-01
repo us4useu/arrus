@@ -199,11 +199,14 @@ public:
      *
      * @param timeout a number of milliseconds the thread will wait when
      * the input queue is empty; nullptr means no timeout.
-     * @return a pointer to the front of the queue
+     * @return a pointer to the front of the queue or nullptr, if the buffer is closed
      */
     short *tail(long long timeout) override {
         std::unique_lock<std::mutex> guard(mutex);
         validateState();
+        if(this->state == State::SHUTDOWN) {
+            return nullptr;
+        }
         while(accumulators[tailIdx] != filledAccumulator) {
             ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(
                 queueEmpty, guard, timeout,
@@ -292,10 +295,7 @@ private:
                 "The buffer is in invalid state "
                 "(probably some data transfer overflow happened).");
         }
-        else if(this->state == State::SHUTDOWN) {
-            throw ::arrus::IllegalStateException(
-                "The data buffer has been turned off.");
-        }
+
     }
 };
 

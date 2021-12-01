@@ -78,6 +78,8 @@ class HostBuffer:
         """
         data_addr = self.buffer_handle.tailAddress(
             -1 if timeout is None else timeout)
+        if data_addr == 0:
+            return None
         if data_addr not in self.buffer_cache:
             array = self._create_array(data_addr)
             frame_metadata_view = array[:self.n_samples*self.n_triggers*self.rx_batch_size:self.n_samples]
