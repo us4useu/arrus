@@ -77,8 +77,8 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
     // us4oem ordinal number -> current frame idx
     std::vector<FrameNumber> currentFrameIdx(seqs.size(), 0);
     for(size_t opIdx = 0; opIdx < seqLength; ++opIdx) {
-        for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) {
-            const auto &seq = seqs[seqIdx];
+        for(size_t us4oemIdx = 0; us4oemIdx < seqs.size(); ++us4oemIdx) {
+            const auto &seq = seqs[us4oemIdx];
             const auto &op = seq[opIdx];
 
             // Split rx aperture, if necessary.
@@ -115,12 +115,12 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                         rxSubapertures[subapIdx-1][ch] = true;
                         // FC mapping
                         // -1 because subapIdx starts from one
-                        opDestOp(seqIdx, opIdx, opActiveChannel) = FrameNumber(currentFrameIdx[seqIdx] + subapIdx - 1);
+                        opDestOp(us4oemIdx, opIdx, opActiveChannel) = FrameNumber(currentFrameIdx[us4oemIdx] + subapIdx - 1);
                         ARRUS_REQUIRES_TRUE_E(
                             opActiveChannel <= (std::numeric_limits<int8>::max)(),
                             arrus::ArrusException(
                                 "Number of active rx elements should not exceed 32."));
-                        opDestChannel(seqIdx, opIdx, opActiveChannel) =
+                        opDestChannel(us4oemIdx, opIdx, opActiveChannel) =
                             static_cast<int8>(subopActiveChannels[subapIdx-1]);
                         ++opActiveChannel;
                         ++subopActiveChannels[subapIdx-1];
@@ -128,7 +128,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                 }
                 // generate ops from subapertures
                 for(auto &subaperture : rxSubapertures) {
-                    result[seqIdx].emplace_back(
+                    result[us4oemIdx].emplace_back(
                         op.getTxAperture(), op.getTxDelays(), op.getTxPulse(),
                         subaperture, // Modified
                         op.getRxSampleRange(), op.getRxDecimationFactor(), op.getPri(),
@@ -138,24 +138,30 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs) {
                 // we have a single rx aperture, or all rx channels are empty,
                 // just pass the operator as is
                 // NOTE: we push_back even if the op is rx nop
-                result[seqIdx].push_back(op);
+                result[us4oemIdx].push_back(op);
                 // FC mapping
                 ChannelIdx opActiveChannel = 0;
                 for(auto bit : op.getRxAperture()) {
                     if(bit) {
-                        opDestOp(seqIdx, opIdx, opActiveChannel) =
-                            currentFrameIdx[seqIdx];
+                        opDestOp(us4oemIdx, opIdx, opActiveChannel) =
+                            currentFrameIdx[us4oemIdx];
                         ARRUS_REQUIRES_TRUE_E(
                             opActiveChannel <= (std::numeric_limits<int8>::max)(),
                             arrus::ArrusException(
                                 "Number of active rx elements should not exceed 32."));
-                        opDestChannel(seqIdx, opIdx, opActiveChannel)
+                        opDestChannel(us4oemIdx, opIdx, opActiveChannel)
                             = static_cast<int8>(opActiveChannel);
                         ++opActiveChannel;
                     }
                 }
             }
-            currentFrameIdx[seqIdx] += maxSubapertureIdx;
+            if(us4oemIdx == 0) {
+                // NOTE: for us4OEM:0, even if it is RX nop, the results of this
+                // rx NOP will be transferred from us4OEM to host memory,
+                // to get the frame metadata.
+                maxSubapertureIdx = max((ChannelIdx)1, maxSubapertureIdx);
+            }
+            currentFrameIdx[us4oemIdx] += maxSubapertureIdx;
         }
         // Check if all seqs have the same size.
         // If not, pad them with a rx NOP.
