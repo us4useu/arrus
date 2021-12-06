@@ -17,6 +17,12 @@ endif()
 
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
+set(CMAKE_CXX_CLANG_TIDY
+    clang-tidy;
+    -header-filter=.;
+    -checks=-*,boost-*,bugprone-*,cert-*,clang-analyzer-*,concurrency-*,performance-*,portability-*,cpp-core-guidelines-*;#readability-*,misc-*,;
+    -warnings-as-errors=-*;)
+
 ################################################################################
 # Modules
 ################################################################################
