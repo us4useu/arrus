@@ -189,8 +189,11 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
         auto nChannels = adapterFcm->getNumberOfLogicalChannels();
         for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
             if(pch >= paddingLeft && pch < (nChannels-paddingRight)) {
-                auto [us4oem, physicalFrame, physicalChannel] =
+                auto physicalAddr =
                     adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
+                auto us4oem = physicalAddr.getUs4oem();
+                auto physicalFrame = physicalAddr.getFrame();
+                auto physicalChannel = physicalAddr.getFrame();
 
                 builder.setChannelMapping(frameNumber, pch, us4oem, physicalFrame, physicalChannel);
             }

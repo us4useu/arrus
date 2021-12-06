@@ -63,11 +63,9 @@ Session::Handle createSession(const std::string& filepath) {
     return createSession(settings);
 }
 
-SessionImpl::SessionImpl(const SessionSettings &sessionSettings,
-                         Us4RFactory::Handle us4RFactory)
+SessionImpl::SessionImpl(const SessionSettings &sessionSettings, Us4RFactory::Handle us4RFactory)
     : us4rFactory(std::move(us4RFactory)) {
-    getDefaultLogger()->log(LogSeverity::DEBUG, arrus::format("Configuring session: {}",
-                                                              ::arrus::toString(sessionSettings)));
+    getDefaultLogger()->log(LogSeverity::DEBUG, format("Configuring session: {}", ::arrus::toString(sessionSettings)));
     devices = configureDevices(sessionSettings);
 }
 
@@ -108,7 +106,6 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceI
 SessionImpl::DeviceMap
 SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     DeviceMap result;
-
     // Configuring Us4R.
     const Us4RSettings &us4RSettings = sessionSettings.getUs4RSettings();
     Us4R::Handle us4r = us4rFactory->getUs4R(0, us4RSettings);
@@ -125,7 +122,15 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     ASSERT_STATE(State::STOPPED);
 
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+
+    // Allocate appropriate input buffer.
     auto &outputBufferSpec = scheme.getOutputBuffer();
+    auto &placement = outputBufferSpec.getPlacement();
+    auto device = getDevice(placement);
+    // Get memory allocator
+    // allocate - get NdArray
+    // Pass the NdArray to the upload function
+
     auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
                                      scheme.getWorkMode(), outputBufferSpec);
 
@@ -184,5 +189,7 @@ void SessionImpl::close() {
     this->devices.clear();
     this->state = State::CLOSED;
 }
+
+
 
 }

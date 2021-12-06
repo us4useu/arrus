@@ -2,13 +2,14 @@
 #define ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 
 #include <utility>
+#include <memory>
+#include <functional>
 
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/common.h"
 
 namespace arrus::framework {
-
-
 
 /**
  * N-dimensional array.
@@ -23,14 +24,47 @@ class NdArray {
 public:
     /** A list of currently supported data types of the output buffer.*/
     enum class DataType {
-        INT16
+        INT16,
+        INT32,
+        FLOAT32,
+        FLOAT64,
     };
 
     /** Array shape. */
     typedef Tuple<unsigned int> Shape;
 
-    NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
-        ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement) {}
+   /**
+    * Creates a new NdArray.
+    *
+    * The created NdArray becomes an owner of the given data pointed by given pointer.
+    *
+    * Note: this method moves the ptr to the NdArray internals, so it is no longer valid.
+    *
+    * @param ptr pointer to data that should be wrapped by this class
+    * @param shape shape of the array
+    * @param dataType data type of array values
+    * @param placement id of the device where the Array is allocated
+    */
+    static NdArray createArray(VoidHandle ptr, NdArray::Shape shape, NdArray::DataType dataType,
+                               devices::DeviceId placement) {
+        return NdArray(std::move(ptr), std::move(shape), dataType, placement);
+    }
+
+    /**
+     * Creates a new NdArray.
+     *
+     * Note: this method moves the ptr to the NdArray internals, so it is no longer valid.
+     *
+     * The created NdArray becomes an owner of the given data pointed by given pointer.
+     *
+     * @param ptr pointer to data that should be wrapped by this class
+     * @param shape shape of the array
+     * @param dataType data type of array values
+     * @param placement id of the device where the Array is allocated
+     */
+    NdArray(VoidHandle ptr, Shape shape, DataType dataType, devices::DeviceId placement);
+
+    virtual ~NdArray();
 
     /**
     * Returns a pointer to data.
@@ -40,36 +74,41 @@ public:
     */
     template<typename T>
     T *get() {
-        return (T *) ptr;
+        return (T *) getRaw();
     }
 
     /**
      * Returns a pointer to the memory data (assuming the data type is int16).
-     * @return
+     * @return pointer to the data array, casted to int16 value.
      */
-    short* getInt16() {
-        return this->get<short>();
-    }
+    short* getInt16();
 
     /**
      * Returns data shape.
      */
-    const Shape &getShape() const {
-        return shape;
-    }
+    const Shape &getShape();
 
     /**
-     * Returns array data type.
+     * Returns array's data type.
      */
-    DataType getDataType() const {
-        return dataType;
-    }
+    DataType getDataType() const;
+
+    const devices::DeviceId &getPlacement() const;
+
+    /**
+     * Returns a view of NdArray for
+     * @param n
+     * @return
+     */
+    NdArray operator[](const ::arrus::Tuple<int> ) const;
 
 private:
-    void *ptr;
-    Shape shape;
-    DataType dataType;
-    ::arrus::devices::DeviceId placement;
+    struct NdArrayImpl;
+
+    explicit NdArray(std::unique_ptr<NdArrayImpl> impl);
+    void *getRaw();
+
+    std::unique_ptr<NdArrayImpl> impl;
 };
 
 }

@@ -42,6 +42,7 @@ set(SRC_FILES
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
     api/devices/us4r/RxSettings.h
+    api/devices/Cpu.h
     api/session/Session.h
     api/session/SessionSettings.h
     api/ops/us4r/Pulse.h
@@ -182,7 +183,12 @@ set(SRC_FILES
     api/session.h
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
-    devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h)
+    devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h
+    devices/CpuImpl.cpp
+    devices/CpuImpl.h
+    devices/MemoryAllocator.h
+    framework/NdArray.cpp
+)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

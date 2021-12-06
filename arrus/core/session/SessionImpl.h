@@ -55,13 +55,11 @@ private:
             (CLOSED)
     );
 
-    using DeviceMap = std::unordered_map<
-        arrus::devices::DeviceId,
-        arrus::devices::Device::Handle,
-        GET_HASHER_NAME(arrus::devices::DeviceId)>;
+    using DeviceMap = std::unordered_map<arrus::devices::DeviceId, arrus::devices::Device::Handle,
+                                         GET_HASHER_NAME(arrus::devices::DeviceId)>;
 
-    DeviceMap
-    configureDevices(const SessionSettings &sessionSettings);
+    DeviceMap configureDevices(const SessionSettings &sessionSettings);
+
 
     DeviceMap devices;
     arrus::devices::Us4RFactory::Handle us4rFactory;

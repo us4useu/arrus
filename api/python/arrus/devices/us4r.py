@@ -4,8 +4,6 @@ import time
 import ctypes
 import collections.abc
 
-import arrus.utils.core
-import arrus.logging
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.exceptions
 import arrus.devices.probe
@@ -119,10 +117,12 @@ class Us4R(Device):
         """
         Sets given test ADC test patter to be run by Us4OEM components.
         """
+        import arrus.utils.core
         test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
         self._handle.setTestPattern(test_pattern_core)
 
     def _get_dto(self):
+        import arrus.utils.core
         probe_model = arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
         probe_dto = arrus.devices.probe.ProbeDTO(model=probe_model)

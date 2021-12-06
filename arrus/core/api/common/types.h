@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include <functional>
 
 namespace arrus {
 // Data types
@@ -22,7 +23,8 @@ typedef std::vector<bool> BitMask;
 using Voltage = uint8;
 
 template<typename T> using PtrHandle = T *;
-
+template<typename T> using Handle = std::unique_ptr<T>;
+using VoidHandle = std::unique_ptr<void, std::function<void(void*)>>;
 }
 
 

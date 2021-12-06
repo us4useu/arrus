@@ -21,7 +21,7 @@ do {                                        \
 #define ARRUS_REQUIRES_EQUAL(A, B, EXCEPTION)             \
 do {                                                      \
     if (!((A) == (B))) {                                  \
-        throw EXCEPTION;                                  \
+        throw (EXCEPTION);                                  \
     }                                                     \
 } while(0)
 
@@ -30,7 +30,7 @@ do {                                                      \
 
 #define ARRUS_REQUIRES_NON_EMPTY_IAE(coll)             \
 do {                                                      \
-    if (coll.empty()) {                                  \
+    if ((coll).empty()) {                                  \
         throw IllegalArgumentException(#coll " cannot be empty"); \
     }                                                     \
 } while(0)
@@ -84,7 +84,7 @@ do {                                                      \
 #define ARRUS_REQUIRES_IN_CLOSED_INTERVAL_E(value, min, max, exception) \
 do {                                                      \
     if (!(((value) >= (min) && (value) <= (max)))) {      \
-        throw exception;                                  \
+        throw (exception);                                  \
     }                                                     \
 } while(0)
 
@@ -98,13 +98,13 @@ do {                                                      \
      ARRUS_REQUIRES_DATA_TYPE_E(value, dtype, ::arrus::IllegalArgumentException(msg)) \
 
 #define ARRUS_WAIT_FOR_CV_OPTIONAL_TIMEOUT(cv, lock, timeout, exceptionMsg) \
-    if(timeout > -1) { \
-        auto status = cv.wait_for(lock ,std::chrono::milliseconds(timeout)); \
+    if((timeout) > -1) { \
+        auto status = (cv).wait_for(lock ,std::chrono::milliseconds(timeout)); \
         if(status == std::cv_status::timeout) { \
             throw TimeoutException(exceptionMsg); \
         } \
     } \
     else { \
-        cv.wait(lock); \
+        (cv).wait(lock); \
     }
 #endif //ARRUS_COMMON_ASSERTS_H
