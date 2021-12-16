@@ -111,11 +111,13 @@ Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
     auto dataType = element.getDataType();
     // If the output buffer already exists - remove it.
     if (this->buffer) {
+        // The buffer should be already unregistered (after stopping the device).
         this->buffer.reset();
     }
     // Create output buffer.
     this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements);
-    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, isTriggerSync);
+    this->us4rBuffer = std::move(rxBuffer);
+    getProbeImpl()->registerOutputBuffer(this->buffer.get(), this->us4rBuffer, isTriggerSync);
     return {this->buffer, std::move(fcm)};
 }
 
@@ -153,6 +155,7 @@ void Us4RImpl::stopDevice() {
     if (this->buffer != nullptr) {
         this->buffer->shutdown();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        getProbeImpl()->unregisterOutputBuffer(this->buffer.get(), this->us4rBuffer);
     }
     this->state = State::STOPPED;
 }

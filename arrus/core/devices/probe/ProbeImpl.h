@@ -38,6 +38,8 @@ public:
 
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer, bool isTriggerSync) override;
 
+    void unregisterOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &handle) override;
+
     static FrameChannelMapping::Handle remapFcm(const FrameChannelMapping::Handle &adapterFcm,
                                                 const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels,
                                                 const std::vector<ChannelIdx> &rxPaddingLeft,

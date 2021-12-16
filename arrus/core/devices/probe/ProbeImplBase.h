@@ -19,6 +19,7 @@ public:
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync) = 0;
 
     virtual void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &, bool isTriggerSync) = 0;
+    virtual void unregisterOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &) = 0;
 };
 
 }

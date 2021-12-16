@@ -50,6 +50,8 @@ public:
                          const Us4RBuffer::Handle &us4rBuffer,
                          bool isTriggerSync);
 
+    void unregisterOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer);
+
 private:
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
@@ -65,6 +67,8 @@ private:
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {
         return this->us4oems[0];
     }
+
+    size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
 };
 
 }
