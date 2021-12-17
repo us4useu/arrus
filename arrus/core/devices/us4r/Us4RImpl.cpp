@@ -155,7 +155,10 @@ void Us4RImpl::stopDevice() {
     if (this->buffer != nullptr) {
         this->buffer->shutdown();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        getProbeImpl()->unregisterOutputBuffer(this->buffer.get(), this->us4rBuffer);
+        if(this->us4rBuffer) {
+            getProbeImpl()->unregisterOutputBuffer(this->buffer.get(), this->us4rBuffer);
+            this->us4rBuffer.reset();
+        }
     }
     this->state = State::STOPPED;
 }
