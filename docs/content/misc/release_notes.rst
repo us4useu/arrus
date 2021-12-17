@@ -5,6 +5,15 @@ Release notes
 -----
 
 
+0.6.5
+.....
+
+- core (C++ API):
+
+    - fixed memory leak on subsequent re-uploads
+    - some improvements in the us4R-lite driver compatibility with the us4R-lite system
+
+
 0.6.4
 .....
 
