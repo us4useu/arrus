@@ -276,4 +276,12 @@ void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     setRxSettings(newRxSettings);
 }
 
+uint8_t Us4RImpl::getNumberOfUs4OEMs() {
+    return us4oems.size();
+}
+
+float Us4RImpl::getSamplingFrequency() const {
+    return us4oems[0]->getSamplingFrequency();
+}
+
 }

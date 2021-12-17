@@ -94,6 +94,7 @@ public:
         (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
     MOCK_METHOD(double, getSamplingFrequency, (), (override));
+    MOCK_METHOD(float, getFPGATemperature, (), (override));
     MOCK_METHOD(void, startTrigger, (), (override));
     MOCK_METHOD(void, stopTrigger, (), (override));
     MOCK_METHOD(void, start, (), (override));
