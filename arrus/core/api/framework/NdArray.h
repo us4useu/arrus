@@ -22,12 +22,20 @@ namespace arrus::framework {
  */
 class NdArray {
 public:
+    struct NdArrayBase;
+
     /** A list of currently supported data types of the output buffer.*/
     enum class DataType {
+        INT8,
+        UINT8,
         INT16,
+        UINT16,
         INT32,
+        UINT32,
         FLOAT32,
         FLOAT64,
+        COMPLEX64,
+        COMPLEX128
     };
 
     /** Array shape. */
@@ -96,19 +104,20 @@ public:
     const devices::DeviceId &getPlacement() const;
 
     /**
-     * Returns a view of NdArray for
-     * @param n
+     * Returns a view to the i-th element of NdArray.
+     *
+     * Implements semantic of array[i] in numpy.
+     * @param i number of element.
      * @return
      */
-    NdArray operator[](const ::arrus::Tuple<int> ) const;
+    NdArray operator[](int i) const;
 
 private:
-    struct NdArrayImpl;
 
-    explicit NdArray(std::unique_ptr<NdArrayImpl> impl);
+    explicit NdArray(std::unique_ptr<NdArrayBase> impl);
     void *getRaw();
 
-    std::unique_ptr<NdArrayImpl> impl;
+    std::unique_ptr<NdArrayBase> impl;
 };
 
 }
