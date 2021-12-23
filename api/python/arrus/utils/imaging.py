@@ -54,18 +54,18 @@ def get_bmode_imaging(sequence, grid, placement="/GPU:0",
             steps=(
                 # Channel data pre-processing.
                 RemapToLogicalOrder(),
-                Transpose(axes=(0, 2, 1)),
+                Transpose(axes=(0, 1, 3, 2)),
                 BandpassFilter(),
                 QuadratureDemodulation(),
                 Decimation(decimation_factor=decimation_factor,
                            cic_order=decimation_cic_order),
-                # Data beamforming.
+                # # Data beamforming.
                 RxBeamforming(),
-                # Post-processing to B-mode image.
+                # # Post-processing to B-mode image.
                 EnvelopeDetection(),
-                Transpose(),
+                Transpose(axes=(0, 2, 1)),
                 ScanConversion(x_grid, z_grid),
-                LogCompression(),
+                LogCompression()
             ),
             placement=placement)
     elif isinstance(sequence, arrus.ops.imaging.PwiSequence) \
