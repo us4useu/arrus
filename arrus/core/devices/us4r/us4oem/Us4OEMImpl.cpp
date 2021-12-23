@@ -140,7 +140,7 @@ public:
                 ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(
                         numberOfSamples, 64u, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                        op.getRxDecimationFactor(), 0, 5, firingStr);
+                        op.getRxDecimationFactor(), 0, 10, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                         op.getPri(),
                         Us4OEMImpl::MIN_PRI, Us4OEMImpl::MAX_PRI,
