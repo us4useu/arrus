@@ -181,11 +181,11 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                     }
                 }
             }
-            if(us4oemIdx == 0) {
+            if(seqIdx == 0) {
                 // NOTE: for us4OEM:0, even if it is RX nop, the results of this
                 // rx NOP will be transferred from us4OEM to host memory,
                 // to get the frame metadata.
-                maxSubapertureIdx = max((ChannelIdx)1, maxSubapertureIdx);
+                maxSubapertureIdx = std::max((ChannelIdx)1, maxSubapertureIdx);
             }
             currentFrameIdx[seqIdx] += maxSubapertureIdx;
         }
