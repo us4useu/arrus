@@ -149,7 +149,7 @@ void Us4RImpl::stopDevice() {
         this->buffer->shutdown();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         if(this->us4rBuffer) {
-            getProbeImpl()->unregisterOutputBuffer(this->buffer.get(), this->us4rBuffer);
+            getProbeImpl()->unregisterOutputBuffer();
             this->us4rBuffer.reset();
         }
     }

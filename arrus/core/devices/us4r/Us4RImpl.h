@@ -123,12 +123,7 @@ public:
     void setDtgcAttenuation(std::optional<uint16> value) override;
     void setActiveTermination(std::optional<uint16> value) override;
     uint8_t getNumberOfUs4OEMs() override;
-    float getSamplingFrequency() const override;
-
-    uint8_t getNumberOfUs4OEMs() override;
-
     void setTestPattern(Us4OEM::RxTestPattern pattern) override;
-
     float getSamplingFrequency() const override;
 
 private:

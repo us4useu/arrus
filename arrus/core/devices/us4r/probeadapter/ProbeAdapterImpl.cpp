@@ -51,13 +51,11 @@ public:
             currActiveRxChannels += txRxs[firing].getRxPadding().sum();
             ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
                                           "Each rx aperture should have the same size.");
-
             if(hasErrors()) {
                 return;
             }
         }
     }
-
 private:
     ChannelIdx nChannels;
 };
@@ -298,11 +296,11 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
                                             Us4OEMImplBase *us4oem, Scheme::WorkMode workMode) {
     auto us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
     auto ius4oem = us4oem->getIUs4oem();
-    auto &elementsSrc = bufferSrc.getElements();
     const auto nElementsSrc = bufferSrc.getNumberOfElements();
     const size_t nElementsDst = bufferDst->getNumberOfElements();
 
     size_t elementSize = getUniqueUs4OEMBufferElementSize(bufferSrc);
+
     if (elementSize == 0) {
         return;
     }
@@ -377,28 +375,13 @@ size_t ProbeAdapterImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us
     return elementSize;
 }
 
-void ProbeAdapterImpl::unregisterOutputBuffer(Us4ROutputBuffer *hostBuffer, const Us4RBuffer::Handle &us4rBuffer) {
-    const size_t hostBufferNElements = hostBuffer->getNumberOfElements();
-
+void ProbeAdapterImpl::unregisterOutputBuffer() {
+    if(transferRegistrar.empty()) {
+        return;
+    }
     for (Ordinal i = 0; i < us4oems.size(); ++i) {
-        auto &us4oem = us4oems[i];
-        const Ordinal ordinal = us4oem->getDeviceId().getOrdinal();
-        auto ius4oem = us4oem->getIUs4oem();
-
-        auto us4oemBuffer = us4rBuffer->getUs4oemBuffer(i);
-        size_t elementSize = getUniqueUs4OEMBufferElementSize(us4oemBuffer);
-        const auto rxBufferNElements = ARRUS_SAFE_CAST(us4oemBuffer.getNumberOfElements(), uint16);
-        uint16 hostElement = 0, rxElement = 0;
-
-        while (hostElement < hostBufferNElements) {
-            auto dstAddress = hostBuffer->getAddress(hostElement, ordinal);
-            auto srcAddress = us4oemBuffer.getElement(rxElement).getAddress();
-            logger->log(LogSeverity::DEBUG,
-                        format("Unregistering transfer: to {} from {}, size {}",
-                                                            (size_t)dstAddress, (size_t)srcAddress, elementSize));
-            ius4oem->ReleaseTransferRxBufferToHost(dstAddress, elementSize, srcAddress);
-            ++hostElement;
-            rxElement = (rxElement + 1) % rxBufferNElements;
+        if(transferRegistrar[i]) {
+            transferRegistrar[i]->unregisterTransfers();
         }
     }
 }

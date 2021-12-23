@@ -54,7 +54,6 @@ public:
         ARRUS_REQUIRES_AT_MOST(srcNTransfers, MAX_N_TRANSFERS, "Exceeded maximum number of transfers.");
 
         // If true: create only nSrc transfers, the callback function will reprogram the appropriate number transfers.
-
         if(dstNTransfers > MAX_N_TRANSFERS) {
             strategy = 2;
         }
@@ -78,6 +77,10 @@ public:
 
         programTransfers(nSrcPoints, nDstPoints);
         scheduleTransfers();
+    }
+
+    void unregisterTransfers() {
+        pageUnlockDstMemory();
     }
 
     static std::vector<Transfer> groupPartsIntoTransfers(const std::vector<Us4OEMBufferElementPart> &parts) {
@@ -110,6 +113,19 @@ public:
                 size_t src = addressSrc + transfer.address;
                 size_t size = transfer.size;
                 ius4oem->PrepareHostBuffer(dst, size, src);
+            }
+        }
+    }
+
+    void pageUnlockDstMemory() {
+        for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
+            uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
+            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // byte-addressed
+            for(auto &transfer: elementTransfers) {
+                uint8 *dst = addressDst + transfer.address;
+                size_t src = addressSrc + transfer.address;
+                size_t size = transfer.size;
+                ius4oem->ReleaseTransferRxBufferToHost(dst, size, src);
             }
         }
     }

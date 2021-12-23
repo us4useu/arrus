@@ -39,7 +39,7 @@ public:
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                               ::arrus::ops::us4r::Scheme::WorkMode workMode) override;
 
-    void unregisterOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &handle) override;
+    void unregisterOutputBuffer() override;
 
     static FrameChannelMapping::Handle remapFcm(const FrameChannelMapping::Handle &adapterFcm,
                                                 const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels,

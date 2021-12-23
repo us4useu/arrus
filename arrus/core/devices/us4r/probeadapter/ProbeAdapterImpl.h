@@ -47,7 +47,7 @@ public:
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                               ::arrus::ops::us4r::Scheme::WorkMode workMode) override;
 
-    void unregisterOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer);
+    void unregisterOutputBuffer() override;
 
 private:
     void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
@@ -64,6 +64,7 @@ private:
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
+};
 }
 
 #endif //ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERIMPL_H

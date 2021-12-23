@@ -247,115 +247,6 @@ class PipelineRunner:
                 cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
 
 
-class Pipeline:
-    """
-    Imaging pipeline.
-
-    Processes given data using a given sequence of steps.
-    The processing will be performed on a given device ('placement').
-    """
-    def __init__(self, steps, placement=None):
-        self.steps = steps
-        self._placement = None
-        self._processing_stream = None
-        self._input_buffer = None
-        if placement is not None:
-            self.set_placement(placement)
-
-    def __call__(self, data):
-        return self.process(data)
-
-    def process(self, data):
-        outputs = deque()  # TODO avoid creating deque on each processing step
-        for step in self.steps:
-            if step.endpoint:
-                step_outputs = step.process(data)
-                for output in step_outputs:
-                    outputs.appendleft(output)
-            else:
-                data = step.process(data)
-        if not self._is_last_endpoint:
-            outputs.appendleft(data)
-        return outputs
-
-    def __initialize(self, const_metadata):
-        input_shape = const_metadata.input_shape
-        input_dtype = const_metadata.dtype
-        self._input_buffer = self.num_pkg.zeros(
-            input_shape, dtype=input_dtype)+1000
-        data = self._input_buffer
-        for step in self.steps:
-            if not isinstance(step, Pipeline):
-                data = step.initialize(data)
-
-    def prepare(self, const_metadata):
-        metadatas = deque()
-        current_metadata = const_metadata
-        for step in self.steps:
-            if isinstance(step, Pipeline):
-                child_metadatas = step.prepare(current_metadata)
-                if not isinstance(child_metadatas, Iterable):
-                    child_metadatas = (child_metadatas, )
-                for metadata in child_metadatas:
-                    metadatas.appendleft(metadata)
-                step.endpoint = True
-            else:
-                current_metadata = step.prepare(current_metadata)
-                step.endpoint = False
-        # Force cupy to recompile kernels before running the pipeline.
-        self.__initialize(const_metadata)
-        if not isinstance(self.steps[-1], Pipeline):
-            metadatas.appendleft(current_metadata)
-            self._is_last_endpoint = False
-        else:
-            self._is_last_endpoint = True
-        return metadatas
-
-    def set_placement(self, device):
-        """
-        Sets the pipeline to be executed on a particular device.
-
-        :param device: device on which the pipeline should be executed
-        """
-        device_type = None
-        device_ordinal = 0
-        if isinstance(device, str):
-            # Device id
-            device_type, device_ordinal = arrus.devices.device.split_device_id_str(device)
-        elif isinstance(device, arrus.devices.device.DeviceId):
-            device_type = device.device_type.type
-            device_ordinal = device.ordinal
-        elif isinstance(device, arrus.devices.device.Device):
-            device_type = device.get_device_id().device_type.type
-            device_ordinal = device.get_device_id().ordinal
-
-        if device_ordinal != 0:
-            raise ValueError("Currently only GPU (or CPU) :0 are supported.")
-
-        self._placement = device_type
-        # Initialize steps with a proper library.
-        if self._placement == "GPU":
-            import cupy as cp
-            import cupyx.scipy.ndimage as cupy_scipy_ndimage
-            pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
-            self._processing_stream = cp.cuda.Stream()
-        elif self._placement == "CPU":
-            import scipy.ndimage
-            pkgs = dict(num_pkg=np, filter_pkg=scipy.ndimage)
-        else:
-            raise ValueError(f"Unsupported device: {device}")
-        for step in self.steps:
-            if isinstance(step, Pipeline):
-                # Make sure the child pipeline has the same placement as parent
-                if step._placement != self._placement:
-                    raise ValueError("All pipelines should be placed on the "
-                                     "same processing device (e.g. GPU:0)")
-            else:
-                step.set_pkgs(**pkgs)
-        self.num_pkg = pkgs['num_pkg']
-        self.filter_pkg = pkgs['filter_pkg']
-
-
 class Operation:
     """
     An operation to perform in the imaging pipeline -- one data processing
@@ -407,6 +298,142 @@ class Operation:
         - `filter_pkg`: scipy.ndimage for CPU, cupyx.scipy.ndimage for GPU
         """
         pass
+
+
+class Output(Operation):
+    """
+    Output node.
+
+    Adding this node into the pipeline at a specific path will cause
+    adding this operator to the Pipeline will cause the output buffer to
+    return data from a given processing step.
+    """
+
+    def __init__(self):
+        self.endpoint = True
+
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+
+    def initialize(self, data):
+        return data
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        return const_metadata
+
+    def process(self, data):
+        return (data, )
+
+
+class Pipeline:
+    """
+    Imaging pipeline.
+
+    Processes given data using a given sequence of steps.
+    The processing will be performed on a given device ('placement').
+    """
+    def __init__(self, steps, placement=None):
+        self.steps = steps
+        self._placement = None
+        self._processing_stream = None
+        self._input_buffer = None
+        if placement is not None:
+            self.set_placement(placement)
+
+    def __call__(self, data):
+        return self.process(data)
+
+    def process(self, data):
+        outputs = deque()  # TODO avoid creating deque on each processing step
+        for step in self.steps:
+            if step.endpoint:
+                step_outputs = step.process(data)
+                for output in step_outputs:
+                    outputs.appendleft(output)
+            else:
+                data = step.process(data)
+        if not self._is_last_endpoint:
+            outputs.appendleft(data)
+        return outputs
+
+    def __initialize(self, const_metadata):
+        input_shape = const_metadata.input_shape
+        input_dtype = const_metadata.dtype
+        self._input_buffer = self.num_pkg.zeros(
+            input_shape, dtype=input_dtype)+1000
+        data = self._input_buffer
+        for step in self.steps:
+            if not isinstance(step, (Pipeline, Output)):
+                data = step.initialize(data)
+
+    def prepare(self, const_metadata):
+        metadatas = deque()
+        current_metadata = const_metadata
+        for step in self.steps:
+            if isinstance(step, (Pipeline, Output)):
+                child_metadatas = step.prepare(current_metadata)
+                if not isinstance(child_metadatas, Iterable):
+                    child_metadatas = (child_metadatas, )
+                for metadata in child_metadatas:
+                    metadatas.appendleft(metadata)
+                step.endpoint = True
+            else:
+                current_metadata = step.prepare(current_metadata)
+                step.endpoint = False
+        # Force cupy to recompile kernels before running the pipeline.
+        self.__initialize(const_metadata)
+        last_step = self.steps[-1]
+        if not isinstance(last_step, (Pipeline, Output)):
+            metadatas.appendleft(current_metadata)
+            self._is_last_endpoint = False
+        else:
+            self._is_last_endpoint = True
+        return metadatas
+
+    def set_placement(self, device):
+        """
+        Sets the pipeline to be executed on a particular device.
+
+        :param device: device on which the pipeline should be executed
+        """
+        device_type = None
+        device_ordinal = 0
+        if isinstance(device, str):
+            # Device id
+            device_type, device_ordinal = arrus.devices.device.split_device_id_str(device)
+        elif isinstance(device, arrus.devices.device.DeviceId):
+            device_type = device.device_type.type
+            device_ordinal = device.ordinal
+        elif isinstance(device, arrus.devices.device.Device):
+            device_type = device.get_device_id().device_type.type
+            device_ordinal = device.get_device_id().ordinal
+
+        if device_ordinal != 0:
+            raise ValueError("Currently only GPU (or CPU) :0 are supported.")
+
+        self._placement = device_type
+        # Initialize steps with a proper library.
+        if self._placement == "GPU":
+            import cupy as cp
+            import cupyx.scipy.ndimage as cupy_scipy_ndimage
+            pkgs = dict(num_pkg=cp, filter_pkg=cupy_scipy_ndimage)
+            self._processing_stream = cp.cuda.Stream()
+        elif self._placement == "CPU":
+            import scipy.ndimage
+            pkgs = dict(num_pkg=np, filter_pkg=scipy.ndimage)
+        else:
+            raise ValueError(f"Unsupported device: {device}")
+        for step in self.steps:
+            if isinstance(step, Pipeline):
+                # Make sure the child pipeline has the same placement as parent
+                if step._placement != self._placement:
+                    raise ValueError("All pipelines should be placed on the "
+                                     "same processing device (e.g. GPU:0)")
+            else:
+                step.set_pkgs(**pkgs)
+        self.num_pkg = pkgs['num_pkg']
+        self.filter_pkg = pkgs['filter_pkg']
 
 
 class Lambda(Operation):
