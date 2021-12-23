@@ -76,8 +76,8 @@ def run_fir(grid_size, block_size, params, shared_mem_size):
 _gpu_fir_int16_float32_str = r'''
 extern "C" __global__ void gpu_fir_int16_float32(
     float* __restrict__ output, const short* __restrict__ input, 
-    const int nSamples, const int length, 
-    const float* __restrict__ kernel, const int kernelWidth) {
+    const int nSamples, const int length, const float* __restrict__ kernel, 
+    const int kernelWidth) {
 
     int idx = threadIdx.x + blockIdx.x*blockDim.x; 
     int ch = idx / nSamples;

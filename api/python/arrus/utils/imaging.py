@@ -484,6 +484,7 @@ class FirFilter(Operation):
     def __init__(self, taps, num_pkg=None, filter_pkg=None):
         """
         Bandpass filter constructor.
+
         :param bounds: determines filter's frequency boundaries,
             e.g. setting 0.5 will give a bandpass filter
             [0.5*center_frequency, 1.5*center_frequency].
@@ -505,8 +506,9 @@ class FirFilter(Operation):
         self.taps = cp.asarray(self.taps).astype(cp.float32)
         n_taps = len(self.taps)
 
-        n_frames, n_channels, n_samples = const_metadata.input_shape
-        total_n_samples = n_frames*n_channels*n_samples
+        input_shape = const_metadata.input_shape
+        n_samples = input_shape[-1]
+        total_n_samples = math.prod(input_shape)
 
         if total_n_samples == 0:
             raise ValueError("Empty array is not supported")
@@ -589,7 +591,8 @@ class QuadratureDemodulation(Operation):
         xp = self.xp
         fs = const_metadata.data_description.sampling_frequency
         fc = const_metadata.context.sequence.pulse.center_frequency
-        _, _, n_samples = const_metadata.input_shape
+        input_shape = const_metadata.input_shape
+        n_samples = input_shape[-1]
         if n_samples == 0:
             raise ValueError("Empty array is not accepted.")
         t = (xp.arange(0, n_samples) / fs).reshape(1, 1, -1)
@@ -636,10 +639,11 @@ class Decimation(Operation):
             sampling_frequency=new_fs, custom=
             const_metadata.data_description.custom)
 
-        n_frames, n_channels, n_samples = const_metadata.input_shape
-        total_n_samples = n_frames*n_channels*n_samples
+        input_shape = const_metadata.input_shape
+        n_samples = input_shape[-1]
+        total_n_samples = math.prod(input_shape)
 
-        output_shape = n_frames, n_channels, math.ceil(n_samples/self.decimation_factor)
+        output_shape = input_shape[:-1] + (math.ceil(n_samples/self.decimation_factor), )
 
         # CIC FIR coefficients
         if self.impl == "fir":
@@ -873,7 +877,6 @@ class EnvelopeDetection(Operation):
         self.xp = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-
         n_samples = const_metadata.input_shape[-1]
         if n_samples == 0:
             raise ValueError("Empty array is not accepted.")
