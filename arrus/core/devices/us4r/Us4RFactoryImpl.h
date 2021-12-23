@@ -99,9 +99,8 @@ class Us4RFactoryImpl : public Us4RFactory {
         ARRUS_REQUIRES_TRUE_E(
             us4oemSettings.size() == us4oemChannelsMasks.size(),
             ::arrus::IllegalArgumentException(
-                ::arrus::format("There should be exactly {} us4oem channels masks "
-                                "in the system configuration.", us4oemSettings.size())
-            )
+                format("There should be exactly {} us4oem channels masks in the system configuration.",
+                       us4oemSettings.size()))
         );
         for (unsigned i = 0; i < us4oemSettings.size(); ++i) {
             auto &setting = us4oemSettings[i];
@@ -109,8 +108,7 @@ class Us4RFactoryImpl : public Us4RFactory {
             ARRUS_REQUIRES_TRUE_E(
                 setting.getChannelsMask() == us4oemMask,
                 ::arrus::IllegalArgumentException(
-                    ::arrus::format(
-                    "The provided us4r channels masks does not match the provided us4oem channels masks, "
+                    format("The provided us4r channels masks does not match the provided us4oem channels masks, "
                     "for us4oem {}", i))
             );
         }
@@ -141,6 +139,7 @@ class Us4RFactoryImpl : public Us4RFactory {
                              ArrusException("Values are not equal: ius4oem size, us4oem settings size"));
 
         for (unsigned i = 0; i < ius4oems.size(); ++i) {
+            // TODO(Us4R-10) use ius4oem->GetDeviceID() as an ordinal number, instead of value of i
             us4oems.push_back(us4oemFactory->getUs4OEM(static_cast<ChannelIdx>(i), ius4oems[i], us4oemCfgs[i]));
         }
         return {std::move(us4oems), master};

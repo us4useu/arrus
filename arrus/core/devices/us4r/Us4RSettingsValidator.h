@@ -29,6 +29,7 @@ public:
             Ordinal nus4oemsAdapter = std::max_element(
                                    std::begin(adapterMapping), std::end(adapterMapping),
                                    [] (auto &a, auto &b) {return a.first < b.first;} )->first;
+            nus4oemsAdapter += 1; // The above starts from 0
             if(obj.getNumberOfUs4oems().has_value()) {
                 expectTrue(
                     "nus4oems",

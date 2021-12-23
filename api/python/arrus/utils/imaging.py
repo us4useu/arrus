@@ -1963,12 +1963,16 @@ class RemapToLogicalOrder(Operation):
             #  TODO constant memory
             self._frame_offsets = cp.asarray(frame_offsets)
             # For each us4OEM, get number of physical frames this us4OEM gathers.
-            # Note: this is the max number of us4OEM IN USE.
+            # Note: this is the max number of us4OEMs IN USE.
             n_us4oems = cp.max(self._fcm_us4oems).get()+1
             n_frames_us4oems = []
             for us4oem in range(n_us4oems):
-                n_frames_us4oem = cp.max(self._fcm_frames[self._fcm_us4oems == us4oem])
-                n_frames_us4oems.append(n_frames_us4oem)
+                us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
+                if us4oem_frames.size == 0:
+                    n_frames_us4oems.append(0)
+                else:
+                    n_frames_us4oem = cp.max(us4oem_frames).get().item()
+                    n_frames_us4oems.append(n_frames_us4oem)
 
             #  TODO constant memory
             self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)+1
