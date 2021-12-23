@@ -127,5 +127,8 @@ void SessionImpl::stopScheme() {
     us4r->stop();
 }
 
+void SessionImpl::close() {
+    devices.clear();
+}
 
 }

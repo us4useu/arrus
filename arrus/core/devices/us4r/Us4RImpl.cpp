@@ -165,7 +165,7 @@ void Us4RImpl::stopDevice() {
 
 Us4RImpl::~Us4RImpl() {
     getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
-    this->stopDevice();
+//    this->stopDevice();
     getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
 }
 

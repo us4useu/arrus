@@ -30,6 +30,8 @@ public:
 
     void stopScheme() override;
 
+    void close() override;
+
     SessionImpl(SessionImpl const &) = delete;
 
     void operator=(SessionImpl const &) = delete;

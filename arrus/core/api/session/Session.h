@@ -57,6 +57,8 @@ public:
      */
     virtual void stopScheme() = 0;
 
+    virtual void close() = 0;
+
     virtual ~Session() = default;
 };
 
