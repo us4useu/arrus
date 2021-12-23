@@ -188,6 +188,33 @@ inline T reduce(InputIt first, InputIt last, T init, BinaryOp binaryOp) {
     return result;
 }
 
+template<typename T>
+std::vector<size_t> rank(const std::vector<T> &values) {
+    using ValueWithPos = std::pair<T, size_t>;
+    std::vector<ValueWithPos> values_sorted(values.size());
+    std::vector<size_t> result(values.size());
+
+    if (values.empty()) {
+        return result;
+    }
+
+    for(size_t i = 0; i < values.size(); ++i) {
+        values_sorted[i] = std::make_pair(values[i], i);
+    }
+    std::sort(std::begin(values_sorted), std::end(values_sorted),
+              [](const ValueWithPos &a, const ValueWithPos &b){return a.first < b.first;});
+    ValueWithPos prev{values_sorted[0].first, static_cast<size_t>(0)};
+    for(size_t i = 0; i < result.size(); ++i) {
+        auto &v = values_sorted[i];
+        if(prev.first != v.first) {
+            prev = std::make_pair(v.first, i);
+        }
+        result[v.second] = prev.second;
+    }
+    return result;
+}
+
+
 }
 
 #endif //ARRUS_CORE_COMMON_COLLECTIONS_H
