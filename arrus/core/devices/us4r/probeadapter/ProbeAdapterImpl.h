@@ -47,6 +47,8 @@ public:
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                               ::arrus::ops::us4r::Scheme::WorkMode workMode) override;
 
+    void unregisterOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer);
+
 private:
     void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
                               Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
@@ -54,6 +56,7 @@ private:
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {
         return this->us4oems[0];
     }
+    size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
 
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
@@ -61,8 +64,6 @@ private:
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
-};
-
 }
 
 #endif //ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERIMPL_H

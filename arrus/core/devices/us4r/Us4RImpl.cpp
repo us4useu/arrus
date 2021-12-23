@@ -105,6 +105,7 @@ Us4RImpl::upload(const TxRxSequence &seq, unsigned short rxBufferNElements, cons
     auto dataType = element.getDataType();
     // If the output buffer already exists - remove it.
     if (this->buffer) {
+        // The buffer should be already unregistered (after stopping the device).
         this->buffer.reset();
     }
     // Create output buffer.
@@ -147,6 +148,10 @@ void Us4RImpl::stopDevice() {
     if (this->buffer != nullptr) {
         this->buffer->shutdown();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        if(this->us4rBuffer) {
+            getProbeImpl()->unregisterOutputBuffer(this->buffer.get(), this->us4rBuffer);
+            this->us4rBuffer.reset();
+        }
     }
     this->state = State::STOPPED;
 }

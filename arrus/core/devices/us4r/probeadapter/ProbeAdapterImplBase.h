@@ -29,6 +29,7 @@ public:
     virtual
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers,
                               ::arrus::ops::us4r::Scheme::WorkMode workMode) = 0;
+    virtual void unregisterOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &handle) = 0;
 
     virtual Ordinal getNumberOfUs4OEMs() = 0;
 

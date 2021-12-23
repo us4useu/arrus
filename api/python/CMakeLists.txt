@@ -5,8 +5,8 @@
 ################################################################################
 find_package(SWIG REQUIRED)
 include(UseSWIG)
-find_package(PythonInterp REQUIRED)
-find_package(PythonLibs REQUIRED)
+find_package(PythonInterp ${ARRUS_PY_VERSION} REQUIRED)
+find_package(PythonLibs ${ARRUS_PY_VERSION} REQUIRED)
 set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
 if (MSVC)
     set_property(
@@ -198,6 +198,7 @@ install(
         examples/diverging_beams.py
         examples/custom_tx_rx_sequence.py
         examples/custom_callback.py
+	examples/phased_array_scanning.py
         examples/requirements.txt
     examples/requirements.txt
         DESTINATION

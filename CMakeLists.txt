@@ -38,6 +38,7 @@ set(ARRUS_PYTHON_INSTALL_DIR python)
 set(Us4_LIB_DIR ${Us4_ROOT_DIR}/lib64)
 
 option(ARRUS_BUILD_PY "Build python API." OFF)
+set(ARRUS_PY_VERSION "3.8" CACHE STRING "Python version for which the ARRUS package should be built.")
 option(ARRUS_BUILD_MATLAB "Build MATLAB API." OFF)
 option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)
@@ -87,7 +88,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.6.8 EXACT REQUIRED US4OEM HV256 DBARLite)
+find_package(Us4 0.6.9 EXACT REQUIRED US4OEM HV256 DBARLite)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)

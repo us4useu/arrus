@@ -4,8 +4,6 @@ import time
 import ctypes
 import collections.abc
 
-import arrus.utils.core
-import arrus.logging
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.exceptions
 import arrus.devices.probe
@@ -112,6 +110,7 @@ class Us4R(Device):
         """
         Returns probe model description.
         """
+        import arrus.utils.core
         return arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
 
@@ -123,6 +122,7 @@ class Us4R(Device):
         self._handle.setTestPattern(test_pattern_core)
 
     def _get_dto(self):
+        import arrus.utils.core
         probe_model = arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
         probe_dto = arrus.devices.probe.ProbeDTO(model=probe_model)

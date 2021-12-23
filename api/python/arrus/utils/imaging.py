@@ -14,6 +14,8 @@ import dataclasses
 import threading
 from collections import deque
 from collections.abc import Iterable
+from pathlib import Path
+import os
 
 import cupy
 if cupy.__version__ < "9.0.0":
@@ -715,11 +717,135 @@ class Decimation(Operation):
 class RxBeamforming(Operation):
     """
     Classical rx beamforming (reconstructing scanline by scanline).
-
-    Expected input data shape: n_emissions, n_rx, n_samples
-
-    Currently the beamforming op works only for LIN sequence output data.
+    This operator implements beamforming for linear scanning (element by element)
+    and phased scanning (angle by angle).
     """
+    def __init__(self, num_pkg=None):
+        # Actual implementation of the operator.
+        self._op = None
+        self.xp = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def prepare(self, const_metadata):
+        seq = const_metadata.context.sequence
+        # Determine scanning type based on the sequence of parameters.
+        tx_centers = seq.tx_aperture_center_element
+        if tx_centers is None:
+            tx_centers = seq.tx_aperture_center
+        tx_centers = set(np.atleast_1d(tx_centers))
+        tx_angles = set(np.atleast_1d(seq.angles))
+        # Phased array scanning:
+        # - single TX/RX aperture position
+        # - multiple different angles
+        if len(tx_centers) == 1 and len(tx_angles) > 1:
+            self._op = RxBeamformingPhasedScanning(num_pkg=self.xp)
+        # Linear array scanning:
+        # - single transmit angle (equal 0)
+        # - multiple different aperture positions
+        elif len(tx_centers) > 1 and len(tx_angles) == 1:
+            self._op = RxBeamformingLin(num_pkg=self.xp)
+        # Otherwise: unsupported scanning method (linear/phased)
+        else:
+            raise ValueError("RX beamformer does not support parameters of "
+                             "the provided TX/RX sequence.")
+        return self._op.prepare(const_metadata)
+
+    def process(self, data):
+        return self._op.process(data)
+
+
+class RxBeamformingPhasedScanning(Operation):
+    """
+    Classical beamforming for phase array scanning.
+    """
+    def __init__(self, num_pkg=None):
+        self.num_pkg = num_pkg
+
+    def prepare(self, const_metadata):
+        import cupy as cp
+        if self.num_pkg != cp:
+            raise ValueError("Phased scanning is implemented for GPU only.")
+        probe_model = const_metadata.context.device.probe.model
+        if probe_model.is_convex_array():
+            raise ValueError("Phased array scanning is implemented for "
+                             "linear phased arrays only.")
+
+        self._kernel_module = _read_kernel_module("rx_beamforming.cu")
+        self._kernel = self._kernel_module.get_function("beamformPhasedArray")
+
+        self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
+        self.output_buffer = cp.zeros((self.n_tx, self.n_samples), dtype=cp.complex64)
+
+        seq = const_metadata.context.sequence
+        self.tx_angles = cp.asarray(seq.angles, dtype=cp.float32)
+
+        device_fs = const_metadata.context.device.sampling_frequency
+        acq_fs = (device_fs/seq.downsampling_factor)
+        fs = const_metadata.data_description.sampling_frequency
+        fc = seq.pulse.center_frequency
+        n_periods = seq.pulse.n_periods
+        medium = const_metadata.context.medium
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+        start_sample, end_sample = seq.rx_sample_range
+        initial_delay = - start_sample / acq_fs
+        if seq.init_delay == "tx_start":
+            burst_factor = n_periods / (2 * fc)
+            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
+                probe_model, seq, c)
+            tx_center_delay = tx_rx_params["tx_center_delay"]
+            initial_delay += tx_center_delay + burst_factor
+        elif not seq.init_delay == "tx_center":
+            raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
+        lambd = c / fc
+        max_tang = abs(math.tan(
+            math.asin(min(1, 2 / 3 * lambd / probe_model.pitch))))
+
+        self.fc = cp.float32(fc)
+        self.fs = cp.float32(fs)
+        self.c = cp.float32(c)
+        # Note: start sample has to be appropriately adjusted for
+        # the ACQ sampling frequency.
+        self.start_time = cp.float32(start_sample/acq_fs)
+        self.init_delay = cp.float32(initial_delay)
+        self.max_tang = cp.float32(max_tang)
+        scanline_block_size = min(self.n_tx, 16)
+        sample_block_size = min(self.n_samples, 16)
+        self.block_size = (sample_block_size, scanline_block_size, 1)
+        self.grid_size = (int((self.n_samples-1)//sample_block_size + 1),
+                          int((self.n_tx-1)//scanline_block_size + 1),
+                          1)
+        # xElemConst
+        # Get aperture origin (for the given aperture center element/aperture center)
+        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        # There is a single TX and RX aperture center for all TX/RXs
+        rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
+        rx_aperture_origin = _get_rx_aperture_origin(
+            rx_aperture_center_element, seq.rx_aperture_size)
+        rx_aperture_offset = rx_aperture_center_element-rx_aperture_origin
+        x_elem = (np.arange(0, self.n_rx)-rx_aperture_offset) * probe_model.pitch
+        x_elem = x_elem.astype(np.float32)
+        self.x_elem_const = _get_const_memory_array(
+            self._kernel_module, "xElemConst", x_elem)
+        return const_metadata.copy(input_shape=self.output_buffer.shape)
+
+    def process(self, data):
+        data = self.num_pkg.ascontiguousarray(data)
+        params = (
+            self.output_buffer, data,
+            self.n_tx, self.n_rx, self.n_samples,
+            self.tx_angles,
+            self.init_delay, self.start_time,
+            self.c, self.fs, self.fc, self.max_tang)
+        self._kernel(self.grid_size, self.block_size, params)
+        return self.output_buffer
+
+
+class RxBeamformingLin(Operation):
 
     def __init__(self, num_pkg=None):
         self.delays = None
@@ -728,8 +854,7 @@ class RxBeamforming(Operation):
         self.xp = num_pkg
         self.interp1d_func = None
 
-    def set_pkgs(self, num_pkg, **kwargs):
-        self.xp = num_pkg
+    def _set_interpolator(self, **kwargs):
         if self.xp is np:
             import scipy.interpolate
 
@@ -753,14 +878,14 @@ class RxBeamforming(Operation):
             self.interp1d_func = arrus.utils.interpolate.interp1d
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        # TODO verify that all angles, focal points are the same
-        # TODO make sure start_sample is computed appropriately
+        self._set_interpolator()
         context = const_metadata.context
         probe_model = const_metadata.context.device.probe.model
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         medium = const_metadata.context.medium
-        rx_aperture_center_element = np.array(seq.rx_aperture_center_element)
+        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        rx_aperture_center_element = np.array(tx_rx_params["tx_ap_cent"])
 
         self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
         self.is_iq = const_metadata.is_iq_data
@@ -783,11 +908,9 @@ class RxBeamforming(Operation):
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
-        tx_angle = 0  # TODO use appropriate tx angle
+        tx_angle = 0
         start_sample = seq.rx_sample_range[0]
-        rx_aperture_origin = _get_rx_aperture_origin(seq)
-
-
+        rx_aperture_origin = _get_rx_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
         # -start_sample compensates the fact, that the data indices always
         # start from 0
         initial_delay = - start_sample / acq_fs
@@ -800,13 +923,13 @@ class RxBeamforming(Operation):
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
         radial_distance = (
-                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)* c/2
+                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs) * c/2
         )
         x_distance = (radial_distance * np.sin(tx_angle)).reshape(1, -1)
         z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
 
         origin_offset = (rx_aperture_origin[0]
-                         - (seq.rx_aperture_center_element[0]))
+                         - (rx_aperture_center_element[0]))
         # New coordinate system: origin: rx aperture center
         element_position = ((np.arange(0, self.n_rx) + origin_offset)
                             * probe_model.pitch)
@@ -949,6 +1072,7 @@ class ScanConversion(Operation):
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg != np:
             self.is_gpu = True
+        self.num_pkg = num_pkg
         # Ignoring provided num. package - currently CPU implementation is
         # available only.
 
@@ -958,9 +1082,29 @@ class ScanConversion(Operation):
             self.process = self._process_convex
             return self._prepare_convex(const_metadata)
         else:
-            # linear array
-            self.process = self._process_linear_array
-            return self._prepare_linear_array(const_metadata)
+            # linear array or phased array
+            seq = const_metadata.context.sequence
+            # Determine scanning type based on the sequence of parameters.
+            tx_centers = seq.tx_aperture_center_element
+            if tx_centers is None:
+                tx_centers = seq.tx_aperture_center
+            tx_centers = set(np.atleast_1d(tx_centers))
+            tx_angles = set(np.atleast_1d(seq.angles))
+            # Phased array scanning:
+            # - single TX/RX aperture position
+            # - multiple different angles
+            if len(tx_centers) == 1 and len(tx_angles) > 1:
+                self.process = self._process_phased_array
+                return self._prepare_phased_array(const_metadata)
+            # Linear array scanning:
+            # - single transmit angle (equal 0)
+            # - multiple different aperture positions
+            elif len(tx_centers) > 1 and len(tx_angles) == 1:
+                self.process = self._process_linear_array
+                return self._prepare_linear_array(const_metadata)
+            else:
+                raise ValueError("The given combination of TX/RX parameters is "
+                                 "not supported by ScanConversion")
 
     def _prepare_linear_array(self, const_metadata: arrus.metadata.ConstMetadata):
         # Determine interpolation function.
@@ -970,40 +1114,37 @@ class ScanConversion(Operation):
         import cupy as cp
         import cupyx.scipy.ndimage
         self.interp_function = cupyx.scipy.ndimage.map_coordinates
-
         n_samples, n_scanlines = const_metadata.input_shape
         seq = const_metadata.context.sequence
         if not isinstance(seq, arrus.ops.imaging.LinSequence):
             raise ValueError("Scan conversion works only with LinSequence.")
-
         medium = const_metadata.context.medium
         probe = const_metadata.context.device.probe.model
-
+        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
         n_elements = probe.n_elements
         if n_elements % 2 != 0:
             raise ValueError("Even number of probe elements is required.")
         pitch = probe.pitch
         data_desc = const_metadata.data_description
-        if seq.speed_of_sound is not None:
-            c = seq.speed_of_sound
-        else:
-            c = medium.speed_of_sound
-        tx_center_elements = seq.tx_aperture_center_element
-        tx_center_diff = set(np.diff(tx_center_elements))
-        if len(tx_center_diff) != 1:
+        c = _get_speed_of_sound(const_metadata.context)
+        tx_center_diff = np.diff(tx_aperture_center_element)
+        # Check if tx aperture centers are evenly spaced.
+        if not np.allclose(tx_center_diff, [tx_center_diff[0]]*len(tx_center_diff)):
             raise ValueError("Transmits should be done by consecutive "
                              "center elements (got tx center elements: "
-                             f"{tx_center_elements}")
-        tx_center_diff = next(iter(tx_center_diff))
+                             f"{tx_aperture_center_element}")
+        tx_center_diff = tx_center_diff[0]
         # Determine input grid.
         input_x_grid_diff = tx_center_diff*pitch
-        input_x_grid_origin = tx_center_elements[0]-(n_elements-1)/2*pitch
+        input_x_grid_origin = (tx_aperture_center_element[0]-(n_elements-1)/2)*pitch
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
         start_sample = seq.rx_sample_range[0]
         input_z_grid_origin = start_sample/acq_fs*c/2
         input_z_grid_diff = c/(fs*2)
+        # Map x_grid and z_grid to the RF frame coordinates.
         interp_x_grid = (self.x_grid-input_x_grid_origin)/input_x_grid_diff
         interp_z_grid = (self.z_grid-input_z_grid_origin)/input_z_grid_diff
         self._interp_mesh = cp.asarray(np.meshgrid(interp_z_grid, interp_x_grid, indexing="ij"))
@@ -1062,7 +1203,50 @@ class ScanConversion(Operation):
         self.interpolator = scipy.interpolate.RegularGridInterpolator(
             (self.radGridIn, self.azimuthGridIn), data, method="linear",
             bounds_error=False, fill_value=0)
-        return self.interpolator(self.dst_points).reshape(self.dst_shape)
+        result = self.interpolator(self.dst_points).reshape(self.dst_shape)
+        return self.num_pkg.asarray(result).astype(np.float32)
+
+    def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
+        probe = const_metadata.context.device.probe.model
+        data_desc = const_metadata.data_description
+
+        n_samples, _ = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+        fs = const_metadata.context.device.sampling_frequency
+        acq_fs = fs / seq.downsampling_factor
+        fs = data_desc.sampling_frequency
+        start_sample, _ = seq.rx_sample_range
+        start_time = start_sample/acq_fs
+        c = _get_speed_of_sound(const_metadata.context)
+        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
+        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.imaging.get_aperture_center(
+            tx_ap_cent_elem, probe)
+
+        # There is a single position of TX aperture.
+        tx_ap_cent_x = tx_ap_cent_x.squeeze().item()
+        tx_ap_cent_z = tx_ap_cent_z.squeeze().item()
+        tx_ap_cent_ang = tx_ap_cent_ang.squeeze().item()
+
+        self.radGridIn = (start_time + np.arange(0, n_samples)/fs)*c/2
+        self.azimuthGridIn = seq.angles + tx_ap_cent_ang
+        azimuthGridOut = np.arctan2((self.x_grid-tx_ap_cent_x), (self.z_grid.T-tx_ap_cent_z))
+        radGridOut = np.sqrt((self.x_grid-tx_ap_cent_x)**2 + (self.z_grid.T-tx_ap_cent_z)**2)
+        dst_points = np.dstack((radGridOut, azimuthGridOut))
+        w, h, d = dst_points.shape
+        self.dst_points = dst_points.reshape((w * h, d))
+        self.dst_shape = len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        return const_metadata.copy(input_shape=self.dst_shape)
+
+    def _process_phased_array(self, data):
+        if self.is_gpu:
+            data = data.get()
+        data[np.isnan(data)] = 0.0
+        self.interpolator = scipy.interpolate.RegularGridInterpolator(
+            (self.radGridIn, self.azimuthGridIn), data, method="linear",
+            bounds_error=False, fill_value=0)
+        result = self.interpolator(self.dst_points).reshape(self.dst_shape)
+        return self.num_pkg.asarray(result).astype(np.float32)
 
 
 class LogCompression(Operation):
@@ -1594,18 +1778,20 @@ class ReconstructLri(Operation):
 
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg is np:
-            raise ValueError("Currently reconstructLri operation is "
-                             "implemented for GPU only.")
+            raise ValueError("ReconstructLri operation is implemented for GPU only.")
 
     def prepare(self, const_metadata):
-        from pathlib import Path
-        import os
+
+        import cupy as cp
+
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
         _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri.cu")).read_text()
-        self._kernel = self.num_pkg.RawKernel(_kernel_source, "iqRaw2Lri")
+        self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
+        self._kernel = self._kernel_module.get_function("iqRaw2Lri")
+        self._z_elem_const = self._kernel_module.get_global("zElemConst")
+        self._tang_elem_const = self._kernel_module.get_global("tangElemConst")
 
         # INPUT PARAMETERS.
-
         # Input data shape.
         self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
 
@@ -1620,10 +1806,11 @@ class ReconstructLri(Operation):
         self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
         x_block_size = min(self.x_size, 16)
         z_block_size = min(self.z_size, 16)
-        self.block_size = (z_block_size, x_block_size, 1)
+        tx_block_size = min(self.n_tx, 4)
+        self.block_size = (z_block_size, x_block_size, tx_block_size)
         self.grid_size = (int((self.z_size-1)//z_block_size + 1),
                           int((self.x_size-1)//x_block_size + 1),
-                          self.n_tx)
+                          int((self.n_tx-1)//tx_block_size + 1))
         self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
         self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
 
@@ -1637,10 +1824,22 @@ class ReconstructLri(Operation):
         element_pos_x = probe_model.element_pos_x
         element_pos_z = probe_model.element_pos_z
         element_angle_tang = np.tan(probe_model.element_angle)
-        self.x_elem = self.num_pkg.asarray(element_pos_x, dtype=self.num_pkg.float32)
-        self.z_elem = self.num_pkg.asarray(element_pos_z, dtype=self.num_pkg.float32)
-        self.tang_elem = self.num_pkg.asarray(element_angle_tang, dtype=self.num_pkg.float32)
+
         self.n_elements = probe_model.n_elements
+
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < 256*3*4: # 3 float32 arrays, 256 elements max
+            raise ValueError("There is not enough constant memory available!")
+
+        x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
+        self._x_elem_const = _get_const_memory_array(
+            self._kernel_module, name="xElemConst", input_array=x_elem)
+        z_elem = np.asarray(element_pos_z, dtype=self.num_pkg.float32)
+        self._z_elem_const = _get_const_memory_array(
+            self._kernel_module, name="zElemConst", input_array=z_elem)
+        tang_elem = np.asarray(element_angle_tang, dtype=self.num_pkg.float32)
+        self._tang_elem_const = _get_const_memory_array(
+            self._kernel_module, name="tangElemConst", input_array=tang_elem)
 
         # TX aperture description
         # Convert the sequence to the positions of the aperture centers
@@ -1689,8 +1888,7 @@ class ReconstructLri(Operation):
         params = (
             self.output_buffer,
             data,
-            self.x_elem, self.z_elem, self.tang_elem, self.n_elements, # DONE
-            self.n_tx, self.n_samples,
+            self.n_elements, self.n_tx, self.n_samples,
             self.z_pix, self.z_size,
             self.x_pix, self.x_size,
             self.sos, self.fs, self.fn,
@@ -1752,12 +1950,8 @@ class Mean(Operation):
         return self.num_pkg.mean(data, axis=self.axis)
 
 
-def _get_rx_aperture_origin(sequence):
-    rx_aperture_size = sequence.rx_aperture_size
-    rx_aperture_center_element = np.array(sequence.rx_aperture_center_element)
-    rx_aperture_origin = np.round(rx_aperture_center_element -
-                               (rx_aperture_size - 1) / 2 + 1e-9)
-    return rx_aperture_origin
+def _get_rx_aperture_origin(aperture_center_element, aperture_size):
+    return np.round(aperture_center_element-(aperture_size-1)/2+1e-9)
 
 
 # -------------------------------------------- RF frame remapping.
@@ -1924,3 +2118,27 @@ class RemapToLogicalOrder(Operation):
         self._remap_fn(data)
         return self._output_buffer
 
+
+def _get_const_memory_array(module, name, input_array):
+    import cupy as cp
+    const_arr_ptr = module.get_global(name)
+    const_arr = cp.ndarray(shape=input_array.shape, dtype=input_array.dtype,
+                           memptr=const_arr_ptr)
+    const_arr.set(input_array)
+    return const_arr
+
+
+def _read_kernel_module(path):
+    import cupy as cp
+    current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+    kernel_src = Path(os.path.join(current_dir, path)).read_text()
+    return cp.RawModule(code=kernel_src)
+
+
+def _get_speed_of_sound(context):
+    seq = context.sequence
+    medium = context.medium
+    if seq.speed_of_sound is not None:
+        return seq.speed_of_sound
+    else:
+        return medium.speed_of_sound

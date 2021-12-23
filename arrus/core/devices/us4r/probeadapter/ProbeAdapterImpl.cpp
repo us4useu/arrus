@@ -302,11 +302,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     const auto nElementsSrc = bufferSrc.getNumberOfElements();
     const size_t nElementsDst = bufferDst->getNumberOfElements();
 
-    size_t elementSize = ::arrus::getUnique<Us4OEMBufferElement, size_t>(
-            elementsSrc,
-            [](const Us4OEMBufferElement &element) {
-                return element.getSize();
-            });
+    size_t elementSize = getUniqueUs4OEMBufferElementSize(bufferSrc);
     if (elementSize == 0) {
         return;
     }
@@ -366,6 +362,45 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
         }
     });
+}
+
+size_t ProbeAdapterImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {
+    std::unordered_set<size_t> sizes;
+    for (auto &element: us4oemBuffer.getElements()) {
+        sizes.insert(element.getSize());
+    }
+    if (sizes.size() > 1) {
+        throw ArrusException("Each us4oem buffer element should have the same size.");
+    }
+    // This is the size of a single element produced by this us4oem.
+    const size_t elementSize = *std::begin(sizes);
+    return elementSize;
+}
+
+void ProbeAdapterImpl::unregisterOutputBuffer(Us4ROutputBuffer *hostBuffer, const Us4RBuffer::Handle &us4rBuffer) {
+    const size_t hostBufferNElements = hostBuffer->getNumberOfElements();
+
+    for (Ordinal i = 0; i < us4oems.size(); ++i) {
+        auto &us4oem = us4oems[i];
+        const Ordinal ordinal = us4oem->getDeviceId().getOrdinal();
+        auto ius4oem = us4oem->getIUs4oem();
+
+        auto us4oemBuffer = us4rBuffer->getUs4oemBuffer(i);
+        size_t elementSize = getUniqueUs4OEMBufferElementSize(us4oemBuffer);
+        const auto rxBufferNElements = ARRUS_SAFE_CAST(us4oemBuffer.getNumberOfElements(), uint16);
+        uint16 hostElement = 0, rxElement = 0;
+
+        while (hostElement < hostBufferNElements) {
+            auto dstAddress = hostBuffer->getAddress(hostElement, ordinal);
+            auto srcAddress = us4oemBuffer.getElement(rxElement).getAddress();
+            logger->log(LogSeverity::DEBUG,
+                        format("Unregistering transfer: to {} from {}, size {}",
+                                                            (size_t)dstAddress, (size_t)srcAddress, elementSize));
+            ius4oem->ReleaseTransferRxBufferToHost(dstAddress, elementSize, srcAddress);
+            ++hostElement;
+            rxElement = (rxElement + 1) % rxBufferNElements;
+        }
+    }
 }
 
 }
