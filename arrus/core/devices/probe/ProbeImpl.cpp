@@ -130,6 +130,10 @@ void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer:
     adapter->registerOutputBuffer(buffer, us4rBuffer, workMode);
 }
 
+void ProbeImpl::unregisterOutputBuffer() {
+    adapter->unregisterOutputBuffer();
+}
+
 // Remaps FCM according to given rx aperture active channels mappings.
 /**
  * This function reorders channels in FCM produced by ProbeAdapterImpl, so the order of channel
@@ -189,9 +193,10 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
         auto nChannels = adapterFcm->getNumberOfLogicalChannels();
         for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
             if(pch >= paddingLeft && pch < (nChannels-paddingRight)) {
-                auto [us4oem, physicalFrame, physicalChannel] =
-                    adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
-
+                auto address = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
+                auto us4oem = address.getUs4oem();
+                auto physicalFrame = address.getFrame();
+                auto physicalChannel = address.getChannel();
                 builder.setChannelMapping(frameNumber, pch, us4oem, physicalFrame, physicalChannel);
             }
 

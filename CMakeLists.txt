@@ -38,6 +38,7 @@ set(ARRUS_PYTHON_INSTALL_DIR python)
 set(Us4_LIB_DIR ${Us4_ROOT_DIR}/lib64)
 
 option(ARRUS_BUILD_PY "Build python API." OFF)
+set(ARRUS_PY_VERSION "3.8" CACHE STRING "Python version for which the ARRUS package should be built.")
 option(ARRUS_BUILD_MATLAB "Build MATLAB API." OFF)
 option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)

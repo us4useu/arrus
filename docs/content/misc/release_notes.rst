@@ -1,8 +1,49 @@
 Release notes
 =============
 
+0.7.x
+-----
+
+
+0.7.0
+.....
+
+- Python API:
+
+    - added n_repeats parameter to the simple TX/RX sequences available in ARRUS, the parameter allows to specify the number of times the sequence should be repeated ("batch size"),
+    - arrus.utils.imaging reconstruction operators now requires that the input data are in the format (batch size, n TX, n RX, n samples),
+    - arrus.utils.imaging.RxBeamformingImg is no longer available. Please use ReconstructLri + some form of compouding (e.g. Mean(axis=1)),
+
 0.6.x
 -----
+
+
+0.6.5
+.....
+
+- core (C++ API):
+
+    - fixed memory leak on subsequent re-uploads
+    - some improvements in the us4R-lite driver compatibility with the us4R-lite system
+
+
+0.6.4
+.....
+
+- Python API:
+
+    - Fixed linear scanning for tx apertures starting from channels > 0.
+    - Added phased array scanning example.  
+
+0.6.3
+.....
+
+- Python API: 
+
+    - Added phased array scanning.
+    - Added definition for the probe adapter atl/philips-us4r4.
+    - Improved IQ raw to LRI CUDA kernel performance.
+    - Increased the maximum allowable voltage for Esaote probes to 90 V.
 
 0.6.2
 `````

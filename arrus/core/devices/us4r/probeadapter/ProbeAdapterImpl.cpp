@@ -51,13 +51,11 @@ public:
             currActiveRxChannels += txRxs[firing].getRxPadding().sum();
             ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
                                           "Each rx aperture should have the same size.");
-
             if(hasErrors()) {
                 return;
             }
         }
     }
-
 private:
     ChannelIdx nChannels;
 };
@@ -298,15 +296,11 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
                                             Us4OEMImplBase *us4oem, Scheme::WorkMode workMode) {
     auto us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
     auto ius4oem = us4oem->getIUs4oem();
-    auto &elementsSrc = bufferSrc.getElements();
     const auto nElementsSrc = bufferSrc.getNumberOfElements();
     const size_t nElementsDst = bufferDst->getNumberOfElements();
 
-    size_t elementSize = ::arrus::getUnique<Us4OEMBufferElement, size_t>(
-            elementsSrc,
-            [](const Us4OEMBufferElement &element) {
-                return element.getSize();
-            });
+    size_t elementSize = getUniqueUs4OEMBufferElementSize(bufferSrc);
+
     if (elementSize == 0) {
         return;
     }
@@ -366,6 +360,30 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
         }
     });
+}
+
+size_t ProbeAdapterImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {
+    std::unordered_set<size_t> sizes;
+    for (auto &element: us4oemBuffer.getElements()) {
+        sizes.insert(element.getSize());
+    }
+    if (sizes.size() > 1) {
+        throw ArrusException("Each us4oem buffer element should have the same size.");
+    }
+    // This is the size of a single element produced by this us4oem.
+    const size_t elementSize = *std::begin(sizes);
+    return elementSize;
+}
+
+void ProbeAdapterImpl::unregisterOutputBuffer() {
+    if(transferRegistrar.empty()) {
+        return;
+    }
+    for (Ordinal i = 0; i < us4oems.size(); ++i) {
+        if(transferRegistrar[i]) {
+            transferRegistrar[i]->unregisterTransfers();
+        }
+    }
 }
 
 }

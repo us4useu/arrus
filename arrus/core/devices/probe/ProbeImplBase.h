@@ -21,6 +21,7 @@ public:
 
     virtual void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &,
                                       ::arrus::ops::us4r::Scheme::WorkMode workMode) = 0;
+    virtual void unregisterOutputBuffer() = 0;
 };
 
 }
