@@ -207,7 +207,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     // section -> us4oem -> transfer
     std::vector<std::vector<DataTransfer>> outputTransfers;
     uint32 currentFrameOffset = 0;
-    std::vector<uint32> frameOffsets{static_cast<unsigned int>(us4oems.size()), 0};
+    std::vector<uint32> frameOffsets(static_cast<unsigned int>(us4oems.size()), 0);
 
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
