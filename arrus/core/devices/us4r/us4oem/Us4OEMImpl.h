@@ -51,8 +51,7 @@ public:
     static constexpr ChannelIdx N_RX_CHANNELS = 32;
     static constexpr ChannelIdx N_ADDR_CHANNELS = N_TX_CHANNELS;
     static constexpr ChannelIdx ACTIVE_CHANNEL_GROUP_SIZE = 8;
-    static constexpr ChannelIdx N_ACTIVE_CHANNEL_GROUPS =
-        N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
+    static constexpr ChannelIdx N_ACTIVE_CHANNEL_GROUPS = N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
 
     static constexpr float MIN_TX_DELAY = 0.0f;
     static constexpr float MAX_TX_DELAY = 16.96e-6f;

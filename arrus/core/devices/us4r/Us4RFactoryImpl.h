@@ -43,6 +43,7 @@ class Us4RFactoryImpl : public Us4RFactory {
         DeviceId id(DeviceType::Us4R, ordinal);
 
         // Validate us4r settings (general).
+        // TODO validate nus4oems and mapping
         Us4RSettingsValidator validator(ordinal);
         validator.validate(settings);
         validator.throwOnErrors();
@@ -64,7 +65,10 @@ class Us4RFactoryImpl : public Us4RFactory {
             auto[us4OEMSettings, adapterSettings] = us4RSettingsConverter->convertToUs4OEMSettings(
                 probeAdapterSettings, probeSettings, rxSettings,
                 settings.getChannelsMask(),
-                settings.getReprogrammingMode());
+                settings.getReprogrammingMode(),
+                settings.getNumberOfUs4oems(),
+                settings.getAdapterToUs4RModuleNumber()
+            );
 
             // verify if the generated us4oemSettings.channelsMask is equal to us4oemChannelsMask field
             validateChannelsMasks(us4OEMSettings, settings.getUs4OEMChannelsMask());
@@ -99,12 +103,9 @@ class Us4RFactoryImpl : public Us4RFactory {
                                 "in the system configuration.", us4oemSettings.size())
             )
         );
-
         for (unsigned i = 0; i < us4oemSettings.size(); ++i) {
             auto &setting = us4oemSettings[i];
-
             std::unordered_set<uint8> us4oemMask(std::begin(us4oemChannelsMasks[i]), std::end(us4oemChannelsMasks[i]));
-
             ARRUS_REQUIRES_TRUE_E(
                 setting.getChannelsMask() == us4oemMask,
                 ::arrus::IllegalArgumentException(

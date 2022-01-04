@@ -80,9 +80,9 @@ zip(const std::vector<T> &a, const std::vector<U> &b) {
         throw std::runtime_error("Zipped vectors should have the same size.");
     }
     std::vector<std::pair<T, U>> res;
-    res.reserve(a.size());
-    for(const auto &[x, y] : boost::combine(a, b)) {
-        res.emplace_back(x, y);
+    res.resize(a.size());
+    for(size_t i = 0; i < res.size(); ++i) {
+        res[i] = std::make_pair(a[i], b[i]);
     }
     return res;
 }

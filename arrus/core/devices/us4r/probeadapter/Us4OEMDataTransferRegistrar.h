@@ -6,6 +6,7 @@
 #include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/common/logging.h"
+#include "arrus/common/compiler.h"
 
 namespace arrus::devices {
 
@@ -34,7 +35,7 @@ public:
     static constexpr size_t MAX_TRANSFER_SIZE = Us4OEMImpl::MAX_TRANSFER_SIZE;
 
     Us4OEMDataTransferRegistrar(Us4ROutputBuffer *dst, const Us4OEMBuffer *src, Us4OEMImplBase *us4oem)
-            : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src), us4oem(us4oem) {
+            : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src) {
         ARRUS_INIT_COMPONENT_LOGGER(logger, "Us4OEMDataTransferRegistrar");
         if (dst->getNumberOfElements() % src->getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
@@ -173,7 +174,9 @@ public:
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy) \
 [=, currentDstIdx = srcIdx, currentTransferIdx = transferIdx] () mutable { \
-    try {                            \
+    IGNORE_UNUSED(currentTransferIdx);               \
+    IGNORE_UNUSED(currentDstIdx);                    \
+    try {                                            \
         ius4oem->MarkEntriesAsReadyForReceive(transferFirstFiring, transferLastFiring); \
         ARRUS_ON_NEW_DATA_CALLBACK_strategy_##strategy                             \
         ARRUS_ON_NEW_DATA_CALLBACK_signal_##signal                       \
@@ -232,7 +235,6 @@ private:
     Logger::Handle logger;
     Us4ROutputBuffer *dstBuffer{nullptr};
     const Us4OEMBuffer *srcBuffer{nullptr};
-    Us4OEMImplBase *us4oem{nullptr};
     // All derived parameters
     IUs4OEM *ius4oem{nullptr};
     Ordinal us4oemOrdinal{0};
@@ -244,9 +246,7 @@ private:
     size_t srcNTransfers{0};
     // Number of transfer dst points.
     size_t dstNTransfers{0};
-    bool reprogramTransfers{false};
     int strategy{0};
-    bool triggerOnRelease{false};
 };
 
 
