@@ -1067,7 +1067,7 @@ classdef Us4R < handle
                 if obj.rec.bmodeEnable
                     rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
                     
-                    rfBfr = mean(rfBfr,3,'omitnan');
+                    rfBfr = mean(abs(rfBfr),3,'omitnan');
                 end
                 
                 % Color Doppler image reconstruction
