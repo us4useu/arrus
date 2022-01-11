@@ -7,9 +7,8 @@
 namespace arrus::devices {
 class ProbeFactory {
 public:
-    virtual ProbeImplBase::Handle
-    getProbe(const ProbeSettings &settings,
-             ProbeAdapterImplBase::RawHandle adapter) = 0;
+    virtual ProbeImplBase::Handle getProbe(const ProbeSettings &settings,ProbeAdapterImplBase::RawHandle adapter) = 0;
+    virtual ~ProbeFactory() = default;
 };
 }
 

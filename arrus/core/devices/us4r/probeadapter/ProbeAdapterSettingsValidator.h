@@ -19,8 +19,7 @@ class ProbeAdapterSettingsValidator
 
 public:
     explicit ProbeAdapterSettingsValidator(const Ordinal ordinal)
-            : SettingsValidator(
-            DeviceId(DeviceType::ProbeAdapter, ordinal)) {}
+            : SettingsValidator(DeviceId(DeviceType::ProbeAdapter, ordinal)) {}
 
     void validate(const ProbeAdapterSettings &obj) override {
         auto &id = obj.getModelId();
@@ -34,53 +33,30 @@ public:
         const auto N_RX = Us4OEMImpl::N_RX_CHANNELS;
         // Make sure, that the number of channels is equal to
         // the number of channel mapping elements.
-        expectEqual<ChannelIdx>("channel mapping",
-								static_cast<ChannelIdx>(obj.getChannelMapping().size()),
+        expectEqual<ChannelIdx>("channel mapping", static_cast<ChannelIdx>(obj.getChannelMapping().size()),
                                 obj.getNumberOfChannels(),
                                 " (size, compared to nChannels)");
 
         // Get the number of us4oems
-        std::vector<Ordinal> modules;
+        std::set<Ordinal> modules;
         for(auto &moduleChannel : obj.getChannelMapping()) {
             auto us4oem = moduleChannel.first;
-            modules.push_back(us4oem);
+            modules.insert(us4oem);
         }
-
-        // Check if contains consecutive ordinal numbers.
-        // Us4OEMs should have exactly ordinals: 0, 1, ... nmodules-1
-        std::unordered_set<Ordinal> modulesSet{std::begin(modules),
-                                               std::end(modules)};
-        ARRUS_REQUIRES_TRUE(
-                modulesSet.size() >= std::numeric_limits<Ordinal>::min()
-                && modulesSet.size() <= std::numeric_limits<Ordinal>::max(),
-                arrus::format("Us4OEMs count should be in range {}, {}",
-                              std::numeric_limits<Ordinal>::min(),
-                              std::numeric_limits<Ordinal>::max()));
-
-        for(Ordinal i = 0; i < (Ordinal) modulesSet.size(); ++i) {
-            expectTrue("channel mapping",
-                       setContains(modulesSet, i),
-                       arrus::format("Missing Us4OEM: {}", i));
-        }
-
-        if(hasErrors()) {
-            // Do not continue here, some errors may impact further validation
-            // correctness.
-            return;
-        }
-
-        auto nModules = modulesSet.size();
-
+        auto maxModuleNr = *std::max_element(std::begin(modules), std::end(modules));
         // Split to us4oem channel mappings
-        std::vector<OEMMapping> us4oemMappings(nModules);
+        std::vector<OEMMapping> us4oemMappings(maxModuleNr+1);
 
         for(auto[module, channel] : obj.getChannelMapping()) {
             us4oemMappings[module].emplace_back(channel);
         }
 
         unsigned us4oemOrdinal = 0;
-
         for(auto &mapping : us4oemMappings) {
+            if(mapping.empty()) {
+                // This module is not used and has no mapping available.
+                continue;
+            }
             // Make sure that the number of channels for each module is
             // multiple of nRx
             expectDivisible("channel mapping",
@@ -101,7 +77,7 @@ public:
                                 " (number of unique channel indices "
                                 "for Us4OEM: {}, "
                                 "for input range [{}, {}))",
-                         us4oemOrdinal, i*N_RX, (i+1)*N_RX));
+                                us4oemOrdinal, i*N_RX, (i+1)*N_RX));
 
                 // Make sure, the mapping contains [0,31)*i*32 groups
                 // (where i can be 0, 1, 2, 3)

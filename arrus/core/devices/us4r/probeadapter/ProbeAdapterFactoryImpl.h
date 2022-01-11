@@ -20,28 +20,12 @@ public:
         validator.validate(settings);
         validator.throwOnErrors();
 
-        assertCorrectNumberOfUs4OEMs(settings, us4oems);
-
         return std::make_unique<ProbeAdapterImpl>(
             id,
             settings.getModelId(),
             us4oems,
             settings.getNumberOfChannels(),
             settings.getChannelMapping());
-    }
-
-private:
-    static void assertCorrectNumberOfUs4OEMs(
-        const ProbeAdapterSettings &settings,
-        const std::vector<Us4OEMImplBase::RawHandle> &us4oems) {
-        std::unordered_set<Ordinal> ordinals;
-        for(auto value : settings.getChannelMapping()) {
-            ordinals.insert(value.first);
-        }
-        ARRUS_REQUIRES_TRUE(ordinals.size() == us4oems.size(),
-                            arrus::format("Incorrect number of us4oems "
-                                          "(provided {}, from settings {})",
-                                          us4oems.size(), ordinals.size()));
     }
 };
 
