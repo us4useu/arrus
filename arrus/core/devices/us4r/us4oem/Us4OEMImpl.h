@@ -99,7 +99,7 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false) override;
 
-    double getSamplingFrequency() override;
+    float getSamplingFrequency() override;
 
     Interval<Voltage> getAcceptedVoltageRange() override {
         return Interval<Voltage>(MIN_VOLTAGE, MAX_VOLTAGE);

@@ -18,7 +18,7 @@ public:
     /**
      * Returns nominal sampling frequency on the us4OEM device.
      */
-    virtual double getSamplingFrequency() = 0;
+    virtual float getSamplingFrequency() = 0;
 
     /**
      * Returns temperature measured by Us4OEM's FPGA [Celsius].
