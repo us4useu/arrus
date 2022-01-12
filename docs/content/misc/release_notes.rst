@@ -5,6 +5,15 @@ Release notes
 -----
 
 
+0.6.6
+.....
+
+- core (C++):
+    - implemented Us4R::checkState and Us4OEM::checkState methods to verify if the us4OEM module is still available (currently by checking us4OEM module firmware version)
+    - implemented Us4OEM::getFirmwareVersion and Us4OEM::getTxFirmwareVersion() to get us4OEM device firmware version
+    - implemented Us4OEM::getFPGATemperature() to get the temperature measured by Us4OEM's FPGA
+
+
 0.6.5
 .....
 

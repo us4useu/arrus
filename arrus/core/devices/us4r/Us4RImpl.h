@@ -122,6 +122,7 @@ public:
     void setActiveTermination(std::optional<uint16> value) override;
     uint8_t getNumberOfUs4OEMs() override;
     float getSamplingFrequency() const override;
+    void checkState() const override;
 
 private:
     UltrasoundDevice *getDefaultComponent();

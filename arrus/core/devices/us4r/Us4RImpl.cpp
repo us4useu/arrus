@@ -284,4 +284,10 @@ float Us4RImpl::getSamplingFrequency() const {
     return us4oems[0]->getSamplingFrequency();
 }
 
+void Us4RImpl::checkState() const {
+    for(auto &us4oem: us4oems) {
+        us4oem->checkState();
+    }
+}
+
 }

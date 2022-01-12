@@ -643,4 +643,26 @@ float Us4OEMImpl::getFPGATemperature() {
     return ius4oem->GetFPGATemp();
 }
 
+void Us4OEMImpl::checkFirmwareVersion() {
+    try {
+        ius4oem->CheckFirmwareVersion();
+    } catch(const std::runtime_error &e) {
+        throw arrus::IllegalStateException(e.what());
+    } catch(...) {
+        throw arrus::IllegalStateException("Unknown exception while check firmware version.");
+    }
+}
+
+uint32 Us4OEMImpl::getFirmwareVersion() {
+    return ius4oem->GetFirmwareVersion();
+}
+
+uint32 Us4OEMImpl::getTxFirmwareVersion() {
+    return ius4oem->GetTxFirmwareVersion();
+}
+
+void Us4OEMImpl::checkState() {
+    this->checkFirmwareVersion();
+}
+
 }

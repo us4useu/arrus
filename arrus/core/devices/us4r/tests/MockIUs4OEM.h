@@ -10,6 +10,7 @@ public:
     MOCK_METHOD(unsigned int, GetID, (), (override));
     MOCK_METHOD(uint32_t, GetFirmwareVersion, (), (override));
     MOCK_METHOD(uint32_t, GetTxFirmwareVersion, (), (override));
+    MOCK_METHOD(void, CheckFirmwareVersion, (), (override));
     MOCK_METHOD(bool, IsPowereddown, (), (override));
     MOCK_METHOD(void, Initialize, (int), (override));
     MOCK_METHOD(void, Synchronize, (), (override));

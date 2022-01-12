@@ -118,6 +118,10 @@ public:
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
+    void checkFirmwareVersion() override;
+    uint32 getFirmwareVersion() override;
+    void checkState() override;
+    uint32 getTxFirmwareVersion() override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;

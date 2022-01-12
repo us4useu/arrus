@@ -145,6 +145,14 @@ public:
      */
     virtual float getSamplingFrequency() const = 0;
 
+    /**
+     * Checks state of the Us4R device. Currently checks if each us4OEM module is in
+     * the correct state.
+     *
+     * @throws arrus::IllegalStateException when some inconsistent state was detected
+     */
+    virtual void checkState() const = 0;
+
     virtual void start() = 0;
     virtual void stop() = 0;
 
