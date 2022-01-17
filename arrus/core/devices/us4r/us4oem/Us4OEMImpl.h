@@ -119,6 +119,10 @@ public:
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
 
+	uint16_t getAfe(uint8_t address) override;
+
+	void setAfe(uint8_t address, uint16_t value) override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 

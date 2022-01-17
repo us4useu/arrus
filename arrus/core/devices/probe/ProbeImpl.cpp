@@ -152,7 +152,7 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(
     const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels,
     const std::vector<ChannelIdx> &rxPaddingLeft,
     const std::vector<ChannelIdx> &rxPaddingRight)
-{
+{   
     auto nOps = adapterActiveChannels.size();
     if (adapterFcm->getNumberOfLogicalFrames() != nOps) {
         throw std::runtime_error(

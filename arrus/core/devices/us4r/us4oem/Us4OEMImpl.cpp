@@ -85,6 +85,16 @@ void Us4OEMImpl::stopTrigger() {
     }
 }
 
+uint16_t Us4OEMImpl::getAfe(uint8_t address) {
+	return ius4oem->AfeReadRegister(0, address);
+}
+
+void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
+	ius4oem->AfeWriteRegister(0, address, value);
+	ius4oem->AfeWriteRegister(1, address, value);
+}
+
+
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
     using Validator<TxRxParamsSequence>::Validator;

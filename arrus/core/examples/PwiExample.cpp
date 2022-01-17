@@ -7,52 +7,71 @@
 
 #include "arrus/core/api/arrus.h"
 
+enum Commands {
+	Write,
+	Read,
+	Start,
+	Exit,
+	Invalid
+};
+
+Commands ResolveInput(std::string inp)
+{
+	if (inp == "wr") return Write;
+	if (inp == "rd") return Read;
+	if (inp == "exit") return Exit;
+	if (inp == "start") return Start;
+
+	return Invalid;
+}
+
 int main() noexcept {
+    char value = 0;
+    std::cin >> value;
+    std::cout << "pwi-example " << std::endl;
     using namespace ::arrus::session;
     using namespace ::arrus::devices;
     using namespace ::arrus::ops::us4r;
     using namespace ::arrus::framework;
     try {
         // TODO set path to us4r-lite configuration file
-        auto settings = ::arrus::io::readSessionSettings("/path/to/set");
+        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/ate_cfg.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
         auto probe = us4r->getProbe(0);
 
         unsigned nElements = probe->getModel().getNumberOfElements().product();
-        std::cout << "Probe with " << nElements << " elements." << std::endl;
 
-        ::arrus::BitMask rxAperture(nElements, true);
+		::arrus::BitMask rxAperture(nElements, true);
 
         Pulse pulse(6e6, 2, false);
         ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 2048};
 
         std::vector<TxRx> txrxs;
 
-		// 10 plane waves
-        for(int i = 0; i < 10; ++i) {
+        for(int i = 0; i < 4; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
             std::vector<float> delays(nElements, 0.0f);
-            for(int d = 0; d < nElements; ++d) {
-                delays[d] = d*i*1e-9f;
-            }
-            arrus::BitMask txAperture(nElements, true);
+            arrus::BitMask txAperture(nElements, false);
             txrxs.emplace_back(Tx(txAperture, delays, pulse),
-                               Rx(txAperture, sampleRange),
+                               Rx(rxAperture, sampleRange),
                                200e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, 500e-3f);
+        TxRxSequence seq(txrxs, {});
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
         Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
 
-        auto result = session->upload(scheme);
-		us4r->setVoltage(5);
+		auto result = session->upload(scheme);
 
         std::condition_variable cv;
+        std::condition_variable cv2;
         using namespace std::chrono_literals;
+
+        std::mutex mutex2;
+        std::unique_lock<std::mutex> lock2(mutex2);
 
         OnNewDataCallback callback = [&, i = 0](const BufferElement::SharedHandle &ptr) mutable {
             try {
@@ -61,14 +80,26 @@ int main() noexcept {
                                            << ptr->getData().get<short>()
                                            << std::dec << std::endl;
                 std::cout << "- size: " << ptr->getSize() << std::endl;
-                std::cout << "- shape: (" << ptr->getData().getShape()[0] <<
-                                     ", " << ptr->getData().getShape()[1] <<
+                std::cout << "- shape: (" << ptr->getData().getShape()[0] << // calkowita liczba probek
+                                     ", " << ptr->getData().getShape()[1] << // 32
                                      ")" << std::endl;
 
+                std::ofstream file;
+                file.open("temp.bin", std::ios::binary | std::ios::out);
+                //short* dptr = ptr->getData().getInt16();
+                file.write(reinterpret_cast<char *>(ptr->getData().getInt16()/*ptr->getData().get<short>()*/), static_cast<size_t>(ptr->getData().getShape()[0])*2);
+                file.close();
+
+                std::string pycmd = "python ./plot.py";
+                system(pycmd.c_str());
+
                 // Stop the system after 10-th frame.
-                if(i == 9) {
-                    cv.notify_one();
-                }
+                //ptr->release();
+               
+                cv.notify_one();
+
+                cv2.wait(lock2);
+                
                 ptr->release();
                 ++i;
             } catch(const std::exception &e) {
@@ -90,15 +121,62 @@ int main() noexcept {
         buffer->registerOnNewDataCallback(callback);
         buffer->registerOnOverflowCallback(overflowCallback);
 
-        session->startScheme();
+        bool cont = true;
 
-        // Wait for callback to signal that we hit 10-th iteration.
         std::mutex mutex;
         std::unique_lock<std::mutex> lock(mutex);
+
+
+        //print menu
+        std::cout << "--- Console options: ---" << std::endl;
+        std::cout << " wr - write AFE register" << std::endl << " rd - read AFE register"
+            << std::endl << " start - start scheme" << std::endl << " exit - exit app" << std::endl;
+
+
+        session->startScheme();
         cv.wait(lock);
 
-        // Stop the system.
-        session->stopScheme();
+        std::string inp;
+
+		while (cont) {
+			//char value = 0;
+            std::cout << ">"; 
+			std::cin >> inp;
+			switch (ResolveInput(inp)) {
+				case Write:
+				{
+                    std::cout << "Register address (hex): " << std::endl;
+                    std::cin >> inp;
+                    int regAddr = stoi(inp, 0, 16);
+                    std::cout << "Register value (hex): " << std::endl;
+                    std::cin >> inp;
+                    int regVal = stoi(inp, 0, 16);
+                    us4r->getUs4OEM(0)->setAfe(static_cast<uint8_t>(regAddr), static_cast<uint16_t>(regVal));
+					break;
+				}
+				case Read: 
+				{	
+					std::cout << "Register address (hex): " << std::endl;
+					std::cin >> inp;
+					int regAddr = stoi(inp, 0, 16);
+					uint16_t regVal = us4r->getUs4OEM(0)->getAfe(static_cast<uint8_t>(regAddr));
+					std::cout << "Value = " << std::hex << static_cast<int>(regVal) << std::endl;
+					break;
+				}
+				case Start:
+                    cv2.notify_one();
+                    
+					break;
+				case Exit:
+                    session->stopScheme();
+                    cv2.notify_all();
+                    cont = false;
+					break;
+			}
+		}
+		
+        // Wait for callback to signal that we hit 10-th iteration.
+		/// tutaj prawdodpobonie proste menu z poziomu konsoli
 
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;

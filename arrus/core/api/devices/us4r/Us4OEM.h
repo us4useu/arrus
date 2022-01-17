@@ -19,6 +19,10 @@ public:
 
     virtual float getFPGATemperature() = 0;
 
+	virtual uint16_t getAfe(uint8_t address) = 0;
+
+	virtual void setAfe(uint8_t address, uint16_t value) = 0;
+
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
     void operator=(Us4OEM const&) = delete;
