@@ -141,7 +141,7 @@ public:
                 ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(
                         numberOfSamples, 64u, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                        op.getRxDecimationFactor(), 0, 5, firingStr);
+                        op.getRxDecimationFactor(), 0, 10, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                         op.getPri(),
                         Us4OEMImpl::MIN_PRI, Us4OEMImpl::MAX_PRI,
@@ -634,16 +634,38 @@ float Us4OEMImpl::getFPGATemperature() {
     return ius4oem->GetFPGATemp();
 }
 
+void Us4OEMImpl::checkFirmwareVersion() {
+    try {
+        ius4oem->CheckFirmwareVersion();
+    } catch(const std::runtime_error &e) {
+        throw arrus::IllegalStateException(e.what());
+    } catch(...) {
+        throw arrus::IllegalStateException("Unknown exception while check firmware version.");
+    }
+}
+
+uint32 Us4OEMImpl::getFirmwareVersion() {
+    return ius4oem->GetFirmwareVersion();
+}
+
+uint32 Us4OEMImpl::getTxFirmwareVersion() {
+    return ius4oem->GetTxFirmwareVersion();
+}
+
+void Us4OEMImpl::checkState() {
+    this->checkFirmwareVersion();
+}
+
 void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     switch(pattern) {
-        case RxTestPattern::RAMP:
-            ius4oem->EnableTestPatterns();
-            break;
-        case RxTestPattern::OFF:
-            ius4oem->DisableTestPatterns();
-            break;
-        default:
-            throw IllegalArgumentException("Unrecognized test pattern");
+    case RxTestPattern::RAMP:
+        ius4oem->EnableTestPatterns();
+        break;
+    case RxTestPattern::OFF:
+        ius4oem->DisableTestPatterns();
+        break;
+    default:
+        throw IllegalArgumentException("Unrecognized test pattern");
     }
 }
 

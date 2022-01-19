@@ -92,7 +92,6 @@ public:
             (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
     MOCK_METHOD(float, getSamplingFrequency, (), (override));
-    MOCK_METHOD(float, getFPGATemperature, (), (override));
     MOCK_METHOD(void, startTrigger, (), (override));
     MOCK_METHOD(void, stopTrigger, (), (override));
     MOCK_METHOD(void, start, (), (override));
@@ -105,6 +104,10 @@ public:
     MOCK_METHOD(std::vector<uint8_t>, getChannelMapping, (), (override));
     MOCK_METHOD(float, getFPGATemperature, (), (override));
     MOCK_METHOD(void, setTestPattern, (Us4OEMImpl::RxTestPattern), (override));
+    MOCK_METHOD(void, checkFirmwareVersion, (), (override));
+    MOCK_METHOD(void, checkState, (), (override));
+    MOCK_METHOD(uint32, getFirmwareVersion, (), (override));
+    MOCK_METHOD(uint32, getTxFirmwareVersion, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {

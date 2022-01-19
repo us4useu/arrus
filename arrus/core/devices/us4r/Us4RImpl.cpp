@@ -262,7 +262,7 @@ void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
 }
 
 uint8_t Us4RImpl::getNumberOfUs4OEMs() {
-    return (uint8_t)us4oems.size();
+    return static_cast<uint8_t>(us4oems.size());
 }
 
 void Us4RImpl::setTestPattern(Us4OEM::RxTestPattern pattern) {
@@ -274,6 +274,12 @@ void Us4RImpl::setTestPattern(Us4OEM::RxTestPattern pattern) {
 
 float Us4RImpl::getSamplingFrequency() const {
     return us4oems[0]->getSamplingFrequency();
+}
+
+void Us4RImpl::checkState() const {
+    for(auto &us4oem: us4oems) {
+        us4oem->checkState();
+    }
 }
 
 }

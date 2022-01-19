@@ -24,9 +24,42 @@ public:
 
     ~Us4OEM() override = default;
 
+    /**
+     * Returns nominal sampling frequency on the us4OEM device.
+     */
     virtual float getSamplingFrequency() = 0;
 
+    /**
+     * Returns temperature measured by Us4OEM's FPGA [Celsius].
+     */
     virtual float getFPGATemperature() = 0;
+
+    /**
+     * Checks if the firmware version on the Us4OEM module is correct.
+     *
+     * @throws ::arrus::IllegalStateException when the incorrect version was detected.
+     */
+    virtual void checkFirmwareVersion() = 0;
+
+    /**
+     * Checks if the us4OEM is in the correct state (as seen by host PC).
+     *
+     * Note: currently only the firmware version is checked (to verify if the us4OEM module
+     * memory space is still available for the us4OEM module).
+     *
+     * @throws arrus::IllegalStateException when the incorrect version was detected.
+     */
+    virtual void checkState() = 0;
+
+    /**
+     * Returns firmware version installed on the us4OEM module.
+     */
+    virtual uint32 getFirmwareVersion() = 0;
+
+    /**
+     * Returns Tx component firmware version installed on this us4OEM module.
+     */
+    virtual uint32 getTxFirmwareVersion() = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

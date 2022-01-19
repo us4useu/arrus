@@ -125,6 +125,7 @@ public:
     uint8_t getNumberOfUs4OEMs() override;
     void setTestPattern(Us4OEM::RxTestPattern pattern) override;
     float getSamplingFrequency() const override;
+    void checkState() const override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
