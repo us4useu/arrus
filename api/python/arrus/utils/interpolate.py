@@ -29,9 +29,8 @@ _interp1d_kernel_str = r'''
             size_t outputOffset = i*outputWidth;
             size_t dataOffset = i*dataWidth;
 
-            if(   (sampleNr < 0) 
-               || (sampleNr >= dataWidth) 
-               || (sampleNr == dataWidth-1 && ratio != 0.0f)) { // right border + epsilon
+            if((sampleNr < 0)  || (sampleNr >= (dataWidth-1))) { 
+                // We potentially may discard one sample here, but less complicated branching we got.
                 // extrapolation
                 output[xt+outputOffset] = 0;
             }
