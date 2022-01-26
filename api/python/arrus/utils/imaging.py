@@ -193,9 +193,10 @@ class PipelineRunner:
 
     def process(self, input_element):
         with self._process_lock:
+            # TODO extract metadata here
             gpu_element = self.gpu_buffer.acquire(self._gpu_i)
             gpu_array = gpu_element.data
-            self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
+            self._gpu_i = (self._gpu_i+1) % self.gpu_buffer.n_elements
             gpu_array.set(input_element.data, stream=self.data_stream)
             self.data_stream.launch_host_func(self.__release, input_element)
 
@@ -312,7 +313,7 @@ class Output(Operation):
     return data from a given processing step.
     """
 
-    def __init__(self):
+    def __init__(self, callback):
         self.endpoint = True
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
@@ -335,14 +336,18 @@ class Pipeline:
 
     Processes given data using a given sequence of steps.
     The processing will be performed on a given device ('placement').
+    :param steps: processing steps to run
+    :param placement: device on which the processing should take place, default:
+    :param
     """
-    def __init__(self, steps, placement=None):
+    def __init__(self, steps, placement=None, callback=None):
         self.steps = steps
         self._placement = None
         self._processing_stream = None
         self._input_buffer = None
         if placement is not None:
             self.set_placement(placement)
+        self.callback = callback
 
     def __call__(self, data):
         return self.process(data)

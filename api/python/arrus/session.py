@@ -157,7 +157,7 @@ class Session(AbstractSession):
             cp.cuda.Stream.null.synchronize()
             user_out_buffer = queue.Queue(maxsize=1)
 
-            def buffer_callback(elements):
+            def default_callback(elements):
                 try:
                     user_elements = [None]*len(elements)
                     for i, element in enumerate(elements):
@@ -171,19 +171,27 @@ class Session(AbstractSession):
                     print(f"Exception: {type(e)}")
                 except:
                     print("Unknown exception")
+
+            if processing.callback is not None:
+                callback = processing.callback
+            else:
+                callback = default_callback
+                buffer = user_out_buffer
+
             pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
                 buffer, self.gpu_buffer, self.out_buffer, processing,
-                buffer_callback)
+                callback)
             self._current_processing = pipeline_wrapper
             buffer.append_on_new_data_callback(pipeline_wrapper.process)
 
-            buffer = user_out_buffer
             if len(out_metadata) == 1:
                 const_metadata = out_metadata[0]
             else:
                 const_metadata = out_metadata
-
-        return buffer, const_metadata
+        if processing.callback is not None:
+            return const_metadata
+        else:
+            return buffer, const_metadata
 
     def __enter__(self):
         return self
