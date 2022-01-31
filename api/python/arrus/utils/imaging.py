@@ -313,7 +313,7 @@ class Output(Operation):
     return data from a given processing step.
     """
 
-    def __init__(self, callback):
+    def __init__(self):
         self.endpoint = True
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
@@ -337,17 +337,17 @@ class Pipeline:
     Processes given data using a given sequence of steps.
     The processing will be performed on a given device ('placement').
     :param steps: processing steps to run
-    :param placement: device on which the processing should take place, default:
-    :param
+    :param placement: device on which the processing should take place,
+      default: GPU:0
+    :param callback: callback to run when output data is ready. By default
     """
-    def __init__(self, steps, placement=None, callback=None):
+    def __init__(self, steps, placement=None):
         self.steps = steps
         self._placement = None
         self._processing_stream = None
         self._input_buffer = None
         if placement is not None:
             self.set_placement(placement)
-        self.callback = callback
 
     def __call__(self, data):
         return self.process(data)
@@ -442,6 +442,17 @@ class Pipeline:
                 step.set_pkgs(**pkgs)
         self.num_pkg = pkgs['num_pkg']
         self.filter_pkg = pkgs['filter_pkg']
+
+
+class Processing:
+    """
+    A description of complete data processing run in the arrus.utils.imaging.
+    """
+
+    def __init__(self, pipeline, callback=None, extract_metadata=False):
+        self.pipeline = pipeline
+        self.callback = callback
+        self.extract_metadata = extract_metadata
 
 
 class Lambda(Operation):
@@ -2024,3 +2035,33 @@ def _get_speed_of_sound(context):
         return seq.speed_of_sound
     else:
         return medium.speed_of_sound
+
+
+class ExtractMetadata(Operation):
+
+    def __init__(self):
+        super().__init__()
+
+    def set_pkgs(self, **kwargs):
+        super().set_pkgs(**kwargs)
+
+    def prepare(self, const_metadata):
+        n_samples = const_metadata.context.raw_sequence.get_n_samples()
+        if len(n_samples) > 1:
+            raise ValueError("All Rx ops should gather the same number "
+                             "of samples.")
+        self._n_samples = next(iter(n_samples))
+        fcm = const_metadata.data_description.custom["frame_channel_mapping"]
+        # Metadata is saved by us4OEM:0 module only.
+        metadata_frames = fcm.frames[fcm.us4oems == 0]
+        if metadata_frames.size == 0:
+            raise ValueError("There is not metadata frames in the input data")
+        else:
+            self._n_frames = np.max(metadata_frames).item()
+        self._n_repeats = const_metadata.context.raw_sequence.n_repeats
+        return const_metadata
+
+    def process(self, data):
+        return data[:self._n_samples*self._n_frames*self._n_repeats
+                    :self._n_samples]
+

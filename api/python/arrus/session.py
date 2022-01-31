@@ -138,6 +138,14 @@ class Session(AbstractSession):
         if processing is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
+
+            # TODO if _imaging.Pipeline: wrap it to Processing with some default
+            # values: callback = None, extract_metadata = False
+            # TODO Buffer allocation should be done by PipelineRunner -> ProcessingRunner
+            # TODO PipelineRunner -> ProcessingRunner
+            # TODO Buffer -> BufferImpl
+            # TODO Buffer powinien opisywac polozenie, liczbe elementow i rodzaj bufora (locked, async)
+
             if not isinstance(processing, _imaging.Pipeline):
                 raise ValueError("Currently only arrus.utils.imaging.Pipeline "
                                  "processing is supported only.")
