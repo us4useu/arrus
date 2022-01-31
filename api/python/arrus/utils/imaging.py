@@ -381,8 +381,7 @@ class RxBeamforming:
                 seq, probe_model, c)
             initial_delay += tx_delay_center + burst_factor
         elif not seq.init_delay == "tx_center":
-            raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
-
+            raise ValueError(f"Unrecognized init_delay value: {seq.init_delay}")
         radial_distance = (
                 (start_sample / acq_fs + np.arange(0, self.n_samples) / fs)
                 * c / 2

@@ -47,9 +47,7 @@ def create_lin_sequence(context):
     if c is None:
         c = context.medium.speed_of_sound
 
-    tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
-        context,
-        arrus.ops.tgc.LinearTgc(op.tgc_start, op.tgc_slope))
+
 
     if np.mod(n_elem_sub, 2) == 0:
         # Move focal position to the center of the floor(n_sub_elem/2) element
@@ -90,16 +88,22 @@ def create_lin_sequence(context):
 
     for tx_aperture, delays, rx_center in zip(tx_apertures, tx_delays,
                                               rx_centers):
-
         if delays.shape == (1, 1):
             delays = delays.reshape((1, ))
         else:
             delays = np.squeeze(delays)
-
         tx = Tx(tx_aperture, pulse, delays)
         rx_aperture, rx_padding = get_ap(rx_center, rx_ap_size)
         rx = Rx(rx_aperture, actual_sample_range, downsampling_factor, rx_padding)
         txrxs.append(TxRx(tx, rx, pri))
+
+    tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
+        sample_range=actual_sample_range,
+        fs=fs,
+        downsampling_factor=downsampling_factor,
+        speed_of_sound=c,
+        linear_tgc=arrus.ops.tgc.LinearTgc(op.tgc_start, op.tgc_slope))
+
     return TxRxSequence(txrxs, tgc_curve=tgc_curve, sri=sri)
 
 
