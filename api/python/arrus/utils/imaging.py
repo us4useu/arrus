@@ -2118,8 +2118,7 @@ class ExtractMetadata(Operation):
         return const_metadata
 
     def process(self, data):
-        return data[:self._n_samples*self._n_frames*self._n_repeats
-                    :self._n_samples]\
-            .reshape(self._n_repeats, self._n_frames, -1) \
+        return data[:self._n_samples*self._n_frames:self._n_samples]\
+            .reshape(self._n_frames, -1) \
             .copy()
 
