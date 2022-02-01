@@ -283,6 +283,12 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 size_t nBytes = nSamples*N_RX_CHANNELS*sizeof(OutputDType);
                 auto rxMapId = rxMappings.find(opIdx)->second;
 
+                // The start sample should be provided to the us4r-api
+                // as for the nominal sampling frequency of us4OEM, i.e. 65 MHz.
+                // The ARRUS API assumes that the start sample and end sample are for the same
+                // sampling frequency.
+                startSample = startSample*op.getRxDecimationFactor();
+
                 ARRUS_REQUIRES_AT_MOST(
                         outputAddress + nBytes, DDR_SIZE,
                         ::arrus::format("Total data size cannot exceed 4GiB (device {})",getDeviceId().toString()));
