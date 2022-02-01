@@ -19,7 +19,7 @@ public:
     (override));
     MOCK_METHOD(void, ClearScheduledReceive, (), (override));
     MOCK_METHOD(void, TransferRXBufferToHost,
-            (unsigned char * dstAddress, size_t length, size_t srcAddress),
+            (unsigned char * dstAddress, size_t length, size_t srcAddress, bool isGpu),
     (override));
     MOCK_METHOD(void, ReleaseTransferRxBufferToHost,
         (unsigned char * dstAddress, size_t length, size_t srcAddress),
@@ -102,15 +102,15 @@ public:
     MOCK_METHOD(void, EnableTestPatterns, (), (override));
     MOCK_METHOD(void, DisableTestPatterns, (), (override));
     MOCK_METHOD(void, SyncTestPatterns, (), (override));
-    MOCK_METHOD(void, LockDMABuffer, (unsigned char * address, size_t length),
+    MOCK_METHOD(void, LockDMABuffer, (unsigned char * address, size_t length, bool isGpu),
     (override));
     MOCK_METHOD(void, ReleaseDMABuffer, (unsigned char * address), (override));
     MOCK_METHOD(void, ScheduleTransferRXBufferToHost, (const size_t, unsigned char *, size_t, size_t,
         const std::function<void (void)> &));
     MOCK_METHOD(void, SyncTransfer, (), (override));
     MOCK_METHOD(void, ScheduleTransferRXBufferToHost, (const size_t,const size_t,const std::function<void (void)> &), (override));
-    MOCK_METHOD(void, PrepareTransferRXBufferToHost, (const size_t,unsigned char *,size_t,size_t), (override));
-    MOCK_METHOD(void, PrepareHostBuffer, (unsigned char *,size_t,size_t), (override));
+    MOCK_METHOD(void, PrepareTransferRXBufferToHost, (const size_t,unsigned char *,size_t,size_t, bool isGpu), (override));
+    MOCK_METHOD(void, PrepareHostBuffer, (unsigned char *,size_t,size_t, bool isGpu), (override));
     MOCK_METHOD(void, MarkEntriesAsReadyForReceive, (unsigned short,unsigned short), (override));
     MOCK_METHOD(void, MarkEntriesAsReadyForTransfer, (unsigned short,unsigned short), (override));
     MOCK_METHOD(void, RegisterReceiveOverflowCallback, (const std::function<void (void)> &), (override));
@@ -120,6 +120,7 @@ public:
     MOCK_METHOD(void, SyncReceive, (), (override));
     MOCK_METHOD(void, ResetCallbacks, (), (override));
     MOCK_METHOD(float, GetFPGATemp, (), (override));
+    MOCK_METHOD(void, WaitForPendingTransfers, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

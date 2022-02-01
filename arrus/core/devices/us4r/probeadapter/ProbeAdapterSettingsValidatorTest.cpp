@@ -159,15 +159,6 @@ INSTANTIATE_TEST_CASE_P
                              return std::make_pair(Ordinal(i % 2), ChannelIdx(i / 2));
                          })
          )),
-         // Invalid us4oem ordinal numbers: should be consecutive
-         // Configuring us4oems 0 and 2
-         ARRUS_STRUCT_INIT_LIST(TestAdapterSettings, (
-                 x.nChannels=64,
-                 x.channelMapping = arrus::generate<ChannelAddress>(
-                         64, [](size_t i) {
-                             return std::make_pair(Ordinal(2 * (i % 2)), ChannelIdx(i / 2));
-                         })
-         )),
          // One of the us4oems has incomplete (not divisible by number of Rx
          // channels) mapping
          ARRUS_STRUCT_INIT_LIST(TestAdapterSettings, (
