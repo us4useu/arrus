@@ -10,9 +10,11 @@ namespace arrus::devices {
 
 FrameChannelMappingImpl::FrameChannelMappingImpl(
         Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
-        std::vector<uint32> frameOffsets)
+        std::vector<uint32> frameOffsets, std::vector<uint32> numberOfFrames)
     : us4oemMapping(std::move(us4oemMapping)), frameMapping(std::move(frameMapping)),
-    channelMapping(std::move(channelMapping)), frameOffsets(std::move(frameOffsets)) {
+    channelMapping(std::move(channelMapping)), frameOffsets(std::move(frameOffsets)),
+    numberOfFrames(std::move(numberOfFrames))
+    {
 
     ARRUS_REQUIRES_TRUE_E(frameMapping.rows() == channelMapping.rows()
                           && frameMapping.cols() == channelMapping.cols()
@@ -47,8 +49,16 @@ uint32 FrameChannelMappingImpl::getFirstFrame(uint8 us4oem) const {
     return frameOffsets[us4oem];
 }
 
-const std::vector<uint32> & FrameChannelMappingImpl::getFrameOffsets() const {
+uint32 FrameChannelMappingImpl::getNumberOfFrames(uint8 us4oem) const {
+    return numberOfFrames[us4oem];
+}
+
+const std::vector<uint32> &FrameChannelMappingImpl::getFrameOffsets() const {
     return frameOffsets;
+}
+
+const std::vector<uint32> &FrameChannelMappingImpl::getNumberOfFrames() const {
+    return numberOfFrames;
 }
 
 void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel,
@@ -60,7 +70,7 @@ void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, Cha
 
 FrameChannelMappingImpl::Handle FrameChannelMappingBuilder::build() {
     return std::make_unique<FrameChannelMappingImpl>(this->us4oemMapping, this->frameMapping, this->channelMapping,
-                                                     this->frameOffsets);
+                                                     this->frameOffsets, this->numberOfFrames);
 }
 
 FrameChannelMappingBuilder::FrameChannelMappingBuilder(FrameNumber nFrames, ChannelIdx nChannels)
@@ -75,6 +85,10 @@ FrameChannelMappingBuilder::FrameChannelMappingBuilder(FrameNumber nFrames, Chan
 
 void FrameChannelMappingBuilder::setFrameOffsets(const std::vector<uint32> &offsets) {
     this->frameOffsets = offsets;
+}
+
+void FrameChannelMappingBuilder::setNumberOfFrames(const std::vector<uint32> &nFrames) {
+    this->numberOfFrames = nFrames;
 }
 
 }

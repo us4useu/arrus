@@ -55,13 +55,18 @@ public:
      * Takes ownership for the provided frames.
      */
     FrameChannelMappingImpl(Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
-                            std::vector<uint32> frameOffsets = {0});
+                            std::vector<uint32> frameOffsets = {0},
+                            std::vector<uint32> numberOfFrames = {0});
 
     FrameChannelMappingAddress getLogical(FrameNumber frame, ChannelIdx channel) const override;
 
     uint32 getFirstFrame(uint8 us4oem) const override;
 
-    const std::vector<uint32> & getFrameOffsets() const override;
+    uint32 getNumberOfFrames(uint8 us4oem) const override;
+
+    const std::vector<uint32> &getFrameOffsets() const override;
+
+    const std::vector<uint32> &getNumberOfFrames() const override;
 
     FrameNumber getNumberOfLogicalFrames() const override;
 
@@ -75,6 +80,7 @@ private:
     FrameMapping frameMapping;
     ChannelMapping channelMapping;
     std::vector<uint32> frameOffsets;
+    std::vector<uint32> numberOfFrames;
 };
 
 class FrameChannelMappingBuilder {
@@ -86,6 +92,7 @@ public:
         FrameChannelMappingBuilder builder{mapping.getNumberOfLogicalFrames(),
                                            mapping.getNumberOfLogicalChannels()};
         builder.setFrameOffsets(mapping.getFrameOffsets());
+        builder.setNumberOfFrames(mapping.getNumberOfFrames());
         return builder;
     }
 
@@ -96,6 +103,7 @@ public:
 
     FrameChannelMappingImpl::Handle build();
     void setFrameOffsets(const std::vector<uint32> &frameOffsets);
+    void setNumberOfFrames(const std::vector<uint32> &nFrames);
 
 private:
     // logical (frame, number) -> physical (frame, number)
@@ -103,6 +111,7 @@ private:
     FrameChannelMappingImpl::FrameMapping frameMapping;
     FrameChannelMappingImpl::ChannelMapping channelMapping;
     std::vector<uint32> frameOffsets = {0};
+    std::vector<uint32> numberOfFrames = {0};
 };
 
 }

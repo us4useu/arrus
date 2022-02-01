@@ -516,7 +516,7 @@ class Lambda(Operation):
     Custom function to perform on data from a given step.
     """
 
-    def __init__(self, function):
+    def __init__(self, function, prepare=None):
         """
         Lambda op constructor.
 
@@ -524,6 +524,7 @@ class Lambda(Operation):
           with the data)
         """
         self.func = function
+        self.prepare = prepare
         pass
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
@@ -534,7 +535,10 @@ class Lambda(Operation):
         return data
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        return const_metadata
+        if self.prepare is not None:
+            return self.prepare(const_metadata)
+        else:
+            return const_metadata
 
     def process(self, data):
         return self.func(data)
@@ -2109,11 +2113,7 @@ class ExtractMetadata(Operation):
         self._n_samples = next(iter(n_samples))
         fcm = const_metadata.data_description.custom["frame_channel_mapping"]
         # Metadata is saved by us4OEM:0 module only.
-        metadata_frames = fcm.frames[fcm.us4oems == 0]
-        if metadata_frames.size == 0:
-            raise ValueError("There is not metadata frames in the input data")
-        else:
-            self._n_frames = np.max(metadata_frames).item()
+        self._n_frames = fcm.n_frames[0]
         self._n_repeats = const_metadata.context.raw_sequence.n_repeats
         return const_metadata
 
