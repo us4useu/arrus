@@ -18,7 +18,15 @@ from pathlib import Path
 import os
 
 import cupy
-if cupy.__version__ < "9.0.0":
+import re
+
+
+if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
+    raise ValueError(f"Unrecognized pattern "
+                     f"of the cupy version: {cupy.__version__}")
+
+
+if tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
     raise Exception(f"The version of cupy module is too low. "
                     f"Use version ''9.0.0'' or higher.")
 
@@ -165,35 +173,81 @@ class Buffer:
         self.elements[pos].release()
 
 
-class PipelineRunner:
+class ProcessingRunner:
     """
     Currently, the input buffer should be located in CPU device,
     output buffer should be located on GPU.
     """
 
-    def __init__(self, input_buffer, gpu_buffer, output_buffers, pipeline,
-                 callback):
+    def __init__(self, input_buffer, const_metadata, processing):
         import cupy as cp
+        # Initialize pipeline.
+        self.cp = cp
         self.input_buffer = self.__register_buffer(input_buffer)
-        self.gpu_buffer = gpu_buffer
-        # for each output metadata create output buffer
-        # pipeline should return a list of output data arrays
-        self.out_buffers = self.__register_buffer(output_buffers)
-        if not isinstance(self.out_buffers, Iterable):
-            self.out_buffers = (self.out_buffers, )
-        self.pipeline = pipeline
+        self.gpu_buffer = Buffer(n_elements=2, shape=const_metadata.input_shape,
+                                 dtype=const_metadata.dtype, math_pkg=cp,
+                                 type="locked")
+        self.pipeline = processing.pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
-        self.callback = callback
+        self.out_metadata = processing.pipeline.prepare(const_metadata)
+        self.out_buffers = [Buffer(n_elements=2, shape=m.input_shape,
+                                  dtype=m.dtype, math_pkg=np,
+                                  type="locked")
+                           for m in self.out_metadata]
+        # Wait for all the initialization done in by the Pipeline.
+        cp.cuda.Stream.null.synchronize()
+        self.out_buffers = self.__register_buffer(self.out_buffers)
+        if not isinstance(self.out_buffers, Iterable):
+            self.out_buffers = (self.out_buffers, )
         self._process_lock = threading.Lock()
-        self.cp = cp
+        if processing.callback is not None:
+            self.user_out_buffer = None
+            self.callback = processing.callback
+        else:
+            self.user_out_buffer = queue.Queue(maxsize=1)
+            self.callback = self.default_callback
         self._gpu_i = 0
         self._out_i = [0]*len(self.out_buffers)
         self.i = 0
+        # Metadata extraction.
+        self.is_extract_metadata = processing.extract_metadata
+        if self.is_extract_metadata:
+            self.metadata_extractor = ExtractMetadata()
+            self.metadata_extractor.prepare(const_metadata)
+        self.input_buffer.append_on_new_data_callback(self.process)
+
+    @property
+    def outputs(self):
+        const_metadata = None
+        if len(self.out_metadata) == 1:
+            const_metadata = self.out_metadata[0]
+        else:
+            const_metadata = self.out_metadata
+        if self.user_out_buffer is not None:
+            return self.user_out_buffer, const_metadata
+        else:
+            return const_metadata
+
+    def default_callback(self, elements):
+        try:
+            user_elements = [None]*len(elements)
+            for i, element in enumerate(elements):
+                user_elements[i] = element.data.copy()
+                element.release()
+            try:
+                self.user_out_buffer.put_nowait(user_elements)
+            except queue.Full:
+                pass
+        except Exception as e:
+            print(f"Exception: {type(e)}")
+        except:
+            print("Unknown exception")
 
     def process(self, input_element):
         with self._process_lock:
-            # TODO extract metadata here
+            if self.is_extract_metadata:
+                metadata = self.metadata_extractor.process(input_element.data)
             gpu_element = self.gpu_buffer.acquire(self._gpu_i)
             gpu_array = gpu_element.data
             self._gpu_i = (self._gpu_i+1) % self.gpu_buffer.n_elements
@@ -215,6 +269,8 @@ class PipelineRunner:
                         lambda element: element.acquire(), out_element)
                     result.get(self.processing_stream, out=out_element.data)
                     out_elements.append(out_element)
+            if self.is_extract_metadata:
+                out_elements.insert(0, metadata)
             self.processing_stream.launch_host_func(self.__release, gpu_element)
             self.processing_stream.launch_host_func(self.callback, out_elements)
 
@@ -2063,5 +2119,7 @@ class ExtractMetadata(Operation):
 
     def process(self, data):
         return data[:self._n_samples*self._n_frames*self._n_repeats
-                    :self._n_samples]
+                    :self._n_samples]\
+            .reshape(self._n_repeats, self._n_frames, -1) \
+            .copy()
 

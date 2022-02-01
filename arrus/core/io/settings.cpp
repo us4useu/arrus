@@ -322,12 +322,13 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         hvSettings = HVSettings(HVModelId(manufacturer, name));
     }
     if(us4r.optional_nus4ems_case() != proto::Us4RSettings::OPTIONAL_NUS4EMS_NOT_SET) {
-        nUs4OEMs = us4r.nus4oems();
+        nUs4OEMs = static_cast<Ordinal>(us4r.nus4oems());
     }
     if(!us4r.adaptertous4rmodulenr().empty()) {
         auto &adapter2Us4RModule = us4r.adaptertous4rmodulenr();
-        std::copy(std::begin(adapter2Us4RModule), std::end(adapter2Us4RModule),
-                  std::back_inserter(adapterToUs4RModuleNr));
+        for(auto &nr: adapter2Us4RModule) {
+            adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
+        }
     }
     if(!us4r.us4oems().empty()) {
         // Us4OEMs are provided.

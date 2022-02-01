@@ -113,7 +113,7 @@ public:
                 uint8 *dst = addressDst + transfer.address;
                 size_t src = addressSrc + transfer.address;
                 size_t size = transfer.size;
-                ius4oem->PrepareHostBuffer(dst, size, src);
+                ius4oem->PrepareHostBuffer(dst, size, src, false);
             }
         }
     }
@@ -141,7 +141,7 @@ public:
                 uint8 *dst = addressDst + transfer.address;
                 size_t src = addressSrc + transfer.address;
                 size_t size = transfer.size;
-                ius4oem->PrepareTransferRXBufferToHost(transferIdx, dst, size, src);
+                ius4oem->PrepareTransferRXBufferToHost(transferIdx, dst, size, src, false);
             }
         }
     }
@@ -169,7 +169,7 @@ public:
     uint16 nextElementIdx = (int16)((currentDstIdx + srcNElements) % dstNElements); \
     auto nextDstAddress = dstBuffer->getAddress(nextElementIdx, us4oemOrdinal); \
     nextDstAddress += transfer.address;                                    \
-    ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src);
+    ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src, false);
 
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy) \

@@ -136,7 +136,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                 frameModule(frameNumber, activeAdapterCh+op.getRxPadding()[0]) = dstModule;
                 // This will be processed further later.
                 us4oemChannels[dstModule].push_back(static_cast<int32>(dstChannel));
-                adapterChannels[dstModule].push_back(activeAdapterCh+op.getRxPadding()[0]);
+                adapterChannels[dstModule].push_back(static_cast<int32>(activeAdapterCh+op.getRxPadding()[0]));
                 ++activeAdapterCh;
             }
         }

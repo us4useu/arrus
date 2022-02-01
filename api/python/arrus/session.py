@@ -139,67 +139,24 @@ class Session(AbstractSession):
             # setup processing
             import arrus.utils.imaging as _imaging
 
-            # TODO if _imaging.Pipeline: wrap it to Processing with some default
-            # values: callback = None, extract_metadata = False
-            # TODO Buffer allocation should be done by PipelineRunner -> ProcessingRunner
-            # TODO PipelineRunner -> ProcessingRunner
-            # TODO Buffer -> BufferImpl
-            # TODO Buffer powinien opisywac polozenie, liczbe elementow i rodzaj bufora (locked, async)
-
-            if not isinstance(processing, _imaging.Pipeline):
-                raise ValueError("Currently only arrus.utils.imaging.Pipeline "
-                                 "processing is supported only.")
-            import cupy as cp
-            out_metadata = processing.prepare(const_metadata)
-            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=2,
-                                     shape=const_metadata.input_shape,
-                                     dtype=const_metadata.dtype,
-                                     math_pkg=cp,
-                                     type="locked")
-            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=2,
-                                      shape=m.input_shape,
-                                      dtype=m.dtype, math_pkg=np,
-                                      type="locked")
-                               for m in out_metadata]
-            # Wait for all the initialization done in by the Pipeline.
-            cp.cuda.Stream.null.synchronize()
-            user_out_buffer = queue.Queue(maxsize=1)
-
-            def default_callback(elements):
-                try:
-                    user_elements = [None]*len(elements)
-                    for i, element in enumerate(elements):
-                        user_elements[i] = element.data.copy()
-                        element.release()
-                    try:
-                        user_out_buffer.put_nowait(user_elements)
-                    except queue.Full:
-                        pass
-                except Exception as e:
-                    print(f"Exception: {type(e)}")
-                except:
-                    print("Unknown exception")
-
-            if processing.callback is not None:
-                callback = processing.callback
+            if isinstance(processing, _imaging.Pipeline):
+                # Wrap Pipeline into the Processing object.
+                processing = _imaging.Processing(
+                    pipeline=processing,
+                    callback=None,
+                    extract_metadata=False
+                )
+            if isinstance(processing, _imaging.Processing):
+                self.processing = arrus.utils.imaging.ProcessingRunner(
+                    buffer, const_metadata, processing)
+                outputs = self.processing.outputs
             else:
-                callback = default_callback
-                buffer = user_out_buffer
-
-            pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
-                buffer, self.gpu_buffer, self.out_buffer, processing,
-                callback)
-            self._current_processing = pipeline_wrapper
-            buffer.append_on_new_data_callback(pipeline_wrapper.process)
-
-            if len(out_metadata) == 1:
-                const_metadata = out_metadata[0]
-            else:
-                const_metadata = out_metadata
-        if processing.callback is not None:
-            return const_metadata
+                raise ValueError("Unsupported type of processing: "
+                                 f"{type(processing)}")
         else:
-            return buffer, const_metadata
+            # Device buffer and const_metadata
+            outputs = buffer, const_metadata
+        return outputs
 
     def __enter__(self):
         return self
