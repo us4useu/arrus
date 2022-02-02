@@ -328,7 +328,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
         auto srcAddress = transfers.getElement(rxElement).getAddress();
         logger->log(LogSeverity::DEBUG, ::arrus::format("Preparing host buffer to {} from {}, size {}",
                                                         (size_t) dstAddress, (size_t) srcAddress, elementSize));
-        ius4oem->PrepareHostBuffer(dstAddress, elementSize, srcAddress);
+        ius4oem->PrepareHostBuffer(dstAddress, elementSize, srcAddress, false);
         ++hostElement;
         rxElement = (rxElement + 1) % rxBufferSize;
     }
@@ -343,7 +343,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
         auto endFiring = transfer.getFiring();
 
         ius4oem->PrepareTransferRXBufferToHost(
-            transferIdx, dstAddress, elementSize, srcAddress);
+            transferIdx, dstAddress, elementSize, srcAddress, false);
 
         ius4oem->ScheduleTransferRXBufferToHost(
             endFiring, transferIdx,
@@ -358,7 +358,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
 
                     // Prepare transfer for the next iteration.
                     ius4oem->PrepareTransferRXBufferToHost(
-                        transferIdx, dstAddress, elementSize, srcAddress);
+                        transferIdx, dstAddress, elementSize, srcAddress, false);
                     ius4oem->ScheduleTransferRXBufferToHost(endFiring, transferIdx, nullptr);
 
                     bool cont = outputBuffer->signal(ordinal, element,

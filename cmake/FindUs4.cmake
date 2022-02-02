@@ -46,12 +46,11 @@ set(Us4_VERSION ${CMAKE_MATCH_1})
 message("Found Us4R version ${Us4_VERSION}")
 
 # Firmware version
-# TODO make below regex more elastic
-# TODO move below sequence of calls to some function
-string(REGEX MATCH "US4OEM_FIRMWARE_VERSION \\(\\(uint32_t\\)0x([0-9a-fA-F]+)"
-       US4OEM_FIRMWARE_VERSION_MATCH
-       ${Us4OEM_VERSIONS}
+string(REGEX MATCH "US4OEM_FIRMWARE_VERSION \\{(.*)\\}"
+        US4OEM_FIRMWARE_VERSION_MATCH
+        ${Us4OEM_VERSIONS}
 )
+
 if("${US4OEM_FIRMWARE_VERSION_MATCH}" STREQUAL "")
     message(FATAL_ERROR "Couldn't read US4OEM_FIRMWARE_VERSION from us4r distribution.")
 endif()
@@ -59,10 +58,9 @@ set(Us4OEM_FIRMWARE_VERSION ${CMAKE_MATCH_1})
 message("Required module firmware version: ${Us4OEM_FIRMWARE_VERSION}")
 
 # TX Firmware version
-# TODO make below regex more elastic
-string(REGEX MATCH "US4OEM_TX_FIRMWARE_VERSION \\(\\(uint32_t\\)0x([0-9a-fA-F]+)"
-       US4OEM_TX_FIRMWARE_VERSION_MATCH
-       ${Us4OEM_VERSIONS}
+string(REGEX MATCH "US4OEM_TX_FIRMWARE_VERSION \\{(.*)\\}"
+        US4OEM_TX_FIRMWARE_VERSION_MATCH
+        ${Us4OEM_VERSIONS}
 )
 if("${US4OEM_TX_FIRMWARE_VERSION_MATCH}" STREQUAL "")
     message(FATAL_ERROR "Couldn't read US4OEM_TX_FIRMWARE_VERSION from us4r distribution.")

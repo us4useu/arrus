@@ -18,8 +18,8 @@ public:
     using Handle = std::unique_ptr<HV256Impl>;
 
     HV256Impl(const DeviceId &id, HVModelId modelId,
-              std::unique_ptr<IDBARLite> dbarLite,
-              std::unique_ptr<IHV256> hv256);
+              std::unique_ptr<IDBAR> dbarLite,
+              std::unique_ptr<IHV> hv256);
 
     void setVoltage(Voltage voltage) {
         try {
@@ -54,8 +54,8 @@ public:
 private:
     Logger::Handle logger;
     HVModelId modelId;
-    std::unique_ptr<IDBARLite> dbarLite;
-    std::unique_ptr<IHV256> hv256;
+    std::unique_ptr<IDBAR> dbarLite;
+    std::unique_ptr<IHV> hv256;
 };
 
 
