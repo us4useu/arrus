@@ -123,6 +123,13 @@ class Us4R(Device):
         test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
         self._handle.setTestPattern(test_pattern_core)
 
+    @property
+    def channels_mask(self):
+        """
+        Returns a list of system channels that are masked in the configuration.
+        """
+        return self._handle.getChannelsMask()
+
     def _get_dto(self):
         import arrus.utils.core
         probe_model = arrus.utils.core.convert_to_py_probe_model(

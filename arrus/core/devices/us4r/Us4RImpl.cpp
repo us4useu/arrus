@@ -35,16 +35,19 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     }
 }
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv)
-    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)) {
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+                   std::vector<unsigned short> channelsMask)
+    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)),
+      channelsMask(std::move(channelsMask)) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
                    ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
-                   const RxSettings &rxSettings)
+                   const RxSettings &rxSettings, std::vector<unsigned short> channelsMask)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
-      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)), rxSettings(rxSettings) {
+      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)), rxSettings(rxSettings),
+      channelsMask(std::move(channelsMask)) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
@@ -280,6 +283,10 @@ void Us4RImpl::checkState() const {
     for(auto &us4oem: us4oems) {
         us4oem->checkState();
     }
+}
+
+std::vector<unsigned short> Us4RImpl::getChannelsMask() {
+    return channelsMask;
 }
 
 }
