@@ -136,7 +136,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                 frameModule(frameNumber, activeAdapterCh+op.getRxPadding()[0]) = dstModule;
                 // This will be processed further later.
                 us4oemChannels[dstModule].push_back(static_cast<int32>(dstChannel));
-                adapterChannels[dstModule].push_back(activeAdapterCh+op.getRxPadding()[0]);
+                adapterChannels[dstModule].push_back(static_cast<int32>(activeAdapterCh+op.getRxPadding()[0]));
                 ++activeAdapterCh;
             }
         }
@@ -193,6 +193,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     std::vector<std::vector<DataTransfer>> outputTransfers;
     uint32 currentFrameOffset = 0;
     std::vector<uint32> frameOffsets(static_cast<unsigned int>(us4oems.size()), 0);
+    std::vector<uint32> numberOfFrames(static_cast<unsigned int>(us4oems.size()), 0);
 
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
@@ -201,6 +202,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                                                           batchSize, sri, triggerSync);
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
         currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
+        numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames()*batchSize;
         fcMappings.push_back(std::move(fcMapping));
         // fcMapping is not valid anymore here
         us4RBufferBuilder.pushBack(buffer);
@@ -255,6 +257,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         ++frameIdx;
     }
     outFcBuilder.setFrameOffsets(frameOffsets);
+    outFcBuilder.setNumberOfFrames(numberOfFrames);
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
 }
 

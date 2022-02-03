@@ -105,13 +105,14 @@ class Session(AbstractSession):
         ###
         # -- Constant metadata
         # --- FCM
-        fcm_us4oems, fcm_frame, fcm_channel, frame_offsets = \
+        fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
             arrus.utils.core.convert_fcm_to_np_arrays(fcm, us_device.n_us4oems)
         fcm = arrus.devices.us4r.FrameChannelMapping(
             us4oems=fcm_us4oems,
             frames=fcm_frame,
             channels=fcm_channel,
             frame_offsets=frame_offsets,
+            n_frames=n_frames,
             batch_size=batch_size)
 
         # --- Frame acquisition context
@@ -138,52 +139,25 @@ class Session(AbstractSession):
         if processing is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
-            if not isinstance(processing, _imaging.Pipeline):
-                raise ValueError("Currently only arrus.utils.imaging.Pipeline "
-                                 "processing is supported only.")
-            import cupy as cp
-            out_metadata = processing.prepare(const_metadata)
-            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=2,
-                                     shape=const_metadata.input_shape,
-                                     dtype=const_metadata.dtype,
-                                     math_pkg=cp,
-                                     type="locked")
-            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=2,
-                                      shape=m.input_shape,
-                                      dtype=m.dtype, math_pkg=np,
-                                      type="locked")
-                               for m in out_metadata]
-            # Wait for all the initialization done in by the Pipeline.
-            cp.cuda.Stream.null.synchronize()
-            user_out_buffer = queue.Queue(maxsize=1)
 
-            def buffer_callback(elements):
-                try:
-                    user_elements = [None]*len(elements)
-                    for i, element in enumerate(elements):
-                        user_elements[i] = element.data.copy()
-                        element.release()
-                    try:
-                        user_out_buffer.put_nowait(user_elements)
-                    except queue.Full:
-                        pass
-                except Exception as e:
-                    print(f"Exception: {type(e)}")
-                except:
-                    print("Unknown exception")
-            pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
-                buffer, self.gpu_buffer, self.out_buffer, processing,
-                buffer_callback)
-            self._current_processing = pipeline_wrapper
-            buffer.append_on_new_data_callback(pipeline_wrapper.process)
-
-            buffer = user_out_buffer
-            if len(out_metadata) == 1:
-                const_metadata = out_metadata[0]
+            if isinstance(processing, _imaging.Pipeline):
+                # Wrap Pipeline into the Processing object.
+                processing = _imaging.Processing(
+                    pipeline=processing,
+                    callback=None,
+                    extract_metadata=False
+                )
+            if isinstance(processing, _imaging.Processing):
+                self.processing = arrus.utils.imaging.ProcessingRunner(
+                    buffer, const_metadata, processing)
+                outputs = self.processing.outputs
             else:
-                const_metadata = out_metadata
-
-        return buffer, const_metadata
+                raise ValueError("Unsupported type of processing: "
+                                 f"{type(processing)}")
+        else:
+            # Device buffer and const_metadata
+            outputs = buffer, const_metadata
+        return outputs
 
     def __enter__(self):
         return self

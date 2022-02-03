@@ -60,7 +60,7 @@ message("Found Us4R version ${Us4_VERSION}")
 # Firmware version
 # TODO make below regex more elastic
 # TODO move below sequence of calls to some function
-string(REGEX MATCH "US4OEM_FIRMWARE_VERSION \\(\\(uint32_t\\)0x([0-9a-fA-F]+)"
+string(REGEX MATCH "US4OEM_FIRMWARE_VERSION \\{(.*)\\}"
        US4OEM_FIRMWARE_VERSION_MATCH
        ${Us4OEM_VERSIONS}
 )
@@ -72,7 +72,7 @@ message("Required module firmware version: ${Us4OEM_FIRMWARE_VERSION}")
 
 # TX Firmware version
 # TODO make below regex more elastic
-string(REGEX MATCH "US4OEM_TX_FIRMWARE_VERSION \\(\\(uint32_t\\)0x([0-9a-fA-F]+)"
+string(REGEX MATCH "US4OEM_TX_FIRMWARE_VERSION \\{(.*)\\}"
        US4OEM_TX_FIRMWARE_VERSION_MATCH
        ${Us4OEM_VERSIONS}
 )

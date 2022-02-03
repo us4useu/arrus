@@ -83,12 +83,13 @@ class Us4RFactoryImpl : public Us4RFactory {
             ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings, adapter.get());
 
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
-            return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings);
+            return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings,
+                                              settings.getChannelsMask());
         } else {
             // Custom Us4OEMs only
             auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings());
             auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
-            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv));
+            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask());
         }
     }
 

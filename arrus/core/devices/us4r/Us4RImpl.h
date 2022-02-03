@@ -35,11 +35,12 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv);
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+             std::vector<unsigned short> channelsMask);
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
-             const RxSettings &rxSettings);
+             const RxSettings &rxSettings, std::vector<unsigned short> channelsMask);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -126,6 +127,7 @@ public:
     void setTestPattern(Us4OEM::RxTestPattern pattern) override;
     float getSamplingFrequency() const override;
     void checkState() const override;
+    std::vector<unsigned short> getChannelsMask() override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -151,6 +153,7 @@ private:
     State state{State::STOPPED};
     // AFE parameters.
     std::optional<RxSettings> rxSettings;
+    std::vector<unsigned short> channelsMask;
 };
 
 }

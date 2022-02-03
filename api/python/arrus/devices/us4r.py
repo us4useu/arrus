@@ -28,12 +28,14 @@ class FrameChannelMapping:
     :param channels: a mapping: (logical frame, logical channel) -> physical channel
     :param us4oems: a mapping: (logical frame, logical channel) -> us4OEM number
     :param frame_offsets: frame starting number for each us4OEM available in the system
+    :param n_frames: number of frames each us4OEM produces
     :param batch_size: number of sequences in a single batch
     """
     frames: np.ndarray
     channels: np.ndarray
     us4oems: np.ndarray
     frame_offsets: np.ndarray
+    n_frames: np.ndarray
     batch_size: int = 1
 
 
@@ -120,6 +122,13 @@ class Us4R(Device):
         """
         test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
         self._handle.setTestPattern(test_pattern_core)
+
+    @property
+    def channels_mask(self):
+        """
+        Returns a list of system channels that are masked in the configuration.
+        """
+        return self._handle.getChannelsMask()
 
     def _get_dto(self):
         import arrus.utils.core

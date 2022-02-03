@@ -90,6 +90,15 @@ public:
     virtual ChannelIdx getNumberOfLogicalChannels() const = 0;
 
     /**
+     * Returns the number of frames that this us4OEM will transfer to the host device.
+     *
+     * @param us4oem us4OEM ordinal number.
+     */
+    virtual uint32 getNumberOfFrames(uint8 us4oem) const = 0;
+
+    virtual const std::vector<uint32> &getNumberOfFrames() const = 0;
+
+    /**
      * Returns true if the given PHYSICAL channel number is unavailable.
      *
      * @param channelNumber physical channel number to verify.

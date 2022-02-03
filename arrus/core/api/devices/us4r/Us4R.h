@@ -144,6 +144,8 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
 
+    virtual std::vector<unsigned short> getChannelsMask() = 0;
+
     /**
      * Returns the number of us4OEM modules that are used in this us4R system.
      */

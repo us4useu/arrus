@@ -90,7 +90,10 @@ def convert_fcm_to_np_arrays(fcm, n_us4oems):
             fcm_channel[frame, channel] = src_channel
     frame_offsets = [fcm.getFirstFrame(i) for i in range(n_us4oems)]
     frame_offsets = np.array(frame_offsets, dtype=np.uint32)
-    return fcm_us4oem, fcm_frame, fcm_channel, frame_offsets
+    n_frames = [fcm.getNumberOfFrames(i) for i in range(n_us4oems)]
+    n_frames = np.array(n_frames, dtype=np.uint32)
+    return fcm_us4oem, fcm_frame, fcm_channel, frame_offsets, n_frames
+
 
 
 def convert_to_py_probe_model(core_model):
