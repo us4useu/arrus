@@ -4,6 +4,7 @@ import time
 import ctypes
 import collections.abc
 
+import arrus
 import arrus.utils.core
 import arrus.logging
 import arrus.core
@@ -284,7 +285,9 @@ class Us4R(Device):
 
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
-            input_shape=input_shape, is_iq_data=False, dtype="int16")
+            input_shape=input_shape, is_iq_data=False, dtype="int16",
+            version=arrus.__version__
+        )
         return buffer, const_metadata
 
 
