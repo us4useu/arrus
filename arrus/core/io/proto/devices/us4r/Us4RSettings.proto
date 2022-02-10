@@ -42,4 +42,7 @@ message Us4RSettings {
     uint32 nus4oems = 12;
   }
   repeated uint32 adapterToUs4RModuleNr = 13;
+  oneof optional_tx_frequency_range {
+    uint32 tx_frequency_range = 14;
+  }
 }

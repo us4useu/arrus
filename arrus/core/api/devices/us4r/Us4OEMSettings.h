@@ -67,12 +67,14 @@ public:
                    BitMask activeChannelGroups,
                    RxSettings rxSettings,
                    std::unordered_set<uint8> channelsMask,
-                   ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL)
+                   ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
+                   std::optional<int> txFrequencyRange = std::nullopt)
             : channelMapping(std::move(channelMapping)),
               activeChannelGroups(std::move(activeChannelGroups)),
               rxSettings(std::move(rxSettings)),
               channelsMask(std::move(channelsMask)),
-              reprogrammingMode(reprogrammingMode)
+              reprogrammingMode(reprogrammingMode),
+              txFrequencyRange(txFrequencyRange)
               {}
 
 
@@ -96,12 +98,17 @@ public:
         return reprogrammingMode;
     }
 
+    std::optional<int> getTxFrequencyRange() const {
+        return txFrequencyRange;
+    }
+
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
     RxSettings rxSettings;
     std::unordered_set<uint8> channelsMask;
     ReprogrammingMode reprogrammingMode;
+    std::optional<int> txFrequencyRange = std::nullopt;
 };
 
 }

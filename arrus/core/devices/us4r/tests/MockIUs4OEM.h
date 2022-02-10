@@ -121,6 +121,8 @@ public:
     MOCK_METHOD(void, ResetCallbacks, (), (override));
     MOCK_METHOD(float, GetFPGATemp, (), (override));
     MOCK_METHOD(void, WaitForPendingTransfers, (), (override));
+    MOCK_METHOD(void, SetTxFrequencyRange, (int range), (override));
+    MOCK_METHOD(int, GetTxFrequencyRange, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

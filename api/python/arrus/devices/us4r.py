@@ -82,6 +82,14 @@ class Us4R(Device):
         """
         self._handle.setVoltage(voltage)
 
+    def disable_hv(self):
+        """
+        Enables HV and sets a given voltage.
+
+        :param voltage: voltage to set
+        """
+        self._handle.disableHV()
+
     def start(self):
         """
         Starts uploaded tx/rx sequence execution.

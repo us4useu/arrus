@@ -67,7 +67,9 @@ class Us4RFactoryImpl : public Us4RFactory {
                 settings.getChannelsMask(),
                 settings.getReprogrammingMode(),
                 settings.getNumberOfUs4oems(),
-                settings.getAdapterToUs4RModuleNumber()
+                settings.getAdapterToUs4RModuleNumber(),
+                settings.getTxFrequencyRange().value_or(
+                        Us4OEMImpl::DEFAULT_TX_FREQUENCY_RANGE)
             );
 
             // verify if the generated us4oemSettings.channelsMask is equal to us4oemChannelsMask field
@@ -131,6 +133,14 @@ class Us4RFactoryImpl : public Us4RFactory {
         std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nUs4oems);
 
         // Modifies input list - sorts ius4oems by ID in ascending order.
+        ius4oemInitializer->sortModulesById(ius4oems);
+
+        // Pre-configure us4oems.
+        for(size_t i = 0; i < us4oemCfgs.size(); ++i) {
+            ius4oems[i]->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange().value_or(
+                    Us4OEMImpl::DEFAULT_TX_FREQUENCY_RANGE));
+        }
+
         ius4oemInitializer->initModules(ius4oems);
         auto master = ius4oems[0].get();
 

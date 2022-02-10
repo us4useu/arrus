@@ -314,6 +314,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
     std::optional<HVSettings> hvSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
+    std::optional<int> txFrequencyRange;
+
     if(us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();
         auto &name = us4r.hv().model_id().name();
@@ -323,6 +325,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
     }
     if(us4r.optional_nus4ems_case() != proto::Us4RSettings::OPTIONAL_NUS4EMS_NOT_SET) {
         nUs4OEMs = static_cast<Ordinal>(us4r.nus4oems());
+    }
+    if(us4r.optional_tx_frequency_range_case() != proto::Us4RSettings::OPTIONAL_TX_FREQUENCY_RANGE_NOT_SET) {
+        txFrequencyRange = static_cast<int>(us4r.tx_frequency_range());
     }
     if(!us4r.adaptertous4rmodulenr().empty()) {
         auto &adapter2Us4RModule = us4r.adaptertous4rmodulenr();
@@ -363,7 +368,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                 channelMapping, activeChannelGroups, rxSettings,
                 us4oemChannelsMask[i], reprogrammingMode);
         }
-        return Us4RSettings(us4oemSettings, hvSettings, nUs4OEMs, adapterToUs4RModuleNr);
+        return Us4RSettings(us4oemSettings, hvSettings, nUs4OEMs, adapterToUs4RModuleNr, txFrequencyRange);
     } else {
         ProbeAdapterSettings adapterSettings =readOrGetAdapterSettings(us4r, dictionary);
         ProbeSettings probeSettings = readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
@@ -391,9 +396,11 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         }
         auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
 
-        return {adapterSettings, probeSettings, rxSettings,
-                hvSettings, channelsMask, us4oemChannelsMask,
-                reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr};
+        return Us4RSettings{
+            adapterSettings, probeSettings, rxSettings,
+            hvSettings, channelsMask, us4oemChannelsMask,
+            reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr,
+            txFrequencyRange};
     }
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

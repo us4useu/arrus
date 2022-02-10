@@ -731,24 +731,24 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     EXPECT_EQ(72 - 16, fcm->getNumberOfLogicalChannels());
 
     for(int i = 0; i < 16; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        EXPECT_EQ(0, us4oem);
-        EXPECT_EQ(0, frame);
-        EXPECT_EQ(channel, i);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(0, address.getUs4oem());
+        EXPECT_EQ(0, address.getFrame());
+        EXPECT_EQ(i, address.getChannel());
     }
 
     for(int i = 16; i < 16 + 32; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        EXPECT_EQ(1, us4oem);
-        EXPECT_EQ(0, frame);
-        EXPECT_EQ(channel, i - 16);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(1, address.getUs4oem());
+        EXPECT_EQ(0, address.getFrame());
+        EXPECT_EQ(address.getChannel(), i - 16);
     }
 
     for(int i = 16 + 32; i < 56; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        EXPECT_EQ(0, us4oem);
-        EXPECT_EQ(0, frame);
-        EXPECT_EQ(channel, i - 32);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(0, address.getUs4oem());
+        EXPECT_EQ(0, address.getFrame());
+        EXPECT_EQ(address.getChannel(), i - 32);
     }
 
     // Make sure the correct frame offsets are set.
@@ -830,10 +830,10 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     };
 
     for(int i = 0; i < 73 - 16; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        EXPECT_EQ(expectedUs4oems[i], us4oem);
-        EXPECT_EQ(expectedFrames[i], frame);
-        EXPECT_EQ(expectedChannels[i], channel);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(expectedUs4oems[i], address.getUs4oem());
+        EXPECT_EQ(expectedFrames[i], address.getFrame());
+        EXPECT_EQ(expectedChannels[i], address.getChannel());
     }
     // Make sure the correct frame offsets are set.
     EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
@@ -937,10 +937,10 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
 
     // VALIDATE
     for(int i = 0; i < 128 - 48; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        EXPECT_EQ(expectedUs4oems[i], us4oem);
-        EXPECT_EQ(expectedFrames[i], frame);
-        EXPECT_EQ(expectedChannels[i], channel);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(expectedUs4oems[i], address.getUs4oem());
+        EXPECT_EQ(expectedFrames[i], address.getFrame());
+        EXPECT_EQ(expectedChannels[i], address.getChannel());
     }
     // Make sure the correct frame offsets are set.
     EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
@@ -990,16 +990,16 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding
 
     for(int i = 0; i < 16; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(0, frame);
-        ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
+        auto address = fcm->getLogical(0, i);
+        ASSERT_EQ(0, address.getFrame());
+        ASSERT_EQ(address.getChannel(), FrameChannelMapping::UNAVAILABLE);
     }
 
     for(int i = 16; i < 32; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(0, us4oem);
-        ASSERT_EQ(0, frame);
-        ASSERT_EQ(channel, i - 16);
+        auto address = fcm->getLogical(0, i);
+        ASSERT_EQ(0, address.getUs4oem());
+        ASSERT_EQ(0, address.getFrame());
+        ASSERT_EQ(address.getChannel(), i - 16);
     }
     // Make sure the correct frame offsets are set.
     EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
@@ -1050,20 +1050,20 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     EXPECT_EQ(64, fcm->getNumberOfLogicalChannels()); // 49 active + 15 rx padding
 
     for(int i = 0; i < 15; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
+        auto address = fcm->getLogical(0, i);
+        ASSERT_EQ(address.getChannel(), FrameChannelMapping::UNAVAILABLE);
     }
     for(int i = 15; i < 15 + 32; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(0, us4oem);
-        ASSERT_EQ(0, frame);
-        ASSERT_EQ(channel, i - 15);
+        auto address = fcm->getLogical(0, i);
+        ASSERT_EQ(0, address.getUs4oem());
+        ASSERT_EQ(0, address.getFrame());
+        ASSERT_EQ(address.getChannel(), i - 15);
     }
     for(int i = 15 + 32; i < 64; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(1, us4oem);
-        ASSERT_EQ(0, frame);
-        ASSERT_EQ(channel, i - (15 + 32));
+        auto address = fcm->getLogical(0, i);
+        ASSERT_EQ(1, address.getUs4oem());
+        ASSERT_EQ(0, address.getFrame());
+        ASSERT_EQ(address.getChannel(), i - (15 + 32));
     }
     EXPECT_EQ(0, fcm->getFirstFrame(0)); // Us4OEM:0
     EXPECT_EQ(1, fcm->getFirstFrame(1)); // Us4OEM:1
@@ -1112,14 +1112,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     EXPECT_EQ(32, fcm->getNumberOfLogicalChannels()); // 16 active + 16 rx padding
 
     for(int i = 0; i < 16; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(1, us4oem);
-        ASSERT_EQ(0, frame);
-        ASSERT_EQ(channel, i);
+        auto address = fcm->getLogical(0, i);
+        ASSERT_EQ(1, address.getUs4oem());
+        ASSERT_EQ(0, address.getFrame());
+        ASSERT_EQ(address.getChannel(), i);
     }
     for(int i = 16; i < 32; ++i) {
-        auto[us4oem, frame, channel] = fcm->getLogical(0, i);
-        ASSERT_EQ(channel, FrameChannelMapping::UNAVAILABLE);
+        auto address = fcm->getLogical(0, i);
+        ASSERT_EQ(address.getChannel(), FrameChannelMapping::UNAVAILABLE);
     }
     EXPECT_EQ(0, fcm->getFirstFrame(1)); // Us4OEM:1
 }

@@ -20,9 +20,12 @@ public:
 
     explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
                           std::optional<Ordinal> nUs4OEMs = std::nullopt,
-                          std::vector<Ordinal> adapterToUs4RModuleNumber = {})
+                          std::vector<Ordinal> adapterToUs4RModuleNumber = {},
+                          std::optional<int> txFrequencyRange = std::nullopt)
         : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)),
-          nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)){}
+          nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
+          txFrequencyRange(txFrequencyRange)
+          {}
 
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,
@@ -33,7 +36,8 @@ public:
         std::vector<std::vector<uint8>> us4oemChannelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
-        std::vector<Ordinal> adapterToUs4RModuleNumber = {}
+        std::vector<Ordinal> adapterToUs4RModuleNumber = {},
+        std::optional<int> txFrequencyRange = std::nullopt
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -42,7 +46,8 @@ public:
           us4oemChannelsMask(std::move(us4oemChannelsMask)),
           reprogrammingMode(reprogrammingMode),
           nUs4OEMs(nUs4OEMs),
-          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber))
+          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
+          txFrequencyRange(txFrequencyRange)
     {}
 
     const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
@@ -86,6 +91,10 @@ public:
         return adapterToUs4RModuleNumber;
     }
 
+    std::optional<int> getTxFrequencyRange() const {
+        return txFrequencyRange;
+    }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -122,6 +131,8 @@ private:
      * and the actual ordinal number of us4OEM. Optional, empty vector means that
      * no mapping should be applied (identity mapping). */
     std::vector<Ordinal> adapterToUs4RModuleNumber = {};
+    /** Transmit frequency range to set on us4OEM devices. */
+    std::optional<int> txFrequencyRange = std::nullopt;
 };
 
 }
