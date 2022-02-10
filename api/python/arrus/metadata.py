@@ -87,7 +87,6 @@ class ConstMetadata:
         return ConstMetadata(**{**kw, **kwargs})
 
     def __setstate__(self, data):
-        print(data)
         self.__dict__ = data
         # Default version is None for packages < 0.7.0
         if "_version" not in data:
