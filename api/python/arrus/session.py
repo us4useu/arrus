@@ -133,7 +133,9 @@ class Session(AbstractSession):
 
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
-            input_shape=input_shape, is_iq_data=False, dtype="int16")
+            input_shape=input_shape, is_iq_data=False, dtype="int16",
+            version=arrus.__version__
+        )
 
         # numpy/cupy processing initialization
         if processing is not None:
