@@ -88,7 +88,8 @@ void Us4OEMImpl::stopTrigger() {
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    using Validator<TxRxParamsSequence>::Validator;
+    Us4OEMTxRxValidator(const std::string &componentName, int txFrequencyRange)
+    : Validator(componentName), txFrequencyRange(txFrequencyRange) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -111,10 +112,22 @@ public:
                         firingStr);
 
                 // Tx - pulse
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                        op.getTxPulse().getCenterFrequency(),
-                        Us4OEMImpl::MIN_TX_FREQUENCY, Us4OEMImpl::MAX_TX_FREQUENCY,
-                        firingStr);
+                if(this->txFrequencyRange == 1) {
+                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
+                            op.getTxPulse().getCenterFrequency(),
+                            Us4OEMImpl::MIN_TX_FREQUENCY_1, Us4OEMImpl::MAX_TX_FREQUENCY_1,
+                            firingStr);
+                }
+                else if(this->txFrequencyRange == 2) {
+                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
+                            op.getTxPulse().getCenterFrequency(),
+                            Us4OEMImpl::MIN_TX_FREQUENCY_2, Us4OEMImpl::MAX_TX_FREQUENCY_2,
+                            firingStr);
+                }
+                else {
+                    throw std::runtime_error("Unsupported tx frequency range: "
+                                             + std::to_string(this->txFrequencyRange));
+                }
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                         op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
@@ -163,6 +176,8 @@ public:
             }
         }
     }
+private:
+    int txFrequencyRange;
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
@@ -170,7 +185,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                             uint16 batchSize, std::optional<float> sri, bool triggerSync) {
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
-    Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr));
+    Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr),
+                                     ius4oem->GetTxFrequencyRange());
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
