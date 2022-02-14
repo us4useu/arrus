@@ -9,6 +9,8 @@ import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.kernels.imaging
 import arrus.utils.us4r
+import arrus.ops.imaging
+import arrus.ops.us4r
 import queue
 import dataclasses
 import threading
@@ -516,7 +518,7 @@ class Lambda(Operation):
     Custom function to perform on data from a given step.
     """
 
-    def __init__(self, function, prepare=None):
+    def __init__(self, function, prepare_func=None):
         """
         Lambda op constructor.
 
@@ -524,7 +526,7 @@ class Lambda(Operation):
           with the data)
         """
         self.func = function
-        self.prepare = prepare
+        self.prepare_func = prepare_func
         pass
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
@@ -535,13 +537,24 @@ class Lambda(Operation):
         return data
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        if self.prepare is not None:
-            return self.prepare(const_metadata)
+        if self.prepare_func is not None:
+            return self.prepare_func(const_metadata)
         else:
             return const_metadata
 
     def process(self, data):
         return self.func(data)
+
+
+def _get_unique_pulse(sequence):
+    if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
+        return sequence.pulse.center_freuqency
+    elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
+        pulses = {tx_rx.tx.excitation for tx_rx in sequence.ops}
+        if len(pulses) > 1:
+            raise ValueError("Each TX/RX should have exactly the same "
+                             "definition of transmit pulse.")
+        return next(iter(pulses))
 
 
 class BandpassFilter(Operation):
@@ -580,7 +593,8 @@ class BandpassFilter(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
-        center_frequency = const_metadata.context.sequence.pulse.center_frequency
+        seq = const_metadata.context.sequence
+        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         sampling_frequency = const_metadata.data_description.sampling_frequency
         taps, _ = scipy.signal.butter(
                 2,
@@ -705,7 +719,7 @@ class QuadratureDemodulation(Operation):
     def prepare(self, const_metadata):
         xp = self.xp
         fs = const_metadata.data_description.sampling_frequency
-        fc = const_metadata.context.sequence.pulse.center_frequency
+        fc = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         input_shape = const_metadata.input_shape
         n_samples = input_shape[-1]
         if n_samples == 0:
@@ -2070,6 +2084,22 @@ class RemapToLogicalOrder(Operation):
     def process(self, data):
         self._remap_fn(data)
         return self._output_buffer
+
+
+class Reshape(Operation):
+    """
+    Reshapes input data to a given shape.
+    """
+
+    def __init__(self, *shape):
+        super().__init__()
+        self.shape = shape
+
+    def prepare(self, const_metadata):
+        return const_metadata.copy(input_shape=self.shape)
+
+    def process(self, data):
+        return data.reshape(*self.shape)
 
 
 def _get_const_memory_array(module, name, input_array):
