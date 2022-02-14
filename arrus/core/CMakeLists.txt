@@ -174,7 +174,8 @@ set(SRC_FILES
     api/framework/Buffer.h
     api/session/UploadConstMetadata.h
     api/framework/DataBuffer.h
-    api/framework/FifoBuffer.h
+    api/framework/Deque.h
+    api/
     cfg/default.h.in
     ../common/logging/impl/Logging.cpp
     ../common/logging/impl/LogSeverity.cpp
@@ -182,7 +183,8 @@ set(SRC_FILES
     api/session.h
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
-    devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h)
+    devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h
+)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
