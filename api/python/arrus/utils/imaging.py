@@ -2152,3 +2152,209 @@ class ExtractMetadata(Operation):
             .reshape(self._n_frames, -1) \
             .copy()
 
+
+class ReconstructLri3D(Operation):
+    """
+    Rx beamforming for synthetic aperture imaging for matrix array.
+
+    tx_foc, tx_ang_zx, tx_ang_zy: arrays
+
+    Expected input data shape: batch_size, n_emissions, n_rx_x, n_rx_y, n_samples
+    :param x_grid: output image grid points (OX coordinates)
+    :param y_grid: output image grid points (OY coordinates)
+    :param z_grid: output image grid points  (OZ coordinates)
+    :param rx_tang_limits: RX apodization angle limits (given as the tangent of the angle), \
+      a pair of values (min, max). If not provided or None, [-0.5, 0.5] range will be used
+    """
+
+    def __init__(self, x_grid, y_grid, z_grid, tx_foc, tx_ang_zx, tx_ang_zy,
+                 tx_ap_cent_x, tx_ap_cent_y,
+                 speed_of_sound, rx_tang_limits=None):
+        self.tx_ap_cent_y = tx_ap_cent_y
+        self.tx_ap_cent_x = tx_ap_cent_x
+        self.tx_ang_zy = tx_ang_zy
+        self.tx_ang_zx = tx_ang_zx
+        self.tx_foc = tx_foc
+        self.x_grid = x_grid
+        self.y_grid = y_grid
+        self.z_grid = z_grid
+        self.speed_of_sound = speed_of_sound
+        import cupy as cp
+        self.num_pkg = cp
+        self.rx_tang_limits = rx_tang_limits
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg is np:
+            raise ValueError("ReconstructLri3D operation is implemented for GPU only.")
+
+    def prepare(self, const_metadata):
+        import cupy as cp
+
+        current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+        _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri_3d.cu")).read_text()
+        self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
+        self._kernel_module.compile()
+        self._kernel = self._kernel_module.get_function("iqRaw2Lri3D")
+
+        # INPUT PARAMETERS.
+        # Input data shape.
+        self.n_seq, self.n_tx, self.n_rx_y, self.n_rx_x, self.n_samples = const_metadata.input_shape
+
+        seq = const_metadata.context.raw_sequence
+        # TODO note: we assume here that a single TX/RX has the below properties
+        # the same for each TX/RX. Validation is missing here.
+        ref_tx_rx = seq.ops[0]
+        ref_tx = ref_tx_rx.tx
+        ref_rx = ref_tx_rx.rx
+        probe_model = const_metadata.context.device.probe.model
+        acq_fs = (const_metadata.context.device.sampling_frequency / ref_rx.downsampling_factor)
+        start_sample = ref_rx.sample_range[0]
+
+        self.y_size = len(self.y_grid)
+        self.x_size = len(self.x_grid)
+        self.z_size = len(self.z_grid)
+        output_shape = (self.n_seq, self.n_tx, self.y_size, self.x_size, self.z_size)
+        self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
+        x_block_size = min(self.z_size, 8)
+        y_block_size = min(self.x_size, 8)
+        z_block_size = min(self.y_size, 8)
+        self.block_size = (x_block_size, y_block_size, z_block_size)
+        self.grid_size = (int((self.z_size-1)//z_block_size + 1),
+                          int((self.x_size-1)//x_block_size + 1),
+                          int((self.y_size-1)//y_block_size + 1))
+
+        self.y_pix = self.num_pkg.asarray(self.y_grid, dtype=self.num_pkg.float32)
+        self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
+        self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
+
+        # System and transmit properties.
+        self.sos = self.num_pkg.float32(self.speed_of_sound)
+        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
+        self.fn = self.num_pkg.float32(ref_tx.excitation.center_frequency)
+        self.tx_foc = self.num_pkg.asarray(self.tx_foc).astype(np.float32)
+        self.tx_ang_zx = self.num_pkg.asarray(self.tx_ang_zx).astype(np.float32)
+        self.tx_ang_zy = self.num_pkg.asarray(self.tx_ang_zy).astype(np.float32)
+
+        # Could be determined automatically based on
+        self.tx_ap_cent_x = self.num_pkg.asarray(self.tx_ap_cent_x).astype(np.float32)
+        self.tx_ap_cent_y = self.num_pkg.asarray(self.tx_ap_cent_y).astype(np.float32)
+
+        # Probe description
+        # TODO specific for Vermon mat-3d probe.
+        probe_model = const_metadata.context.device.probe.model
+        pitch = 0.3e-3 # probe_model.pitch
+        self.n_elements = 32
+        # General regular position of elements
+        element_pos = np.arange(-(self.n_elements - 1)/2, self.n_elements/2)
+        element_pos_x = element_pos*pitch
+        element_pos_y = np.zeros_like(element_pos)
+        # E.g. rows
+        # 0:8 -> 0:8
+        # 8:16 -> 9:17 (+ 1 offset)
+        # 16:24 -> 18:26 (+2 offset)
+        # 24:32 -> 27:35 (+ 3 offset)
+        for i in range(4):
+            element_pos_y[i*8:(i+1)*8] = (element_pos[i*8:(i+1)*8]+i)*pitch
+
+        element_pos_x = element_pos_x.astype(np.float32)
+        element_pos_y = element_pos_y.astype(np.float32)
+        # Put the data into GPU constant memory.
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < 256*2*4:  # 2 float32 arrays, 256 elements max
+            raise ValueError("There is not enough constant memory available!")
+        x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
+        self._x_elem_const = _get_const_memory_array(
+            self._kernel_module, name="xElemConst", input_array=x_elem)
+        y_elem = np.asarray(element_pos_y, dtype=self.num_pkg.float32)
+        self._y_elem_const = _get_const_memory_array(
+            self._kernel_module, name="yElemConst", input_array=y_elem)
+
+        def get_min_max_x_y(aperture):
+            cords = np.argwhere(aperture)
+            y, x = zip(*cords)
+            return np.min(x), np.max(x), np.min(y), np.max(y)
+
+        # TODO assumption, that probe has the same number elements in both dimensions
+        apertures = (tx_rx.tx.aperture.reshape((self.n_elements, self.n_elements)) for tx_rx in seq.ops)
+        min_max_x_y = (get_min_max_x_y(aperture) for aperture in apertures)
+        min_x, max_x, min_y, max_y = zip(*min_max_x_y)
+        min_x, max_x = np.atleast_1d(min_x), np.atleast_1d(max_x)
+        min_y, max_y = np.atleast_1d(min_y), np.atleast_1d(max_y)
+        self.tx_ap_first_elem_x = self.num_pkg.asarray(min_x, dtype=self.num_pkg.int32)
+        self.tx_ap_last_elem_x = self.num_pkg.asarray(max_x, dtype=self.num_pkg.int32)
+        self.tx_ap_first_elem_y = self.num_pkg.asarray(min_y, dtype=self.num_pkg.int32)
+        self.tx_ap_last_elem_y = self.num_pkg.asarray(max_y, dtype=self.num_pkg.int32)
+
+        # Find the tx_center_delay
+        # 1. Find the position of the center.
+        ap_center_x = (element_pos_x[min_x] + element_pos_x[max_x])/2
+        ap_center_y = (element_pos_y[min_y] + element_pos_y[max_y])/2
+        ap_center_elem_x = np.interp(ap_center_x, element_pos_x, np.arange(len(element_pos_x)))
+        ap_center_elem_y = np.interp(ap_center_y, element_pos_y, np.arange(len(element_pos_y)))
+        ap_center_elem_x = np.round(ap_center_elem_x).astype(np.int32)
+        ap_center_elem_y = np.round(ap_center_elem_y).astype(np.int32)
+        # Make sure, that for all TX/RXs:
+        # The center element is in the aperture
+        # All TX/RX have (almost) the same delay in the aperture's center
+        tx_center_delay = None
+        for i, tx_rx in enumerate(seq.ops):
+            tx = tx_rx.tx
+            tx_center_x = ap_center_elem_x[i]
+            tx_center_y = ap_center_elem_y[i]
+            aperture = tx.aperture.reshape((self.n_elements, self.n_elements))
+            # TODO the below will work only for full aperture transmits
+            delays = tx.delays.reshape((self.n_elements, self.n_elements))
+            if not aperture[tx_center_y, tx_center_x]:
+                # The aperture's center should transmit signal
+                raise ValueError("TX aperture center should be turned on.")
+            if tx_center_delay is None:
+                tx_center_delay = delays[tx_center_y, tx_center_x]
+            else:
+                # Make sure that the center' delays is the same for all TX/RXs
+                current_center_delay = delays[tx_center_y, tx_center_x]
+                if not np.isclose(tx_center_delay, current_center_delay):
+                    raise ValueError(f"TX/RX {i}: center delay is not close "
+                                     f"to the center delay of other TX/RXs."
+                                     f"Assumed that the center element is:"
+                                     f"({tx_center_y, tx_center_x}). "
+                                     f"Center delays should be equalized "
+                                     f"for all TX/RXs. ")
+
+        # Min/max tang
+        if self.rx_tang_limits is not None:
+            self.min_tang, self.max_tang = self.rx_tang_limits
+        else:
+            # Default:
+            self.min_tang, self.max_tang = -0.5, 0.5
+        self.min_tang = self.num_pkg.float32(self.min_tang)
+        self.max_tang = self.num_pkg.float32(self.max_tang)
+        burst_factor = ref_tx.excitation.n_periods / (2*self.fn)
+        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
+        self.initial_delay = self.num_pkg.float32(self.initial_delay)
+
+        self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
+        self.rx_apod = self.num_pkg.asarray(self.rx_apod)
+        self.n_rx_apod = self.num_pkg.int32(len(self.rx_apod))
+
+        return const_metadata.copy(input_shape=output_shape)
+
+    def process(self, data):
+        data = self.num_pkg.ascontiguousarray(data)
+        params = (
+            self.output_buffer, data,
+            self.n_seq, self.n_tx, self.n_rx_y, self.n_rx_x, self.n_samples,
+            self.z_pix, self.z_size,
+            self.x_pix, self.x_size,
+            self.y_pix, self.y_size,
+            self.sos, self.fs, self.fn,
+            self.tx_foc, self.tx_ang_zx, self.tx_ang_zy,
+            self.tx_ap_cent_x, self.tx_ap_cent_y,
+            self.tx_ap_first_elem_x, self.tx_ap_last_elem_x,
+            self.tx_ap_first_elem_y, self.tx_ap_last_elem_y,
+            self.min_tang, self.max_tang,
+            self.min_tang, self.max_tang,
+            self.initial_delay,
+            self.rx_apod, self.n_rx_apod
+        )
+        self._kernel(self.grid_size, self.block_size, params)
+        return self.output_buffer
