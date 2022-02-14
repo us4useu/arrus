@@ -94,9 +94,9 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
                        ( (   (zPix[z] - zFoc) * (xElemConst[txApLstElemX[iTx]] - xFoc) 
                            + (xPix[x] - xFoc) * zFoc) * pixFocArrang >= 0.f ) && 
                        ( ( - (zPix[z] - zFoc) * (yElemConst[txApFstElemY[iTx]] - yFoc) 
-                           - (yPix[x] - yFoc) * zFoc) * pixFocArrang >= 0.f ) && 
+                           - (yPix[y] - yFoc) * zFoc) * pixFocArrang >= 0.f ) && 
                        ( (   (zPix[z] - zFoc) * (yElemConst[txApLstElemY[iTx]] - yFoc) 
-                           + (yPix[x] - yFoc) * zFoc) * pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
+                           + (yPix[y] - yFoc) * zFoc) * pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
         }
         else {
             /* PWI */
