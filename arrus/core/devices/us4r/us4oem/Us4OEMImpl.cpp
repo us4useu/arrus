@@ -335,20 +335,21 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
     ius4oem->EnableTransmit();
 
     // Set frame repetition interval if possible.
-    float totalPri = 0.0f;
+    unsigned totalPriUs = 0;
     for(auto &op : seq) {
-        totalPri += op.getPri();
+        totalPriUs += static_cast<unsigned>(std::round(op.getPri()*1e6));
     }
-    std::optional<float> lastPriExtend = std::nullopt;
+    std::optional<unsigned> lastPriExtend = std::nullopt;
     if(sri.has_value()) {
-        if(totalPri < sri.value()) {
-            lastPriExtend = sri.value() - totalPri;
+        unsigned sriUs = static_cast<unsigned>(std::round(sri.value()*1e6));
+        if(totalPriUs <= sriUs) {
+            lastPriExtend = sriUs - totalPriUs;
         } else {
             // TODO move this condition to sequence validator
             throw IllegalArgumentException(
-                arrus::format("Sequence repetition interval {} cannot be set, "
-                              "sequence total pri is equal {}",
-                              sri.value(), totalPri));
+                arrus::format("Sequence repetition interval {} [us] cannot be set, "
+                              "sequence total pri is equal {} [us]",
+                              sriUs, totalPriUs));
         }
     }
 
@@ -362,10 +363,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq,
                 auto const &op = seq[opIdx];
                 bool checkpoint = false;
                 float pri = op.getPri();
+                auto priUs = static_cast<unsigned>(std::round(pri*1e6));
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
-                    pri += lastPriExtend.value();
+                    priUs += lastPriExtend.value();
                 }
-                auto priMs = static_cast<unsigned int>(pri * 1e6);
                 ius4oem->SetTrigger(priMs, checkpoint, firing);
             }
         }
