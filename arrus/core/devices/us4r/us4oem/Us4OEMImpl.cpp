@@ -94,6 +94,29 @@ void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
 	ius4oem->AfeWriteRegister(1, address, value);
 }
 
+void Us4OEMImpl::setAfeDemodEn(bool en) {
+    ius4oem->AfeSetDemodEnable(0, en);
+    ius4oem->AfeSetDemodEnable(1, en);
+}
+
+void Us4OEMImpl::setAfeDemodDefault(void) {
+    ius4oem->AfeSetDemodDefault(0);
+    ius4oem->AfeSetDemodDefault(1);
+}
+
+void Us4OEMImpl::resetAfe(void) {
+    ius4oem->AfeSoftReset(0);
+    ius4oem->AfeSoftReset(1);
+}
+
+void Us4OEMImpl::setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) {
+    _CRT_UNUSED(address);
+    _CRT_UNUSED(coeffs);
+    _CRT_UNUSED(length);
+    //ius4oem->AfeWriteRegister(0, address, coeffs, length);
+    //ius4oem->AfeWriteRegister(1, address, coeffs, length);
+}
+
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:

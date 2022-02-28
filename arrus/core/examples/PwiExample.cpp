@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <string>
 #include <condition_variable>
-
 #include "arrus/core/api/arrus.h"
 
 enum Commands {
@@ -12,6 +11,11 @@ enum Commands {
 	Read,
 	Start,
 	Exit,
+    DemodEn,
+    DemodDis,
+    DemodDef,
+    FIR,
+    AfeReset,
 	Invalid
 };
 
@@ -21,6 +25,11 @@ Commands ResolveInput(std::string inp)
 	if (inp == "rd") return Read;
 	if (inp == "exit") return Exit;
 	if (inp == "start") return Start;
+    if (inp == "fir") return FIR;
+    if (inp == "afe-rst") return AfeReset;
+    if (inp == "demod-en") return DemodEn;
+    if (inp == "demod-dis") return DemodDis;
+    if (inp == "demod-def") return DemodDef;
 
 	return Invalid;
 }
@@ -154,6 +163,32 @@ int main() noexcept {
                     us4r->getUs4OEM(0)->setAfe(static_cast<uint8_t>(regAddr), static_cast<uint16_t>(regVal));
 					break;
 				}
+                case FIR:
+                {
+                    uint16_t data[7] = { 0x1122, 0x3344, 0x5566, 0x6677, 0x8899, 0x0011, 0x2233 };
+                    us4r->getUs4OEM(0)->setAfeFir(0x97, data, 0x07);
+                    break;
+                }
+                case DemodEn:
+                {
+                    us4r->getUs4OEM(0)->setAfeDemodEn(true);
+                    break;
+                }
+                case AfeReset:
+                {
+                    us4r->getUs4OEM(0)->resetAfe();
+                    break;
+                }
+                case DemodDis:
+                {
+                    us4r->getUs4OEM(0)->setAfeDemodEn(false);
+                    break;
+                }
+                case DemodDef:
+                {
+                    us4r->getUs4OEM(0)->setAfeDemodDefault();
+                    break;
+                }
 				case Read: 
 				{	
 					std::cout << "Register address (hex): " << std::endl;

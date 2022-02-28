@@ -122,6 +122,11 @@ public:
 	uint16_t getAfe(uint8_t address) override;
 
 	void setAfe(uint8_t address, uint16_t value) override;
+    void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) override;
+    void setAfeDemodEn(bool en) override;
+    void setAfeDemodDefault(void) override;
+    void resetAfe(void) override;
+
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
