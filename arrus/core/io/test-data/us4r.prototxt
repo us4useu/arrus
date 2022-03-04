@@ -33,7 +33,7 @@ us4r: {
         {}
     ]
     nus4oems: 2
-    adapterToUs4RModuleNr: [1, 0]
+    adapter_to_us4r_module_nr: [1, 0]
 }
 
 

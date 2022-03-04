@@ -324,8 +324,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
     if(us4r.optional_nus4ems_case() != proto::Us4RSettings::OPTIONAL_NUS4EMS_NOT_SET) {
         nUs4OEMs = static_cast<Ordinal>(us4r.nus4oems());
     }
-    if(!us4r.adaptertous4rmodulenr().empty()) {
-        auto &adapter2Us4RModule = us4r.adaptertous4rmodulenr();
+    if(!us4r.adapter_to_us4r_module_nr().empty()) {
+        auto &adapter2Us4RModule = us4r.adapter_to_us4r_module_nr();
         for(auto &nr: adapter2Us4RModule) {
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
