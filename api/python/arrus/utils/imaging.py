@@ -548,7 +548,7 @@ class Lambda(Operation):
 
 def _get_unique_pulse(sequence):
     if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
-        return sequence.pulse.center_frequency
+        return sequence.pulse
     elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
         pulses = {tx_rx.tx.excitation for tx_rx in sequence.ops}
         if len(pulses) > 1:
