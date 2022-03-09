@@ -244,9 +244,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                     int8 dstFrameChannel = -1;
                     if(!FrameChannelMapping::isChannelUnavailable(dstChannel)) {
                         auto res = fcMappings[dstModule]->getLogical(dstOp, dstChannel);
-                        us4oem = std::get<0>(res);
-                        dstFrame = std::get<1>(res);
-                        dstFrameChannel = std::get<2>(res);
+                        us4oem = arrus::devices::get<0>(res);
+                        dstFrame = arrus::devices::get<1>(res);
+                        dstFrameChannel = arrus::devices::get<2>(res);
                     }
                     outFcBuilder.setChannelMapping(frameIdx, activeRxChIdx + op.getRxPadding()[0],
                                                    us4oem, dstFrame, dstFrameChannel);
