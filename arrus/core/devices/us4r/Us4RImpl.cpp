@@ -68,6 +68,21 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     hv.value()->setVoltage(voltage);
 }
 
+unsigned char Us4RImpl::getVoltage() {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    return hv.value()->getVoltage();
+}
+
+float Us4RImpl::getMeasuredPVoltage() {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    return hv.value()->getMeasuredPVoltage();
+}
+
+float Us4RImpl::getMeasuredMVoltage() {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    return hv.value()->getMeasuredMVoltage();
+}
+
 void Us4RImpl::disableHV() {
     logger->log(LogSeverity::INFO, "Disabling HV");
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");

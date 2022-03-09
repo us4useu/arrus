@@ -69,6 +69,27 @@ public:
     virtual void setVoltage(Voltage voltage) = 0;
 
     /**
+     * Returns configured HV voltage.
+     *
+     * @return hv voltage value configured on device [V]
+     */
+    virtual unsigned char getVoltage() = 0;
+
+    /**
+     * Returns measured HV voltage (plus).
+     *
+     * @return hv voltage measured by device [V]
+     */
+    virtual float getMeasuredPVoltage() = 0;
+
+    /**
+     * Returns measured HV voltage (minus).
+     *
+     * @return hv voltage measured by devivce [V]
+     */
+    virtual float getMeasuredMVoltage() = 0;
+
+    /**
      * Disables HV voltage.
      */
     virtual void disableHV() = 0;

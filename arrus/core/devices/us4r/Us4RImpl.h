@@ -128,6 +128,9 @@ public:
     float getSamplingFrequency() const override;
     void checkState() const override;
     std::vector<unsigned short> getChannelsMask() override;
+    unsigned char getVoltage() override;
+    float getMeasuredPVoltage() override;
+    float getMeasuredMVoltage() override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
