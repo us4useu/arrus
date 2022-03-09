@@ -127,7 +127,7 @@ Us4RImpl::upload(const TxRxSequence &seq, unsigned short rxBufferNElements, cons
         this->buffer.reset();
     }
     // Create output buffer.
-    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements);
+    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
     getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
     return {this->buffer, std::move(fcm)};
 }
@@ -302,6 +302,19 @@ void Us4RImpl::checkState() const {
 
 std::vector<unsigned short> Us4RImpl::getChannelsMask() {
     return channelsMask;
+}
+
+void Us4RImpl::setStopOnOverflow(bool value) {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if (this->state != State::STOPPED) {
+        logger->log(LogSeverity::INFO, "The StopOnOverflow property can be set "
+                                       "only when the device is stopped.");
+    }
+    this->stopOnOverflow = value;
+}
+
+bool Us4RImpl::isStopOnOverflow() const {
+    return stopOnOverflow;
 }
 
 }

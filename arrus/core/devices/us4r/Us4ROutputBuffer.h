@@ -144,7 +144,8 @@ public:
     Us4ROutputBuffer(const std::vector<size_t> &us4oemOutputSizes,
                      const framework::NdArray::Shape &elementShape,
                      const framework::NdArray::DataType elementDataType,
-                     const unsigned nElements)
+                     const unsigned nElements,
+                     bool stopOnOverflow)
         : elementSize(0) {
         ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
                             "Currently Us4R data buffer supports up to 16 us4oem modules.");
@@ -178,6 +179,7 @@ public:
                     elementAddress, elementSize, elementShape, elementDataType, filledAccumulator, i));
         }
         this->initialize();
+        this->stopOnOverflow = stopOnOverflow;
     }
 
     ~Us4ROutputBuffer() override {
@@ -286,6 +288,10 @@ public:
         this->elements[element]->registerReleaseFunction(releaseFunction);
     }
 
+    bool isStopOnOverflow() {
+        return this->stopOnOverflow;
+    }
+
 
 private:
     std::mutex mutex;
@@ -307,6 +313,7 @@ private:
         RUNNING, SHUTDOWN, INVALID
     };
     State state{State::RUNNING};
+    bool stopOnOverflow{true};
 
     /**
      * Throws IllegalStateException when the buffer is in invalid state.

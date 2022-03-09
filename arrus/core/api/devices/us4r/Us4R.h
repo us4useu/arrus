@@ -185,6 +185,23 @@ public:
      */
     virtual void checkState() const = 0;
 
+    /**
+     * Set the system to stop when (RX or host) buffer overflow is detected.
+     *
+     * This property is set by default to true.
+     *
+     * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
+     */
+    virtual void setStopOnOverflow(bool isStopOnOverflow) = 0;
+
+    /**
+     * Returns true if the system will be stopped when (RX of host) buffer overflow is detected.
+     *
+     * This property is set by default to true.
+     *
+     * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
+     */
+    virtual bool isStopOnOverflow() const = 0;
 
     Us4R(Us4R const&) = delete;
     Us4R(Us4R const&&) = delete;

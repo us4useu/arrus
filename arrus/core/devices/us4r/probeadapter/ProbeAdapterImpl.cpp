@@ -347,9 +347,13 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     // Overflow handling
     ius4oem->RegisterReceiveOverflowCallback([this, bufferDst]() {
         try {
-            this->logger->log(LogSeverity::ERROR, "Rx overflow, stopping the device.");
-            this->getMasterUs4oem()->stop();
-            bufferDst->markAsInvalid();
+            if(bufferDst->isStopOnOverflow()) {
+                this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
+                this->getMasterUs4oem()->stop();
+                bufferDst->markAsInvalid();
+            } else {
+                this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+            }
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
         } catch (...) {
@@ -359,9 +363,14 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
 
     ius4oem->RegisterTransferOverflowCallback([this, bufferDst]() {
         try {
-            this->logger->log(LogSeverity::ERROR, "Host overflow, stopping the device.");
-            this->getMasterUs4oem()->stop();
-            bufferDst->markAsInvalid();
+            if(bufferDst->isStopOnOverflow()) {
+                this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
+                this->getMasterUs4oem()->stop();
+                bufferDst->markAsInvalid();
+            }
+            else {
+                this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
+            }
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
         } catch (...) {

@@ -131,6 +131,8 @@ public:
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
+    void setStopOnOverflow(bool isStopOnOverflow) override;
+    bool isStopOnOverflow() const override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -157,6 +159,7 @@ private:
     // AFE parameters.
     std::optional<RxSettings> rxSettings;
     std::vector<unsigned short> channelsMask;
+    bool stopOnOverflow{true};
 };
 
 }
