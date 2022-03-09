@@ -49,6 +49,10 @@ __device__ float xRefract(	float const zElem,
                     / ((xPix - xRefractNew) / distSample);
         timeNew     = distInterf / sosInterf + distSample / sosSample;
         
+        if (fabs(timeNew-timeOld) < timePrec) {
+            break;
+        }
+        
         if (sinRatioNew < cRatio) {
             xRefractLo = xRefractNew;
             sinRatioLo = sinRatioNew;
@@ -58,7 +62,7 @@ __device__ float xRefract(	float const zElem,
             sinRatioHi = sinRatioNew;
         }
         timeOld = timeNew;
-    } while(fabs(timeNew-timeOld) > timePrec);
+    } while(true);
     
     return xRefractNew;
 }
