@@ -9,13 +9,13 @@ from arrus.ops.imaging import PwiSequence
 from arrus.utils.gui import Display2D
 from arrus.utils.imaging import get_bmode_imaging, get_extent
 
-arrus.set_clog_level(arrus.logging.TRACE)
-arrus.add_log_file("test.log", arrus.logging.TRACE)
+arrus.set_clog_level(arrus.logging.INFO)
+arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
+with arrus.Session() as sess:
     us4r = sess.get_device("/Us4R:0")
-    us4r.set_hv_voltage(20)
+    us4r.set_hv_voltage(40)
 
     sequence = PwiSequence(
         angles=np.linspace(-10, 10, 7)*np.pi/180,
@@ -33,9 +33,7 @@ with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
 
     scheme = Scheme(
         tx_rx_sequence=sequence,
-        processing=get_bmode_imaging(sequence=sequence, grid=(x_grid, z_grid)),
-        # work_mode="ASYNC"
-        )
+        processing=get_bmode_imaging(sequence=sequence, grid=(x_grid, z_grid)))
     # Upload sequence on the us4r-lite device.
     buffer, metadata = sess.upload(scheme)
     display = Display2D(metadata=metadata, value_range=(20, 80), cmap="gray",
