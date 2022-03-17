@@ -99,7 +99,7 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
         COMMAND
             # TODO install only necessary packages (e.g. breathe is not needed by python docs generator)
             ${INSTALL_VENV_EXECUTABLE} -m pip install sphinx==3.3.1 sphinx_rtd_theme==0.5.0 six breathe docutils==0.16
-            "git+git://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain"
+            "git+https://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain"
         DEPENDS
             ${VENV_TARGET}
         WORKING_DIRECTORY

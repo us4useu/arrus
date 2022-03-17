@@ -871,9 +871,9 @@ probe_models: [
             end: 10e6
         },
         voltage_range: {
-			begin: 0,
-			end: 75
-		}
+	    begin: 0,
+	    end: 90
+	}
     },
     {
         id: {
@@ -1016,7 +1016,7 @@ probe_models: [
         },
         voltage_range: {
 	    begin: 0,
-	    end: 75
+	    end: 90
 	}
     }
 ]

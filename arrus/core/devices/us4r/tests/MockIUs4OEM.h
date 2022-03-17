@@ -121,6 +121,25 @@ public:
     MOCK_METHOD(void, ResetCallbacks, (), (override));
     MOCK_METHOD(float, GetFPGATemp, (), (override));
     MOCK_METHOD(void, WaitForPendingTransfers, (), (override));
+    MOCK_METHOD(void, ClearUCDFaults, (), (override));
+    MOCK_METHOD(unsigned short, GetUCDStatus, (), (override));
+    MOCK_METHOD(unsigned char, GetUCDStatusByte, (), (override));
+    MOCK_METHOD(float, GetUCDTemp, (), (override));
+    MOCK_METHOD(float, GetUCDExtTemp, (), (override));
+    MOCK_METHOD(float, GetUCDVOUT, (unsigned char), (override));
+    MOCK_METHOD(float, GetUCDIOUT, (unsigned char), (override));
+    MOCK_METHOD(unsigned char, GetUCDVOUTStatus, (unsigned char), (override));
+    MOCK_METHOD(unsigned char, GetUCDIOUTStatus, (unsigned char), (override));
+    MOCK_METHOD(unsigned char, GetUCDCMLStatus, (unsigned char), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDMFRStatus, (unsigned char), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDRunTime, (), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDBlackBox, (), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDLog, (), (override));
+    MOCK_METHOD(void, ClearUCDLog, (), (override));
+    MOCK_METHOD(bool, CheckUCDLogNotEmpty, (), (override));
+    MOCK_METHOD(void, ClearUCDBlackBox, (), (override));
+    MOCK_METHOD(void, SetTxFrequencyRange, (int), (override));
+    MOCK_METHOD(int, GetTxFrequencyRange, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
