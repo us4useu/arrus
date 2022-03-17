@@ -875,14 +875,93 @@ probe_models: [
 			end: 75
 		}
     },
-    
     {
         id: {
             manufacturer: "olympus"
-            name: "5L128"
+            name: "10l128"
         }
         n_elements: 128,
         pitch: 0.6e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 20e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "5l128"
+        }
+        n_elements: 128,
+        pitch: 0.6e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "5l64"
+        }
+        n_elements: 64,
+        pitch: 0.6e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "10l32"
+        }
+        n_elements: 32,
+        pitch: 0.31e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 20e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "5l32"
+        }
+        n_elements: 32,
+        pitch: 0.6e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "225l32"
+        }
+        n_elements: 32,
+        pitch: 1.0e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
@@ -1164,9 +1243,13 @@ probe_to_adapter_connections: [
     {
         probe_model_id: {
             manufacturer: "olympus"
-            name: "5L128"
+            name: "10l128"
         }
         probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
             {
                 manufacturer: "us4us"
                 name: "esaote3"
@@ -1175,6 +1258,106 @@ probe_to_adapter_connections: [
         channel_mapping_ranges: {
             begin: 0
             end: 127
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "5l128"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 127
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "5l64"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 63
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "10l32"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 31
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "5l32"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 31
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "225l32"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 31
         }
     },
     {
