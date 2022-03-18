@@ -393,7 +393,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
 
         return {adapterSettings, probeSettings, rxSettings,
                 hvSettings, channelsMask, us4oemChannelsMask,
-                reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr};
+                reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr, us4r.external_trigger()};
     }
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
