@@ -8,6 +8,16 @@ Release notes
 0.7.0
 .....
 
+- core (C++):
+    - Now it is possible to set how many times the TxRxSequence should be repeated: check TxRxSequence's nRepeats parameter. By default nRepeats is set to 1.
+    - Because now it is possible to acquire batch of RF frame sequences (the nRepeats parameter was added), there were some breaking changes in the implementation of the FrameChannelMapping class. The getLogical method now returns three values: us4oem number, frame number and channel number. For each us4OEM module each frame number is counted from 0 (previously the each physical frame had consecutive numbers from 0 to n, where n is the total number of physical frames acquired by all us4OEM modules). To get the number of frames preceding a given us4OEM frame, use getFirstFrame method.
+    - Now it is possible to turn on test AFE patterns, see Us4R::setTestPattern.
+    - Now it is possible to remap the order of us4OEM modules numbering in the system configuration, see Us4RSettings, adapterToUs4RModuleNumber. By deafult identity mapping is used. 
+    - Now it is possible to specify number of us4OEM modules the system is using, check Us4RSettings, nUs4OEMs parameter.
+    - Implemented MANUAL scheme work mode, i.e. it is possible to trigger TX/RX sequence programatically, see Session::run method.
+    - Added Us4R::{is,set}StopOnOverflow method, which gives the possibility to continue data acquisition even if the system has detected buffer overflow. By default this property is set to true, i.e. the system will stop on buffer overflow.
+    - Added possibility to measure HV P and M voltage (see Us4R::{getVoltage, getMeasuredPVoltage, getMeasuredMVoltage). Supported only by the system with us4us HV hardware (e.g. HV256 or Us4RPSC). 
+
 - Python API:
 
     - added n_repeats parameter to the simple TX/RX sequences available in ARRUS, the parameter allows to specify the number of times the sequence should be repeated ("batch size"),
