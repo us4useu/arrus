@@ -18,19 +18,25 @@ from collections import deque
 from collections.abc import Iterable
 from pathlib import Path
 import os
-
-import cupy
-import re
+import importlib.util
 
 
-if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
-    raise ValueError(f"Unrecognized pattern "
-                     f"of the cupy version: {cupy.__version__}")
+def is_package_available(package_name):
+    return importlib.util.find_spec(package_name) is not None
 
 
-if tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
-    raise Exception(f"The version of cupy module is too low. "
-                    f"Use version ''9.0.0'' or higher.")
+if is_package_available("cupy"):
+    import cupy
+    import re
+    if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
+        raise ValueError(f"Unrecognized pattern "
+                         f"of the cupy version: {cupy.__version__}")
+    if tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
+        raise Exception(f"The version of cupy module is too low. "
+                        f"Use version ''9.0.0'' or higher.")
+else:
+    print("Cupy package is not available, some of the arrus.utils.imaging "
+          "operators may not be available.")
 
 
 def get_extent(x_grid, z_grid):
