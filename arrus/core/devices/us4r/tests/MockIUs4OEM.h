@@ -87,7 +87,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx),
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode),
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
