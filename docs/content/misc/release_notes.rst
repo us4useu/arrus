@@ -9,6 +9,7 @@ Release notes
 .....
 
 - core (C++):
+
     - Now it is possible to set how many times the TxRxSequence should be repeated: check TxRxSequence's nRepeats parameter. By default nRepeats is set to 1.
     - Because now it is possible to acquire batch of RF frame sequences (the nRepeats parameter was added), there were some breaking changes in the implementation of the FrameChannelMapping class. The getLogical method now returns three values: us4oem number, frame number and channel number. For each us4OEM module each frame number is counted from 0 (previously the each physical frame had consecutive numbers from 0 to n, where n is the total number of physical frames acquired by all us4OEM modules). To get the number of frames preceding a given us4OEM frame, use getFirstFrame method.
     - Now it is possible to turn on test AFE patterns, see Us4R::setTestPattern.
