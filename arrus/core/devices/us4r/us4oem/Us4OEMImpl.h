@@ -62,7 +62,7 @@ public:
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
-    static constexpr uint32 SAMPLE_DELAY = 240;
+    static constexpr uint32 SAMPLE_DELAY = 0;
     static constexpr float RX_DELAY = 0.0;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
@@ -120,12 +120,13 @@ public:
     float getFPGATemperature() override;
 
 	uint16_t getAfe(uint8_t address) override;
-
 	void setAfe(uint8_t address, uint16_t value) override;
-    void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) override;
-    void setAfeDemodEn(bool en) override;
-    void setAfeDemodDefault(void) override;
-    void resetAfe(void) override;
+    //void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) override;
+    void enableAfeDemod() override;
+    void disableAfeDemod() override;
+    void setAfeDemodDefault() override;
+    void writeAfeFIRCoeffs(int16_t* coeffs, uint16_t length) override;
+    void resetAfe() override;
 
 
 private:

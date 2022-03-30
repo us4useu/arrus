@@ -6,6 +6,8 @@
 #include <condition_variable>
 #include "arrus/core/api/arrus.h"
 
+#include "arrus/core/examples/AfeDemodFIR.h"
+
 enum Commands {
 	Write,
 	Read,
@@ -165,13 +167,13 @@ int main() noexcept {
 				}
                 case FIR:
                 {
-                    uint16_t data[7] = { 0x1122, 0x3344, 0x5566, 0x6677, 0x8899, 0x0011, 0x2233 };
-                    us4r->getUs4OEM(0)->setAfeFir(0x97, data, 0x07);
+                    //writes default 10MHz FIR for now, valid for M = 4
+                    us4r->getUs4OEM(0)->writeAfeFIRCoeffs((int16_t*)&fir10M[0], 32);
                     break;
                 }
                 case DemodEn:
                 {
-                    us4r->getUs4OEM(0)->setAfeDemodEn(true);
+                    us4r->getUs4OEM(0)->enableAfeDemod();
                     break;
                 }
                 case AfeReset:
@@ -181,7 +183,7 @@ int main() noexcept {
                 }
                 case DemodDis:
                 {
-                    us4r->getUs4OEM(0)->setAfeDemodEn(false);
+                    us4r->getUs4OEM(0)->disableAfeDemod();
                     break;
                 }
                 case DemodDef:

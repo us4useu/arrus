@@ -22,9 +22,11 @@ public:
 	virtual uint16_t getAfe(uint8_t address) = 0;
 
 	virtual void setAfe(uint8_t address, uint16_t value) = 0;
-    virtual void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) = 0;
-    virtual void setAfeDemodEn(bool en) = 0;
+    //virtual void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) = 0;
+    virtual void enableAfeDemod(void) = 0;
+    virtual void disableAfeDemod(void) = 0;
     virtual void setAfeDemodDefault(void) = 0;
+    virtual void writeAfeFIRCoeffs(int16_t* coeffs, uint16_t length) = 0;
     virtual void resetAfe(void) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
