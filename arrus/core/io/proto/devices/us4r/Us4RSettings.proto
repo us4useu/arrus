@@ -27,7 +27,6 @@ message Us4RSettings {
 
   message ChannelsMask {
     // The channel number of the probe that should be turned of.
-    // The number refers to
     repeated uint32 channels = 1;
   }
 
@@ -39,4 +38,8 @@ message Us4RSettings {
 
   repeated ChannelsMask us4oem_channels_mask = 10;
   Us4OEMSettings.ReprogrammingMode reprogramming_mode = 11;
+  oneof optional_nus4ems {
+    uint32 nus4oems = 12;
+  }
+  repeated uint32 adapter_to_us4r_module_nr = 13;
 }

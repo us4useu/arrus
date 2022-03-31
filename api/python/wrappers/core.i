@@ -19,6 +19,7 @@ using namespace ::arrus;
 namespace std {
 %template(VectorBool) vector<bool>;
 %template(VectorFloat) vector<float>;
+%template(VectorUInt16) vector<unsigned short>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
 
@@ -145,9 +146,6 @@ using namespace arrus::devices;
 %shared_ptr(arrus::framework::BufferElement);
 %shared_ptr(arrus::framework::DataBuffer);
 
-namespace std {
-    %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
-};
 namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
 };
@@ -239,6 +237,7 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceId.h"
 %include "arrus/core/api/devices/Device.h"
 %include "arrus/core/api/devices/DeviceWithComponents.h"
+%include "arrus/core/api/devices/us4r/Us4OEM.h"
 %include "arrus/core/api/devices/us4r/Us4R.h"
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"

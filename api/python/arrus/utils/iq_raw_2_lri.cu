@@ -9,7 +9,8 @@ __constant__ float tangElemConst[256];
 extern "C"
 __global__ void
 iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
-          const int nElem, const int nTx, const int nSamp,
+          const int nElem,
+          const int nSeq, const int nTx, const int nSamp,
           const float *zPix, const int nZPix,
           const float *xPix, const int nXPix,
           float const sos, float const fs, float const fn,
@@ -22,11 +23,12 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
 
     int z = blockIdx.x * blockDim.x + threadIdx.x;
     int x = blockIdx.y * blockDim.y + threadIdx.y;
-    int iTx = blockIdx.z * blockDim.z + threadIdx.z;
+    int iGlobalTx = blockIdx.z * blockDim.z + threadIdx.z;
 
-    if(z >= nZPix || x >= nXPix || iTx >= nTx) {
+    if(z >= nZPix || x >= nXPix || iGlobalTx >= nSeq*nTx) {
         return;
     }
+    int iTx = iGlobalTx % nTx;
 
     int iElem, offset;
     float interpWgh;
@@ -40,7 +42,7 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
     const float centRxTang = (maxRxTang + minRxTang) * 0.5f;
     complex<float> pix(0.0f, 0.0f), samp(0.0f, 0.0f), modFactor;
 
-    int txOffset = iTx * nSamp * nRx;
+    int txOffset = iGlobalTx * nSamp * nRx;
 
     if(!isinf(txFoc[iTx])) {
         /* STA */
@@ -119,8 +121,8 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
         }
     }
     if(pixWgh == 0.0f) {
-        iqLri[z + x * nZPix + iTx * nZPix * nXPix] = complex<float>(0.0f, 0.0f);
+        iqLri[z + x*nZPix + iGlobalTx*nZPix*nXPix] = complex<float>(0.0f, 0.0f);
     } else {
-        iqLri[z + x * nZPix + iTx * nZPix * nXPix] = pix / pixWgh * txApod;
+        iqLri[z + x*nZPix + iGlobalTx*nZPix*nXPix] = pix / pixWgh * txApod;
     }
 }

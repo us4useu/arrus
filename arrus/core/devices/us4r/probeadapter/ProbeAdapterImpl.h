@@ -11,6 +11,7 @@
 #include "arrus/common/asserts.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
+#include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
 
 namespace arrus::devices {
 
@@ -22,10 +23,8 @@ public:
     using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
     using ChannelMapping = ProbeAdapterSettings::ChannelMapping;
 
-    ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,
-                     std::vector<Us4OEMImplBase::RawHandle> us4oems,
-                     ChannelIdx numberOfChannels,
-                     ChannelMapping channelMapping);
+    ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,std::vector<Us4OEMImplBase::RawHandle> us4oems,
+                     ChannelIdx numberOfChannels, ChannelMapping channelMapping);
 
     [[nodiscard]] ChannelIdx getNumberOfChannels() const override {
         return numberOfChannels;
@@ -45,32 +44,27 @@ public:
 
     void syncTrigger() override;
 
-    void
-    registerOutputBuffer(Us4ROutputBuffer *buffer,
-                         const Us4RBuffer::Handle &us4rBuffer,
-                         bool isTriggerSync);
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
+                              ::arrus::ops::us4r::Scheme::WorkMode workMode) override;
 
-    void unregisterOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer);
+    void unregisterOutputBuffer() override;
 
 private:
+    void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
+                              Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
+
+    Us4OEMImplBase::RawHandle getMasterUs4oem() const {
+        return this->us4oems[0];
+    }
+    size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
+
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
     std::vector<Us4OEMImplBase::RawHandle> us4oems;
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
-
-    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer,
-                              const Us4OEMBuffer &us4oemBuffer,
-                              Us4OEMImplBase::RawHandle us4oem,
-                              bool isTriggerSync);
-
-    Us4OEMImplBase::RawHandle getMasterUs4oem() const {
-        return this->us4oems[0];
-    }
-
-    size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
+    std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
 };
-
 }
 
 #endif //ARRUS_CORE_DEVICES_US4R_PROBEADAPTER_PROBEADAPTERIMPL_H

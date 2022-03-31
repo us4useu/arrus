@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_PROBE_PROBEIMPLBASE_H
 
 #include "arrus/core/api/devices/probe/Probe.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
 
@@ -18,8 +19,9 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync) = 0;
 
-    virtual void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &, bool isTriggerSync) = 0;
-    virtual void unregisterOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &) = 0;
+    virtual void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &,
+                                      ::arrus::ops::us4r::Scheme::WorkMode workMode) = 0;
+    virtual void unregisterOutputBuffer() = 0;
 };
 
 }

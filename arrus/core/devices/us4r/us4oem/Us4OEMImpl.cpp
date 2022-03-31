@@ -54,6 +54,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
                           ::arrus::format("Following us4oem channels will be turned off: {}",
                                           ::arrus::toString(this->channelsMask)));
     }
+    setTestPattern(RxTestPattern::OFF);
     setRxSettingsPrivate(this->rxSettings, true);
 }
 
@@ -183,7 +184,7 @@ public:
                 ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(
                         numberOfSamples, 64u, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                        op.getRxDecimationFactor(), 0, 5, firingStr);
+                        op.getRxDecimationFactor(), 0, 10, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                         op.getPri(),
                         Us4OEMImpl::MIN_PRI, Us4OEMImpl::MAX_PRI,
@@ -218,22 +219,19 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
 
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
-    ARRUS_REQUIRES_AT_MOST(nOps * batchSize,
-                           1024,
-                           ::arrus::format("Exceeded the maximum ({}) number of firings: {}", 1024, nOps));
+    ARRUS_REQUIRES_AT_MOST(nOps, 1024, ::arrus::format("Exceeded the maximum ({}) number of firings: {}", 1024, nOps));
     ARRUS_REQUIRES_AT_MOST(nOps * batchSize * rxBufferSize, 16384,
                            ::arrus::format("Exceeded the maximum ({}) number of triggers: {}",
                                            16384, nOps * batchSize * rxBufferSize));
 
     RxSettingsBuilder rxSettingsBuilder(this->rxSettings);
     this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc)->build();
-    setTgcCurve(this->rxSettings);
 
-    ius4oem->SetNumberOfFirings(nOps * batchSize);
+    setTgcCurve(this->rxSettings);
+    ius4oem->SetNumberOfFirings(nOps);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
     auto[rxMappings, rxApertures, fcm] = setRxMappings(seq);
-
     // helper data
     const std::bitset<N_ADDR_CHANNELS> emptyAperture;
     const std::bitset<N_ACTIVE_CHANNEL_GROUPS> emptyChannelGroups;
@@ -274,10 +272,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         } else {
             // active channel groups already remapped in constructor
             ius4oem->SetActiveChannelGroup(activeChannelGroups, opIdx);
-
             auto txAperture = filterAperture(::arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()));
             auto rxAperture = filterAperture(rxApertures[opIdx]);
-
             // Intentionally validating tx apertures, to reduce the risk of mistake channel activation
             // (e.g. the masked one).
             validateAperture(txAperture);
@@ -303,52 +299,60 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetRxDelay(Us4OEMImpl::RX_DELAY, opIdx);
     }
 
-    // Program data acquisitions ("ScheduleReceive" part)
+    // Program data acquisitions ("ScheduleReceive" part).
     // element == the result data frame of the given operations sequence
     // Buffer elements.
-    // The below code fills the us4oem memory with the acquired data.
-    // us4oem rxdma output address
+    // The below code programs us4OEM sequencer to fill the us4OEM memory with the acquired data.
+    // us4oem RXDMA output address
+
     size_t outputAddress = 0;
     size_t transferAddressStart = 0;
-
     uint16 firing = 0;
     std::vector<Us4OEMBufferElement> rxBufferElements;
+    // Assumption: all elements consists of the same parts.
+    std::vector<Us4OEMBufferElementPart> rxBufferElementParts;
+
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
         // Total number of samples in a single batch.
         unsigned int totalNSamples = 0;
-        // Batch elements.
-        for(uint16 batchElementIdx = 0;
-            batchElementIdx < batchSize; ++batchElementIdx) {
-            // Element operation.
+        // Sequences.
+        for(uint16 seqIdx = 0; seqIdx < batchSize; ++seqIdx) {
+            // Ops.
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = opIdx + (batchElementIdx * nOps) + (batchIdx * nOps * batchSize);
+                firing = opIdx + seqIdx*nOps + batchIdx*batchSize*nOps;
                 auto const &op = seq[opIdx];
                 auto[startSample, endSample] = op.getRxSampleRange().asPair();
-                size_t nSamples = endSample - startSample;
-                size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
+                size_t nSamples = endSample-startSample;
+                size_t nBytes = nSamples*N_RX_CHANNELS*sizeof(OutputDType);
                 auto rxMapId = rxMappings.find(opIdx)->second;
 
-                ARRUS_REQUIRES_AT_MOST(
-                        outputAddress + nBytes, DDR_SIZE, ::arrus::format(
-                        "Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
+                // The start sample should be provided to the us4r-api
+                // as for the nominal sampling frequency of us4OEM, i.e. 65 MHz.
+                // The ARRUS API assumes that the start sample and end sample are for the same
+                // sampling frequency.
+                startSample = startSample*op.getRxDecimationFactor();
 
-                if(op.isRxNOP() && !this->isMaster()) {
-                    // TODO reduce the size of data acquired from master rx nops to small number of samples
-                    // (e.g. 64)
-                    ius4oem->ScheduleReceive(firing, outputAddress, nSamples, SAMPLE_DELAY + startSample,
-                                             op.getRxDecimationFactor() - 1, rxMapId, nullptr);
-                } else {
+                ARRUS_REQUIRES_AT_MOST(
+                        outputAddress + nBytes, DDR_SIZE,
+                        ::arrus::format("Total data size cannot exceed 4GiB (device {})",getDeviceId().toString()));
+
+                ius4oem->ScheduleReceive(firing, outputAddress, nSamples, SAMPLE_DELAY + startSample,
+                                         op.getRxDecimationFactor() - 1, rxMapId, nullptr);
+
+                if(!op.isRxNOP() || this->isMaster()) {
+                    if(batchIdx == 0) {
+                        rxBufferElementParts.emplace_back(outputAddress, nBytes, firing);
+                    }
                     // Also, allows rx nops for master module.
-                    // Master module gathers frame metadata, so we cannot miss any of them
-                    ius4oem->ScheduleReceive(firing, outputAddress, nSamples, SAMPLE_DELAY + startSample,
-                                             op.getRxDecimationFactor() - 1, rxMapId, nullptr);
+                    // Master module gathers frame metadata, so we cannot miss any of it.
+                    // All RX nops are just overwritten.
                     outputAddress += nBytes;
                     totalNSamples += (unsigned) nSamples;
                 }
             }
         }
-        // The size of the chunk, in number of BYTES.
-        auto size = outputAddress - transferAddressStart;
+        // The size of the chunk, in the number of BYTES.
+        auto size = outputAddress-transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
@@ -363,29 +367,28 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         totalPri += op.getPri();
     }
     std::optional<float> lastPriExtend = std::nullopt;
+
+    // Sequence repetition interval.
     if(sri.has_value()) {
         if(totalPri < sri.value()) {
             lastPriExtend = sri.value() - totalPri;
         } else {
             // TODO move this condition to sequence validator
-            throw IllegalArgumentException(
-                    arrus::format("Sequence repetition interval {} cannot be set, sequence total pri is equal {}",
-                                  sri.value(), totalPri));
+            throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
+                                                  "sequence total pri is equal {}", sri.value(), totalPri));
         }
     }
 
     // Program triggers
-    ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
+    ius4oem->SetNTriggers(nOps*batchSize*rxBufferSize);
     firing = 0;
     for(uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
-        for(uint16 batchElementIdx = 0;
-            batchElementIdx < batchSize; ++batchElementIdx) {
+        for(uint16 seqIdx = 0; seqIdx < batchSize; ++seqIdx) {
             for(uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
-                firing = (uint16) (opIdx + batchElementIdx * nOps +
-                        batchIdx * nOps * batchSize);
+                firing = (uint16)(opIdx+ seqIdx*nOps + batchIdx*batchSize*nOps);
                 auto const &op = seq[opIdx];
                 // checkpoint only when it is the last operation of the last batch element
-                bool checkpoint = triggerSync && (opIdx == seq.size() - 1 && batchElementIdx == batchSize - 1);
+                bool checkpoint = triggerSync && (opIdx == seq.size() - 1 && seqIdx == batchSize - 1);
                 float pri = op.getPri();
                 if(opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
@@ -395,7 +398,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             }
         }
     }
-    return {Us4OEMBuffer(rxBufferElements), std::move(fcm)};
+    return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
 }
 
 float Us4OEMImpl::getTxRxTime(float rxTime) const {
@@ -405,9 +408,7 @@ float Us4OEMImpl::getTxRxTime(float rxTime) const {
     } else if(reprogrammingMode == Us4OEMSettings::ReprogrammingMode::PARALLEL) {
         txrxTime = std::max(rxTime, SEQUENCER_REPROGRAMMING_TIME);
     } else {
-        throw IllegalArgumentException(::arrus::format("Unrecognized reprogramming mode: {}",
-                                                       static_cast<size_t>(reprogrammingMode))
-        );
+        throw IllegalArgumentException(format("Unrecognized reprogramming mode: {}",static_cast<size_t>(reprogrammingMode)));
     }
     return txrxTime;
 }
@@ -450,9 +451,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
         for(const auto isOn : op.getRxAperture()) {
             if(isOn) {
                 isRxNop = false;
-                ARRUS_REQUIRES_TRUE_E(
-                        onChannel < N_RX_CHANNELS,
-                        ArrusException("Up to 32 active rx channels can be set."));
+                ARRUS_REQUIRES_TRUE_E(onChannel < N_RX_CHANNELS, ArrusException("Up to 32 active rx channels can be set."));
 
                 // Physical channel number, values 0-31
                 auto rxChannel = channelMapping[channel];
@@ -475,6 +474,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     frameNumber = opId;
                 }
                 fcmBuilder.setChannelMapping(frameNumber, onChannel,
+                                             static_cast<FrameChannelMapping::Us4OEMNumber>(getDeviceId().getOrdinal()),
                                              frameNumber, (int8) (mapping.size() - 1));
                 ++onChannel;
             }
@@ -511,12 +511,9 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
             result.emplace(opId, rxMapId);
             // Set channel mapping
             ARRUS_REQUIRES_TRUE(rxMapping.size() == N_RX_CHANNELS,
-                                arrus::format("Invalid size of the RX channel mapping to set: {}",
-                                              rxMapping.size()));
-            ARRUS_REQUIRES_TRUE(
-                    rxMapId < 128,
-                    arrus::format("128 different rx mappings can be loaded only, deviceId: {}.",
-                                  getDeviceId().toString()));
+                    format("Invalid size of the RX channel mapping to set: {}", rxMapping.size()));
+            ARRUS_REQUIRES_TRUE(rxMapId < 128,
+                    format("128 different rx mappings can be loaded only, deviceId: {}.", getDeviceId().toString()));
             ius4oem->SetRxChannelMapping(rxMapping, rxMapId);
             ++rxMapId;
         } else {
@@ -531,7 +528,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
     return {result, outputRxApertures, fcmBuilder.build()};
 }
 
-double Us4OEMImpl::getSamplingFrequency() {
+float Us4OEMImpl::getSamplingFrequency() {
     return Us4OEMImpl::SAMPLING_FREQUENCY;
 }
 
@@ -684,6 +681,41 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
 
 float Us4OEMImpl::getFPGATemperature() {
     return ius4oem->GetFPGATemp();
+}
+
+void Us4OEMImpl::checkFirmwareVersion() {
+    try {
+        ius4oem->CheckFirmwareVersion();
+    } catch(const std::runtime_error &e) {
+        throw arrus::IllegalStateException(e.what());
+    } catch(...) {
+        throw arrus::IllegalStateException("Unknown exception while check firmware version.");
+    }
+}
+
+uint32 Us4OEMImpl::getFirmwareVersion() {
+    return ius4oem->GetFirmwareVersion();
+}
+
+uint32 Us4OEMImpl::getTxFirmwareVersion() {
+    return ius4oem->GetTxFirmwareVersion();
+}
+
+void Us4OEMImpl::checkState() {
+    this->checkFirmwareVersion();
+}
+
+void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
+    switch(pattern) {
+    case RxTestPattern::RAMP:
+        ius4oem->EnableTestPatterns();
+        break;
+    case RxTestPattern::OFF:
+        ius4oem->DisableTestPatterns();
+        break;
+    default:
+        throw IllegalArgumentException("Unrecognized test pattern");
+    }
 }
 
 }

@@ -10,7 +10,7 @@ __constant__ float xElemConst[256]; // [m]
 // to the center of TX/RX aperture
 extern "C"
 __global__ void beamformPhasedArray(complex<float> *output, const complex<float> *input,
-                                    const unsigned nTx, const unsigned nRx, const unsigned nSamples,
+                                    const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
                                     const float *txAngles, // [rad]
                                     const float initDelay, const float startTime,
                                     const float c, const float fs, const float fc, float maxApodTang) {
@@ -21,13 +21,15 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
     float modSin, modCos;
     unsigned signalOffset;
     int sInt;
-    unsigned sample = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned scanline = blockIdx.y * blockDim.y + threadIdx.y;
     complex<float> result = complex<float>(0.0f, 0.0f);
     complex<float> currentResult;
     complex<float> modFactor;
 
-    if(sample >= nSamples || scanline >= nTx) {
+    unsigned sample = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned scanline = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned frame = blockIdx.z * blockDim.z + threadIdx.z;
+
+    if(sample >= nSamples || scanline >= nTx || frame >= nSeq) {
         return;
     }
 
@@ -41,7 +43,7 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
     float pointZ = r*txAngleCos;
     txDistance = r;
 
-    unsigned txOffset = scanline*nSamples*nRx;
+    unsigned txOffset = frame*nTx*nRx*nSamples + scanline*nRx*nSamples;
     float cInv = 1/c;
 
     for(unsigned element = 0; element < nRx; ++element) {
@@ -79,8 +81,8 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
         ++pixWgh;
     }
     if(pixWgh == 0.0f) {
-        output[sample + scanline*nSamples] = complex<float>(0.0f, 0.0f);
+        output[frame*nTx*nSamples + scanline*nSamples + sample] = complex<float>(0.0f, 0.0f);
     } else {
-        output[sample + scanline*nSamples] = result/pixWgh;
+        output[frame*nTx*nSamples + scanline*nSamples + sample] = result/pixWgh;
     }
 }

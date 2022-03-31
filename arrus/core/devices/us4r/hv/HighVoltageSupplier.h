@@ -39,6 +39,18 @@ public:
         }
     }
 
+    unsigned char getVoltage() {
+        return hv->GetHVVoltage();
+    }
+
+    float getMeasuredPVoltage() {
+        return hv->GetMeasuredHVPVoltage();
+    }
+
+    float getMeasuredMVoltage() {
+        return hv->GetMeasuredHVMVoltage();
+    }
+
     void disable() {
         try {
             hv->DisableHV();

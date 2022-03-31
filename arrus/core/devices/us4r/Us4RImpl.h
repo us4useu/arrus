@@ -35,11 +35,12 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv);
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+             std::vector<unsigned short> channelsMask);
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
-             const RxSettings &rxSettings);
+             const RxSettings &rxSettings, std::vector<unsigned short> channelsMask);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -106,6 +107,8 @@ public:
 
     void stop() override;
 
+    void trigger();
+
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;
@@ -121,17 +124,23 @@ public:
     void setDtgcAttenuation(std::optional<uint16> value) override;
     void setActiveTermination(std::optional<uint16> value) override;
     uint8_t getNumberOfUs4OEMs() override;
+    void setTestPattern(Us4OEM::RxTestPattern pattern) override;
     float getSamplingFrequency() const override;
+    void checkState() const override;
+    std::vector<unsigned short> getChannelsMask() override;
+    unsigned char getVoltage() override;
+    float getMeasuredPVoltage() override;
+    float getMeasuredMVoltage() override;
+    void setStopOnOverflow(bool isStopOnOverflow) override;
+    bool isStopOnOverflow() const override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
 
-    void syncTrigger();
-
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize, bool triggerSync);
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync);
 
     ProbeImplBase::RawHandle getProbeImpl() {
         return probe.value().get();
@@ -149,6 +158,8 @@ private:
     State state{State::STOPPED};
     // AFE parameters.
     std::optional<RxSettings> rxSettings;
+    std::vector<unsigned short> channelsMask;
+    bool stopOnOverflow{true};
 };
 
 }

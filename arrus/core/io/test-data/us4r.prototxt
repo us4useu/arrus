@@ -1,4 +1,4 @@
-dictionary_file: "dictionary.prototxt"
+# dictionary_file: "dictionary.prototxt"
 
 us4r: {
     probe_id: {
@@ -32,6 +32,8 @@ us4r: {
         {},
         {}
     ]
+    nus4oems: 2
+    adapter_to_us4r_module_nr: [1, 0]
 }
 
 

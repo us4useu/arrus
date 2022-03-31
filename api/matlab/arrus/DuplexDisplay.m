@@ -12,26 +12,74 @@ classdef DuplexDisplay < handle
         showTimes
         dynamicRange
         powerThreshold
+        
+        cineLoop
+        cineLoopLength
+        cineLoopIndex
+        
+        persistence
+        
+        bmodeTgc
+        bmodeAutoTgcResp
     end
     
     methods 
-        function obj = DuplexDisplay(proc, dynamicRange, powerThreshold, subplotEnable)
+        function obj = DuplexDisplay(varargin)
             
-            if nargin < 4
-                subplotEnable = false;
+            % Input parser
+            dispParParser = inputParser;
+            
+            addRequired(dispParParser, 'reconstructionObject', ...
+                        @(x) assert(isscalar(x) && isa(x,'Reconstruction'), ...
+                        "reconstructionObject is an obligatory scalar input of class Reconstruction."));
+            
+            addParameter(dispParParser, 'dynamicRange', [0 80], ...
+                        @(x) assert(isnumeric(x) && all(size(x) == [1 2]), ...
+                        "dynamicRange must be a 2-element numerical vector: [min max]."));
+            
+            addParameter(dispParParser, 'powerThreshold', -inf, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "powerThreshold must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'subplotEnable', false, ...
+                        @(x) assert(islogical(x) && isscalar(x), ...
+                        "subplotEnable must be a logical scalar."));
+            
+            addParameter(dispParParser, 'cineLoopLength', 1, ...
+                        @(x) assert(isnumeric(x) && isscalar(x) && mod(x,1)==0 && x>=1, ...
+                        "cineLoopLength must be a positive integer scalar."));
+            
+            addParameter(dispParParser, 'persistence', 1, ...
+                        @(x) assert(isnumeric(x) && ((isvector(x) && numel(x)>1) || ...
+                                                     (isscalar(x) && mod(x,1)==0 && x>=1)), ...
+                        "persistence must be a positive integer scalar or numerical vector."));
+            
+            addParameter(dispParParser, 'bmodeTgc', 0, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "bmodeTgc must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'bmodeAutoTgcResp', 0, ...
+                        @(x) assert(isnumeric(x) && isscalar(x) && x>=0 && x<=1, ...
+                        "bmodeAutoTgcResp must be a numerical scalar in <0,1> range."));
+            
+            parse(dispParParser, varargin{:});
+            
+            proc             = dispParParser.Results.reconstructionObject;
+            dynamicRange     = dispParParser.Results.dynamicRange;
+            powerThreshold   = dispParParser.Results.powerThreshold;
+            subplotEnable    = dispParParser.Results.subplotEnable;
+            cineLoopLength   = dispParParser.Results.cineLoopLength;
+            persistence      = dispParParser.Results.persistence;
+            bmodeTgc         = dispParParser.Results.bmodeTgc;
+            bmodeAutoTgcResp = dispParParser.Results.bmodeAutoTgcResp;
+            
+            if isscalar(persistence)
+                persistence = ones(1,persistence);
             end
             
-            if nargin < 3
-                powerThreshold = -inf;
-            end
-            
-            if nargin < 2
-                dynamicRange = [0 60];
-            else 
-                if ~all(size(dynamicRange) == [1 2])
-                    error("ARRUS:IllegalArgument", ...
-                        "Invalid dimensions of dynamic range vector, should be: [min max]")
-                end
+            if numel(persistence)>cineLoopLength
+                warning("cineLoopLength increased to fit the persistence.");
+                cineLoopLength = numel(persistence);
             end
             
             obj.xGrid = proc.xGrid;
@@ -40,6 +88,15 @@ classdef DuplexDisplay < handle
             obj.vectorEnable = proc.vectorEnable;
             obj.dynamicRange = dynamicRange;
             obj.powerThreshold = powerThreshold;
+            obj.cineLoopLength = cineLoopLength;
+            obj.persistence = reshape(persistence,1,1,[]) / sum(persistence);
+            obj.bmodeTgc = bmodeTgc * obj.zGrid(:) / obj.zGrid(end);
+            obj.bmodeAutoTgcResp = bmodeAutoTgcResp;
+            
+            % Prepare cineLoop
+            cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
+            obj.cineLoop = nan(numel(obj.zGrid), numel(obj.xGrid), obj.cineLoopLength, cineLoopLayersNumber);
+            obj.cineLoopIndex = 0;
             
             % Create figure.
             obj.hFig = figure();
@@ -54,7 +111,7 @@ classdef DuplexDisplay < handle
                 
                 for iAx=1:4
                     obj.hAx(iAx) = subplot(2,2,iAx);
-                    obj.hImg(iAx) = image(obj.xGrid*1e3, obj.zGrid*1e3, []);
+                    obj.hImg(iAx) = imagesc(obj.xGrid*1e3, obj.zGrid*1e3, []);
                     colormap(gca,subplotColorMaps(:,:,iAx));
                     colorbar;
                     xlabel('x [mm]');
@@ -66,7 +123,7 @@ classdef DuplexDisplay < handle
                 end
             else
                 obj.hAx = axes();
-                obj.hImg = image(obj.xGrid*1e3, obj.zGrid*1e3, []);
+                obj.hImg = imagesc(obj.xGrid*1e3, obj.zGrid*1e3, []);
                 colormap(gca,gray);
                 colorbar;
                 xlabel('x [mm]');
@@ -78,6 +135,7 @@ classdef DuplexDisplay < handle
             end
             
             obj.hQvr = nan;
+            
         end
         
         function state = isOpen(obj)
@@ -95,9 +153,29 @@ classdef DuplexDisplay < handle
             try
                 [nZPix,nXPix,~,~] = size(data);
                 
-                bmode = data(:,:,:,1);
-                bmode(isnan(bmode)) = -inf;
+                % update cineLoop
+                obj.cineLoopIndex = mod(obj.cineLoopIndex, obj.cineLoopLength) + 1;
+                obj.cineLoop(:,:,obj.cineLoopIndex,:) = data;
                 
+                % persistence
+                index = mod(obj.cineLoopIndex - (0:(numel(obj.persistence) - 1)) - 1, obj.cineLoopLength) + 1;
+                bmode = sum(obj.cineLoop(:,:,index,1) .* obj.persistence, 3, 'omitnan');
+                
+                % time gain compensation
+                if obj.bmodeAutoTgcResp ~= 0
+                    % linear regression of bmode average brightness profile
+                    n = numel(obj.zGrid);
+                    x = obj.zGrid(:);
+                    y = mean(bmode,2,'omitnan');
+                    a = (n*sum(x.*y) - sum(x)*sum(y)) / (n*sum(x.^2) - sum(x)^2); % [dB/m]
+                    
+                    obj.bmodeTgc = obj.bmodeTgc * (1 - obj.bmodeAutoTgcResp) + ...
+                                  (-a * obj.zGrid(:)) * obj.bmodeAutoTgcResp;
+                end
+                bmode = bmode + obj.bmodeTgc;
+                
+                % conversion to RGB
+                bmode(isnan(bmode)) = -inf;
                 bmodeRGB = (bmode - obj.dynamicRange(1)) / diff(obj.dynamicRange);
                 bmodeRGB = max(0,min(1,bmodeRGB));
                 bmodeRGB = bmodeRGB .* ones(1,1,3);   % colormap = gray
@@ -171,6 +249,7 @@ classdef DuplexDisplay < handle
                 % reaction to that close.
                 % That was an issue on MATLAB 2018b, testenv2.
                 pause(0.01);
+                
             catch ME
                 if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
                     disp('Display was closed.');
@@ -179,6 +258,15 @@ classdef DuplexDisplay < handle
                 end
             end
         end
+        
+        function cineLoop = getCineLoop(obj)
+            if obj.cineLoopLength > 0
+                cineLoop = circshift(obj.cineLoop, -obj.cineLoopIndex, 3);
+            else
+                cineLoop = [];
+            end
+        end
+        
     end    
 end
 

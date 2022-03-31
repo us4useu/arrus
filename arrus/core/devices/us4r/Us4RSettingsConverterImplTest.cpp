@@ -17,6 +17,7 @@ using namespace arrus;
 using namespace arrus::devices;
 
 using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
+using ChannelMapping = ProbeAdapterSettings::ChannelMapping;
 
 // -------- Mappings
 
@@ -72,38 +73,26 @@ TEST_P(MappingsTest, CorrectlyConvertsMappingsToUs4OEMSettings) {
     ProbeAdapterSettings adapterSettings(
             ProbeAdapterModelId("test", "test"),
             mappings.adapterMapping.size(),
-            mappings.adapterMapping
-    );
+            mappings.adapterMapping);
 
     ProbeSettings probeSettings(
-            ProbeModel(ProbeModelId("test", "test"),
-                       {32},
-                       {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
-            getRange<ChannelIdx>(0, 32)
-    );
+            ProbeModel(ProbeModelId("test", "test"), {32}, {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
+            getRange<ChannelIdx>(0, 32));
 
     RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
 
-    auto[us4oemSettings, newAdapterSettings] =
-    converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, std::vector<ChannelIdx>(),
-                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
-
-//    std::cerr << "output probe adapter settings: " << std::endl;
-//    for(auto [m, ch] : newAdapterSettings.getChannelMapping()) {
-//        std::cerr << "(" << m << "," << ch << ")";
-//    }
-//    std::cerr << std::endl;
+    auto[us4oemSettings, newAdapterSettings] = converter.convertToUs4OEMSettings(
+        adapterSettings, probeSettings,
+        rxSettings, std::vector<ChannelIdx>(),
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {});
 
     EXPECT_EQ(us4oemSettings.size(), mappings.expectedUs4OEMMappings.size());
 
     for(int i = 0; i < us4oemSettings.size(); ++i) {
-        EXPECT_EQ(us4oemSettings[i].getChannelMapping(),
-                  mappings.expectedUs4OEMMappings[i]);
+        EXPECT_EQ(us4oemSettings[i].getChannelMapping(), mappings.expectedUs4OEMMappings[i]);
     }
 
-    EXPECT_EQ(newAdapterSettings.getChannelMapping(),
-              mappings.expectedAdapterMapping);
+    EXPECT_EQ(newAdapterSettings.getChannelMapping(), mappings.expectedAdapterMapping);
 }
 
 INSTANTIATE_TEST_CASE_P
@@ -378,8 +367,7 @@ struct ActiveChannels {
 
     std::vector<BitMask> expectedUs4OEMMasks;
 
-    friend std::ostream &
-    operator<<(std::ostream &os, const ActiveChannels &mappings) {
+    friend std::ostream & operator<<(std::ostream &os, const ActiveChannels &mappings) {
         os << "adapterMapping: ";
         for(const auto &address : mappings.adapterMapping) {
             os << "(" << address.first << ", " << address.second << ") ";
@@ -420,24 +408,19 @@ TEST_P(ActiveChannelsTest, CorrectlyGeneratesActiveChannelGroups) {
     );
 
     ProbeSettings probeSettings(
-            ProbeModel(ProbeModelId("test", "test"),
-                       {32},
-                       {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
-            testCase.probeMapping
-    );
+            ProbeModel(ProbeModelId("test", "test"), {32}, {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0), testCase.probeMapping);
 
     RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
 
-    auto[us4oemSettings, newAdapterSettings] =
-    converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, std::vector<ChannelIdx>(),
-                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+    auto[us4oemSettings, newAdapterSettings] = converter.convertToUs4OEMSettings(
+        adapterSettings, probeSettings,
+        rxSettings, std::vector<ChannelIdx>(),
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {});
 
     EXPECT_EQ(us4oemSettings.size(), testCase.expectedUs4OEMMasks.size());
 
     for(int i = 0; i < us4oemSettings.size(); ++i) {
-        EXPECT_EQ(us4oemSettings[i].getActiveChannelGroups(),
-                  testCase.expectedUs4OEMMasks[i]);
+        EXPECT_EQ(us4oemSettings[i].getActiveChannelGroups(), testCase.expectedUs4OEMMasks[i]);
     }
 }
 
@@ -530,6 +513,10 @@ std::vector<ChannelIdx> getSL1543ChannelMapping() {
     return ::arrus::getRange<ChannelIdx>(0, 192);
 }
 
+std::vector<ChannelIdx> getAtlLikeProbeChannelMapping() {
+    return ::arrus::getRange<ChannelIdx>(0, 128);
+}
+
 std::vector<ChannelIdx> getEsaotePhaseArrayProbeMapping() {
     std::vector<ChannelIdx> result;
     for(int i = 0; i < 48; ++i) {
@@ -552,7 +539,30 @@ ProbeAdapterSettings::ChannelMapping getEsaote3ChannelMapping() {
         auto module = group % 2;
         auto channel = i % 32 + 32*(i/64);
         mapping.push_back({module, channel});
-//        std::cerr << i << ", " << module << ", " << channel << std::endl;
+    }
+    return mapping;
+}
+
+ProbeAdapterSettings::ChannelMapping getEsaote3Us4RChannelMapping() {
+    // 6 modules used
+    ProbeAdapterSettings::ChannelMapping mapping;
+    for(int i = 0; i < 192; ++i) {
+        auto group = i / 32;
+        auto module = group;
+        auto channel = i % 32;
+        mapping.push_back({module, channel});
+    }
+    return mapping;
+}
+
+ProbeAdapterSettings::ChannelMapping getAtlUs4RLikeChannelMapping() {
+    // 6 modules used
+    ProbeAdapterSettings::ChannelMapping mapping;
+    for(int i = 0; i < 128; ++i) {
+        auto group = i / 32;
+        auto module = group;
+        auto channel = i % 32;
+        mapping.push_back({module, channel});
     }
     return mapping;
 }
@@ -622,15 +632,15 @@ TEST_P(ChannelMaskingTest, CorrectlyMasksChannels) {
             ProbeModelId("test", "test"),
             {(ChannelIdx)mappings.probeMapping.size()},
             {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0),
-        mappings.probeMapping
+            mappings.probeMapping
     );
 
     RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
 
-    auto[us4oemSettings, newAdapterSettings] =
-    converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, mappings.channelsMask,
-                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+    auto[us4oemSettings, newAdapterSettings] = converter.convertToUs4OEMSettings(
+        adapterSettings, probeSettings,
+        rxSettings, mappings.channelsMask,
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {});
 
     std::vector<std::unordered_set<uint8>> channelsMasks;
     std::transform(
@@ -736,11 +746,125 @@ TEST(ChannelsMaskingTest, ChecksIfChannelMaskElementsDoNotExceedNumberOfProbeEle
 
     std::vector<ChannelIdx> channelsMask({10, 20, 192});
 
-    EXPECT_THROW(converter.convertToUs4OEMSettings(adapterSettings, probeSettings,
-                                      rxSettings, channelsMask,
-                                      Us4OEMSettings::ReprogrammingMode::SEQUENTIAL),
+    EXPECT_THROW(converter.convertToUs4OEMSettings(
+                     adapterSettings, probeSettings, rxSettings, channelsMask,
+                     Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {}),
                  ::arrus::IllegalArgumentException);
-
 }
+
+TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersEsaote) {
+    Us4RSettingsConverterImpl converter;
+
+    auto probeMapping = getSL1543ChannelMapping();
+    auto adapterMapping = getEsaote3Us4RChannelMapping();
+    ChannelIdx nChannels = probeMapping.size();
+
+    ProbeAdapterSettings adapterSettings(
+        ProbeAdapterModelId("test", "test"),
+        adapterMapping.size(),
+        adapterMapping
+    );
+    ProbeSettings probeSettings(
+        ProbeModel(ProbeModelId("test", "test"), {nChannels}, {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0), probeMapping
+    );
+    RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
+    Ordinal nUs4OEMs = 8;
+    std::vector<Ordinal> adapterToUs4R = {
+        /* Adapter Us4OEM: 0 -> Us4R Us4OEM: */ 0,
+        /* Adapter Us4OEM: 1 -> US4R Us4OEM: */ 1,
+        /* Adapter Us4OEM: 2 -> Us4R Us4OEM: */ 2,
+        /* Adapter Us4OEM: 3 -> Us4R Us4OEM: */ 4,
+        /* Adapter Us4OEM: 4 -> Us4R Us4OEM: */ 5,
+        /* Adapter Us4OEM: 5 -> Us4R Us4OEM: */ 6,
+    };
+
+    auto [us4oemCfg, adapterCfg] = converter.convertToUs4OEMSettings(
+        adapterSettings, probeSettings, rxSettings, {},
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R);
+    // Adapter mapping
+    auto &actualAdapterMapping = adapterCfg.getChannelMapping();
+    ChannelMapping expectedAdapterMapping = concat<ChannelAddress>(
+        {
+            zip(getNTimes<Ordinal>(0, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(1, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(2, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(4, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(5, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(6, 32), getRange<ChannelIdx>(0, 32)),
+        }
+    );
+    // Probe adapter mapping.
+    ASSERT_EQ(actualAdapterMapping, expectedAdapterMapping);
+    // Us4OEM mapping.
+    for(auto &us4oem: us4oemCfg) {
+        ASSERT_EQ(us4oem.getChannelMapping(), getRange<ChannelIdx>(0, 128));
+    }
+
+    std::vector<bool> groupsAllOff = getNTimes(false, 16);
+    std::vector<bool> groups32 = getNTimes(false, 16);
+    groups32[0] = groups32[1] = groups32[2] = groups32[3] = true;
+    for(int i : {0, 1, 2, 4, 5, 6}) {
+        ASSERT_EQ(us4oemCfg[i].getActiveChannelGroups(), groups32);
+    }
+    for(int i : {3, 7}) {
+        ASSERT_EQ(us4oemCfg[i].getActiveChannelGroups(), groupsAllOff);
+    }
+}
+
+TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersAtl) {
+    Us4RSettingsConverterImpl converter;
+
+    auto probeMapping = getAtlLikeProbeChannelMapping();
+    auto adapterMapping = getAtlUs4RLikeChannelMapping();
+    ChannelIdx nChannels = probeMapping.size();
+
+    ProbeAdapterSettings adapterSettings(
+        ProbeAdapterModelId("test", "test"),
+        adapterMapping.size(),
+        adapterMapping
+    );
+    ProbeSettings probeSettings(
+        ProbeModel(ProbeModelId("test", "test"), {nChannels}, {0.3e-3}, {1e6, 10e6}, {0, 90}, 0.0), probeMapping
+    );
+    RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
+    Ordinal nUs4OEMs = 8;
+    std::vector<Ordinal> adapterToUs4R = {
+        /* Adapter Us4OEM: 0 -> Us4R Us4OEM: */ 0,
+        /* Adapter Us4OEM: 1 -> US4R Us4OEM: */ 2,
+        /* Adapter Us4OEM: 2 -> Us4R Us4OEM: */ 5,
+        /* Adapter Us4OEM: 3 -> Us4R Us4OEM: */ 7,
+    };
+
+    auto [us4oemCfg, adapterCfg] = converter.convertToUs4OEMSettings(
+        adapterSettings, probeSettings, rxSettings, {},
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R);
+    // Adapter mapping
+    auto &actualAdapterMapping = adapterCfg.getChannelMapping();
+    ChannelMapping expectedAdapterMapping = concat<ChannelAddress>(
+        {
+            zip(getNTimes<Ordinal>(0, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(2, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(5, 32), getRange<ChannelIdx>(0, 32)),
+            zip(getNTimes<Ordinal>(7, 32), getRange<ChannelIdx>(0, 32)),
+        }
+    );
+    // Probe adapter mapping.
+    ASSERT_EQ(actualAdapterMapping, expectedAdapterMapping);
+    // Us4OEM mapping.
+    for(auto &us4oem: us4oemCfg) {
+        ASSERT_EQ(us4oem.getChannelMapping(), getRange<ChannelIdx>(0, 128));
+    }
+
+    std::vector<bool> groupsAllOff = getNTimes(false, 16);
+    std::vector<bool> groups32 = getNTimes(false, 16);
+    groups32[0] = groups32[1] = groups32[2] = groups32[3] = true;
+    for(int i : {0, 2, 5, 7}) {
+        ASSERT_EQ(us4oemCfg[i].getActiveChannelGroups(), groups32);
+    }
+    for(int i : {1, 3, 4, 6}) {
+        ASSERT_EQ(us4oemCfg[i].getActiveChannelGroups(), groupsAllOff);
+    }
+}
+
 }
 

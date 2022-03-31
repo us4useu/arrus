@@ -8,6 +8,7 @@
 #include "arrus/core/devices/us4r/tests/MockIUs4OEM.h"
 #include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 
 namespace {
 using namespace arrus;
@@ -573,7 +574,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[dstFrame, dstChannel] = fcm->getLogical(0, i);
+        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(us4oem, 0);
         EXPECT_EQ(dstChannel, i);
         EXPECT_EQ(dstFrame, 0);
     }
@@ -594,7 +596,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[dstFrame, dstChannel] = fcm->getLogical(0, i);
+        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(us4oem, 0);
         EXPECT_EQ(dstChannel, i);
         EXPECT_EQ(dstFrame, 0);
     }
@@ -617,7 +620,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingIncompleteRxAperture) {
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
     for(size_t i = 0; i < 30; ++i) {
-        auto[dstFrame, dstChannel] = fcm->getLogical(0, i);
+        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(us4oem, 0);
         EXPECT_EQ(dstChannel, i);
         EXPECT_EQ(dstFrame, 0);
     }
@@ -640,7 +644,7 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingM
     auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[dstfr, dstch] = fcm->getLogical(0, i);
+        auto[us4oem, dstfr, dstch] = fcm->getLogical(0, i);
         std::cerr << (int16) dstch << ", ";
     }
     std::cerr << std::endl;
@@ -655,7 +659,8 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingM
     };
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[dstFrame, dstChannel] = fcm->getLogical(0, i);
+        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(us4oem, 0);
         EXPECT_EQ(dstChannel, expectedDstChannels[i]);
         EXPECT_EQ(dstFrame, 0);
     }
@@ -786,7 +791,8 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
     expectedSrcChannels[3] = 3;
 
     for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[srcFrame, srcChannel] = fcm->getLogical(0, i);
+        auto[us4oem, srcFrame, srcChannel] = fcm->getLogical(0, i);
+        EXPECT_EQ(us4oem, 0);
         EXPECT_EQ(srcFrame, 0);
         ASSERT_EQ(srcChannel, expectedSrcChannels[i]);
     }
@@ -916,7 +922,8 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
         expectedSrcChannels[3] = 3;
 
         for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-            auto [srcFrame, srcChannel] = fcm->getLogical(0, i);
+            auto [us4oem, srcFrame, srcChannel] = fcm->getLogical(0, i);
+            EXPECT_EQ(us4oem, 0);
             EXPECT_EQ(srcFrame, 0);
             ASSERT_EQ(srcChannel, expectedSrcChannels[i]);
         }
@@ -928,8 +935,9 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
             ChannelIdx rxChannelNumber = 0;
             for(auto bit : rxApertures[frame]) {
                 if(bit) {
-                    auto [srcFrame, srcChannel] = fcm->getLogical(frame, i);
+                    auto [us4oem, srcFrame, srcChannel] = fcm->getLogical(frame, i);
                     std::cerr << frame << ", " << (int)i << ", " << srcFrame << ", " << (int)srcChannel << std::endl;
+                    ASSERT_EQ(us4oem, 0);
                     ASSERT_EQ(srcFrame, frame);
                     ASSERT_EQ(srcChannel, i++);
                 }

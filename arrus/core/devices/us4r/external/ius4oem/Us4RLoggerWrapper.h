@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <utility>
+#include <stdexcept>
 
 // us4r
 #include <logging/Logger.h>
@@ -14,30 +15,41 @@ namespace arrus::devices {
 class Us4RLoggerWrapper : public us4r::Logger {
 public:
 
-    Us4RLoggerWrapper(arrus::Logger::SharedHandle logger)
+    explicit Us4RLoggerWrapper(arrus::Logger::SharedHandle logger)
             : logger(std::move(logger)) {}
 
     void
     log(const us4r::LogSeverity severity, const std::string &msg) override {
-        logger->log(sevMap.at(severity), msg);
+        switch(severity) {
+            case us4r::LogSeverity::TRACE:
+                logger->log(arrus::LogSeverity::TRACE, msg);
+                break;
+            case us4r::LogSeverity::DEBUG:
+                logger->log(arrus::LogSeverity::DEBUG, msg);
+                break;
+            case us4r::LogSeverity::INFO:
+                logger->log(arrus::LogSeverity::INFO, msg);
+                break;
+            case us4r::LogSeverity::WARNING:
+                logger->log(arrus::LogSeverity::WARNING, msg);
+                break;
+            case us4r::LogSeverity::ERROR:
+                logger->log(arrus::LogSeverity::ERROR, msg);
+                break;
+            case us4r::LogSeverity::FATAL:
+                logger->log(arrus::LogSeverity::FATAL, msg);
+                break;
+            default:
+                throw std::runtime_error("Unknown logging level");
+        }
     }
 
     void
     setAttribute(const std::string &key, const std::string &value) override {
         logger->setAttribute(key, value);
     }
-
 private:
     arrus::Logger::SharedHandle logger;
-
-    static const inline std::unordered_map<us4r::LogSeverity, arrus::LogSeverity> sevMap{
-            {us4r::LogSeverity::TRACE,   arrus::LogSeverity::TRACE},
-            {us4r::LogSeverity::DEBUG,   arrus::LogSeverity::DEBUG},
-            {us4r::LogSeverity::INFO,    arrus::LogSeverity::INFO},
-            {us4r::LogSeverity::WARNING, arrus::LogSeverity::WARNING},
-            {us4r::LogSeverity::ERROR,   arrus::LogSeverity::ERROR},
-            {us4r::LogSeverity::FATAL,   arrus::LogSeverity::FATAL},
-    };
 };
 
 }

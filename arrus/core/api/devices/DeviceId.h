@@ -49,9 +49,7 @@ using Ordinal = unsigned short;
  */
 class DeviceId {
 public:
-    DeviceId(const DeviceType dt,
-             const Ordinal ordinal)
-            : deviceType(dt), ordinal(ordinal) {}
+    DeviceId(const DeviceType dt, const Ordinal ordinal) : deviceType(dt), ordinal(ordinal) {}
 
     DeviceType getDeviceType() const {
         return deviceType;

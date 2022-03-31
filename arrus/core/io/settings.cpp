@@ -193,8 +193,7 @@ readDictionary(const ap::Dictionary *proto) {
     std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections;
 
     for(const ap::ProbeToAdapterConnection &conn : proto->probe_to_adapter_connections()) {
-        std::string key =
-            SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
+        std::string key = SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
         const ap::ProbeToAdapterConnection *ptr = &conn;
         connections.emplace(key, ptr);
     }
@@ -203,21 +202,15 @@ readDictionary(const ap::Dictionary *proto) {
     for(auto const &probe : proto->probe_models()) {
         const ProbeModel probeModel = readProbeModel(probe);
         result.insertProbeModel(probeModel);
-
-        std::string key =
-            SettingsDictionary::convertProtoIdToString(probe.id());
+        std::string key = SettingsDictionary::convertProtoIdToString(probe.id());
         auto range = connections.equal_range(key);
         for(auto it = range.first; it != range.second; ++it) {
             auto conn = it->second;
-            std::vector<ChannelIdx> channelMapping =
-                readProbeConnectionChannelMapping(*conn);
+            std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*conn);
 
             for(auto const &adapterProtoId : conn->probe_adapter_model_id()) {
-                const ProbeAdapterModelId adapterId(
-                    adapterProtoId.manufacturer(),
-                    adapterProtoId.name());
-                result.insertProbeSettings(
-                    ProbeSettings(probeModel, channelMapping), adapterId);
+                const ProbeAdapterModelId adapterId(adapterProtoId.manufacturer(), adapterProtoId.name());
+                result.insertProbeSettings(ProbeSettings(probeModel, channelMapping), adapterId);
             }
         }
     }
@@ -269,9 +262,7 @@ ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r,
                                      const SettingsDictionary &dictionary) {
     if(us4r.has_probe()) {
         ProbeModel model = readProbeModel(us4r.probe());
-        std::vector<ChannelIdx> channelMapping =
-            readProbeConnectionChannelMapping(
-                us4r.probe_to_adapter_connection());
+        std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(us4r.probe_to_adapter_connection());
         return ProbeSettings(model, channelMapping);
     } else if(us4r.has_probe_id()) {
         ProbeModelId id{us4r.probe_id().manufacturer(), us4r.probe_id().name()};
@@ -283,18 +274,14 @@ ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r,
                 ProbeModel model = dictionary.getProbeModel(id);
                 return ProbeSettings(model, channelMapping);
             } catch(std::out_of_range &) {
-                throw IllegalArgumentException(
-                    arrus::format("Probe with id {} not found.",
-                                  id.toString()));
+                throw IllegalArgumentException(format("Probe with id {} not found.", id.toString()));
             }
         } else {
             try {
                 return dictionary.getProbeSettings(id, adapterId);
             } catch(std::out_of_range &) {
-                throw IllegalArgumentException(
-                    arrus::format(
-                        "Probe settings for probe with id {}"
-                        " adapter with id {} not found.", id.toString()));
+                throw IllegalArgumentException(format(
+                        "Probe settings for probe with id {} adapter with id {} not found.", id.toString()));
             }
         }
     } else {
@@ -321,15 +308,27 @@ std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
 }
 
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode);
+
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                               const SettingsDictionary &dictionary) {
     std::optional<HVSettings> hvSettings;
+    std::optional<Ordinal> nUs4OEMs;
+    std::vector<Ordinal> adapterToUs4RModuleNr;
     if(us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();
         auto &name = us4r.hv().model_id().name();
         ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
         ARRUS_REQUIRES_NON_EMPTY_IAE(name);
         hvSettings = HVSettings(HVModelId(manufacturer, name));
+    }
+    if(us4r.optional_nus4ems_case() != proto::Us4RSettings::OPTIONAL_NUS4EMS_NOT_SET) {
+        nUs4OEMs = static_cast<Ordinal>(us4r.nus4oems());
+    }
+    if(!us4r.adapter_to_us4r_module_nr().empty()) {
+        auto &adapter2Us4RModule = us4r.adapter_to_us4r_module_nr();
+        for(auto &nr: adapter2Us4RModule) {
+            adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
+        }
     }
     if(!us4r.us4oems().empty()) {
         // Us4OEMs are provided.
@@ -338,19 +337,15 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         std::vector<std::unordered_set<uint8>> us4oemChannelsMask;
         us4oemChannelsMask.resize(us4r.us4oems().size());
 
-        if(!us4r.us4oem_channels_mask().empty()
-            && us4r.us4oems().size() != us4r.us4oem_channels_mask().size()) {
-            throw ::arrus::IllegalArgumentException(
-                "The number of us4oem channels "
-                "masks should be the same as the number of us4oems.");
+        if(!us4r.us4oem_channels_mask().empty() && us4r.us4oems().size() != us4r.us4oem_channels_mask().size()) {
+            throw ::arrus::IllegalArgumentException("The number of us4oem channels masks should be the "
+                                                    "same as the number of us4oems.");
         }
 
         int i = 0;
         for(auto &mask: us4r.us4oem_channels_mask()) {
             auto channelsMask = readChannelsMask<uint8>(mask);
-
-            us4oemChannelsMask[i] = std::unordered_set<uint8>(
-                std::begin(channelsMask), std::end(channelsMask));
+            us4oemChannelsMask[i] = std::unordered_set<uint8>(std::begin(channelsMask), std::end(channelsMask));
             ++i;
         }
 
@@ -368,12 +363,10 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                 channelMapping, activeChannelGroups, rxSettings,
                 us4oemChannelsMask[i], reprogrammingMode);
         }
-        return Us4RSettings(us4oemSettings, hvSettings);
+        return Us4RSettings(us4oemSettings, hvSettings, nUs4OEMs, adapterToUs4RModuleNr);
     } else {
-        ProbeAdapterSettings adapterSettings =
-            readOrGetAdapterSettings(us4r, dictionary);
-        ProbeSettings probeSettings = readOrGetProbeSettings(
-            us4r, adapterSettings.getModelId(), dictionary);
+        ProbeAdapterSettings adapterSettings =readOrGetAdapterSettings(us4r, dictionary);
+        ProbeSettings probeSettings = readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
         RxSettings rxSettings = readRxSettings(us4r.rx_settings());
 
         // ensure that user provided channels mask
@@ -391,17 +384,16 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
                 "to turn of channel masking.");
         }
 
-        std::vector<ChannelIdx> channelsMask =
-            readChannelsMask<ChannelIdx>(us4r.channels_mask());
+        std::vector<ChannelIdx> channelsMask = readChannelsMask<ChannelIdx>(us4r.channels_mask());
         std::vector<std::vector<uint8>> us4oemChannelsMask;
         for(auto &mask: us4r.us4oem_channels_mask()) {
             us4oemChannelsMask.push_back(readChannelsMask<uint8>(mask));
         }
         auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
 
-        return Us4RSettings(adapterSettings, probeSettings, rxSettings,
-                            hvSettings, channelsMask, us4oemChannelsMask,
-                            reprogrammingMode);
+        return {adapterSettings, probeSettings, rxSettings,
+                hvSettings, channelsMask, us4oemChannelsMask,
+                reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr};
     }
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

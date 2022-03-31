@@ -56,7 +56,7 @@ int main() noexcept {
 		::arrus::BitMask rxAperture(nElements, true);
 
         Pulse pulse(6e6, 2, false);
-        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 2048};
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 8192};
 
         std::vector<TxRx> txrxs;
 
@@ -72,6 +72,7 @@ int main() noexcept {
         }
 
         TxRxSequence seq(txrxs, {});
+		
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
         Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
 

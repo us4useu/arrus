@@ -69,6 +69,27 @@ public:
     virtual void setVoltage(Voltage voltage) = 0;
 
     /**
+     * Returns configured HV voltage.
+     *
+     * @return hv voltage value configured on device [V]
+     */
+    virtual unsigned char getVoltage() = 0;
+
+    /**
+     * Returns measured HV voltage (plus).
+     *
+     * @return hv voltage measured by device [V]
+     */
+    virtual float getMeasuredPVoltage() = 0;
+
+    /**
+     * Returns measured HV voltage (minus).
+     *
+     * @return hv voltage measured by devivce [V]
+     */
+    virtual float getMeasuredMVoltage() = 0;
+
+    /**
      * Disables HV voltage.
      */
     virtual void disableHV() = 0;
@@ -136,6 +157,17 @@ public:
     virtual void setRxSettings(const RxSettings &settings) = 0;
 
     /**
+     * If active is true, turns off probe's RX data acquisition and turns on test patterns generation.
+     * Otherwise turns off test patterns generation and turns on probe's RX data acquisition.
+     */
+    virtual void setTestPattern(Us4OEM::RxTestPattern pattern) = 0;
+
+    virtual void start() = 0;
+    virtual void stop() = 0;
+
+    virtual std::vector<unsigned short> getChannelsMask() = 0;
+
+    /**
      * Returns the number of us4OEM modules that are used in this us4R system.
      */
     virtual uint8_t getNumberOfUs4OEMs() = 0;
@@ -145,8 +177,31 @@ public:
      */
     virtual float getSamplingFrequency() const = 0;
 
-    virtual void start() = 0;
-    virtual void stop() = 0;
+    /**
+     * Checks state of the Us4R device. Currently checks if each us4OEM module is in
+     * the correct state.
+     *
+     * @throws arrus::IllegalStateException when some inconsistent state was detected
+     */
+    virtual void checkState() const = 0;
+
+    /**
+     * Set the system to stop when (RX or host) buffer overflow is detected.
+     *
+     * This property is set by default to true.
+     *
+     * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
+     */
+    virtual void setStopOnOverflow(bool isStopOnOverflow) = 0;
+
+    /**
+     * Returns true if the system will be stopped when (RX of host) buffer overflow is detected.
+     *
+     * This property is set by default to true.
+     *
+     * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
+     */
+    virtual bool isStopOnOverflow() const = 0;
 
     Us4R(Us4R const&) = delete;
     Us4R(Us4R const&&) = delete;
