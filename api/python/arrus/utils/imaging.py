@@ -2175,10 +2175,7 @@ class ReconstructLri3D(Operation):
     """
 
     def __init__(self, x_grid, y_grid, z_grid, tx_foc, tx_ang_zx, tx_ang_zy,
-                 tx_ap_cent_x, tx_ap_cent_y,
                  speed_of_sound, rx_tang_limits=None):
-        self.tx_ap_cent_y = tx_ap_cent_y
-        self.tx_ap_cent_x = tx_ap_cent_x
         self.tx_ang_zy = tx_ang_zy
         self.tx_ang_zx = tx_ang_zx
         self.tx_foc = tx_foc
@@ -2193,6 +2190,17 @@ class ReconstructLri3D(Operation):
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg is np:
             raise ValueError("ReconstructLri3D operation is implemented for GPU only.")
+
+    def _get_aperture_boundaries(self, apertures):
+        def get_min_max_x_y(ap):
+            cords = np.argwhere(ap)
+            y, x = zip(*cords)
+            return np.min(x), np.max(x), np.min(y), np.max(y)
+        min_max_x_y = (get_min_max_x_y(aperture) for aperture in apertures)
+        min_x, max_x, min_y, max_y = zip(*min_max_x_y)
+        min_x, max_x = np.atleast_1d(min_x), np.atleast_1d(max_x)
+        min_y, max_y = np.atleast_1d(min_y), np.atleast_1d(max_y)
+        return min_x, max_x, min_y, max_y
 
     def prepare(self, const_metadata):
         import cupy as cp
@@ -2220,7 +2228,7 @@ class ReconstructLri3D(Operation):
         self.y_size = len(self.y_grid)
         self.x_size = len(self.x_grid)
         self.z_size = len(self.z_grid)
-        output_shape = (self.n_seq, self.n_tx, self.y_size, self.x_size, self.z_size)
+        output_shape = (self.n_seq, self.y_size, self.x_size, self.z_size)
         self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
         x_block_size = min(self.z_size, 8)
         y_block_size = min(self.x_size, 8)
@@ -2242,26 +2250,20 @@ class ReconstructLri3D(Operation):
         self.tx_ang_zx = self.num_pkg.asarray(self.tx_ang_zx).astype(np.float32)
         self.tx_ang_zy = self.num_pkg.asarray(self.tx_ang_zy).astype(np.float32)
 
-        # Could be determined automatically based on
-        self.tx_ap_cent_x = self.num_pkg.asarray(self.tx_ap_cent_x).astype(np.float32)
-        self.tx_ap_cent_y = self.num_pkg.asarray(self.tx_ap_cent_y).astype(np.float32)
-
         # Probe description
         # TODO specific for Vermon mat-3d probe.
         probe_model = const_metadata.context.device.probe.model
         pitch = 0.3e-3 # probe_model.pitch
         self.n_elements = 32
+        n_rows_x = self.n_elements
+        n_rows_y = self.n_elements + 3
         # General regular position of elements
-        element_pos = np.arange(-(self.n_elements - 1)/2, self.n_elements/2)
-        element_pos_x = element_pos*pitch
-        element_pos_y = np.zeros_like(element_pos)
-        # E.g. rows
-        # 0:8 -> 0:8
-        # 8:16 -> 9:17 (+ 1 offset)
-        # 16:24 -> 18:26 (+2 offset)
-        # 24:32 -> 27:35 (+ 3 offset)
-        for i in range(4):
-            element_pos_y[i*8:(i+1)*8] = (element_pos[i*8:(i+1)*8]+i)*pitch
+        element_pos_x = np.linspace(-(n_rows_x - 1)/2, (n_rows_x - 1)/2, num=n_rows_x)
+        element_pos_x = element_pos_x*pitch
+
+        element_pos_y = np.linspace(-(n_rows_y - 1)/2, (n_rows_y - 1)/2, num=n_rows_y)
+        element_pos_y = element_pos_y*pitch
+        element_pos_y = np.delete(element_pos_y, (8, 17, 26))
 
         element_pos_x = element_pos_x.astype(np.float32)
         element_pos_y = element_pos_y.astype(np.float32)
@@ -2282,24 +2284,44 @@ class ReconstructLri3D(Operation):
             return np.min(x), np.max(x), np.min(y), np.max(y)
 
         # TODO assumption, that probe has the same number elements in both dimensions
-        apertures = (tx_rx.tx.aperture.reshape((self.n_elements, self.n_elements)) for tx_rx in seq.ops)
-        min_max_x_y = (get_min_max_x_y(aperture) for aperture in apertures)
-        min_x, max_x, min_y, max_y = zip(*min_max_x_y)
-        min_x, max_x = np.atleast_1d(min_x), np.atleast_1d(max_x)
-        min_y, max_y = np.atleast_1d(min_y), np.atleast_1d(max_y)
-        self.tx_ap_first_elem_x = self.num_pkg.asarray(min_x, dtype=self.num_pkg.int32)
-        self.tx_ap_last_elem_x = self.num_pkg.asarray(max_x, dtype=self.num_pkg.int32)
-        self.tx_ap_first_elem_y = self.num_pkg.asarray(min_y, dtype=self.num_pkg.int32)
-        self.tx_ap_last_elem_y = self.num_pkg.asarray(max_y, dtype=self.num_pkg.int32)
+        tx_apertures = (tx_rx.tx.aperture.reshape((self.n_elements, self.n_elements)) for tx_rx in seq.ops)
+        rx_apertures = (tx_rx.rx.aperture.reshape((self.n_elements, self.n_elements)) for tx_rx in seq.ops)
+        tx_bounds = self._get_aperture_boundaries(tx_apertures)
+        rx_bounds = self._get_aperture_boundaries(rx_apertures)
+        txap_min_x, txap_max_x, txap_min_y, txap_max_y = tx_bounds
+        rxap_min_x, rxap_max_x, rxap_min_y, rxap_max_y = rx_bounds
+        rxap_size_x = set((rxap_max_x-rxap_min_x).tolist())
+        rxap_size_y = set((rxap_max_y-rxap_min_y).tolist())
+        if len(rxap_size_x) > 1 or len(rxap_size_y) > 1:
+            raise ValueError("Each TX/RX aperture should have the same square aperture size.")
+        rxap_size_x = next(iter(rxap_size_x))
+        rxap_size_y = next(iter(rxap_size_y))
+        # The above can be also compared with the size of data, but right we are not doing it here
 
-        # Find the tx_center_delay
+        self.tx_ap_first_elem_x = self.num_pkg.asarray(txap_min_x, dtype=self.num_pkg.int32)
+        self.tx_ap_last_elem_x = self.num_pkg.asarray(txap_max_x, dtype=self.num_pkg.int32)
+        self.tx_ap_first_elem_y = self.num_pkg.asarray(txap_min_y, dtype=self.num_pkg.int32)
+        self.tx_ap_last_elem_y = self.num_pkg.asarray(txap_max_y, dtype=self.num_pkg.int32)
+        # RX AP
+        self.rx_ap_first_elem_x = self.num_pkg.asarray(rxap_min_x, dtype=self.num_pkg.int32)
+        self.rx_ap_first_elem_y = self.num_pkg.asarray(rxap_min_y, dtype=self.num_pkg.int32)
+
+        # Find the center of TX aperture.
+        # TODO note: this method assumes that all TX/RXs have a rectangle TX aperture
         # 1. Find the position of the center.
-        ap_center_x = (element_pos_x[min_x] + element_pos_x[max_x])/2
-        ap_center_y = (element_pos_y[min_y] + element_pos_y[max_y])/2
-        ap_center_elem_x = np.interp(ap_center_x, element_pos_x, np.arange(len(element_pos_x)))
-        ap_center_elem_y = np.interp(ap_center_y, element_pos_y, np.arange(len(element_pos_y)))
-        ap_center_elem_x = np.round(ap_center_elem_x).astype(np.int32)
-        ap_center_elem_y = np.round(ap_center_elem_y).astype(np.int32)
+        tx_ap_center_x = (element_pos_x[txap_min_x] + element_pos_x[txap_max_x])/2
+        tx_ap_center_y = (element_pos_y[txap_min_y] + element_pos_y[txap_max_y])/2
+        # element index -> element position
+        ap_center_elem_x = np.interp(tx_ap_center_x, element_pos_x, np.arange(len(element_pos_x)))
+        ap_center_elem_y = np.interp(tx_ap_center_y, element_pos_y, np.arange(len(element_pos_y)))
+        # TODO Currently 'floor' NN, consider interpolating into
+        #  the center delay
+        ap_center_elem_x = np.floor(ap_center_elem_x).astype(np.int32)
+        ap_center_elem_y = np.floor(ap_center_elem_y).astype(np.int32)
+        self.tx_ap_cent_x = self.num_pkg.asarray(tx_ap_center_x).astype(np.float32)
+        self.tx_ap_cent_y = self.num_pkg.asarray(tx_ap_center_y).astype(np.float32)
+
+        # FIND THE TX_CENTER_DELAY
         # Make sure, that for all TX/RXs:
         # The center element is in the aperture
         # All TX/RX have (almost) the same delay in the aperture's center
@@ -2309,15 +2331,16 @@ class ReconstructLri3D(Operation):
             tx_center_x = ap_center_elem_x[i]
             tx_center_y = ap_center_elem_y[i]
             aperture = tx.aperture.reshape((self.n_elements, self.n_elements))
-            # TODO the below will work only for full aperture transmits
-            delays = tx.delays.reshape((self.n_elements, self.n_elements))
+            delays = np.zeros(aperture.shape)
+            delays[:] = np.nan
+            delays[np.where(aperture)] = tx.delays.flatten()
             if not aperture[tx_center_y, tx_center_x]:
                 # The aperture's center should transmit signal
                 raise ValueError("TX aperture center should be turned on.")
             if tx_center_delay is None:
                 tx_center_delay = delays[tx_center_y, tx_center_x]
             else:
-                # Make sure that the center' delays is the same for all TX/RXs
+                # Make sure that the center' delays is the same position for all TX/RXs
                 current_center_delay = delays[tx_center_y, tx_center_x]
                 if not np.isclose(tx_center_delay, current_center_delay):
                     raise ValueError(f"TX/RX {i}: center delay is not close "
@@ -2327,7 +2350,7 @@ class ReconstructLri3D(Operation):
                                      f"Center delays should be equalized "
                                      f"for all TX/RXs. ")
 
-        # Min/max tang
+        # MIN/MAX TANG
         if self.rx_tang_limits is not None:
             self.min_tang, self.max_tang = self.rx_tang_limits
         else:
@@ -2338,7 +2361,6 @@ class ReconstructLri3D(Operation):
         burst_factor = ref_tx.excitation.n_periods / (2*self.fn)
         self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
-
         self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
         self.rx_apod = self.num_pkg.asarray(self.rx_apod)
         self.n_rx_apod = self.num_pkg.int32(len(self.rx_apod))
@@ -2361,7 +2383,8 @@ class ReconstructLri3D(Operation):
             self.min_tang, self.max_tang,
             self.min_tang, self.max_tang,
             self.initial_delay,
-            self.rx_apod, self.n_rx_apod
+            self.rx_apod, self.n_rx_apod,
+            self.rx_ap_first_elem_x, self.rx_ap_first_elem_y
         )
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
