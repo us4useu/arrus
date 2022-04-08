@@ -28,18 +28,13 @@ class Us4ROutputBuffer;
 class Us4ROutputBufferElement : public BufferElement {
 public:
     using AccumulatorType = uint16;
-
     using SharedHandle = std::shared_ptr<Us4ROutputBufferElement>;
 
-    Us4ROutputBufferElement(int16 *address, size_t size,
-                            const framework::NdArray::Shape &elementShape,
-                            const framework::NdArray::DataType elementDataType,
-                            AccumulatorType filledAccumulator,
+    Us4ROutputBufferElement(int16 *address, size_t size, const framework::NdArray::Shape &elementShape,
+                            const framework::NdArray::DataType elementDataType, AccumulatorType filledAccumulator,
                             size_t position)
-        : data(address, elementShape, elementDataType,
-               DeviceId(DeviceType::Us4R, 0)), size(size),
-          filledAccumulator(filledAccumulator),
-          position(position)
+        : data(address, elementShape, elementDataType, DeviceId(DeviceType::Us4R, 0)), size(size),
+          filledAccumulator(filledAccumulator), position(position)
           {}
 
     void release() override {
@@ -77,6 +72,8 @@ public:
 
     void signal(Ordinal n) {
         std::unique_lock<std::mutex> guard(mutex);
+        // TODO increase counter for the given element
+        // If the given counter is ready, set the accumulator as below
         AccumulatorType us4oemPattern = 1ul << n;
         if((accumulator & us4oemPattern) != 0) {
             throw IllegalStateException("Detected data overflow, buffer is in invalid state.");
@@ -92,11 +89,10 @@ public:
         this->isInvalid = true;
     }
 
-    void validateState() {
+    void validateState() const {
         if(this->isInvalid) {
             throw ::arrus::IllegalStateException(
-                "The buffer is in invalid state "
-                "(probably some data transfer overflow happened).");
+                    "The buffer is in invalid state (probably some data transfer overflow happened).");
         }
     }
 
@@ -104,9 +100,12 @@ private:
     std::mutex mutex;
     framework::NdArray data;
     size_t size;
+    // How many times given element was signaled by i-th us4OEM.
+    std::vector<int> signalCounter;
+    // How many times given element should be signaled by i-th us4OEM, to consider it as ready.
+    std::vector<int> elementReadyCounters;
     AccumulatorType accumulator;
-    /** A pattern of the filled accumulator, which indicates that the
-     * whole element is ready. */
+    /** A pattern of the filled accumulator, which indicates that the hole element is ready. */
     AccumulatorType filledAccumulator;
     std::function<void()> releaseFunction;
     bool isInvalid{false};
@@ -145,7 +144,8 @@ public:
     Us4ROutputBuffer(const std::vector<size_t> &us4oemOutputSizes,
                      const framework::NdArray::Shape &elementShape,
                      const framework::NdArray::DataType elementDataType,
-                     const unsigned nElements)
+                     const unsigned nElements,
+                     bool stopOnOverflow)
         : elementSize(0) {
         ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
                             "Currently Us4R data buffer supports up to 16 us4oem modules.");
@@ -166,21 +166,20 @@ public:
         }
         elementSize = us4oemOffset;
         // Allocate buffer with an appropriate size.
-        dataBuffer = reinterpret_cast<DataType *>(operator new[](elementSize * nElements,
-                                                                 std::align_val_t(DATA_ALIGNMENT)));
-        getDefaultLogger()->log(LogSeverity::DEBUG,
-                                ::arrus::format(
-                                    "Allocated {} ({}, {}) bytes of memory, address: {}",
-                                    elementSize * nElements, elementSize, nElements, (size_t) dataBuffer));
+        dataBuffer = reinterpret_cast<DataType *>(
+                operator new[](elementSize*nElements, std::align_val_t(DATA_ALIGNMENT)));
+        getDefaultLogger()->log(
+                LogSeverity::DEBUG,
+                ::arrus::format("Allocated {} ({}, {}) bytes of memory, address: {}", elementSize*nElements,
+                                elementSize, nElements, (size_t) dataBuffer));
 
         for(unsigned i = 0; i < nElements; ++i) {
             auto elementAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + i * elementSize);
-            elements.push_back(std::make_shared<Us4ROutputBufferElement>(elementAddress, elementSize,
-                                                                         elementShape, elementDataType,
-                                                                         filledAccumulator,
-                                                                         i));
+            elements.push_back(std::make_shared<Us4ROutputBufferElement>(
+                    elementAddress, elementSize, elementShape, elementDataType, filledAccumulator, i));
         }
         this->initialize();
+        this->stopOnOverflow = stopOnOverflow;
     }
 
     ~Us4ROutputBuffer() override {
@@ -289,6 +288,10 @@ public:
         this->elements[element]->registerReleaseFunction(releaseFunction);
     }
 
+    bool isStopOnOverflow() {
+        return this->stopOnOverflow;
+    }
+
 
 private:
     std::mutex mutex;
@@ -310,6 +313,7 @@ private:
         RUNNING, SHUTDOWN, INVALID
     };
     State state{State::RUNNING};
+    bool stopOnOverflow{true};
 
     /**
      * Throws IllegalStateException when the buffer is in invalid state.

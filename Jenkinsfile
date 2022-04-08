@@ -16,7 +16,7 @@ pipeline {
 
     options {
         timeout(time: 1, unit: 'HOURS')
-        buildDiscarder(logRotator(daysToKeepStr: '14'))
+        buildDiscarder(logRotator(daysToKeepStr: '365'))
     }
 
     stages {
@@ -38,7 +38,7 @@ pipeline {
         stage('Configure') {
             steps {
                 echo 'Configuring build ...'
-                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG' --src_branch_name ${env.BRANCH_NAME} --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON"
+                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG' --src_branch_name ${env.BRANCH_NAME} --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON ARRUS_APPEND_VERSION_SUFFIX_DATE=${isDevelopOnOff()}"
             }
         }
         stage('Build') {
@@ -132,6 +132,10 @@ pipeline {
 
 def getBranchName() {
     return env.BRANCH_NAME == "master" ? "master" : "develop";
+}
+
+def isDevelopOnOff() {
+    return env.BRANCH_NAME == "develop" ? "ON" : "OFF";
 }
 
 def getBuildName(build) {

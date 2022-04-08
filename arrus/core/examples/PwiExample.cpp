@@ -14,7 +14,7 @@ int main() noexcept {
     using namespace ::arrus::framework;
     try {
         // TODO set path to us4r-lite configuration file
-        auto settings = ::arrus::io::readSessionSettings("/path/to/set");
+        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
         auto probe = us4r->getProbe(0);
@@ -25,12 +25,12 @@ int main() noexcept {
         ::arrus::BitMask rxAperture(nElements, true);
 
         Pulse pulse(6e6, 2, false);
-        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 2048};
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 8192};
 
         std::vector<TxRx> txrxs;
 
 		// 10 plane waves
-        for(int i = 0; i < 10; ++i) {
+        for(int i = 0; i < 4; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
@@ -39,12 +39,10 @@ int main() noexcept {
                 delays[d] = d*i*1e-9f;
             }
             arrus::BitMask txAperture(nElements, true);
-            txrxs.emplace_back(Tx(txAperture, delays, pulse),
-                               Rx(txAperture, sampleRange),
-                               200e-6f);
+            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(txAperture, sampleRange), 200e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, 500e-3f);
+        TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 32);
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
         Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
 
@@ -66,7 +64,7 @@ int main() noexcept {
                                      ")" << std::endl;
 
                 // Stop the system after 10-th frame.
-                if(i == 9) {
+                if(i == 3) {
                     cv.notify_one();
                 }
                 ptr->release();

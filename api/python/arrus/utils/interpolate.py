@@ -20,7 +20,6 @@ _interp1d_kernel_str = r'''
         if(xt >= outputWidth) {
             return;
         }
-
         float samplePos = samples[xt]; 
         int sampleNr = floorf(samplePos);
         float ratio = samplePos - sampleNr; 

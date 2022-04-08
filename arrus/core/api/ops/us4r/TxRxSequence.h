@@ -17,13 +17,9 @@ namespace arrus::ops::us4r {
  */
 class TxRx {
 public:
-    // TODO(pjarosik) remove default constructor!!! Currently required by py swig wrapper
-    TxRx()
-    :tx(std::vector<bool>{}, std::vector<float>{},
-        Pulse(0, 0, false)),
-     rx(std::vector<bool>{},
-        std::make_pair<unsigned int, unsigned int>((unsigned int)0, (unsigned int)0)),
-     pri(0.0f)
+    TxRx():tx(std::vector<bool>{}, std::vector<float>{}, Pulse(0, 0, false)),
+           rx(std::vector<bool>{}, std::make_pair<unsigned int, unsigned int>((unsigned int)0, (unsigned int)0)),
+           pri(0.0f)
     {}
 
     /**
@@ -62,9 +58,10 @@ public:
      * @param sequence a list of tx/rxs that compose a given sequence
      * @param tgcCurve tgc curve to apply
      * @param sri sequence repetition interval - the total time that a given sequence should take.
+     * @param nRepeats - the number of repetitions of a given sequence. Determines the size of the batch
      */
-    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI)
-        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri) {}
+    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI, int16 nRepeats = 1)
+        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats) {}
 
     /**
      * Returns vector of operations to perform.
@@ -93,10 +90,15 @@ public:
         }
     }
 
+    int16 getNRepeats() const {
+        return nRepeats;
+    }
+
 private:
     std::vector<TxRx> txrxs;
     TGCCurve tgcCurve;
     std::optional<float> sri;
+    int16 nRepeats;
 };
 
 }

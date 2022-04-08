@@ -1,3 +1,5 @@
+dictionary_file: "dictionary.prototxt"
+
 us4r: {
     us4oems: [
     {

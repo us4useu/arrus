@@ -5,8 +5,8 @@
 ################################################################################
 find_package(SWIG REQUIRED)
 include(UseSWIG)
-find_package(PythonInterp REQUIRED)
-find_package(PythonLibs REQUIRED)
+find_package(PythonInterp ${ARRUS_PY_VERSION} REQUIRED)
+find_package(PythonLibs ${ARRUS_PY_VERSION} REQUIRED)
 set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
 if (MSVC)
     set_property(
@@ -101,7 +101,7 @@ set(SOURCE_FILES
         )
 
 set(TEST_FILES
-    arrus/kernels/tests/imaging_test.py
+#    arrus/kernels/tests/imaging_test.py
 )
 
 if(ARRUS_CUDA)
@@ -115,9 +115,14 @@ endif()
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
 set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
+set(INIT_PY_IN  "${CMAKE_CURRENT_SOURCE_DIR}/arrus/__init__.py")
+# The below output will be moved to the arrus subdirectory (by custom_command),
+# right after the .py source files are available in build_dir.
+set(INIT_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/tmp/__init__.py")
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 configure_file(${SETUP_PY_IN} ${SETUP_PY_OUT})
+configure_file(${INIT_PY_IN}  ${INIT_PY_OUT})
 
 
 if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
@@ -127,6 +132,10 @@ if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             COMMAND
             ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${CMAKE_CURRENT_BINARY_DIR}/arrus
+            # Override __init__.py file with the correct Python package version.
+            COMMAND
+            ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/tmp/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/arrus
             COMMAND
             ${CMAKE_COMMAND} -E copy_directory
             ${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
@@ -147,6 +156,10 @@ elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
             COMMAND
             ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${CMAKE_CURRENT_BINARY_DIR}/arrus
+            # Override __init__.py file with the correct Python package version.
+            COMMAND
+            ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/tmp/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/arrus
             COMMAND
             ${CMAKE_COMMAND} -E copy_directory
             ${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
@@ -198,6 +211,7 @@ install(
         examples/diverging_beams.py
         examples/custom_tx_rx_sequence.py
         examples/custom_callback.py
+	examples/phased_array_scanning.py
         examples/requirements.txt
     examples/requirements.txt
         DESTINATION
