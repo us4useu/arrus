@@ -29,7 +29,7 @@ Commands ResolveInput(std::string inp)
     if (inp == "wr") return Write;
     if (inp == "rd") return Read;
     if (inp == "exit") return Exit;
-    if (inp == "start") return Start;
+    if (inp == "trig") return Start;
     if (inp == "afe-rst") return AfeReset;
     if (inp == "demod-en") return DemodEn;
     if (inp == "demod-dis") return DemodDis;
@@ -43,9 +43,9 @@ Commands ResolveInput(std::string inp)
 }
 
 int main() noexcept {
-    char value = 0;
-    std::cin >> value;
-    std::cout << "pwi-example " << std::endl;
+    //char value = 0;
+    //std::cin >> value;
+    std::cout << "demod-example " << std::endl;
     using namespace ::arrus::session;
     using namespace ::arrus::devices;
     using namespace ::arrus::ops::us4r;
@@ -146,31 +146,21 @@ int main() noexcept {
         std::mutex mutex;
         std::unique_lock<std::mutex> lock(mutex);
 
-
-        //print menu
-        std::cout << "--- Console options: ---" << std::endl;
-        std::cout << " start - start scheme" << std::endl 
-            << " wr - write AFE register" << std::endl 
-            << " rd - read AFE register" << std::endl 
-            << " demod-en - enable AFE demodulator" << std::endl
-            << " demod-dis - disable AFE demodulator" << std::endl
-            << " demod-def - writes AFE demodulator default config" << std::endl
-            << " demod-freq - sets AFE demodulator frequency" << std::endl
-            << " demod-fsweep - sets AFE demodulator frequency sweep ROI" << std::endl
-            << " demod-fir - writes AFE demodulator decimation filter coefficients" << std::endl
-            << " exit - exit app" << std::endl;
-
         //get number of oems?
-        uint8_t nOEMS = 0;
+        int nOEMS = 0;
         for (nOEMS = 0; nOEMS < 16; nOEMS++)
         {
             try {
                 us4r->getUs4OEM(nOEMS);
             }
-            catch (DeviceNotFoundException ex) {
-
+            catch (const std::exception &e) {
+                break;
             }
         }
+
+
+        session->startScheme();
+        cv.wait(lock);
 
         std::cout << std::endl << "Found " << nOEMS << " OEMs" << std::endl;
 
@@ -180,14 +170,24 @@ int main() noexcept {
             us4r->getUs4OEM(n)->setAfeDemodDefault();
         }
 
-        session->startScheme();
-        cv.wait(lock);
+        //print menu
+        std::cout << std::endl << "--- Console options: ---" << std::endl;
+        std::cout << " trig - trigger new frame acquisition" << std::endl
+            << " wr - write AFE register" << std::endl
+            << " rd - read AFE register" << std::endl
+            << " demod-en - enable AFE demodulator" << std::endl
+            << " demod-dis - disable AFE demodulator" << std::endl
+            << " demod-def - writes AFE demodulator default config" << std::endl
+            << " demod-freq - sets AFE demodulator frequency" << std::endl
+            << " demod-fsweep - sets AFE demodulator frequency sweep ROI" << std::endl
+            << " demod-fir - writes AFE demodulator decimation filter coefficients" << std::endl
+            << " exit - exit app" << std::endl << std::endl;
 
         std::string inp;
 
         while (cont) {
             //char value = 0;
-            std::cout << ">";
+            std::cout << "CMD >>";
             std::cin >> inp;
             switch (ResolveInput(inp)) {
             case Write:
@@ -204,7 +204,7 @@ int main() noexcept {
                 //us4r->getUs4OEM(0)->setAfe(static_cast<uint8_t>(regAddr), static_cast<uint16_t>(regVal));
                 break;
             }
-            case FIR:
+            case DemodFIR:
             {
                 //writes default 10MHz FIR for now, valid for M = 4
                 //us4r->getUs4OEM(0)->writeAfeFIRCoeffs((int16_t*)&fir10M[0], 32);
@@ -293,14 +293,14 @@ int main() noexcept {
                     }
                     //get and output actual set frequency
                     startFreq =  us4r->getUs4OEM(0)->getAfeDemodStartFrequency();
-                    std::cout << "Set demodulator frequency = " << starFreq << " MHz" << std::endl;
+                    std::cout << "Set demodulator frequency = " << startFreq << " MHz" << std::endl;
                 }
                 else {
                     for (uint8_t n = 0; n < nOEMS; n++) {
                         us4r->getUs4OEM(n)->setAfeDemodFrequency(startFreq, stopFreq);
                     }
                     startFreq = us4r->getUs4OEM(0)->getAfeDemodStartFrequency();
-                    std::cout << "Set demodulator start frequency = " << starFreq << " MHz" << std::endl;
+                    std::cout << "Set demodulator start frequency = " << startFreq << " MHz" << std::endl;
                     stopFreq = us4r->getUs4OEM(0)->getAfeDemodStopFrequency();
                     std::cout << "Set demodulator stop frequency = " << stopFreq << " MHz" << std::endl;
                 }
@@ -342,7 +342,7 @@ int main() noexcept {
             }
             case Start:
                 cv2.notify_one();
-
+                
                 break;
             case Exit:
                 session->stopScheme();

@@ -127,7 +127,7 @@ void Us4OEMImpl::setAfeDemodFrequency(double startFrequency) {
     ius4oem->AfeDemodFsweepDisable(1);
 }
 
-void Us4OEMImpl::setAfeDemodFrequency(double StartFrequency, double stopFrequency) {
+void Us4OEMImpl::setAfeDemodFrequency(double startFrequency, double stopFrequency) {
     ius4oem->AfeDemodSetDemodFrequency(0, startFrequency, stopFrequency);
     ius4oem->AfeDemodSetDemodFrequency(1, startFrequency, stopFrequency);
     ius4oem->AfeDemodFsweepEnable(0);
