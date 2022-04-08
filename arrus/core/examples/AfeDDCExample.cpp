@@ -16,7 +16,10 @@ enum Commands {
     DemodEn,
     DemodDis,
     DemodDef,
-    FIR,
+    DemodDec,
+    DemodFreq,
+    DemodFsweepROI,
+    DemodFIR,
     AfeReset,
     Invalid
 };
@@ -31,7 +34,10 @@ Commands ResolveInput(std::string inp)
     if (inp == "demod-en") return DemodEn;
     if (inp == "demod-dis") return DemodDis;
     if (inp == "demod-def") return DemodDef;
-    if (inp == "demod-fir") return FIR;
+    if (inp == "demod-dec") return DemodDec;
+    if (inp == "demod-freq") return DemodFreq;
+    if (inp == "demod-fsweep") return DemodFsweepROI;
+    if (inp == "demod-fir") return DemodFIR;
 
     return Invalid;
 }
@@ -143,9 +149,36 @@ int main() noexcept {
 
         //print menu
         std::cout << "--- Console options: ---" << std::endl;
-        std::cout << " wr - write AFE register" << std::endl << " rd - read AFE register"
-            << std::endl << " start - start scheme" << std::endl << " exit - exit app" << std::endl;
+        std::cout << " start - start scheme" << std::endl 
+            << " wr - write AFE register" << std::endl 
+            << " rd - read AFE register" << std::endl 
+            << " demod-en - enable AFE demodulator" << std::endl
+            << " demod-dis - disable AFE demodulator" << std::endl
+            << " demod-def - writes AFE demodulator default config" << std::endl
+            << " demod-freq - sets AFE demodulator frequency" << std::endl
+            << " demod-fsweep - sets AFE demodulator frequency sweep ROI" << std::endl
+            << " demod-fir - writes AFE demodulator decimation filter coefficients" << std::endl
+            << " exit - exit app" << std::endl;
 
+        //get number of oems?
+        uint8_t nOEMS = 0;
+        for (nOEMS = 0; nOEMS < 16; nOEMS++)
+        {
+            try {
+                us4r->getUs4OEM(nOEMS);
+            }
+            catch (DeviceNotFoundException ex) {
+
+            }
+        }
+
+        std::cout << std::endl << "Found " << nOEMS << " OEMs" << std::endl;
+
+        //configure demodulator
+        for (uint8_t n = 0; n < nOEMS; n++) {
+            us4r->getUs4OEM(n)->enableAfeDemod();
+            us4r->getUs4OEM(n)->setAfeDemodDefault();
+        }
 
         session->startScheme();
         cv.wait(lock);
@@ -161,45 +194,149 @@ int main() noexcept {
             {
                 std::cout << "Register address (hex): " << std::endl;
                 std::cin >> inp;
-                int regAddr = stoi(inp, 0, 16);
+                int regAddr = std::stoi(inp, 0, 16);
                 std::cout << "Register value (hex): " << std::endl;
                 std::cin >> inp;
-                int regVal = stoi(inp, 0, 16);
-                us4r->getUs4OEM(0)->setAfe(static_cast<uint8_t>(regAddr), static_cast<uint16_t>(regVal));
+                int regVal = std::stoi(inp, 0, 16);
+                for (uint8_t n = 0; n < nOEMS; n++) {
+                    us4r->getUs4OEM(n)->setAfe(static_cast<uint8_t>(regAddr), static_cast<uint16_t>(regVal));
+                }
+                //us4r->getUs4OEM(0)->setAfe(static_cast<uint8_t>(regAddr), static_cast<uint16_t>(regVal));
                 break;
             }
             case FIR:
             {
                 //writes default 10MHz FIR for now, valid for M = 4
-                us4r->getUs4OEM(0)->writeAfeFIRCoeffs((int16_t*)&fir10M[0], 32);
+                //us4r->getUs4OEM(0)->writeAfeFIRCoeffs((int16_t*)&fir10M[0], 32);
+                for (uint8_t n = 0; n < nOEMS; n++) {
+                    us4r->getUs4OEM(n)->writeAfeFIRCoeffs((int16_t*)&fir10M[0], 32);
+                }
                 break;
             }
             case DemodEn:
             {
-                us4r->getUs4OEM(0)->enableAfeDemod();
+                //us4r->getUs4OEM(0)->enableAfeDemod();
+                for (uint8_t n = 0; n < nOEMS; n++) {
+                    us4r->getUs4OEM(n)->enableAfeDemod();
+                }
                 break;
             }
             case AfeReset:
             {
-                us4r->getUs4OEM(0)->resetAfe();
+                //us4r->getUs4OEM(0)->resetAfe();
+                for (uint8_t n = 0; n < nOEMS; n++) {
+                    us4r->getUs4OEM(n)->resetAfe();
+                }
                 break;
             }
             case DemodDis:
             {
-                us4r->getUs4OEM(0)->disableAfeDemod();
+                //us4r->getUs4OEM(0)->disableAfeDemod();
+                for (uint8_t n = 0; n < nOEMS; n++) {
+                    us4r->getUs4OEM(n)->disableAfeDemod();
+                }
                 break;
             }
             case DemodDef:
             {
-                us4r->getUs4OEM(0)->setAfeDemodDefault();
+                //us4r->getUs4OEM(0)->setAfeDemodDefault();
+                for (uint8_t n = 0; n < nOEMS; n++) {
+                    us4r->getUs4OEM(n)->setAfeDemodDefault();
+                }
+                break;
+            }
+            case DemodDec:
+            {
+                std::cout << "Decimation factor integer part:" << std::endl;
+                std::cin >> inp;
+                int integer = std::stoi(inp, 0, 10);
+
+                if (integer < 0 || integer > 0x3F) {
+                    std::cout << "Invalid value" << std::endl;
+                    break;
+                }
+
+                std::cout << "Decimation factor fractional part (0 = 0, 1 = 0.25, 2 = 0.5, 3 = 0.75):" << std::endl;
+                std::cin >> inp;
+                int quarters = std::stoi(inp, 0, 10);
+
+                if (quarters < 0 || quarters > 3) {
+                    std::cout << "Invalid value" << std::endl;
+                    break;
+                }
+
+                if (quarters == 0) {
+                    for (uint8_t n = 0; n < nOEMS; n++) {
+                        us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(static_cast<uint16_t>(integer));
+                    }
+                }
+                else {
+                    for (uint8_t n = 0; n < nOEMS; n++) {
+                        us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(static_cast<uint16_t>(integer), static_cast<uint16_t>(quarters));
+                    }
+                }
+                break;
+            }
+            case DemodFreq:
+            {
+                std::cout << "Demodulator frequency in MHz (start freuqency for sweep):" << std::endl;
+                std::cin >> inp;
+                double startFreq = std::stod(inp);
+
+                std::cout << "Demodulator stop frequency in MHz (enter 0.0 to disable fsweep):" << std::endl;
+                std::cin >> inp;
+                double stopFreq = std::stod(inp);
+
+                if (stopFreq == 0.0) {
+                    for (uint8_t n = 0; n < nOEMS; n++) {
+                        us4r->getUs4OEM(n)->setAfeDemodFrequency(startFreq);
+                    }
+                    //get and output actual set frequency
+                    startFreq =  us4r->getUs4OEM(0)->getAfeDemodStartFrequency();
+                    std::cout << "Set demodulator frequency = " << starFreq << " MHz" << std::endl;
+                }
+                else {
+                    for (uint8_t n = 0; n < nOEMS; n++) {
+                        us4r->getUs4OEM(n)->setAfeDemodFrequency(startFreq, stopFreq);
+                    }
+                    startFreq = us4r->getUs4OEM(0)->getAfeDemodStartFrequency();
+                    std::cout << "Set demodulator start frequency = " << starFreq << " MHz" << std::endl;
+                    stopFreq = us4r->getUs4OEM(0)->getAfeDemodStopFrequency();
+                    std::cout << "Set demodulator stop frequency = " << stopFreq << " MHz" << std::endl;
+                }
+                break;
+            }
+            case DemodFsweepROI:
+            {
+                std::cout << "Frequency sweep start sample:" << std::endl;
+                std::cin >> inp;
+                int start = std::stoi(inp, 0, 10);
+
+                if (start < 0 || start > 0xFFFF) {
+                    std::cout << "Invalid value" << std::endl;
+                    break;
+                }
+
+                std::cout << "Frequency sweep stop sample:" << std::endl;
+                std::cin >> inp;
+                int stop = std::stoi(inp, 0, 10);
+
+                if (stop < 0 || stop > 0xFFFF) {
+                    std::cout << "Invalid value" << std::endl;
+                    break;
+                }
+
+                for (uint8_t n = 0; n < nOEMS; n++) {
+                    us4r->getUs4OEM(n)->setAfeDemodFsweepROI(static_cast<uint16_t>(start), static_cast<uint16_t>(stop));
+                }
                 break;
             }
             case Read:
             {
                 std::cout << "Register address (hex): " << std::endl;
                 std::cin >> inp;
-                int regAddr = stoi(inp, 0, 16);
-                uint16_t regVal = us4r->getUs4OEM(0)->getAfe(static_cast<uint8_t>(regAddr));
+                int regAddr = std::stoi(inp, 0, 16);
+                uint16_t regVal = us4r->getUs4OEM(0)->getAfe(static_cast<uint8_t>(regAddr)); //read only AFE 0 on OEM 0
                 std::cout << "Value = " << std::hex << static_cast<int>(regVal) << std::endl;
                 break;
             }

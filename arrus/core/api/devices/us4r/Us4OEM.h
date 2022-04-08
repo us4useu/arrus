@@ -40,6 +40,13 @@ public:
     virtual void enableAfeDemod(void) = 0;
     virtual void disableAfeDemod(void) = 0;
     virtual void setAfeDemodDefault(void) = 0;
+    virtual void setAfeDemodDecimationFactor(uint8_t integer) = 0;
+    virtual void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) = 0;
+    virtual void setAfeDemodFrequency(double startFrequency) = 0;
+    virtual void setAfeDemodFrequency(double StartFrequency, double stopFrequency) = 0;
+    virtual double getAfeDemodStartFrequency(void) = 0;
+    virtual double getAfeDemodStopFrequency(void) = 0;
+    virtual void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample) = 0;
     virtual void writeAfeFIRCoeffs(int16_t* coeffs, uint16_t length) = 0;
     virtual void resetAfe(void) = 0;
 

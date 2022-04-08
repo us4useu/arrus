@@ -110,6 +110,43 @@ void Us4OEMImpl::setAfeDemodDefault() {
     ius4oem->AfeDemodSetDefault(1);
 }
 
+void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer) {
+    ius4oem->AfeDemodSetDecimationFactor(0, integer);
+    ius4oem->AfeDemodSetDecimationFactor(1, integer);
+}
+
+void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) {
+    ius4oem->AfeDemodSetDecimationFactor(0, integer, quarters);
+    ius4oem->AfeDemodSetDecimationFactor(1, integer, quarters);
+}
+
+void Us4OEMImpl::setAfeDemodFrequency(double startFrequency) {
+    ius4oem->AfeDemodSetDemodFrequency(0, startFrequency);
+    ius4oem->AfeDemodSetDemodFrequency(1, startFrequency);
+    ius4oem->AfeDemodFsweepDisable(0);
+    ius4oem->AfeDemodFsweepDisable(1);
+}
+
+void Us4OEMImpl::setAfeDemodFrequency(double StartFrequency, double stopFrequency) {
+    ius4oem->AfeDemodSetDemodFrequency(0, startFrequency, stopFrequency);
+    ius4oem->AfeDemodSetDemodFrequency(1, startFrequency, stopFrequency);
+    ius4oem->AfeDemodFsweepEnable(0);
+    ius4oem->AfeDemodFsweepEnable(1);
+}
+
+double Us4OEMImpl::getAfeDemodStartFrequency(void) {
+    return ius4oem->AfeDemodGetStartFrequency(0);
+}
+
+double Us4OEMImpl::getAfeDemodStopFrequency(void) {
+    return ius4oem->AfeDemodGetStopFrequency(0);
+}
+
+void Us4OEMImpl::setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample) {
+    ius4oem->AfeDemodSetFsweepROI(0, startSample, stopSample);
+    ius4oem->AfeDemodSetFsweepROI(1, startSample, stopSample);
+}
+
 void Us4OEMImpl::writeAfeFIRCoeffs(int16_t* coeffs, uint16_t length) {
     ius4oem->AfeDemodWriteFirCoeffs(0, coeffs, length);
     ius4oem->AfeDemodWriteFirCoeffs(1, coeffs, length);
