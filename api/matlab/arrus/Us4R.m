@@ -503,7 +503,12 @@ classdef Us4R < handle
             else
                 obj.seq.rxCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
-
+            
+            %% Validate sequence if wedge interface is used
+            if obj.sys.interfEnable && (~strcmp(obj.seq.type,"sta") || obj.seq.txApSize~=1)
+                error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
+            end
+            
             %% Aperture masks & delays
             obj.calcTxRxApMask;
             obj.calcTxDelays;
