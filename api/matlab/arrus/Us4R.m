@@ -597,7 +597,7 @@ classdef Us4R < handle
             %% If GPU is available...
             obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
             
-            if obj.rec.gpuEnable
+            if obj.rec.gpuEnable && ~strcmp(obj.seq.type,'lin')
                 % Add location of the CUDA kernels
                 addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
                 
