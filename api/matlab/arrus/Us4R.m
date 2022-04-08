@@ -1090,9 +1090,14 @@ classdef Us4R < handle
                         ccf = 1 - sqrt( var(real(rfBfr)./abs(rfBfr), 0, 3) + ...
                                         var(imag(rfBfr)./abs(rfBfr), 0, 3) );
                         rfBfr = rfBfr .* ccf;
+                        
+                        % coherent compounding for NDT
+                        rfBfr = mean(rfBfr,3,'omitnan');
+                    else
+                        % incoherent compounding for medical imaging
+                        rfBfr = mean(abs(rfBfr),3,'omitnan');
                     end
-%                     rfBfr = mean(rfBfr,3,'omitnan');
-                    rfBfr = mean(abs(rfBfr),3,'omitnan');
+                    
                 end
                 
                 % Color Doppler image reconstruction
