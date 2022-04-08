@@ -1077,7 +1077,7 @@ classdef Us4R < handle
                 if obj.rec.bmodeEnable
                     rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
                     
-                    if 0
+                    if obj.sys.interfEnable
                         ccf = 1 - sqrt( var(real(rfBfr)./abs(rfBfr), 0, 3) + ...
                                         var(imag(rfBfr)./abs(rfBfr), 0, 3) );
                         rfBfr = rfBfr .* ccf;
