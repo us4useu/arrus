@@ -63,6 +63,7 @@ namespace std {
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/common/logging.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 
@@ -225,6 +226,7 @@ std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::sessi
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
@@ -244,8 +246,6 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/probe/Probe.h"
 
 
-
-
 %inline %{
 arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     auto ptr = dynamic_cast<Us4R*>(device);
@@ -254,7 +254,7 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     }
     return ptr;
 }
-// TODO(pjarosik) remote the bellow functions when possible
+// TODO(pjarosik) remove the bellow functions when possible
 
 unsigned short getNumberOfElements(const arrus::devices::ProbeModel &probe) {
     const auto &nElements = probe.getNumberOfElements();
