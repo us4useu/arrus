@@ -81,7 +81,8 @@ def get_bmode_imaging(sequence, grid, placement="/GPU:0",
                 EnvelopeDetection(),
                 Transpose(axes=(0, 2, 1)),
                 ScanConversion(x_grid, z_grid),
-                LogCompression()
+                Mean(axis=0),
+                LogCompression(),
             ),
             placement=placement)
     elif isinstance(sequence, arrus.ops.imaging.PwiSequence) \
@@ -192,16 +193,24 @@ class ProcessingRunner:
         # Initialize pipeline.
         self.cp = cp
         self.input_buffer = self.__register_buffer(input_buffer)
-        self.gpu_buffer = Buffer(n_elements=2, shape=const_metadata.input_shape,
+        default_buffer = ProcessingBuffer(size=2, type="locked")
+
+        in_buffer_spec = processing.input_buffer
+        out_buffer_spec = processing.output_buffer
+        in_buffer_spec = in_buffer_spec if in_buffer_spec is not None else default_buffer
+        out_buffer_spec = out_buffer_spec if out_buffer_spec is not None else default_buffer
+
+        self.gpu_buffer = Buffer(n_elements=in_buffer_spec.size,
+                                 shape=const_metadata.input_shape,
                                  dtype=const_metadata.dtype, math_pkg=cp,
-                                 type="locked")
+                                 type=in_buffer_spec.type)
         self.pipeline = processing.pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
         self.out_metadata = processing.pipeline.prepare(const_metadata)
-        self.out_buffers = [Buffer(n_elements=2, shape=m.input_shape,
+        self.out_buffers = [Buffer(n_elements=out_buffer_spec.size, shape=m.input_shape,
                                   dtype=m.dtype, math_pkg=np,
-                                  type="locked")
+                                  type=out_buffer_spec.type)
                            for m in self.out_metadata]
         # Wait for all the initialization done in by the Pipeline.
         cp.cuda.Stream.null.synchronize()
@@ -224,6 +233,9 @@ class ProcessingRunner:
             self.metadata_extractor = ExtractMetadata()
             self.metadata_extractor.prepare(const_metadata)
         self.input_buffer.append_on_new_data_callback(self.process)
+        if processing.on_buffer_overflow_callback is not None:
+            self.input_buffer.append_on_buffer_overflow_callback(
+                processing.on_buffer_overflow_callback)
 
     @property
     def outputs(self):
@@ -508,15 +520,28 @@ class Pipeline:
         self.filter_pkg = pkgs['filter_pkg']
 
 
+@dataclasses.dataclass(frozen=True)
+class ProcessingBuffer:
+    size: int
+    type: str
+    # TODO: placement
+
+
 class Processing:
     """
     A description of complete data processing run in the arrus.utils.imaging.
     """
 
-    def __init__(self, pipeline, callback=None, extract_metadata=False):
+    def __init__(self, pipeline, callback=None, extract_metadata=False,
+                 input_buffer: ProcessingBuffer=None,
+                 output_buffer: ProcessingBuffer=None,
+                 on_buffer_overflow_callback=None):
         self.pipeline = pipeline
         self.callback = callback
         self.extract_metadata = extract_metadata
+        self.input_buffer = input_buffer
+        self.output_buffer = output_buffer
+        self.on_buffer_overflow_callback = on_buffer_overflow_callback
 
 
 class Lambda(Operation):

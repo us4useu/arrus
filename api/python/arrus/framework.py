@@ -14,7 +14,22 @@ class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):
     def run(self, element):
         try:
             self._callback_fn(element)
-        except:
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+
+
+class OnBufferOverflowCallback(arrus.core.OnBufferOverflowCallbackWrapper):
+
+    def __init__(self, callback_fn):
+        super().__init__()
+        self._callback_fn = callback_fn
+
+    def run(self):
+        try:
+            self._callback_fn()
+        except Exception as e:
+            print(e)
             traceback.print_exc()
 
 
@@ -66,6 +81,8 @@ class DataBuffer:
         self._buffer_handle = buffer_handle
         self._callbacks = []
         self._register_internal_callback()
+        self._on_buffer_overflow_callbacks = []
+        self._register_internal_buffer_overflow_callback()
         self.elements = self._wrap_elements()
         self.n_elements = len(self.elements)
 
@@ -81,6 +98,14 @@ class DataBuffer:
         """
         self._callbacks.append(callback)
 
+    def append_on_buffer_overflow_callback(self, callback):
+        """
+        Register callback that will be called when buffer overflow occurs.
+
+        :param callback: callback function to register
+        """
+        self._on_buffer_overflow_callbacks.append(callback)
+
     def _register_internal_callback(self):
         self._callback_wrapper = OnNewDataCallback(self._callback)
         arrus.core.registerOnNewDataCallbackFifoLockFreeBuffer(
@@ -91,6 +116,16 @@ class DataBuffer:
         py_element = self.elements[pos]
         for cbk in self._callbacks:
             cbk(py_element)
+
+    def _on_buffer_overflow_callback(self):
+        for cbk in self._on_buffer_overflow_callbacks:
+            cbk()
+
+    def _register_internal_buffer_overflow_callback(self):
+        self._overflow_callback_wrapper = OnBufferOverflowCallback(
+            self._on_buffer_overflow_callback)
+        arrus.core.registerOnBufferOverflowCallback(
+            self._buffer_handle, self._overflow_callback_wrapper)
 
     def _wrap_elements(self):
         return [DataBufferElement(self._buffer_handle.getElement(i))

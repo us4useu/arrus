@@ -183,6 +183,29 @@ void registerOnNewDataCallbackFifoLockFreeBuffer(const std::shared_ptr<arrus::fr
     };
     fifolockfreeBuffer->registerOnNewDataCallback(actualCallback);
 }
+
+class OnBufferOverflowCallbackWrapper {
+public:
+    OnBufferOverflowCallbackWrapper() {}
+    virtual void run() const {}
+    virtual ~OnBufferOverflowCallbackWrapper() {}
+};
+
+void registerOnBufferOverflowCallback(const std::shared_ptr<arrus::framework::Buffer> &buffer, OnBufferOverflowCallbackWrapper& callback) {
+    auto fifolockfreeBuffer = std::static_pointer_cast<DataBuffer>(buffer);
+    ::arrus::framework::OnOverflowCallback actualCallback = [&]() {
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        try {
+            callback.run();
+        } catch(const std::exception &e) {
+            std::cerr << "Exception: " << e.what() << std::endl;
+        } catch(...) {
+            std::cerr << "Unhandled exception" << std::endl;
+        }
+        PyGILState_Release(gstate);
+    };
+    fifolockfreeBuffer->registerOnOverflowCallback(actualCallback);
+}
 %};
 
 // ------------------------------------------ SESSION
