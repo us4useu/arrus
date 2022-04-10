@@ -119,6 +119,10 @@ public:
 
     std::vector<unsigned short> getChannelsMask() override;
 
+    uint8_t getNumberOfUs4OEMs() override {
+      return (uint8_t)(us4oems.size());
+    }
+
 private:
     std::mutex deviceStateMutex;
     Logger::Handle logger;

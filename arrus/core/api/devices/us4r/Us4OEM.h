@@ -17,6 +17,16 @@ public:
 
     virtual double getSamplingFrequency() = 0;
 
+    /**
+     * Returns firmware version installed on the us4OEM module.
+     */
+    virtual uint32 getFirmwareVersion() = 0;
+
+    /**
+     * Returns Tx component firmware version installed on this us4OEM module.
+     */
+    virtual uint32 getTxFirmwareVersion() = 0;
+
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
     void operator=(Us4OEM const&) = delete;

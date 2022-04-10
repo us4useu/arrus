@@ -16,6 +16,8 @@ import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
 import arrus.ops.tgc
+from arrus.devices.us4oem import Us4OEM
+
 
 
 DEVICE_TYPE = DeviceType("Us4R", arrus.core.DeviceType_Us4R)
@@ -142,6 +144,7 @@ class HostBuffer:
 
     def get_element_size(self):
         return self.buffer_handle.getElementSize()
+
 
 
 class Us4R(Device):
@@ -290,6 +293,27 @@ class Us4R(Device):
         )
         return buffer, const_metadata
 
+    @property
+    def n_us4oems(self):
+        return self._handle.getNumberOfUs4OEMs()
+
+    @property
+    def firmware_version(self):
+        result = {}
+        # Us4OEMs
+        us4oem_ver = []
+        for i in range(self.n_us4oems):
+            dev = self.get_us4oem(i)
+            ver = {
+                "main": dev.get_firmware_version(),
+                "tx": dev.get_tx_firmware_version()
+            }
+            us4oem_ver.append(ver)
+        result["Us4OEM"] = us4oem_ver
+        return result
+
+    def get_us4oem(self, ordinal):
+        return Us4OEM(self._handle.getUs4OEM(ordinal))
 
     def _create_kernel_context(self, seq):
         return arrus.kernels.kernel.KernelExecutionContext(

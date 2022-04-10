@@ -33,7 +33,7 @@ public:
      * @param ordinal ordinal number of the us4oem to get
      * @return a handle to the us4oem module
      */
-    virtual Us4OEM::RawHandle getUs4OEM(Ordinal ordinal) = 0;
+    virtual Us4OEM* getUs4OEM(Ordinal ordinal) = 0;
 
     /**
      * Returns a handle to an adapter identified by given ordinal number.
@@ -68,6 +68,11 @@ public:
     virtual void setVoltage(Voltage voltage) = 0;
 
     virtual void disableHV() = 0;
+
+    /**
+     * Returns the number of us4OEM modules that are used in this us4R system.
+     */
+    virtual uint8_t getNumberOfUs4OEMs() = 0;
 
     /**
      * Sets tgc curve points asynchronously.

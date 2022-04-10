@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.5.20)
+set(PROJECT_VERSION 0.5.21)
 
 option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
 if(ARRUS_DEVELOP_VERSION)
@@ -87,7 +87,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 # Common dependencies
 ################################################################################
 if(ARRUS_BUILD_SWIG)
-    find_package(Us4 0.7.0 EXACT REQUIRED US4OEM HV256 DBARLite)
+    find_package(Us4 0.8.3 EXACT REQUIRED US4OEM HV256 DBARLite)
 endif()
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)

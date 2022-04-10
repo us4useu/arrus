@@ -114,6 +114,10 @@ public:
 
     void enableSequencer() override;
 
+    uint32 getFirmwareVersion() override;
+
+    uint32 getTxFirmwareVersion() override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 

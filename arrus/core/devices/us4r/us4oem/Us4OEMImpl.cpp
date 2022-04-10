@@ -579,4 +579,12 @@ void Us4OEMImpl::enableSequencer() {
     this->ius4oem->EnableSequencer();
 }
 
+uint32 Us4OEMImpl::getFirmwareVersion() {
+    return ius4oem->GetFirmwareVersion();
+}
+
+uint32 Us4OEMImpl::getTxFirmwareVersion() {
+    return ius4oem->GetTxFirmwareVersion();
+}
+
 }

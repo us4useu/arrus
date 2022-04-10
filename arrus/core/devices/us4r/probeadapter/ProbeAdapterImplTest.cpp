@@ -100,6 +100,8 @@ public:
     MOCK_METHOD(void, setTgcCurve, (const ::arrus::ops::us4r::TGCCurve &tgc), (override));
     MOCK_METHOD(Ius4OEMRawHandle, getIUs4oem, (), (override));
     MOCK_METHOD(void, enableSequencer, (), (override));
+    MOCK_METHOD(uint32, getFirmwareVersion, (), (override));
+    MOCK_METHOD(uint32, getTxFirmwareVersion, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
