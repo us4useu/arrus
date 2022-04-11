@@ -117,8 +117,8 @@ class Us4R(Device):
         for i in range(self.n_us4oems):
             dev = self.get_us4oem(i)
             ver = {
-                "main": dev.get_firmware_version(),
-                "tx": dev.get_tx_firmware_version()
+                "main": f"{dev.get_firmware_version():x}",
+                "tx": f"{dev.get_tx_firmware_version():x}"
             }
             us4oem_ver.append(ver)
         result["Us4OEM"] = us4oem_ver
