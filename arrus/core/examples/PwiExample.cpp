@@ -14,7 +14,7 @@ int main() noexcept {
     using namespace ::arrus::framework;
     try {
         // TODO set path to us4r-lite configuration file
-        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
+        auto settings = ::arrus::io::readSessionSettings("C:/Users/user/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
         auto probe = us4r->getProbe(0);

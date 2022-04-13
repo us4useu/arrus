@@ -43,16 +43,17 @@ Commands ResolveInput(std::string inp)
 }
 
 int main() noexcept {
-    //char value = 0;
-    //std::cin >> value;
-    std::cout << "demod-example " << std::endl;
+    char value = 0;
+	std::cout << "demod-example. press a key to continue... " << std::endl;
+    std::cin >> value;
+    
     using namespace ::arrus::session;
     using namespace ::arrus::devices;
     using namespace ::arrus::ops::us4r;
     using namespace ::arrus::framework;
     try {
         // TODO set path to us4r-lite configuration file
-        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/ate_cfg.prototxt");
+        auto settings = ::arrus::io::readSessionSettings("C:/Users/user/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
         auto probe = us4r->getProbe(0);
@@ -61,20 +62,21 @@ int main() noexcept {
 
         ::arrus::BitMask rxAperture(nElements, true);
 
-        Pulse pulse(6e6, 2, false);
-        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{ 0, 8192 };
+        Pulse pulse(8.125e6, 2, false);
+		// with the hardware decimation turned on proper rx data starts at sample 98.
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{ 98, 8192+98 };
 
         std::vector<TxRx> txrxs;
 
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < 1; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
             std::vector<float> delays(nElements, 0.0f);
-            arrus::BitMask txAperture(nElements, false);
+            arrus::BitMask txAperture(nElements, true);
             txrxs.emplace_back(Tx(txAperture, delays, pulse),
                 Rx(rxAperture, sampleRange),
-                200e-6f);
+                1000e-6f);
         }
 
         TxRxSequence seq(txrxs, {});
@@ -83,6 +85,7 @@ int main() noexcept {
         Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
 
         auto result = session->upload(scheme);
+		us4r->setVoltage(10);
 
         std::condition_variable cv;
         std::condition_variable cv2;
@@ -105,7 +108,7 @@ int main() noexcept {
                 std::ofstream file;
                 file.open("temp.bin", std::ios::binary | std::ios::out);
                 //short* dptr = ptr->getData().getInt16();
-                file.write(reinterpret_cast<char *>(ptr->getData().getInt16()/*ptr->getData().get<short>()*/), static_cast<size_t>(ptr->getData().getShape()[0]) * 2);
+                file.write(reinterpret_cast<char *>(ptr->getData().getInt16()/*ptr->getData().get<short>()*/), static_cast<size_t>(ptr->getSize()));
                 file.close();
 
                 //std::string pycmd = "python ./plot.py";
@@ -158,6 +161,8 @@ int main() noexcept {
             }
         }
 
+		std::cout << "press a key to startScheme... " << std::endl;
+		std::cin >> value;
 
         session->startScheme();
         cv.wait(lock);
