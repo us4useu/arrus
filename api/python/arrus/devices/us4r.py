@@ -7,6 +7,7 @@ import collections.abc
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.exceptions
 import arrus.devices.probe
+from arrus.devices.us4oem import Us4OEM
 import arrus.metadata
 import arrus.kernels
 import arrus.kernels.kernel
@@ -104,6 +105,24 @@ class Us4R(Device):
     @property
     def n_us4oems(self):
         return self._handle.getNumberOfUs4OEMs()
+
+    def get_us4oem(self, ordinal: int):
+        return Us4OEM(self._handle.getUs4OEM(ordinal))
+
+    @property
+    def firmware_version(self):
+        result = {}
+        # Us4OEMs
+        us4oem_ver = []
+        for i in range(self.n_us4oems):
+            dev = self.get_us4oem(i)
+            ver = {
+                "main": f"{dev.get_firmware_version():x}",
+                "tx": f"{dev.get_tx_firmware_version():x}"
+            }
+            us4oem_ver.append(ver)
+        result["Us4OEM"] = us4oem_ver
+        return result
 
     def set_kernel_context(self, kernel_context):
         self._current_sequence_context = kernel_context
