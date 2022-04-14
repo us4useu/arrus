@@ -501,31 +501,36 @@ class ScanConversion:
     """
     Scan conversion (interpolation to target mesh).
 
-    Currently linear interpolation is used by default, values outside
-    the input mesh will be set to 0.0.
-
-    Currently the op is implement for CPU only.
-    :param x_grid: a vector of grid points along OX axis [m]
-    :param z_grid: a vector of grid points along OZ axis [m]
+    @param x_grid: 1D array of physical x-grid in meters. Length equal to the number of columns
+                   in the scan converted image.
+    @param z_grid: 1D array of physical z-grid in meters. Length equal to the number of rows
+                   in the scan converted image.
+    @param num_pkg: Numerical python package used (currently supports numpy and cupy).
+    @param constant_metadata: Measurement specific arrus.metadata.ConstMetadata object.
     """
 
     def __init__(self, x_grid, z_grid):
         self.dst_points = None
         self.dst_shape = None
+        self.xp = None
         self.x_grid = x_grid.reshape(1, -1)
         self.z_grid = z_grid.reshape(1, -1)
-        self.is_gpu = False
 
     def set_pkgs(self, num_pkg, **kwargs):
-        if num_pkg != np:
-            self.is_gpu = True
-        # Ignoring provided num. package - currently CPU implementation is
-        # available only.
+        self.xp = num_pkg
+        if num_pkg is np:
+            self.interpolator = scipy.ndimage.map_coordinates
+        else:
+            self.interpolator = cupyx.scipy.ndimage.map_coordinates
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
+
+        if not self.xp == np:
+            self.x_grid = self.xp.asarray(self.x_grid)
+            self.z_grid = self.xp.asarray(self.z_grid)
 
         if not probe.is_convex_array():
             raise ValueError(
@@ -548,32 +553,40 @@ class ScanConversion:
 
         tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_tx_aperture_center_coords(seq, probe)
 
-        z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
+        z_grid_moved = self.z_grid.T + probe.curvature_radius - self.xp.max(
              probe.element_pos_z)
 
         self.radGridIn = (
-                (start_sample / acq_fs + np.arange(0, n_samples) / fs)
+                (start_sample / acq_fs + self.xp.arange(0, n_samples) / fs)
                 * c / 2)
 
         self.azimuthGridIn = tx_ap_cent_ang
-        azimuthGridOut = np.arctan2(self.x_grid, z_grid_moved)
-        radGridOut = (np.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
+        azimuthGridOut = self.xp.arctan2(self.x_grid, z_grid_moved)
+        radGridOut = (self.xp.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
                       - probe.curvature_radius)
 
-        dst_points = np.dstack((radGridOut, azimuthGridOut))
+        dst_points = self.xp.dstack((radGridOut, azimuthGridOut))
         w, h, d = dst_points.shape
-        self.dst_points = dst_points.reshape((w * h, d))
         self.dst_shape = len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+
+        dst_points = dst_points.reshape((w * h, d))
+        dst_points = dst_points.reshape(self.dst_shape + (2,))
+        dst_points = self.xp.transpose(dst_points, axes=(2, 0, 1))
+        dst_points[0] -= self.radGridIn[0]
+        dst_points[0] /= self.radGridIn[1] - self.radGridIn[0]
+        dst_points[1] -= self.azimuthGridIn[0]
+        dst_points[1] /= self.azimuthGridIn[1] - self.azimuthGridIn[0]
+        self.dst_points = self.xp.asarray(dst_points, dtype=self.xp.float32)
+
         return const_metadata.copy(input_shape=self.dst_shape)
 
     def __call__(self, data):
-        if self.is_gpu:
-            data = data.get()
-        data[np.isnan(data)] = 0.0
-        self.interpolator = scipy.interpolate.RegularGridInterpolator(
-            (self.radGridIn, self.azimuthGridIn), data, method="linear",
-            bounds_error=False, fill_value=0)
-        return self.interpolator(self.dst_points).reshape(self.dst_shape)
+        """Compute scan converted image from data in polar coordinates.
+
+        @param data: 2D array with shape (axial resolution, lateral resolution)
+        @return: Scan converted image with dimensions (len(z_grid), len(x_grid))
+        """
+        return self.interpolator(data, self.dst_points, order=1)
 
 
 class LogCompression:
@@ -581,21 +594,17 @@ class LogCompression:
     Converts to decibel scale.
     """
     def __init__(self):
-        pass
+        self.xp = None
 
-    def set_pkgs(self, **kwargs):
-        # Intentionally ignoring num. package -
-        # currently numpy is available only.
-        pass
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         return const_metadata
 
     def __call__(self, data):
-        if not isinstance(data, np.ndarray):
-            data = data.get()
         data[data == 0] = 1e-9
-        return 20 * np.log10(data)
+        return 20 * self.xp.log10(data)
 
 
 class DynamicRangeAdjustment:
