@@ -2044,7 +2044,6 @@ class RemapToLogicalOrder(Operation):
         n_samples = next(iter(n_samples_set))
         batch_size = fcm.batch_size
         self.output_shape = (batch_size, n_frames, n_samples, n_channels)
-        print(self.output_shape)
         self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
         if xp == np:
             # CPU
