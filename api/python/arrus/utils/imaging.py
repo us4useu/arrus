@@ -521,6 +521,7 @@ class ScanConversion:
         if num_pkg is np:
             self.interpolator = scipy.ndimage.map_coordinates
         else:
+            import cupyx.scipy.ndimage
             self.interpolator = cupyx.scipy.ndimage.map_coordinates
 
     def _prepare(self, const_metadata: arrus.metadata.ConstMetadata):
