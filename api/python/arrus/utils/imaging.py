@@ -1228,8 +1228,6 @@ class ScanConversion(Operation):
         if num_pkg != np:
             self.is_gpu = True
         self.num_pkg = num_pkg
-        # Ignoring provided num. package - currently CPU implementation is
-        # available only.
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
@@ -1314,9 +1312,19 @@ class ScanConversion(Operation):
         return self.buffer
 
     def _prepare_convex(self, const_metadata: arrus.metadata.ConstMetadata):
+        if self.num_pkg is np:
+            self.interpolator = scipy.ndimage.map_coordinates
+        else:
+            import cupyx.scipy.ndimage
+            self.interpolator = cupyx.scipy.ndimage.map_coordinates
         probe = const_metadata.context.device.probe.model
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
+
+        if not self.num_pkg == np:
+            import cupy as cp
+            self.x_grid = self.num_pkg.asarray(self.x_grid).astype(cp.float32)
+            self.z_grid = self.num_pkg.asarray(self.z_grid).astype(cp.float32)
 
         self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
         seq = const_metadata.context.sequence
@@ -1335,35 +1343,50 @@ class ScanConversion(Operation):
         tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_aperture_center(
             seq.tx_aperture_center_element, probe)
 
-        z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
-             probe.element_pos_z)
+        z_grid_moved = self.z_grid.T + probe.curvature_radius \
+            - self.num_pkg.max(probe.element_pos_z)
 
         self.radGridIn = (
-                (start_sample / acq_fs + np.arange(0, n_samples) / fs)
+                (start_sample / acq_fs + self.num_pkg.arange(0, n_samples) / fs)
                 * c / 2)
 
         self.azimuthGridIn = tx_ap_cent_ang
-        azimuthGridOut = np.arctan2(self.x_grid, z_grid_moved)
-        radGridOut = (np.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
+        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, z_grid_moved)
+        radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
                       - probe.curvature_radius)
 
-        dst_points = np.dstack((radGridOut, azimuthGridOut))
-        w, h, d = dst_points.shape
-        self.dst_points = dst_points.reshape((w * h, d))
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+
+        dst_points = self.num_pkg.dstack((radGridOut, azimuthGridOut))
+        dst_points = self.num_pkg.transpose(dst_points, axes=(2, 0, 1))
+
+        def get_equalized_diff(values, param_name):
+            diffs = np.diff(values)
+            # Check if all values are evenly spaced
+            if not np.allclose(diffs, [diffs[0]]*len(diffs)):
+                raise ValueError(f"{param_name} should be evenly spaced, "
+                                 f"got {values}")
+            return diffs[0]
+
+        dst_points[0] -= self.radGridIn[0]
+        dst_points[0] /= get_equalized_diff(self.radGridIn,
+                                            "Input radial distance")
+        dst_points[1] -= self.azimuthGridIn[0]
+        dst_points[1] /= get_equalized_diff(self.azimuthGridIn,
+                                            "Azimuth angle")
+        self.dst_points = self.num_pkg.asarray(dst_points,
+                                               dtype=self.num_pkg.float32)
         self.output_buffer = np.zeros(self.dst_shape, dtype=np.float32)
         return const_metadata.copy(input_shape=self.dst_shape)
 
     def _process_convex(self, data):
-        if self.is_gpu:
-            data = data.get()
         data[np.isnan(data)] = 0.0
+        # TODO do batch-wise processing here
         for i in range(self.n_frames):
-            self.interpolator = scipy.interpolate.RegularGridInterpolator(
-                (self.radGridIn, self.azimuthGridIn), data[i], method="linear",
-                bounds_error=False, fill_value=0)
-            self.output_buffer[i] = self.interpolator(self.dst_points).reshape(self.dst_shape[1:])
-        return self.num_pkg.asarray(self.output_buffer).astype(np.float32)
+            self.output_buffer[i] = self.interpolator(data[i],
+                                                      self.dst_points,
+                                                      order=1)
+        return self.output_buffer
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
