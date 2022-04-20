@@ -63,6 +63,7 @@ namespace std {
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/common/logging.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 
@@ -182,6 +183,29 @@ void registerOnNewDataCallbackFifoLockFreeBuffer(const std::shared_ptr<arrus::fr
     };
     fifolockfreeBuffer->registerOnNewDataCallback(actualCallback);
 }
+
+class OnBufferOverflowCallbackWrapper {
+public:
+    OnBufferOverflowCallbackWrapper() {}
+    virtual void run() const {}
+    virtual ~OnBufferOverflowCallbackWrapper() {}
+};
+
+void registerOnBufferOverflowCallback(const std::shared_ptr<arrus::framework::Buffer> &buffer, OnBufferOverflowCallbackWrapper& callback) {
+    auto fifolockfreeBuffer = std::static_pointer_cast<DataBuffer>(buffer);
+    ::arrus::framework::OnOverflowCallback actualCallback = [&]() {
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        try {
+            callback.run();
+        } catch(const std::exception &e) {
+            std::cerr << "Exception: " << e.what() << std::endl;
+        } catch(...) {
+            std::cerr << "Unhandled exception" << std::endl;
+        }
+        PyGILState_Release(gstate);
+    };
+    fifolockfreeBuffer->registerOnOverflowCallback(actualCallback);
+}
 %};
 
 // ------------------------------------------ SESSION
@@ -225,6 +249,7 @@ std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::sessi
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
@@ -244,8 +269,6 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/probe/Probe.h"
 
 
-
-
 %inline %{
 arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     auto ptr = dynamic_cast<Us4R*>(device);
@@ -254,7 +277,7 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     }
     return ptr;
 }
-// TODO(pjarosik) remote the bellow functions when possible
+// TODO(pjarosik) remove the bellow functions when possible
 
 unsigned short getNumberOfElements(const arrus::devices::ProbeModel &probe) {
     const auto &nElements = probe.getNumberOfElements();

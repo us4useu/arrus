@@ -35,7 +35,7 @@ public:
      * @param ordinal ordinal number of the us4oem to get
      * @return a handle to the us4oem module
      */
-    virtual Us4OEM::RawHandle getUs4OEM(Ordinal ordinal) = 0;
+    virtual Us4OEM* getUs4OEM(Ordinal ordinal) = 0;
 
     /**
      * Returns a handle to an adapter identified by given ordinal number.
