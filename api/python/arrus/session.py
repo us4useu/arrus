@@ -166,6 +166,7 @@ class Session(AbstractSession):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop_scheme()
+        self.close()
 
     def start_scheme(self):
         """
