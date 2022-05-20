@@ -106,6 +106,7 @@ class Us4RFactoryImpl : public Us4RFactory {
         for (unsigned i = 0; i < us4oemSettings.size(); ++i) {
             auto &setting = us4oemSettings[i];
             std::unordered_set<uint8> us4oemMask(std::begin(us4oemChannelsMasks[i]), std::end(us4oemChannelsMasks[i]));
+            
             ARRUS_REQUIRES_TRUE_E(
                 setting.getChannelsMask() == us4oemMask,
                 ::arrus::IllegalArgumentException(
