@@ -214,6 +214,7 @@ classdef Us4R < handle
             end
                 
             obj.setRecParams(...
+                'gridModeEnable', reconstructOperation.gridModeEnable, ...
                 'filterEnable', reconstructOperation.filterEnable, ...
                 'filterACoeff', reconstructOperation.filterACoeff, ...
                 'filterBCoeff', reconstructOperation.filterBCoeff, ...
@@ -568,7 +569,8 @@ classdef Us4R < handle
             %% Set reconstruction parameters
             % Reconstruction parameters names mapping
             %                    public name         private name
-            recParamMapping = { 'filterEnable',     'filtEnable'; ...
+            recParamMapping = { 'gridModeEnable',   'gridModeEnable'; ...
+                                'filterEnable',     'filtEnable'; ...
                                 'filterACoeff',     'filtA'; ...
                                 'filterBCoeff',     'filtB'; ...
                                 'filterDelay',      'filtDel'; ...
@@ -603,6 +605,23 @@ classdef Us4R < handle
                 obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
+            %% Manage undefined reconstruction mode
+            if isempty(obj.rec.gridModeEnable)
+                switch obj.seq.type
+                    case {"pwi","sta"}
+                        obj.rec.gridModeEnable = true;
+                    case "lin"
+                        obj.rec.gridModeEnable = false;
+                    case "custom"
+                        error("setRecParams: undefined reconstruction mode");
+                end
+            end
+            
+            %% Validate reconstruction if wedge interface is used
+            if obj.sys.interfEnable && ~obj.rec.gridModeEnable
+                error("setRecParams: only grid reconstruction is supported when wedge interface is used");
+            end
+            
             %% Default decimation
             if isempty(obj.rec.dec)
                 obj.rec.dec = round(obj.seq.rxSampFreq / obj.seq.txFreq);
@@ -624,7 +643,7 @@ classdef Us4R < handle
             %% If GPU is available...
             obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
             
-            if obj.rec.gpuEnable && ~strcmp(obj.seq.type,'lin')
+            if obj.rec.gpuEnable && obj.rec.gridModeEnable
                 % Add location of the CUDA kernels
                 addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
                 
@@ -1097,7 +1116,7 @@ classdef Us4R < handle
             % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
 
             %% Reconstruction
-            if strcmp(obj.seq.type,'lin')
+            if ~obj.rec.gridModeEnable
                 rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
             else
 %                 rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
@@ -1148,8 +1167,8 @@ classdef Us4R < handle
             % Envelope detection
             envImg = abs(rfBfr);
             
-            % Scan conversion (for 'lin' mode)
-            if strcmp(obj.seq.type,'lin')
+            % Scan conversion
+            if ~obj.rec.gridModeEnable
                 envImg = scanConversion(envImg,obj.sys,obj.seq,obj.rec);
                 
                 % Doppler is not implemented for 'lin' mode

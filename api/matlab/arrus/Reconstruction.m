@@ -1,6 +1,7 @@
 classdef Reconstruction < Operation
     % A reconstruction operation to perform in the system.
     %
+    % :param gridModeEnable: boolean, switches from line to grid reconstruction
     % :param filterEnable: boolean, enable filtering the input signal
     % :param filterACoeff: 1-D filter denominator coefficient
     % :param filterBCoeff: 1-D filter numerator coefficient
@@ -26,6 +27,7 @@ classdef Reconstruction < Operation
     % :param wcFiltInitSize: number of initial filter output samples to be rejected
     
     properties
+        gridModeEnable
         filterEnable = false
         filterACoeff
         filterBCoeff
