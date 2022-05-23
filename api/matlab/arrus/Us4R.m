@@ -601,6 +601,11 @@ classdef Us4R < handle
                 obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
+            %% Default decimation
+            if isempty(obj.rec.dec)
+                obj.rec.dec = round(obj.seq.rxSampFreq / obj.seq.txFreq);
+            end
+            
             %% Default bmodeFrames
             if obj.rec.bmodeEnable && isempty(obj.rec.bmodeFrames)
                 obj.rec.bmodeFrames = 1:obj.seq.nTx;
