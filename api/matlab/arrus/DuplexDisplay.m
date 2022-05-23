@@ -1,5 +1,27 @@
 classdef DuplexDisplay < handle
-
+    % A Duplex display.
+    %
+    % Currently is implemented as a simple MATLAB figure with dynamically
+    % updated content.
+    % 
+    % :param reconstructionObject: object of class "Reconstruction" \
+    %   (obligatory input unless old syntax is used)
+    % :param dynamicRange: two-element vector [min, max], dynamic range \
+    %   limits to apply (optional name-value argument)
+    % :param powerThreshold: power limit [dB] below which the color data \
+    %   is not displayed (scalar) (optional name-value argument)
+    % :param subplotEnable: enables separate display of Duplex, bmode, \
+    %   color, and power (logical scalar) (optional name-value argument)
+    % :param cineLoopLength: positive scalar, number of frames stored in \
+    %   cineloop (optional name-value argument)
+    % :param persistence: persistence filtration weights (vector) or \
+    %   length (scalar) (optional name-value argument)
+    % :param bmodeTgc: applies linear TGC equal to bmodeTgc[dB]/depth \
+    %   (scalar) (optional name-value argument)
+    % :param bmodeAutoTgcResp: applies linear TGC that adapts in time to \
+    %   the imaging conditions, defines the responsiveness of the \
+    %   adaptation, <0,1> (scalar) (optional name-value argument)
+    
     properties(Access = private)
         hFig
         hAx
@@ -9,16 +31,12 @@ classdef DuplexDisplay < handle
         zGrid
         colorEnable
         vectorEnable
-        showTimes
         dynamicRange
         powerThreshold
-        
         cineLoop
         cineLoopLength
         cineLoopIndex
-        
         persistence
-        
         bmodeTgc
         bmodeAutoTgcResp
     end
