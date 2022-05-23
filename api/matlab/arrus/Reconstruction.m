@@ -31,7 +31,7 @@ classdef Reconstruction < Operation
         filterBCoeff
         filterDelay = 0
         iqEnable = true
-        cicOrder
+        cicOrder = 2
         decimation
         xGrid
         zGrid
