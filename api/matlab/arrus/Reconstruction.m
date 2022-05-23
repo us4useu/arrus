@@ -26,11 +26,11 @@ classdef Reconstruction < Operation
     % :param wcFiltInitSize: number of initial filter output samples to be rejected
     
     properties
-        filterEnable
+        filterEnable = false
         filterACoeff
         filterBCoeff
         filterDelay = 0
-        iqEnable
+        iqEnable = true
         cicOrder
         decimation
         xGrid
