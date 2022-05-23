@@ -173,6 +173,8 @@ classdef Us4R < handle
                     sequenceType = "sta";
                 case "LINSequence"
                     sequenceType = "lin";
+                case 'SimpleTxRxSequence'
+                    sequenceType = "custom";
                 otherwise
                     error("ARRUS:IllegalArgument", ...
                         ['Unrecognized operation type ', class(sequenceOperation)])
@@ -519,7 +521,7 @@ classdef Us4R < handle
             end
             
             %% Validate sequence if wedge interface is used
-            if obj.sys.interfEnable && (~strcmp(obj.seq.type,"sta") || obj.seq.txApSize~=1)
+            if obj.sys.interfEnable && (~any(strcmp(obj.seq.type,{'sta','custom'})) || obj.seq.txApSize~=1)
                 error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
             end
             
