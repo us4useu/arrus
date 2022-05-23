@@ -455,6 +455,11 @@ classdef Us4R < handle
                 obj.seq.nSamp = diff(obj.seq.nSamp) + 1;
             end
             
+            %% Default txPri
+            if isempty(obj.seq.txPri)
+                obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 40e-6;
+            end
+            
             %% TGC
             distance = (round(400/obj.seq.fsDivider) : ...
                         round(150/obj.seq.fsDivider) : ...
