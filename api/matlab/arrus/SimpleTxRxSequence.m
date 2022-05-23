@@ -49,9 +49,9 @@ classdef SimpleTxRxSequence < Operation
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         nRepetitions (1,:) = 1
-        tgcStart (1,1)
-        tgcSlope (1,1)
         txPri (1,:) double {mustBePositive}
+        tgcStart (1,:)
+        tgcSlope (1,:)
         fsDivider(1,1) {mustBeInteger, mustBePositive, ...
             mustBeLessThan(fsDivider, 257)} = 1
         txInvert (1,1) {mustBeLogical} = 0

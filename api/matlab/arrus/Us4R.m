@@ -461,6 +461,14 @@ classdef Us4R < handle
             end
             
             %% TGC
+            % Default TGC
+            if isempty(obj.seq.tgcStart)
+                obj.seq.tgcStart = 14;
+            end
+            if isempty(obj.seq.tgcSlope)
+                obj.seq.tgcSlope = 2 * 0.5e2 * obj.seq.txFreq*1e-6;
+            end
+            
             distance = (round(400/obj.seq.fsDivider) : ...
                         round(150/obj.seq.fsDivider) : ...
                         (obj.seq.startSample + obj.seq.nSamp - 1)) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
