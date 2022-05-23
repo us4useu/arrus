@@ -171,7 +171,7 @@ classdef Us4R < handle
                     sequenceType = "pwi";
                 case 'STASequence'
                     sequenceType = "sta";
-                case "LINSequence"
+                case 'LINSequence'
                     sequenceType = "lin";
                 case 'SimpleTxRxSequence'
                     sequenceType = "custom";
@@ -399,8 +399,7 @@ classdef Us4R < handle
             %% Set sequence parameters
             % Sequence parameters names mapping
             %                    public name         private name
-            seqParamMapping = { 'sequenceType',     'type'
-                                % aperture
+            seqParamMapping = { 'sequenceType',     'type'; ...
                                 'txCenterElement',  'txCentElem'; ...
                                 'txApertureCenter', 'txApCent'; ...
                                 'txApertureSize',   'txApSize'; ...
