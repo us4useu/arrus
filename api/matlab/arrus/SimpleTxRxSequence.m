@@ -60,7 +60,7 @@ classdef SimpleTxRxSequence < Operation
     methods
         function obj = SimpleTxRxSequence(varargin)
             if mod(nargin, 2) == 1
-                error("Arrus:params", ...
+                error("ARRUS:params", ...
                       "Input should be a list of  'key', value params.");
             end
             for i = 1:2:nargin
@@ -132,7 +132,7 @@ function mustBeXor(obj,fieldNames)
     end
     
     if sum(fieldIsNonEmpty) ~= 1
-        error("Arrus:params", ...
+        error("ARRUS:params", ...
             ['One and only one of {' char(join(fieldNames,', ')) '} must be defined.'])
     end
 end

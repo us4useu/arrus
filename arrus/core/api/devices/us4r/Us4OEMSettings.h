@@ -9,7 +9,7 @@
 #include <unordered_set>
 
 #include "arrus/core/api/common/types.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "RxSettings.h"
 
 namespace arrus::devices {
 

@@ -9,14 +9,12 @@ classdef (Abstract = true) MexObject < handle
             obj.className = className;
             % Verify available mex file.
             % TODO(pjarosik) check if the version of mex file is the same as for version of this toolbox
-            obj.handle = arrus.arrus_mex_object_wrapper(obj.className, ...
-                                                        "create",  varargin{:});
+            obj.handle = arrus.arrus_mex_object_wrapper(obj.className, "create",  varargin{:});
         end
 
         function delete(obj)
             if ~isempty(obj.handle)
-                arrus.arrus_mex_object_wrapper(obj.className, "remove", ...
-                                               obj.handle);
+                arrus.arrus_mex_object_wrapper(obj.className, "remove", obj.handle);
             end
         end
     end
@@ -27,8 +25,7 @@ classdef (Abstract = true) MexObject < handle
             if isempty(obj.handle)
                 error("ARRUS:IllegalState", "Objects handle is not set.");
             end
-            res = arrus.arrus_mex_object_wrapper(obj.className, methodName, ...
-                                                 obj.handle, varargin{:});
+            res = arrus.arrus_mex_object_wrapper(obj.className, methodName, obj.handle, varargin{:});
         end
 
     end

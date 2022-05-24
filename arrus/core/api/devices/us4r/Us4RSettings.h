@@ -7,7 +7,7 @@
 
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "RxSettings.h"
 #include "arrus/core/api/devices/us4r/HVSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"

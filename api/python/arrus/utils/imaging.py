@@ -1870,7 +1870,7 @@ class ReconstructLri(Operation):
         tx_center_delay = tx_rx_params["tx_center_delay"]
 
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.imaging.get_aperture_center(tx_centers, probe_model)
-        tx_center_angles = tx_center_angles + seq.angles
+        tx_center_angles = tx_center_angles + seq.angle
         self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
         self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
         self.tx_ap_cent_z = self.num_pkg.asarray(tx_center_z, dtype=self.num_pkg.float32)
