@@ -42,4 +42,5 @@ message Us4RSettings {
     uint32 nus4oems = 12;
   }
   repeated uint32 adapter_to_us4r_module_nr = 13;
+  bool external_trigger = 14;
 }
