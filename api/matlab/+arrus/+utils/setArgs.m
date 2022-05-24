@@ -18,11 +18,10 @@ function obj = setArgs(obj, params, requiredParams)
     end
     params = convertStringsToChars(params);
     requiredParams = convertStringsToChars(requiredParams);
-    disp(size(params));
-    disp(requiredParams);
     keys = params(1:2:end);
-    keys = convertStringsToChars(keys);
-    disp(keys);
+    for i = 1:length(keys)
+        keys{i} = convertStringsToChars(keys{i});
+    end
     values = params(2:2:end);
     % NOTE: the below probably is not the most optimal way to check, if the required params
     % are in the provided list.
