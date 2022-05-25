@@ -1,5 +1,5 @@
-#ifndef ARRUS_API_MATLAB_WRAPPERS_MATLABOUTBUFFER_H
-#define ARRUS_API_MATLAB_WRAPPERS_MATLABOUTBUFFER_H
+#ifndef ARRUS_API_MATLAB_WRAPPERS_MATLABSTDOUTBUFFER_H
+#define ARRUS_API_MATLAB_WRAPPERS_MATLABSTDOUTBUFFER_H
 
 #include "mex.hpp"
 #include "mexAdapter.hpp"
@@ -8,9 +8,9 @@
 
 namespace arrus::matlab {
 
-class MatlabOutBuffer : public std::stringbuf {
+class MatlabStdoutBuffer : public std::stringbuf {
 public:
-    explicit MatlabOutBuffer(std::shared_ptr<::matlab::engine::MATLABEngine> matlabEngine)
+    explicit MatlabStdoutBuffer(std::shared_ptr<::matlab::engine::MATLABEngine> matlabEngine)
         : basic_stringbuf(std::ios_base::out), matlabEngine(std::move(matlabEngine)) {}
 
     int sync() override {
@@ -26,4 +26,4 @@ private:
 
 }// namespace arrus::matlab
 
-#endif//ARRUS_API_MATLAB_WRAPPERS_MATLABOUTBUFFER_H
+#endif//ARRUS_API_MATLAB_WRAPPERS_MATLABSTDOUTBUFFER_H

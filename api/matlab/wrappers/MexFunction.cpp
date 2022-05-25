@@ -1,14 +1,17 @@
 #include "MexFunction.h"
-#include "arrus/core/api/common/logging.h"
+
+#include <stdexcept>
 
 #include <boost/stacktrace.hpp>
 #include <fstream>
+
+#include "arrus/core/api/common/logging.h"
 
 #undef ERROR
 
 MexFunction::MexFunction() {
     mexLock();
-    managers.emplace("Session", new SessionWrapperManager(mexContext, "Session"));
+//    managers.emplace("Session", new SessionWrapperManager(ctx, "Session"));
 }
 
 MexFunction::~MexFunction() { mexUnlock(); }
@@ -21,55 +24,76 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
         MexObjectMethodId methodId = inputs[1][0];
 
         if (classId == "__global" && methodId == "setLogLevel") {
-            // The first call to MexFunction should set console log
-            // verbosity, or the default one will be used.
+            // The first call to MexFunction should set console log verbosity, or the default one will be used.
             arrus::LogSeverity sev = getLoggerSeverity(inputs);
             setConsoleLogIfNecessary(sev);
             return;
         }
-        setConsoleLogIfNecessary(arrus::LogSeverity::INFO);
+//        setConsoleLogIfNecessary(arrus::LogSeverity::INFO);
         // Other global functions.
         if (classId == "__global") {
             if (methodId == "addLogFile") {
-                ARRUS_REQUIRES_AT_LEAST(inputs.size(), 4,
-                                        "A path to the log file and "
-                                        "logging level are required.");
+                ARRUS_REQUIRES_AT_LEAST(inputs.size(), 4, "A path to the log file and logging level are required.");
                 std::string filepath = inputs[2][0];
                 arrus::LogSeverity level = convertToLogSeverity(inputs[3]);
                 std::shared_ptr<std::ostream> logFileStream =
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
                 this->logging->addTextSink(logFileStream, level);
-            } else {
+            } else if(methodId == "createExampleObject") {
+                auto frequencyKey = ctx->getArrayFactory().createScalar("centerFrequency");
+                auto frequency = ctx->getArrayFactory().createScalar<double>(5e6);
+                auto nPeriodsKey = ctx->getArrayFactory().createScalar("nPeriods");
+                auto nPeriods = ctx->getArrayFactory().createScalar<double>(2.5);
+                auto pulse = ctx->getMatlabEngine()->feval(u"arrus.ops.us4r.Pulse", 1, {frequencyKey, frequency, nPeriodsKey, nPeriods})[0];
+
+                auto apertureKey = ctx->getArrayFactory().createScalar("aperture");
+                auto aperture = ctx->getArrayFactory().createArray<bool>({1, 10});
+                auto delaysKey = ctx->getArrayFactory().createScalar("delays");
+                auto delays = ctx->getArrayFactory().createArray<bool>({1, 10});
+                auto pulseKey = ctx->getArrayFactory().createScalar("pulse");
+                auto tx = ctx->getMatlabEngine()->feval(u"arrus.ops.us4r.Tx", 1, {apertureKey, aperture, delaysKey, delays, pulseKey, pulse});
+                outputs[0] = tx[0];
+            }
+            else {
                 throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
             }
             return;
         }
 
+        // Class methods.
+        // Find appropriate class manager.
         ManagerPtr &manager = managers.at(classId);
 
         if (methodId == "create") {
+            // Constructor.
+            // Expected input arguments: classId, 'create', constructor parameters.
             ArgumentList args(inputs.begin() + 2, inputs.end(), inputs.size() - 2);
-            auto handle = manager->create(mexContext, args);
-            outputs[0] = mexContext->getArrayFactory().createScalar<MexObjectHandle>(handle);
+            auto handle = manager->create(ctx, args);
+            outputs[0] = ctx->getArrayFactory().createScalar<MexObjectHandle>(handle);
         } else {
+
             ARRUS_REQUIRES_AT_LEAST(inputs.size(), 3, "Object handle is missing.");
             MexObjectHandle handle = inputs[2][0];
-
             if (methodId == "remove") {
+                // Class destructor.
+                // Expected input arguments: classId, 'remove', object handle.
                 manager->remove(handle);
             } else {
+                // Any other method.
+                // Expected input arguments: classId, methodId, object handle, method parameters.
                 ArgumentList args(inputs.begin() + 3, inputs.end(), inputs.size() - 3);
 
                 auto &object = manager->getObject(handle);
                 outputs[0] = object->call(methodId, args);
             }
         }
-    }
-    catch (const ::arrus::IllegalArgumentException &e) {mexContext->raiseError("ARRUS:IllegalArgument", e.what());}
-    catch (const ::arrus::IllegalStateException &e) {mexContext->raiseError("ARRUS:IllegalState", e.what());}
-    catch (const ::arrus::TimeoutException &e) {mexContext->raiseError("ARRUS:Timeout", e.what());}
-    catch (const ::arrus::DeviceNotFoundException &e) {mexContext->raiseError("ARRUS:DeviceNotFound", e.what());}
-    catch (const std::exception &e) { mexContext->raiseError(e.what()); }
+    } catch (const ::arrus::IllegalArgumentException &e) {
+        ctx->raiseError("ARRUS:IllegalArgument", e.what());
+    } catch (const ::arrus::IllegalStateException &e) {
+        ctx->raiseError("ARRUS:IllegalState", e.what());
+    } catch (const ::arrus::TimeoutException &e) {
+        ctx->raiseError("ARRUS:Timeout", e.what());
+    } catch (const std::exception &e) { ctx->raiseError(e.what()); }
 }
 
 void MexFunction::setConsoleLogIfNecessary(const arrus::LogSeverity severity) {
@@ -78,7 +102,7 @@ void MexFunction::setConsoleLogIfNecessary(const arrus::LogSeverity severity) {
             this->logging = std::make_shared<arrus::Logging>();
             this->logging->addTextSink(this->matlabOstream, severity, true);
             arrus::Logger::SharedHandle defaultLogger = this->logging->getLogger();
-            this->mexContext->setDefaultLogger(defaultLogger);
+            this->ctx->setDefaultLogger(defaultLogger);
             arrus::setLoggerFactory(logging);
         } catch (const std::exception &e) {
             this->logging = nullptr;

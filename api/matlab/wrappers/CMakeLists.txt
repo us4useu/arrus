@@ -1,5 +1,7 @@
 set(TARGET_NAME arrus_mex_object_wrapper)
 
+message("Building mex with name ${TARGET_NAME}")
+
 ################################################################################
 # Target and dependencies
 ################################################################################
@@ -30,22 +32,23 @@ matlab_add_mex(
         MexFunction.h
         MexObjectManager.h
         MexObjectWrapper.h
-        session/SessionWrapper.h
-        session/convertSessionSettings.h
-        devices/convertDeviceId.h
-        devices/us4r/convertUs4RSettings.h
-        devices/us4r/convertUs4OEMSettings.h
-        devices/us4r/convertProbeAdapterSettings.h
-        devices/us4r/convertProbeAdapterModelId.h
-        devices/probe/convertProbeModel.h
-        devices/probe/convertProbeModelId.h
-        devices/probe/convertProbeSettings.h
-        devices/us4r/convertRxSettings.h
-        MatlabOutBuffer.h
+#        session/SessionWrapper.h
+#        session/convertSessionSettings.h
+#        devices/convertDeviceId.h
+#        devices/us4r/convertUs4RSettings.h
+#        devices/us4r/convertUs4OEMSettings.h
+#        devices/us4r/convertProbeAdapterSettings.h
+#        devices/us4r/convertProbeAdapterModelId.h
+#        devices/probe/convertProbeModel.h
+#        devices/probe/convertProbeModelId.h
+#        devices/probe/convertProbeSettings.h
+#        devices/us4r/convertRxSettings.h
+    MatlabStdoutBuffer.h
     LINK_TO
         arrus-core
         Boost::Boost
         fmt::fmt
+        Microsoft.GSL::GSL
 )
 ################################################################################
 # Include directories

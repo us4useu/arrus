@@ -5,7 +5,7 @@
 #include <string>
 #include <cmath>
 
-#include <common/compiler.h>
+#include <arrus/common/compiler.h>
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
 #pragma warning(disable: 4100 4189 4458 4702)
@@ -16,7 +16,7 @@ COMPILER_PUSH_DIAGNOSTIC_STATE
 COMPILER_POP_DIAGNOSTIC_STATE
 
 namespace arrus::matlab {
-    using MexObjectHandle = uint32_t;
+    using MexObjectHandle = size_t;
     using MexObjectMethodId = std::string;
     using MexObjectClassId = std::string;
 

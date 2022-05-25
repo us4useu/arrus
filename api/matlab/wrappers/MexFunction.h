@@ -10,10 +10,11 @@
 #include "api/matlab/wrappers/MexObjectManager.h"
 #include "api/matlab/wrappers/MexObjectWrapper.h"
 #include "api/matlab/wrappers/common.h"
-#include "api/matlab/wrappers/session/SessionWrapper.h"
+//#include "api/matlab/wrappers/session/SessionWrapper.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/compiler.h"
 #include "arrus/common/logging/impl/Logging.h"
+#include "MatlabStdoutBuffer.h"
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
 COMPILER_DISABLE_MSVC_WARNINGS(4100 4189 4458 4702)
@@ -45,10 +46,10 @@ private:
     std::unordered_map<MexObjectClassId, ManagerPtr> managers;
 
     std::shared_ptr<::matlab::engine::MATLABEngine> matlabEngine{getEngine()};
-    std::shared_ptr<MatlabOutBuffer> matlabOutBuffer{std::make_shared<MatlabOutBuffer>(matlabEngine)};
+    std::shared_ptr<MatlabStdoutBuffer> matlabOutBuffer{std::make_shared<MatlabStdoutBuffer>(matlabEngine)};
     std::shared_ptr<std::ostream> matlabOstream{std::make_shared<std::ostream>(matlabOutBuffer.get())};
     std::shared_ptr<arrus::Logging> logging;
-    std::shared_ptr<MexContext> mexContext{new MexContext(matlabEngine)};
+    std::shared_ptr<MexContext> ctx{new MexContext(matlabEngine)};
 
     void setConsoleLogIfNecessary(arrus::LogSeverity sev);
 

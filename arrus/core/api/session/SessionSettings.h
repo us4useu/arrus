@@ -30,7 +30,6 @@ public:
 
 private:
     std::vector<arrus::devices::Us4RSettings> us4Rs;
-    std::vector<arrus::devices::
 };
 
 class SessionSettingsBuilder {

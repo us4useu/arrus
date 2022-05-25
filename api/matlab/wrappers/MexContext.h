@@ -7,7 +7,8 @@
 #include "arrus/core/api/common/Logger.h"
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
-#pragma warning(disable : 4100 4189 4458 4702)
+#pragma warning(disable : 4100 4189 4458 4702) // MSVC
+
 
 #include <MatlabDataArray/ArrayFactory.hpp>
 #include <mex.hpp>
@@ -59,6 +60,7 @@ public:
         matlabEngine->feval(
             u"error", 0, std::vector<::matlab::data::Array>({factory.createScalar(errId), factory.createScalar(msg)}));
     };
+
 
 private:
     ::matlab::data::ArrayFactory factory;

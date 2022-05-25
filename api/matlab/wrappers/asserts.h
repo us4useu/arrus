@@ -6,7 +6,7 @@
 
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
-#include "arrus/api/matlab/wrappers/common.h"
+#include "api/matlab/wrappers/common.h"
 
 #define ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, n, methodName) \
     ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
