@@ -15,10 +15,10 @@
                 (methodName), (n), (inputs).size())))
 
 
-#define ARRUS_MATLAB_REQUIRES_SCALAR(array, msg)          \
+#define ARRUS_MATLAB_REQUIRES_SCALAR(array, arrayName)          \
 do {                                                      \
     if (!::arrus::matlab::isArrayScalar(array)) {         \
-        throw arrus::IllegalArgumentException(msg);       \
+        throw arrus::IllegalArgumentException(arrayName + " should be scalar.");       \
     }                                                     \
 } while(0)
 

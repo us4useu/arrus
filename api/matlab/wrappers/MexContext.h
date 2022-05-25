@@ -61,6 +61,15 @@ public:
             u"error", 0, std::vector<::matlab::data::Array>({factory.createScalar(errId), factory.createScalar(msg)}));
     };
 
+    ::matlab::data::Array createObject(const std::u16string &typeId, const std::vector<::matlab::data::Array> &params) {
+        return matlabEngine->feval(typeId, 1, params)[0];
+    }
+
+    template<typename T>
+    ::matlab::data::TypedArray<T> createScalar(const T& value) {
+        return getArrayFactory().createScalar(value);
+    }
+
 
 private:
     ::matlab::data::ArrayFactory factory;
