@@ -28,6 +28,7 @@ public:
     }
 
     static TxRxSequenceConverter from(const MexContext::SharedHandle &ctx, const TxRxSequence &object) {
+        std::cout << "Reading from core object" << std::endl;
         return TxRxSequenceConverter{ctx, object.getOps(), object.getTgcCurve(), object.getSri().value_or(NO_SRI)};
     }
 
@@ -44,6 +45,7 @@ public:
     }
 
     [[nodiscard]] ::matlab::data::Array toMatlab() const {
+        std::cout << "Converting to matlab" << std::endl;
         return ctx->createObject(MATLAB_FULL_NAME,
                                  {
                                      ARRUS_MATLAB_GET_MATLAB_OBJECT_VECTOR_KV(ctx, TxRx, TxRxConverter, ops),

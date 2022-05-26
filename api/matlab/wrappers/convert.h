@@ -363,13 +363,14 @@ template<typename T, typename Converter>
 template<typename T, typename Converter>
 ::matlab::data::Array getMatlabObjectVector(const MexContext::SharedHandle &ctx, const std::vector<T> &t) {
     ::matlab::data::ArrayDimensions dims{1, t.size()};
-    auto arr = ctx->getArrayFactory().createArray<::matlab::data::Object>(dims);
+    std::vector<::matlab::data::Object> objects;
     for(int i = 0; i < t.size(); ++i) {
         const auto &value = t[i];
-        ::matlab::data::ObjectArray objectArray = Converter::from(ctx, value).toMatlab();
-        arr[i] = objectArray[0];
+        ::matlab::data::ObjectArray arr = Converter::from(ctx, value).toMatlab();
+        ::matlab::data::Object object = arr[0];
+        objects.emplace_back(object);
     }
-    return arr;
+    return ctx->getArrayFactory().createArray(dims, std::begin(objects), std::end(objects));
 }
 
 #define ARRUS_MATLAB_GET_MATLAB_OBJECT(ctx, Type, Converter, value) getMatlabObject<Type, Converter>(ctx, value)
