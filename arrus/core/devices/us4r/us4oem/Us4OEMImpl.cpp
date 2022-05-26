@@ -116,8 +116,8 @@ void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer) {
 }
 
 void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) {
-    ius4oem->AfeDemodSetDecimationFactor(0, integer, quarters);
-    ius4oem->AfeDemodSetDecimationFactor(1, integer, quarters);
+    ius4oem->AfeDemodSetDecimationFactorQuarters(0, integer, quarters);
+    ius4oem->AfeDemodSetDecimationFactorQuarters(1, integer, quarters);
 }
 
 void Us4OEMImpl::setAfeDemodFrequency(double startFrequency) {
