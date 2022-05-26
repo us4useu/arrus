@@ -22,6 +22,7 @@ classdef Rx
         aperture (1, :) {arrus.validators.mustBeLogical}
         sampleRange (1, 2) {arrus.validators.mustBeAllNonnegativeInteger}
         decimationFactor (1, 1) {arrus.validators.mustBeAllPositiveInteger} = 1
+        padding (1, 2) {arrus.validators.mustBeAllNonnegativeInteger} = [0 0]
     end
 
     methods

@@ -1,12 +1,12 @@
-#include "MexFunction.h"
-
 #include <stdexcept>
+
+#include "MexFunction.h"
 
 #include <boost/stacktrace.hpp>
 #include <fstream>
 
 #include "arrus/core/api/common/logging.h"
-#include "api/matlab/wrappers/ops/us4r/TxConverter.h"
+#include "api/matlab/wrappers/ops/us4r/TxRxSequenceConverter.h"
 
 #undef ERROR
 
@@ -41,12 +41,28 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
                 this->logging->addTextSink(logFileStream, level);
             } else if(methodId == "createExampleObject") {
-                auto tx = ::arrus::matlab::ops::us4r::TxConverter::from(ctx, inputs[2]).toCore();
-                for(bool delay : tx.getAperture()) {
-                    std::string delayStr = delay ? "true" : "false";
-                    this->ctx->logInfo(delayStr + ", ");
+                auto seq = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, inputs[2]).toCore();
+                for(auto op : seq.getOps()) {
+                    std::cout << "TX: " << std::endl;
+                    std::cout << "Aperture: " << std::endl;
+                    for(bool v: op.getTx().getAperture()) {
+                        std::string vstr = v ? "true" : "false";
+                        std::cout << vstr << std::endl;
+                    }
+                    std::cout << "Delays: " << std::endl;
+                    for(bool v: op.getTx().getDelays()) {
+                        std::cout << v << std::endl;
+                    }
+                    std::cout << "Pulse: " << std::endl;
+                    std::cout << op.getTx().getExcitation().getNPeriods() << std::endl;
+                    std::cout << "RX: " << std::endl;
+                    std::cout << "Aperture: " << std::endl;
+                    for(bool v: op.getTx().getAperture()) {
+                        std::string vstr = v ? "true" : "false";
+                        std::cout << vstr << std::endl;
+                    }
                 }
-                outputs[0] = ::arrus::matlab::ops::us4r::TxConverter::from(ctx, tx).toMatlab();
+                outputs[0] = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, seq).toMatlab();
             }
             else {
                 throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
