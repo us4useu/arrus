@@ -16,7 +16,7 @@ using namespace ::arrus::matlab::converters;
 
 class PulseConverter {
 public:
-    inline static const std::u16string MATLAB_FULL_NAME = u"arrus.ops.us4r.Pulse";
+    inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.Pulse";
 
     static PulseConverter from(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object) {
         return PulseConverter{
@@ -42,9 +42,9 @@ public:
         return ctx->createObject(
             MATLAB_FULL_NAME,
             {
-                ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, float, centerFrequency),
-                ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, float, nPeriods),
-                ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, bool, inverse)
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, centerFrequency),
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, nPeriods),
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, bool, inverse)
             }
         );
     }

@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "arrus/core/api/common/logging.h"
+#include "api/matlab/wrappers/ops/us4r/TxConverter.h"
 
 #undef ERROR
 
@@ -40,19 +41,12 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
                 this->logging->addTextSink(logFileStream, level);
             } else if(methodId == "createExampleObject") {
-                auto frequencyKey = ctx->getArrayFactory().createScalar("centerFrequency");
-                auto frequency = ctx->getArrayFactory().createScalar<double>(5e6);
-                auto nPeriodsKey = ctx->getArrayFactory().createScalar("nPeriods");
-                auto nPeriods = ctx->getArrayFactory().createScalar<double>(2.5);
-                auto pulse = ctx->getMatlabEngine()->feval(u"arrus.ops.us4r.Pulse", 1, {frequencyKey, frequency, nPeriodsKey, nPeriods})[0];
-
-                auto apertureKey = ctx->getArrayFactory().createScalar("aperture");
-                auto aperture = ctx->getArrayFactory().createArray<bool>({1, 10});
-                auto delaysKey = ctx->getArrayFactory().createScalar("delays");
-                auto delays = ctx->getArrayFactory().createArray<bool>({1, 10});
-                auto pulseKey = ctx->getArrayFactory().createScalar("pulse");
-                auto tx = ctx->getMatlabEngine()->feval(u"arrus.ops.us4r.Tx", 1, {apertureKey, aperture, delaysKey, delays, pulseKey, pulse});
-                outputs[0] = tx[0];
+                auto tx = ::arrus::matlab::ops::us4r::TxConverter::from(ctx, inputs[2]).toCore();
+                for(bool delay : tx.getAperture()) {
+                    std::string delayStr = delay ? "true" : "false";
+                    this->ctx->logInfo(delayStr + ", ");
+                }
+                outputs[0] = ::arrus::matlab::ops::us4r::TxConverter::from(ctx, tx).toMatlab();
             }
             else {
                 throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
