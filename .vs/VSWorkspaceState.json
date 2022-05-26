@@ -5,8 +5,13 @@
     "\\arrus",
     "\\arrus\\cfg",
     "\\arrus\\core",
-    "\\arrus\\core\\examples"
+    "\\arrus\\core\\devices\\us4r",
+    "\\arrus\\core\\devices\\us4r\\external",
+    "\\arrus\\core\\devices\\us4r\\external\\ius4oem",
+    "\\arrus\\core\\devices\\us4r\\us4oem",
+    "\\arrus\\core\\examples",
+    "\\cmake"
   ],
-  "SelectedNode": "\\arrus\\core\\examples\\AfeDDCExample.cpp",
+  "SelectedNode": "\\arrus\\core\\session",
   "PreviewInSolutionExplorer": false
 }
