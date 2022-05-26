@@ -64,7 +64,7 @@ int main() noexcept {
 
         Pulse pulse(8.125e6, 2, false);
 		// with the hardware decimation turned on proper rx data starts at sample 98.
-        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{ 98, 8192+98 };
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{ 0, 8192 };
 
         std::vector<TxRx> txrxs;
 
@@ -244,6 +244,27 @@ int main() noexcept {
             }
             case DemodDef:
             {
+                //reconfig sample range
+
+                sampleRange.first = ((4 * 16) + 34);
+                sampleRange.second = ((4 * 16) + 34 + 8192);
+
+
+                for (int i = 0; i < 1; ++i) {
+                    // NOTE: the below vector should have size == probe number of elements.
+                    // This probably will be modified in the future
+                    // (delays only for active tx elements will be needed).
+                    std::vector<float> delays(nElements, 0.0f);
+                    arrus::BitMask txAperture(nElements, true);
+                    txrxs.emplace_back(Tx(txAperture, delays, pulse),
+                        Rx(rxAperture, sampleRange),
+                        1000e-6f);
+                }
+
+                TxRxSequence seq(txrxs, {});
+                Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
+                result = session->upload(scheme);
+
                 //us4r->getUs4OEM(0)->setAfeDemodDefault();
                 for (uint8_t n = 0; n < nOEMS; n++) {
                     us4r->getUs4OEM(n)->setAfeDemodDefault();
@@ -271,6 +292,27 @@ int main() noexcept {
                 }
 
                 if (quarters == 0) {
+
+                    //reconfig sample range
+
+                    sampleRange.first = ((integer*16) + 34);
+                    sampleRange.second = ((integer * 16) + 34 + 8192);
+
+                    for (int i = 0; i < 1; ++i) {
+                        // NOTE: the below vector should have size == probe number of elements.
+                        // This probably will be modified in the future
+                        // (delays only for active tx elements will be needed).
+                        std::vector<float> delays(nElements, 0.0f);
+                        arrus::BitMask txAperture(nElements, true);
+                        txrxs.emplace_back(Tx(txAperture, delays, pulse),
+                            Rx(rxAperture, sampleRange),
+                            1000e-6f);
+                    }
+
+                    TxRxSequence seq(txrxs, {});
+                    Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
+                    result = session->upload(scheme);
+
                     for (uint8_t n = 0; n < nOEMS; n++) {
                         us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(static_cast<uint16_t>(integer));
                     }
