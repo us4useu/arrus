@@ -18,25 +18,25 @@ using namespace ::arrus::matlab::converters;
 class TxRxSequenceConverter {
 public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.TxRxSequence";
+    constexpr static const float NO_SRI = 0.0f;
 
     static TxRxSequenceConverter from(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object) {
         return TxRxSequenceConverter{ctx,
-                                     ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, TxRx, TxRxConverter, txrxs, object),
+                                     ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, TxRx, TxRxConverter, ops, object),
                                      ARRUS_MATLAB_GET_CPP_VECTOR(ctx, float, tgcCurve, object),
                                      ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, sri, object)};
     }
 
     static TxRxSequenceConverter from(const MexContext::SharedHandle &ctx, const TxRxSequence &object) {
-        return TxRxSequenceConverter{ctx, object.getOps(), object.getTgcCurve(), object.getSri()};
+        return TxRxSequenceConverter{ctx, object.getOps(), object.getTgcCurve(), object.getSri().value_or(NO_SRI)};
     }
 
-    TxRxSequenceConverter(MexContext::SharedHandle ctx, std::vector<TxRx> ops, TGCCurve tgcCurve,
-                          std::optional<float> sri)
-        : ctx(std::move(ctx)), ops(std::move(ops)), tgcCurve(std::move(tgcCurve)), sri(std::move(sri)) {}
+    TxRxSequenceConverter(MexContext::SharedHandle ctx, std::vector<TxRx> ops, TGCCurve tgcCurve, float sri)
+        : ctx(std::move(ctx)), ops(std::move(ops)), tgcCurve(std::move(tgcCurve)), sri(sri) {}
 
     [[nodiscard]] ::arrus::ops::us4r::TxRxSequence toCore() const {
         float actualSri = TxRxSequence::NO_SRI;
-        if(sri != 0) {
+        if(sri != NO_SRI) {
             // In matlab SRI == 0 is the default value, to not use the SRI.
             actualSri = sri;
         }

@@ -35,8 +35,8 @@ bool isMatlabRealNumeric(ArrayType type) {
 bool isMatlabString(ArrayType type) { return type == ArrayType::MATLAB_STRING; }
 
 ::matlab::data::Array getMatlabProperty(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
-                                        const std::string &propertyName) {
-    return ctx->getMatlabEngine()->getProperty(object, propertyName);
+                                        const std::string &propertyName, size_t index = 0) {
+    return ctx->getMatlabEngine()->getProperty(object, index, propertyName);
 }
 
 template<typename T> T safeCast(const ::matlab::data::Array &arr, const size_t i) { return T(arr[i]); }
@@ -281,10 +281,10 @@ template<typename T, typename Converter>
 std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
                                   const std::string &property) {
     try {
-        ::matlab::data::ObjectArray arr = getMatlabProperty(ctx, object, property);
-        std::vector<T> result(arr.getNumberOfElements());
-        for(size_t i = 0; i < arr.getNumberOfElements(); ++i) {
-            result.emplace_back(Converter::from(ctx, arr[i]).toCore());
+        std::vector<T> result;
+        for(size_t i = 0; i < object.getNumberOfElements(); ++i) {
+            ::matlab::data::ObjectArray arr = getMatlabProperty(ctx, object, property, i);
+            result.emplace_back(Converter::from(ctx, arr).toCore());
         }
         return result;
     } catch (const std::exception &e) {
@@ -295,7 +295,7 @@ std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const ::m
 
 template<typename T, typename Converter>
 T getCppObject(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object, const std::string &property) {
-    return getCppObjectVector<T, Converter>(ctx, object, property);
+    return getCppObjectVector<T, Converter>(ctx, object, property)[0];
 }
 
 #define ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Type, Converter, field, array)                                                \
@@ -328,7 +328,7 @@ template<typename T>
 template<typename T>
 ::matlab::data::TypedArray<T> getMatlabVector(const MexContext::SharedHandle &ctx, std::pair<T, T> values) {
     std::vector<T> vec = {values.first, values.second};
-    return ctx->createVector<T>(values);
+    return ctx->createVector<T>(vec);
 }
 
 #define ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, type, value) getMatlabVector<type>(ctx, value)
@@ -347,7 +347,9 @@ template<typename T, typename Converter>
     ::matlab::data::ArrayDimensions dims{1, t.size()};
     auto arr = ctx->getArrayFactory().createArray<::matlab::data::Object>(dims);
     for(int i = 0; i < t.size(); ++i) {
-        arr[i] = Converter::from(ctx, t).toMatlab()[0];
+        const auto &value = t[i];
+        ::matlab::data::ObjectArray objectArray = Converter::from(ctx, value).toMatlab();
+        arr[i] = objectArray[0];
     }
     return arr;
 }

@@ -12,7 +12,7 @@ classdef Rx
     % :param aperture: logical mask where 0 and 1 corresponds to active and inactive element respectively. Required.
     % :param sampleRange: two-element vector determining sample range to acqure [first, last] (closed interval).
     %   NOTE: zero-based numbering applies here. Required.
-    % :param decimationFactor: subsampling factor, starts from 1. One means no subsampling, 2 - skip every
+    % :param downsamplingFactor: subsampling factor, starts from 1. One means no subsampling, 2 - skip every
     %   2nd sample, 3 - skip every 3rd sample, etc. Optional, 1 is default.
     properties(Constant, Hidden=true)
         REQUIRED_PARAMS = {'aperture', 'sampleRange'};
@@ -21,7 +21,7 @@ classdef Rx
     properties
         aperture (1, :) {arrus.validators.mustBeLogical}
         sampleRange (1, 2) {arrus.validators.mustBeAllNonnegativeInteger}
-        decimationFactor (1, 1) {arrus.validators.mustBeAllPositiveInteger} = 1
+        downsamplingFactor (1, 1) {arrus.validators.mustBeAllPositiveInteger} = 1
         padding (1, 2) {arrus.validators.mustBeAllNonnegativeInteger} = [0 0]
     end
 

@@ -42,6 +42,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 this->logging->addTextSink(logFileStream, level);
             } else if(methodId == "createExampleObject") {
                 auto seq = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, inputs[2]).toCore();
+                std::cout << "number of ops: " << seq.getOps().size() << std::endl;
                 for(auto op : seq.getOps()) {
                     std::cout << "TX: " << std::endl;
                     std::cout << "Aperture: " << std::endl;
@@ -62,7 +63,10 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                         std::cout << vstr << std::endl;
                     }
                 }
+                std::cout << "Properly read the input parameters!" << std::endl;
+                std::cout << "Now saving all that to MATLAB objects." << std::endl;
                 outputs[0] = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, seq).toMatlab();
+                std::cout << "Properly saved to MATLAB!" << std::endl;
             }
             else {
                 throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
