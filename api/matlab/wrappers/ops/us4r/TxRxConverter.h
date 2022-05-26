@@ -20,10 +20,12 @@ class TxRxConverter {
 public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.TxRx";
 
-    static TxRxConverter from(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object) {
-        return TxRxConverter{ctx, ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Tx, TxConverter, tx, object),
+    static TxRxConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
+        return TxRxConverter{ctx,
+                             ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Tx, TxConverter, tx, object),
                              ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Rx, RxConverter, rx, object),
-                             ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, pri, object)};
+                             ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, pri, object)
+        };
     }
 
     static TxRxConverter from(const MexContext::SharedHandle &ctx, const TxRx &object) {

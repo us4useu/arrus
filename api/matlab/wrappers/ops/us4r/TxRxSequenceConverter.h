@@ -20,7 +20,7 @@ public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.TxRxSequence";
     constexpr static const float NO_SRI = 0.0f;
 
-    static TxRxSequenceConverter from(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object) {
+    static TxRxSequenceConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
         return TxRxSequenceConverter{ctx,
                                      ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, TxRx, TxRxConverter, ops, object),
                                      ARRUS_MATLAB_GET_CPP_VECTOR(ctx, float, tgcCurve, object),

@@ -41,7 +41,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
                 this->logging->addTextSink(logFileStream, level);
             } else if(methodId == "createExampleObject") {
-                auto seq = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, inputs[2]).toCore();
+                auto seq = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]}).toCore();
                 std::cout << "number of ops: " << seq.getOps().size() << std::endl;
                 for(auto op : seq.getOps()) {
                     std::cout << "TX: " << std::endl;
@@ -51,14 +51,14 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                         std::cout << vstr << std::endl;
                     }
                     std::cout << "Delays: " << std::endl;
-                    for(bool v: op.getTx().getDelays()) {
+                    for(float v: op.getTx().getDelays()) {
                         std::cout << v << std::endl;
                     }
                     std::cout << "Pulse: " << std::endl;
                     std::cout << op.getTx().getExcitation().getNPeriods() << std::endl;
                     std::cout << "RX: " << std::endl;
                     std::cout << "Aperture: " << std::endl;
-                    for(bool v: op.getTx().getAperture()) {
+                    for(bool v: op.getRx().getAperture()) {
                         std::string vstr = v ? "true" : "false";
                         std::cout << vstr << std::endl;
                     }

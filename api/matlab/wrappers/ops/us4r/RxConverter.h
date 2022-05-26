@@ -19,7 +19,7 @@ class RxConverter {
 public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.Rx";
 
-    static RxConverter from(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object) {
+    static RxConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
         return RxConverter{ctx, ARRUS_MATLAB_GET_CPP_VECTOR(ctx, bool, aperture, object),
                            ARRUS_MATLAB_GET_CPP_PAIR(ctx, uint32_t, sampleRange, object),
                            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, uint32_t, downsamplingFactor, object),

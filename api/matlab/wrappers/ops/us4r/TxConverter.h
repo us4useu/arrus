@@ -19,7 +19,7 @@ class TxConverter {
 public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.Tx";
 
-    static TxConverter from(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object) {
+    static TxConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
         return TxConverter{
             ctx,
             ARRUS_MATLAB_GET_CPP_VECTOR(ctx, bool, aperture, object),

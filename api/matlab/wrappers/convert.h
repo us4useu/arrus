@@ -16,6 +16,22 @@ namespace arrus::matlab::converters {
 
 // Utility functions.
 
+/**
+ * A pair: MATLAB array, index.
+ * This pair provides the possibility to read property of a particular object array element.
+ * This is because the only way to get i-th object's property from an array of objects is to use:
+ * matlab::data::Array getProperty(const matlab::data::Array &objectArray,
+ * size_t index,
+ * const matlab::engine::String &propertyName)
+ */
+struct MatlabElementRef {
+    MatlabElementRef(const ::matlab::data::Array &array, size_t i) : array(array), i(i) {}
+    explicit MatlabElementRef(const ::matlab::data::Array &array): array(array), i(0) {}
+
+    ::matlab::data::Array array;
+    size_t i;
+};
+
 using ::matlab::data::ArrayType;
 
 bool isMatlabLogical(ArrayType type) { return type == ArrayType::LOGICAL; }
@@ -34,9 +50,9 @@ bool isMatlabRealNumeric(ArrayType type) {
 
 bool isMatlabString(ArrayType type) { return type == ArrayType::MATLAB_STRING; }
 
-::matlab::data::Array getMatlabProperty(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
-                                        const std::string &propertyName, size_t index = 0) {
-    return ctx->getMatlabEngine()->getProperty(object, index, propertyName);
+::matlab::data::Array getMatlabProperty(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
+                                        const std::string &propertyName) {
+    return ctx->getMatlabEngine()->getProperty(object.array, object.i, propertyName);
 }
 
 template<typename T> T safeCast(const ::matlab::data::Array &arr, const size_t i) { return T(arr[i]); }
@@ -151,7 +167,7 @@ std::string convertToCppScalar<std::string>(const ::matlab::data::Array &array, 
  * @return C++ value
  */
 template<typename T>
-T getCppScalar(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
+T getCppScalar(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
                const std::string &propertyName) {
     try {
         ::matlab::data::Array arr = getMatlabProperty(ctx, object, propertyName);
@@ -177,7 +193,7 @@ T getCppScalar(const MexContext::SharedHandle &ctx, const ::matlab::data::Array 
  * @return C++ value or std::nullopt if the given property was an empty array
  */
 template<typename T>
-std::optional<T> getCppOptionalScalar(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
+std::optional<T> getCppOptionalScalar(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
                                       const std::string &propertyName) {
     try {
         ::matlab::data::Array arr = getMatlabProperty(ctx, object, propertyName);
@@ -207,7 +223,7 @@ std::optional<T> getCppOptionalScalar(const MexContext::SharedHandle &ctx, const
  * @return C++ value
  */
 template<typename T>
-T getCppRequiredScalar(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
+T getCppRequiredScalar(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
                        const std::string &propertyName) {
     try {
         ::matlab::data::Array arr = getMatlabProperty(ctx, object, propertyName);
@@ -248,7 +264,7 @@ template<typename T> std::vector<T> convertToCppVector(const ::matlab::data::Arr
 }
 
 template<typename T>
-std::vector<T> getCppVector(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
+std::vector<T> getCppVector(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
                             const std::string &propertyName) {
     try {
         ::matlab::data::Array arr = getMatlabProperty(ctx, object, propertyName);
@@ -263,7 +279,7 @@ std::vector<T> getCppVector(const MexContext::SharedHandle &ctx, const ::matlab:
 #define ARRUS_MATLAB_GET_CPP_VECTOR(ctx, type, field, array) getCppVector<type>(ctx, array, #field)
 
 template<typename T>
-std::pair<T, T> getCppPair(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
+std::pair<T, T> getCppPair(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
                            const std::string &propertyName) {
     std::vector<T> vec = getCppVector<T>(ctx, object, propertyName);
     if (vec.size() != 2) {
@@ -278,13 +294,15 @@ std::pair<T, T> getCppPair(const MexContext::SharedHandle &ctx, const ::matlab::
 
 // MATLAB OBJECT -> C++ object
 template<typename T, typename Converter>
-std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object,
+std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
                                   const std::string &property) {
     try {
         std::vector<T> result;
-        for(size_t i = 0; i < object.getNumberOfElements(); ++i) {
-            ::matlab::data::ObjectArray arr = getMatlabProperty(ctx, object, property, i);
-            result.emplace_back(Converter::from(ctx, arr).toCore());
+        // e.g. seq -> ops: an array of ops
+        ::matlab::data::ObjectArray objArray = getMatlabProperty(ctx, object, property);
+        for(size_t i = 0; i < objArray.getNumberOfElements(); ++i) {
+            MatlabElementRef ref{objArray, i};
+            result.emplace_back(Converter::from(ctx, ref).toCore());
         }
         return result;
     } catch (const std::exception &e) {
@@ -294,7 +312,7 @@ std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const ::m
 }
 
 template<typename T, typename Converter>
-T getCppObject(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object, const std::string &property) {
+T getCppObject(const MexContext::SharedHandle &ctx, const MatlabElementRef &object, const std::string &property) {
     return getCppObjectVector<T, Converter>(ctx, object, property)[0];
 }
 

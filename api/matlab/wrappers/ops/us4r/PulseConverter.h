@@ -18,7 +18,7 @@ class PulseConverter {
 public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.Pulse";
 
-    static PulseConverter from(const MexContext::SharedHandle &ctx, const ::matlab::data::Array &object) {
+    static PulseConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
         return PulseConverter{
             ctx,
             ARRUS_MATLAB_GET_CPP_REQUIRED_SCALAR(ctx, float, centerFrequency, object),
