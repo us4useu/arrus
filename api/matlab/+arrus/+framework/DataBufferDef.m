@@ -4,7 +4,7 @@ classdef DataBufferDef
     % :param bufferType: buffer type, currently available values: FIFO
     % :param nElements: number of elements the buffer should contain
     properties
-        bufferType (1, 1) {mustBeStringScalar} = "FIFO"
+        type (1, 1) {mustBeStringScalar} = "FIFO"
         nElements (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 2
     end
 end

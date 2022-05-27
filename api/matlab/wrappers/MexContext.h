@@ -88,6 +88,15 @@ public:
         }
     }
 
+    ::matlab::data::TypedArray<::matlab::data::MATLABString> createScalarString(const ::std::string &v) {
+        try {
+            return getArrayFactory().createScalar(v);
+        } catch (const std::exception &e) {
+            throw ::arrus::IllegalArgumentException(
+                ::arrus::format("Exception while creating scalar string array: {}", e.what()));
+        }
+    }
+
     template<typename T>::matlab::data::TypedArray<T> createVector(const std::vector<T> &value) {
         try {
             ::matlab::data::ArrayDimensions dimensions = {1, value.size()};

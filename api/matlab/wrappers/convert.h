@@ -332,10 +332,19 @@ template<typename T>::matlab::data::TypedArray<T> getMatlabScalar(const MexConte
     return ctx->createScalarString(::matlab::data::MATLABString{value});
 }
 
+::matlab::data::TypedArray<::matlab::data::MATLABString> getMatlabString(const MexContext::SharedHandle &ctx,
+                                                                         const std::string &str) {
+    return ctx->createScalarString(str);
+}
+
 #define ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, type, value) getMatlabScalar<type>(ctx, value)
 // Creates pair: key, value, key will be determined by value keyword.
 #define ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, type, value)                                                            \
     getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, type, value)
+
+#define ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value) getMatlabString(ctx, value)
+#define ARRUS_MATLAB_GET_MATLAB_STRING_KV(ctx, value)                                                            \
+    getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value)
 
 // C++ std::vector/pair -> MATLAB ARRAY
 template<typename T>
