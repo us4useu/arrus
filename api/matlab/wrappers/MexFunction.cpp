@@ -6,7 +6,7 @@
 #include <fstream>
 
 #include "arrus/core/api/common/logging.h"
-#include "api/matlab/wrappers/ops/us4r/TxRxSequenceConverter.h"
+#include "api/matlab/wrappers/ops/us4r/SchemeConverter.h"
 
 #undef ERROR
 
@@ -41,7 +41,15 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
                 this->logging->addTextSink(logFileStream, level);
             } else if(methodId == "createExampleObject") {
-                auto seq = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]}).toCore();
+                auto scheme = ::arrus::matlab::ops::us4r::SchemeConverter::from(ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]}).toCore();
+                std::cout << "Scheme: " << std::endl;
+                std::cout << "Work mode: " << (size_t)scheme.getWorkMode() << std::endl;
+                std::cout << "Rx buffer: " << std::endl;
+                std::cout << "size: " << scheme.getRxBufferSize() << std::endl;
+                std::cout << "Host buffer: " << std::endl;
+                std::cout << "size: " << scheme.getOutputBuffer().getNumberOfElements() << std::endl;
+                std::cout << "type: " << (size_t)scheme.getOutputBuffer().getType() << std::endl;
+                auto seq = scheme.getTxRxSequence();
                 std::cout << "number of ops: " << seq.getOps().size() << std::endl;
                 for(auto op : seq.getOps()) {
                     std::cout << "TX: " << std::endl;
@@ -65,7 +73,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 }
                 std::cout << "Properly read the input parameters!" << std::endl;
                 std::cout << "Now saving all that to MATLAB objects." << std::endl;
-                outputs[0] = ::arrus::matlab::ops::us4r::TxRxSequenceConverter::from(ctx, seq).toMatlab();
+                outputs[0] = ::arrus::matlab::ops::us4r::SchemeConverter::from(ctx, scheme).toMatlab();
                 std::cout << "Properly saved to MATLAB!" << std::endl;
             }
             else {

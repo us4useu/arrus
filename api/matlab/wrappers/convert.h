@@ -101,7 +101,9 @@ template<> int64_t safeCast<int64_t>(const ::matlab::data::Array &arr, const siz
 }
 
 // MATLAB ARRAY -> SCALAR C++ VALUE
-std::string convertToString(const ::matlab::data::CharArray &charArray) { return charArray.toAscii(); }
+std::string convertToString(const ::matlab::data::StringArray &stringArray) {
+    return stringArray[0];
+}
 
 // Functions that allow to verify, if the array data type is compatible with the expected (compile-time) type.
 
@@ -154,7 +156,8 @@ template<typename T> T convertToCppScalar(const ::matlab::data::Array &array, co
 // convertToCppScalar specializations
 template<>
 std::string convertToCppScalar<std::string>(const ::matlab::data::Array &array, const std::string &arrayName) {
-    return convertToString(array);
+    std::string result = convertToString(array);
+    return result;
 }
 
 /**
@@ -343,6 +346,8 @@ template<typename T>::matlab::data::TypedArray<T> getMatlabScalar(const MexConte
     getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, type, value)
 
 #define ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value) getMatlabString(ctx, value)
+#define ARRUS_MATLAB_GET_MATLAB_STRING_KV_EXPLICIT(ctx, key, value)                                                            \
+    getMatlabString(ctx, key), ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value)
 #define ARRUS_MATLAB_GET_MATLAB_STRING_KV(ctx, value)                                                            \
     getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value)
 

@@ -20,14 +20,16 @@ using namespace ::arrus::matlab::converters;
 class SchemeConverter {
 public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.Scheme";
+    typedef boost::bimap<std::string, Scheme::WorkMode> enummap;
+    typedef enummap::value_type enummapElement;
 
-    static boost::bimap<std::string, Scheme::WorkMode> &getWorkModeEnumMap() {
-        static boost::bimap<std::string, Scheme::WorkMode> strToEnum;
+    static enummap &getWorkModeEnumMap() {
+        static enummap strToEnum;
         // NOTE: thread unsafe
         if (strToEnum.empty()) {
-            strToEnum.left["ASYNC"] = Scheme::WorkMode::ASYNC;
-            strToEnum.left["HOST"] = Scheme::WorkMode::HOST;
-            strToEnum.left["MANUAL"] = Scheme::WorkMode::MANUAL;
+            strToEnum.insert(enummapElement{"ASYNC", Scheme::WorkMode::ASYNC});
+            strToEnum.insert(enummapElement{"HOST", Scheme::WorkMode::HOST});
+            strToEnum.insert(enummapElement{"MANUAL", Scheme::WorkMode::MANUAL});
         }
         return strToEnum;
     }
@@ -74,7 +76,7 @@ public:
             {ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, TxRxSequence, TxRxSequenceConverter, txRxSequence),
              ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, uint16_t, rxBufferSize),
              ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, framework::DataBufferSpec, ::arrus::matlab::framework::DataBufferDefConverter, outputBuffer),
-             ARRUS_MATLAB_GET_MATLAB_STRING_KV(ctx, SchemeConverter::getWorkModeStr(workMode))
+             ARRUS_MATLAB_GET_MATLAB_STRING_KV_EXPLICIT(ctx, u"workMode", SchemeConverter::getWorkModeStr(workMode))
             });
     }
 
