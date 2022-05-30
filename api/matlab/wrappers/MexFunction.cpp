@@ -7,12 +7,13 @@
 
 #include "arrus/core/api/common/logging.h"
 #include "api/matlab/wrappers/ops/us4r/SchemeConverter.h"
+#include "api/matlab/wrappers/session/SessionClassImpl.h"
 
 #undef ERROR
 
 MexFunction::MexFunction() {
     mexLock();
-//    managers.emplace("Session", new SessionWrapperManager(ctx, "Session"));
+    addClass(std::make_unique<arrus::matlab::SessionClassImpl>(ctx));
 }
 
 MexFunction::~MexFunction() { mexUnlock(); }
@@ -21,8 +22,8 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
     try {
         ARRUS_REQUIRES_AT_LEAST(inputs.size(), 2, "The class and method name are missing.");
 
-        MexObjectClassId classId = inputs[0][0];
-        MexObjectMethodId methodId = inputs[1][0];
+        MatlabClassId classId = inputs[0][0];
+        MatlabMethodId methodId = inputs[1][0];
 
         if (classId == "__global" && methodId == "setLogLevel") {
             // The first call to MexFunction should set console log verbosity, or the default one will be used.
@@ -84,18 +85,18 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
 
         // Class methods.
         // Find appropriate class manager.
-        ManagerPtr &manager = managers.at(classId);
+        MatlabClassImpl &manager = classes.at(classId);
 
         if (methodId == "create") {
             // Constructor.
             // Expected input arguments: classId, 'create', constructor parameters.
             ArgumentList args(inputs.begin() + 2, inputs.end(), inputs.size() - 2);
             auto handle = manager->create(ctx, args);
-            outputs[0] = ctx->getArrayFactory().createScalar<MexObjectHandle>(handle);
+            outputs[0] = ctx->getArrayFactory().createScalar<MatlabObjectHandle>(handle);
         } else {
 
             ARRUS_REQUIRES_AT_LEAST(inputs.size(), 3, "Object handle is missing.");
-            MexObjectHandle handle = inputs[2][0];
+            MatlabObjectHandle handle = inputs[2][0];
             if (methodId == "remove") {
                 // Class destructor.
                 // Expected input arguments: classId, 'remove', object handle.
@@ -155,4 +156,8 @@ arrus::LogSeverity MexFunction::convertToLogSeverity(const ::matlab::data::Array
     } else {
         throw arrus::IllegalArgumentException(arrus::format("Unknown severity level: {}", severity));
     }
+}
+
+void MexFunction::addClass(std::unique_ptr<MatlabClassImpl> cls) {
+    classes.emplace(cls->getClassId(), std::move(cls));
 }

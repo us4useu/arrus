@@ -7,10 +7,10 @@
 #include <unordered_map>
 
 #include "api/matlab/wrappers/MexContext.h"
-#include "api/matlab/wrappers/MexObjectManager.h"
-#include "api/matlab/wrappers/MexObjectWrapper.h"
+#include "api/matlab/wrappers/MatlabClassImpl.h"
+#include "api/matlab/wrappers/Ptr.h"
 #include "api/matlab/wrappers/common.h"
-//#include "api/matlab/wrappers/session/SessionWrapper.h"
+//#include "api/matlab/wrappers/session/SessionClassImpl.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/compiler.h"
 #include "arrus/common/logging/impl/Logging.h"
@@ -42,8 +42,8 @@ public:
     void operator()(matlab::mex::ArgumentList outputs, matlab::mex::ArgumentList inputs) override;
 
 private:
-    using ManagerPtr = std::unique_ptr<MexObjectManager>;
-    std::unordered_map<MexObjectClassId, ManagerPtr> managers;
+    using MatlabClassImplPtr = std::unique_ptr<MatlabClassImpl>;
+    std::unordered_map<MatlabClassId, MatlabClassImplPtr> classes;
 
     std::shared_ptr<::matlab::engine::MATLABEngine> matlabEngine{getEngine()};
     std::shared_ptr<MatlabStdoutBuffer> matlabOutBuffer{std::make_shared<MatlabStdoutBuffer>(matlabEngine)};
@@ -56,6 +56,8 @@ private:
     arrus::LogSeverity getLoggerSeverity(ArgumentList inputs);
 
     arrus::LogSeverity convertToLogSeverity(const ::matlab::data::Array &severityStr);
+
+    void addClass(std::unique_ptr<MatlabClassImpl> ptr);
 };
 
 #endif// !MEXOBJECTFUNCTION_H

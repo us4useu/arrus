@@ -15,10 +15,23 @@
                 (methodName), (n), (inputs).size())))
 
 
+#define ARRUS_MATLAB_REQUIRES_N_PARAMETERS_CLASS_METHOD(inputs, n, className, methodName) \
+    ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
+        arrus::IllegalArgumentException(arrus::format( \
+            "Function '{}::{}' requires exactly {} parameters (got {})", \
+                (className), (methodName), (n), (inputs).size())))
+
 #define ARRUS_MATLAB_REQUIRES_SCALAR(array, arrayName)          \
 do {                                                      \
     if (!::arrus::matlab::isArrayScalar(array)) {         \
         throw arrus::IllegalArgumentException(arrayName + " should be scalar.");       \
+    }                                                     \
+} while(0)
+
+#define ARRUS_MATLAB_REQUIRES_TYPE(array, arrayType, arrayName)          \
+do {                                                      \
+    if (!::arrus::matlab::isArrayOfType(array, arrayType)) {         \
+        throw arrus::IllegalArgumentException(std::string(arrayName) + " should be of type: " + ::arrus::matlab::toString(arrayType));       \
     }                                                     \
 } while(0)
 

@@ -26,13 +26,13 @@ matlab_add_mex(
         ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
         common.h
         convert.h
-        DefaultMexObjectManager.h
+    FactoryMexObjectManager.h
         MexContext.h
         MexFunction.cpp
         MexFunction.h
-        MexObjectManager.h
-        MexObjectWrapper.h
-#        session/SessionWrapper.h
+    MatlabClassImpl.h
+    Ptr.h
+#        session/SessionClassImpl.h
 #        session/convertSessionSettings.h
 #        devices/convertDeviceId.h
 #        devices/us4r/convertUs4RSettings.h
