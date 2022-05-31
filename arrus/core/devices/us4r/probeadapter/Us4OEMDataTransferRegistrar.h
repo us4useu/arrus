@@ -34,17 +34,17 @@ public:
     static constexpr size_t MAX_N_TRANSFERS = 256;
     static constexpr size_t MAX_TRANSFER_SIZE = Us4OEMImpl::MAX_TRANSFER_SIZE;
 
-    Us4OEMDataTransferRegistrar(Us4ROutputBuffer *dst, const Us4OEMBuffer *src, Us4OEMImplBase *us4oem)
+    Us4OEMDataTransferRegistrar(Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Us4OEMImplBase *us4oem)
             : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src) {
         ARRUS_INIT_COMPONENT_LOGGER(logger, "Us4OEMDataTransferRegistrar");
-        if (dst->getNumberOfElements() % src->getNumberOfElements() != 0) {
+        if (dst->getNumberOfElements() % src.getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
         }
         ius4oem = us4oem->getIUs4oem();
         us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
-        elementTransfers = groupPartsIntoTransfers(src->getElementParts());
+        elementTransfers = groupPartsIntoTransfers(src.getElementParts());
 
-        srcNElements = src->getNumberOfElements();
+        srcNElements = src.getNumberOfElements();
         dstNElements = dst->getNumberOfElements();
         nTransfersPerElement = elementTransfers.size();
         // Number of transfer src points.
@@ -108,7 +108,7 @@ public:
     void pageLockDstMemory() {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
-            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // byte-addressed
+            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
             for(auto &transfer: elementTransfers) {
                 uint8 *dst = addressDst + transfer.address;
                 size_t src = addressSrc + transfer.address;
@@ -121,7 +121,7 @@ public:
     void pageUnlockDstMemory() {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
-            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // byte-addressed
+            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
             for(auto &transfer: elementTransfers) {
                 uint8 *dst = addressDst + transfer.address;
                 size_t src = addressSrc + transfer.address;
@@ -134,7 +134,7 @@ public:
     void programTransfers(size_t nSrcPoints, size_t nDstPoints) {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < nDstPoints; ++dstIdx, srcIdx = (srcIdx+1) % nSrcPoints) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
-            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // byte-addressed
+            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
             for(size_t localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
                 auto &transfer = elementTransfers[localTransferIdx];
                 size_t transferIdx = dstIdx * nTransfersPerElement + localTransferIdx; // global transfer idx
@@ -192,8 +192,8 @@ public:
         // appropriately (if necessary).
         uint16 elementFirstFiring = 0;
         for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
-            size_t addressSrc = srcBuffer->getElement(srcIdx).getAddress(); // bytes addressed
-            uint16 elementLastFiring = srcBuffer->getElement(srcIdx).getFiring();
+            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // bytes addressed
+            uint16 elementLastFiring = srcBuffer.getElement(srcIdx).getFiring();
             // for each element's part transfer:
             uint16 transferFirstFiring = elementFirstFiring;
             for(uint16 localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
@@ -234,7 +234,7 @@ public:
 private:
     Logger::Handle logger;
     Us4ROutputBuffer *dstBuffer{nullptr};
-    const Us4OEMBuffer *srcBuffer{nullptr};
+    const Us4OEMBuffer srcBuffer;
     // All derived parameters
     IUs4OEM *ius4oem{nullptr};
     Ordinal us4oemOrdinal{0};

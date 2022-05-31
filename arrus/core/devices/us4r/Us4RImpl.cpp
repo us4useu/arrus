@@ -129,6 +129,11 @@ Us4RImpl::upload(const TxRxSequence &seq, unsigned short rxBufferNElements, cons
     // Create output buffer.
     this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
     getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
+
+    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
+    // TODO implement Us4RBuffer move constructor.
+    this->us4rBuffer = std::move(rxBuffer);
+
     return {this->buffer, std::move(fcm)};
 }
 

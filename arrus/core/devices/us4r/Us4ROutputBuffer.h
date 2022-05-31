@@ -183,7 +183,7 @@ public:
     }
 
     ~Us4ROutputBuffer() override {
-        ::operator delete(dataBuffer, std::align_val_t(DATA_ALIGNMENT));
+        ::operator delete[](dataBuffer, std::align_val_t(DATA_ALIGNMENT));
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
