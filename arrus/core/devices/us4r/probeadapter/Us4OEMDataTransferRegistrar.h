@@ -120,7 +120,7 @@ public:
 
     void pageUnlockDstMemory() {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
-            uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
+            uint8 *addressDst = dstBuffer->getAddressUnsafe(dstIdx, us4oemOrdinal);
             size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
             for(auto &transfer: elementTransfers) {
                 uint8 *dst = addressDst + transfer.address;

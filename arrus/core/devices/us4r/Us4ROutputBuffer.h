@@ -48,6 +48,16 @@ public:
         return data.get<int16>();
     }
 
+    /**
+     * This method allows to read element's address regardless of it's state.
+     * This method can be used e.g. in a clean-up procedures, that may
+     * be called even after some buffer overflow.
+     * @return
+     */
+    int16 *getAddressUnsafe() {
+        return data.get<int16>();
+    }
+
     framework::NdArray &getData() override {
         validateState();
         return data;
@@ -213,6 +223,10 @@ public:
 
     uint8 *getAddress(uint16 elementNumber, Ordinal us4oem) {
         return reinterpret_cast<uint8 *>(this->elements[elementNumber]->getAddress()) + us4oemOffsets[us4oem];
+    }
+
+    uint8 *getAddressUnsafe(uint16 elementNumber, Ordinal us4oem) {
+        return reinterpret_cast<uint8 *>(this->elements[elementNumber]->getAddressUnsafe()) + us4oemOffsets[us4oem];
     }
 
     /**
