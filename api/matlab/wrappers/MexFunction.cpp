@@ -9,6 +9,7 @@
 #include "api/matlab/wrappers/session/SessionClassImpl.h"
 #include "api/matlab/wrappers/framework/BufferClassImpl.h"
 #include "api/matlab/wrappers/framework/BufferElementClassImpl.h"
+#include "api/matlab/wrappers/devices/us4r/Us4RClassImpl.h"
 #include "arrus/core/api/common/logging.h"
 
 #undef ERROR
@@ -18,6 +19,7 @@ MexFunction::MexFunction() {
     addClass(std::make_unique<arrus::matlab::SessionClassImpl>(ctx));
     addClass(std::make_unique<arrus::matlab::framework::BufferClassImpl>(ctx));
     addClass(std::make_unique<arrus::matlab::framework::BufferElementClassImpl>(ctx));
+    addClass(std::make_unique<arrus::matlab::devices::Us4RClassImpl>(ctx));
 }
 
 MexFunction::~MexFunction() { mexUnlock(); }

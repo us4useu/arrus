@@ -10,5 +10,12 @@ classdef Us4R < handle
             % :param ptr: pointer to the underlying device
         obj.ptr = arrus.Ptr("Us4R", ptr);
         end
+
+        function setVoltage(voltage)
+             % Sets the voltage to given value.
+             %
+             % :param voltage: value to set
+            obj.ptr.callMethod("setVoltage", voltage);
+        end
     end
 end
