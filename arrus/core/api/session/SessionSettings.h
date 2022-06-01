@@ -17,7 +17,8 @@ public:
     }
 
 private:
-    arrus::devices::Us4RSettings us4RSettings;
+    ::arrus::devices::Us4RSettings us4rs;
+    ::arrus
 };
 }
 
