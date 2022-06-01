@@ -27,7 +27,7 @@ public:
     }
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        float value = inputs[0][0];
+        ::arrus::Voltage value = inputs[0][0];
         get(obj)->setVoltage(value);
     }
 

@@ -8,7 +8,7 @@ classdef Us4R < handle
             % Us4R handle constructor.
             %
             % :param ptr: pointer to the underlying device
-        obj.ptr = arrus.Ptr("Us4R", ptr);
+        obj.ptr = arrus.Ptr("arrus.devices.us4r.Us4R", ptr);
         end
 
         function setVoltage(voltage)

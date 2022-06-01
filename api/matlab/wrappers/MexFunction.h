@@ -16,13 +16,7 @@
 #include "arrus/common/logging/impl/Logging.h"
 #include "MatlabStdoutBuffer.h"
 
-COMPILER_PUSH_DIAGNOSTIC_STATE
-COMPILER_DISABLE_MSVC_WARNINGS(4100 4189 4458 4702)
-
-#include <mex.hpp>
-#include <mexAdapter.hpp>
-
-COMPILER_POP_DIAGNOSTIC_STATE
+#include "mex_headers.h"
 
 using namespace arrus::matlab;
 using namespace matlab::mex;

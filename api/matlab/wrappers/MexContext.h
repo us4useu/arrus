@@ -3,21 +3,11 @@
 
 #include <memory>
 
-#include "arrus/common/compiler.h"
 #include "arrus/common/format.h"
-#include "arrus/core/api/common/Logger.h"
-#include "arrus/core/api/common/exceptions.h"
-
-COMPILER_PUSH_DIAGNOSTIC_STATE
-#pragma warning(disable : 4100 4189 4458 4702)// MSVC
-
-#include <MatlabDataArray/ArrayFactory.hpp>
-#include <mex.hpp>
-#include <utility>
-
 #include "arrus/core/api/arrus.h"
 
-COMPILER_POP_DIAGNOSTIC_STATE
+#include "mex_headers.h"
+
 
 namespace arrus::matlab {
 
