@@ -39,5 +39,19 @@ classdef Session < handle
             %   The run function can be called only once (before the scheme is stopped).
             obj.ptr.callMethod("run");
         end
+
+        function startScheme()
+            %
+            % Starts the uploaded scheme.
+            %
+            obj.ptr.callMethod("startScheme");
+        end
+
+        function startScheme()
+            %
+            % Stops the running scheme.
+            %
+            obj.ptr.callMethod("startScheme");
+        end
     end
 end

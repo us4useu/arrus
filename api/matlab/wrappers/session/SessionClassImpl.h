@@ -25,6 +25,10 @@ public:
 
     explicit SessionClassImpl(const std::shared_ptr<MexContext> &ctx) : ClassObjectManager(ctx, CLASS_NAME) {
         ARRUS_MATLAB_ADD_METHOD("getDevice", getDevice);
+        ARRUS_MATLAB_ADD_METHOD("upload", upload);
+        ARRUS_MATLAB_ADD_METHOD("startScheme", startScheme);
+        ARRUS_MATLAB_ADD_METHOD("stopScheme", stopScheme);
+        ARRUS_MATLAB_ADD_METHOD("run", run);
     }
 
     MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) override {
@@ -84,6 +88,21 @@ public:
         auto buffer = uploadResult.getBuffer();
         // Outputs
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, MatlabObjectHandle, MatlabObjectHandle(buffer.get()));
+    }
+
+    void startScheme(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        auto *session = get(obj);
+        session->startScheme();
+    }
+
+    void stopScheme(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        auto *session = get(obj);
+        session->stopScheme();
+    }
+
+    void run(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        auto *session = get(obj);
+        session->run();
     }
 };
 
