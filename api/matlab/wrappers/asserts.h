@@ -21,19 +21,23 @@
             "Function '{}::{}' requires exactly {} parameters (got {})", \
                 (className), (methodName), (n), (inputs).size())))
 
-#define ARRUS_MATLAB_REQUIRES_SCALAR(array, arrayName)          \
+#define ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(array, arrayName)          \
 do {                                                      \
     if (!::arrus::matlab::isArrayScalar(array)) {         \
         throw arrus::IllegalArgumentException(arrayName + " should be scalar.");       \
     }                                                     \
 } while(0)
 
-#define ARRUS_MATLAB_REQUIRES_TYPE(array, arrayType, arrayName)          \
+#define ARRUS_MATLAB_REQUIRES_SCALAR(array) ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(array, std::string("Value"))
+
+#define ARRUS_MATLAB_REQUIRES_TYPE_NAMED(array, arrayType, arrayName)          \
 do {                                                      \
     if (!::arrus::matlab::isArrayOfType(array, arrayType)) {         \
         throw arrus::IllegalArgumentException(std::string(arrayName) + " should be of type: " + ::arrus::matlab::toString(arrayType));       \
     }                                                     \
 } while(0)
+
+#define ARRUS_MATLAB_REQUIRES_TYPE(array, arrayType) ARRUS_MATLAB_REQUIRES_TYPE_NAMED(array, arrayType, "Array ")
 
 #define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(value, dataType, e)          \
 do {                                                                    \

@@ -15,6 +15,8 @@ COMPILER_PUSH_DIAGNOSTIC_STATE
 #include <mex.hpp>
 #include <utility>
 
+#include "arrus/core/api/arrus.h"
+
 COMPILER_POP_DIAGNOSTIC_STATE
 
 namespace arrus::matlab {
@@ -103,8 +105,31 @@ public:
             return getArrayFactory().createArray(dimensions, std::begin(value), std::end(value));
         } catch (const std::exception &e) {
             throw ::arrus::IllegalArgumentException(::arrus::format(
-                "Exception while creating scalar string array '{}': {}", ::arrus::toString(value), e.what()));
+                "Exception while creating vector array '{}': {}", ::arrus::toString(value), e.what()));
         }
+    }
+
+    ::matlab::data::Array createArray(const ::arrus::framework::NdArray &array) {
+        try {
+            switch(array.getDataType()) {
+            case ::arrus::framework::NdArray::DataType::INT16:
+                return createTypedArray<::arrus::int16>(array);
+            default:
+                throw IllegalArgumentException(format("Unhandled arrus data type: {}",
+                                               std::to_string(size_t(array.getDataType()))));
+            }
+        } catch (const std::exception &e) {
+            throw IllegalArgumentException(format("Exception while creating array: {}", e.what()));
+        }
+    }
+
+    template<typename T>
+    ::matlab::data::Array createTypedArray(const ::arrus::framework::NdArray &array) {
+        ::matlab::data::ArrayDimensions dims = array.getShape().getValues();
+        auto nElements = array.getNumberOfElements();
+        auto *start = array.get<T>();
+        auto *end = start + nElements;
+        return getArrayFactory().createArray(dims, start, end);
     }
 
 private:

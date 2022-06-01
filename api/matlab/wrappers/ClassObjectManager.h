@@ -5,8 +5,7 @@
 
 namespace arrus::matlab {
 
-template<typename T>
-class MatlabClassObjectManager: public MatlabClassImpl {
+template<typename T> class ClassObjectManager : public MatlabClassImpl {
 public:
     using MatlabClassImpl::MatlabClassImpl;
 
@@ -19,12 +18,26 @@ public:
      * @param handle a handle to the deleted object
      */
     void remove(const MatlabObjectHandle handle) override {
-        objects.erase(handle);
+        try {
+            objects.erase(handle);
+        } catch (const std::out_of_range &e) {
+            throw ::arrus::IllegalArgumentException("There is no object of type: " + getClassId()
+                                                    + "with id: " + handle);
+        }
     }
 
 protected:
+    T *get(MatlabObjectHandle handle) {
+        try {
+            return objects.at(handle).get();
+        } catch (const std::out_of_range &e) {
+            throw ::arrus::IllegalArgumentException(
+                ::arrus::format("There is no object of type '{}' with id '{}.", getClassId(), handle));
+        }
+    }
+
     MatlabObjectHandle insert(std::unique_ptr<T> ptr) {
-        auto handle = (MatlabObjectHandle)(ptr.get());
+        auto handle = (MatlabObjectHandle) (ptr.get());
         auto res = objects.insert(std::make_pair(handle, std::move(ptr)));
         ARRUS_REQUIRES_TRUE(res.second,
                             "Mex object manager internal error: could not store "
@@ -36,7 +49,6 @@ private:
     std::unordered_map<MatlabObjectHandle, std::unique_ptr<T>> objects;
 };
 
-
-}
+}// namespace arrus::matlab
 
 #endif//ARRUS_API_MATLAB_WRAPPERS_MATLABCLASSOBJECTMANAGER_H

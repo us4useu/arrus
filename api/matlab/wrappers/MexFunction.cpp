@@ -5,15 +5,19 @@
 #include <boost/stacktrace.hpp>
 #include <fstream>
 
-#include "arrus/core/api/common/logging.h"
 #include "api/matlab/wrappers/ops/us4r/SchemeConverter.h"
 #include "api/matlab/wrappers/session/SessionClassImpl.h"
+#include "api/matlab/wrappers/framework/BufferClassImpl.h"
+#include "api/matlab/wrappers/framework/BufferElementClassImpl.h"
+#include "arrus/core/api/common/logging.h"
 
 #undef ERROR
 
 MexFunction::MexFunction() {
     mexLock();
     addClass(std::make_unique<arrus::matlab::SessionClassImpl>(ctx));
+    addClass(std::make_unique<arrus::matlab::framework::BufferClassImpl>(ctx));
+    addClass(std::make_unique<arrus::matlab::framework::BufferElementClassImpl>(ctx));
 }
 
 MexFunction::~MexFunction() { mexUnlock(); }
@@ -31,7 +35,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
             setConsoleLogIfNecessary(sev);
             return;
         }
-//        setConsoleLogIfNecessary(arrus::LogSeverity::INFO);
+        setConsoleLogIfNecessary(arrus::LogSeverity::INFO);
         // Other global functions.
         if (classId == "__global") {
             if (methodId == "addLogFile") {
@@ -41,33 +45,35 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 std::shared_ptr<std::ostream> logFileStream =
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
                 this->logging->addTextSink(logFileStream, level);
-            } else if(methodId == "createExampleObject") {
-                auto scheme = ::arrus::matlab::ops::us4r::SchemeConverter::from(ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]}).toCore();
+            } else if (methodId == "createExampleObject") {
+                auto scheme = ::arrus::matlab::ops::us4r::SchemeConverter::from(
+                                  ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]})
+                                  .toCore();
                 std::cout << "Scheme: " << std::endl;
-                std::cout << "Work mode: " << (size_t)scheme.getWorkMode() << std::endl;
+                std::cout << "Work mode: " << (size_t) scheme.getWorkMode() << std::endl;
                 std::cout << "Rx buffer: " << std::endl;
                 std::cout << "size: " << scheme.getRxBufferSize() << std::endl;
                 std::cout << "Host buffer: " << std::endl;
                 std::cout << "size: " << scheme.getOutputBuffer().getNumberOfElements() << std::endl;
-                std::cout << "type: " << (size_t)scheme.getOutputBuffer().getType() << std::endl;
+                std::cout << "type: " << (size_t) scheme.getOutputBuffer().getType() << std::endl;
                 auto seq = scheme.getTxRxSequence();
                 std::cout << "number of ops: " << seq.getOps().size() << std::endl;
-                for(auto op : seq.getOps()) {
+                for (auto op : seq.getOps()) {
                     std::cout << "TX: " << std::endl;
                     std::cout << "Aperture: " << std::endl;
-                    for(bool v: op.getTx().getAperture()) {
+                    for (bool v : op.getTx().getAperture()) {
                         std::string vstr = v ? "true" : "false";
                         std::cout << vstr << std::endl;
                     }
                     std::cout << "Delays: " << std::endl;
-                    for(float v: op.getTx().getDelays()) {
+                    for (float v : op.getTx().getDelays()) {
                         std::cout << v << std::endl;
                     }
                     std::cout << "Pulse: " << std::endl;
                     std::cout << op.getTx().getExcitation().getNPeriods() << std::endl;
                     std::cout << "RX: " << std::endl;
                     std::cout << "Aperture: " << std::endl;
-                    for(bool v: op.getRx().getAperture()) {
+                    for (bool v : op.getRx().getAperture()) {
                         std::string vstr = v ? "true" : "false";
                         std::cout << vstr << std::endl;
                     }
@@ -76,8 +82,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 std::cout << "Now saving all that to MATLAB objects." << std::endl;
                 outputs[0] = ::arrus::matlab::ops::us4r::SchemeConverter::from(ctx, scheme).toMatlab();
                 std::cout << "Properly saved to MATLAB!" << std::endl;
-            }
-            else {
+            } else {
                 throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
             }
             return;
@@ -85,29 +90,42 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
 
         // Class methods.
         // Find appropriate class manager.
-        MatlabClassImpl &manager = classes.at(classId);
+        MatlabClassImplPtr &clazz = classes.at(classId);
 
         if (methodId == "create") {
             // Constructor.
             // Expected input arguments: classId, 'create', constructor parameters.
-            ArgumentList args(inputs.begin() + 2, inputs.end(), inputs.size() - 2);
-            auto handle = manager->create(ctx, args);
-            outputs[0] = ctx->getArrayFactory().createScalar<MatlabObjectHandle>(handle);
+            try {
+                ArgumentList args(inputs.begin() + 2, inputs.end(), inputs.size() - 2);
+                auto handle = clazz->create(ctx, args);
+                outputs[0] = ctx->getArrayFactory().createScalar<MatlabObjectHandle>(handle);
+            } catch (...) {
+                ctx->logInfo("Exception while creating object of type: " + classId);
+                throw;
+            }
         } else {
-
             ARRUS_REQUIRES_AT_LEAST(inputs.size(), 3, "Object handle is missing.");
             MatlabObjectHandle handle = inputs[2][0];
             if (methodId == "remove") {
                 // Class destructor.
                 // Expected input arguments: classId, 'remove', object handle.
-                manager->remove(handle);
+                try {
+                    clazz->remove(handle);
+                } catch (...) {
+                    ctx->logInfo("Exception while removing object of type: " + classId);
+                    throw;
+                }
             } else {
                 // Any other method.
                 // Expected input arguments: classId, methodId, object handle, method parameters.
-                ArgumentList args(inputs.begin() + 3, inputs.end(), inputs.size() - 3);
-
-                auto &object = manager->getObject(handle);
-                outputs[0] = object->call(methodId, args);
+                try {
+                    ArgumentList args(inputs.begin() + 3, inputs.end(), inputs.size() - 3);
+                    clazz->call(handle, methodId, outputs, args);
+                } catch (...) {
+                    ctx->logInfo(
+                        ::arrus::format("Exception while calling method '{}' of type '{}'", methodId, classId));
+                    throw;
+                }
             }
         }
     } catch (const ::arrus::IllegalArgumentException &e) {
@@ -158,6 +176,4 @@ arrus::LogSeverity MexFunction::convertToLogSeverity(const ::matlab::data::Array
     }
 }
 
-void MexFunction::addClass(std::unique_ptr<MatlabClassImpl> cls) {
-    classes.emplace(cls->getClassId(), std::move(cls));
-}
+void MexFunction::addClass(std::unique_ptr<MatlabClassImpl> cls) { classes.emplace(cls->getClassId(), std::move(cls)); }

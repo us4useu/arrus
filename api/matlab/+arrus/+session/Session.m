@@ -9,7 +9,7 @@ classdef Session < handle
             % Session object constructor.
             %
             % :param sessionSettings: path to the session configuration file or arrus.session.SessionSettings instance
-            obj.ptr = arrus.UniquePtr("Session", convertCharsToStrings(settings));
+            obj.ptr = arrus.UniquePtr("arrus.session.Session", convertCharsToStrings(settings));
         end
         
         function res = getDevice(obj, deviceId)

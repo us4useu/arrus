@@ -174,7 +174,7 @@ T getCppScalar(const MexContext::SharedHandle &ctx, const MatlabElementRef &obje
                const std::string &propertyName) {
     try {
         ::matlab::data::Array arr = getMatlabProperty(ctx, object, propertyName);
-        ARRUS_MATLAB_REQUIRES_SCALAR(arr, propertyName);
+        ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(arr, propertyName);
         ARRUS_MATLAB_REQUIRES_COMPATIBLE_TYPE_FOR_PROPERTY(arr, T, propertyName);
         return convertToCppScalar<T>(arr, propertyName);
     } catch (const std::exception &e) {
@@ -203,7 +203,7 @@ std::optional<T> getCppOptionalScalar(const MexContext::SharedHandle &ctx, const
         if (arr.isEmpty()) {
             return {};
         }
-        ARRUS_MATLAB_REQUIRES_SCALAR(arr, propertyName);
+        ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(arr, propertyName);
         ARRUS_MATLAB_REQUIRES_COMPATIBLE_TYPE_FOR_PROPERTY(arr, T, propertyName);
         return convertToCppScalar<T>(arr, propertyName);
     } catch (const std::exception &e) {
@@ -233,7 +233,7 @@ T getCppRequiredScalar(const MexContext::SharedHandle &ctx, const MatlabElementR
         if (arr.isEmpty()) {
             throw IllegalArgumentException(arrus::format("Field '{}' is required", propertyName));
         }
-        ARRUS_MATLAB_REQUIRES_SCALAR(arr, propertyName);
+        ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(arr, propertyName);
         ARRUS_MATLAB_REQUIRES_COMPATIBLE_TYPE_FOR_PROPERTY(arr, T, propertyName);
         return convertToCppScalar<T>(arr, propertyName);
     } catch (const std::exception &e) {

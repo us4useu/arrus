@@ -20,8 +20,8 @@ namespace arrus::matlab {
     using MatlabClassId = std::string;
 
     using MatlabMethodId = std::string;
-    using MatlabMethodArgs = ::matlab::mex::ArgumentList;
-    using MatlabMethodReturnType = ::matlab::data::Array;
+    using MatlabInputArgs = ::matlab::mex::ArgumentList;
+    using MatlabOutputArgs = ::matlab::mex::ArgumentList;
 
 
     bool inline isArrayScalar(const ::matlab::data::Array &array) {

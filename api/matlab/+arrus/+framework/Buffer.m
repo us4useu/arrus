@@ -7,12 +7,13 @@ classdef Buffer < handle
     end
     methods
         function obj = Buffer(ptr)
-            obj.ptr = ptr;
+            obj.ptr = arrus.UniquePtr("arrus.framework.Buffer", ptr);
         end
         
-        function array = back(obj)
+        function element = front(obj)
             % Returns and releases the last element of the buffer.
-            array = obj.ptr.callMethod("front");
+            elementPtr = obj.ptr.callMethod("front");
+            element = arrus.framework.BufferElement(elementPtr);
         end
     end
 end

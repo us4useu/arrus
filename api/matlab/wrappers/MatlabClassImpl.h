@@ -18,7 +18,6 @@ namespace arrus::matlab {
  */
 class MatlabClassImpl {
 public:
-
     explicit MatlabClassImpl(std::shared_ptr<MexContext> ctx, MatlabClassId classId)
         : classId(std::move(classId)), ctx(std::move(ctx)) {}
 
@@ -30,7 +29,7 @@ public:
      * @param args constructor parameter
      * @return a handle to new object
      */
-    virtual MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabMethodArgs &args) = 0;
+    virtual MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) = 0;
 
     /**
      * Deletes a given object. The deleted object should have been previously created using the 'create' method.
@@ -45,16 +44,18 @@ public:
      *
      * @param obj a pointer to object
      * @param method method to call
-     * @param args method arguments
-     * @return method call result
+     * @param inputs method input arguments
+     * @param outputs method output arguments
      */
-    MatlabMethodReturnType call(MatlabObjectHandle obj, const MatlabMethodId &method, MatlabMethodArgs &args) {
+    void call(MatlabObjectHandle obj, const MatlabMethodId &method, MatlabOutputArgs &outputs,
+              MatlabInputArgs &inputs) {
+        MethodImpl func;
         try {
-            auto func = methods.at(method);
-            return func(obj, args);
-        } catch(const std::out_of_range &e) {
+            func = methods.at(method);
+        } catch (const std::out_of_range &e) {
             throw IllegalArgumentException(format("Class {} has no method with name {}.", classId, method));
         }
+        func(obj, outputs, inputs);
     }
 
     [[nodiscard]] const MatlabClassId &getClassId() const { return classId; }
@@ -62,11 +63,9 @@ public:
 protected:
     std::shared_ptr<MexContext> ctx;
 
-    typedef std::function<MatlabMethodReturnType(MatlabObjectHandle, MatlabMethodArgs&)> MethodImpl;
+    typedef std::function<void(MatlabObjectHandle, MatlabOutputArgs &, MatlabInputArgs &)> MethodImpl;
 
-    void addMethod(const MatlabMethodId &id, const MethodImpl& impl) {
-        methods.emplace(id, impl);
-    }
+    void addMethod(const MatlabMethodId &id, const MethodImpl &impl) { methods.emplace(id, impl); }
 
 private:
     MatlabClassId classId;
@@ -75,10 +74,10 @@ private:
     MethodMap methods;
 };
 
-#define ARRUS_MATLAB_ADD_METHOD(methodId, method)                                                                \
-    addMethod((methodId), [this](MatlabObjectHandle obj, MatlabMethodArgs &inputs){this->method(obj, inputs);});
-
-
+#define ARRUS_MATLAB_ADD_METHOD(methodId, method)                                                                      \
+    addMethod((methodId), [this](MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {         \
+        this->method(obj, outputs, inputs);                                                                            \
+    });
 
 }// namespace arrus::matlab
 
