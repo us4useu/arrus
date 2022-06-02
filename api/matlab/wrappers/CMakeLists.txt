@@ -1,7 +1,4 @@
 set(TARGET_NAME arrus_mex_object_wrapper)
-
-message("Building mex with name ${TARGET_NAME}")
-
 ################################################################################
 # Target and dependencies
 ################################################################################
