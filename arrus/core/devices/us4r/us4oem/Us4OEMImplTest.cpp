@@ -67,7 +67,8 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false
         );
     }
 
@@ -352,7 +353,8 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false
         );
     }
 
@@ -691,7 +693,8 @@ protected:
             // NOTE: due to the below move this function can be called only once
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings, channelsMask,
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false);
 
     }
 
@@ -973,7 +976,8 @@ protected:
                 std::move(ius4oem), activeChannelGroups,
                 channelMapping, rxSettings,
                 std::unordered_set<uint8>({}),
-                reprogrammingMode
+                reprogrammingMode,
+                false
         );
 
     }
