@@ -149,6 +149,7 @@ using namespace arrus::devices;
 
 namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
+    %template(IntervalFloat) Interval<float>;
 };
 
 %include "arrus/core/api/framework/NdArray.h"

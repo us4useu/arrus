@@ -100,7 +100,7 @@ def convert_to_py_probe_model(core_model):
     pitch = arrus.core.getPitch(core_model)
     curvature_radius = core_model.getCurvatureRadius()
     model_id = core_model.getModelId()
-    core_fr = core_model.getFrequencyRange()
+    core_fr = core_model.getTxFrequencyRange()
     tx_frequency_range = (core_fr.start(), core_fr.end())
     return arrus.devices.probe.ProbeModel(
         model_id=arrus.devices.probe.ProbeModelId(
