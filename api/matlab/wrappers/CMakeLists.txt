@@ -12,7 +12,7 @@ endif ()
 matlab_add_mex(
     NAME
     ${TARGET_NAME}
-    MODULE
+    SHARED
     SRC
     ${ARRUS_ROOT_DIR}/arrus/common/compiler.h
     ${ARRUS_ROOT_DIR}/arrus/common/asserts.h

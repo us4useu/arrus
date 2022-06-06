@@ -2,7 +2,7 @@ classdef Session < handle
     % A communication session with a group of devices.
 
     properties(GetAccess = protected, SetAccess = immutable, Transient = true, Hidden = true)
-        ptr (1, 1) arrus.Ptr
+        ptr arrus.Ptr {mustBeScalarOrEmpty}
     end
     methods
         function obj = Session(settings)
@@ -47,11 +47,11 @@ classdef Session < handle
             obj.ptr.callMethod("startScheme");
         end
 
-        function startScheme()
+        function stopScheme()
             %
             % Stops the running scheme.
             %
-            obj.ptr.callMethod("startScheme");
+            obj.ptr.callMethod("stopScheme");
         end
     end
 end

@@ -37,8 +37,9 @@ void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory) {
 
 Logging* useDefaultLoggerFactory() {
     auto pimpl = std::make_unique<Logging::LoggingImpl>();
-    loggerFactory = std::make_shared<::arrus::Logging>(std::move(pimpl));
-    return (Logging*)loggerFactory.get();
+    auto logging = std::make_shared<::arrus::Logging>(std::move(pimpl));
+    setLoggerFactory(logging);
+    return logging.get();
 }
 
 std::shared_ptr<LoggerFactory> getLoggerFactory() {

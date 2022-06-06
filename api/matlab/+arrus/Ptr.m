@@ -1,4 +1,4 @@
-classdef (Abstract = true) Ptr < handle
+classdef Ptr < handle
     % A simple C++ pointer wrapper.
     % This class stores a given pointer to some memory area and a type of object
     % that is stored there.
@@ -14,7 +14,7 @@ classdef (Abstract = true) Ptr < handle
         % C++ class name
         className (1, 1) string
         % uint64 value which should be interpreted as a pointer to some memory location.
-        ptr (1, 1) uint64 = []
+        ptr (1, 1) uint64
     end
 
     methods
@@ -27,7 +27,7 @@ classdef (Abstract = true) Ptr < handle
             if isempty(obj.handle)
                 error("ARRUS:IllegalState", "Objects handle is not set.");
             end
-            res = arrus.arrus_mex_object_wrapper(obj.className, methodName, obj.handle, varargin{:});
+            res = arrus_mex_object_wrapper(obj.className, methodName, obj.handle, varargin{:});
         end
 
     end
