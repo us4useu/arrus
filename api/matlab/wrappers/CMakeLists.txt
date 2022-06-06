@@ -1,7 +1,4 @@
 set(TARGET_NAME arrus_mex_object_wrapper)
-
-message("Building mex with name ${TARGET_NAME}")
-
 ################################################################################
 # Target and dependencies
 ################################################################################
@@ -20,10 +17,6 @@ matlab_add_mex(
     ${ARRUS_ROOT_DIR}/arrus/common/compiler.h
     ${ARRUS_ROOT_DIR}/arrus/common/asserts.h
     ${ARRUS_ROOT_DIR}/arrus/common/format.h
-    ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LoggerImpl.h
-    ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
-    ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.h
-    ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
     common.h
     convert.h
     MexContext.h
@@ -68,6 +61,11 @@ target_compile_definitions(${TARGET_NAME}
     PRIVATE
     # Mute std::unique() deprecation warning from matlab api headers.
     "_SILENCE_CXX17_SHARED_PTR_UNIQUE_DEPRECATION_WARNING"
+    )
+
+target_compile_definitions(${TARGET_NAME}
+    PRIVATE
+    "BOOST_ALL_NO_LIB"
     )
 
 install(

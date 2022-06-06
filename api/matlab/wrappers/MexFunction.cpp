@@ -12,6 +12,8 @@
 #include "api/matlab/wrappers/devices/us4r/Us4RClassImpl.h"
 #include "arrus/core/api/common/logging.h"
 
+#include <memory>
+
 #undef ERROR
 
 MexFunction::MexFunction() {
@@ -22,7 +24,10 @@ MexFunction::MexFunction() {
     addClass(std::make_unique<arrus::matlab::devices::Us4RClassImpl>(ctx));
 }
 
-MexFunction::~MexFunction() { mexUnlock(); }
+MexFunction::~MexFunction() {
+    this->logging->removeAllStreams();
+    mexUnlock();
+}
 
 void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
     try {
@@ -46,46 +51,46 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 arrus::LogSeverity level = convertToLogSeverity(inputs[3]);
                 std::shared_ptr<std::ostream> logFileStream =
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
-                this->logging->addTextSink(logFileStream, level);
+                this->logging->addOutputStream(logFileStream, level);
             } else if (methodId == "createExampleObject") {
-                auto scheme = ::arrus::matlab::ops::us4r::SchemeConverter::from(
-                                  ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]})
-                                  .toCore();
-                std::cout << "Scheme: " << std::endl;
-                std::cout << "Work mode: " << (size_t) scheme.getWorkMode() << std::endl;
-                std::cout << "Rx buffer: " << std::endl;
-                std::cout << "size: " << scheme.getRxBufferSize() << std::endl;
-                std::cout << "Host buffer: " << std::endl;
-                std::cout << "size: " << scheme.getOutputBuffer().getNumberOfElements() << std::endl;
-                std::cout << "type: " << (size_t) scheme.getOutputBuffer().getType() << std::endl;
-                auto seq = scheme.getTxRxSequence();
-                std::cout << "number of ops: " << seq.getOps().size() << std::endl;
-                for (auto op : seq.getOps()) {
-                    std::cout << "TX: " << std::endl;
-                    std::cout << "Aperture: " << std::endl;
-                    for (bool v : op.getTx().getAperture()) {
-                        std::string vstr = v ? "true" : "false";
-                        std::cout << vstr << std::endl;
-                    }
-                    std::cout << "Delays: " << std::endl;
-                    for (float v : op.getTx().getDelays()) {
-                        std::cout << v << std::endl;
-                    }
-                    std::cout << "Pulse: " << std::endl;
-                    std::cout << op.getTx().getExcitation().getNPeriods() << std::endl;
-                    std::cout << "RX: " << std::endl;
-                    std::cout << "Aperture: " << std::endl;
-                    for (bool v : op.getRx().getAperture()) {
-                        std::string vstr = v ? "true" : "false";
-                        std::cout << vstr << std::endl;
-                    }
-                }
-                std::cout << "Properly read the input parameters!" << std::endl;
-                std::cout << "Now saving all that to MATLAB objects." << std::endl;
-                outputs[0] = ::arrus::matlab::ops::us4r::SchemeConverter::from(ctx, scheme).toMatlab();
-                std::cout << "Properly saved to MATLAB!" << std::endl;
-            } else {
-                throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
+//                auto scheme = ::arrus::matlab::ops::us4r::SchemeConverter::from(
+//                                  ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]})
+//                                  .toCore();
+//                std::cout << "Scheme: " << std::endl;
+//                std::cout << "Work mode: " << (size_t) scheme.getWorkMode() << std::endl;
+//                std::cout << "Rx buffer: " << std::endl;
+//                std::cout << "size: " << scheme.getRxBufferSize() << std::endl;
+//                std::cout << "Host buffer: " << std::endl;
+//                std::cout << "size: " << scheme.getOutputBuffer().getNumberOfElements() << std::endl;
+//                std::cout << "type: " << (size_t) scheme.getOutputBuffer().getType() << std::endl;
+//                auto seq = scheme.getTxRxSequence();
+//                std::cout << "number of ops: " << seq.getOps().size() << std::endl;
+//                for (auto op : seq.getOps()) {
+//                    std::cout << "TX: " << std::endl;
+//                    std::cout << "Aperture: " << std::endl;
+//                    for (bool v : op.getTx().getAperture()) {
+//                        std::string vstr = v ? "true" : "false";
+//                        std::cout << vstr << std::endl;
+//                    }
+//                    std::cout << "Delays: " << std::endl;
+//                    for (float v : op.getTx().getDelays()) {
+//                        std::cout << v << std::endl;
+//                    }
+//                    std::cout << "Pulse: " << std::endl;
+//                    std::cout << op.getTx().getExcitation().getNPeriods() << std::endl;
+//                    std::cout << "RX: " << std::endl;
+//                    std::cout << "Aperture: " << std::endl;
+//                    for (bool v : op.getRx().getAperture()) {
+//                        std::string vstr = v ? "true" : "false";
+//                        std::cout << vstr << std::endl;
+//                    }
+//                }
+//                std::cout << "Properly read the input parameters!" << std::endl;
+//                std::cout << "Now saving all that to MATLAB objects." << std::endl;
+//                outputs[0] = ::arrus::matlab::ops::us4r::SchemeConverter::from(ctx, scheme).toMatlab();
+//                std::cout << "Properly saved to MATLAB!" << std::endl;
+//            } else {
+//                throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
             }
             return;
         }
@@ -142,11 +147,11 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
 void MexFunction::setConsoleLogIfNecessary(const arrus::LogSeverity severity) {
     if (logging == nullptr) {
         try {
-            this->logging = std::make_shared<arrus::Logging>();
-            this->logging->addTextSink(this->matlabOstream, severity, true);
+            this->logging = ::arrus::useDefaultLoggerFactory();
+            this->logging->addOutputStream(this->matlabOstream, severity);
             arrus::Logger::SharedHandle defaultLogger = this->logging->getLogger();
             this->ctx->setDefaultLogger(defaultLogger);
-            arrus::setLoggerFactory(logging);
+            defaultLogger->log(arrus::LogSeverity::WARNING, "HAAAAAALO");
         } catch (const std::exception &e) {
             this->logging = nullptr;
             throw e;

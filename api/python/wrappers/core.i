@@ -88,20 +88,19 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Logger.h"
 
 %inline %{
-    std::shared_ptr<::arrus::Logging> LOGGING_FACTORY;
+    ::arrus::Logging* LOGGING_FACTORY;
 
     // TODO consider moving the below function to %init
     void initLoggingMechanism(const ::arrus::LogSeverity level) {
-        LOGGING_FACTORY = std::make_shared<::arrus::Logging>();
+        LOGGING_FACTORY = ::arrus::useDefaultLoggerFactory();
         LOGGING_FACTORY->addClog(level);
-        ::arrus::setLoggerFactory(LOGGING_FACTORY);
     }
 
     void addLogFile(const std::string &filepath, const ::arrus::LogSeverity level) {
         std::shared_ptr<std::ostream> logFileStream =
             // append to the end of the file
             std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
-        LOGGING_FACTORY->addTextSink(logFileStream, level);
+        LOGGING_FACTORY->addOutputStream(logFileStream, level);
     }
 
     void setClogLevel(const ::arrus::LogSeverity level) {

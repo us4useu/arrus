@@ -13,7 +13,6 @@
 //#include "api/matlab/wrappers/session/SessionClassImpl.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/compiler.h"
-#include "arrus/common/logging/impl/Logging.h"
 #include "MatlabStdoutBuffer.h"
 
 #include "mex_headers.h"
@@ -42,7 +41,7 @@ private:
     std::shared_ptr<::matlab::engine::MATLABEngine> matlabEngine{getEngine()};
     std::shared_ptr<MatlabStdoutBuffer> matlabOutBuffer{std::make_shared<MatlabStdoutBuffer>(matlabEngine)};
     std::shared_ptr<std::ostream> matlabOstream{std::make_shared<std::ostream>(matlabOutBuffer.get())};
-    std::shared_ptr<arrus::Logging> logging;
+    arrus::Logging* logging{nullptr};
     std::shared_ptr<MexContext> ctx{new MexContext(matlabEngine)};
 
     void setConsoleLogIfNecessary(arrus::LogSeverity sev);

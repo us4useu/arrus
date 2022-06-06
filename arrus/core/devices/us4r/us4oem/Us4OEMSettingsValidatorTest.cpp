@@ -3,7 +3,6 @@
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/common/collections.h"
-#include "arrus/common/logging/impl/Logging.h"
 #include "Us4OEMSettingsValidator.h"
 
 namespace {
