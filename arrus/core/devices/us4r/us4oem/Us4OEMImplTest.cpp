@@ -6,7 +6,7 @@
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/us4r/tests/MockIUs4OEM.h"
-#include "arrus/common/logging/impl/Logging.h"
+#include "arrus/core/common/logging.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 

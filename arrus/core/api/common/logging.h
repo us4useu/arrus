@@ -18,6 +18,53 @@ namespace arrus {
      */
     ARRUS_CPP_EXPORT
     void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory);
+
+    /**
+     * Default ARRUS logging mechanism.
+     */
+    ARRUS_CPP_EXPORT
+    class Logging: public LoggerFactory {
+    public:
+        class LoggingImpl;
+
+        explicit Logging(std::unique_ptr<LoggingImpl> pImpl);
+
+        Logger::Handle getLogger() override;
+        Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes);
+
+        ~Logging() override = default;
+        /**
+         * Adds std::cout logging output stream to the default logging mechanism
+         * (console log output).
+         *
+         * @param level minimum level severity level to set for clog output
+         */
+        void addClog(::arrus::LogSeverity level);
+
+        /**
+         * Adds a custom stream implementation to the default logging mechanism.
+         *
+         * @param stream output stream to use in logging
+         * @param level minimum level severity level to set for the output stream logging
+         */
+        void addOutputStream(std::shared_ptr<std::ostream> stream, LogSeverity level);
+
+        /**
+         * Remove all registered output streams from the logging mechanism.
+         */
+        void removeAllStreams();
+
+    private:
+        std::unique_ptr<LoggingImpl> pImpl;
+    };
+
+    /**
+     * Sets default logger factory to ::arrus::Logging.
+     *
+     * @return raw pointer to the default logging factory.
+     */
+    ARRUS_CPP_EXPORT
+    Logging* useDefaultLoggerFactory();
 }
 
 #endif //ARRUS_CORE_COMMON_LOGGING_H

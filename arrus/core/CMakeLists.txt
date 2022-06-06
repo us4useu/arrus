@@ -176,8 +176,7 @@ set(SRC_FILES
     api/framework/DataBuffer.h
     api/framework/FifoBuffer.h
     cfg/default.h.in
-    ../common/logging/impl/Logging.cpp
-    ../common/logging/impl/LogSeverity.cpp
+    common/LogSeverity.cpp
     api/arrus.h
     api/session.h
     api/common.h api/io.h
