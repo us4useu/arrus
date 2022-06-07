@@ -326,5 +326,5 @@ target_link_libraries(pwi-example PRIVATE arrus-core)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
 
 add_executable(demod-example examples/AfeDDCExample_v2.cpp)
-target_link_libraries(demod-example PRIVATE arrus-core)
+target_link_libraries(demod-example PRIVATE arrus-core Boost::Boost)
 target_include_directories(demod-example PRIVATE ${ARRUS_ROOT_DIR})

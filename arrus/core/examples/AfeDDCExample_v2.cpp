@@ -26,10 +26,10 @@ int main(int ac, char *av[]) noexcept {
         po::options_description desc("Allowed options");
         desc.add_options()
             ("help", "produce help message")
-            ("ddc-dec", po::value<int>(), "Sets DDC decimation factor)
+            ("ddc-dec", po::value<int>(), "Sets DDC decimation factor")
             ("ddc-freq", po::value<double>(), "Sets DDC frequency")
-            ("ddc-fir", po::value<string>(), "Writes FIR coefficients from specified file")
-            ("fname" po::value<string>()->default_value("rf.bin")->implicit_value("rf.bin"), "Filename for output data")
+            ("ddc-fir", po::value<std::string>(), "Writes FIR coefficients from specified file")
+            ("fname", po::value<std::string>()->default_value("rf.bin")->implicit_value("rf.bin"), "Filename for output data")
             ;
 
         po::variables_map vm;
@@ -38,13 +38,14 @@ int main(int ac, char *av[]) noexcept {
 
         if (vm.count("help"))
         {
-            cout << desc << "\n";
+            std::cout << desc << "\n";
             return 0;
         }
 
         uint32_t sampleOffset;
         uint16_t decFactor;
         double ddcFreq;
+        std::string fname;
 
         if (vm.count("ddc-dec"))
         {
@@ -60,6 +61,10 @@ int main(int ac, char *av[]) noexcept {
         if (vm.count("ddc-freq"))
         {
             ddcFreq = vm["ddc-freq"].as<double>();
+        }
+        if (vm.count("fname"))
+        {
+            fname = vm["ddc-freq"].as<std::string>();
         }
 
 
@@ -144,8 +149,8 @@ int main(int ac, char *av[]) noexcept {
 
         bool cont = true;
 
-        std::mutex mutex;
-        std::unique_lock<std::mutex> lock(mutex);
+        //std::mutex mutex;
+        //std::unique_lock<std::mutex> lock(mutex);
 
         //get number of oems?
         uint8_t nOEMS = 0;
@@ -177,7 +182,6 @@ int main(int ac, char *av[]) noexcept {
         std::cin >> value;
 
         session->startScheme();
-        cv.wait(lock);
 
         // Wait for callback to signal that we got frame.
         std::mutex mutex;
