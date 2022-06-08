@@ -7,6 +7,26 @@
 %include std_pair.i
 %include std_optional.i
 
+
+%inline %{
+/**
+ * A class that keeps "unlocked" GIL state in the RAII style.
+ * That is, you will release the GIL when this object is created,
+ * and obtain the GIL again when the object is deleted.
+*/
+class ArrusPythonGILUnlock {
+public:
+    ArrusPythonGILUnlock()
+        :state(PyEval_SaveThread()) {}
+
+    ~ArrusPythonGILUnlock() {
+        PyEval_RestoreThread(state);
+    }
+private:
+    PyThreadState* state;
+};
+%}
+
 %{
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
@@ -242,6 +262,21 @@ std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::sessi
     auto buffer = std::static_pointer_cast<DataBuffer>(uploadResult->getBuffer());
     return buffer;
 }
+
+// GIL-free methods.
+// TODO consider using -threads parameter, or finding a SWIG feature that allows to turn off GIL
+// for a particular method (%thread arrus::session::Session::stopScheme() seems to not work).
+void arrusSessionStartScheme(std::shared_ptr<arrus::session::Session> session) {
+    ArrusPythonGILUnlock unlock;
+    session->startScheme();
+}
+
+void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
+    ArrusPythonGILUnlock unlock;
+    session->stopScheme();
+}
+
+
 %};
 // ------------------------------------------ DEVICES
 // Us4R
