@@ -26,9 +26,9 @@ int main(int ac, char *av[]) noexcept {
         po::options_description desc("Allowed options");
         desc.add_options()
             ("help", "produce help message")
-            ("ddc-dec", po::value<int>(), "Sets DDC decimation factor")
+            ("ddc-dec", po::value<double>(), "Sets DDC decimation factor")
             ("ddc-freq", po::value<double>(), "Sets DDC frequency")
-            ("ddc-fir", po::value<std::string>(), "Writes FIR coefficients from specified file")
+            ("ddc-fir", po::value<std::string>()->default_value("../fir.txt")->implicit_value("../fir.txt"), "Writes FIR coefficients from specified file")
             ("fname", po::value<std::string>()->default_value("rf.bin")->implicit_value("rf.bin"), "Filename for output data")
             ;
 
@@ -43,28 +43,41 @@ int main(int ac, char *av[]) noexcept {
         }
 
         uint32_t sampleOffset;
-        uint16_t decFactor;
+        double decFactor;
         double ddcFreq;
-        std::string fname;
+        std::string fname, firFname;
 
         if (vm.count("ddc-dec"))
         {
-            decFactor =  vm["ddc-dec"].as<uint16_t>();
+            decFactor =  vm["ddc-dec"].as<double>();
 
-            if (decFactor < 3)
-                decFactor = 3;
-            else if (decFactor > 63)
-                decFactor = 63;
+            if (decFactor < 2.0 || decFactor > 63.75) {
+                std::cout << "Invalid decimation factor (too low/high)" << std::endl;
+                return 0;
+            }
+            if ((decFactor - (long)decFactor) == 0.25) {}
+            else if ((decFactor - (long)decFactor) == 0.5) {}
+            else if ((decFactor - (long)decFactor) == 0.75) {}
+            else if ((decFactor - (long)decFactor) == 0.0) {}
+            else
+            {
+                std::cout << "Invalid decimation factor " << (decFactor - (long)decFactor) <<  std::endl;
+                return 0;
+            }
 
-            sampleOffset = 34 + (16 * decFactor);
+            sampleOffset = 34 + (uint32_t)(16 * decFactor);
         }
         if (vm.count("ddc-freq"))
         {
             ddcFreq = vm["ddc-freq"].as<double>();
         }
+        if (vm.count("ddc-fir"))
+        {
+            firFname = vm["ddc-fir"].as<std::string>();
+        }
         if (vm.count("fname"))
         {
-            fname = vm["ddc-freq"].as<std::string>();
+            fname = vm["fname"].as<std::string>();
         }
 
 
@@ -164,6 +177,46 @@ int main(int ac, char *av[]) noexcept {
             }
         }
 
+        uint16_t decInteger = (uint32_t)decFactor;
+        uint8_t decQuarters = (uint8_t)((decFactor - (long)decFactor)/0.25) ;
+
+        //read fir from file
+        int16_t fCoeffs[1024]; //arbitrary buffer size
+        uint16_t numCoeffs = 0;
+
+        std::fstream firfile(firFname, std::ios_base::in);
+        while (firfile >> fCoeffs[numCoeffs])
+        {
+            numCoeffs++;
+        }
+        /*for (uint16_t n = 0; n < numCoeffs; n++) {
+            std::cout << std::dec << fCoeffs[n] << std::endl;
+        }
+
+        std::cout << "numCoeffs = " << std::dec << numCoeffs << std::endl;*/
+
+        //check if fir size is correct for given decimation factor
+        if (decQuarters == 0 && numCoeffs != (8 * decInteger)) {
+            std::cout << "WARNING! FIR size invalid! expected = "
+                << std::dec << (8 * decInteger) << ", acutal = "
+                << std::dec << numCoeffs << std::endl;
+        }
+        else if (decQuarters == 2 && numCoeffs != ((16 * (decInteger)) + 8)) {
+            std::cout << "WARNING! FIR size invalid! expected = "
+                << std::dec << ((16 * (decInteger)) + 8) << ", acutal = "
+                << std::dec << numCoeffs << std::endl;
+        }
+        else if (decQuarters == 1 && numCoeffs != ((32 * (decInteger)) + 8)) {
+            std::cout << "WARNING! FIR size invalid! expected = "
+                << std::dec << ((32 * (decInteger)) + 8) << ", acutal = "
+                << std::dec << numCoeffs << std::endl;
+        }
+        else if (decQuarters == 3 && numCoeffs != ((32 * (decInteger)) + 24)) {
+            std::cout << "WARNING! FIR size invalid! expected = "
+                << std::dec << ((32 * (decInteger)) + 24) << ", acutal = "
+                << std::dec << numCoeffs << std::endl;
+        }
+
         //configure demodulator
         for (uint8_t n = 0; n < nOEMS; n++) {
             //enable demodulator
@@ -173,9 +226,15 @@ int main(int ac, char *av[]) noexcept {
             //set demodulation frequency
             us4r->getUs4OEM(n)->setAfeDemodFrequency(ddcFreq);
             //set decimation factor
-            us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(static_cast<uint16_t>(decFactor));
-            //write filter coefficients from file
-            //TODO
+            if (decQuarters == 0) {
+                us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(decInteger);
+            }
+            else {
+                us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(decInteger, decQuarters);
+            }
+            //write fir
+            us4r->getUs4OEM(n)->writeAfeFIRCoeffs(fCoeffs, numCoeffs);
+            
         }
 
         std::cout << "press a key to startScheme... " << std::endl;
