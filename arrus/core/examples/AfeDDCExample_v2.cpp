@@ -28,7 +28,8 @@ int main(int ac, char *av[]) noexcept {
             ("help", "produce help message")
             ("ddc-dec", po::value<double>(), "Sets DDC decimation factor")
             ("ddc-freq", po::value<double>(), "Sets DDC frequency")
-            ("ddc-fir", po::value<std::string>()->default_value("../fir.txt")->implicit_value("../fir.txt"), "Writes FIR coefficients from specified file")
+            ("ddc-fir-load", po::value<std::string>()->default_value("../fir.txt")->implicit_value("../fir.txt"), "Loads FIR coefficients from specified file")
+            ("ddc-fir-gen", po::value<double>(), "Generates FIR coefficients with specified cutoff frequency")
             ("fname", po::value<std::string>()->default_value("rf.bin")->implicit_value("rf.bin"), "Filename for output data")
             ;
 
@@ -45,6 +46,7 @@ int main(int ac, char *av[]) noexcept {
         uint32_t sampleOffset;
         double decFactor;
         double ddcFreq;
+        double ddcFirCutoff = -255.0;
         std::string fname, firFname;
 
         if (vm.count("ddc-dec"))
@@ -71,9 +73,14 @@ int main(int ac, char *av[]) noexcept {
         {
             ddcFreq = vm["ddc-freq"].as<double>();
         }
-        if (vm.count("ddc-fir"))
+        if (vm.count("ddc-fir-gen"))
         {
-            firFname = vm["ddc-fir"].as<std::string>();
+            ddcFirCutoff = vm["ddc-fir-gen"].as<double>();
+            firFname = "fir_generated.txt";
+        }
+        else if (vm.count("ddc-fir-load"))
+        {
+            firFname = vm["ddc-fir-load"].as<std::string>();
         }
         if (vm.count("fname"))
         {
@@ -175,6 +182,13 @@ int main(int ac, char *av[]) noexcept {
             catch (const std::exception &e) {
                 break;
             }
+        }
+
+        //run fir generation script if requested
+        if (ddcFirCutoff > 0)
+        {
+            std::string pycmd = "python ../AfeDDCExample_v2_FirGen.py " + std::to_string(decFactor) + " " + std::to_string(ddcFirCutoff);
+            system(pycmd.c_str());
         }
 
         uint16_t decInteger = (uint32_t)decFactor;
