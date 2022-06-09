@@ -123,55 +123,6 @@ int main(int ac, char *av[]) noexcept {
         auto result = session->upload(scheme);
         us4r->setVoltage(10);
 
-        std::condition_variable cv;
-        using namespace std::chrono_literals;
-
-        OnNewDataCallback callback = [&, i = 0](const BufferElement::SharedHandle &ptr) mutable {
-            try {
-                std::cout << "Iteration: " << i << ", data: " << std::endl;
-                std::cout << "- memory ptr: " << std::hex
-                    << ptr->getData().get<short>()
-                    << std::dec << std::endl;
-                std::cout << "- size: " << ptr->getSize() << std::endl;
-                std::cout << "- shape: (" << ptr->getData().getShape()[0] << // calkowita liczba probek
-                    ", " << ptr->getData().getShape()[1] << // 32
-                    ")" << std::endl;
-
-                //dump data to file
-                std::ofstream file;
-                file.open(fname, std::ios::binary | std::ios::out);
-                file.write(reinterpret_cast<char *>(ptr->getData().getInt16()/*ptr->getData().get<short>()*/), static_cast<size_t>(ptr->getSize()));
-                file.close();
-
-                // Stop the system after receiving frame.
-                cv.notify_one();
-                ptr->release();
-            }
-            catch (const std::exception &e) {
-                std::cout << "Exception: " << e.what() << std::endl;
-                cv.notify_all();
-            }
-            catch (...) {
-                std::cout << "Unrecognized exception" << std::endl;
-                cv.notify_all();
-            }
-        };
-
-        OnOverflowCallback overflowCallback = [&]() {
-            std::cout << "Data overflow occurred!" << std::endl;
-            cv.notify_one();
-        };
-
-        // Register the callback for new data in the output buffer.
-        auto buffer = std::static_pointer_cast<DataBuffer>(result.getBuffer());
-        buffer->registerOnNewDataCallback(callback);
-        buffer->registerOnOverflowCallback(overflowCallback);
-
-        bool cont = true;
-
-        //std::mutex mutex;
-        //std::unique_lock<std::mutex> lock(mutex);
-
         //get number of oems?
         uint8_t nOEMS = 0;
         for (nOEMS = 0; nOEMS < 16; nOEMS++)
@@ -192,7 +143,7 @@ int main(int ac, char *av[]) noexcept {
         }
 
         uint16_t decInteger = (uint32_t)decFactor;
-        uint8_t decQuarters = (uint8_t)((decFactor - (long)decFactor)/0.25) ;
+        uint8_t decQuarters = (uint8_t)((decFactor - (long)decFactor) / 0.25);
 
         //read fir from file
         int16_t fCoeffs[1024]; //arbitrary buffer size
@@ -248,8 +199,52 @@ int main(int ac, char *av[]) noexcept {
             }
             //write fir
             us4r->getUs4OEM(n)->writeAfeFIRCoeffs(fCoeffs, numCoeffs);
-            
+
         }
+
+        std::condition_variable cv;
+        using namespace std::chrono_literals;
+
+        OnNewDataCallback callback = [&, i = 0](const BufferElement::SharedHandle &ptr) mutable {
+            try {
+                std::cout << "Iteration: " << i << ", data: " << std::endl;
+                std::cout << "- memory ptr: " << std::hex
+                    << ptr->getData().get<short>()
+                    << std::dec << std::endl;
+                std::cout << "- size: " << ptr->getSize() << std::endl;
+                std::cout << "- shape: (" << ptr->getData().getShape()[0] << // calkowita liczba probek
+                    ", " << ptr->getData().getShape()[1] << // 32
+                    ")" << std::endl;
+
+                //dump data to file
+                std::ofstream file;
+                file.open(fname, std::ios::binary | std::ios::out);
+                file.write(reinterpret_cast<char *>(ptr->getData().getInt16()/*ptr->getData().get<short>()*/), static_cast<size_t>(ptr->getSize()));
+                file.close();
+
+                // Stop the system after receiving frame.
+                cv.notify_one();
+                ptr->release();
+            }
+            catch (const std::exception &e) {
+                std::cout << "Exception: " << e.what() << std::endl;
+                cv.notify_all();
+            }
+            catch (...) {
+                std::cout << "Unrecognized exception" << std::endl;
+                cv.notify_all();
+            }
+        };
+
+        OnOverflowCallback overflowCallback = [&]() {
+            std::cout << "Data overflow occurred!" << std::endl;
+            cv.notify_one();
+        };
+
+        // Register the callback for new data in the output buffer.
+        auto buffer = std::static_pointer_cast<DataBuffer>(result.getBuffer());
+        buffer->registerOnNewDataCallback(callback);
+        buffer->registerOnOverflowCallback(overflowCallback);
 
         std::cout << "press a key to startScheme... " << std::endl;
         std::cin >> value;
