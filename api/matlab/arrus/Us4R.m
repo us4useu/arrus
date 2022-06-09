@@ -459,7 +459,7 @@ classdef Us4R < handle
             
             %% Default txPri
             if isempty(obj.seq.txPri)
-                obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 40e-6;
+                obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
             end
             
             %% TGC
