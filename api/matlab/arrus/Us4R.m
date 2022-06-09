@@ -433,7 +433,6 @@ classdef Us4R < handle
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
             obj.seq.rxDel       = 0e-6;
-            obj.seq.rxTime      = obj.seq.txPri - obj.seq.rxDel - 5e-6;	% [s] rx time (max 4000us)
             obj.seq.pauseMultip	= 1.5;
             
             %% rxNSamples & rxDepthRange
@@ -457,10 +456,12 @@ classdef Us4R < handle
                 obj.seq.nSamp = diff(obj.seq.nSamp) + 1;
             end
             
-            %% Default txPri
+            %% txPri & rxTime
             if isempty(obj.seq.txPri)
                 obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
             end
+            
+            obj.seq.rxTime = obj.seq.txPri - obj.seq.rxDel - 5e-6;	% [s] rx time (max 4000us)
             
             %% TGC
             % Default TGC
