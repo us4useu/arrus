@@ -172,14 +172,14 @@ class Session(AbstractSession):
         """
         Starts the execution of the uploaded scheme.
         """
-        self._session_handle.startScheme()
+        arrus.core.arrusSessionStartScheme(self._session_handle)
 
     def stop_scheme(self):
         """
         Stops execution of the scheme.
         """
         _STOP_TIME = 2
-        self._session_handle.stopScheme()
+        arrus.core.arrusSessionStopScheme(self._session_handle)
         time.sleep(_STOP_TIME)
         if self._current_processing is not None:
             self._current_processing.stop()
