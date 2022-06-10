@@ -129,6 +129,11 @@ Us4RImpl::upload(const TxRxSequence &seq, unsigned short rxBufferNElements, cons
     // Create output buffer.
     this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
     getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
+
+    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
+    // TODO implement Us4RBuffer move constructor.
+    this->us4rBuffer = std::move(rxBuffer);
+
     return {this->buffer, std::move(fcm)};
 }
 
@@ -145,6 +150,9 @@ void Us4RImpl::start() {
     if (!this->buffer->getOnNewDataCallback()) {
         throw ::arrus::IllegalArgumentException("'On new data callback' is not set.");
     }
+    for(auto &us4oem: us4oems) {
+        us4oem->getIUs4oem()->EnableInterrupts();
+    }
     this->getDefaultComponent()->start();
     this->state = State::STARTED;
 }
@@ -159,6 +167,9 @@ void Us4RImpl::stopDevice() {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        for(auto &us4oem: us4oems) {
+            us4oem->getIUs4oem()->DisableInterrupts();
+        }
         this->getDefaultComponent()->stop();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         logger->log(LogSeverity::DEBUG, "Stopped.");

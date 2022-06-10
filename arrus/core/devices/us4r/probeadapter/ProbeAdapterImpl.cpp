@@ -312,7 +312,10 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     if (elementSize == 0) {
         return;
     }
-    transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, &bufferSrc, us4oem);
+    if(transferRegistrar[us4oemOrdinal]) {
+        transferRegistrar[us4oemOrdinal].reset();
+    }
+    transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, bufferSrc, us4oem);
     transferRegistrar[us4oemOrdinal]->registerTransfers();
 
     // Register buffer element release functions.

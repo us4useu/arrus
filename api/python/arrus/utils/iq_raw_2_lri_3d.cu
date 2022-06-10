@@ -42,8 +42,11 @@ __global__ void iqRaw2Lri3D(complex<float> *iqLri, const complex<float> *input,
                             const float minRxTangZX, const float maxRxTangZX,
                             const float minRxTangZY, const float maxRxTangZY,
                             const float initDel,
-                            const float *rxApod, const int nRxApod) {
-
+                            const float *rxApod, const int nRxApod,
+    // list of positions (x, y) of the first element of rx aperture
+    // (assuming rectangle aperture, the first element is the one in the top left corner)
+                            const int *rxApFstElemX, const int *rxApFstElemY
+) {
     int z = blockIdx.x * blockDim.x + threadIdx.x;
     int x = blockIdx.y * blockDim.y + threadIdx.y;
     int y = blockIdx.z * blockDim.z + threadIdx.z;
@@ -97,11 +100,11 @@ __global__ void iqRaw2Lri3D(complex<float> *iqLri, const complex<float> *input,
             // to determine if the pixel is in the sonified area (dot product >= 0).
             // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
             txApod = (
-                    ((-(zPix[z] - zFoc)*(xElemConst[txApFstElemX[iTx]] - xFoc) - (xPix[x] - xFoc)*zFoc) * pixFocArrang >= 0.f) &&
-                    ( ((zPix[z] - zFoc)*(xElemConst[txApLstElemX[iTx]] - xFoc) + (xPix[x] - xFoc)*zFoc) * pixFocArrang >= 0.f) &&
-                    ((-(zPix[z] - zFoc)*(yElemConst[txApFstElemY[iTx]] - yFoc) - (yPix[y] - yFoc)*zFoc) * pixFocArrang >= 0.f) &&
-                    (( (zPix[z] - zFoc)*(yElemConst[txApLstElemY[iTx]] - yFoc) + (yPix[y] - yFoc)*zFoc) * pixFocArrang >= 0.f)
-                    ) ? 1.f : 0.f;
+                         ((-(zPix[z] - zFoc)*(xElemConst[txApFstElemX[iTx]] - xFoc) - (xPix[x] - xFoc)*zFoc) * pixFocArrang >= 0.f) &&
+                             ( ((zPix[z] - zFoc)*(xElemConst[txApLstElemX[iTx]] - xFoc) + (xPix[x] - xFoc)*zFoc) * pixFocArrang >= 0.f) &&
+                             ((-(zPix[z] - zFoc)*(yElemConst[txApFstElemY[iTx]] - yFoc) - (yPix[y] - yFoc)*zFoc) * pixFocArrang >= 0.f) &&
+                             (( (zPix[z] - zFoc)*(yElemConst[txApLstElemY[iTx]] - yFoc) + (yPix[y] - yFoc)*zFoc) * pixFocArrang >= 0.f)
+                     ) ? 1.f : 0.f;
         }
         else {
             /* PWI */
@@ -111,9 +114,9 @@ __global__ void iqRaw2Lri3D(complex<float> *iqLri, const complex<float> *input,
             // to determine if the pixel is in the sonified area (dot product >= 0).
             // For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
             txApod = (((-sinf(txAngZX[iTx])*zPix[z] + cosf(txAngZX[iTx]) * (xPix[x]-xElemConst[txApFstElemX[iTx]])) >= 0.f) &&
-                    (   (sinf(txAngZX[iTx])*zPix[z] - cosf(txAngZX[iTx]) * (xPix[x]-xElemConst[txApLstElemX[iTx]])) >= 0.f) &&
-                    (  (-sinf(txAngZY[iTx])*zPix[z] + cosf(txAngZY[iTx]) * (yPix[x]-yElemConst[txApFstElemY[iTx]])) >= 0.f) &&
-                    (   (sinf(txAngZY[iTx])*zPix[z] - cosf(txAngZY[iTx]) * (yPix[x]-yElemConst[txApLstElemY[iTx]])) >= 0.f )) ? 1.f : 0.f;
+                (   (sinf(txAngZX[iTx])*zPix[z] - cosf(txAngZX[iTx]) * (xPix[x]-xElemConst[txApLstElemX[iTx]])) >= 0.f) &&
+                (  (-sinf(txAngZY[iTx])*zPix[z] + cosf(txAngZY[iTx]) * (yPix[y]-yElemConst[txApFstElemY[iTx]])) >= 0.f) &&
+                (   (sinf(txAngZY[iTx])*zPix[z] - cosf(txAngZY[iTx]) * (yPix[y]-yElemConst[txApLstElemY[iTx]])) >= 0.f )) ? 1.f : 0.f;
         }
 
         pix.real(0.0f);
@@ -122,15 +125,17 @@ __global__ void iqRaw2Lri3D(complex<float> *iqLri, const complex<float> *input,
 
         if (txApod != 0.f) {
             for (int iElemY = 0; iElemY < nElemY; ++iElemY) {
-                rxTang = (yPix[y]-yElemConst[iElemY])*zDistInv;
+                int rxFstElemY = iElemY+rxApFstElemY[iTx]; // global, the position in the full probe's aperture
+                rxTang = (yPix[y]-yElemConst[rxFstElemY])*zDistInv;
                 if (rxTang < minRxTangZY || rxTang > maxRxTangZY) continue;
                 rxApodY = interpLinearNormalized(rxApod, nRxApod, (rxTang-minRxTangZY)*rngRxTangZYInv);
                 for (int iElemX = 0; iElemX < nElemX; ++iElemX) {
+                    int rxFstElemX = iElemX+rxApFstElemX[iTx];
                     offset = iTx*nElemY*nElemX*nSamp + iElemY*nElemX*nSamp + iElemX*nSamp;
-                    rxTang = (xPix[x] - xElemConst[iElemX])*zDistInv;
+                    rxTang = (xPix[x] - xElemConst[rxFstElemX])*zDistInv;
                     if (rxTang < minRxTangZX || rxTang > maxRxTangZX) continue;
                     rxApodX = interpLinearNormalized(rxApod, nRxApod, (rxTang-minRxTangZX)*rngRxTangZXInv);
-                    rxDist = ownHypotf(zPix[z], xPix[x] - xElemConst[iElemX], yPix[y] - yElemConst[iElemY]);
+                    rxDist = ownHypotf(zPix[z], xPix[x] - xElemConst[rxFstElemX], yPix[y] - yElemConst[rxFstElemY]);
                     time = (txDist+rxDist)*sosInv + initDel;
                     iSamp = time*fs;
                     if (iSamp < 0 || iSamp > static_cast<float>(nSamp-1)) continue;

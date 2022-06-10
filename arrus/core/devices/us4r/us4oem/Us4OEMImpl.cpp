@@ -27,10 +27,12 @@ namespace arrus::devices {
 Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
                        std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                        std::unordered_set<uint8_t> channelsMask,
-                       Us4OEMSettings::ReprogrammingMode reprogrammingMode)
+                       Us4OEMSettings::ReprogrammingMode reprogrammingMode,
+                       bool externalTrigger = false)
         : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()},
           ius4oem(std::move(ius4oem)), channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
-          reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)) {
+          reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)),
+          externalTrigger(externalTrigger) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -431,7 +433,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     pri += lastPriExtend.value();
                 }
                 auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
-                ius4oem->SetTrigger(priMs, checkpoint, firing);
+                ius4oem->SetTrigger(priMs, checkpoint, firing, checkpoint && externalTrigger);
             }
         }
     }
