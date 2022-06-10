@@ -173,7 +173,7 @@ classdef Us4R < handle
                     sequenceType = "sta";
                 case 'LINSequence'
                     sequenceType = "lin";
-                case 'SimpleTxRxSequence'
+                case {'SimpleTxRxSequence','CustomTxRxSequence'}
                     sequenceType = "custom";
                 otherwise
                     error("ARRUS:IllegalArgument", ...
