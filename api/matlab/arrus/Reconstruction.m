@@ -27,7 +27,7 @@ classdef Reconstruction < Operation
     % :param wcFiltInitSize: number of initial filter output samples to be rejected
     
     properties
-        gridModeEnable
+        gridModeEnable = true
         filterEnable = false
         filterACoeff
         filterBCoeff
