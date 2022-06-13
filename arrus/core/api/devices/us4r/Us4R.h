@@ -205,8 +205,9 @@ public:
     /**
      * Enables digital IQ demodulator and sets given parameters.
      *
+     * Note: this function must be called before uploading TX/RX sequence on the device.
+     *
      * TODO(jrozb91) more details are required:
-     * - when can this function be called? before starting acquisition? can IQ demodulator be enabled/disabled
      * - what exceptions this method can throw (if any)?
      * - demodulationFrequency: what range of values is accepted? what if value outside of this range is given?
      *                          (validator exception?)

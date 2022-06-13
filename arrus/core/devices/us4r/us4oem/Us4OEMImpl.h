@@ -61,7 +61,6 @@ public:
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
-    static constexpr uint32 SAMPLE_DELAY = 0;
     static constexpr float RX_DELAY = 0.0;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
@@ -159,6 +158,11 @@ private:
 
     float getTxRxTime(float rxTime) const;
 
+    /**
+     * Returns the sample number that corresponds to the time of Tx.
+     */
+    unsigned int getNumberOfSamplesToTxStart() const;
+
     // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
     void setPgaGainAfe(uint16 value, bool force);
@@ -176,7 +180,9 @@ private:
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
     /** Current RX settings */
     RxSettings rxSettings;
-    bool externalTrigger;
+    bool externalTrigger{false};
+    bool afeDemodEnabled{false};
+    float afeDemodDecimationFactor{1};
 };
 
 }
