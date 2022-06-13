@@ -142,6 +142,39 @@ public:
     MOCK_METHOD(int, GetTxFrequencyRange, (), (override));
     MOCK_METHOD(void, EnableInterrupts, (), (override));
     MOCK_METHOD(void, DisableInterrupts, (), (override));
+
+    MOCK_METHOD(void, SetActiveTermination, (us4r::afe58jd18::ACTIVE_TERM_EN, us4r::afe58jd18::ACT_TERM_IND_RES), (override));
+    MOCK_METHOD(void, AfeWriteRegister, (uint8_t, uint8_t, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodEnable, (), (override));
+    MOCK_METHOD(void, AfeDemodEnable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodDisable, (), (override));
+    MOCK_METHOD(void, AfeDemodDisable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDefault, (), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactor, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactorQuarters, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDemodFrequency, (double), (override));
+    MOCK_METHOD(void, AfeDemodFsweepEnable, (), (override));
+    MOCK_METHOD(void, AfeDemodFsweepDisable, (), (override));
+    MOCK_METHOD(void, AfeDemodSetFsweepROI, (uint16_t, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodSetFirCoeffsBank, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodWriteFirCoeffs, (const int16_t*, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDefault, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactor, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactorQuarters, (uint8_t, uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDemodFrequency, (uint8_t, double), (override));
+    MOCK_METHOD(void, AfeDemodSetDemodFrequency, (uint8_t, double, double), (override));
+    MOCK_METHOD(double, AfeDemodGetStartFrequency, (), (override));
+    MOCK_METHOD(double, AfeDemodGetStopFrequency, (), (override));
+    MOCK_METHOD(double, AfeDemodGetStartFrequency, (uint8_t), (override));
+    MOCK_METHOD(double, AfeDemodGetStopFrequency, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodFsweepEnable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodFsweepDisable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetFsweepROI, (uint8_t, uint16_t, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodWriteFirCoeffsBank, (uint8_t, uint32_t*), (override));
+    MOCK_METHOD(void, AfeDemodWriteFirCoeffs, (uint8_t, const int16_t*, uint16_t), (override));
+    MOCK_METHOD(uint16_t, AfeReadRegister, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeSoftReset, (uint8_t), (override));
+    MOCK_METHOD(void, AfeSoftReset, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
