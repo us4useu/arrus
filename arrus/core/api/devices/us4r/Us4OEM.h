@@ -39,20 +39,7 @@ public:
     //virtual void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) = 0;
     virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
                              size_t nCoefficients) = 0;
-    virtual void enableAfeDemod() = 0;
     virtual void disableAfeDemod() = 0;
-    virtual void setAfeDemodDefault() = 0;
-    virtual void setAfeDemodDecimationFactor(uint8_t integer) = 0;
-    virtual void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) = 0;
-    virtual void setAfeDemodFrequency(double startFrequency) = 0;
-    virtual void setAfeDemodFrequency(double startFrequency, double stopFrequency) = 0;
-    virtual double getAfeDemodStartFrequency() = 0;
-    virtual double getAfeDemodStopFrequency() = 0;
-    virtual void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample) = 0;
-    // TODO(jrozb91) change name to "setAfeFirCoeffs"
-    virtual void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length) = 0;
-    virtual void resetAfe() = 0;
-
     /**
      * Checks if the firmware version on the Us4OEM module is correct.
      *

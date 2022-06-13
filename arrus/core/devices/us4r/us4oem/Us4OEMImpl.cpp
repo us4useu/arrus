@@ -684,7 +684,7 @@ unsigned int Us4OEMImpl::getNumberOfSamplesToTxStart() const {
         return 34u + (uint32_t)(16 * afeDemodDecimationFactor);
     } else {
         // AFE IQ demodulator turned off: TX is on the 240th sample
-        return 240;
+        return TX_SAMPLE_DELAY_RAW_DATA;
     }
 }
 

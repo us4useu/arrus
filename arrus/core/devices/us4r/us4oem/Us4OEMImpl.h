@@ -61,6 +61,7 @@ public:
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
+    static constexpr uint32_t TX_SAMPLE_DELAY_RAW_DATA = 240;
     static constexpr float RX_DELAY = 0.0;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
@@ -128,22 +129,9 @@ public:
 
 	uint16_t getAfe(uint8_t address) override;
 	void setAfe(uint8_t address, uint16_t value) override;
-    //void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) override;
-    void enableAfeDemod() override;
-    void disableAfeDemod() override;
-    void setAfeDemodDefault() override;
-    void setAfeDemodDecimationFactor(uint8_t integer) override;
-    void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) override;
-    void setAfeDemodFrequency(double frequency) override;
-    void setAfeDemodFrequency(double StartFrequency, double stopFrequency) override;
-    double getAfeDemodStartFrequency(void) override;
-    double getAfeDemodStopFrequency(void) override;
-    void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample) override;
-    void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length) override;
-    void resetAfe() override;
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
                      size_t nCoefficients) override;
-
+    void disableAfeDemod() override;
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
@@ -170,6 +158,17 @@ private:
     void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
     void setLpfCutoffAfe(uint32 value, bool force);
     void setActiveTerminationAfe(std::optional<uint16> param, bool force);
+    void enableAfeDemod();
+    void setAfeDemodDefault();
+    void setAfeDemodDecimationFactor(uint8_t integer);
+    void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
+    void setAfeDemodFrequency(double frequency);
+    void setAfeDemodFrequency(double StartFrequency, double stopFrequency);
+    double getAfeDemodStartFrequency(void);
+    double getAfeDemodStopFrequency(void);
+    void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample);
+    void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length);
+    void resetAfe();
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
