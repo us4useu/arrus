@@ -97,76 +97,80 @@ void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
 	ius4oem->AfeWriteRegister(1, address, value);
 }
 
+void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+                             size_t nCoefficients) {
+    // TODO(jrozb91) validate input:
+    // is the nCoefficients for a given nCoefficients correct?
+    // are the values in correct range?
+    float decFract;
+    int decInt = int(std::modf(decimationFactor, &decFract));
+    int nQuarters = 0;
+    if(decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
+        nQuarters = int(decFract *4.0f);
+    }
+    else {
+        throw IllegalArgumentException("Decimation's fractional part should be equal 0.0, 0.25, 0.5 or 0.75");
+    }
+    enableAfeDemod();
+    //write default config
+    setAfeDemodDefault();
+    //set demodulation frequency
+    setAfeDemodFrequency(demodulationFrequency);
+    //set decimation factor
+    setAfeDemodDecimationFactor(decInt, nQuarters);
+    //write fir
+    writeAfeFIRCoeffs(firCoefficients, nCoefficients);
+}
+
 void Us4OEMImpl::enableAfeDemod() {
-    ius4oem->AfeDemodEnable(0);
-    ius4oem->AfeDemodEnable(1);
+    ius4oem->AfeDemodEnable();
 }
 
 void Us4OEMImpl::disableAfeDemod() {
-    ius4oem->AfeDemodDisable(0);
-    ius4oem->AfeDemodDisable(1);
+    ius4oem->AfeDemodDisable();
 }
 
 void Us4OEMImpl::setAfeDemodDefault() {
-    ius4oem->AfeDemodSetDefault(0);
-    ius4oem->AfeDemodSetDefault(1);
+    ius4oem->AfeDemodSetDefault();
 }
 
 void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer) {
-    ius4oem->AfeDemodSetDecimationFactor(0, integer);
-    ius4oem->AfeDemodSetDecimationFactor(1, integer);
+    ius4oem->AfeDemodSetDecimationFactor(integer);
 }
 
 void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) {
-    ius4oem->AfeDemodSetDecimationFactorQuarters(0, integer, quarters);
-    ius4oem->AfeDemodSetDecimationFactorQuarters(1, integer, quarters);
+    ius4oem->AfeDemodSetDecimationFactorQuarters(integer, quarters);
 }
 
-void Us4OEMImpl::setAfeDemodFrequency(double startFrequency) {
-    ius4oem->AfeDemodSetDemodFrequency(0, startFrequency);
-    ius4oem->AfeDemodSetDemodFrequency(1, startFrequency);
-    ius4oem->AfeDemodFsweepDisable(0);
-    ius4oem->AfeDemodFsweepDisable(1);
+void Us4OEMImpl::setAfeDemodFrequency(double frequency) {
+    ius4oem->AfeDemodSetDemodFrequency(frequency);
+    ius4oem->AfeDemodFsweepDisable();
 }
 
 void Us4OEMImpl::setAfeDemodFrequency(double startFrequency, double stopFrequency) {
-    ius4oem->AfeDemodSetDemodFrequency(0, startFrequency, stopFrequency);
-    ius4oem->AfeDemodSetDemodFrequency(1, startFrequency, stopFrequency);
-    ius4oem->AfeDemodFsweepEnable(0);
-    ius4oem->AfeDemodFsweepEnable(1);
+    ius4oem->AfeDemodSetDemodFrequency(startFrequency, stopFrequency);
+    ius4oem->AfeDemodFsweepEnable();
 }
 
-double Us4OEMImpl::getAfeDemodStartFrequency(void) {
-    return ius4oem->AfeDemodGetStartFrequency(0);
+double Us4OEMImpl::getAfeDemodStartFrequency() {
+    return ius4oem->AfeDemodGetStartFrequency();
 }
 
-double Us4OEMImpl::getAfeDemodStopFrequency(void) {
-    return ius4oem->AfeDemodGetStopFrequency(0);
+double Us4OEMImpl::getAfeDemodStopFrequency() {
+    return ius4oem->AfeDemodGetStopFrequency();
 }
 
 void Us4OEMImpl::setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample) {
-    ius4oem->AfeDemodSetFsweepROI(0, startSample, stopSample);
-    ius4oem->AfeDemodSetFsweepROI(1, startSample, stopSample);
+    ius4oem->AfeDemodSetFsweepROI(startSample, stopSample);
 }
 
-void Us4OEMImpl::writeAfeFIRCoeffs(int16_t* coeffs, uint16_t length) {
-    ius4oem->AfeDemodWriteFirCoeffs(0, coeffs, length);
-    ius4oem->AfeDemodWriteFirCoeffs(1, coeffs, length);
+void Us4OEMImpl::writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length) {
+    ius4oem->AfeDemodWriteFirCoeffs(coeffs, length);
 }
 
 void Us4OEMImpl::resetAfe() {
-    ius4oem->AfeSoftReset(0);
-    ius4oem->AfeSoftReset(1);
+    ius4oem->AfeSoftReset();
 }
-
-/*void Us4OEMImpl::setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) {
-    _CRT_UNUSED(address);
-    _CRT_UNUSED(coeffs);
-    _CRT_UNUSED(length);
-    //ius4oem->AfeWriteRegister(0, address, coeffs, length);
-    //ius4oem->AfeWriteRegister(1, address, coeffs, length);
-}*/
-
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:

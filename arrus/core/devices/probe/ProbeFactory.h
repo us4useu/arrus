@@ -3,11 +3,12 @@
 
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/devices/probe/ProbeImplBase.h"
+#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 
 namespace arrus::devices {
 class ProbeFactory {
 public:
-    virtual ProbeImplBase::Handle getProbe(const ProbeSettings &settings,ProbeAdapterImplBase::RawHandle adapter) = 0;
+    virtual ProbeImplBase::Handle getProbe(const ProbeSettings &settings, ProbeAdapterImplBase::RawHandle adapter) = 0;
     virtual ~ProbeFactory() = default;
 };
 }

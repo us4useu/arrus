@@ -3,29 +3,31 @@
 
 #include <memory>
 
+#include "FrameChannelMapping.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
-#include "arrus/core/api/devices/us4r/Us4OEM.h"
-#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
-#include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
-#include "FrameChannelMapping.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
 
 namespace arrus::devices {
 
 /**
  * Us4R system: a group of Us4OEM modules and related components.
+ *
+ * By default system starts with IQ demodulator turned off.
  */
 class Us4R : public DeviceWithComponents {
 public:
     using Handle = std::unique_ptr<Us4R>;
     static constexpr long long INF_TIMEOUT = -1;
 
-    explicit Us4R(const DeviceId &id): DeviceWithComponents(id) {}
+    explicit Us4R(const DeviceId &id) : DeviceWithComponents(id) {}
 
     ~Us4R() override = default;
 
@@ -35,7 +37,7 @@ public:
      * @param ordinal ordinal number of the us4oem to get
      * @return a handle to the us4oem module
      */
-    virtual Us4OEM* getUs4OEM(Ordinal ordinal) = 0;
+    virtual Us4OEM *getUs4OEM(Ordinal ordinal) = 0;
 
     /**
      * Returns a handle to an adapter identified by given ordinal number.
@@ -51,12 +53,9 @@ public:
      * @param ordinal ordinal number of the probe to get
      * @return a handle to the probe
      */
-    virtual arrus::devices::Probe* getProbe(Ordinal ordinal) = 0;
+    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) = 0;
 
-    virtual std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::devices::FrameChannelMapping>
-    >
+    virtual std::pair<std::shared_ptr<arrus::framework::Buffer>, std::shared_ptr<arrus::devices::FrameChannelMapping>>
     upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize,
            const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
            const ::arrus::framework::DataBufferSpec &hostBufferSpec) = 0;
@@ -97,7 +96,7 @@ public:
     /**
      * Equivalent to setTgcCurve(curve, true).
      */
-    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints) = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints) = 0;
 
     /**
      * Sets TGC curve points asynchronously.
@@ -112,7 +111,7 @@ public:
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
      */
-    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic) = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) = 0;
 
     /**
      * Sets PGA gain.
@@ -203,12 +202,52 @@ public:
      */
     virtual bool isStopOnOverflow() const = 0;
 
-    Us4R(Us4R const&) = delete;
-    Us4R(Us4R const&&) = delete;
-    void operator=(Us4R const&) = delete;
-    void operator=(Us4R const&&) = delete;
+    /**
+     * Enables digital IQ demodulator and sets given parameters.
+     *
+     * TODO(jrozb91) more details are required:
+     * - when can this function be called? before starting acquisition? can IQ demodulator be enabled/disabled
+     * - what exceptions this method can throw (if any)?
+     * - demodulationFrequency: what range of values is accepted? what if value outside of this range is given?
+     *                          (validator exception?)
+     * - decimationFactor: what range of values is accepted, int16 (min,max), or something else?
+     * - fiCoefficients: what are the acceptable value? are there any restrictions, min max values?
+     * - nCoefficients: how the number of coefficients depend on the decimation factor?.
+     *                  What will happen if you will try to set incorrect number of coefficients (validator exception)
+     *
+     * @param demodulationFrequency: TODO
+     * @param decimationFactor: TODO
+     * @param firCoefficients: TODO
+     * @param nCoefficients: TODO
+     * @throw arrus::IllegalArgumentException: TODO when?
+     */
+    virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+                             size_t nCoefficients) = 0;
+
+    /**
+     * Enables digital IQ demodulator and sets given parameters.
+     *
+     * @see setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+     *                  size_t nCoefficients)
+     */
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const std::vector<int16> &firCoefficients) {
+        setAfeDemod(demodulationFrequency, decimationFactor, firCoefficients.data(), firCoefficients.size());
+    }
+
+    /**
+     * Disables digital IQ demodulator.
+     *
+     * TODO(jrozb91) detailed docs:
+     * - when can this function be called? before starting acquisition? can IQ demodulator be enabled/disabled
+     */
+    virtual void disableAfeDemod() = 0;
+
+    Us4R(Us4R const &) = delete;
+    Us4R(Us4R const &&) = delete;
+    void operator=(Us4R const &) = delete;
+    void operator=(Us4R const &&) = delete;
 };
 
-}
+}// namespace arrus::devices
 
-#endif //ARRUS_CORE_DEVICES_US4R_US4R_H
+#endif//ARRUS_CORE_DEVICES_US4R_US4R_H

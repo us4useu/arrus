@@ -135,14 +135,15 @@ public:
     void setAfeDemodDefault() override;
     void setAfeDemodDecimationFactor(uint8_t integer) override;
     void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) override;
-    void setAfeDemodFrequency(double startFrequency) override;
+    void setAfeDemodFrequency(double frequency) override;
     void setAfeDemodFrequency(double StartFrequency, double stopFrequency) override;
     double getAfeDemodStartFrequency(void) override;
     double getAfeDemodStopFrequency(void) override;
     void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample) override;
-    void writeAfeFIRCoeffs(int16_t* coeffs, uint16_t length) override;
+    void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length) override;
     void resetAfe() override;
-
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+                     size_t nCoefficients) override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
