@@ -38,7 +38,7 @@ public:
 	virtual void setAfe(uint8_t address, uint16_t value) = 0;
     //virtual void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) = 0;
     virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
-                             size_t nCoefficients);
+                             size_t nCoefficients) = 0;
     virtual void enableAfeDemod() = 0;
     virtual void disableAfeDemod() = 0;
     virtual void setAfeDemodDefault() = 0;
