@@ -122,28 +122,12 @@ int main(int ac, char *av[]) noexcept {
 
         auto result = session->upload(scheme);
         us4r->setVoltage(10);
-
-        //get number of oems?
-        uint8_t nOEMS = 0;
-        for (nOEMS = 0; nOEMS < 16; nOEMS++)
-        {
-            try {
-                us4r->getUs4OEM(nOEMS);
-            }
-            catch (const std::exception &e) {
-                break;
-            }
-        }
-
         //run fir generation script if requested
         if (ddcFirCutoff > 0)
         {
             std::string pycmd = "python ../AfeDDCExample_v2_FirGen.py " + std::to_string(decFactor) + " " + std::to_string(ddcFirCutoff);
             system(pycmd.c_str());
         }
-
-        uint16_t decInteger = (uint32_t)decFactor;
-        uint8_t decQuarters = (uint8_t)((decFactor - (long)decFactor) / 0.25);
 
         //read fir from file
         int16_t fCoeffs[1024]; //arbitrary buffer size
@@ -154,14 +138,9 @@ int main(int ac, char *av[]) noexcept {
         {
             numCoeffs++;
         }
-        /*for (uint16_t n = 0; n < numCoeffs; n++) {
-            std::cout << std::dec << fCoeffs[n] << std::endl;
-        }
-
-        std::cout << "numCoeffs = " << std::dec << numCoeffs << std::endl;*/
-
         //check if fir size is correct for given decimation factor
-        if (decQuarters == 0 && numCoeffs != (8 * decInteger)) {
+        // TODO(jrozb91) the below should be part of validation done by Us4OEMImpl::setAfeDemod
+        /*if (decQuarters == 0 && numCoeffs != (8 * decInteger)) {
             std::cout << "WARNING! FIR size invalid! expected = "
                 << std::dec << (8 * decInteger) << ", acutal = "
                 << std::dec << numCoeffs << std::endl;
@@ -180,27 +159,9 @@ int main(int ac, char *av[]) noexcept {
             std::cout << "WARNING! FIR size invalid! expected = "
                 << std::dec << ((32 * (decInteger)) + 24) << ", acutal = "
                 << std::dec << numCoeffs << std::endl;
-        }
-
+        }*/
         //configure demodulator
-        for (uint8_t n = 0; n < nOEMS; n++) {
-            //enable demodulator
-            us4r->getUs4OEM(n)->enableAfeDemod();
-            //write default config
-            us4r->getUs4OEM(n)->setAfeDemodDefault();
-            //set demodulation frequency
-            us4r->getUs4OEM(n)->setAfeDemodFrequency(ddcFreq);
-            //set decimation factor
-            if (decQuarters == 0) {
-                us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(decInteger);
-            }
-            else {
-                us4r->getUs4OEM(n)->setAfeDemodDecimationFactor(decInteger, decQuarters);
-            }
-            //write fir
-            us4r->getUs4OEM(n)->writeAfeFIRCoeffs(fCoeffs, numCoeffs);
-
-        }
+        us4r->setAfeDemod(ddcFreq, decFactor, fCoeffs, numCoeffs);
 
         std::condition_variable cv;
         using namespace std::chrono_literals;

@@ -111,7 +111,7 @@ public:
     MOCK_METHOD(void, setAfeDemod, (float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
                                     size_t nCoefficients), (override));
     MOCK_METHOD(void, disableAfeDemod, (), (override));
-    MOCK_METHOD(void, getAfe, (uint8_t address), (override));
+    MOCK_METHOD(uint16_t, getAfe, (uint8_t address), (override));
     MOCK_METHOD(void, setAfe, (uint8_t address, uint16_t value), (override));
 };
 
