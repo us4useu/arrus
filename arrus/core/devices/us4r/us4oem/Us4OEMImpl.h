@@ -129,7 +129,9 @@ public:
 
 	uint16_t getAfe(uint8_t address) override;
 	void setAfe(uint8_t address, uint16_t value) override;
-    void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16_t *firCoefficients,
+                     size_t nCoefficients) override;
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients) override;
     void disableAfeDemod() override;
 private:
@@ -168,6 +170,7 @@ private:
     float getAfeDemodStopFrequency(void);
     void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample);
     void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length);
+    void writeAfeFIRCoeffs(const float* coeffs, uint16_t length);
     void resetAfe();
 
     Logger::Handle logger;

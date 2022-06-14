@@ -138,6 +138,59 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
     afeDemodEnabled = true;
 }
 
+void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
+    size_t nCoefficients) {
+    // TODO(jrozb91) validate input:
+    // is the nCoefficients for a given nCoefficients correct?
+    // are the values in correct range?
+
+    //check decimation factor
+    if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
+        throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
+    }
+
+    float decFract;
+    int decInt = int(std::modf(decimationFactor, &decFract));
+    int nQuarters = 0;
+    if (decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
+        nQuarters = int(decFract * 4.0f);
+    }
+    else {
+        throw IllegalArgumentException("Decimation's fractional part should be equal 0.0, 0.25, 0.5 or 0.75");
+    }
+
+    int expectedCoeffs = 0;
+
+    //check if fir size is correct for given decimation factor
+    if (decFract == 0.0f && nCoefficients == static_cast<size_t>(8 * decInt)) {
+        expectedCoeffs = 8 * decInt;
+    }
+    else if (decFract == 0.5f && nCoefficients == static_cast<size_t>(16 * decInt + 8)) {
+        expectedCoeffs = 16 * decInt + 8;
+    }
+    else if (decFract == 0.25f && nCoefficients == static_cast<size_t>(32 * decInt + 8)) {
+        expectedCoeffs = 32 * decInt + 8;
+    }
+    else if (decFract == 0.75f && nCoefficients == static_cast<size_t>(32 * decInt + 24)) {
+        expectedCoeffs = 32 * decInt + 24;
+    }
+    else {
+        throw IllegalArgumentException("Number of FIR filter coefficients incorrect");
+    }
+
+    enableAfeDemod();
+    //write default config
+    setAfeDemodDefault();
+    //set demodulation frequency
+    setAfeDemodFrequency(demodulationFrequency);
+    //set decimation factor
+    setAfeDemodDecimationFactor(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters));
+    afeDemodDecimationFactor = decimationFactor;
+    //write fir
+    writeAfeFIRCoeffs(firCoefficients, static_cast<uint16_t>(nCoefficients));
+    afeDemodEnabled = true;
+}
+
 void Us4OEMImpl::disableAfeDemod() {
     ius4oem->AfeDemodDisable();
     afeDemodEnabled = false;
@@ -172,6 +225,10 @@ void Us4OEMImpl::setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample)
 }
 
 void Us4OEMImpl::writeAfeFIRCoeffs(const int16_t *coeffs, uint16_t length) {
+    ius4oem->AfeDemodWriteFirCoeffs(coeffs, length);
+}
+
+void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
     ius4oem->AfeDemodWriteFirCoeffs(coeffs, length);
 }
 
