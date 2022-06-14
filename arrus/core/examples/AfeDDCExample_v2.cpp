@@ -63,7 +63,7 @@ int main(int ac, char *av[]) noexcept {
             else if ((decFactor - (long)decFactor) == 0.0) {}
             else
             {
-                std::cout << "Invalid decimation factor " << (decFactor - (long)decFactor) <<  std::endl;
+                std::cout << "Invalid decimation factor fraction - " << (decFactor - (long)decFactor) <<  std::endl;
                 return 0;
             }
 

@@ -97,8 +97,8 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
         throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
     }
 
-    float decFract;
-    int decInt = int(std::modf(decimationFactor, &decFract));
+    int decInt = static_cast<int>(decimationFactor);
+    float decFract = decimationFactor - static_cast<float>(decInt);
     int nQuarters = 0;
     if (decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
         nQuarters = int(decFract * 4.0f);
