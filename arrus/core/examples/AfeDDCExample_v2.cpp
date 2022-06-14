@@ -138,28 +138,7 @@ int main(int ac, char *av[]) noexcept {
         {
             numCoeffs++;
         }
-        //check if fir size is correct for given decimation factor
-        // TODO(jrozb91) the below should be part of validation done by Us4OEMImpl::setAfeDemod
-        /*if (decQuarters == 0 && numCoeffs != (8 * decInteger)) {
-            std::cout << "WARNING! FIR size invalid! expected = "
-                << std::dec << (8 * decInteger) << ", acutal = "
-                << std::dec << numCoeffs << std::endl;
-        }
-        else if (decQuarters == 2 && numCoeffs != ((16 * (decInteger)) + 8)) {
-            std::cout << "WARNING! FIR size invalid! expected = "
-                << std::dec << ((16 * (decInteger)) + 8) << ", acutal = "
-                << std::dec << numCoeffs << std::endl;
-        }
-        else if (decQuarters == 1 && numCoeffs != ((32 * (decInteger)) + 8)) {
-            std::cout << "WARNING! FIR size invalid! expected = "
-                << std::dec << ((32 * (decInteger)) + 8) << ", acutal = "
-                << std::dec << numCoeffs << std::endl;
-        }
-        else if (decQuarters == 3 && numCoeffs != ((32 * (decInteger)) + 24)) {
-            std::cout << "WARNING! FIR size invalid! expected = "
-                << std::dec << ((32 * (decInteger)) + 24) << ", acutal = "
-                << std::dec << numCoeffs << std::endl;
-        }*/
+        
         //configure demodulator
         us4r->setAfeDemod(ddcFreq, decFactor, fCoeffs, numCoeffs);
 

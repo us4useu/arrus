@@ -162,10 +162,10 @@ private:
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);
     void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
-    void setAfeDemodFrequency(double frequency);
-    void setAfeDemodFrequency(double StartFrequency, double stopFrequency);
-    double getAfeDemodStartFrequency(void);
-    double getAfeDemodStopFrequency(void);
+    void setAfeDemodFrequency(float frequency);
+    void setAfeDemodFrequency(float StartFrequency, float stopFrequency);
+    float getAfeDemodStartFrequency(void);
+    float getAfeDemodStopFrequency(void);
     void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample);
     void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length);
     void resetAfe();
