@@ -435,6 +435,9 @@ classdef Us4R < handle
             obj.seq.rxDel       = 0e-6;
             obj.seq.pauseMultip	= 1.5;
             
+            %% Number of Tx
+            obj.seq.nTx	= length(obj.seq.txAng);
+            
             %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
             if isempty(obj.seq.nSamp)
@@ -491,8 +494,8 @@ classdef Us4R < handle
             
             %% Tx/Rx aperture string/missing parameters
             if isstring(obj.seq.txApSize) && obj.seq.txApSize == "nElements"
-                obj.seq.txApSize = min(obj.sys.nChTotal,obj.sys.nElem);
-                disp(['txApertureSize set to ' num2str(obj.seq.txApSize) '.']);
+                obj.seq.txApSize = min(obj.sys.nChTotal,obj.sys.nElem) * ones(1,obj.seq.nTx);
+                disp(['txApertureSize set to ' num2str(obj.seq.txApSize(1)) '.']);
             end
             
             if isstring(obj.seq.rxApSize)
@@ -522,7 +525,7 @@ classdef Us4R < handle
             end
             
             %% Validate sequence if wedge interface is used
-            if obj.sys.interfEnable && (~any(strcmp(obj.seq.type,{'sta','custom'})) || obj.seq.txApSize~=1)
+            if obj.sys.interfEnable && (~any(strcmp(obj.seq.type,{'sta','custom'})) || any(obj.seq.txApSize~=1))
                 error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
             end
             
@@ -530,9 +533,7 @@ classdef Us4R < handle
             obj.calcTxRxApMask;
             obj.calcTxDelays;
             
-            %% Number of: Tx, SubTx, Firings, Triggers
-            obj.seq.nTx	= length(obj.seq.txAng);
-            
+            %% Number of: SubTx, Firings, Triggers
             nSubTx = zeros(1,obj.sys.nArius);
             for iArius=0:(obj.sys.nArius-1)
                 rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
@@ -751,33 +752,35 @@ classdef Us4R < handle
             %% CALCULATE DELAYS
             sos = obj.seq.c;
             
-            if isinf(obj.seq.txFoc)
+            txDel = nan(obj.sys.nChTotal,obj.seq.nTx);
+            txDelCent = nan(1,obj.seq.nTx);
+            
+            isFocInf = isinf(obj.seq.txFoc);
+            
+            if any(isFocInf)
                 % Delays due to the tilting the plane wavefront
-                txDel       = (xElem.'           .* sin(obj.seq.txAngZX) + ...
-                               zElem.'           .* cos(obj.seq.txAngZX)) / sos;            % [s] (nElem x nTx) delays for tx elements
-                txDelCent	= (obj.seq.txApCentX .* sin(obj.seq.txAngZX) + ...
-                               obj.seq.txApCentZ .* cos(obj.seq.txAngZX)) / sos;            % [s] (1 x nTx) delays for tx aperture center
-            else
+                txDel(:,isFocInf)   = (xElem.'                     .* sin(obj.seq.txAngZX(isFocInf)) + ...
+                                       zElem.'                     .* cos(obj.seq.txAngZX(isFocInf))) / sos;  % [s] (nElem x nTx) delays for tx elements
+                txDelCent(isFocInf)	= (obj.seq.txApCentX(isFocInf) .* sin(obj.seq.txAngZX(isFocInf)) + ...
+                                       obj.seq.txApCentZ(isFocInf) .* cos(obj.seq.txAngZX(isFocInf))) / sos;  % [s] (1 x nTx) delays for tx aperture center
+            end
+            
+            if any(~isFocInf)
                 % Focal point positions
-                xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(obj.seq.txAngZX);	% [m] (1 x nTx) x-position of the focal point
-                zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(obj.seq.txAngZX);	% [m] (1 x nTx) z-position of the focal point
+                xFoc = obj.seq.txApCentX(~isFocInf) + obj.seq.txFoc(~isFocInf) .* sin(obj.seq.txAngZX(~isFocInf));	% [m] (1 x nTxFoc) x-position of the focal point
+                zFoc = obj.seq.txApCentZ(~isFocInf) + obj.seq.txFoc(~isFocInf) .* cos(obj.seq.txAngZX(~isFocInf));	% [m] (1 x nTxFoc) z-position of the focal point
                 
                 % Delays due to the element - focal point distances
-                nTx         = numel(xFoc);
-                txDel       = nan(obj.sys.nChTotal,nTx);
-                txDelCent	= nan(1,nTx);
-                for iTx=1:nTx
-                    txDel(:,iTx)	= sqrt( (xFoc(iTx) -         xElem.'       ).^2 + ...
-                                            (zFoc(iTx) -         zElem.'       ).^2) / sos;	% [s] (nElem x nTx) delays for tx elements
-                    txDelCent(iTx)	= sqrt( (xFoc(iTx) - obj.seq.txApCentX(iTx)).^2 + ...
-                                            (zFoc(iTx) - obj.seq.txApCentZ(iTx)).^2) / sos;	% [s] (1 x nTx) delays for tx aperture center
-                end
+                txDel(:,~isFocInf)   = sqrt( (xFoc -         xElem.'             ).^2 + ...
+                                             (zFoc -         zElem.'             ).^2) / sos; % [s] (nElem x nTx) delays for tx elements
+                txDelCent(~isFocInf) = sqrt( (xFoc - obj.seq.txApCentX(~isFocInf)).^2 + ...
+                                             (zFoc - obj.seq.txApCentZ(~isFocInf)).^2) / sos; % [s] (1 x nTx) delays for tx aperture center
                 
                 % Inverse the delays for the 'focusing' option (txFoc>0)
                 % For 'defocusing' the delays remain unchanged
-                focDefoc	= 1 - 2 * double(obj.seq.txFoc>0);
-                txDel       = txDel     .* focDefoc;
-                txDelCent	= txDelCent .* focDefoc;
+                focDefoc = 1 - 2 * double(obj.seq.txFoc(~isFocInf)>0);
+                txDel(:,~isFocInf)   = txDel(:,~isFocInf)   .* focDefoc;
+                txDelCent(~isFocInf) = txDelCent(~isFocInf) .* focDefoc;
             end
 
             %% Postprocess the delays

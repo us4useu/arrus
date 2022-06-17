@@ -3,12 +3,12 @@ classdef SimpleTxRxSequence < Operation
     %
     % :param txCenterElement: vector of tx aperture center elements [element]
     % :param txApertureCenter: vector of tx aperture center positions [m]
-    % :param txApertureSize: size of the tx aperture [element]
+    % :param txApertureSize: vector of tx aperture sizes element]
     % :param rxCenterElement: vector of rx aperture center elements [element]
     % :param rxApertureCenter: vector of rx aperture center positions [m].
     % :param rxApertureSize: size of the rx aperture [element]
-    % :param txFocus: tx focal length [m]
-    % :param txAngle: tx angle [rad]
+    % :param txFocus: vector of tx focal lengths [m]
+    % :param txAngle: vector of tx angles [rad]
     % :param speedOfSound: speed of sound for [m/s]
     % :param txFrequency: tx frequency [Hz]
     % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
@@ -37,7 +37,7 @@ classdef SimpleTxRxSequence < Operation
     properties
         txCenterElement (1,:) {mustBeFinite, mustBeReal}
         txApertureCenter (1,:) {mustBeFinite, mustBeReal}
-        txApertureSize (1,1)
+        txApertureSize (1,:)
         rxCenterElement (1,:) {mustBeFinite, mustBeReal}
         rxApertureCenter (1,:) {mustBeFinite, mustBeReal}
         rxApertureSize (1,1)
@@ -91,7 +91,8 @@ classdef SimpleTxRxSequence < Operation
                         length(obj.rxCenterElement) ...
                         length(obj.rxApertureCenter) ...
                         length(obj.txFocus) ...
-                        length(obj.txAngle) ]);
+                        length(obj.txAngle) ...
+                        length(obj.txApertureSize) ]);
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
             obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
@@ -99,6 +100,9 @@ classdef SimpleTxRxSequence < Operation
             obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
+            if ~isstring(obj.txApertureSize)
+                obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
+            end
             
             obj.txInvert = double(obj.txInvert);
             
@@ -119,8 +123,6 @@ function mustBeLogical(a)
     end
         
 end
-
-
 
 function mustBeXor(obj,fieldNames)
     
