@@ -1,0 +1,12 @@
+#ifndef ARRUS_CORE_API_FRAMEWORK_PIPELINE_ENQUEUE_H
+#define ARRUS_CORE_API_FRAMEWORK_PIPELINE_ENQUEUE_H
+
+namespace arrus::framework::pipeline {
+
+class Enqueue {
+
+};
+
+}
+
+#endif//ARRUS_CORE_API_FRAMEWORK_PIPELINE_ENQUEUE_H

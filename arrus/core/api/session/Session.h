@@ -48,6 +48,12 @@ public:
     virtual UploadResult upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 
     /**
+     * @param scheme scheme to upload
+     * @return upload result information
+     */
+    virtual UploadResult upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
+
+    /**
      * Starts currently uploaded scheme.
      */
     virtual void startScheme() = 0;
