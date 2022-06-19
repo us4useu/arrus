@@ -12,6 +12,7 @@ int main() noexcept {
     using namespace ::arrus::devices;
     using namespace ::arrus::ops::us4r;
     using namespace ::arrus::framework;
+    using namespace ::arrus::framework::pipeline;
     try {
         // TODO set path to us4r-lite configuration file
         auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
@@ -29,22 +30,94 @@ int main() noexcept {
 
         std::vector<TxRx> txrxs;
 
-		// 10 plane waves
-        for(int i = 0; i < 4; ++i) {
+        // 10 plane waves
+        for (int i = 0; i < 4; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
             std::vector<float> delays(nElements, 0.0f);
-            for(int d = 0; d < nElements; ++d) {
-                delays[d] = d*i*1e-9f;
+            for (int d = 0; d < nElements; ++d) {
+                delays[d] = d * i * 1e-9f;
             }
             arrus::BitMask txAperture(nElements, true);
             txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(txAperture, sampleRange), 200e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 32);
+        //        TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 32);
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
-        Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
+
+        // TODO work mode?
+        // moze zamiast work mode, session powinna udostepniac metody, ktore pozwalaja wykonac sekwencje raz?
+        // np. sesion.run -> wszystkie wyjscia (jakie?)
+        // np. session.eval(operacja) ->
+        // mozna w kazdym podgrafie ustawic trigger source
+        // - w zrodlach mozna ustawic trigger source
+        // metody sesji:
+        // session.start() -> cos musi wystartowac? co? jakis generator triggera?
+        // - np. session.start(triggerSource), i to bedzie powodowac
+        // - np. session.eval(output), i to bedzie powodowac wykonanie wszystkiego, co prowadzi do danego outputu
+        // - czyli Pipeline powininen udostepniac output (wskazac krawedz wyjsciowa, ktora nalezy zewaluowac)
+
+        // wewnetrzny bufor? -> ustawienie w us4R, ile elementow ma byc w buforze
+        // dodatkowy setter
+
+        // Zaimplementowany graf powinno dac sie zseralizowac (np. do hdf5 zeby zwrocic w metadanych)
+
+        // Problem z okresleniem trigger source to
+        // poza tym, ten czasami moze przydac sie rozne czasy pomiedzy triggerami
+        // wiec to chyba powinno zostac parametrem TxRx (jako czas, ile ma zajac dany TX/RX)
+
+        // utworz/odczytaj opis graphu (tylko deskrypcyjnie)
+        // zaladuj graph (skonfiguruj urzadzenia do wykonania grafu: utworz bufory, skonfiguruj )
+        //
+        // Utworz graf przetwarzania
+        // zuploaduj graf przetwarzania
+        // Graph graph;
+        // Pipeline {
+
+        // }
+        // session.upload(graph);
+        // wykonaj jakis kawalek grafu
+        // session
+
+        Pipeline pipeline{
+            Pipeline {
+                {
+                    TxRx{},
+                    TxRx{},
+                    TxRx{},
+                    Repeat(10),
+                    DigitalDownConversion(),
+                    Enqueue{outputBuffer},
+                    // timinigi: PRI, SRI, BRI: gdzie powinny byc specyfikowane?
+                    // - kto wywoluje "eval" ?
+                    // -- uzytkownik powinien miec taka mozliwosc
+                    // -- powinna byc rowniez mozliwosc uruchomienia zewnetrznego trigger generatora (dzialajacego na zewnetrznym urzadzeniu) - to bedzie generator z us4OEM
+                    // ---- Inaczej mowiac, trigger generator to tez operacja, ktora ma swoj placement
+                    // ---- np.
+                    // rozmiar batcha: jak wyspecyfikowac, gdybym uzywal tutaj pojedynczych tx/rx? (Step: Loop?)
+                    // - step "Repeat", ktory bedzie pozwalal na wykonanie jakiegos kawalka wiele razy?
+                    // - na jaki operator w grafie to sie przelozy?
+                    // - operator Loop(nTimes, goto: "nazwa_operatora")
+                    // --
+                    // enqueue/dequeue: czy podawac tutaj enque/deque?
+                    // - tak, w przypadku Pipeline ladowanego na Us4R, sekwencja operacji musi sie zakonczyc Enqueue
+                    // - pozwoli to np. na reczne wywolywanie operatorow z Pipeline GPU, bez potrzeby tworzenia buforow
+                },
+                "Ultrasound:0"
+            },
+            Pipeline {
+                {
+                    Dequeue{outputBuffer},
+
+                    RxBeamforming{}
+                },
+                "GPU:0"
+            }
+        };
+
+//        Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
+        session->start(Pipe)
 
         auto result = session->upload(scheme);
 		us4r->setVoltage(5);
