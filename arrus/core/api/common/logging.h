@@ -22,15 +22,16 @@ namespace arrus {
     /**
      * Default ARRUS logging mechanism.
      */
-    ARRUS_CPP_EXPORT
     class Logging: public LoggerFactory {
     public:
         class LoggingImpl;
 
         explicit Logging(std::unique_ptr<LoggingImpl> pImpl);
 
+        ARRUS_CPP_EXPORT
         Logger::Handle getLogger() override;
-        Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes);
+        ARRUS_CPP_EXPORT
+        Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes) override;
 
         ~Logging() override = default;
         /**
@@ -39,6 +40,7 @@ namespace arrus {
          *
          * @param level minimum level severity level to set for clog output
          */
+        ARRUS_CPP_EXPORT
         void addClog(::arrus::LogSeverity level);
 
         /**
@@ -47,11 +49,13 @@ namespace arrus {
          * @param stream output stream to use in logging
          * @param level minimum level severity level to set for the output stream logging
          */
+        ARRUS_CPP_EXPORT
         void addOutputStream(std::shared_ptr<std::ostream> stream, LogSeverity level);
 
         /**
          * Remove all registered output streams from the logging mechanism.
          */
+        ARRUS_CPP_EXPORT
         void removeAllStreams();
 
     private:
