@@ -144,6 +144,10 @@ void Logging::addClog(::arrus::LogSeverity level) {
     this->pImpl->addClog(level);
 }
 
+void Logging::setClogLevel(::arrus::LogSeverity level) {
+    this->pImpl->setClogLevel(level);
+}
+
 void Logging::addOutputStream(std::shared_ptr<std::ostream> stream, LogSeverity level) {
     this->pImpl->addTextSink(std::move(stream), level, true);
 }

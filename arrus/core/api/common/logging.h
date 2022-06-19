@@ -34,6 +34,7 @@ namespace arrus {
         Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes) override;
 
         ~Logging() override = default;
+
         /**
          * Adds std::cout logging output stream to the default logging mechanism
          * (console log output).
@@ -42,6 +43,9 @@ namespace arrus {
          */
         ARRUS_CPP_EXPORT
         void addClog(::arrus::LogSeverity level);
+
+        ARRUS_CPP_EXPORT
+        void setClogLevel(::arrus::LogSeverity level);
 
         /**
          * Adds a custom stream implementation to the default logging mechanism.
