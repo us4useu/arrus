@@ -1376,7 +1376,7 @@ class ScanConversion(Operation):
                                             "Azimuth angle")
         self.dst_points = self.num_pkg.asarray(dst_points,
                                                dtype=self.num_pkg.float32)
-        self.output_buffer = np.zeros(self.dst_shape, dtype=np.float32)
+        self.output_buffer = self.num_pkg.zeros(self.dst_shape, dtype=np.float32)
         return const_metadata.copy(input_shape=self.dst_shape)
 
     def _process_convex(self, data):

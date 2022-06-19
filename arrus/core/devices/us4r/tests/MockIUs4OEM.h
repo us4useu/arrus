@@ -140,6 +140,8 @@ public:
     MOCK_METHOD(void, ClearUCDBlackBox, (), (override));
     MOCK_METHOD(void, SetTxFrequencyRange, (int), (override));
     MOCK_METHOD(int, GetTxFrequencyRange, (), (override));
+    MOCK_METHOD(void, EnableInterrupts, (), (override));
+    MOCK_METHOD(void, DisableInterrupts, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
