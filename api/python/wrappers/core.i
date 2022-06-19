@@ -79,7 +79,6 @@ namespace std {
 #include <iostream>
 
 #include "arrus/core/api/common/types.h"
-#include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/common/logging.h"
@@ -98,6 +97,8 @@ using namespace ::arrus;
 %nodefaultctor;
 
 // TO let know swig about any DLL export macros.
+#define __attribute__(x)
+
 %include "arrus/core/api/common/macros.h"
 %include "arrus/core/api/common/types.h"
 

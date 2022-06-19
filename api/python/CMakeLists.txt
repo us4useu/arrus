@@ -21,10 +21,7 @@ swig_add_library(py_core
         OUTPUT_DIR arrus
         OUTFILE_DIR wrappers
         SOURCES
-        wrappers/core.i
-        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
-        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
-        )
+        wrappers/core.i)
 
 if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     set_target_properties(py_core
