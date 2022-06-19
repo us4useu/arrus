@@ -169,6 +169,7 @@ using namespace arrus::devices;
 
 namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
+    %template(TupleSizeT) Tuple<size_t>;
     %template(IntervalFloat) Interval<float>;
 };
 
