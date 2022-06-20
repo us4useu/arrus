@@ -33,8 +33,6 @@ with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
 
     scheme = Scheme(
         tx_rx_sequence=sequence,
-        rx_buffer_size=128,
-        output_buffer=DataBufferSpec(type="FIFO", n_elements=128),
         processing=get_bmode_imaging(sequence=sequence, grid=(x_grid, z_grid)))
     # Upload sequence on the us4r-lite device.
     buffer, metadata = sess.upload(scheme)

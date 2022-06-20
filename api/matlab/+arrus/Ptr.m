@@ -24,10 +24,10 @@ classdef Ptr < handle
         end
 
         function res = callMethod(obj, methodName, varargin)
-            if isempty(obj.handle)
+            if isempty(obj.ptr)
                 error("ARRUS:IllegalState", "Objects handle is not set.");
             end
-            res = arrus_mex_object_wrapper(obj.className, methodName, obj.handle, varargin{:});
+            res = arrus_mex_object_wrapper(obj.className, methodName, obj.ptr, varargin{:});
         end
 
     end

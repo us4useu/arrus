@@ -36,7 +36,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
         MatlabClassId classId = inputs[0][0];
         MatlabMethodId methodId = inputs[1][0];
 
-        if (classId == "__global" && methodId == "setLogLevel") {
+        if (classId == "__global" && methodId == "setClogLevel") {
             // The first call to MexFunction should set console log verbosity, or the default one will be used.
             arrus::LogSeverity sev = getLoggerSeverity(inputs);
             setConsoleLogIfNecessary(sev);
@@ -148,10 +148,13 @@ void MexFunction::setConsoleLogIfNecessary(const arrus::LogSeverity severity) {
     if (logging == nullptr) {
         try {
             this->logging = ::arrus::useDefaultLoggerFactory();
-            this->logging->addOutputStream(this->matlabOstream, severity);
+            this->logging->setClogLevel(severity);
+            // TODO the below matlabOstream currently doesn't work with a multi-threaded logging mechanism
+            // In particular: running feval(printf will crash MATLAB when it's not called by the MexFunction's
+            // thread, fevalAsync displays nothing.
+//            this->logging->addOutputStream(this->matlabOstream, severity);
             arrus::Logger::SharedHandle defaultLogger = this->logging->getLogger();
             this->ctx->setDefaultLogger(defaultLogger);
-            defaultLogger->log(arrus::LogSeverity::WARNING, "HAAAAAALO");
         } catch (const std::exception &e) {
             this->logging = nullptr;
             throw e;

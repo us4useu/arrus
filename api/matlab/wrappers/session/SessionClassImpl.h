@@ -29,6 +29,7 @@ public:
         ARRUS_MATLAB_ADD_METHOD("startScheme", startScheme);
         ARRUS_MATLAB_ADD_METHOD("stopScheme", stopScheme);
         ARRUS_MATLAB_ADD_METHOD("run", run);
+        ARRUS_MATLAB_ADD_METHOD("close", close);
     }
 
     MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) override {
@@ -40,7 +41,9 @@ public:
         std::unique_ptr<ValueType> sess = ::arrus::session::createSession(cfgPath);
         return insert(std::move(sess));
     }
-    void remove(const MatlabObjectHandle handle) override { ClassObjectManager::remove(handle); }
+    void remove(const MatlabObjectHandle handle) override {
+        ClassObjectManager::remove(handle);
+    }
 
     void getDevice(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 1, "getDevice");
@@ -75,10 +78,10 @@ public:
     }
 
     void upload(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 1, "getDevice");
+        ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 1, "upload");
         auto arg = inputs[0];
         ARRUS_MATLAB_REQUIRES_SCALAR(arg);
-        ARRUS_MATLAB_REQUIRES_TYPE(arg, ::matlab::data::ArrayType::OBJECT);
+        ARRUS_MATLAB_REQUIRES_TYPE_NAMED(arg, ::matlab::data::ArrayType::VALUE_OBJECT, "scheme");
 
         ::arrus::ops::us4r::Scheme scheme = ::arrus::matlab::ops::us4r::SchemeConverter::from(
                                                 ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[0]})
@@ -104,6 +107,12 @@ public:
         auto *session = get(obj);
         session->run();
     }
+
+    void close(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        auto *session = get(obj);
+        session->close();
+    }
+
 };
 
 }// namespace arrus::matlab

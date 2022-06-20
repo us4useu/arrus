@@ -33,11 +33,13 @@ do {                                                      \
 #define ARRUS_MATLAB_REQUIRES_TYPE_NAMED(array, arrayType, arrayName)          \
 do {                                                      \
     if (!::arrus::matlab::isArrayOfType(array, arrayType)) {         \
-        throw arrus::IllegalArgumentException(std::string(arrayName) + " should be of type: " + ::arrus::matlab::toString(arrayType));       \
+        throw arrus::IllegalArgumentException(                                 \
+                std::string(arrayName) + " should be of type: " + ::arrus::matlab::toString(arrayType) \
+                + " but is: " + ::arrus::matlab::toString(array.getType()));       \
     }                                                     \
 } while(0)
 
-#define ARRUS_MATLAB_REQUIRES_TYPE(array, arrayType) ARRUS_MATLAB_REQUIRES_TYPE_NAMED(array, arrayType, "Array ")
+#define ARRUS_MATLAB_REQUIRES_TYPE(array, arrayType) ARRUS_MATLAB_REQUIRES_TYPE_NAMED(array, arrayType, "Array")
 
 #define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(value, dataType, e)          \
 do {                                                                    \

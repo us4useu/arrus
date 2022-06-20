@@ -5,6 +5,6 @@ function setClogLevel(level)
     % you want to change console log severity.
     %
     % :param level: log severity to set, available values: 'FATAL','ERROR', 'WARNING', 'INFO', 'DEBUG', 'TRACE'.
-    arrus.arrus_mex_object_wrapper("__global", "setClogLevel", convertCharsToStrings(level));
+    arrus_mex_object_wrapper("__global", "setClogLevel", convertCharsToStrings(level));
 end
 

@@ -20,12 +20,15 @@ class LockBasedBuffer {
 public:
     typedef std::optional<::arrus::framework::BufferElement::SharedHandle> BufferElementView;
 
-    explicit LockBasedBuffer(const std::shared_ptr<::arrus::framework::DataBuffer> &buffer) : buffer(buffer) {
+    explicit LockBasedBuffer(::arrus::framework::DataBuffer *buffer) : buffer(buffer) {
         ::arrus::framework::OnNewDataCallback newDataCallback =
             [this](const ::arrus::framework::BufferElement::SharedHandle &element) { this->signal(element); };
-        ::arrus::framework::OnShutdownCallback shutdownCallback = [this](){this->shutdown();};
+        ::arrus::framework::OnShutdownCallback shutdownCallback = [this]() { this->shutdown(); };
         buffer->registerOnNewDataCallback(newDataCallback);
-        buffer->registerShutdownCallback(shutdownCallback);
+    }
+
+    ~LockBasedBuffer() {
+        shutdown();
     }
 
     BufferElementView front() {
@@ -71,7 +74,7 @@ private:
         dataReadyEvent.notify_all();
     }
 
-    std::shared_ptr<::arrus::framework::DataBuffer> buffer;
+    ::arrus::framework::DataBuffer *buffer;
     std::mutex mutex;
     std::condition_variable dataReadyEvent;
     std::deque<::arrus::framework::BufferElement::SharedHandle> queue;

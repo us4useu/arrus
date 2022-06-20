@@ -3,7 +3,7 @@ classdef Buffer < handle
     % Data buffer can be populated by one of the processes running in the session background.
     % In particualar, an ultrasound device can populate this buffer with some new raw channel data.
     properties(GetAccess = protected, SetAccess = immutable, Transient = true, Hidden = true)
-        ptr (1, 1) arrus.Ptr
+        ptr arrus.Ptr {mustBeScalarOrEmpty}
     end
     methods
         function obj = Buffer(ptr)

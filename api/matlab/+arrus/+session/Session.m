@@ -19,14 +19,16 @@ classdef Session < handle
             res = obj.ptr.callMethod("getDevice", deviceId);
         end
 
-        function [buffer, metadata] = upload(obj, scheme)
+        function buffer = upload(obj, scheme)
             % Uploads a given scheme on the available devices.
             % Currently, the scheme upload is performed on the Us4R:0 device only.
             % After uploading a new sequence the previously returned output buffers will be in invalid state.
             %
             % :param scheme: scheme to upload (arrus.ops.us4r.Scheme)
             % :return: upload result information: output data buffer, metadata describing the data that will be generated
-            [buffer, metadata] = obj.ptr.callMethod("upload", scheme);
+            buffer = obj.ptr.callMethod("upload", scheme);
+            buffer = arrus.framework.Buffer(buffer);
+            % TODO Convert raw metadata to Matlab metadata
         end
 
         function run()

@@ -36,7 +36,7 @@ public:
         ARRUS_MATLAB_REQUIRES_SCALAR(arg);
         ARRUS_MATLAB_REQUIRES_TYPE(arg, ::matlab::data::ArrayType::UINT64);
         size_t value = arg[0];// Pointer to the buffer returned by Session::upload
-        std::shared_ptr<DataBuffer> dataBuffer(reinterpret_cast<DataBuffer *>(value));
+        DataBuffer* dataBuffer = reinterpret_cast<DataBuffer *>(value);
         return insert(std::make_unique<LockBasedBuffer>(dataBuffer));
     }
     void remove(const MatlabObjectHandle handle) override { ClassObjectManager::remove(handle); }

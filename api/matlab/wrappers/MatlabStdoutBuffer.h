@@ -14,7 +14,8 @@ public:
         : basic_stringbuf(std::ios_base::out), matlabEngine(std::move(matlabEngine)) {}
 
     int sync() override {
-        matlabEngine->feval(u"fprintf", 0, std::vector<::matlab::data::Array>({factory.createScalar(this->str())}));
+        std::cout << this->str() << std::endl;
+//        matlabEngine->fevalAsync(u"fprintf", 0, std::vector<::matlab::data::Array>({factory.createScalar(this->str())}));
         this->str("");
         return 0;
     }
