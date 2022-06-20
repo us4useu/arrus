@@ -12,11 +12,12 @@ classdef Session < handle
             obj.ptr = arrus.UniquePtr("arrus.session.Session", convertCharsToStrings(settings));
         end
         
-        function res = getDevice(obj, deviceId)
+        function device = getDevice(obj, deviceId)
             % Returns a device with given identifier
             %
             % :param deviceId: a string pointing to some device, e.g. to get first available us4R device, use "/Us4R:0"
-            res = obj.ptr.callMethod("getDevice", deviceId);
+            res = obj.ptr.callMethod("getDevice", 1, deviceId);
+            device = res{1, 1};
         end
 
         function buffer = upload(obj, scheme)
@@ -26,12 +27,12 @@ classdef Session < handle
             %
             % :param scheme: scheme to upload (arrus.ops.us4r.Scheme)
             % :return: upload result information: output data buffer, metadata describing the data that will be generated
-            buffer = obj.ptr.callMethod("upload", scheme);
-            buffer = arrus.framework.Buffer(buffer);
+            res = obj.ptr.callMethod("upload", 2, scheme);
+            buffer = arrus.framework.Buffer(res{1, 1});
             % TODO Convert raw metadata to Matlab metadata
         end
 
-        function run()
+        function run(obj)
             %
             % Runs the uploaded scheme.
             %
@@ -39,21 +40,27 @@ classdef Session < handle
             % - MANUAL: triggers execution of batch of sequences only ONCE,
             % - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
             %   The run function can be called only once (before the scheme is stopped).
-            obj.ptr.callMethod("run");
+            obj.ptr.callMethod("run", 0);
         end
 
-        function startScheme()
+        function startScheme(obj)
             %
             % Starts the uploaded scheme.
             %
-            obj.ptr.callMethod("startScheme");
+            obj.ptr.callMethod("startScheme", 0);
         end
 
-        function stopScheme()
+        function stopScheme(obj)
             %
             % Stops the running scheme.
             %
-            obj.ptr.callMethod("stopScheme");
+            obj.ptr.callMethod("stopScheme", 0);
+        end
+
+        function close(obj)
+            %
+            % Stops all executors and closes connection with all devices.
+            obj.ptr.callMethod("close", 0);
         end
     end
 end

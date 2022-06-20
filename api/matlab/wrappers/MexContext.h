@@ -2,6 +2,7 @@
 #define ARRUS_API_MATLAB_WRAPPERS_MEXCONTEXT_H
 
 #include <memory>
+#include <algorithm>
 
 #include "arrus/common/format.h"
 #include "arrus/core/api/arrus.h"
@@ -116,6 +117,8 @@ public:
     template<typename T>
     ::matlab::data::Array createTypedArray(const ::arrus::framework::NdArray &array) {
         ::matlab::data::ArrayDimensions dims = array.getShape().getValues();
+        // Note: C-contiguous shape to F-shape (just reverse orders).
+        std::reverse(std::begin(dims), std::end(dims));
         auto nElements = array.getNumberOfElements();
         auto *start = array.get<T>();
         auto *end = start + nElements;

@@ -91,6 +91,7 @@ public:
         auto buffer = uploadResult.getBuffer();
         // Outputs
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, MatlabObjectHandle, MatlabObjectHandle(buffer.get()));
+        outputs[1] = ARRUS_MATLAB_GET_MATLAB_STRING(ctx, "test");
     }
 
     void startScheme(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {

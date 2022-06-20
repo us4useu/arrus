@@ -12,8 +12,8 @@ classdef Buffer < handle
         
         function element = front(obj)
             % Returns and releases the last element of the buffer.
-            elementPtr = obj.ptr.callMethod("front");
-            element = arrus.framework.BufferElement(elementPtr);
+            res = obj.ptr.callMethod("front", 1); % uint64 pointer to buffer element (cell array)
+            element = arrus.framework.BufferElement(res{1, 1});
         end
     end
 end
