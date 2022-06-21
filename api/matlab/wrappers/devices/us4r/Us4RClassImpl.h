@@ -28,6 +28,7 @@ public:
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         ::arrus::Voltage value = inputs[0][0];
+        ctx->logInfo(format("Us4R: setting voltage {}", value));
         get(obj)->setVoltage(value);
     }
 

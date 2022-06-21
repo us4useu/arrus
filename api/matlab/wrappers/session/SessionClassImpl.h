@@ -38,6 +38,7 @@ public:
         ARRUS_MATLAB_REQUIRES_SCALAR(arg);
         ARRUS_MATLAB_REQUIRES_TYPE(arg, ::matlab::data::ArrayType::MATLAB_STRING);
         std::string cfgPath = arg[0];
+        ctx->logInfo(format("Creating session using configuration file: {}", cfgPath));
         std::unique_ptr<ValueType> sess = ::arrus::session::createSession(cfgPath);
         return insert(std::move(sess));
     }
@@ -96,12 +97,16 @@ public:
 
     void startScheme(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         auto *session = get(obj);
+        ctx->logInfo("Starting scheme.");
         session->startScheme();
+        ctx->logInfo("Scheme started.");
     }
 
     void stopScheme(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         auto *session = get(obj);
+        ctx->logInfo("Stopping scheme.");
         session->stopScheme();
+        ctx->logInfo("Scheme stopped.");
     }
 
     void run(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -111,7 +116,9 @@ public:
 
     void close(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         auto *session = get(obj);
+        ctx->logInfo("Closing session.");
         session->close();
+        ctx->logInfo("Session closed.");
     }
 
 };

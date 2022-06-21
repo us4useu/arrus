@@ -72,6 +72,6 @@ install(
     TARGETS
     ${TARGET_NAME}
     DESTINATION
-    ${ARRUS_MATLAB_INSTALL_DIR}/+arrus
+    ${ARRUS_MATLAB_INSTALL_DIR}
 )
 
