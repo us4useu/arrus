@@ -154,6 +154,7 @@ void Us4RImpl::start() {
         us4oem->getIUs4oem()->EnableInterrupts();
     }
     this->getDefaultComponent()->start();
+    this->hv.value()->enableExternalTrigger();
     this->state = State::STARTED;
 }
 

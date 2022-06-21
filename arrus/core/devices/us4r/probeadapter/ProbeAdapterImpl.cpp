@@ -270,7 +270,7 @@ void ProbeAdapterImpl::start() {
     for(auto &us4oem: this->us4oems) {
         us4oem->enableSequencer();
     }
-    this->us4oems[0]->startTrigger();
+//    this->us4oems[0]->startTrigger();
 }
 
 void ProbeAdapterImpl::stop() {

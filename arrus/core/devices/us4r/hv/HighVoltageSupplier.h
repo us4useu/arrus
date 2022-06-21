@@ -51,6 +51,10 @@ public:
         return hv->GetMeasuredHVMVoltage();
     }
 
+    void enableExternalTrigger() {
+        return dbar->EnableExternalTrigger();
+    }
+
     void disable() {
         try {
             hv->DisableHV();

@@ -72,8 +72,14 @@ class Us4RFactoryImpl : public Us4RFactory {
 
             // verify if the generated us4oemSettings.channelsMask is equal to us4oemChannelsMask field
             validateChannelsMasks(us4OEMSettings, settings.getUs4OEMChannelsMask());
+            auto nUs4oems = static_cast<Ordinal>(us4OEMSettings.size());
+            std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nUs4oems);
 
-            auto[us4oems, masterIUs4OEM] = getUs4OEMs(us4OEMSettings, settings.isExternalTrigger());
+            // TODO extract DBAR component here.
+            // Here we turn on internal trigger, and this has to be done before initializing us4OEMs.
+            auto hv = getHV(settings.getHVSettings(), ius4oems[0].get());
+
+            auto[us4oems, masterIUs4OEM] = getUs4OEMs(ius4oems, us4OEMSettings, settings.isExternalTrigger());
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
                 [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
@@ -82,14 +88,14 @@ class Us4RFactoryImpl : public Us4RFactory {
             // Create probe.
             ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings, adapter.get());
 
-            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings,
                                               settings.getChannelsMask());
         } else {
             // Custom Us4OEMs only
-            auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false);
-            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
-            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask());
+            throw std::runtime_error("Specifying custom us4OEM configuration is not supported anymore");
+//            auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false);
+//            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
+//            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask());
         }
     }
 
@@ -119,16 +125,13 @@ class Us4RFactoryImpl : public Us4RFactory {
      * @return a pair: us4oems, master ius4oem
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger) {
+    getUs4OEMs(std::vector<IUs4OEMHandle> &ius4oems, const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,"At least one us4oem should be configured.");
-        auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
-
         // Initialize Us4OEMs.
         // We need to initialize Us4OEMs on a Us4R system level.
         // This is because Us4OEM initialization procedure needs to consider
         // existence of some master module (by default it's the 'Us4OEM:0').
         // Check the initializeModules function to see why.
-        std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nUs4oems);
 
         // Modifies input list - sorts ius4oems by ID in ascending order.
         ius4oemInitializer->initModules(ius4oems);
