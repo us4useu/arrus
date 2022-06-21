@@ -57,9 +57,7 @@ public:
         std::shared_ptr<arrus::framework::Buffer>,
         std::shared_ptr<arrus::devices::FrameChannelMapping>
     >
-    upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize,
-           const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
-           const ::arrus::framework::DataBufferSpec &hostBufferSpec) = 0;
+    upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 
     /**
      * Sets HV voltage.

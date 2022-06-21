@@ -71,10 +71,11 @@ void Us4RImpl::disableHV() {
 }
 
 std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
-Us4RImpl::upload(const ops::us4r::TxRxSequence &seq,
-                 unsigned short rxBufferNElements,
-                 const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
-                 const DataBufferSpec &outputBufferSpec) {
+Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
+    auto &outputBufferSpec = scheme.getOutputBuffer();
+    auto rxBufferNElements = scheme.getRxBufferSize();
+    auto &seq = scheme.getTxRxSequence();
+    auto workMode = scheme.getWorkMode();
 
     unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
 

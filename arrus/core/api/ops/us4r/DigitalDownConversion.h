@@ -1,0 +1,13 @@
+#ifndef ARRUS_CORE_API_OPS_US4R_DIGITALDOWNCONVERSION_H
+#define ARRUS_CORE_API_OPS_US4R_DIGITALDOWNCONVERSION_H
+
+namespace arrus::ops::us4r {
+
+class DigitalDownConversion {
+private:
+
+};
+
+}
+
+#endif //ARRUS_CORE_API_OPS_US4R_DIGITALDOWNCONVERSION_H
