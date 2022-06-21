@@ -36,7 +36,7 @@ classdef Us4R < handle
     methods
 
         function obj = Us4R(varargin)
-            [voltage, probeName, adapterType, logTime, probe] = Us4R.parseUs4RParams(varargin{:});
+            [voltage, probeName, adapterType, interfaceName, logTime, probe] = Us4R.parseUs4RParams(varargin{:});
 
             obj.logTime = logTime;
             % System parameters
@@ -47,7 +47,7 @@ classdef Us4R < handle
             obj.sys.voltage = voltage;
             
             if(isempty(probe))
-                probe = probeParams(probeName, adapterType);
+                probe = probeParams(probeName,adapterType,interfaceName);
             end
             
             obj.sys.nArius = probe.nUs4OEM; % number of Arius modules
@@ -80,6 +80,7 @@ classdef Us4R < handle
             obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
             obj.sys.nElem = probe.nElem;
+            obj.sys.interfEnable = probe.interfEnable;
 
              % position (pos,x,z) and orientation (ang) of each probe element
              obj.sys.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
@@ -93,6 +94,23 @@ classdef Us4R < handle
                  obj.sys.zElem = -probe.curvRadius * cos(obj.sys.angElem);
                  obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
              end
+             
+             if obj.sys.interfEnable
+                 obj.sys.interfSize = probe.interfSize;
+                 obj.sys.interfAng = probe.interfAng;
+                 obj.sys.interfSos = probe.interfSos;
+                 
+                 obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
+                 
+                 xElemNoInterf = obj.sys.xElem;
+                 zElemNoInterf = obj.sys.zElem;
+                 obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
+                               + zElemNoInterf * sin(obj.sys.interfAng);
+                 obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
+                               - xElemNoInterf * sin(obj.sys.interfAng) ...
+                               - obj.sys.interfSize;
+             end
+             
              obj.sys.tangElem = tan(obj.sys.angElem);
              obj.sys.probeChannelsMask = probe.channelsMask;
 %             obj.sys.maxVpp = probe.maxVpp;
@@ -203,6 +221,7 @@ classdef Us4R < handle
                 'decimation', reconstructOperation.decimation, ...
                 'xGrid', reconstructOperation.xGrid, ...
                 'zGrid', reconstructOperation.zGrid, ...
+                'rxApod', reconstructOperation.rxApod, ...
                 'bmodeEnable', reconstructOperation.bmodeEnable, ...
                 'colorEnable', reconstructOperation.colorEnable, ...
                 'vectorEnable', reconstructOperation.vectorEnable, ...
@@ -328,13 +347,14 @@ classdef Us4R < handle
     
     methods(Access = private, Static)
         
-       function [voltage, probeName, adapterType, logTime, probe] = parseUs4RParams(varargin)
+        function [voltage, probeName, adapterType, interfaceName, logTime, probe] = parseUs4RParams(varargin)
            paramsParser = inputParser;
            addParameter(paramsParser, 'nUs4OEM', []);
            addParameter(paramsParser, 'voltage', []);
            addParameter(paramsParser, 'logTime', false);
            addParameter(paramsParser, 'probeName', []);
            addParameter(paramsParser, 'adapterType', []);
+           addParameter(paramsParser, 'interfaceName', 'none');
            addParameter(paramsParser, 'probe', []);
            parse(paramsParser, varargin{:});
 
@@ -353,10 +373,12 @@ classdef Us4R < handle
            % First option
            probeName = paramsParser.Results.probeName;
            adapterType = paramsParser.Results.adapterType;
+           interfaceName = paramsParser.Results.interfaceName;
            if xor(isempty(probeName), isempty(adapterType))
                error("ARRUS:IllegalArgument", ...
                "All or none of the following parameters are required: probeName, adapterType");
            end
+           % Consider reorganizing the 1st and 2nd option conditions
 
            % Second option
            probe = paramsParser.Results.probe;
@@ -368,19 +390,6 @@ classdef Us4R < handle
     end
 
     methods(Access = private)
-        % TODO:
-        % Priority=Hi; usProbes.mat->function (DONE)
-        % Priority=Hi; exclude calcTxParams
-        % Priority=Hi; Rx aperture motion for LIN
-        % Priority=Hi; Rx aperture for STA/PWI
-        %               setSeqParams, calcTxParams,
-        %               programHW(nSubTx),
-        %               execSequence(reorganize).
-
-        % Priority=Hi; Check the param sizes
-
-        % Priority=Lo; scanConversion after envelope detection, scanConversion coordinates
-        % Priority=Lo; Fix rounding in the aperture calculations (calcTxParams)
 
         function setSeqParams(obj,varargin)
 
@@ -495,7 +504,12 @@ classdef Us4R < handle
             else
                 obj.seq.rxCentElem	= interp1(obj.sys.posElem, 1:obj.sys.nElem, obj.seq.rxApCent);
             end
-
+            
+            %% Validate sequence if wedge interface is used
+            if obj.sys.interfEnable && (~strcmp(obj.seq.type,"sta") || obj.seq.txApSize~=1)
+                error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
+            end
+            
             %% Aperture masks & delays
             obj.calcTxRxApMask;
             obj.calcTxDelays;
@@ -548,6 +562,7 @@ classdef Us4R < handle
                                 'decimation',       'dec'; ...
                                 'xGrid',            'xGrid'; ...
                                 'zGrid',            'zGrid'; ...
+                                'rxApod',           'rxApod'; ...
                                 'bmodeEnable',      'bmodeEnable'; ...
                                 'colorEnable',      'colorEnable'; ...
                                 'vectorEnable',     'vectorEnable'; ...
@@ -589,7 +604,7 @@ classdef Us4R < handle
             %% If GPU is available...
             obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
             
-            if obj.rec.gpuEnable
+            if obj.rec.gpuEnable && ~strcmp(obj.seq.type,'lin')
                 % Add location of the CUDA kernels
                 addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
                 
@@ -599,6 +614,7 @@ classdef Us4R < handle
                 obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
                 obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
                 obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
+                obj.rec.rxApod         = gpuArray(single(obj.rec.rxApod));
                 obj.seq.txFoc          = gpuArray(single(obj.seq.txFoc));
                 obj.seq.txAngZX        = gpuArray(single(obj.seq.txAngZX));
                 obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
@@ -606,6 +622,7 @@ classdef Us4R < handle
                 obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
                 obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
                 obj.seq.rxApFstElem    = gpuArray( int32(obj.seq.rxApOrig - 1));    % rxApOrig remains unchanged as it is used in data reorganization
+                obj.seq.nSampOmit      = gpuArray( int32(((max(obj.seq.txDel) + obj.seq.txNPer/obj.seq.txFreq) * obj.seq.rxSampFreq + 50) / obj.rec.dec));
                 obj.rec.bmodeRxTangLim =          single(obj.rec.bmodeRxTangLim);
                 obj.rec.colorRxTangLim =          single(obj.rec.colorRxTangLim);
                 obj.rec.vect0RxTangLim =          single(obj.rec.vect0RxTangLim);
@@ -693,23 +710,29 @@ classdef Us4R < handle
             end
             
             %% CALCULATE DELAYS
+            sos = obj.seq.c;
+            
             if isinf(obj.seq.txFoc)
                 % Delays due to the tilting the plane wavefront
                 txDel       = (xElem.'           .* sin(obj.seq.txAngZX) + ...
-                               zElem.'           .* cos(obj.seq.txAngZX)) / obj.seq.c;      % [s] (nElem x nTx) delays for tx elements
+                               zElem.'           .* cos(obj.seq.txAngZX)) / sos;            % [s] (nElem x nTx) delays for tx elements
                 txDelCent	= (obj.seq.txApCentX .* sin(obj.seq.txAngZX) + ...
-                               obj.seq.txApCentZ .* cos(obj.seq.txAngZX)) / obj.seq.c;      % [s] (1 x nTx) delays for tx aperture center
+                               obj.seq.txApCentZ .* cos(obj.seq.txAngZX)) / sos;            % [s] (1 x nTx) delays for tx aperture center
             else
                 % Focal point positions
                 xFoc        = obj.seq.txApCentX + obj.seq.txFoc .* sin(obj.seq.txAngZX);	% [m] (1 x nTx) x-position of the focal point
                 zFoc        = obj.seq.txApCentZ + obj.seq.txFoc .* cos(obj.seq.txAngZX);	% [m] (1 x nTx) z-position of the focal point
                 
-                
                 % Delays due to the element - focal point distances
-                txDel       = sqrt((xFoc -         xElem.'  ).^2 + ...
-                                   (zFoc -         zElem.'  ).^2) / obj.seq.c;	% [s] (nElem x nTx) delays for tx elements
-                txDelCent	= sqrt((xFoc - obj.seq.txApCentX).^2 + ...
-                                   (zFoc - obj.seq.txApCentZ).^2) / obj.seq.c;	% [s] (1 x nTx) delays for tx aperture center
+                nTx         = numel(xFoc);
+                txDel       = nan(obj.sys.nChTotal,nTx);
+                txDelCent	= nan(1,nTx);
+                for iTx=1:nTx
+                    txDel(:,iTx)	= sqrt( (xFoc(iTx) -         xElem.'       ).^2 + ...
+                                            (zFoc(iTx) -         zElem.'       ).^2) / sos;	% [s] (nElem x nTx) delays for tx elements
+                    txDelCent(iTx)	= sqrt( (xFoc(iTx) - obj.seq.txApCentX(iTx)).^2 + ...
+                                            (zFoc(iTx) - obj.seq.txApCentZ(iTx)).^2) / sos;	% [s] (1 x nTx) delays for tx aperture center
+                end
                 
                 % Inverse the delays for the 'focusing' option (txFoc>0)
                 % For 'defocusing' the delays remain unchanged
@@ -1063,7 +1086,18 @@ classdef Us4R < handle
                 if obj.rec.bmodeEnable
                     rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
                     
-                    rfBfr = mean(rfBfr,3,'omitnan');
+                    if obj.sys.interfEnable
+                        ccf = 1 - sqrt( var(real(rfBfr)./abs(rfBfr), 0, 3) + ...
+                                        var(imag(rfBfr)./abs(rfBfr), 0, 3) );
+                        rfBfr = rfBfr .* ccf;
+                        
+                        % coherent compounding for NDT
+                        rfBfr = mean(rfBfr,3,'omitnan');
+                    else
+                        % incoherent compounding for medical imaging
+                        rfBfr = mean(abs(rfBfr),3,'omitnan');
+                    end
+                    
                 end
                 
                 % Color Doppler image reconstruction
@@ -1099,6 +1133,7 @@ classdef Us4R < handle
                 envImg = scanConversion(envImg,obj.sys,obj.seq,obj.rec);
                 
                 % Doppler is not implemented for 'lin' mode
+                % NDT interface is not supported in scanConversion
             end
             
             % Compression
@@ -1158,25 +1193,48 @@ classdef Us4R < handle
                     error('runCudaReconstruction: invalid modality name.');
             end
             
-            iqLri	= iqRaw2Lri(iqRaw(:,:,selFrames), ...
-                                obj.sys.zElem, ...
-                                obj.sys.xElem, ...
-                                obj.sys.tangElem, ...
-                                obj.rec.zGrid, ...
-                                obj.rec.xGrid, ...
-                                obj.seq.txFoc(selFrames), ...
-                                obj.seq.txAngZX(selFrames), ...
-                                obj.seq.txApCentZ(selFrames), ...
-                                obj.seq.txApCentX(selFrames), ...
-                                obj.seq.txApFstElem(selFrames), ...
-                                obj.seq.txApLstElem(selFrames), ...
-                                obj.seq.rxApFstElem(selFrames), ...
-                                rxTangLim(1), ...
-                                rxTangLim(2), ...
-                                obj.seq.rxSampFreq / obj.rec.dec, ...
-                                obj.seq.txFreq, ...
-                                obj.seq.c, ...
-                                - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+            if ~obj.sys.interfEnable
+                iqLri	= iqRaw2Lri(iqRaw(:,:,selFrames), ...
+                                    obj.sys.zElem, ...
+                                    obj.sys.xElem, ...
+                                    obj.sys.tangElem, ...
+                                    obj.rec.zGrid, ...
+                                    obj.rec.xGrid, ...
+                                    obj.rec.rxApod, ...
+                                    obj.seq.txFoc(selFrames), ...
+                                    obj.seq.txAngZX(selFrames), ...
+                                    obj.seq.txApCentZ(selFrames), ...
+                                    obj.seq.txApCentX(selFrames), ...
+                                    obj.seq.txApFstElem(selFrames), ...
+                                    obj.seq.txApLstElem(selFrames), ...
+                                    obj.seq.rxApFstElem(selFrames), ...
+                                    obj.seq.nSampOmit(selFrames), ...
+                                    rxTangLim(1), ...
+                                    rxTangLim(2), ...
+                                    obj.seq.rxSampFreq / obj.rec.dec, ...
+                                    obj.seq.txFreq, ...
+                                    obj.seq.c, ...
+                                    - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+            else
+                iqLri	= iqRaw2Lri_SSTA_Wedge( ...
+                                    iqRaw(:,:,selFrames), ...
+                                    obj.sys.zElem, ...
+                                    obj.sys.xElem, ...
+                                    obj.sys.tangElem, ...
+                                    obj.rec.zGrid, ...
+                                    obj.rec.xGrid, ...
+                                    obj.seq.txApCentZ(selFrames), ...
+                                    obj.seq.txApCentX(selFrames), ...
+                                    obj.seq.rxApFstElem(selFrames), ...
+                                    rxTangLim(1), ...
+                                    rxTangLim(2), ...
+                                    obj.seq.rxSampFreq / obj.rec.dec, ...
+                                    obj.seq.txFreq, ...
+                                    obj.seq.c, ...
+                                    obj.sys.interfSos, ...
+                                    1/64/obj.seq.txFreq, ...
+                                    - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+            end
             
         end
         

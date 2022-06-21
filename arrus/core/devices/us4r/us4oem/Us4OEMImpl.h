@@ -51,8 +51,7 @@ public:
     static constexpr ChannelIdx N_RX_CHANNELS = 32;
     static constexpr ChannelIdx N_ADDR_CHANNELS = N_TX_CHANNELS;
     static constexpr ChannelIdx ACTIVE_CHANNEL_GROUP_SIZE = 8;
-    static constexpr ChannelIdx N_ACTIVE_CHANNEL_GROUPS =
-        N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
+    static constexpr ChannelIdx N_ACTIVE_CHANNEL_GROUPS = N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
 
     static constexpr float MIN_TX_DELAY = 0.0f;
     static constexpr float MAX_TX_DELAY = 16.96e-6f;
@@ -62,7 +61,7 @@ public:
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
-    static constexpr uint32 SAMPLE_DELAY = 240;
+    static constexpr uint32_t TX_SAMPLE_DELAY_RAW_DATA = 240;
     static constexpr float RX_DELAY = 0.0;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
@@ -72,6 +71,8 @@ public:
     static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
     static constexpr float MAX_PRI = 1.0f; // [s]
     static constexpr float RX_TIME_EPSILON = 5e-6f; // [s]
+    // 2^14 descriptors * 2^12 (4096, minimum page size) bytes
+    static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14+12); // bytes
 
     /**
      * Us4OEMImpl constructor.
@@ -83,7 +84,8 @@ public:
      */
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping, RxSettings rxSettings,
-               std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode);
+               std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
+               bool externalTrigger);
 
     ~Us4OEMImpl() override;
 
@@ -99,7 +101,7 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false) override;
 
-    double getSamplingFrequency() override;
+    float getSamplingFrequency() override;
 
     Interval<Voltage> getAcceptedVoltageRange() override {
         return Interval<Voltage>(MIN_VOLTAGE, MAX_VOLTAGE);
@@ -118,16 +120,20 @@ public:
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
+    void checkFirmwareVersion() override;
+    uint32 getFirmwareVersion() override;
+    void checkState() override;
+    uint32 getTxFirmwareVersion() override;
+
+    void setTestPattern(RxTestPattern pattern) override;
 
 	uint16_t getAfe(uint8_t address) override;
-
 	void setAfe(uint8_t address, uint16_t value) override;
-    void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) override;
-    void setAfeDemodEn(bool en) override;
-    void setAfeDemodDefault(void) override;
-    void resetAfe(void) override;
-
-
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16_t *firCoefficients,
+                     size_t nCoefficients) override;
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
+                     size_t nCoefficients) override;
+    void disableAfeDemod() override;
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
@@ -142,13 +148,30 @@ private:
 
     float getTxRxTime(float rxTime) const;
 
-    // IUs4OEM AFE stters.
+    /**
+     * Returns the sample number that corresponds to the time of Tx.
+     */
+    unsigned int getNumberOfSamplesToTxStart() const;
+
+    // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
     void setPgaGainAfe(uint16 value, bool force);
     void setLnaGainAfe(uint16 value, bool force);
     void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
     void setLpfCutoffAfe(uint32 value, bool force);
     void setActiveTerminationAfe(std::optional<uint16> param, bool force);
+    void enableAfeDemod();
+    void setAfeDemodDefault();
+    void setAfeDemodDecimationFactor(uint8_t integer);
+    void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
+    void setAfeDemodFrequency(float frequency);
+    void setAfeDemodFrequency(float StartFrequency, float stopFrequency);
+    float getAfeDemodStartFrequency(void);
+    float getAfeDemodStopFrequency(void);
+    void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample);
+    void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length);
+    void writeAfeFIRCoeffs(const float* coeffs, uint16_t length);
+    void resetAfe();
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -159,6 +182,9 @@ private:
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
     /** Current RX settings */
     RxSettings rxSettings;
+    bool externalTrigger{false};
+    bool afeDemodEnabled{false};
+    float afeDemodDecimationFactor{1};
 };
 
 }

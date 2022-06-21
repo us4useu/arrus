@@ -92,6 +92,8 @@ class Session(AbstractSession):
         kernel_context = self._create_kernel_context(seq, us_device_dto, medium)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
 
+        batch_size = raw_seq.n_repeats
+
         actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
@@ -103,9 +105,15 @@ class Session(AbstractSession):
         ###
         # -- Constant metadata
         # --- FCM
-        fcm_frame, fcm_channel = arrus.utils.core.convert_fcm_to_np_arrays(fcm)
+        fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
+            arrus.utils.core.convert_fcm_to_np_arrays(fcm, us_device.n_us4oems)
         fcm = arrus.devices.us4r.FrameChannelMapping(
-            frames=fcm_frame, channels=fcm_channel, batch_size=1)
+            us4oems=fcm_us4oems,
+            frames=fcm_frame,
+            channels=fcm_channel,
+            frame_offsets=frame_offsets,
+            n_frames=n_frames,
+            batch_size=batch_size)
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq, us_device_dto, medium)
@@ -119,87 +127,83 @@ class Session(AbstractSession):
                 "Currently only a sequence with constant number of samples "
                 "can be accepted.")
         n_samples = next(iter(n_samples))
-        input_shape = self._get_physical_frame_shape(fcm, n_samples, rx_batch_size=1)
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
+        input_shape = buffer.elements[0].data.shape
 
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
-            input_shape=input_shape, is_iq_data=False, dtype="int16")
+            input_shape=input_shape, is_iq_data=False, dtype="int16",
+            version=arrus.__version__
+        )
 
         # numpy/cupy processing initialization
         if processing is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
-            if not isinstance(processing, _imaging.Pipeline):
-                raise ValueError("Currently only arrus.utils.imaging.Pipeline "
-                                 "processing is supported only.")
-            import cupy as cp
 
-            out_metadata = processing.prepare(const_metadata)
-            self.gpu_buffer = arrus.utils.imaging.Buffer(n_elements=4,
-                                     shape=const_metadata.input_shape,
-                                     dtype=const_metadata.dtype,
-                                     math_pkg=cp,
-                                     type="locked")
-            self.out_buffer = [arrus.utils.imaging.Buffer(n_elements=4,
-                                      shape=m.input_shape,
-                                      dtype=m.dtype, math_pkg=np,
-                                      type="locked")
-                               for m in out_metadata]
-            user_out_buffer = queue.Queue(maxsize=1)
-
-            def buffer_callback(elements):
-                try:
-                    user_elements = [None]*len(elements)
-                    for i, element in enumerate(elements):
-                        user_elements[i] = element.data.copy()
-                        element.release()
-                    try:
-                        user_out_buffer.put_nowait(user_elements)
-                    except queue.Full:
-                        pass
-
-                except Exception as e:
-                    print(f"Exception: {type(e)}")
-                except:
-                    print("Unknown exception")
-
-            pipeline_wrapper = arrus.utils.imaging.PipelineRunner(
-                buffer, self.gpu_buffer, self.out_buffer, processing,
-                buffer_callback)
-            self._current_processing = pipeline_wrapper
-            buffer.append_on_new_data_callback(pipeline_wrapper.process)
-
-            buffer = user_out_buffer
-            if len(out_metadata) == 1:
-                const_metadata = out_metadata[0]
+            if isinstance(processing, _imaging.Pipeline):
+                # Wrap Pipeline into the Processing object.
+                processing = _imaging.Processing(
+                    pipeline=processing,
+                    callback=None,
+                    extract_metadata=False
+                )
+            if isinstance(processing, _imaging.Processing):
+                self.processing = arrus.utils.imaging.ProcessingRunner(
+                    buffer, const_metadata, processing)
+                outputs = self.processing.outputs
             else:
-                const_metadata = out_metadata
-
-        return buffer, const_metadata
+                raise ValueError("Unsupported type of processing: "
+                                 f"{type(processing)}")
+        else:
+            # Device buffer and const_metadata
+            outputs = buffer, const_metadata
+        return outputs
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop_scheme()
+        self.close()
 
     def start_scheme(self):
         """
         Starts the execution of the uploaded scheme.
         """
-        self._session_handle.startScheme()
+        arrus.core.arrusSessionStartScheme(self._session_handle)
 
     def stop_scheme(self):
         """
         Stops execution of the scheme.
         """
         _STOP_TIME = 2
-        self._session_handle.stopScheme()
+        arrus.core.arrusSessionStopScheme(self._session_handle)
         time.sleep(_STOP_TIME)
         if self._current_processing is not None:
             self._current_processing.stop()
+
+    def run(self):
+        """
+        Runs the uploaded scheme.
+
+        The behaviour of this method depends on the work mode:
+        - MANUAL: triggers execution of batch of sequences only ONCE,
+        - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
+         The run function can be called only once (before the scheme is stopped).
+        """
+        self._session_handle.run()
+
+    def close(self):
+        """
+        Closes session.
+
+        This method disconnects with all the devices available during this session.
+        Sets the state of the session to closed, any subsequent call to the object
+        methods (e.g. upload, startScheme..) will result in exception.
+        """
+        self._session_handle.close()
 
     def get_device(self, path: str):
         """
@@ -278,7 +282,7 @@ class Session(AbstractSession):
         # TODO: We assume here, that each frame has the same number of samples!
         # This might not be case in further improvements.
         n_frames = np.max(fcm.frames) + 1
-        return n_frames * n_samples * rx_batch_size, n_channels
+        return n_frames*n_samples*rx_batch_size, n_channels
 
 
 

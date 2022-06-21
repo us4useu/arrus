@@ -19,6 +19,7 @@ class IUs4OEMFactory {
 public:
     virtual IUs4OEMHandle getIUs4OEM(unsigned index) = 0;
     virtual std::vector<IUs4OEMHandle> getModules(Ordinal nModules) = 0;
+    virtual ~IUs4OEMFactory() = default;
 };
 
 

@@ -7,6 +7,26 @@
 %include std_pair.i
 %include std_optional.i
 
+
+%inline %{
+/**
+ * A class that keeps "unlocked" GIL state in the RAII style.
+ * That is, you will release the GIL when this object is created,
+ * and obtain the GIL again when the object is deleted.
+*/
+class ArrusPythonGILUnlock {
+public:
+    ArrusPythonGILUnlock()
+        :state(PyEval_SaveThread()) {}
+
+    ~ArrusPythonGILUnlock() {
+        PyEval_RestoreThread(state);
+    }
+private:
+    PyThreadState* state;
+};
+%}
+
 %{
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
@@ -19,6 +39,7 @@ using namespace ::arrus;
 namespace std {
 %template(VectorBool) vector<bool>;
 %template(VectorFloat) vector<float>;
+%template(VectorUInt16) vector<unsigned short>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
 
@@ -62,6 +83,7 @@ namespace std {
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/common/logging.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 
@@ -145,11 +167,9 @@ using namespace arrus::devices;
 %shared_ptr(arrus::framework::BufferElement);
 %shared_ptr(arrus::framework::DataBuffer);
 
-namespace std {
-    %template(FrameChannelMappingElement) pair<unsigned short, arrus::int8>;
-};
 namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
+    %template(IntervalFloat) Interval<float>;
 };
 
 %include "arrus/core/api/framework/NdArray.h"
@@ -183,6 +203,29 @@ void registerOnNewDataCallbackFifoLockFreeBuffer(const std::shared_ptr<arrus::fr
             PyGILState_Release(gstate);
     };
     fifolockfreeBuffer->registerOnNewDataCallback(actualCallback);
+}
+
+class OnBufferOverflowCallbackWrapper {
+public:
+    OnBufferOverflowCallbackWrapper() {}
+    virtual void run() const {}
+    virtual ~OnBufferOverflowCallbackWrapper() {}
+};
+
+void registerOnBufferOverflowCallback(const std::shared_ptr<arrus::framework::Buffer> &buffer, OnBufferOverflowCallbackWrapper& callback) {
+    auto fifolockfreeBuffer = std::static_pointer_cast<DataBuffer>(buffer);
+    ::arrus::framework::OnOverflowCallback actualCallback = [&]() {
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        try {
+            callback.run();
+        } catch(const std::exception &e) {
+            std::cerr << "Exception: " << e.what() << std::endl;
+        } catch(...) {
+            std::cerr << "Unhandled exception" << std::endl;
+        }
+        PyGILState_Release(gstate);
+    };
+    fifolockfreeBuffer->registerOnOverflowCallback(actualCallback);
 }
 %};
 
@@ -220,6 +263,21 @@ std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::sessi
     auto buffer = std::static_pointer_cast<DataBuffer>(uploadResult->getBuffer());
     return buffer;
 }
+
+// GIL-free methods.
+// TODO consider using -threads parameter, or finding a SWIG feature that allows to turn off GIL
+// for a particular method (%thread arrus::session::Session::stopScheme() seems to not work).
+void arrusSessionStartScheme(std::shared_ptr<arrus::session::Session> session) {
+    ArrusPythonGILUnlock unlock;
+    session->startScheme();
+}
+
+void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
+    ArrusPythonGILUnlock unlock;
+    session->stopScheme();
+}
+
+
 %};
 // ------------------------------------------ DEVICES
 // Us4R
@@ -227,6 +285,7 @@ std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::sessi
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
@@ -239,12 +298,11 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceId.h"
 %include "arrus/core/api/devices/Device.h"
 %include "arrus/core/api/devices/DeviceWithComponents.h"
+%include "arrus/core/api/devices/us4r/Us4OEM.h"
 %include "arrus/core/api/devices/us4r/Us4R.h"
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/Probe.h"
-
-
 
 
 %inline %{
@@ -255,7 +313,7 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     }
     return ptr;
 }
-// TODO(pjarosik) remote the bellow functions when possible
+// TODO(pjarosik) remove the bellow functions when possible
 
 unsigned short getNumberOfElements(const arrus::devices::ProbeModel &probe) {
     const auto &nElements = probe.getNumberOfElements();

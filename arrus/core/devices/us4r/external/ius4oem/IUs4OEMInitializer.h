@@ -11,8 +11,8 @@ public:
     /**
      * Sorts the given list of us4oems (by device id) and initializes them.
      */
-    virtual void
-    initModules(std::vector<IUs4OEMHandle> &ius4oems) = 0;
+    virtual void initModules(std::vector<IUs4OEMHandle> &ius4oems) = 0;
+    virtual ~IUs4OEMInitializer() = default;
 };
 
 }

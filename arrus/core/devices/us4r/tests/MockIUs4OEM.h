@@ -10,6 +10,7 @@ public:
     MOCK_METHOD(unsigned int, GetID, (), (override));
     MOCK_METHOD(uint32_t, GetFirmwareVersion, (), (override));
     MOCK_METHOD(uint32_t, GetTxFirmwareVersion, (), (override));
+    MOCK_METHOD(void, CheckFirmwareVersion, (), (override));
     MOCK_METHOD(bool, IsPowereddown, (), (override));
     MOCK_METHOD(void, Initialize, (int), (override));
     MOCK_METHOD(void, Synchronize, (), (override));
@@ -18,7 +19,7 @@ public:
     (override));
     MOCK_METHOD(void, ClearScheduledReceive, (), (override));
     MOCK_METHOD(void, TransferRXBufferToHost,
-            (unsigned char * dstAddress, size_t length, size_t srcAddress),
+            (unsigned char * dstAddress, size_t length, size_t srcAddress, bool isGpu),
     (override));
     MOCK_METHOD(void, ReleaseTransferRxBufferToHost,
         (unsigned char * dstAddress, size_t length, size_t srcAddress),
@@ -86,7 +87,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx),
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode),
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
@@ -101,15 +102,15 @@ public:
     MOCK_METHOD(void, EnableTestPatterns, (), (override));
     MOCK_METHOD(void, DisableTestPatterns, (), (override));
     MOCK_METHOD(void, SyncTestPatterns, (), (override));
-    MOCK_METHOD(void, LockDMABuffer, (unsigned char * address, size_t length),
+    MOCK_METHOD(void, LockDMABuffer, (unsigned char * address, size_t length, bool isGpu),
     (override));
     MOCK_METHOD(void, ReleaseDMABuffer, (unsigned char * address), (override));
     MOCK_METHOD(void, ScheduleTransferRXBufferToHost, (const size_t, unsigned char *, size_t, size_t,
         const std::function<void (void)> &));
     MOCK_METHOD(void, SyncTransfer, (), (override));
     MOCK_METHOD(void, ScheduleTransferRXBufferToHost, (const size_t,const size_t,const std::function<void (void)> &), (override));
-    MOCK_METHOD(void, PrepareTransferRXBufferToHost, (const size_t,unsigned char *,size_t,size_t), (override));
-    MOCK_METHOD(void, PrepareHostBuffer, (unsigned char *,size_t,size_t), (override));
+    MOCK_METHOD(void, PrepareTransferRXBufferToHost, (const size_t,unsigned char *,size_t,size_t, bool isGpu), (override));
+    MOCK_METHOD(void, PrepareHostBuffer, (unsigned char *,size_t,size_t, bool isGpu), (override));
     MOCK_METHOD(void, MarkEntriesAsReadyForReceive, (unsigned short,unsigned short), (override));
     MOCK_METHOD(void, MarkEntriesAsReadyForTransfer, (unsigned short,unsigned short), (override));
     MOCK_METHOD(void, RegisterReceiveOverflowCallback, (const std::function<void (void)> &), (override));
@@ -119,6 +120,61 @@ public:
     MOCK_METHOD(void, SyncReceive, (), (override));
     MOCK_METHOD(void, ResetCallbacks, (), (override));
     MOCK_METHOD(float, GetFPGATemp, (), (override));
+    MOCK_METHOD(void, WaitForPendingTransfers, (), (override));
+    MOCK_METHOD(void, ClearUCDFaults, (), (override));
+    MOCK_METHOD(unsigned short, GetUCDStatus, (), (override));
+    MOCK_METHOD(unsigned char, GetUCDStatusByte, (), (override));
+    MOCK_METHOD(float, GetUCDTemp, (), (override));
+    MOCK_METHOD(float, GetUCDExtTemp, (), (override));
+    MOCK_METHOD(float, GetUCDVOUT, (unsigned char), (override));
+    MOCK_METHOD(float, GetUCDIOUT, (unsigned char), (override));
+    MOCK_METHOD(unsigned char, GetUCDVOUTStatus, (unsigned char), (override));
+    MOCK_METHOD(unsigned char, GetUCDIOUTStatus, (unsigned char), (override));
+    MOCK_METHOD(unsigned char, GetUCDCMLStatus, (unsigned char), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDMFRStatus, (unsigned char), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDRunTime, (), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDBlackBox, (), (override));
+    MOCK_METHOD(std::vector<unsigned char>, GetUCDLog, (), (override));
+    MOCK_METHOD(void, ClearUCDLog, (), (override));
+    MOCK_METHOD(bool, CheckUCDLogNotEmpty, (), (override));
+    MOCK_METHOD(void, ClearUCDBlackBox, (), (override));
+    MOCK_METHOD(void, SetTxFrequencyRange, (int), (override));
+    MOCK_METHOD(int, GetTxFrequencyRange, (), (override));
+    MOCK_METHOD(void, EnableInterrupts, (), (override));
+    MOCK_METHOD(void, DisableInterrupts, (), (override));
+
+    MOCK_METHOD(void, SetActiveTermination, (us4r::afe58jd18::ACTIVE_TERM_EN, us4r::afe58jd18::ACT_TERM_IND_RES), (override));
+    MOCK_METHOD(void, AfeWriteRegister, (uint8_t, uint8_t, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodEnable, (), (override));
+    MOCK_METHOD(void, AfeDemodEnable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodDisable, (), (override));
+    MOCK_METHOD(void, AfeDemodDisable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDefault, (), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactor, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactorQuarters, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDemodFrequency, (double), (override));
+    MOCK_METHOD(void, AfeDemodFsweepEnable, (), (override));
+    MOCK_METHOD(void, AfeDemodFsweepDisable, (), (override));
+    MOCK_METHOD(void, AfeDemodSetFsweepROI, (uint16_t, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodSetFirCoeffsBank, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodWriteFirCoeffs, (const int16_t*, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDefault, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactor, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDecimationFactorQuarters, (uint8_t, uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetDemodFrequency, (uint8_t, double), (override));
+    MOCK_METHOD(void, AfeDemodSetDemodFrequency, (uint8_t, double, double), (override));
+    MOCK_METHOD(double, AfeDemodGetStartFrequency, (), (override));
+    MOCK_METHOD(double, AfeDemodGetStopFrequency, (), (override));
+    MOCK_METHOD(double, AfeDemodGetStartFrequency, (uint8_t), (override));
+    MOCK_METHOD(double, AfeDemodGetStopFrequency, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodFsweepEnable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodFsweepDisable, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodSetFsweepROI, (uint8_t, uint16_t, uint16_t), (override));
+    MOCK_METHOD(void, AfeDemodWriteFirCoeffsBank, (uint8_t, uint32_t*), (override));
+    MOCK_METHOD(void, AfeDemodWriteFirCoeffs, (uint8_t, const int16_t*, uint16_t), (override));
+    MOCK_METHOD(uint16_t, AfeReadRegister, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(void, AfeSoftReset, (uint8_t), (override));
+    MOCK_METHOD(void, AfeSoftReset, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

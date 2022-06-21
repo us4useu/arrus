@@ -17,7 +17,7 @@ std::shared_ptr<LoggerFactory> getDefaultBoostLoggerFactory() {
     auto loggingMechanism = std::make_shared<::arrus::Logging>();
     std::shared_ptr<std::ostream> ostream{
         std::shared_ptr<std::ostream>(&std::cout, [](std::ostream *) {})};
-    loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::INFO);
+    loggingMechanism->addTextSink(ostream, ::arrus::LogSeverity::TRACE);
     return loggingMechanism;
 }
 

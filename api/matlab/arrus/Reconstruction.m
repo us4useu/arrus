@@ -35,6 +35,7 @@ classdef Reconstruction < Operation
         decimation
         xGrid
         zGrid
+        rxApod = [1 1]
         bmodeEnable = true
         colorEnable = false
         vectorEnable = false

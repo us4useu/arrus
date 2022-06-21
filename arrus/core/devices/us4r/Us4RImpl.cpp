@@ -1,23 +1,24 @@
 #include "Us4RImpl.h"
 #include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
-#include <memory>
 #include <chrono>
+#include <memory>
 #include <thread>
 
-#define ARRUS_ASSERT_RX_SETTINGS_SET() \
-    if(!rxSettings.has_value()) {      \
-        throw std::runtime_error("Us4RImpl object has no rx setting set."); \
-    }                                   \
+#define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
+    if (!rxSettings.has_value()) {                                                                                     \
+        throw std::runtime_error("Us4RImpl object has no rx setting set.");                                            \
+    }
 
 namespace arrus::devices {
 
-using ::arrus::ops::us4r::TxRxSequence;
-using ::arrus::ops::us4r::Tx;
-using ::arrus::ops::us4r::Rx;
-using ::arrus::ops::us4r::Pulse;
 using ::arrus::framework::Buffer;
 using ::arrus::framework::DataBufferSpec;
+using ::arrus::ops::us4r::Pulse;
+using ::arrus::ops::us4r::Rx;
+using ::arrus::ops::us4r::Scheme;
+using ::arrus::ops::us4r::Tx;
+using ::arrus::ops::us4r::TxRxSequence;
 
 UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     // NOTE! The implementation of this function determines
@@ -34,16 +35,19 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     }
 }
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv)
-    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)) {
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+                   std::vector<unsigned short> channelsMask)
+    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)),
+      channelsMask(std::move(channelsMask)) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
                    ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
-                   const RxSettings &rxSettings)
+                   const RxSettings &rxSettings, std::vector<unsigned short> channelsMask)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
-      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)), rxSettings(rxSettings) {
+      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)), rxSettings(rxSettings),
+      channelsMask(std::move(channelsMask)) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
@@ -58,10 +62,25 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     auto maxVoltage = voltageRange.end();
 
     if (voltage < minVoltage || voltage > maxVoltage) {
-        throw IllegalArgumentException(::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]",
-                            voltage, minVoltage, maxVoltage));
+        throw IllegalArgumentException(
+            ::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
     }
     hv.value()->setVoltage(voltage);
+}
+
+unsigned char Us4RImpl::getVoltage() {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    return hv.value()->getVoltage();
+}
+
+float Us4RImpl::getMeasuredPVoltage() {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    return hv.value()->getMeasuredPVoltage();
+}
+
+float Us4RImpl::getMeasuredMVoltage() {
+    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    return hv.value()->getMeasuredMVoltage();
 }
 
 void Us4RImpl::disableHV() {
@@ -82,22 +101,19 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // Validate input parameters.
     ARRUS_REQUIRES_EQUAL(
         getDefaultComponent(), probe.value().get(),
-        ::arrus::IllegalArgumentException(
-            "Currently TxRx sequence upload is available for system with probes only."));
+        IllegalArgumentException("Currently TxRx sequence upload is available for system with probes only."));
     if ((hostBufferNElements % rxBufferNElements) != 0) {
-        throw ::arrus::IllegalArgumentException(
-            ::arrus::format(
-                "The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
-                hostBufferNElements, rxBufferNElements));
+        throw IllegalArgumentException(
+            format("The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
+                   hostBufferNElements, rxBufferNElements));
     }
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if (this->state == State::STARTED) {
-        throw ::arrus::IllegalStateException("The device is running, uploading sequence is forbidden.");
+        throw IllegalStateException("The device is running, uploading sequence is forbidden.");
     }
-
     // Upload and register buffers.
-    bool isTriggerSync = workMode == ::arrus::ops::us4r::Scheme::WorkMode::HOST;
-    auto[rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, 1, isTriggerSync);
+    bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
+    auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync);
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -116,9 +132,14 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
         this->buffer.reset();
     }
     // Create output buffer.
-    this->buffer = std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements);
+    this->buffer =
+        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
+    getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
+
+    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
+    // TODO implement Us4RBuffer move constructor.
     this->us4rBuffer = std::move(rxBuffer);
-    getProbeImpl()->registerOutputBuffer(this->buffer.get(), this->us4rBuffer, isTriggerSync);
+
     return {this->buffer, std::move(fcm)};
 }
 
@@ -135,13 +156,14 @@ void Us4RImpl::start() {
     if (!this->buffer->getOnNewDataCallback()) {
         throw ::arrus::IllegalArgumentException("'On new data callback' is not set.");
     }
+    for (auto &us4oem : us4oems) {
+        us4oem->getIUs4oem()->EnableInterrupts();
+    }
     this->getDefaultComponent()->start();
     this->state = State::STARTED;
 }
 
-void Us4RImpl::stop() {
-    this->stopDevice();
-}
+void Us4RImpl::stop() { this->stopDevice(); }
 
 void Us4RImpl::stopDevice() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
@@ -149,6 +171,9 @@ void Us4RImpl::stopDevice() {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        for (auto &us4oem : us4oems) {
+            us4oem->getIUs4oem()->DisableInterrupts();
+        }
         this->getDefaultComponent()->stop();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         logger->log(LogSeverity::DEBUG, "Stopped.");
@@ -156,8 +181,8 @@ void Us4RImpl::stopDevice() {
     if (this->buffer != nullptr) {
         this->buffer->shutdown();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        if(this->us4rBuffer) {
-            getProbeImpl()->unregisterOutputBuffer(this->buffer.get(), this->us4rBuffer);
+        if (this->us4rBuffer) {
+            getProbeImpl()->unregisterOutputBuffer();
             this->us4rBuffer.reset();
         }
     }
@@ -171,8 +196,7 @@ Us4RImpl::~Us4RImpl() {
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSize, uint16_t rxBatchSize,
-                         bool triggerSync) {
+Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync) {
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
@@ -183,29 +207,25 @@ Us4RImpl::uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t rxBufferSi
         Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
         Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
 
-        actualSeq.push_back(TxRxParameters(tx.getAperture(), tx.getDelays(), tx.getExcitation(),rx.getAperture(),
-                            sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding));
+        actualSeq.push_back(TxRxParameters(tx.getAperture(), tx.getDelays(), tx.getExcitation(), rx.getAperture(),
+                                           sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding));
         ++opIdx;
     }
-    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), rxBufferSize, rxBatchSize, seq.getSri(),
+    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
                                            triggerSync);
 }
 
-void Us4RImpl::syncTrigger() {
-    this->getDefaultComponent()->syncTrigger();
-}
+void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
 
-// AFE parameters
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {
-    setTgcCurve(tgcCurvePoints, true);
-}
+// AFE parameter setters.
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-            .setTgcSamples(tgcCurvePoints)
-            ->setApplyTgcCharacteristic(applyCharacteristic)
-            ->build();
+                             .setTgcSamples(tgcCurvePoints)
+                             ->setApplyTgcCharacteristic(applyCharacteristic)
+                             ->build();
     setRxSettings(newRxSettings);
 }
 
@@ -216,73 +236,112 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 
     std::unique_lock<std::mutex> guard(afeParamsMutex);
     bool isStateInconsistent = false;
-    bool isError = false;
     try {
-        for(auto &us4oem: us4oems) {
+        for (auto &us4oem : us4oems) {
             us4oem->setRxSettings(settings);
             // At least one us4OEM has been updated.
             isStateInconsistent = true;
         }
         isStateInconsistent = false;
         this->rxSettings = settings;
-    }
-    catch(const std::exception &e) {
-        logger->log(LogSeverity::ERROR, ::arrus::format("Error while setting AFE parameters, msg: {}", e.what()));
-        isError = true;
-        throw e;
-    }
-    catch(...) {
-        logger->log(LogSeverity::ERROR, "Unknown error while setting AFE parameters.");
-        isError = true;
-    }
-    if(isStateInconsistent && isError) {
-        logger->log(LogSeverity::ERROR, "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
-                                        "were not properly configured.");
+    } catch (...) {
+        if (isStateInconsistent) {
+            logger->log(LogSeverity::ERROR,
+                        "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
+                        "were not properly configured.");
+        }
+        throw;
     }
 }
 
 void Us4RImpl::setPgaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-            .setPgaGain(value)
-            ->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value)->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setLnaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-            .setLnaGain(value)
-            ->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value)->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setLpfCutoff(uint32 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-            .setLpfCutoff(value)
-            ->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value)->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setDtgcAttenuation(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-            .setDtgcAttenuation(value)
-            ->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value)->build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-            .setActiveTermination(value)
-            ->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value)->build();
     setRxSettings(newRxSettings);
 }
 
-uint8_t Us4RImpl::getNumberOfUs4OEMs() {
-    return (uint8_t)us4oems.size();
+uint8_t Us4RImpl::getNumberOfUs4OEMs() { return static_cast<uint8_t>(us4oems.size()); }
+
+void Us4RImpl::setTestPattern(Us4OEM::RxTestPattern pattern) {
+    // TODO make the below exception safe
+    for (auto &us4oem : us4oems) {
+        us4oem->setTestPattern(pattern);
+    }
 }
 
-float Us4RImpl::getSamplingFrequency() const {
-    return (float)us4oems[0]->getSamplingFrequency();
+float Us4RImpl::getSamplingFrequency() const { return (float) us4oems[0]->getSamplingFrequency(); }
+
+void Us4RImpl::checkState() const {
+    for (auto &us4oem : us4oems) {
+        us4oem->checkState();
+    }
 }
 
+std::vector<unsigned short> Us4RImpl::getChannelsMask() { return channelsMask; }
+
+void Us4RImpl::setStopOnOverflow(bool value) {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if (this->state != State::STOPPED) {
+        logger->log(LogSeverity::INFO,
+                    "The StopOnOverflow property can be set "
+                    "only when the device is stopped.");
+    }
+    this->stopOnOverflow = value;
 }
+
+bool Us4RImpl::isStopOnOverflow() const { return stopOnOverflow; }
+
+void Us4RImpl::applyForAllUs4OEMs(const std::function<void(Us4OEM *us4oem)> &func, const std::string &funcName) {
+    bool isConsistent = false;
+    try {
+        for (auto &us4oem : us4oems) {
+            func(us4oem.get());
+            // At least one us4OEM has been updated, some us4OEMs have been already updated.
+            isConsistent = true;
+        }
+        isConsistent = false;
+    } catch (...) {
+        if (isConsistent) {
+            logger->log(LogSeverity::ERROR,
+                        format("Error while calling '{}': the function was not applied "
+                               "correctly for all us4OEMs.",
+                               funcName));
+        }
+        throw;
+    }
+}
+
+void Us4RImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+                           size_t nCoefficients) {
+    applyForAllUs4OEMs(
+        [demodulationFrequency, decimationFactor, firCoefficients, nCoefficients](Us4OEM *us4oem) {
+            us4oem->setAfeDemod(demodulationFrequency, decimationFactor, firCoefficients, nCoefficients);
+        },
+        "disableAfeDemod");
+}
+
+void Us4RImpl::disableAfeDemod() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAfeDemod(); }, "disableAfeDemod");
+}
+
+}// namespace arrus::devices

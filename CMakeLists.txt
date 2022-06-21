@@ -3,11 +3,10 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.6.5)
+set(PROJECT_VERSION 0.8.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 
 option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
-
 # TODO remove ARRUS_DEVELOP_VERSION, use ARRUS_APPEND_VERSION_SUFFIX_DATE
 if(ARRUS_DEVELOP_VERSION)
     set(PROJECT_FULL_VERSION "${PROJECT_VERSION}-dev")
@@ -48,7 +47,7 @@ option(ARRUS_CUDA "Build with CUDA GPU support" OFF)
 
 if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
     string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")
-    set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}-${ARRUS_PROJECT_VERSION_SUFFIX}")
+    set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}-dev${ARRUS_PROJECT_VERSION_SUFFIX}")
 endif()
 
 # Determining host platform.
@@ -88,7 +87,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.6.9 EXACT REQUIRED US4OEM HV256 DBARLite)
+find_package(Us4 0.9.0 EXACT REQUIRED US4OEM HV256 DBARLite)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)

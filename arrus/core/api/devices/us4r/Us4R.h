@@ -3,29 +3,31 @@
 
 #include <memory>
 
+#include "FrameChannelMapping.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
-#include "arrus/core/api/devices/us4r/Us4OEM.h"
-#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/probe/Probe.h"
-#include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
-#include "FrameChannelMapping.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
 
 namespace arrus::devices {
 
 /**
  * Us4R system: a group of Us4OEM modules and related components.
+ *
+ * By default system starts with IQ demodulator turned off.
  */
 class Us4R : public DeviceWithComponents {
 public:
     using Handle = std::unique_ptr<Us4R>;
     static constexpr long long INF_TIMEOUT = -1;
 
-    explicit Us4R(const DeviceId &id): DeviceWithComponents(id) {}
+    explicit Us4R(const DeviceId &id) : DeviceWithComponents(id) {}
 
     ~Us4R() override = default;
 
@@ -35,7 +37,7 @@ public:
      * @param ordinal ordinal number of the us4oem to get
      * @return a handle to the us4oem module
      */
-    virtual Us4OEM::RawHandle getUs4OEM(Ordinal ordinal) = 0;
+    virtual Us4OEM *getUs4OEM(Ordinal ordinal) = 0;
 
     /**
      * Returns a handle to an adapter identified by given ordinal number.
@@ -51,7 +53,7 @@ public:
      * @param ordinal ordinal number of the probe to get
      * @return a handle to the probe
      */
-    virtual arrus::devices::Probe* getProbe(Ordinal ordinal) = 0;
+    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) = 0;
 
     virtual std::pair<
         std::shared_ptr<arrus::framework::Buffer>,
@@ -67,6 +69,27 @@ public:
     virtual void setVoltage(Voltage voltage) = 0;
 
     /**
+     * Returns configured HV voltage.
+     *
+     * @return hv voltage value configured on device [V]
+     */
+    virtual unsigned char getVoltage() = 0;
+
+    /**
+     * Returns measured HV voltage (plus).
+     *
+     * @return hv voltage measured by device [V]
+     */
+    virtual float getMeasuredPVoltage() = 0;
+
+    /**
+     * Returns measured HV voltage (minus).
+     *
+     * @return hv voltage measured by devivce [V]
+     */
+    virtual float getMeasuredMVoltage() = 0;
+
+    /**
      * Disables HV voltage.
      */
     virtual void disableHV() = 0;
@@ -74,7 +97,7 @@ public:
     /**
      * Equivalent to setTgcCurve(curve, true).
      */
-    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints) = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints) = 0;
 
     /**
      * Sets TGC curve points asynchronously.
@@ -89,7 +112,7 @@ public:
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
      */
-    virtual void setTgcCurve(const std::vector<float>& tgcCurvePoints, bool applyCharacteristic) = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) = 0;
 
     /**
      * Sets PGA gain.
@@ -134,6 +157,17 @@ public:
     virtual void setRxSettings(const RxSettings &settings) = 0;
 
     /**
+     * If active is true, turns off probe's RX data acquisition and turns on test patterns generation.
+     * Otherwise turns off test patterns generation and turns on probe's RX data acquisition.
+     */
+    virtual void setTestPattern(Us4OEM::RxTestPattern pattern) = 0;
+
+    virtual void start() = 0;
+    virtual void stop() = 0;
+
+    virtual std::vector<unsigned short> getChannelsMask() = 0;
+
+    /**
      * Returns the number of us4OEM modules that are used in this us4R system.
      */
     virtual uint8_t getNumberOfUs4OEMs() = 0;
@@ -143,15 +177,79 @@ public:
      */
     virtual float getSamplingFrequency() const = 0;
 
-    virtual void start() = 0;
-    virtual void stop() = 0;
+    /**
+     * Checks state of the Us4R device. Currently checks if each us4OEM module is in
+     * the correct state.
+     *
+     * @throws arrus::IllegalStateException when some inconsistent state was detected
+     */
+    virtual void checkState() const = 0;
 
-    Us4R(Us4R const&) = delete;
-    Us4R(Us4R const&&) = delete;
-    void operator=(Us4R const&) = delete;
-    void operator=(Us4R const&&) = delete;
+    /**
+     * Set the system to stop when (RX or host) buffer overflow is detected.
+     *
+     * This property is set by default to true.
+     *
+     * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
+     */
+    virtual void setStopOnOverflow(bool isStopOnOverflow) = 0;
+
+    /**
+     * Returns true if the system will be stopped when (RX of host) buffer overflow is detected.
+     *
+     * This property is set by default to true.
+     *
+     * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
+     */
+    virtual bool isStopOnOverflow() const = 0;
+
+    /**
+     * Enables digital IQ demodulator and sets given parameters.
+     *
+     * Note: this function must be called before uploading TX/RX sequence on the device.
+     *
+     * TODO(jrozb91) more details are required:
+     * - what exceptions this method can throw (if any)?
+     * - demodulationFrequency: what range of values is accepted? what if value outside of this range is given?
+     *                          (validator exception?)
+     * - decimationFactor: what range of values is accepted, int16 (min,max), or something else?
+     * - fiCoefficients: what are the acceptable value? are there any restrictions, min max values?
+     * - nCoefficients: how the number of coefficients depend on the decimation factor?.
+     *                  What will happen if you will try to set incorrect number of coefficients (validator exception)
+     *
+     * @param demodulationFrequency: TODO
+     * @param decimationFactor: TODO
+     * @param firCoefficients: TODO
+     * @param nCoefficients: TODO
+     * @throw arrus::IllegalArgumentException: TODO when?
+     */
+    virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+                             size_t nCoefficients) = 0;
+
+    /**
+     * Enables digital IQ demodulator and sets given parameters.
+     *
+     * @see setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+     *                  size_t nCoefficients)
+     */
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const std::vector<int16> &firCoefficients) {
+        setAfeDemod(demodulationFrequency, decimationFactor, firCoefficients.data(), firCoefficients.size());
+    }
+
+    /**
+     * Disables digital IQ demodulator.
+     *
+     * TODO(jrozb91) detailed docs:
+     * - when can this function be called? before starting acquisition? can IQ demodulator be enabled/disabled
+     */
+    virtual void disableAfeDemod() = 0;
+
+    Us4R(Us4R const &) = delete;
+    Us4R(Us4R const &&) = delete;
+    void operator=(Us4R const &) = delete;
+    void operator=(Us4R const &&) = delete;
 };
 
-}
+}// namespace arrus::devices
 
-#endif //ARRUS_CORE_DEVICES_US4R_US4R_H
+#endif//ARRUS_CORE_DEVICES_US4R_US4R_H

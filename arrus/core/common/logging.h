@@ -12,8 +12,12 @@ std::shared_ptr<LoggerFactory> getLoggerFactory();
 
 Logger::SharedHandle getDefaultLogger();
 
+// Deprecated, prefer using ARRUS_INIT_COMPONENT_LOGGER
 #define INIT_ARRUS_DEVICE_LOGGER(logger, devId) \
-    logger->setAttribute("DeviceId", devId) \
+    logger->setAttribute("DeviceId", devId)
+
+#define ARRUS_INIT_COMPONENT_LOGGER(logger, componentId) \
+    logger->setAttribute("ComponentId", componentId)
 
 #define ARRUS_LOG(logger, severity, msg) \
     (logger)->log(severity, msg)
@@ -21,7 +25,7 @@ Logger::SharedHandle getDefaultLogger();
 #define ARRUS_LOG_DEFAULT(severity, msg) \
     getDefaultLogger()->log(severity, msg)
 
-#define DEFAULT_TEST_LOG_LEVEL arrus::LogSeverity:TRACE
+#define DEFAULT_TEST_LOG_LEVEL arrus::LogSeverity::TRACE
 
 #define ARRUS_INIT_TEST_LOG_LEVEL(ComponentType, level) \
 do{                       \

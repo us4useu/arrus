@@ -51,6 +51,7 @@ Specific sequences currently available in the system are as follows:
 .. mat:autoclass:: arrus.PWISequence
     :show-inheritance:
     :members:
+Some details on the Plane Wave Imaging method (PWI) can be found in https://www.researchgate.net/publication/24397777_Coherent_Plane-Wave_Compounding_for_Very_High_Frame_Rate_Ultrasonography_and_Transient_Elastography
 
 .. _arrus.STASequence:
 

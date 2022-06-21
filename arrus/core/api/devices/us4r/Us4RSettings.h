@@ -18,8 +18,11 @@ class Us4RSettings {
 public:
     using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
 
-    explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings)
-        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)) {}
+    explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
+                          std::optional<Ordinal> nUs4OEMs = std::nullopt,
+                          std::vector<Ordinal> adapterToUs4RModuleNumber = {})
+        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)),
+          nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)){}
 
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,
@@ -28,14 +31,21 @@ public:
         std::optional<HVSettings> hvSettings,
         std::vector<ChannelIdx> channelsMask,
         std::vector<std::vector<uint8>> us4oemChannelsMask,
-        ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL)
-        : probeAdapterSettings(std::move(probeAdapterSettings)),
+        ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
+        std::optional<Ordinal> nUs4OEMs = std::nullopt,
+        std::vector<Ordinal> adapterToUs4RModuleNumber = {},
+        bool externalTrigger = false
+    ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
           hvSettings(std::move(hvSettings)),
           channelsMask(std::move(channelsMask)),
           us4oemChannelsMask(std::move(us4oemChannelsMask)),
-          reprogrammingMode(reprogrammingMode) {}
+          reprogrammingMode(reprogrammingMode),
+          nUs4OEMs(nUs4OEMs),
+          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
+          externalTrigger(externalTrigger)
+    {}
 
     const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
@@ -70,6 +80,18 @@ public:
         return reprogrammingMode;
     }
 
+    const std::optional<Ordinal> &getNumberOfUs4oems() const {
+        return nUs4OEMs;
+    }
+
+    const std::vector<Ordinal> &getAdapterToUs4RModuleNumber() const {
+        return adapterToUs4RModuleNumber;
+    }
+
+    bool isExternalTrigger() const {
+        return externalTrigger;
+    }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -94,8 +116,19 @@ private:
      * the system us4r channels, and this way we reduce the chance of mistake. */
     std::vector<std::vector<uint8>> us4oemChannelsMask;
     /** Reprogramming mode applied to all us4OEMs.
-     * See Us4OEMSettings::ReprogrammingMode docs for more information.*/
+     * See Us4OEMSettings::ReprogrammingMode docs for more information. */
     ReprogrammingMode reprogrammingMode;
+    /** Number of us4OEMs in the us4R system. Optional, if is std::nullopt,
+     * the number of us4oems is determined based on the probe adapter mapping
+     * (equal to the maximum ordinal number of us4OEM). Optional, if set to
+     * std::nullopt, the number of us4OEMs will be determined based on the
+     * probe adapter mapping (as the maximum of us4OEM module ordinal numbers). */
+    std::optional<Ordinal> nUs4OEMs = std::nullopt;
+    /** The mapping from the us4OEM ordinal number in the probe adapter mapping
+     * and the actual ordinal number of us4OEM. Optional, empty vector means that
+     * no mapping should be applied (identity mapping). */
+    std::vector<Ordinal> adapterToUs4RModuleNumber = {};
+    bool externalTrigger{false};
 };
 
 }
