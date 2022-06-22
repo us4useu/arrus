@@ -13,7 +13,7 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "FrameChannelMapping.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "RxSettings.h"
 
 namespace arrus::devices {
 

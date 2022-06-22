@@ -79,7 +79,6 @@ namespace std {
 #include <iostream>
 
 #include "arrus/core/api/common/types.h"
-#include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/common/logging.h"
@@ -98,6 +97,8 @@ using namespace ::arrus;
 %nodefaultctor;
 
 // TO let know swig about any DLL export macros.
+#define __attribute__(x)
+
 %include "arrus/core/api/common/macros.h"
 %include "arrus/core/api/common/types.h"
 
@@ -108,20 +109,19 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Logger.h"
 
 %inline %{
-    std::shared_ptr<::arrus::Logging> LOGGING_FACTORY;
+    ::arrus::Logging* LOGGING_FACTORY;
 
     // TODO consider moving the below function to %init
     void initLoggingMechanism(const ::arrus::LogSeverity level) {
-        LOGGING_FACTORY = std::make_shared<::arrus::Logging>();
+        LOGGING_FACTORY = ::arrus::useDefaultLoggerFactory();
         LOGGING_FACTORY->addClog(level);
-        ::arrus::setLoggerFactory(LOGGING_FACTORY);
     }
 
     void addLogFile(const std::string &filepath, const ::arrus::LogSeverity level) {
         std::shared_ptr<std::ostream> logFileStream =
             // append to the end of the file
             std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
-        LOGGING_FACTORY->addTextSink(logFileStream, level);
+        LOGGING_FACTORY->addOutputStream(logFileStream, level);
     }
 
     void setClogLevel(const ::arrus::LogSeverity level) {
@@ -169,6 +169,7 @@ using namespace arrus::devices;
 
 namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
+    %template(TupleSizeT) Tuple<size_t>;
     %template(IntervalFloat) Interval<float>;
 };
 

@@ -15,7 +15,7 @@ public:
     : us4oemComponents(std::move(us4oemComponents)) {
 
         // Sum buffer us4oem component number of samples to determine buffer element shape.
-        unsigned nChannels = this->us4oemComponents[0].getElementShape().get(1);
+        unsigned nChannels = static_cast<unsigned>(this->us4oemComponents[0].getElementShape().get(1));
         unsigned nSamples = 0;
         framework::NdArray::DataType dataType = this->us4oemComponents[0].getDataType();
 
@@ -28,7 +28,7 @@ public:
             if(dataType != component.getDataType()) {
                 throw IllegalArgumentException("Each Us4R buffer element component should have the same data type.");
             }
-            nSamples += componentShape.get(0);
+            nSamples += static_cast<unsigned>(componentShape.get(0));
         }
         elementShape = framework::NdArray::Shape{nSamples, nChannels};
         elementDataType = dataType;

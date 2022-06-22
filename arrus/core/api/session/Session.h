@@ -8,6 +8,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/SessionSettings.h"
 #include "arrus/core/api/session/UploadResult.h"
+#include "arrus/core/api/common/macros.h"
 
 namespace arrus::session {
 

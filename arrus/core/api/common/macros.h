@@ -16,7 +16,7 @@
 #endif
 
 #else
-#define ARRUS_CPP_EXPORT
+#define ARRUS_CPP_EXPORT __attribute__((visibility("default")))
 #endif
 
 #endif //ARRUS_CORE_API_COMMON_MACROS_H
