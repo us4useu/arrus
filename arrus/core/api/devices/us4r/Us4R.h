@@ -3,7 +3,6 @@
 
 #include <memory>
 
-#include "FrameChannelMapping.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/probe/Probe.h"
@@ -14,6 +13,8 @@
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
 

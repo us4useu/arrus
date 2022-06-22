@@ -47,7 +47,7 @@ find_library(Us4_Us4RDBAR_LIBRARY
 file(READ "${Us4_ROOT_DIR}/include/versions.h" Us4OEM_VERSIONS)
 
 # API version
-string(REGEX MATCH "US4R_API_VERSION[ ]+([0-9]+\\.[0-9]+\\.[0-9]+)"
+string(REGEX MATCH "US4R_API_VERSION[ ]+\"([0-9]+\\.[0-9]+\\.[0-9]+)\""
        US4API_VERSION_MATCH
        ${Us4OEM_VERSIONS}
 )
