@@ -175,6 +175,8 @@ set(SRC_FILES
     api/session/UploadConstMetadata.h
     api/framework/DataBuffer.h
     api/framework/FifoBuffer.h
+    api/ops/us4r/DigitalDownConversion.h
+    ops/us4r/DigitalDownConversion.cpp
     cfg/default.h.in
     common/LogSeverity.cpp
     api/arrus.h

@@ -230,6 +230,16 @@ std::vector<size_t> rank(const std::vector<T> &values) {
     return result;
 }
 
+template<typename T>
+std::vector<T> copyToVector(const Span<T> span) {
+    std::vector<T> result;
+    result.reserve(span.size());
+    for(size_t i = 0; i < span.size(); ++i) {
+        result[i] = span[i];
+    }
+    return result;
+}
+
 }
 
 #endif //ARRUS_CORE_COMMON_COLLECTIONS_H

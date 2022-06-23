@@ -59,6 +59,8 @@ public:
     static constexpr float MIN_TX_FREQUENCY = 1e6f;
     static constexpr float MAX_TX_FREQUENCY = 60e6f;
 
+    static constexpr float MIN_RX_TIME = 20e-6f;
+
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32_t TX_SAMPLE_DELAY_RAW_DATA = 240;
@@ -99,7 +101,8 @@ public:
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false) override;
+                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false,
+                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt) override;
 
     float getSamplingFrequency() override;
 
@@ -129,18 +132,38 @@ public:
 
 	uint16_t getAfe(uint8_t address) override;
 	void setAfe(uint8_t address, uint16_t value) override;
+
+    void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
+        if(ddc.has_value()) {
+            auto &value = ddc.value();
+            setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(),
+                        value.getFirCoefficients().data(), value.getFirCoefficients().size());
+        }
+        else {
+            disableAfeDemod();
+        }
+    }
+
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16_t *firCoefficients,
-                     size_t nCoefficients) override;
+                     size_t nCoefficients) override {
+        setAfeDemodInternal(demodulationFrequency, decimationFactor, firCoefficients, nCoefficients);
+    }
+
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                     size_t nCoefficients) override;
-    void disableAfeDemod() override;
+                     size_t nCoefficients) override {
+        setAfeDemodInternal(demodulationFrequency, decimationFactor, firCoefficients, nCoefficients);
+    }
+    void disableAfeDemod() override {
+        ius4oem->AfeDemodDisable();
+    }
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 
-    static float getRxTime(size_t nSamples, uint32 decimationFactor);
+    static float getRxTime(size_t nSamples, float samplingFrequency);
 
     std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
@@ -151,7 +174,7 @@ private:
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
-    unsigned int getNumberOfSamplesToTxStart() const;
+    unsigned int getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const;
 
     // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
@@ -173,6 +196,51 @@ private:
     void writeAfeFIRCoeffs(const float* coeffs, uint16_t length);
     void resetAfe();
 
+    template<typename T>
+    void setAfeDemodInternal(float demodulationFrequency, float decimationFactor, const T *firCoefficients,
+                             size_t nCoefficients) {
+        //check decimation factor
+        if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
+            throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
+        }
+
+        int decInt = static_cast<int>(decimationFactor);
+        float decFract = decimationFactor - static_cast<float>(decInt);
+        int nQuarters = 0;
+        if (decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
+            nQuarters = int(decFract * 4.0f);
+        } else {
+            throw IllegalArgumentException("Decimation's fractional part should be equal 0.0, 0.25, 0.5 or 0.75");
+        }
+        int expectedNumberOfCoeffs = 0;
+        //check if fir size is correct for given decimation factor
+        if (nQuarters == 0) {
+            expectedNumberOfCoeffs = 8 * decInt;
+        }
+        else if (nQuarters == 1) {
+            expectedNumberOfCoeffs = 16 * decInt + 8;
+        }
+        else if (nQuarters == 2) {
+            expectedNumberOfCoeffs = 32 * decInt + 8;
+        }
+        else if (nQuarters == 3) {
+            expectedNumberOfCoeffs = 32 * decInt + 24;
+        }
+        if(static_cast<size_t>(expectedNumberOfCoeffs) != nCoefficients) {
+            throw IllegalArgumentException(format("Incorrect number of DDC FIR filter coefficients, should be {}, "
+                                                  "actual: {}", expectedNumberOfCoeffs, nCoefficients));
+        }
+        enableAfeDemod();
+        //write default config
+        setAfeDemodDefault();
+        //set demodulation frequency
+        setAfeDemodFrequency(demodulationFrequency);
+        //set decimation factor
+        setAfeDemodDecimationFactor(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters));
+        //write fir
+        writeAfeFIRCoeffs(firCoefficients, static_cast<uint16_t>(nCoefficients));
+    }
+
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
     std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
@@ -183,8 +251,6 @@ private:
     /** Current RX settings */
     RxSettings rxSettings;
     bool externalTrigger{false};
-    bool afeDemodEnabled{false};
-    float afeDemodDecimationFactor{1};
 };
 
 }

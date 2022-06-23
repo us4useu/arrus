@@ -119,9 +119,7 @@ public:
     float getMeasuredMVoltage() override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
-    void disableAfeDemod() override;
-    void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
-                     size_t nCoefficients) override;
+
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -129,7 +127,8 @@ private:
     void stopDevice();
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync);
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync,
+                   const std::optional<ops::us4r::DigitalDownConversion> &ddc);
 
     /**
      * Applies a given function on all functions.
@@ -138,6 +137,10 @@ private:
      * TODO consider implementing rollback mechanism?
      */
     void applyForAllUs4OEMs(const std::function<void(Us4OEM* us4oem)>& func, const std::string &funcName);
+
+    void disableAfeDemod();
+    void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
+                     size_t nCoefficients);
 
     ProbeImplBase::RawHandle getProbeImpl() { return probe.value().get(); }
 

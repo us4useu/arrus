@@ -6,5 +6,7 @@
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/api/common/logging.h"
+#include "arrus/core/api/common/Span.h"
+#include "arrus/core/api/common/UniqueHandle.h"
 
 #endif //ARRUS_CORE_API_COMMON_H
