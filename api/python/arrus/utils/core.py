@@ -113,6 +113,13 @@ def convert_to_py_probe_model(core_model):
     )
 
 
+def convert_array_to_vector_float(array):
+    result = arrus.core.VectorFloat()
+    for v in array:
+        arrus.core.VectorFloatPushBack(v)
+    return result
+
+
 def convert_to_core_scheme(scheme):
     seq = scheme.tx_rx_sequence
     rx_buffer_size = scheme.rx_buffer_size
@@ -133,9 +140,19 @@ def convert_to_core_scheme(scheme):
         "HOST": arrus.core.Scheme.WorkMode_HOST,
         "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
     }[scheme.work_mode]
-
-    return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                             workMode=core_work_mode)
+    ddc = scheme.digital_down_conversion
+    if scheme.digital_down_conversion is not None:
+        ddc = arrus.core.DigitalDownConversion(
+            demodulationFrequency=ddc.demodulation_frequency,
+            decimationFactor=ddc.decimation_factor,
+            firCoefficients=convert_array_to_vector_float(ddc.fir_coefficients)
+        )
+        return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
+                                 workMode=core_work_mode,
+                                 digitalDownConversion=ddc)
+    else:
+        return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
+                                 workMode=core_work_mode)
 
 
 def convert_to_test_pattern(test_pattern_str):
