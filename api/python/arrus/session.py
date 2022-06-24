@@ -131,9 +131,10 @@ class Session(AbstractSession):
         buffer = arrus.framework.DataBuffer(buffer_handle)
         input_shape = buffer.elements[0].data.shape
 
+        is_iq_data = scheme.digital_down_conversion is not None
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
-            input_shape=input_shape, is_iq_data=False, dtype="int16",
+            input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
             version=arrus.__version__
         )
 

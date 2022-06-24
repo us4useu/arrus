@@ -142,6 +142,8 @@ using namespace ::arrus;
 
 %include "arrus/core/api/common/Tuple.h"
 %include "arrus/core/api/common/Interval.h"
+%include "arrus/core/api/common/Span.h"
+%include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 
 %feature("valuewrapper", "0");
 
@@ -376,8 +378,8 @@ void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs, arrus::ops::
     txrxs.push_back(txrx);
 }
 
-void VectorFloatPushBack(std::vector<float> &vector, float value) {
-    vector.push_back(value);
+void VectorFloatPushBack(std::vector<float> &vector, double value) {
+    vector.push_back(float(value));
 }
 
 %};

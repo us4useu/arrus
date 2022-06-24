@@ -23,8 +23,6 @@ public:
         return UniqueHandle<T>{std::move(std::make_unique<T>(std::forward<Args>(args)...))};
     }
 
-    static void swap(UniqueHandle& l, UniqueHandle& r) noexcept {std::swap(l.ptr, r.ptr);}
-
     UniqueHandle(nullptr_t v = nullptr): ptr{v} {}
 
     UniqueHandle(const UniqueHandle &other) {
@@ -34,19 +32,21 @@ public:
     }
 
     UniqueHandle(UniqueHandle &&other)  noexcept {
-        std::swap(*this, other);
+        this->swap(other);
     }
 
     UniqueHandle& operator=(const UniqueHandle &other) {
         UniqueHandle<T> copy{other};
-        swap(*this, copy);
+        this->swap(copy);
         return *this;
     }
 
     UniqueHandle& operator=(UniqueHandle&& other)  noexcept {
-        swap(*this, other);
+        this->swap(other);
         return *this;
     }
+
+    void swap(UniqueHandle& r) noexcept {std::swap(ptr, r.ptr);}
 
     T& operator*() { return *ptr; }
 

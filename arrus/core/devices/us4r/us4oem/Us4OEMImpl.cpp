@@ -291,7 +291,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 auto const &op = seq[opIdx];
                 auto [startSample, endSample] = op.getRxSampleRange().asPair();
                 size_t nSamples = endSample - startSample;
-                size_t sampleSize = isDDCOn ? sizeof(OutputDType) : 2*sizeof(OutputDType);
+                size_t sampleSize = isDDCOn ? 2*sizeof(OutputDType) : sizeof(OutputDType);
                 size_t nBytes = nSamples * N_RX_CHANNELS * sampleSize;
                 auto rxMapId = rxMappings.find(opIdx)->second;
 

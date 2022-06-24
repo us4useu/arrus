@@ -116,7 +116,7 @@ def convert_to_py_probe_model(core_model):
 def convert_array_to_vector_float(array):
     result = arrus.core.VectorFloat()
     for v in array:
-        arrus.core.VectorFloatPushBack(v)
+        arrus.core.VectorFloatPushBack(result, float(v))
     return result
 
 
@@ -143,16 +143,15 @@ def convert_to_core_scheme(scheme):
     ddc = scheme.digital_down_conversion
     if scheme.digital_down_conversion is not None:
         ddc = arrus.core.DigitalDownConversion(
-            demodulationFrequency=ddc.demodulation_frequency,
-            decimationFactor=ddc.decimation_factor,
-            firCoefficients=convert_array_to_vector_float(ddc.fir_coefficients)
+            ddc.demodulation_frequency,
+            convert_array_to_vector_float(ddc.fir_coefficients),
+            ddc.decimation_factor
         )
         return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 workMode=core_work_mode,
-                                 digitalDownConversion=ddc)
+                                 core_work_mode, ddc)
     else:
         return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 workMode=core_work_mode)
+                                 core_work_mode)
 
 
 def convert_to_test_pattern(test_pattern_str):

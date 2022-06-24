@@ -13,7 +13,10 @@ public:
 
     inline float getDemodulationFrequency() const { return demodulationFrequency; }
     inline float getDecimationFactor() const { return decimationFactor; }
-    inline const Span<float> getFirCoefficients() const { return firCoefficients; }
+    inline const Span<float> getFirCoefficients() const {
+        Span<float> s{firCoefficients.data(), firCoefficients.size()};
+        return s;
+    }
 
 private:
     float demodulationFrequency, decimationFactor;

@@ -325,9 +325,9 @@ install(
 add_executable(pwi-example examples/PwiExample.cpp)
 target_link_libraries(pwi-example PRIVATE arrus-core)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
-
-add_executable(demod-example examples/AfeDDCExample_v2.cpp)
-target_link_libraries(demod-example PRIVATE arrus-core Boost::Boost)
-target_include_directories(demod-example PRIVATE ${ARRUS_ROOT_DIR})
-configure_file(examples/fir.txt fir.txt COPYONLY)
-configure_file(examples/AfeDDCExample_v2_FirGen.py AfeDDCExample_v2_FirGen.py COPYONLY)
+#
+#add_executable(demod-example examples/AfeDDCExample_v2.cpp)
+#target_link_libraries(demod-example PRIVATE arrus-core Boost::Boost)
+#target_include_directories(demod-example PRIVATE ${ARRUS_ROOT_DIR})
+#configure_file(examples/fir.txt fir.txt COPYONLY)
+#configure_file(examples/AfeDDCExample_v2_FirGen.py AfeDDCExample_v2_FirGen.py COPYONLY)
