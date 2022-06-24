@@ -10,6 +10,7 @@ classdef SimpleTxRxSequence < Operation
     % :param txFocus: vector of tx focal lengths [m]
     % :param txAngle: vector of tx angles [rad]
     % :param speedOfSound: speed of sound for [m/s]
+    % :param txVoltage: tx voltage [V]
     % :param txFrequency: tx frequency [Hz]
     % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
     % :param rxDepthRange: defines the end (if scalar) or
@@ -44,6 +45,7 @@ classdef SimpleTxRxSequence < Operation
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
+        txVoltage (1,1) {mustBeNonnegative} = 0;
         txFrequency (1,1) {mustBeProperNumber}
         txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}

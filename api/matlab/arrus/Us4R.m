@@ -20,7 +20,7 @@ classdef Us4R < handle
     % 
     % Only one of the following parameters should be provided:
     %
-    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Required.
+    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Optional. Will be replaced with txVoltage parameter in SimpleTxRxSequence.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
     % :param probeName: name of the probe to use. The parameter is required when ``probe`` is not provided.
     % :param adapterType: name of the adapter type to use. The parameter is required when ``probe`` is not provided.
@@ -72,7 +72,7 @@ classdef Us4R < handle
                        ])
             end
             
-            
+            obj.sys.maxVpp = probe.maxVpp;
             obj.sys.adapType = probe.adapType;                      
             obj.sys.txChannelMap = probe.txChannelMap;
             obj.sys.rxChannelMap = probe.rxChannelMap;
@@ -113,7 +113,6 @@ classdef Us4R < handle
              
              obj.sys.tangElem = tan(obj.sys.angElem);
              obj.sys.probeChannelsMask = probe.channelsMask;
-%             obj.sys.maxVpp = probe.maxVpp;
 
             if obj.sys.adapType == 0
                 % old adapter type (00001111)
@@ -191,6 +190,7 @@ classdef Us4R < handle
                 'txFocus', sequenceOperation.txFocus, ...
                 'txAngle', sequenceOperation.txAngle, ...
                 'speedOfSound', sequenceOperation.speedOfSound, ...
+                'txVoltage', sequenceOperation.txVoltage, ...
                 'txFrequency', sequenceOperation.txFrequency, ...
                 'txNPeriods', sequenceOperation.txNPeriods, ...
                 'rxDepthRange', sequenceOperation.rxDepthRange, ...
@@ -353,7 +353,7 @@ classdef Us4R < handle
         function [voltage, probeName, adapterType, interfaceName, logTime, probe] = parseUs4RParams(varargin)
            paramsParser = inputParser;
            addParameter(paramsParser, 'nUs4OEM', []);
-           addParameter(paramsParser, 'voltage', []);
+           addParameter(paramsParser, 'voltage', 0);
            addParameter(paramsParser, 'logTime', false);
            addParameter(paramsParser, 'probeName', []);
            addParameter(paramsParser, 'adapterType', []);
@@ -369,7 +369,7 @@ classdef Us4R < handle
            voltage = paramsParser.Results.voltage;
            if(~isscalar(voltage))
                error("ARRUS:IllegalArgument", ...
-               "Parameter voltage is required and should be a scalar");
+               "Parameter voltage should be a scalar");
            end
            logTime = paramsParser.Results.logTime;
 
@@ -409,6 +409,7 @@ classdef Us4R < handle
                                 'txFocus',          'txFoc'; ...
                                 'txAngle',          'txAng'; ...
                                 'speedOfSound',     'c'; ...
+                                'txVoltage',        'txVoltage'; ...
                                 'txFrequency',      'txFreq'; ...
                                 'txNPeriods',       'txNPer'; ...
                                 'rxDepthRange',     'dRange'; ...
@@ -465,6 +466,14 @@ classdef Us4R < handle
             end
             
             obj.seq.rxTime = obj.seq.txPri - obj.seq.rxDel - 5e-6;	% [s] rx time (max 4000us)
+            
+            %% txVoltage
+            if 2*obj.seq.txVoltage > obj.sys.maxVpp
+                error(['txVoltage exceeds the safe limit. ', ...
+                       'For the current probe the limit is ', ...
+                       num2str(obj.sys.maxVpp/2), '[V].']);
+            end
+            obj.seq.txVoltage = max(obj.seq.txVoltage, obj.sys.voltage);
             
             %% TGC
             % Default TGC
@@ -902,10 +911,10 @@ classdef Us4R < handle
             end
                 
             try
-                Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+                Us4MEX(0, "SetHVVoltage", obj.seq.txVoltage);
             catch
                 warning('1st "SetHVVoltage" failed');
-                Us4MEX(0, "SetHVVoltage", obj.sys.voltage);
+                Us4MEX(0, "SetHVVoltage", obj.seq.txVoltage);
             end
             
             for iArius=0:(obj.sys.nArius-1)
