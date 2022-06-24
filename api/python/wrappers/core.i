@@ -335,11 +335,7 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
 }
 %};
 
-
-
 // ------------------------------------------ OPERATIONS
-
-
 // Us4R
 %feature("valuewrapper");
 %{
