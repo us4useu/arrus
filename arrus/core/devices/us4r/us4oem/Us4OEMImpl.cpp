@@ -207,12 +207,14 @@ void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) 
 }
 
 void Us4OEMImpl::setAfeDemodFrequency(float frequency) {
-    ius4oem->AfeDemodSetDemodFrequency(frequency);
+    // Note: us4r-api expects frequency in Hz.
+    ius4oem->AfeDemodSetDemodFrequency(frequency/1e6f);
     ius4oem->AfeDemodFsweepDisable();
 }
 
 void Us4OEMImpl::setAfeDemodFrequency(float startFrequency, float stopFrequency) {
-    ius4oem->AfeDemodSetDemodFrequency(startFrequency, stopFrequency);
+    // Note: us4r-api expects frequency in Hz.
+    ius4oem->AfeDemodSetDemodFrequency(startFrequency/1e6f, stopFrequency/1e6f);
     ius4oem->AfeDemodFsweepEnable();
 }
 
