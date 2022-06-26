@@ -30,8 +30,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
                        bool externalTrigger = false)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
-      reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
-      afeDemodEnabled(false) {
+      reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -84,116 +83,6 @@ uint16_t Us4OEMImpl::getAfe(uint8_t address) { return ius4oem->AfeReadRegister(0
 void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
     ius4oem->AfeWriteRegister(0, address, value);
     ius4oem->AfeWriteRegister(1, address, value);
-}
-
-void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const int16_t *firCoefficients,
-                             size_t nCoefficients) {
-    // TODO(jrozb91) validate input:
-    // is the nCoefficients for a given nCoefficients correct?
-    // are the values in correct range?
-
-    //check decimation factor
-    if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
-        throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
-    }
-
-    int decInt = static_cast<int>(decimationFactor);
-    float decFract = decimationFactor - static_cast<float>(decInt);
-    int nQuarters = 0;
-    if (decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
-        nQuarters = int(decFract * 4.0f);
-    } else {
-        throw IllegalArgumentException("Decimation's fractional part should be equal 0.0, 0.25, 0.5 or 0.75");
-    }
-
-    int expectedCoeffs = 0;
-
-    //check if fir size is correct for given decimation factor
-    if (decFract == 0.0f && nCoefficients == static_cast<size_t>(8 * decInt)) {
-        expectedCoeffs = 8 * decInt;
-    }
-    else if (decFract == 0.5f && nCoefficients == static_cast<size_t>(16 * decInt + 8)) {
-        expectedCoeffs = 16 * decInt + 8;
-    }
-    else if (decFract == 0.25f && nCoefficients == static_cast<size_t>(32 * decInt + 8)) {
-        expectedCoeffs = 32 * decInt + 8;
-    }
-    else if (decFract == 0.75f && nCoefficients == static_cast<size_t>(32 * decInt + 24)) {
-        expectedCoeffs = 32 * decInt + 24;
-    }
-    else {
-        throw IllegalArgumentException("Number of FIR filter coefficients incorrect");
-    }
-
-    enableAfeDemod();
-    //write default config
-    setAfeDemodDefault();
-    //set demodulation frequency
-    setAfeDemodFrequency(demodulationFrequency);
-    //set decimation factor
-    setAfeDemodDecimationFactor(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters));
-    afeDemodDecimationFactor = decimationFactor;
-    //write fir
-    writeAfeFIRCoeffs(firCoefficients, static_cast<uint16_t>(nCoefficients));
-    afeDemodEnabled = true;
-}
-
-void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-    size_t nCoefficients) {
-    // TODO(jrozb91) validate input:
-    // is the nCoefficients for a given nCoefficients correct?
-    // are the values in correct range?
-
-    //check decimation factor
-    if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
-        throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
-    }
-
-    float decFract;
-    int decInt = int(std::modf(decimationFactor, &decFract));
-    int nQuarters = 0;
-    if (decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
-        nQuarters = int(decFract * 4.0f);
-    }
-    else {
-        throw IllegalArgumentException("Decimation's fractional part should be equal 0.0, 0.25, 0.5 or 0.75");
-    }
-
-    int expectedCoeffs = 0;
-
-    //check if fir size is correct for given decimation factor
-    if (decFract == 0.0f && nCoefficients == static_cast<size_t>(8 * decInt)) {
-        expectedCoeffs = 8 * decInt;
-    }
-    else if (decFract == 0.5f && nCoefficients == static_cast<size_t>(16 * decInt + 8)) {
-        expectedCoeffs = 16 * decInt + 8;
-    }
-    else if (decFract == 0.25f && nCoefficients == static_cast<size_t>(32 * decInt + 8)) {
-        expectedCoeffs = 32 * decInt + 8;
-    }
-    else if (decFract == 0.75f && nCoefficients == static_cast<size_t>(32 * decInt + 24)) {
-        expectedCoeffs = 32 * decInt + 24;
-    }
-    else {
-        throw IllegalArgumentException("Number of FIR filter coefficients incorrect");
-    }
-
-    enableAfeDemod();
-    //write default config
-    setAfeDemodDefault();
-    //set demodulation frequency
-    setAfeDemodFrequency(demodulationFrequency);
-    //set decimation factor
-    setAfeDemodDecimationFactor(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters));
-    afeDemodDecimationFactor = decimationFactor;
-    //write fir
-    writeAfeFIRCoeffs(firCoefficients, static_cast<uint16_t>(nCoefficients));
-    afeDemodEnabled = true;
-}
-
-void Us4OEMImpl::disableAfeDemod() {
-    ius4oem->AfeDemodDisable();
-    afeDemodEnabled = false;
 }
 
 void Us4OEMImpl::enableAfeDemod() { ius4oem->AfeDemodEnable(); }
@@ -289,9 +178,11 @@ public:
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
-                            uint16 batchSize, std::optional<float> sri, bool triggerSync) {
+                            uint16 batchSize, std::optional<float> sri, bool triggerSync,
+                            const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
+    bool isDDCOn = ddc.has_value();
     Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr));
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
@@ -326,7 +217,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
         auto sampleRange = op.getRxSampleRange().asPair();
         auto endSample = std::get<1>(sampleRange);
-        float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
+        float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float)op.getRxDecimationFactor();
+        float samplingFrequency = SAMPLING_FREQUENCY/decimationFactor;
+        float rxTime = getRxTime(endSample, samplingFrequency);
 
         // Computing total TX/RX time
         float txrxTime = 0.0f;
@@ -382,7 +275,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     // Buffer elements.
     // The below code programs us4OEM sequencer to fill the us4OEM memory with the acquired data.
     // us4oem RXDMA output address
-
     size_t outputAddress = 0;
     size_t transferAddressStart = 0;
     uint16 firing = 0;
@@ -401,22 +293,27 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 auto const &op = seq[opIdx];
                 auto [startSample, endSample] = op.getRxSampleRange().asPair();
                 size_t nSamples = endSample - startSample;
-                size_t nBytes = nSamples * N_RX_CHANNELS * sizeof(OutputDType);
+                size_t sampleSize = isDDCOn ? 2*sizeof(OutputDType) : sizeof(OutputDType);
+                size_t nBytes = nSamples * N_RX_CHANNELS * sampleSize;
                 auto rxMapId = rxMappings.find(opIdx)->second;
 
                 // The start sample should be provided to the us4r-api
                 // as for the nominal sampling frequency of us4OEM, i.e. 65 MHz.
                 // The ARRUS API assumes that the start sample and end sample are for the same
                 // sampling frequency.
-                startSample = startSample * op.getRxDecimationFactor();
+                // Note: in the case of DDC turned on, rx decimation factor doesn't matter (will be overwritten by
+                // the hardware DDC factor).
+                startSample = isDDCOn ? startSample: startSample * op.getRxDecimationFactor();
 
                 ARRUS_REQUIRES_AT_MOST(
                     outputAddress + nBytes, DDR_SIZE,
                     ::arrus::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
-                auto sampleOffset = getNumberOfSamplesToTxStart();
-                ius4oem->ScheduleReceive(firing, outputAddress, nSamples, sampleOffset + startSample,
+                auto sampleOffset = isDDCOn ? getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor())
+                                            : TX_SAMPLE_DELAY_RAW_DATA;
+                size_t nSamplesRaw = isDDCOn ? nSamples*2 : nSamples;
+                size_t startSampleRaw = isDDCOn ? startSample*2: startSample;
+                ius4oem->ScheduleReceive(firing, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
-
                 if (!op.isRxNOP() || this->isMaster()) {
                     if (batchIdx == 0) {
                         rxBufferElementParts.emplace_back(outputAddress, nBytes, firing);
@@ -434,7 +331,13 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
-        framework::NdArray::Shape shape{totalNSamples, N_RX_CHANNELS};
+        framework::NdArray::Shape shape;
+        if(isDDCOn) {
+            shape = {totalNSamples, N_RX_CHANNELS, 2};
+        }
+        else {
+            shape = {totalNSamples, N_RX_CHANNELS};
+        }
         rxBufferElements.emplace_back(srcAddress, size, firing, shape, NdArrayDataType);
     }
     ius4oem->EnableTransmit();
@@ -477,6 +380,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             }
         }
     }
+    setAfeDemod(ddc);
     return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
 }
 
@@ -611,8 +515,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
 float Us4OEMImpl::getSamplingFrequency() { return Us4OEMImpl::SAMPLING_FREQUENCY; }
 
-float Us4OEMImpl::getRxTime(size_t nSamples, uint32 decimationFactor) {
-    return nSamples / (Us4OEMImpl::SAMPLING_FREQUENCY / decimationFactor) + RX_TIME_EPSILON;
+float Us4OEMImpl::getRxTime(size_t nSamples, float samplingFrequency) {
+    return std::max(MIN_RX_TIME, (float)nSamples / samplingFrequency + RX_TIME_EPSILON);
 }
 
 std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(std::bitset<N_ADDR_CHANNELS> aperture) {
@@ -763,14 +667,8 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     default: throw IllegalArgumentException("Unrecognized test pattern");
     }
 }
-unsigned int Us4OEMImpl::getNumberOfSamplesToTxStart() const {
-    if (afeDemodEnabled) {
-        // AFE IQ demodulator turned on
-        return 34u + (uint32_t)(16 * afeDemodDecimationFactor);
-    } else {
-        // AFE IQ demodulator turned off: TX is on the 240th sample
-        return TX_SAMPLE_DELAY_RAW_DATA;
-    }
+unsigned int Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
+    return 34u + (uint32_t)(16 * ddcDecimationFactor);
 }
 
 }// namespace arrus::devices

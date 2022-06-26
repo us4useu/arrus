@@ -113,7 +113,8 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     }
     // Upload and register buffers.
     bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
-    auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync);
+    auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
+                                          scheme.getDigitalDownConversion());
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -196,7 +197,8 @@ Us4RImpl::~Us4RImpl() {
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync) {
+Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync,
+                         const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
@@ -212,7 +214,7 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
         ++opIdx;
     }
     return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
-                                           triggerSync);
+                                           triggerSync, ddc);
 }
 
 void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
@@ -331,13 +333,13 @@ void Us4RImpl::applyForAllUs4OEMs(const std::function<void(Us4OEM *us4oem)> &fun
     }
 }
 
-void Us4RImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
+void Us4RImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                            size_t nCoefficients) {
     applyForAllUs4OEMs(
         [demodulationFrequency, decimationFactor, firCoefficients, nCoefficients](Us4OEM *us4oem) {
             us4oem->setAfeDemod(demodulationFrequency, decimationFactor, firCoefficients, nCoefficients);
         },
-        "disableAfeDemod");
+        "setAfeDemod");
 }
 
 void Us4RImpl::disableAfeDemod() {

@@ -13,12 +13,13 @@ class Us4RBufferElement {
 public:
     explicit Us4RBufferElement(std::vector<Us4OEMBufferElement> us4oemComponents)
     : us4oemComponents(std::move(us4oemComponents)) {
-
-        // Sum buffer us4oem component number of samples to determine buffer element shape.
-        unsigned nChannels = this->us4oemComponents[0].getElementShape().get(1);
+        // Intentionally copying input shape.
+        std::vector<size_t> shapeInternal = this->us4oemComponents[0].getElementShape().getValues();
+        auto nChannels = static_cast<unsigned>(shapeInternal[1]);
         unsigned nSamples = 0;
         framework::NdArray::DataType dataType = this->us4oemComponents[0].getDataType();
 
+        // Sum buffer us4oem component number of samples to determine buffer element shape.
         for(auto& component: this->us4oemComponents) {
             auto &componentShape = component.getElementShape();
             // Verify if we have the same number of channels for each component
@@ -28,9 +29,12 @@ public:
             if(dataType != component.getDataType()) {
                 throw IllegalArgumentException("Each Us4R buffer element component should have the same data type.");
             }
-            nSamples += componentShape.get(0);
+            nSamples += static_cast<unsigned>(componentShape.get(0));
         }
-        elementShape = framework::NdArray::Shape{nSamples, nChannels};
+        shapeInternal[0] = nSamples;
+        shapeInternal[1] = nChannels;
+        // Possibly another dimension: 2 (DDC I/Q)
+        elementShape = framework::NdArray::Shape{shapeInternal};
         elementDataType = dataType;
     }
 

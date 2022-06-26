@@ -8,7 +8,7 @@
 
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 #include "arrus/core/devices/us4r/tests/MockIUs4OEM.h"
-#include "arrus/common/logging/impl/Logging.h"
+#include "arrus/core/common/logging.h"
 
 namespace {
 

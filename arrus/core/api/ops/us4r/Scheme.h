@@ -3,6 +3,7 @@
 
 #include <utility>
 
+#include "DigitalDownConversion.h"
 #include "TxRxSequence.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 
@@ -30,7 +31,7 @@ public:
     };
 
     /**
-     * Scheme constructor.
+     * Scheme constructor. This scheme turns off hardware IQ demodulator.
      *
      * @param txRxSequence tx/rx sequence to perform
      * @param rxBufferSize the size of the data acquisition buffer in the memory of the Us4R device
@@ -42,31 +43,41 @@ public:
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode)
         : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
-        workMode(workMode) {}
+          workMode(workMode), ddc(std::nullopt) {}
 
-    const TxRxSequence &getTxRxSequence() const {
-        return txRxSequence;
-    }
+    /**
+     * Scheme constructor. This scheme turns on hardware IQ demodulator (sees digital down conversion parameter).
+     *
+     * @param txRxSequence tx/rx sequence to perform
+     * @param rxBufferSize the size of the data acquisition buffer in the memory of the Us4R device
+     *   (a single element of the buffer is an output of a single tx/rx sequence execution)
+     * @param outputBuffer output buffer specification
+     * @param workMode scheme work mode
+     * @param digitalDownConversion DDC parameters
+     */
+    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
+           WorkMode workMode, DigitalDownConversion digitalDownConversion)
+        : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
+          workMode(workMode), ddc(std::move(digitalDownConversion)) {}
 
-    uint16 getRxBufferSize() const {
-        return rxBufferSize;
-    }
+    const TxRxSequence &getTxRxSequence() const { return txRxSequence; }
 
-    const framework::DataBufferSpec &getOutputBuffer() const {
-        return outputBuffer;
-    }
+    uint16 getRxBufferSize() const { return rxBufferSize; }
 
-    WorkMode getWorkMode() const {
-        return workMode;
-    }
+    const framework::DataBufferSpec &getOutputBuffer() const { return outputBuffer; }
+
+    WorkMode getWorkMode() const { return workMode; }
+
+    const std::optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
 
 private:
     TxRxSequence txRxSequence;
     uint16 rxBufferSize;
     ::arrus::framework::DataBufferSpec outputBuffer;
     WorkMode workMode;
+    std::optional<DigitalDownConversion> ddc;
 };
 
-}
+}// namespace arrus::ops::us4r
 
-#endif //ARRUS_CORE_API_OPS_US4R_H
+#endif//ARRUS_CORE_API_OPS_US4R_H

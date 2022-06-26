@@ -3,7 +3,6 @@
 
 #include <memory>
 
-#include "FrameChannelMapping.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/probe/Probe.h"
@@ -14,6 +13,8 @@
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
 
@@ -202,47 +203,6 @@ public:
      * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
      */
     virtual bool isStopOnOverflow() const = 0;
-
-    /**
-     * Enables digital IQ demodulator and sets given parameters.
-     *
-     * Note: this function must be called before uploading TX/RX sequence on the device.
-     *
-     * TODO(jrozb91) more details are required:
-     * - what exceptions this method can throw (if any)?
-     * - demodulationFrequency: what range of values is accepted? what if value outside of this range is given?
-     *                          (validator exception?)
-     * - decimationFactor: what range of values is accepted, int16 (min,max), or something else?
-     * - fiCoefficients: what are the acceptable value? are there any restrictions, min max values?
-     * - nCoefficients: how the number of coefficients depend on the decimation factor?.
-     *                  What will happen if you will try to set incorrect number of coefficients (validator exception)
-     *
-     * @param demodulationFrequency: TODO
-     * @param decimationFactor: TODO
-     * @param firCoefficients: TODO
-     * @param nCoefficients: TODO
-     * @throw arrus::IllegalArgumentException: TODO when?
-     */
-    virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
-                             size_t nCoefficients) = 0;
-
-    /**
-     * Enables digital IQ demodulator and sets given parameters.
-     *
-     * @see setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
-     *                  size_t nCoefficients)
-     */
-    void setAfeDemod(float demodulationFrequency, float decimationFactor, const std::vector<int16> &firCoefficients) {
-        setAfeDemod(demodulationFrequency, decimationFactor, firCoefficients.data(), firCoefficients.size());
-    }
-
-    /**
-     * Disables digital IQ demodulator.
-     *
-     * TODO(jrozb91) detailed docs:
-     * - when can this function be called? before starting acquisition? can IQ demodulator be enabled/disabled
-     */
-    virtual void disableAfeDemod() = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

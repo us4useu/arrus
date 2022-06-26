@@ -199,7 +199,6 @@ class ProcessingRunner:
         out_buffer_spec = processing.output_buffer
         in_buffer_spec = in_buffer_spec if in_buffer_spec is not None else default_buffer
         out_buffer_spec = out_buffer_spec if out_buffer_spec is not None else default_buffer
-
         self.gpu_buffer = Buffer(n_elements=in_buffer_spec.size,
                                  shape=const_metadata.input_shape,
                                  dtype=const_metadata.dtype, math_pkg=cp,

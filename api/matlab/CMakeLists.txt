@@ -46,8 +46,14 @@ set(ARRUS_CUDA_MEX_SRC_FILES
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 set(TOOLBOX_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arrus)
+set(PACKAGE_OUTPUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/+arrus)
 
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+# Note: the below mexcuda is supported only on Windows.
+# For linux, use arrus framework kernels implementation.
 # Generate mexcuda matlab command
+
+# TODO remove it when mexcuda is not needed anymore
 set(ARRUS_MATLAB_MEXCUDA_COMMAND "")
 foreach(MEX_SRC_FILE ${ARRUS_CUDA_MEX_SRC_FILES})
     set(ARRUS_MATLAB_MEXCUDA_COMMAND
@@ -71,6 +77,16 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     DEPENDS ${SOURCE_FILES}
 )
+else()
+    add_custom_command(OUTPUT ${TIMESTAMP}
+        COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
+        COMMAND
+        ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
+        DEPENDS ${SOURCE_FILES}
+        )
+endif()
 
 
 add_custom_target(matlab_toolbox ALL DEPENDS ${TIMESTAMP})
@@ -82,9 +98,16 @@ set_target_properties(
     MATLAB_TOOLBOX_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+# The old Matlab files.
 install(
     DIRECTORY
     ${TOOLBOX_OUTPUT_DIR}
+    DESTINATION
+    ${ARRUS_MATLAB_INSTALL_DIR}
+)
+install(
+    DIRECTORY
+    ${PACKAGE_OUTPUT_DIR}
     DESTINATION
     ${ARRUS_MATLAB_INSTALL_DIR}
 )
