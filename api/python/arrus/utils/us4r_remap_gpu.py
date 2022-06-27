@@ -1,65 +1,11 @@
 import cupy as cp
-
-# TODO strategy for case batch size == 1
-
-
-_arrus_remap_str = r'''
-    // Naive implementation of data remapping (physical -> logical order).
-    extern "C" 
-    __global__ void arrus_remap(short* out, short* in, 
-                                const short* fcmFrames, 
-                                const char* fcmChannels, 
-                                const unsigned char *fcmUs4oems,
-                                // Number of sample, that starts given us4oEM data
-                                const unsigned int *frameOffsets,
-                                const unsigned int *nFramesUs4OEM,
-                                // Output shape
-                                const unsigned nSequences, const unsigned nFrames, 
-                                const unsigned nSamples, const unsigned nChannels)
-    {
-        int channel = blockIdx.x*32 + threadIdx.x; // logical channel
-        int sample = blockIdx.y*32 + threadIdx.y; // logical sample
-        int frame = blockIdx.z; // logical frame, global in the whole batch of sequences
-        // Determine sequence number (in batch) and frame number (within sequence)
-        int sequence = frame / nFrames;
-        int localFrame = frame % nFrames;
-        
-        if(channel >= nChannels || sample >= nSamples || localFrame >= nFrames || sequence >= nSequences) {
-            // outside the range
-            return;
-        }
-        
-        // FCM describes here a single sequence 
-        int physicalChannel = fcmChannels[channel + nChannels*localFrame];
-        if(physicalChannel < 0) {
-            // channel is turned off
-            return;
-        }
-        // [sequence, frame, sample, channel]
-        size_t indexOut = sequence*nFrames*nSamples*nChannels 
-                        + localFrame*nSamples*nChannels
-                        + sample*nChannels 
-                        + channel;
-            
-        // FCM describes here a single sequence
-        int physicalFrame = fcmFrames[channel + nChannels*localFrame];
-        // 32 - number of channels in the physical mapping
-        // [us4oem, sequence, physicalFrame, sample, physicalChannel]
-        
-        int us4oem = fcmUs4oems[channel + nChannels*localFrame];
-        int us4oemOffset = frameOffsets[us4oem];
-        int nPhysicalFrames = nFramesUs4OEM[us4oem];
-        
-        size_t indexIn = us4oemOffset*nSamples*32
-                       + sequence*nPhysicalFrames*nSamples*32
-                       + physicalFrame*nSamples*32 
-                       + sample*32 
-                       + physicalChannel; 
-        out[indexOut] = in[indexIn];
-    }'''
+import os
 
 
-remap_kernel = cp.RawKernel(_arrus_remap_str, "arrus_remap")
+current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+remap_module = cp.RawModule(code=os.path.join(current_dir, "iq_raw_2_lri.cu"))
+remap_v1_kernel = remap_module.get_function("arrusRemap")
+remap_v2_kernel = remap_module.get_function("arrusRemapV2")
 
 
 def get_default_grid_block_size(fcm_frames, n_samples, batch_size):
@@ -71,12 +17,26 @@ def get_default_grid_block_size(fcm_frames, n_samples, batch_size):
         (n_samples - 1) // block_size[1] + 1,
         n_frames*batch_size
     )
-    return (grid_size, block_size)
+    return grid_size, block_size
 
 
-def run_remap(grid_size, block_size, params):
+def run_remap_v1(grid_size, block_size, params):
     """
-    :param params: a list: data_out, data_in, fcm_frames, fcm_channels, n_frames, n_samples, n_channels
+    :param params: a list: data_out, data_in, fcm_frames, fcm_channels,
+       n_frames, n_samples, n_channels
+    :return: data with shape (n_sequences, n_frames, n_samples, n_elements)
     """
-    return remap_kernel(grid_size, block_size, params)
+    return remap_v1_kernel(grid_size, block_size, params)
+
+
+def run_remap_v2(grid_size, block_size, params):
+    """
+    :param params: a list: data_out, data_in, fcm_frames,
+      fcm_channels, n_frames, n_samples, n_channels
+    :return: array (n_sequences, n_frames, n_samples, n_elements, n_values),
+      where n_values is equal 1 for raw channel data, and 2 for I/Q data
+    """
+    return remap_v2_kernel(grid_size, block_size, params)
+
+
 
