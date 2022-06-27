@@ -2,7 +2,6 @@
 #define ARRUS_CORE_API_COMMON_UNIQUEHANDLE_H
 
 #include <memory>
-#include <experimental/propagate_const>
 
 namespace arrus {
 
@@ -48,22 +47,23 @@ public:
 
     void swap(UniqueHandle& r) noexcept {std::swap(ptr, r.ptr);}
 
-    T& operator*() { return *ptr; }
+    const T* get() const { return ptr.get(); }
+    T* get() { return ptr.get(); }
 
-    const T& operator*() const { return *ptr; }
+    T& operator*() { return *get(); }
+
+    const T& operator*() const { return *get(); }
 
     T* operator->() { return ptr.operator->(); }
 
     const T* operator->() const { return ptr.operator->(); }
-
-    const T* get() const { return ptr.get(); }
 
     explicit operator bool() const { return (bool)ptr; }
 
 private:
     explicit UniqueHandle(std::unique_ptr<T> v): ptr(std::move(v)) {}
 
-    std::experimental::propagate_const<std::unique_ptr<T>> ptr{nullptr};
+    std::unique_ptr<T> ptr{nullptr};
 };
 
 }
