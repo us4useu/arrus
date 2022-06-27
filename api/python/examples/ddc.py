@@ -10,13 +10,12 @@ from arrus.ops.imaging import PwiSequence
 from arrus.utils.gui import Display2D
 from arrus.utils.imaging import get_bmode_imaging, get_extent
 from arrus.utils.imaging import *
-import matplotlib.pyplot as plt
 
 arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
+with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
     us4r = sess.get_device("/Us4R:0")
     us4r.set_hv_voltage(20)
 
@@ -47,7 +46,9 @@ with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
         processing=Pipeline(
             steps=(
                 # Channel data pre-processing.
-                Lambda(lambda data: data),
+                RemapToLogicalOrderV2(),
+                ToRealOrComplex(),
+                EnvelopeDetection()
             ),
             placement="/GPU:0"),
         work_mode="MANUAL",
@@ -58,42 +59,10 @@ with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
     )
     # Upload sequence on the us4r-lite device.
     buffer, metadata = sess.upload(scheme)
-
-    sess.run()
-    data = buffer.get()[0]
-
-    sess.run()
-    data = buffer.get()[0]
-
-    sess.run()
-    data = buffer.get()[0]
-
-    data = data.reshape(2, 3, 2048, 2, 32)
-    # data = data.reshape((4096, 2, 32))
-
-    # plt.imshow(data[0, 0, :, 0, :])
-    # plt.show()
-    #
-    # plt.imshow(data[0, 0, :, 1, :])
-    # plt.show()
-    #
-    # plt.imshow(np.abs(data[:, :, 0]+1j*data[:, :, 1]))
-    # plt.show()
-
-    img = np.ones((2048, 2, 192), dtype=np.int16)
-    data = data.reshape(2, 3, 2048, 2, 32)
-    for rx in range(3):
-        for u in range(2):
-            subap = rx*64 + u*32
-            img[:, :, subap:(subap+32)] = data[u, rx, :, :, :]
-    cplx = img[:, 0, :] + 1j*img[:, 1, :]
-    plt.imshow(np.real(cplx), vmin=-1000, vmax=1000)
-    plt.show()
-    plt.imshow(np.imag(cplx), vmin=-1000, vmax=1000)
-    plt.show()
-    envelope = np.abs(cplx)
-    plt.imshow(envelope[200:, :], vmin=-2000, vmax=2000)
-    plt.show()
+    display = Display2D(metadata=metadata, value_range=(-1000, 1000),
+                        show_colorbar=True)
+    sess.start_scheme()
+    display.start(buffer)
 
 # When we exit the above scope, the session and scheme is properly closed.
 print("Stopping the example.")
