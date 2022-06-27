@@ -15,18 +15,18 @@ namespace arrus {
  * This is because we use T constructor to do all the deep copy and assignments.
  */
 template<typename T>
-class UniqueHandle {
+class ARRUS_CPP_EXPORT UniqueHandle {
 public:
     template<typename... Args>
     static UniqueHandle<T> create(Args&&... args) {
-        return UniqueHandle<T>{std::move(std::make_unique<T>(std::forward<Args>(args)...))};
+        return UniqueHandle<T>{new T(std::forward<Args>(args)...)};
     }
 
     UniqueHandle(nullptr_t v = nullptr): ptr{v} {}
 
     UniqueHandle(const UniqueHandle &other) {
         if(other) {
-            ptr = std::unique_ptr<T>{new T{*other}};
+            ptr = new T{*other};
         }
     }
 
@@ -47,23 +47,23 @@ public:
 
     void swap(UniqueHandle& r) noexcept {std::swap(ptr, r.ptr);}
 
-    const T* get() const { return ptr.get(); }
-    T* get() { return ptr.get(); }
+    const T* get() const { return ptr; }
+
+    T* get() { return ptr; }
 
     T& operator*() { return *get(); }
 
     const T& operator*() const { return *get(); }
 
-    T* operator->() { return ptr.operator->(); }
+    T* operator->() { return get(); }
 
-    const T* operator->() const { return ptr.operator->(); }
+    const T* operator->() const { return get(); }
 
     explicit operator bool() const { return (bool)ptr; }
 
 private:
-    explicit UniqueHandle(std::unique_ptr<T> v): ptr(std::move(v)) {}
-
-    std::unique_ptr<T> ptr{nullptr};
+    UniqueHandle(T* ptr): ptr(ptr) {}
+    T* ptr{nullptr};
 };
 
 }

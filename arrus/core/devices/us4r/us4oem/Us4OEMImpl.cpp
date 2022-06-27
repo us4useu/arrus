@@ -311,7 +311,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 auto sampleOffset = isDDCOn ? getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor())
                                             : TX_SAMPLE_DELAY_RAW_DATA;
                 size_t nSamplesRaw = isDDCOn ? nSamples*2 : nSamples;
-                size_t startSampleRaw = isDDCOn ? startSample*2: startSample;
+                uint32_t startSampleRaw = isDDCOn ? startSample*2: startSample;
                 ius4oem->ScheduleReceive(firing, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (!op.isRxNOP() || this->isMaster()) {
@@ -667,7 +667,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     default: throw IllegalArgumentException("Unrecognized test pattern");
     }
 }
-unsigned int Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
+uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     return 34u + (uint32_t)(16 * ddcDecimationFactor);
 }
 

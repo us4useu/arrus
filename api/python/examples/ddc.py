@@ -16,9 +16,9 @@ arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
+with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
     us4r = sess.get_device("/Us4R:0")
-    us4r.set_hv_voltage(10)
+    us4r.set_hv_voltage(20)
 
     sequence = PwiSequence(
         angles=np.array([0]),
@@ -38,8 +38,8 @@ with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
     filter_order = decimation_factor*16
     cutoff = 6e6
     fs = us4r.sampling_frequency
-    # coeffs = # scipy.signal.firwin(filter_order, cutoff/(fs/2))
-    coeffs = np.ones(filter_order)
+    coeffs = scipy.signal.firwin(filter_order, cutoff/(fs/2))
+    # coeffs = np.ones(filter_order)
     coeffs = coeffs[filter_order//2:]
     print(coeffs.shape)
     scheme = Scheme(
@@ -71,25 +71,28 @@ with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
     data = data.reshape(2, 3, 2048, 2, 32)
     # data = data.reshape((4096, 2, 32))
 
-    plt.imshow(data[0, 0, :, 0, :])
-    plt.show()
+    # plt.imshow(data[0, 0, :, 0, :])
+    # plt.show()
+    #
+    # plt.imshow(data[0, 0, :, 1, :])
+    # plt.show()
+    #
+    # plt.imshow(np.abs(data[:, :, 0]+1j*data[:, :, 1]))
+    # plt.show()
 
-    plt.imshow(data[0, 0, :, 1, :])
-    plt.show()
-
-    plt.imshow(np.abs(data[:, :, 0]+1j*data[:, :, 1]))
-    plt.show()
-
-    img = np.ones((4096, 192, 2), dtype=np.int16)
-    data = data.reshape(2, 3, 4096, 32, 2)
+    img = np.ones((2048, 2, 192), dtype=np.int16)
+    data = data.reshape(2, 3, 2048, 2, 32)
     for rx in range(3):
         for u in range(2):
             subap = rx*64 + u*32
-            print(f"SUBAP: {subap}")
-            img[:, subap:(subap+32), :] = data[u, rx, :, :, :]
-    cplx = img[:, :, 0] + 1j*img[:, :, 1]
+            img[:, :, subap:(subap+32)] = data[u, rx, :, :, :]
+    cplx = img[:, 0, :] + 1j*img[:, 1, :]
+    plt.imshow(np.real(cplx), vmin=-1000, vmax=1000)
+    plt.show()
+    plt.imshow(np.imag(cplx), vmin=-1000, vmax=1000)
+    plt.show()
     envelope = np.abs(cplx)
-    plt.imshow(envelope)
+    plt.imshow(envelope[200:, :], vmin=-2000, vmax=2000)
     plt.show()
 
 # When we exit the above scope, the session and scheme is properly closed.
