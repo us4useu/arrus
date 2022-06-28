@@ -1,9 +1,12 @@
 import cupy as cp
 import os
+from pathlib import Path
 
 
 current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
-remap_module = cp.RawModule(code=os.path.join(current_dir, "iq_raw_2_lri.cu"))
+_kernel_source = Path(os.path.join(current_dir, "us4r_remap_gpu.cu")).read_text()
+remap_module = cp.RawModule(code=_kernel_source)
+
 remap_v1_kernel = remap_module.get_function("arrusRemap")
 remap_v2_kernel = remap_module.get_function("arrusRemapV2")
 

@@ -2248,11 +2248,14 @@ class ToRealOrComplex(Operation):
         self._output_buffer = None
         self.xp = num_pkg
 
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         input_shape = const_metadata.input_shape
         n_components = input_shape[-1]
 
-        output_shape = input_shape[-1]
+        output_shape = input_shape[:-1]
         if n_components == 2:
             output_dtype = self.xp.complex64
             self.process = self._process_to_complex
