@@ -10,31 +10,19 @@ classdef TxRx
     % :param tx: pulse emission, object of type `arrus.ops.us4r.Tx`
     % :param rx: echo data reception, object of type `arrus.ops.us4r.Rx`
     % :param pri: pulse repetition interval [s]
+    properties(Constant, Hidden=true)
+        REQUIRED_PARAMS = {'tx', 'rx', 'pri'};
+    end
 
     properties
-        tx
-        rx
-        pri
+        tx  arrus.ops.us4r.Tx {arrus.validators.mustBeSingleObject}
+        rx  arrus.ops.us4r.Rx {arrus.validators.mustBeSingleObject}
+        pri {mustBeFinite, mustBeReal, mustBePositive} = 1e6
     end
 
     methods
         function obj = TxRx(varargin)
-            % TxRx constructor.
-            % To pass arguments to the constructor name-value convetion is used.
-            %
-
-
-            p = inputParser;
-            addRequired(p, 'tx', @(x) isa(x, 'arrus.ops.us4r.Tx'));
-            addRequired(p, 'rx', @(x) isa(x, 'arrus.ops.us4r.Rx'));
-            addRequired(p, 'pri', @(x) isreal(x) && isscalar(x) && x > 0);
-            parse(p, varargin{:});
-                                
-            obj.tx = p.Results.tx;
-            obj.rx = p.Results.rx;
-            obj.pri = p.Results.pri;
+            obj = arrus.utils.setArgs(obj, varargin, obj.REQUIRED_PARAMS);
         end
-        
-        
     end
 end

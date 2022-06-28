@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_COMMON_LOGSEVERITY_H
 
 #include <ostream>
+#include "arrus/core/api/common/macros.h"
 
 namespace arrus {
 
@@ -13,6 +14,8 @@ enum class LogSeverity {
     ERROR,
     FATAL
 };
+
+ARRUS_CPP_EXPORT
 std::ostream &operator<<(std::ostream &stream, arrus::LogSeverity level);
 
 }

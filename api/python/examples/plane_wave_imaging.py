@@ -4,7 +4,7 @@ GPU is required.
 """
 import numpy as np
 import arrus
-from arrus.ops.us4r import Scheme, Pulse
+from arrus.ops.us4r import Scheme, Pulse, DataBufferSpec
 from arrus.ops.imaging import PwiSequence
 from arrus.utils.gui import Display2D
 from arrus.utils.imaging import get_bmode_imaging, get_extent
@@ -13,12 +13,12 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session() as sess:
+with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
     us4r = sess.get_device("/Us4R:0")
-    us4r.set_hv_voltage(40)
+    us4r.set_hv_voltage(10)
 
     sequence = PwiSequence(
-        angles=np.linspace(-10, 10, 7)*np.pi/180,
+        angles=np.linspace(-10, 10, 32)*np.pi/180,
         pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
         rx_sample_range=(256, 1024*4),
         downsampling_factor=1,

@@ -2,7 +2,6 @@
 #include <csignal>
 #include <boost/filesystem.hpp>
 
-#include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/common/collections.h"
