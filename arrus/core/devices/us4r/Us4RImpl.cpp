@@ -191,9 +191,13 @@ void Us4RImpl::stopDevice() {
 }
 
 Us4RImpl::~Us4RImpl() {
-    getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
-    this->stopDevice();
-    getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
+    try {
+        getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
+        this->stopDevice();
+        getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
+    } catch(const std::exception &e) {
+        std::cerr << "Exception while destroing handle to the Us4R device" << std::endl;
+    }
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
