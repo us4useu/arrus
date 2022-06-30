@@ -481,7 +481,7 @@ classdef Us4R < handle
                 obj.seq.tgcStart = 14;
             end
             if isempty(obj.seq.tgcSlope)
-                obj.seq.tgcSlope = 2 * 0.5e2 * obj.seq.txFreq*1e-6;
+                obj.seq.tgcSlope = 2 * 0.5e2 * mean(obj.seq.txFreq)*1e-6;
             end
             
             distance = (round(400/obj.seq.fsDivider) : ...
@@ -538,9 +538,16 @@ classdef Us4R < handle
                 error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
             end
             
+            if obj.sys.interfEnable && (numel(unique(obj.seq.txFreq)) > 1 || numel(unique(obj.seq.txNPer)) > 1)
+                error("setSeqParams: txFrequency and txNPeriods must be constant when wedge interface is used");
+            end
+            
             %% Aperture masks & delays
             obj.calcTxRxApMask;
             obj.calcTxDelays;
+            
+            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
+            obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + 50;
             
             %% Number of: SubTx, Firings, Triggers
             nSubTx = zeros(1,obj.sys.nArius);
@@ -634,7 +641,7 @@ classdef Us4R < handle
             
             %% Default decimation
             if isempty(obj.rec.dec)
-                obj.rec.dec = round(obj.seq.rxSampFreq / obj.seq.txFreq);
+                obj.rec.dec = round(obj.seq.rxSampFreq / max(obj.seq.txFreq));
             end
             
             %% Default bmodeFrames
@@ -668,21 +675,20 @@ classdef Us4R < handle
                 obj.seq.txAngZX        = gpuArray(single(obj.seq.txAngZX));
                 obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
                 obj.seq.txApCentX      = gpuArray(single(obj.seq.txApCentX));
+                obj.seq.txFreq         = gpuArray(single(obj.seq.txFreq));
+                obj.seq.initDel        = gpuArray(single(obj.seq.initDel));
                 obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
                 obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
                 obj.seq.rxApFstElem    = gpuArray( int32(obj.seq.rxApOrig - 1));    % rxApOrig remains unchanged as it is used in data reorganization
-                obj.seq.nSampOmit      = gpuArray( int32(((max(obj.seq.txDel) + obj.seq.txNPer/obj.seq.txFreq) * obj.seq.rxSampFreq + 50) / obj.rec.dec));
+                obj.seq.nSampOmit      = gpuArray( int32(obj.seq.nSampOmit));
                 obj.rec.bmodeRxTangLim =          single(obj.rec.bmodeRxTangLim);
                 obj.rec.colorRxTangLim =          single(obj.rec.colorRxTangLim);
                 obj.rec.vect0RxTangLim =          single(obj.rec.vect0RxTangLim);
                 obj.rec.vect1RxTangLim =          single(obj.rec.vect1RxTangLim);
                 obj.seq.rxSampFreq     =          single(obj.seq.rxSampFreq);
-                obj.seq.txFreq         =          single(obj.seq.txFreq);
-                obj.rec.dec            =          single(obj.rec.dec);
                 obj.seq.c              =          single(obj.seq.c);
                 obj.seq.startSample    =          single(obj.seq.startSample);
                 obj.seq.txDelCent      =          single(obj.seq.txDelCent);
-                obj.seq.txNPer         =          single(obj.seq.txNPer);
                 
             end
         end
@@ -954,9 +960,9 @@ classdef Us4R < handle
                     iTx     = 1 + floor(iFire/obj.seq.nSubTx);
                     Us4MEX(iArius, "SetTxAperture", obj.maskFormat(obj.seq.txSubApMask(:,iTx,iArius+1)), iFire);
                     Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
-                    Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq, iFire);
-                    Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer*2, iFire);
                     Us4MEX(iArius, "SetTxInvert", obj.seq.txInvert, iFire);
+                    Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq(iTx), iFire);
+                    Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer(iTx)*2, iFire);
                     
                     %% Rx
                     % SetRxChannelMapping for the new esaote adapter
@@ -1256,16 +1262,17 @@ classdef Us4R < handle
                                     obj.seq.txAngZX(selFrames), ...
                                     obj.seq.txApCentZ(selFrames), ...
                                     obj.seq.txApCentX(selFrames), ...
+                                    obj.seq.txFreq(selFrames), ...
+                                    obj.seq.initDel(selFrames), ...
                                     obj.seq.txApFstElem(selFrames), ...
                                     obj.seq.txApLstElem(selFrames), ...
                                     obj.seq.rxApFstElem(selFrames), ...
-                                    obj.seq.nSampOmit(selFrames), ...
+                                    obj.seq.nSampOmit(selFrames) / obj.rec.dec, ...
                                     rxTangLim(1), ...
                                     rxTangLim(2), ...
                                     obj.seq.rxSampFreq / obj.rec.dec, ...
-                                    obj.seq.txFreq, ...
                                     obj.seq.c, ...
-                                    - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+                                    );
             else
                 iqLri	= iqRaw2Lri_SSTA_Wedge( ...
                                     iqRaw(:,:,selFrames), ...
@@ -1280,11 +1287,11 @@ classdef Us4R < handle
                                     rxTangLim(1), ...
                                     rxTangLim(2), ...
                                     obj.seq.rxSampFreq / obj.rec.dec, ...
-                                    obj.seq.txFreq, ...
                                     obj.seq.c, ...
+                                    obj.seq.txFreq(1), ...
                                     obj.sys.interfSos, ...
-                                    1/64/obj.seq.txFreq, ...
-                                    - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer/(2*obj.seq.txFreq));
+                                    1/64/obj.seq.txFreq(1), ...
+                                    obj.seq.initDel(1));
             end
             
         end

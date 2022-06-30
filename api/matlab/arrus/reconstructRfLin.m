@@ -16,8 +16,8 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 % 
 % acq.rxSampFreq	- [Hz] sampling frequency
 % acq.txFreq        - [Hz] carrier (nominal) frequency
-% acq.txNPer        - [] number of periods in the emitted pulse
 % acq.c             - [m/s] assumed speed of sound in the medium
+% acq.initDel       - [s] initial delay due to txDelays, rxDelay, and burst factor
 % acq.txAng         - [rad] tx angle
 % acq.txDelCent     - [s] (1,1) time delay between 1st rx sample and tx with the center of the tx aperture (line origin)
 % 
@@ -35,8 +35,12 @@ quickRecEnable	= all(quickRecEnable(:));
 
 if quickRecEnable
     txAng	= acq.txAng(1);
+    txFreq	= acq.txFreq(1);
+    dT      = acq.initDel(1);
 else
     txAng	= reshape(acq.txAng,1,1,[]);
+    txFreq	= reshape(acq.txFreq,1,1,[]);
+    dT      = reshape(acq.initDel,1,1,[]);
 end
 
 %% Reconstruction
@@ -45,11 +49,7 @@ rfRaw       = reshape(rfRaw,[nSamp*nRx,nTx]);
 
 fs          = acq.rxSampFreq/proc.dec;
 
-maxTang     = tan(asin(min(1,(acq.c/acq.txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
-
-dT          = - acq.startSample/acq.rxSampFreq ...          % [s] rx delay with respect to start of tx
-              + acq.txDelCent ...                           % [s] tx delay of the tx aperture center
-              + acq.txNPer/(2*acq.txFreq);                  % [s] half the pulse length
+maxTang     = tan(asin(min(1,(acq.c./txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
 
 rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * acq.c/2;              % [mm] (nSamp,1) radial distance from the line origin
@@ -99,7 +99,7 @@ rfBfr	= reshape(rfBfr,[nSamp,nRx,nTx]);
 
 % modulate if iq signal is used
 if proc.iqEnable
-    rfBfr	= rfBfr.*exp(1i*2*pi*acq.txFreq*t);
+    rfBfr	= rfBfr.*exp(1i*2*pi*txFreq.*t);
 end
 
 rfBfr = reshape(sum(rfBfr.*rxApod,2),[nSamp,nTx]);

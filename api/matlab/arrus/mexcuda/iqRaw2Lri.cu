@@ -17,16 +17,27 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 }
 
 
-__global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
-                            float const * txFoc, float const * txAngZX, 
-                            float const * txApCentZ, float const * txApCentX, 
-                            int const * txApFstElem, int const * txApLstElem, 
-                            int const * rxApOrigElem, int const * nSampOmit, 
-                            float const minRxTang, float const maxRxTang, 
-                            float const fs, float const fn, 
-                            float const sos, float const initDel, 
-                            int const nZPix, int const nXPix, 
-                            int const nSamp, int const nElem, 
+__global__ void iqRaw2Lri(  float2 * iqLri, 
+                            float const * zPix, 
+                            float const * xPix, 
+                            float const * txFoc, 
+                            float const * txAngZX, 
+                            float const * txApCentZ, 
+                            float const * txApCentX, 
+                            float const * fn, 
+                            float const * initDel, 
+                            int const * txApFstElem, 
+                            int const * txApLstElem, 
+                            int const * rxApOrigElem, 
+                            int const * nSampOmit, 
+                            float const minRxTang, 
+                            float const maxRxTang, 
+                            float const fs, 
+                            float const sos, 
+                            int const nZPix, 
+                            int const nXPix, 
+                            int const nSamp, 
+                            int const nElem, 
                             int const nRx, 
                             int const nTx)
 {
@@ -40,12 +51,13 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
     int iElem;
     float txDist, rxDist, rxTang, txApod, rxApod, time, iSamp;
     float modSin, modCos, sampRe, sampIm, pixRe, pixIm, pixWgh;
-    float const omega = 2 * M_PI * fn;
     float const sosInv = 1 / sos;
 //     float const zDistInv = 1 / zPix[z];
     float const rngRxTangInv = 1 / (maxRxTang - minRxTang); // inverted tangent range
     
     for (int iTx=0; iTx<nTx; iTx++) {
+        
+        float omega = 2 * M_PI * fn[iTx];
         
         if (!isinf(txFoc[iTx])) {
             /* STA */
@@ -109,7 +121,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
                 rxApod = (rxTang-minRxTang)*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
                 rxApod = tex1D(rxApodTex, rxApod);
                 
-                time = (txDist + rxDist) * sosInv + initDel;
+                time = (txDist + rxDist) * sosInv + initDel[iTx];
                 iSamp = time * fs;
                 if (iSamp<static_cast<float>(nSampOmit[iTx]) || iSamp>static_cast<float>(nSamp-1)) continue;
                 
@@ -188,6 +200,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * ang;
     mxGPUArray const * centZ;
     mxGPUArray const * centX;
+    mxGPUArray const * fn;
+    mxGPUArray const * initDel;
     mxGPUArray const * elemFst;
     mxGPUArray const * elemLst;
     mxGPUArray const * rxElemOrig;
@@ -205,6 +219,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     float const * dev_ang;
     float const * dev_centZ;
     float const * dev_centX;
+    float const * dev_fn;
+    float const * dev_initDel;
     int const * dev_elemFst;
     int const * dev_elemLst;
     int const * dev_rxElemOrig;
@@ -213,9 +229,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     float minRxTang;
     float maxRxTang;
     float fs;
-    float fn;
     float sos;
-    float initDel;
     
     int nSamp;
     int nElem;
@@ -260,17 +274,17 @@ void mexFunction(int nlhs, mxArray * plhs[],
     ang       = mxGPUCreateFromMxArray(prhs[8]);
     centZ     = mxGPUCreateFromMxArray(prhs[9]);
     centX     = mxGPUCreateFromMxArray(prhs[10]);
-    elemFst   = mxGPUCreateFromMxArray(prhs[11]);
-    elemLst   = mxGPUCreateFromMxArray(prhs[12]);
-    rxElemOrig= mxGPUCreateFromMxArray(prhs[13]);
-    nSampOmit = mxGPUCreateFromMxArray(prhs[14]);
-    
-    minRxTang = mxGetScalar(prhs[15]);
-    maxRxTang = mxGetScalar(prhs[16]);
-    fs        = mxGetScalar(prhs[17]);
-    fn        = mxGetScalar(prhs[18]);
-    sos       = mxGetScalar(prhs[19]);
-    initDel   = mxGetScalar(prhs[20]);
+    fn        = mxGPUCreateFromMxArray(prhs[11]);
+    initDel   = mxGPUCreateFromMxArray(prhs[12]);
+    elemFst   = mxGPUCreateFromMxArray(prhs[13]);
+    elemLst   = mxGPUCreateFromMxArray(prhs[14]);
+    rxElemOrig= mxGPUCreateFromMxArray(prhs[15]);
+    nSampOmit = mxGPUCreateFromMxArray(prhs[16]);
+
+    minRxTang = mxGetScalar(prhs[17]);
+    maxRxTang = mxGetScalar(prhs[18]);
+    fs        = mxGetScalar(prhs[19]);
+    sos       = mxGetScalar(prhs[20]);
     
     /* Validate inputs */
     checkData(iqRaw,     "iqRaw",     false, true,  3, invalidInputMsgId);
@@ -284,6 +298,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     checkData(ang,       "ang",       false, false, 1, invalidInputMsgId);
     checkData(centZ,     "centZ",     false, false, 1, invalidInputMsgId);
     checkData(centX,     "centX",     false, false, 1, invalidInputMsgId);
+    checkData(fn,        "fn",        false, false, 1, invalidInputMsgId);
+    checkData(initDel,   "initDel",   false, false, 1, invalidInputMsgId);
     checkData(elemFst,   "elemFst",   true,  false, 1, invalidInputMsgId);
     checkData(elemLst,   "elemLst",   true,  false, 1, invalidInputMsgId);
     checkData(rxElemOrig,"rxElemOrig",true,  false, 1, invalidInputMsgId);
@@ -330,6 +346,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     dev_ang      = static_cast<float const *>(mxGPUGetDataReadOnly(ang));
     dev_centZ    = static_cast<float const *>(mxGPUGetDataReadOnly(centZ));
     dev_centX    = static_cast<float const *>(mxGPUGetDataReadOnly(centX));
+    dev_fn       = static_cast<float const *>(mxGPUGetDataReadOnly(fn));
+    dev_initDel  = static_cast<float const *>(mxGPUGetDataReadOnly(initDel));
     dev_elemFst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemFst));
     dev_elemLst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemLst));
     dev_rxElemOrig  = static_cast<int const *>(mxGPUGetDataReadOnly(rxElemOrig));
@@ -381,26 +399,21 @@ void mexFunction(int nlhs, mxArray * plhs[],
         cudaMemcpy3D(&cuArrayCopy);
         
         /* Execute CUDA kernel */
-//         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
-//                                                                       dev_zPix, dev_xPix, 
-//                                                                       dev_foc       + iPart*nTxPerPart, 
-//                                                                       dev_ang       + iPart*nTxPerPart, 
-//                                                                       dev_centX     + iPart*nTxPerPart, 
-//                                                                       minRxTang, maxRxTang, fs, fn, sos, initDel, 
-//                                                                       nZPix, nXPix, nSamp, nElem, nTxInThisPart);
         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
-                                                                      dev_zPix, dev_xPix, 
+                                                                      dev_zPix, 
+                                                                      dev_xPix, 
                                                                       dev_foc       + iPart*nTxPerPart, 
                                                                       dev_ang       + iPart*nTxPerPart, 
                                                                       dev_centZ     + iPart*nTxPerPart, 
                                                                       dev_centX     + iPart*nTxPerPart, 
+                                                                      dev_fn        + iPart*nTxPerPart, 
+                                                                      dev_initDel   + iPart*nTxPerPart, 
                                                                       dev_elemFst   + iPart*nTxPerPart, 
                                                                       dev_elemLst   + iPart*nTxPerPart, 
                                                                       dev_rxElemOrig + iPart*nTxPerPart, 
                                                                       dev_nSampOmit + iPart*nTxPerPart, 
-                                                                      minRxTang, maxRxTang, fs, fn, sos, initDel, 
+                                                                      minRxTang, maxRxTang, fs, sos, 
                                                                       nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
-        
     }
     
     /* Wrap the output */
@@ -425,6 +438,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUDestroyGPUArray(ang);
     mxGPUDestroyGPUArray(centZ);
     mxGPUDestroyGPUArray(centX);
+    mxGPUDestroyGPUArray(fn);
+    mxGPUDestroyGPUArray(initDel);
     mxGPUDestroyGPUArray(elemFst);
     mxGPUDestroyGPUArray(elemLst);
     mxGPUDestroyGPUArray(rxElemOrig);

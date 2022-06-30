@@ -11,8 +11,8 @@ classdef SimpleTxRxSequence < Operation
     % :param txAngle: vector of tx angles [rad]
     % :param speedOfSound: speed of sound for [m/s]
     % :param txVoltage: tx voltage [V]
-    % :param txFrequency: tx frequency [Hz]
-    % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
+    % :param txFrequency: vector of tx frequencies [Hz]
+    % :param txNPeriods: vector of numbers of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
     % :param rxDepthRange: defines the end (if scalar) or
     %   the begining and the end (if two-element vector) \ 
     %   of the acquisition expressed by depth range [m]
@@ -46,8 +46,8 @@ classdef SimpleTxRxSequence < Operation
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
         txVoltage (1,1) {mustBeNonnegative} = 0;
-        txFrequency (1,1) {mustBeProperNumber}
-        txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
+        txFrequency (1,:) {mustBeProperNumber}
+        txNPeriods (1,:) {mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         nRepetitions (1,:) = 1
@@ -92,9 +92,12 @@ classdef SimpleTxRxSequence < Operation
                         length(obj.txApertureCenter) ...
                         length(obj.rxCenterElement) ...
                         length(obj.rxApertureCenter) ...
+                        length(obj.txApertureSize) ...
                         length(obj.txFocus) ...
                         length(obj.txAngle) ...
-                        length(obj.txApertureSize) ]);
+                        length(obj.txFrequency) ...
+                        length(obj.txNPeriods) ...
+                        ]);
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
             obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
@@ -102,6 +105,8 @@ classdef SimpleTxRxSequence < Operation
             obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
+            obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
+            obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
             if ~isstring(obj.txApertureSize)
                 obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
             end
