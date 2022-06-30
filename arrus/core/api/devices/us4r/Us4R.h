@@ -116,6 +116,35 @@ public:
     virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) = 0;
 
     /**
+     * Sets TGC curve points asynchronously.
+     *
+     * Setting empty vectors t and y turns off analog TGC. Setting non-empty vector turns off DTGC
+     * and turns on analog TGC.
+     *
+     * Vectors t and y should have exactly the same size. The input t and y values will be interpolated
+     * into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
+     * Linear interpolation will be performed, the TGC curve will be extrapolated with the first (left-side of the cure)
+     * and the last sample (right side of the curve).
+     *
+     * NOTE: TGC curve can have up to 1022 samples.
+     *
+     * @param t sampling time, relative to the "sample 0"
+     * @param y values to apply at given sampling time
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     */
+    virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) = 0;
+
+    /**
+     * Returns us4R TGC sampling points (along time axis, relative to the "sample 0"), up to given maximum time.
+     *
+     * @param maxT maximum time range
+     * @return TGC time points at which TGC curve sample takes place
+     */
+    virtual std::vector<float> getTgcCurvePoints(float maxT) const = 0;
+
+    /**
      * Sets PGA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
@@ -174,9 +203,16 @@ public:
     virtual uint8_t getNumberOfUs4OEMs() = 0;
 
     /**
-     * Returns us4R device sampling frequency.
+     * Returns NOMINAL us4R device sampling frequency.
      */
     virtual float getSamplingFrequency() const = 0;
+
+
+    /**
+     * Returns the sampling frequency with which data from us4R will be acquired. The returned value
+     * depends on the result of sequence upload (e.g. DDC decimation factor).
+     */
+    virtual float getCurrentSamplingFrequency() const = 0;
 
     /**
      * Checks state of the Us4R device. Currently checks if each us4OEM module is in

@@ -19,7 +19,10 @@ namespace arrus {
  */
 template<typename T>
 std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
-                             const std::vector<T> &xi) {
+                             const std::vector<T> &xi,
+                             const std::optional<T> minFillValue = std::nullopt,
+                             const std::optional<T> maxFillValue = std::nullopt
+                             ) {
 
     ARRUS_REQUIRES_TRUE(!x.empty(), "Interpolation 1D: "
                                     "sample points list should not be empty.");
@@ -33,17 +36,28 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
     for(auto value : xi) {
         auto it = std::lower_bound(std::begin(x), std::end(x), value);
         if(it == std::end(x)) {
-            throw IllegalArgumentException(arrus::format(
-                "Interpolation 1D: value {} is out of range [{}, {}].",
-                value, *std::begin(x), *std::prev(std::end(x))));
+            // extrapolate, value > element for all elements of x
+            if(minFillValue.has_value()) {
+                result[i] = minFillValue.value();
+            }
+            else {
+                throw IllegalArgumentException(arrus::format(
+                    "Interpolation 1D: value {} is out of range [{}, {}].",
+                    value, *std::begin(x), *std::prev(std::end(x))));
+            }
         } else if(it == std::begin(x)) {
             if(*it == *std::begin(x)) {
                 result[i] = y[0];
             } else {
-                // value is lower than the first element of x
-                throw IllegalArgumentException(arrus::format(
-                    "Interp 1D: value {} is out of range [{}, {}].",
-                    value, *std::begin(x), *std::prev(std::end(x))));
+                // Extrapolate value is lower than the first element of x
+                if(maxFillValue.has_value()) {
+                    result[i] = maxFillValue.value();
+                }
+                else {
+                    throw IllegalArgumentException(arrus::format(
+                        "Interp 1D: value {} is out of range [{}, {}].",
+                        value, *std::begin(x), *std::prev(std::end(x))));
+                }
             }
         } else {
             auto pos = std::distance(std::begin(x), it);

@@ -1,5 +1,6 @@
 #include "Us4RImpl.h"
 #include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
+#include "arrus/core/common/interpolate.h"
 
 #include <chrono>
 #include <memory>
@@ -226,13 +227,29 @@ void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
 // AFE parameter setters.
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
-    ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-                             .setTgcSamples(tgcCurvePoints)
-                             ->setApplyTgcCharacteristic(applyCharacteristic)
-                             ->build();
-    setRxSettings(newRxSettings);
+void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
+    ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
+    if(y.empty()) {
+        setTgcCurve(y, applyCharacteristic);
+    } else {
+        auto timeStartIt = std::min_element(std::begin(t), std::end(t));
+        auto timeEndIt = std::max_element(std::begin(t), std::end(t));
+
+        auto timeStart = *timeStartIt;
+        auto timeEnd = *timeEndIt;
+
+        auto valueStart = y[std::distance(std::begin(t), timeStartIt)];
+        auto valueEnd = y[std::distance(std::begin(t), timeEndIt)];
+
+        std::vector<float> hardwareTgcSamplingPoints = getTgcCurvePoints(timeEnd);
+        auto tgcValues = ::arrus::interpolate1d<float>(t, y, hardwareTgcSamplingPoints, valueStart, valueEnd);
+        setTgcCurve(tgcValues, applyCharacteristic);
+    }
+}
+
+std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
+    float fs = getCurrentSamplingFrequency();
+    return ::arrus::getRange<float>(400/fs, maxT, 150/fs);
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
@@ -349,5 +366,7 @@ void Us4RImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, 
 void Us4RImpl::disableAfeDemod() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAfeDemod(); }, "disableAfeDemod");
 }
+
+float Us4RImpl::getCurrentSamplingFrequency() const {us4oems[0]->getCurrentSamplingFrequency(); }
 
 }// namespace arrus::devices

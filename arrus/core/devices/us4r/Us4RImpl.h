@@ -100,8 +100,10 @@ public:
     void disableHV() override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
+    void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
+    std::vector<float> getTgcCurvePoints(float endSample) const override;
 
     void setRxSettings(const RxSettings &settings) override;
     void setPgaGain(uint16 value) override;
@@ -112,6 +114,7 @@ public:
     uint8_t getNumberOfUs4OEMs() override;
     void setTestPattern(Us4OEM::RxTestPattern pattern) override;
     float getSamplingFrequency() const override;
+    float getCurrentSamplingFrequency() const override;
     void checkState() const override;
     std::vector<unsigned short> getChannelsMask() override;
     unsigned char getVoltage() override;

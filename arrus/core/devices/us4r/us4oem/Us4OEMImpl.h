@@ -156,6 +156,7 @@ public:
     void disableAfeDemod() override {
         ius4oem->AfeDemodDisable();
     }
+    float getCurrentSamplingFrequency() const override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
@@ -251,6 +252,10 @@ private:
     /** Current RX settings */
     RxSettings rxSettings;
     bool externalTrigger{false};
+    /** Current sampling frequency of the data produced by us4OEM. */
+    float currentSamplingFrequency;
+    /** Global state mutex */
+    mutable std::mutex stateMutex;
 };
 
 }

@@ -180,6 +180,7 @@ std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
                             uint16 batchSize, std::optional<float> sri, bool triggerSync,
                             const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
+    std::unique_lock<std::mutex> lock{stateMutex};
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
     bool isDDCOn = ddc.has_value();
@@ -218,8 +219,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         auto sampleRange = op.getRxSampleRange().asPair();
         auto endSample = std::get<1>(sampleRange);
         float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float)op.getRxDecimationFactor();
-        float samplingFrequency = SAMPLING_FREQUENCY/decimationFactor;
-        float rxTime = getRxTime(endSample, samplingFrequency);
+        this->currentSamplingFrequency = SAMPLING_FREQUENCY/decimationFactor;
+        float rxTime = getRxTime(endSample, this->currentSamplingFrequency);
 
         // Computing total TX/RX time
         float txrxTime = 0.0f;
@@ -669,6 +670,11 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 }
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     return 34u + (uint32_t)(16 * ddcDecimationFactor);
+}
+
+float Us4OEMImpl::getCurrentSamplingFrequency() const {
+    std::unique_lock<std::mutex> lock{stateMutex};
+    return currentSamplingFrequency;
 }
 
 }// namespace arrus::devices

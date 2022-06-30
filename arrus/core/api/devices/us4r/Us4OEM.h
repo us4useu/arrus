@@ -30,6 +30,11 @@ public:
     virtual float getSamplingFrequency() = 0;
 
     /**
+     * Returns current sampling frequency of the us4OEM device.
+     */
+    virtual float getCurrentSamplingFrequency() const = 0;
+
+    /**
      * Returns temperature measured by Us4OEM's FPGA [Celsius].
      */
     virtual float getFPGATemperature() = 0;
