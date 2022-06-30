@@ -669,7 +669,18 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     }
 }
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
-    return 34u + (uint32_t)(16 * ddcDecimationFactor);
+    uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
+    // Note: the below value was determined experimentally, for a couple of decimation factors.
+    // TODO what about dec factor * 13 > 126?
+    // TODO what about fractional decimation factor?
+    // The -13*dec factor + 126 was determined experimentally.
+    uint32_t txOffset = std::max(0u, (uint32_t)(-13u*ddcDecimationFactor) + 126u);
+    // Make sure the tx offset is divisible by the decimation factor (round up if necessary).
+    if(txOffset > 0) {
+        txOffset = (txOffset-1) / (uint32_t)ddcDecimationFactor + 1;
+        txOffset *= (uint32_t)ddcDecimationFactor;
+    }
+    return offset + txOffset;
 }
 
 float Us4OEMImpl::getCurrentSamplingFrequency() const {
