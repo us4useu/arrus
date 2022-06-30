@@ -11,6 +11,7 @@ classdef Reconstruction < Operation
     % :param decimation: decimation factor
     % :param xGrid: (1, width) vector, x-coordinates of the image pixels [m]
     % :param zGrid: (1, depth) vector z-coordinates of the image pixels [m]
+    % :param sos: speed of sound used for reconstruction [m/s]
     % :param bmodeEnable: boolean, enable B-Mode reconstruction
     % :param colorEnable: boolean, enable Color Doppler reconstruction and duplex imaging
     % :param vectorEnable: boolean, enable Vector Doppler reconstruction and duplex imaging
@@ -37,6 +38,7 @@ classdef Reconstruction < Operation
         decimation
         xGrid
         zGrid
+        sos
         rxApod = [1 1]
         bmodeEnable = true
         colorEnable = false

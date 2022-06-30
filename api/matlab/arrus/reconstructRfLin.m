@@ -16,13 +16,13 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 % 
 % acq.rxSampFreq	- [Hz] sampling frequency
 % acq.txFreq        - [Hz] carrier (nominal) frequency
-% acq.c             - [m/s] assumed speed of sound in the medium
 % acq.initDel       - [s] initial delay due to txDelays, rxDelay, and burst factor
 % acq.txAng         - [rad] tx angle
 % acq.txDelCent     - [s] (1,1) time delay between 1st rx sample and tx with the center of the tx aperture (line origin)
 % 
 % 
 % proc.dec          - [] decimation factor
+% proc.sos          - [m/s] assumed speed of sound in the medium
 % proc.iqEnable     - [logical] 
 % proc.rxApod       - [] number of sigmas in the gaussian window used in rx apodization (0 -> rect. window)
 
@@ -49,10 +49,10 @@ rfRaw       = reshape(rfRaw,[nSamp*nRx,nTx]);
 
 fs          = acq.rxSampFreq/proc.dec;
 
-maxTang     = tan(asin(min(1,(acq.c./txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
+maxTang     = tan(asin(min(1,(proc.sos./txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
 
 rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
-              + (0:(nSamp-1))'/fs ) * acq.c/2;              % [mm] (nSamp,1) radial distance from the line origin
+              + (0:(nSamp-1))'/fs ) * proc.sos/2;           % [mm] (nSamp,1) radial distance from the line origin
 
 xVec        = rVec.*sin(txAng);                             % [mm] (nSamp,1,1 or nTx) horiz. distance from the line origin
 zVec        = rVec.*cos(txAng);                             % [mm] (nSamp,1,1 or nTx) vert.  distance from the line origin
@@ -74,7 +74,7 @@ end
 txDist      = rVec;                                         % [mm] (nSamp,1) tx distance (from the line origin)
 rxDist      = sqrt((xVec-xElem).^2 + (zVec-zElem).^2);      % [mm] (nSamp,nRx,1 or nTx) rx distance (to each rx element)
 
-t           = (txDist + rxDist)/acq.c + dT;                 % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
+t           = (txDist + rxDist)/proc.sos + dT;              % [s] (nSamp,nRx,1 or nTx) total tx-rx time delays
 if isa(rfRaw,'gpuArray')
     t       = gpuArray(t);
 end
