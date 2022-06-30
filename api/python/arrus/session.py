@@ -16,6 +16,7 @@ import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.ops.us4r
 import arrus.ops.imaging
+import arrus.ops.tgc
 import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.imaging
@@ -97,6 +98,20 @@ class Session(AbstractSession):
         actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
+
+        # Set TGC curve.
+        if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
+            if seq.tgc_start is not None and seq.tgc_slope is not None:
+                us_device.set_tgc(arrus.ops.tgc.LinearTgc(
+                    start=seq.tgc_start,
+                    slope=seq.tgc_slope
+                ))
+            elif seq.tgc_curve is not None:
+                us_device.set_tgc(seq.tgc_curve)
+            else:
+                us_device.set_tgc([])
+        else:
+            us_device.set_tgc(seq.tgc_curve)
 
         # Prepare data buffer and constant context metadata
         fcm = arrus.core.getFrameChannelMapping(upload_result)
