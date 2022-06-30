@@ -2098,7 +2098,7 @@ class RemapToLogicalOrder(Operation):
         else:
             # GPU
             import cupy as cp
-            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap_v1
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
@@ -2124,7 +2124,7 @@ class RemapToLogicalOrder(Operation):
                 batch_size
             )
             def gpu_remap_fn(data):
-                run_remap(self.grid_size, self.block_size,
+                run_remap_v1(self.grid_size, self.block_size,
                     [self._output_buffer, data,
                      self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
                      self._frame_offsets,
