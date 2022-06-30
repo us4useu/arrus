@@ -683,7 +683,6 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
         return offset;
     }
     else {
-        std::cout << "Using offset: " << TX_SAMPLE_DELAY_DDC_DATA[int(decInt)-1]*2 << std::endl;
         return offset + TX_SAMPLE_DELAY_DDC_DATA[int(decInt)-1]*2;
     }
 

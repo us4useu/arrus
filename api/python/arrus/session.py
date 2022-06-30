@@ -133,7 +133,7 @@ class Session(AbstractSession):
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq, us_device_dto, medium)
-        echo_data_description = self._create_data_description(raw_seq, us_device_dto, fcm)
+        echo_data_description = self._create_data_description(raw_seq, us_device, fcm)
 
         # --- Data buffer
         n_samples = raw_seq.get_n_samples()
@@ -289,8 +289,7 @@ class Session(AbstractSession):
 
     def _create_data_description(self, raw_seq, device, fcm):
         return arrus.metadata.EchoDataDescription(
-            sampling_frequency=device.sampling_frequency /
-                               raw_seq.ops[0].rx.downsampling_factor,
+            sampling_frequency=device.current_sampling_frequency,
             custom={"frame_channel_mapping": fcm}
         )
 

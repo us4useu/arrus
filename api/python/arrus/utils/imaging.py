@@ -2574,3 +2574,25 @@ class ReconstructLri3D(Operation):
         )
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
+
+
+class Equalize(Operation):
+    """
+    Equalize means values along a specific axis.
+    """
+
+    def __init__(self, axis=0, num_pkg=None):
+        self.axis = axis
+        self.xp = num_pkg
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        self.input_dtype = const_metadata.dtype
+        return const_metadata
+
+    def process(self, data):
+        m = data.mean(axis=self.axis).astype(self.input_dtype)
+        m = self.xp.expand_dims(m, axis=self.axis)
+        return data-m
