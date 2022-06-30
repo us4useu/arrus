@@ -244,7 +244,6 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
         auto timeStartIt = std::min_element(std::begin(t), std::end(t));
         auto timeEndIt = std::max_element(std::begin(t), std::end(t));
 
-        auto timeStart = *timeStartIt;
         auto timeEnd = *timeEndIt;
 
         auto valueStart = y[std::distance(std::begin(t), timeStartIt)];
@@ -376,6 +375,6 @@ void Us4RImpl::disableAfeDemod() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAfeDemod(); }, "disableAfeDemod");
 }
 
-float Us4RImpl::getCurrentSamplingFrequency() const {us4oems[0]->getCurrentSamplingFrequency(); }
+float Us4RImpl::getCurrentSamplingFrequency() const {return us4oems[0]->getCurrentSamplingFrequency(); }
 
 }// namespace arrus::devices
