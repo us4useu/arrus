@@ -98,6 +98,7 @@ class Session(AbstractSession):
         actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
+        us_device.set_kernel_context(kernel_context)
 
         # Set TGC curve.
         if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
