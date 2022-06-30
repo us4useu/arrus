@@ -671,16 +671,22 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
     // Note: the below value was determined experimentally, for a couple of decimation factors.
-    // TODO what about dec factor * 13 > 126?
-    // TODO what about fractional decimation factor?
-    // The -13*dec factor + 126 was determined experimentally.
-    uint32_t txOffset = std::max(0u, (uint32_t)(-13u*ddcDecimationFactor) + 126u);
-    // Make sure the tx offset is divisible by the decimation factor (round up if necessary).
-    if(txOffset > 0) {
-        txOffset = (txOffset-1) / (uint32_t)ddcDecimationFactor + 1;
-        txOffset *= (uint32_t)ddcDecimationFactor;
+    float decInt = 0;
+    float decFract = modf(ddcDecimationFactor, &decInt);
+    // Currently only values 2, 3, ... 10 are supported.
+    if(decFract != 0.0f || decInt >= 10) {
+        // just return the original offset, for debug purposes
+        this->logger->log(LogSeverity::WARNING,
+                          ::arrus::format("Currently decimation factor {} is not supported, you will get data"
+                                          "as it comes from the IQ demodulator (it may, or may not point "
+                                          "to the moment when TX starts).", ddcDecimationFactor));
+        return offset;
     }
-    return offset + txOffset;
+    else {
+        std::cout << "Using offset: " << TX_SAMPLE_DELAY_DDC_DATA[int(decInt)-1]*2 << std::endl;
+        return offset + TX_SAMPLE_DELAY_DDC_DATA[int(decInt)-1]*2;
+    }
+
 }
 
 float Us4OEMImpl::getCurrentSamplingFrequency() const {

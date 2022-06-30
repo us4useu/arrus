@@ -256,8 +256,11 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
-    float fs = getCurrentSamplingFrequency();
-    return ::arrus::getRange<float>(400/fs, maxT, 150/fs);
+    // TODO re-validate the below values.
+    float nominalFs = getSamplingFrequency();
+    float offset = 300/nominalFs;
+    float tgcT = 150/nominalFs; // 150/nominal frequency, the value "150" was determined experimentally.
+    return ::arrus::getRange<float>(offset, maxT, tgcT);
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {

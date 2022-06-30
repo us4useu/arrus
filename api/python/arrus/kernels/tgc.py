@@ -2,8 +2,8 @@ import numpy as np
 
 
 def compute_linear_tgc(seq_context, fs, linear_tgc):
-    tgc_start = linear_tgc.tgc_start
-    tgc_slope = linear_tgc.tgc_slope
+    tgc_start = linear_tgc.start
+    tgc_slope = linear_tgc.slope
 
     if tgc_start is None or tgc_slope is None:
         return [], []

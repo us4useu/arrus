@@ -85,7 +85,7 @@ class Us4R(Device):
         else:
             # Otherwise, assume list of floats, use by default TGC sampling
             # points.
-            self._handle.setTgcCurve(list(tgc_curve))
+            self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
     def set_hv_voltage(self, voltage):
         """
