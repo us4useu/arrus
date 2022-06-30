@@ -960,9 +960,9 @@ classdef Us4R < handle
                     iTx     = 1 + floor(iFire/obj.seq.nSubTx);
                     Us4MEX(iArius, "SetTxAperture", obj.maskFormat(obj.seq.txSubApMask(:,iTx,iArius+1)), iFire);
                     Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
-                    Us4MEX(iArius, "SetTxInvert", obj.seq.txInvert, iFire);
                     Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq(iTx), iFire);
                     Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer(iTx)*2, iFire);
+                    Us4MEX(iArius, "SetTxInvert", obj.seq.txInvert(iTx), iFire);
                     
                     %% Rx
                     % SetRxChannelMapping for the new esaote adapter

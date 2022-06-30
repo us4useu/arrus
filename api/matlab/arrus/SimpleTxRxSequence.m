@@ -56,7 +56,7 @@ classdef SimpleTxRxSequence < Operation
         tgcSlope (1,:)
         fsDivider(1,1) {mustBeInteger, mustBePositive, ...
             mustBeLessThan(fsDivider, 257)} = 1
-        txInvert (1,1) {mustBeLogical} = 0
+        txInvert (1,:) {mustBeLogical} = false
     end
     
     methods
@@ -97,7 +97,7 @@ classdef SimpleTxRxSequence < Operation
                         length(obj.txAngle) ...
                         length(obj.txFrequency) ...
                         length(obj.txNPeriods) ...
-                        ]);
+                        length(obj.txInvert) ]);
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
             obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
@@ -107,6 +107,7 @@ classdef SimpleTxRxSequence < Operation
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
             obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
+            obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
             if ~isstring(obj.txApertureSize)
                 obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
             end
@@ -125,7 +126,7 @@ function mustBeProperNumber(a)
 end
 
 function mustBeLogical(a)
-    if ~islogical(a) && ~isequal(a,1) && ~isequal(a,0)
+    if ~islogical(a) && ~all(any(a==[0;1],1),2)
         error('txInvert property must be equal one of the following: true, false, 1 or 0.')
     end
         
