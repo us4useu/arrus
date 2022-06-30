@@ -81,7 +81,7 @@ class Us4R(Device):
                 isinstance(tgc_curve[0], Iterable)
                 and isinstance(tgc_curve[1], Iterable)):
             t, y = tgc_curve
-            self._handle.setTgcCurve(list(t), list(y))
+            self._handle.setTgcCurve(list(t), list(y), False)
         else:
             # Otherwise, assume list of floats, use by default TGC sampling
             # points.
