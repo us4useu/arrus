@@ -63,9 +63,15 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
                                       const unsigned int *nFramesUs4OEM, const unsigned nSequences,
                                       const unsigned nFrames, const unsigned nSamples, const unsigned nChannels,
                                       const unsigned nComponents) {
-    int channel = blockIdx.x * 32 + threadIdx.x;// logical channel
-    int sample = blockIdx.y * 32 + threadIdx.y; // logical sample
-    int frame = blockIdx.z;                     // logical frame, global in the whole batch of sequences
+    // TODO temporarily assuming, that maxium number of components == 2
+    __shared__ float tile[32][32][2]; // NOTE: this is also the runtime block size.
+
+    // gridDim.x*32 ~= number of channels
+    // gridDim.y*32 ~= number of samples
+    // Input.
+    int channel = blockIdx.x*32 + threadIdx.x; // logical channel
+    int sample = blockIdx.y*32 + threadIdx.y;  // logical sample
+    int frame = blockIdx.z; // logical frame, global in the whole batch of sequences
 
     int sequence = frame / nFrames;
     int localFrame = frame % nFrames;
@@ -96,13 +102,20 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
     int lSequenceSize = nFrames*lFrameSize;
 
     for(unsigned component = 0; component < nComponents; ++component) {
-        size_t indexIn = us4oemOffset*pFrameSize + sequence*nPhysicalFrames*pFrameSize
-            + physicalFrame*pFrameSize + sample*pSampleSize + component*nus4OEMChannels + physicalChannel;
-
-        // TODO improve coalescing
+        size_t indexIn = us4oemOffset * pFrameSize + sequence * nPhysicalFrames * pFrameSize
+            + physicalFrame * pFrameSize + sample * pSampleSize + component * nus4OEMChannels + physicalChannel;
+        // Note: optimistic assumption, that we get consecutive physical channel numbers
+        // (and that is satisfied e.g. for full RX aperture on esaote3 adapter, like in plane wave imaging).
+        tile[threadIdx.y][threadIdx.x][component] = in[indexIn];
+    }
+    __syncthreads();
+    // Output
+    sample = blockIdx.y*32 + threadIdx.x;
+    channel = blockIdx.x*32 + threadIdx.y;
+    for(unsigned component = 0; component < nComponents; ++component) {
         // [sequence, frame, channel, sample, component]
         size_t indexOut =
             sequence*lSequenceSize + localFrame*lFrameSize + channel*lChannelSize + sample*nComponents + component;
-        out[indexOut] = in[indexIn];
+        out[indexOut] = tile[threadIdx.x][threadIdx.y][component];
     }
 }
