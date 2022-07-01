@@ -2580,9 +2580,9 @@ class Equalize(Operation):
     """
     Equalize means values along a specific axis.
     """
-
-    def __init__(self, axis=0, num_pkg=None):
+    def __init__(self, axis=0, axis_offset=0, num_pkg=None):
         self.axis = axis
+        self.axis_offset = axis_offset
         self.xp = num_pkg
 
     def set_pkgs(self, num_pkg, **kwargs):
@@ -2590,9 +2590,17 @@ class Equalize(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         self.input_dtype = const_metadata.dtype
-        return const_metadata
+        self.input_shape = const_metadata.input_shape
+        if self.axis >= len(self.input_shape):
+            raise ValueError(f"Equalize: axis out of bounds: {self.axis}, "
+                             f"for shape: {self.input_shape}.")
+        self.slice = [slice(None)]*len(self.input_shape)
+        self.slice[self.axis] = slice(self.axis_offset, None)
+        self.slice = tuple(self.slice)
+        return const_metadata.copy()
 
     def process(self, data):
-        m = data.mean(axis=self.axis).astype(self.input_dtype)
+        d = data[self.slice]
+        m = d.mean(axis=self.axis).astype(self.input_dtype)
         m = self.xp.expand_dims(m, axis=self.axis)
         return data-m
