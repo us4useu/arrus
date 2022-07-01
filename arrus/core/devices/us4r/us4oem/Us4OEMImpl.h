@@ -77,7 +77,7 @@ public:
     static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14+12); // bytes
     // Time to TX starting from the sample 0, when DDC is turned on. Determined experimentally.
     // Note: the below reffers to the number of IQ pairs (not the int16 values).
-    static constexpr size_t TX_SAMPLE_DELAY_DDC_DATA[] = {
+    static constexpr uint32_t TX_SAMPLE_DELAY_DDC_DATA[] = {
         // 1(?), 2,  3,  4,  5,  6,  7,  8,  9
           240,  92, 87, 84, 70, 60, 56, 32,  27
     };
