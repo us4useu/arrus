@@ -22,8 +22,7 @@ function(create_core_test test_src)
 
     add_executable(${target_name}
         ${test_src}
-        ../common/logging/impl/Logging.cpp
-        ../common/logging/impl/LogSeverity.cpp
+        common/LogSeverity.cpp
         ${other_srcs}
     )
     target_link_libraries(${target_name}

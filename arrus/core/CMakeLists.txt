@@ -249,7 +249,8 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp devices/DeviceId.cpp)
     set(US4OEM_FACTORY_IMPL_TEST_DEPS devices/DeviceId.cpp common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
-        devices/TxRxParameters.cpp devices/us4r/FrameChannelMappingImpl.cpp)
+        devices/TxRxParameters.cpp devices/us4r/FrameChannelMappingImpl.cpp
+        ops/us4r/DigitalDownConversion.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "${US4OEM_FACTORY_IMPL_TEST_DEPS}")
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
@@ -257,12 +258,14 @@ if (ARRUS_RUN_TESTS)
 
     set(US4OEM_IMPL_TEST_DEPS common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
         devices/us4r/common.cpp devices/TxRxParameters.cpp devices/DeviceId.cpp
-        devices/us4r/FrameChannelMappingImpl.cpp)
+        devices/us4r/FrameChannelMappingImpl.cpp
+        ops/us4r/DigitalDownConversion.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
 
     set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
         devices/us4r/common.cpp
-        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp)
+        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp
+        ops/us4r/DigitalDownConversion.cpp)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
     create_core_test(devices/us4r/probeadapter/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
     create_core_test(devices/probe/ProbeImplTest.cpp

@@ -29,7 +29,7 @@ Logger::SharedHandle getDefaultLogger();
 
 #define ARRUS_INIT_TEST_LOG_LEVEL(ComponentType, level) \
 do{                       \
-    auto loggingMechanism = useDefaultLoggerFactory(); \
+    auto loggingMechanism = ::arrus::useDefaultLoggerFactory(); \
     loggingMechanism->addClog(level); \
 } while(0)
 }
