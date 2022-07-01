@@ -197,7 +197,7 @@ Us4RImpl::~Us4RImpl() {
         this->stopDevice();
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch(const std::exception &e) {
-        std::cerr << "Exception while destroing handle to the Us4R device" << std::endl;
+        std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
     }
 }
 
