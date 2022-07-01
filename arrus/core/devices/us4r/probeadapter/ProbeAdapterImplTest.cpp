@@ -92,7 +92,7 @@ public:
             (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
     MOCK_METHOD(float, getSamplingFrequency, (), (override));
-    MOCK_METHOD(float, getCurrentSamplingFrequency, (), (const override));
+    MOCK_METHOD(float, getCurrentSamplingFrequency, (), (const, override));
     MOCK_METHOD(void, startTrigger, (), (override));
     MOCK_METHOD(void, stopTrigger, (), (override));
     MOCK_METHOD(void, start, (), (override));
