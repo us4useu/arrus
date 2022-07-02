@@ -13,7 +13,7 @@ from arrus.utils.imaging import *
 from collections import deque
 
 arrus.set_clog_level(arrus.logging.INFO)
-arrus.add_log_file("test.log", arrus.logging.INFO)
+arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 # Here starts communication with the device.
 with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:

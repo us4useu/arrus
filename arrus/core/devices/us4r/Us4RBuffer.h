@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <iostream>
 
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 
@@ -15,7 +16,7 @@ public:
     : us4oemComponents(std::move(us4oemComponents)) {
         // Intentionally copying input shape.
         std::vector<size_t> shapeInternal = this->us4oemComponents[0].getElementShape().getValues();
-        auto nChannels = static_cast<unsigned>(shapeInternal[1]);
+        auto nChannels = static_cast<unsigned>(shapeInternal[2]);
         unsigned nSamples = 0;
         framework::NdArray::DataType dataType = this->us4oemComponents[0].getDataType();
 
@@ -23,7 +24,7 @@ public:
         for(auto& component: this->us4oemComponents) {
             auto &componentShape = component.getElementShape();
             // Verify if we have the same number of channels for each component
-            if(nChannels != componentShape.get(1)) {
+            if(nChannels != componentShape.get(2)) {
                 throw IllegalArgumentException("Each Us4R buffer component should have the same number of channels.");
             }
             if(dataType != component.getDataType()) {
@@ -32,7 +33,7 @@ public:
             nSamples += static_cast<unsigned>(componentShape.get(0));
         }
         shapeInternal[0] = nSamples;
-        shapeInternal[1] = nChannels;
+        shapeInternal[2] = nChannels;
         // Possibly another dimension: 2 (DDC I/Q)
         elementShape = framework::NdArray::Shape{shapeInternal};
         elementDataType = dataType;

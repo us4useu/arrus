@@ -334,7 +334,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         transferAddressStart = outputAddress;
         framework::NdArray::Shape shape;
         if(isDDCOn) {
-            shape = {totalNSamples, N_RX_CHANNELS, 2};
+            shape = {totalNSamples, 2, N_RX_CHANNELS};
         }
         else {
             shape = {totalNSamples, N_RX_CHANNELS};

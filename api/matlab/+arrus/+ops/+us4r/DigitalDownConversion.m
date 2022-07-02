@@ -10,8 +10,8 @@ classdef DigitalDownConversion
         REQUIRED_PARAMS = {"demodulationFrequency", "decimationFactor", "firCoefficients"};
     end
     properties
-        demodulationFrequency (1, 1) {mustBeFinite, mustBeReal, mustBePositive}
-        decimationFactor (1, 1) {mustBeFinite, mustBeReal, mustBePositive}
+        demodulationFrequency (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 1e6
+        decimationFactor (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 1
         firCoefficients (1, :) {mustBeFinite, mustBeReal}
     end
     methods

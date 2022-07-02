@@ -299,7 +299,11 @@ std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const Mat
     try {
         std::vector<T> result;
         // e.g. seq -> ops: an array of ops
-        ::matlab::data::ObjectArray objArray = getMatlabProperty(ctx, object, property);
+        ::matlab::data::Array array = getMatlabProperty(ctx, object, property);
+        if(array.isEmpty()) {
+            return result;
+        }
+        ::matlab::data::ObjectArray objArray = array;
         for (size_t i = 0; i < objArray.getNumberOfElements(); ++i) {
             MatlabElementRef ref{objArray, i};
             result.emplace_back(Converter::from(ctx, ref).toCore());

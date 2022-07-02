@@ -16,7 +16,7 @@ classdef Scheme
         rxBufferSize (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 2
         outputBuffer arrus.framework.DataBufferDef = arrus.framework.DataBufferDef("type", "FIFO", "nElements", 2)
         workMode (1, 1) = "HOST"
-        digitalDownConversion arrus.ops.us4r.DigitalDownConversion = []
+        digitalDownConversion = []
     end
     methods
         function obj = Scheme(varargin)
