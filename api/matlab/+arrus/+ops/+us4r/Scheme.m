@@ -7,6 +7,7 @@ classdef Scheme
     % :param rxBufferSize: the size of the buffer allocated on the ultrasound device [number of elements]
     % :param outputBuffer: definition of the ultrasound device output buffer on host
     % :param workMode: ultrasound device work mode, available: "HOST", "ASYNC", "MANUAL"
+    % :param digitalDownConversion: hardware DDC parameters. By default hardware DDC is turned off (empty value).
     properties(Constant, Hidden=true)
         REQUIRED_PARAMS = {'txRxSequence'};
     end
@@ -15,6 +16,7 @@ classdef Scheme
         rxBufferSize (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 2
         outputBuffer arrus.framework.DataBufferDef = arrus.framework.DataBufferDef("type", "FIFO", "nElements", 2)
         workMode (1, 1) = "HOST"
+        digitalDownConversion arrus.ops.us4r.DigitalDownConversion = []
     end
     methods
         function obj = Scheme(varargin)

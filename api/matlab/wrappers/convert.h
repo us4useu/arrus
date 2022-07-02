@@ -26,7 +26,7 @@ namespace arrus::matlab::converters {
  */
 struct MatlabElementRef {
     MatlabElementRef(const ::matlab::data::Array &array, size_t i) : array(array), i(i) {}
-    explicit MatlabElementRef(const ::matlab::data::Array &array): array(array), i(0) {}
+    explicit MatlabElementRef(const ::matlab::data::Array &array) : array(array), i(0) {}
 
     ::matlab::data::Array array;
     size_t i;
@@ -101,9 +101,7 @@ template<> int64_t safeCast<int64_t>(const ::matlab::data::Array &arr, const siz
 }
 
 // MATLAB ARRAY -> SCALAR C++ VALUE
-std::string convertToString(const ::matlab::data::StringArray &stringArray) {
-    return stringArray[0];
-}
+std::string convertToString(const ::matlab::data::StringArray &stringArray) { return stringArray[0]; }
 
 // Functions that allow to verify, if the array data type is compatible with the expected (compile-time) type.
 
@@ -170,8 +168,7 @@ std::string convertToCppScalar<std::string>(const ::matlab::data::Array &array, 
  * @return C++ value
  */
 template<typename T>
-T getCppScalar(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
-               const std::string &propertyName) {
+T getCppScalar(const MexContext::SharedHandle &ctx, const MatlabElementRef &object, const std::string &propertyName) {
     try {
         ::matlab::data::Array arr = getMatlabProperty(ctx, object, propertyName);
         ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(arr, propertyName);
@@ -303,7 +300,7 @@ std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const Mat
         std::vector<T> result;
         // e.g. seq -> ops: an array of ops
         ::matlab::data::ObjectArray objArray = getMatlabProperty(ctx, object, property);
-        for(size_t i = 0; i < objArray.getNumberOfElements(); ++i) {
+        for (size_t i = 0; i < objArray.getNumberOfElements(); ++i) {
             MatlabElementRef ref{objArray, i};
             result.emplace_back(Converter::from(ctx, ref).toCore());
         }
@@ -315,6 +312,16 @@ std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const Mat
 }
 
 template<typename T, typename Converter>
+std::optional<T> getCppOptionalObject(const MexContext::SharedHandle &ctx, const MatlabElementRef &object,
+                                      const std::string &property) {
+    std::vector<T> values = getCppObjectVector<T, Converter>(ctx, object, property);
+    if (values.empty()) {
+        return {};
+    } else
+        return values[0];
+}
+
+template<typename T, typename Converter>
 T getCppObject(const MexContext::SharedHandle &ctx, const MatlabElementRef &object, const std::string &property) {
     return getCppObjectVector<T, Converter>(ctx, object, property)[0];
 }
@@ -322,7 +329,10 @@ T getCppObject(const MexContext::SharedHandle &ctx, const MatlabElementRef &obje
 #define ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Type, Converter, field, array)                                                \
     getCppObject<Type, Converter>(ctx, array, #field)
 
-#define ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, Type, Converter, field, array)                                                \
+#define ARRUS_MATLAB_GET_CPP_OPTIONAL_OBJECT(ctx, Type, Converter, field, array)                                       \
+    getCppOptionalObject<Type, Converter>(ctx, array, #field)
+
+#define ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, Type, Converter, field, array)                                         \
     getCppObjectVector<Type, Converter>(ctx, array, #field)
 
 // C++ scalar -> MATLAB ARRAY
@@ -346,9 +356,9 @@ template<typename T>::matlab::data::TypedArray<T> getMatlabScalar(const MexConte
     getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, type, value)
 
 #define ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value) getMatlabString(ctx, value)
-#define ARRUS_MATLAB_GET_MATLAB_STRING_KV_EXPLICIT(ctx, key, value)                                                            \
+#define ARRUS_MATLAB_GET_MATLAB_STRING_KV_EXPLICIT(ctx, key, value)                                                    \
     getMatlabString(ctx, key), ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value)
-#define ARRUS_MATLAB_GET_MATLAB_STRING_KV(ctx, value)                                                            \
+#define ARRUS_MATLAB_GET_MATLAB_STRING_KV(ctx, value)                                                                  \
     getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_STRING(ctx, value)
 
 // C++ std::vector/pair -> MATLAB ARRAY
@@ -374,11 +384,27 @@ template<typename T, typename Converter>
     return Converter::from(ctx, t).toMatlab();
 }
 
+
+template<typename T, typename Converter>
+::matlab::data::Array getMatlabObject(const MexContext::SharedHandle &ctx, const std::optional<T> &t) {
+    if(!t.has_value()) {
+        return ctx->getArrayFactory().createEmptyArray();
+    }
+    else {
+        return getMatlabObject<T, Converter>(ctx, t.value());
+    }
+}
+
+#define ARRUS_MATLAB_GET_MATLAB_OBJECT(ctx, Type, Converter, value) getMatlabObject<Type, Converter>(ctx, value)
+// Produces pair: key, value, key will be determined by value keyword.
+#define ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, Type, Converter, value)                                                 \
+    getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_OBJECT(ctx, Type, Converter, value)
+
 template<typename T, typename Converter>
 ::matlab::data::Array getMatlabObjectVector(const MexContext::SharedHandle &ctx, const std::vector<T> &t) {
     ::matlab::data::ArrayDimensions dims{1, t.size()};
     std::vector<::matlab::data::Object> objects;
-    for(int i = 0; i < t.size(); ++i) {
+    for (int i = 0; i < t.size(); ++i) {
         const auto &value = t[i];
         ::matlab::data::ObjectArray arr = Converter::from(ctx, value).toMatlab();
         ::matlab::data::Object object = arr[0];
@@ -387,14 +413,10 @@ template<typename T, typename Converter>
     return ctx->getArrayFactory().createArray(dims, std::begin(objects), std::end(objects));
 }
 
-#define ARRUS_MATLAB_GET_MATLAB_OBJECT(ctx, Type, Converter, value) getMatlabObject<Type, Converter>(ctx, value)
+#define ARRUS_MATLAB_GET_MATLAB_OBJECT_VECTOR(ctx, Type, Converter, value)                                             \
+    getMatlabObjectVector<Type, Converter>(ctx, value)
 // Produces pair: key, value, key will be determined by value keyword.
-#define ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, Type, Converter, value)                                                 \
-    getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_OBJECT(ctx, Type, Converter, value)
-
-#define ARRUS_MATLAB_GET_MATLAB_OBJECT_VECTOR(ctx, Type, Converter, value) getMatlabObjectVector<Type, Converter>(ctx, value)
-// Produces pair: key, value, key will be determined by value keyword.
-#define ARRUS_MATLAB_GET_MATLAB_OBJECT_VECTOR_KV(ctx, Type, Converter, value)                                                 \
+#define ARRUS_MATLAB_GET_MATLAB_OBJECT_VECTOR_KV(ctx, Type, Converter, value)                                          \
     getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_OBJECT_VECTOR(ctx, Type, Converter, value)
 
 }// namespace arrus::matlab::converters
