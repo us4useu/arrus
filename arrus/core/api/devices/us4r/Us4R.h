@@ -53,10 +53,7 @@ public:
      */
     virtual arrus::devices::Probe* getProbe(Ordinal ordinal) = 0;
 
-    virtual std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::devices::FrameChannelMapping>
-    >
+    virtual std::pair<std::shared_ptr<arrus::framework::Buffer>, ::arrus::framework::Metadata>
     upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize,
            const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
            const ::arrus::framework::DataBufferSpec &hostBufferSpec) = 0;

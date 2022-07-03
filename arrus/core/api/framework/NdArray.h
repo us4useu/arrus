@@ -17,7 +17,6 @@ namespace arrus::framework {
  *
  * The address returned by `getData` function is located on a device determined by placement property.
  * CPU:0 placement means that the data is located in host computer's RAM.
- *
  */
 class NdArray {
 public:

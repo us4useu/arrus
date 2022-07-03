@@ -172,7 +172,7 @@ set(SRC_FILES
     api/session/UploadResult.h
     api/framework/DataBufferSpec.h
     api/framework/Buffer.h
-    api/session/Metadata.h
+    api/framework/Metadata.h
     api/framework/DataBuffer.h
     api/framework/FifoBuffer.h
     cfg/default.h.in

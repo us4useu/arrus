@@ -98,7 +98,7 @@ public:
         return probe.value().get();
     }
 
-    std::pair<std::shared_ptr<arrus::framework::Buffer>,std::shared_ptr<arrus::devices::FrameChannelMapping>>
+    std::pair<std::shared_ptr<arrus::framework::Buffer>, ::arrus::framework::Metadata>
     upload(const ops::us4r::TxRxSequence &seq, unsigned short rxBufferNElements,
            const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
            const ::arrus::framework::DataBufferSpec &outputBufferSpec) override;

@@ -5,6 +5,8 @@
 #include <utility>
 
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
+#include "arrus/core/api/devices/ultrasound/UltrasoundSettings.h"
+
 
 namespace arrus::session {
 
@@ -16,7 +18,6 @@ namespace arrus::session {
 class SessionSettings {
     class Impl;
 public:
-
     /**
      * Creates session to communicate with given Us4R system.
      *
@@ -24,6 +25,10 @@ public:
      */
     explicit SessionSettings(arrus::devices::Us4RSettings us4RSettings) {
         this->us4Rs.push_back(std::move(us4RSettings));
+    }
+
+    explicit SessionSettings(arrus::devices::UltrasoundSettings settings) {
+        this->ultrasounds.push_back(std::move(settings));
     }
 
     const arrus::devices::Us4RSettings &getUs4RSettings(::arrus::devices::Ordinal id) const {return us4Rs.at(id);}
@@ -36,12 +41,21 @@ public:
      */
     const arrus::devices::Us4RSettings &getUs4RSettings() const { return getUs4RSettings(0); }
 
+    /**
+     * TODO deprecated
+     * @deprecated use getUltrasounds
+     */
+    const std::vector<arrus::devices::Us4RSettings> &getUs4Rs() const { return us4Rs; }
+
+    const std::vector<arrus::devices::UltrasoundSettings> &getUltrasounds() const { return ultrasounds; }
+
 private:
-    std::vector<arrus::devices::Us4RSettings> us4Rs;
+    std::vector<arrus::devices::Us4RSettings> us4Rs; // TODO: deprecated: convert Us4RSettings to UltrasoundSettings with new Us4RBackendSettings
+    std::vector<arrus::devices::UltrasoundSettings> ultrasounds;
 };
 
 class SessionSettingsBuilder {
-
+    // TODO
 };
 
 }// namespace arrus::session

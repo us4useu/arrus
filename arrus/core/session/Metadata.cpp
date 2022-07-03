@@ -1,1 +1,0 @@
-#include "arrus/core/api/session/Metadata.h"

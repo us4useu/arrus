@@ -8,6 +8,7 @@
 #include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
+#include "arrus/core/api/framework/Metadata.h"
 
 #include <memory>
 #include <vector>
@@ -23,11 +24,7 @@ public:
 
     ~Ultrasound() override = default;
 
-    virtual std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-
-        std::shared_ptr<>
-        >
+    virtual std::pair<std::shared_ptr<arrus::framework::Buffer>, ::arrus::framework::Metadata>
     upload(const ::arrus::ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize,
            const ::arrus::ops::us4r::Scheme::WorkMode &workMode,
            const ::arrus::framework::DataBufferSpec &hostBufferSpec) = 0;
@@ -48,6 +45,11 @@ public:
      * Stops the execution of this ultrasound system.
      */
     virtual void stop() = 0;
+
+    /**
+     * Triggers a single execution of sequence.
+     */
+    virtual void trigger() = 0;
 
     /**
      * Returns us4R device sampling frequency.

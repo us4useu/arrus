@@ -18,6 +18,7 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h"
+#include "arrus/core/devices/ultrasound/file/UltrasoundFile.h"
 #include "arrus/core/session/SessionSettings.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/devices/ultrasound/Ultrasound.h"
@@ -110,10 +111,19 @@ SessionImpl::DeviceMap
 SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     DeviceMap result;
 
-    // Configuring Us4R.
-    const Us4RSettings &us4RSettings = sessionSettings.getUs4RSettings();
-    Us4R::Handle us4r = us4rFactory->getUs4R(0, us4RSettings);
-    result.emplace(us4r->getDeviceId(), std::move(us4r));
+    // Configuring ultrasound devices.
+    // Configuring Us4R. TODO deprecated: do not communicate with
+    if(!sessionSettings.getUs4Rs().empty()) {
+        const Us4RSettings &us4RSettings = sessionSettings.getUs4RSettings();
+        Us4R::Handle us4r = us4rFactory->getUs4R(0, us4RSettings);
+        result.emplace(us4r->getDeviceId(), std::move(us4r));
+    }
+    if(!sessionSettings.getUltrasounds().empty()) {
+        const auto &backendSettings = sessionSettings.getUltrasounds()[0];
+        Ultrasound::Handle ultrasound = std::make_unique<UltrasoundFile>(backendSettings);
+        result.emplace(ultrasound->getDeviceId(), std::move(ultrasound));
+    }
+
     return result;
 }
 
@@ -126,40 +136,26 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     ASSERT_STATE(State::STOPPED);
 
     auto us = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-    // Target:
-    // upload TX/RX sequence on the device (run appropriate kernel)
-    // -> this returns some description of the processing graph context
-    // - context:
-    // -- processing history (what steps where performed)
-    // -- current step metadata (description of the data we get, like sampling frequency, frame channel mapping)
-    // -- czym to jest? po prostu mapa? czy moze juz jakas konkretna struktura danych?
-    // Musi to byc cos niezaleznego od
-    // prepare buffers
-    // Upload: takes such context, updates it, here we return that context.
 
     auto &outputBufferSpec = scheme.getOutputBuffer();
-    auto[buffer, fcm] = us->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
+    auto[buffer, metadata] = us->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
                             scheme.getWorkMode(), outputBufferSpec);
-
-    std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
-    metadataMap.emplace("frameChannelMapping", std::move(fcm));
-    auto constMetadata = std::make_shared<Metadata>(metadataMap);
     currentScheme = scheme;
-    return UploadResult(buffer, constMetadata);
+    return UploadResult(buffer, metadata);
 }
 
 void SessionImpl::startScheme() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE(State::STOPPED);
-    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
-    us4r->start();
+    auto us = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    us->start();
     state = State::STARTED;
 }
 
 void SessionImpl::stopScheme() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
-    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
-    us4r->stop();
+    auto us = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    us->stop();
     state = State::STOPPED;
 }
 
@@ -174,8 +170,8 @@ void SessionImpl::run() {
         startScheme();
     } else {
         if(currentScheme.value().getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL) {
-            auto us4r = (::arrus::devices::Us4RImpl *)getDevice(DeviceId(DeviceType::Us4R, 0));
-            us4r->trigger();
+            auto us = (::arrus::devices::Ultrasound *)getDevice(DeviceId(DeviceType::Ultrasound, 0));
+            us->trigger();
         }
         else {
             throw IllegalStateException("Scheme already started.");
