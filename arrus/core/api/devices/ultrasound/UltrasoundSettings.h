@@ -8,15 +8,14 @@
 namespace arrus::devices {
 /**
  * General settings for ultrasound device.
- * The device configured as ultrasound
  */
 class UltrasoundSettings {
 public:
 
 private:
-    RxSettings rxSettings;
-    std::vector<ChannelIdx> channelsMask;
-    // backend settings: one of:
+    ProbeSettings probeSettings;
+
+    // Backend settings: one of:
     Us4RSettings us4RSettings;
 };
 }

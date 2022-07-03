@@ -12,12 +12,13 @@ namespace arrus::session {
  *
  * Currently it is assumed, that the values stored in this class won't change during system run (is constant).
  */
-class UploadConstMetadata {
-public:
-    using Handle = std::unique_ptr<UploadConstMetadata>;
-    using SharedHandle = std::shared_ptr<UploadConstMetadata>;
+class Metadata {
 
-    explicit UploadConstMetadata(std::unordered_map<std::string, std::shared_ptr<void>> metadata)
+public:
+    using Handle = std::unique_ptr<Metadata>;
+    using SharedHandle = std::shared_ptr<Metadata>;
+
+    explicit Metadata(std::unordered_map<std::string, std::shared_ptr<void>> metadata)
     : metadata(std::move(metadata)) {}
 
 
@@ -36,6 +37,11 @@ public:
 private:
     std::unordered_map<std::string, std::shared_ptr<void>> metadata;
 };
+
+/**
+ * @deprecated The name UploadConstMetadata is deprecated, please use Metadata.
+ */
+typedef Metadata UploadConstMetadata;
 
 }
 

@@ -7,8 +7,16 @@
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 
 namespace arrus::session {
+
+/**
+ * Session settings.
+ *
+ * @see SessionSettingsBuilder
+ */
 class SessionSettings {
+    class Impl;
 public:
+
     /**
      * Creates session to communicate with given Us4R system.
      *

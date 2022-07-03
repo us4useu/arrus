@@ -12,6 +12,7 @@ namespace arrus::devices {
  * Device types available in the system.
  */
 enum class DeviceType {
+    Ultrasound,
     Us4R,
     Us4OEM,
     ProbeAdapter,

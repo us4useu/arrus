@@ -20,6 +20,7 @@
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h"
 #include "arrus/core/session/SessionSettings.h"
 #include "arrus/core/api/io/settings.h"
+#include "arrus/core/api/devices/ultrasound/Ultrasound.h"
 
 namespace arrus::session {
 
@@ -124,14 +125,25 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE(State::STOPPED);
 
-    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
+    auto us = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    // Target:
+    // upload TX/RX sequence on the device (run appropriate kernel)
+    // -> this returns some description of the processing graph context
+    // - context:
+    // -- processing history (what steps where performed)
+    // -- current step metadata (description of the data we get, like sampling frequency, frame channel mapping)
+    // -- czym to jest? po prostu mapa? czy moze juz jakas konkretna struktura danych?
+    // Musi to byc cos niezaleznego od
+    // prepare buffers
+    // Upload: takes such context, updates it, here we return that context.
+
     auto &outputBufferSpec = scheme.getOutputBuffer();
-    auto[buffer, fcm] = us4r->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
-                                     scheme.getWorkMode(), outputBufferSpec);
+    auto[buffer, fcm] = us->upload(scheme.getTxRxSequence(), scheme.getRxBufferSize(),
+                            scheme.getWorkMode(), outputBufferSpec);
 
     std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
     metadataMap.emplace("frameChannelMapping", std::move(fcm));
-    auto constMetadata = std::make_shared<UploadConstMetadata>(metadataMap);
+    auto constMetadata = std::make_shared<Metadata>(metadataMap);
     currentScheme = scheme;
     return UploadResult(buffer, constMetadata);
 }
