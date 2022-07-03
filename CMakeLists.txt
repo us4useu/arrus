@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.7.0)
+set(PROJECT_VERSION 0.8.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 
 option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
@@ -71,7 +71,8 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
             _CRT_SECURE_NO_WARNINGS)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
-    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
+    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS -fvisibility=hidden)
+    set(ARRUS_CPP_COMMON_LINKER_OPTIONS -Wl,--exclude-libs=ALL) # Exclude all external dependencies from STV_DEFAULT
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror")
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
             ARRUS_LINUX
@@ -87,7 +88,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.8.4 EXACT REQUIRED US4OEM HV256 DBARLite)
+find_package(Us4 0.9.0 EXACT REQUIRED US4OEM HV256 DBARLite)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)

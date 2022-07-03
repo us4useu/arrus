@@ -7,7 +7,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/common/tests.h"
-#include "arrus/common/logging/impl/Logging.h"
+#include "arrus/core/common/logging.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/common/collections.h"
 

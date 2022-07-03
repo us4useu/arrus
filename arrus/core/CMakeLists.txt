@@ -176,8 +176,7 @@ set(SRC_FILES
     api/framework/DataBuffer.h
     api/framework/FifoBuffer.h
     cfg/default.h.in
-    ../common/logging/impl/Logging.cpp
-    ../common/logging/impl/LogSeverity.cpp
+    common/LogSeverity.cpp
     api/arrus.h
     api/session.h
     api/common.h api/io.h
@@ -228,8 +227,8 @@ target_link_libraries(${TARGET_NAME}
 # Target compile options
 ################################################################################
 # strict compile options defined for on the source level
-target_compile_options(${TARGET_NAME} PRIVATE
-    ${ARRUS_CPP_COMMON_COMPILE_OPTIONS})
+target_compile_options(${TARGET_NAME} PRIVATE ${ARRUS_CPP_COMMON_COMPILE_OPTIONS})
+target_link_options(${TARGET_NAME} PRIVATE ${ARRUS_CPP_COMMON_LINKER_OPTIONS})
 target_compile_definitions(${TARGET_NAME} PRIVATE
     ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}
     # MSVC dll export declspec

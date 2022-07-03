@@ -1,6 +1,7 @@
 import dataclasses
 import numpy as np
 import math
+from typing import Tuple
 
 
 @dataclasses.dataclass(frozen=True)
@@ -15,6 +16,7 @@ class ProbeModel:
     n_elements: int
     pitch: float
     curvature_radius: float
+    tx_frequency_range: Tuple[float, float]
 
     def __post_init__(self):
         element_pos_x, element_pos_z, element_angle = self._compute_element_position()
