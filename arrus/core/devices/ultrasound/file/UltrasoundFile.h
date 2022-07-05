@@ -6,7 +6,7 @@
 namespace arrus::devices {
 class UltrasoundFile : public Ultrasound {
 public:
-    UltrasoundFile(const std::string &filepath, const Tuple<size_t> shape);
+    UltrasoundFile(const DeviceId &deviceId, const UltrasoundFileSettings &settings);
     ~UltrasoundFile() override = default;
     std::pair<std::shared_ptr<arrus::framework::Buffer>, ::arrus::framework::Metadata>
     upload(const ops::us4r::TxRxSequence &seq, unsigned short rxBufferSize, const ops::us4r::Scheme::WorkMode &workMode,
@@ -15,10 +15,10 @@ public:
     void start() override;
     void stop() override;
     void trigger() override;
-    float getSamplingFrequency() const override;
+    float getSamplingFrequency() const override {return 65e6f; }
 private:
-    std::string filepath;
-    Tuple<size_t> shape;
+    Logger::Handle logger;
+    UltrasoundFileSettings settings;
 };
 }
 

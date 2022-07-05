@@ -57,13 +57,16 @@ private:
 
     using DeviceMap = std::unordered_map<
         arrus::devices::DeviceId,
-        arrus::devices::Device::Handle,
+        arrus::devices::Device::RawHandle,
         GET_HASHER_NAME(arrus::devices::DeviceId)>;
 
-    DeviceMap
-    configureDevices(const SessionSettings &sessionSettings);
+    void configureDevices(const SessionSettings &sessionSettings);
+    void addDevice(const devices::DeviceId &deviceId, arrus::devices::Device::Handle deviceHandle);
 
-    DeviceMap devices;
+    /** Stores handles to devices. */
+    std::vector<arrus::devices::Device::Handle> devices;
+    /** Assigns device id to a specific device handle */
+    DeviceMap deviceIdx;
     arrus::devices::Us4RFactory::Handle us4rFactory;
     std::recursive_mutex stateMutex;
     std::optional<ops::us4r::Scheme> currentScheme;

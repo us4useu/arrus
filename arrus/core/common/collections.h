@@ -9,6 +9,7 @@
 #include <bitset>
 #include <stdexcept>
 #include <iterator>
+#include <mutex>
 
 #include <gsl/span>
 #include <boost/range/combine.hpp>
@@ -229,6 +230,26 @@ std::vector<size_t> rank(const std::vector<T> &values) {
     }
     return result;
 }
+
+template<typename T>
+class Counter {
+public:
+
+    size_t increment(const T &key) {
+        std::unique_lock<std::mutex> lock{mutex};
+        auto it = counters.find(key);
+        if(it == std::end(counters)) {
+            counters.insert(key, 0);
+            return 0;
+        } else {
+            return ++(it->second);
+        }
+    }
+
+private:
+    std::mutex mutex;
+    std::unordered_map<T, size_t> counters;
+};
 
 }
 

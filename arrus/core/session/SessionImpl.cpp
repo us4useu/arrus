@@ -100,31 +100,34 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path
 
 arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
     try {
-        return devices.at(deviceId).get();
+        return deviceIdx.at(deviceId);
     } catch(const std::out_of_range &) {
         throw IllegalArgumentException(
             arrus::format("Device unavailable: {}", deviceId.toString()));
     }
 }
 
-SessionImpl::DeviceMap
-SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
-    DeviceMap result;
+void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
+    Counter<DeviceType> deviceTypeCounter;
 
     // Configuring ultrasound devices.
     // Configuring Us4R. TODO deprecated: do not communicate with
     if(!sessionSettings.getUs4Rs().empty()) {
         const Us4RSettings &us4RSettings = sessionSettings.getUs4RSettings();
         Us4R::Handle us4r = us4rFactory->getUs4R(0, us4RSettings);
-        result.emplace(us4r->getDeviceId(), std::move(us4r));
+        // Note: the below only sets an alias to the us4R device.
+        deviceIdx.emplace(DeviceId(DeviceType::Ultrasound, deviceTypeCounter.increment(DeviceType::Ultrasound)),
+                          us4r.get());
+        addDevice(us4r->getDeviceId(), std::move(us4r));
     }
     if(!sessionSettings.getUltrasounds().empty()) {
         const auto &backendSettings = sessionSettings.getUltrasounds()[0];
-        Ultrasound::Handle ultrasound = std::make_unique<UltrasoundFile>(backendSettings);
-        result.emplace(ultrasound->getDeviceId(), std::move(ultrasound));
-    }
 
-    return result;
+        Ultrasound::Handle ultrasound = std::make_unique<UltrasoundFile>(
+            DeviceId(DeviceType::Ultrasound, deviceTypeCounter.increment(DeviceType::Ultrasound)),
+            backendSettings.getFileBackend().value());
+        addDevice(ultrasound->getDeviceId(), std::move(ultrasound));
+    }
 }
 
 SessionImpl::~SessionImpl() {
@@ -191,6 +194,11 @@ void SessionImpl::close() {
     getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Closing session."));
     this->devices.clear();
     this->state = State::CLOSED;
+}
+
+void SessionImpl::addDevice(const DeviceId &deviceId, arrus::devices::Device::Handle deviceHandle) {
+    deviceIdx.emplace(deviceId, deviceHandle.get());
+    devices.push_back(std::move(deviceHandle));
 }
 
 }

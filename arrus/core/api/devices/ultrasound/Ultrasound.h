@@ -18,9 +18,11 @@ namespace arrus::devices {
 /**
  * Ultrasound system.
  */
-class Ultrasound: Device {
+class Ultrasound: public Device {
 public:
     using Handle = std::unique_ptr<Ultrasound>;
+
+    explicit Ultrasound(const DeviceId &id): Device(id) {}
 
     ~Ultrasound() override = default;
 
