@@ -102,7 +102,6 @@ class ProbeCheckTest(unittest.TestCase):
         invalid_elements_set = set((i for i, e in invalid_elements))
         self.assertEqual(invalid_elements_set, {160, 156, 117})
 
-
     def _get_masked_elements(self, report):
         return [(i, e) for i, e in enumerate(report) if e.is_masked]
 
