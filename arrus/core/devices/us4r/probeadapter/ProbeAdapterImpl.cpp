@@ -1,5 +1,7 @@
 #include "ProbeAdapterImpl.h"
 
+#include <thread>
+
 #include "arrus/core/external/eigen/Dense.h"
 #include "arrus/core/devices/us4r/common.h"
 #include "arrus/core/common/validation.h"
@@ -348,14 +350,24 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     }
 
     // Overflow handling
+    using namespace std::chrono_literals;
     ius4oem->RegisterReceiveOverflowCallback([this, bufferDst]() {
         try {
             if(bufferDst->isStopOnOverflow()) {
                 this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
-                this->getMasterUs4oem()->stop();
-                bufferDst->markAsInvalid();
+                size_t nElements = bufferDst->getNumberOfElements();
+                while(nElements != bufferDst->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::cout << "Waiting for element to be released(receive)..." << std::endl;
+                    std::this_thread::sleep_for(1s);
+                }
+                for(int i = us4oems.size()-1; i >= 0; --i) {
+                    us4oems[i]->getIUs4oem()->SyncReceive();
+                }
+//                this->getMasterUs4oem()->stop();
+//                bufferDst->markAsInvalid();
             } else {
                 this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+
             }
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
@@ -368,8 +380,16 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
         try {
             if(bufferDst->isStopOnOverflow()) {
                 this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
-                this->getMasterUs4oem()->stop();
-                bufferDst->markAsInvalid();
+                size_t nElements = bufferDst->getNumberOfElements();
+                while(nElements != bufferDst->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::cout << "Waiting for element to be released(transfer)..." << std::endl;
+                    std::this_thread::sleep_for(1s);
+                }
+                for(int i = us4oems.size()-1; i >= 0; --i) {
+                    us4oems[i]->getIUs4oem()->SyncTransfer();
+                }
+//                this->getMasterUs4oem()->stop();
+//                bufferDst->markAsInvalid();
             }
             else {
                 this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
@@ -380,6 +400,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
         }
     });
+    ius4oem->EnableWaitOnReceiveOverflow();
+    ius4oem->EnableWaitOnTransferOverflow();
 }
 
 size_t ProbeAdapterImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {
