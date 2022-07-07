@@ -322,6 +322,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
 
     // Register buffer element release functions.
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
+    bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterUs4oem()->getDeviceId().getOrdinal();
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
     for(size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
@@ -351,17 +352,18 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
 
     // Overflow handling
     using namespace std::chrono_literals;
-    ius4oem->RegisterReceiveOverflowCallback([this, bufferDst]() {
+    ius4oem->RegisterReceiveOverflowCallback([this, bufferDst, isMaster]() {
         try {
             if(bufferDst->isStopOnOverflow()) {
                 this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
                 size_t nElements = bufferDst->getNumberOfElements();
                 while(nElements != bufferDst->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                    std::cout << "Waiting for element to be released(receive)..." << std::endl;
-                    std::this_thread::sleep_for(1s);
+                    std::this_thread::sleep_for(1ms);
                 }
-                for(int i = us4oems.size()-1; i >= 0; --i) {
-                    us4oems[i]->getIUs4oem()->SyncReceive();
+                if(isMaster) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncReceive();
+                    }
                 }
 //                this->getMasterUs4oem()->stop();
 //                bufferDst->markAsInvalid();
@@ -376,17 +378,18 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
         }
     });
 
-    ius4oem->RegisterTransferOverflowCallback([this, bufferDst]() {
+    ius4oem->RegisterTransferOverflowCallback([this, bufferDst, isMaster]() {
         try {
             if(bufferDst->isStopOnOverflow()) {
                 this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
                 size_t nElements = bufferDst->getNumberOfElements();
                 while(nElements != bufferDst->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                    std::cout << "Waiting for element to be released(transfer)..." << std::endl;
-                    std::this_thread::sleep_for(1s);
+                    std::this_thread::sleep_for(1ms);
                 }
-                for(int i = us4oems.size()-1; i >= 0; --i) {
-                    us4oems[i]->getIUs4oem()->SyncTransfer();
+                if(isMaster) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncTransfer();
+                    }
                 }
 //                this->getMasterUs4oem()->stop();
 //                bufferDst->markAsInvalid();
