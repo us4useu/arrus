@@ -149,6 +149,23 @@ class Us4R(Device):
         """
         return self._handle.getChannelsMask()
 
+    def set_firing_iobs(self, firing, bitstream_id):
+        self._handle.setFiringIOBS(firing=firing, bsId=bitstream_id)
+
+    def set_iobs_register(self, bitstream_id, register_id, levels, is_end,
+                          period):
+        self._handle.setIOBSRegister(bsId=bitstream_id, regId=register_id,
+                                     levels=levels, isEnd=is_end, period=period)
+
+    def set_waveform_io_drive_mode(self):
+        self._handle.setWaveformIODriveMode()
+
+    def set_io_levels(self, levels):
+        self._handle.setIOLevels(levels=levels)
+
+    def set_standard_io_drive_mode(self):
+        self._handle.setStandardIODriveMode()
+
     def _get_dto(self):
         import arrus.utils.core
         probe_model = arrus.utils.core.convert_to_py_probe_model(
