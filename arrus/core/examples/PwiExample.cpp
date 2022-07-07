@@ -167,13 +167,15 @@ int main() noexcept {
             us4r->setIOLevels(0b00000000);
             //enable waveform drive mode
             us4r->setWaveformIODriveMode();
+			us4r->setIOBSRegister(0, 0, 0, false, 4);
+			us4r->setIOBSRegister(0, 1, 0b00000010, false, 4);
+			us4r->setIOBSRegister(0, 2, 0b00000011, false, 4);
+			us4r->setIOBSRegister(0, 3, 0, false, 4);
+			us4r->setIOBSRegister(0, 4, 0b00001000, false, 4);
+			us4r->setIOBSRegister(0, 5, 0, true, 4);
             //write IO waveform 0 (ramp)
-            for (uint8_t bsId = 0; bsId < 16; bsId++) {
-                for (uint8_t regId = 0; regId < 16; regId++) {
-                    us4r->setIOBSRegister(bsId, regId, regId, false, 0);
-                }
-                us4r->setIOBSRegister(bsId, 16, 15, true, 0);
-                us4r->setFiringIOBS(bsId, bsId);
+            for (uint8_t firing = 0; firing < 16; firing++) {
+                us4r->setFiringIOBS(firing, 0);
             }
         }
 
