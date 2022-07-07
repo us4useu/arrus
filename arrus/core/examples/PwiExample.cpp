@@ -89,7 +89,7 @@ arrus::ops::us4r::Scheme createScheme() {
     const arrus::ops::us4r::Pulse pulse{6.25e6, 3, false};
     const std::pair<arrus::uint32, arrus::uint32> sample_range{0, 2048};
     constexpr float pulse_repetition_fequency = 6000.0f;
-    constexpr float pulse_repetition_interval = 1.0f / pulse_repetition_fequency;
+    constexpr float pulse_repetition_interval = 1.0f/ pulse_repetition_fequency;
     constexpr int num_plane_waves = 128;
     const std::vector<float> delays(NUM_CHANNELS, 0.0f);
     const arrus::BitMask tx_aperture(NUM_CHANNELS, true);
@@ -128,7 +128,7 @@ int main() noexcept {
         auto scheme = createScheme();
 
         auto result = session->upload(scheme);
-
+       
         std::condition_variable cv;
         using namespace std::chrono_literals;
 
@@ -136,7 +136,7 @@ int main() noexcept {
             [&, i = 0](const BufferElement::SharedHandle &ptr) mutable {
                 try {
                     std::cout << "    Iteration: " << i << std::endl;
-                    if (i == 1000) {
+                    if (i == 10) {
                         cv.notify_one();
                     }
 //                    std::this_thread::sleep_for(1s);
@@ -161,6 +161,22 @@ int main() noexcept {
         buffer->registerOnNewDataCallback(callback);
         buffer->registerOnOverflowCallback(overflowCallback);
 
+        if (auto us4r = dynamic_cast<Us4R *>(session->getDevice("/Us4R:0"));
+            us4r != nullptr) {
+            us4r->setStandardIODriveMode();
+            us4r->setIOLevels(0b00000000);
+            //enable waveform drive mode
+            us4r->setWaveformIODriveMode();
+            //write IO waveform 0 (ramp)
+            for (uint8_t bsId = 0; bsId < 16; bsId++) {
+                for (uint8_t regId = 0; regId < 16; regId++) {
+                    us4r->setIOBSRegister(bsId, regId, regId, false, 0);
+                }
+                us4r->setIOBSRegister(bsId, 16, 15, true, 0);
+                us4r->setFiringIOBS(bsId, bsId);
+            }
+        }
+
         std::cout << "- Starting " << std::endl;
         session->startScheme();
 
@@ -174,6 +190,27 @@ int main() noexcept {
         session->stopScheme();
         std::cout << "SCHEME STOPPED" << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(2));
+
+        if (auto us4r = dynamic_cast<Us4R *>(session->getDevice("/Us4R:0"));
+            us4r != nullptr) {
+            std::cout << "conf = " << std::hex << us4r->getSequencerConfRegister() << std::endl;
+            std::cout << "ctrl = " << std::hex << us4r->getSequencerCtrlRegister() << std::endl;
+        }
+
+       /* std::cout << "us4OEM periph list:" << std::endl;
+        if (auto us4r = dynamic_cast<Us4R *>(session->getDevice("/Us4R:0"));
+            us4r != nullptr) {
+            us4r->listPeriphs();
+        }
+
+        std::cout << "Type periph ID to dump to file" << std::endl;
+        int periphId;
+        std::cin >> periphId;
+        if (auto us4r = dynamic_cast<Us4R *>(session->getDevice("/Us4R:0"));
+            us4r != nullptr) {
+            us4r->dumpPeriph("periphDump", periphId);
+        }*/
+
     } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return -1;
