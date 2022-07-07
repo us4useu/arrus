@@ -61,12 +61,14 @@ template<typename T> T safeCastInt(const ::matlab::data::Array &arr, const size_
     auto type = arr.getType();
     if (isMatlabLogical(type) || isMatlabInteger(type)) {
         T v = arr[i];
-        ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE(v, T);
         return v;
     } else if (isMatlabFloatingPoint(type)) {
         double v = arr[i];
-        ARRUS_MATLAB_REQUIRES_INTEGER(v);
-        ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE(v, T);
+        auto min = (double)std::numeric_limits<T>::min();
+        auto max = (double)std::numeric_limits<T>::max();
+        if (v < min || v > max) {
+            arrus::IllegalArgumentException(arrus::format("Value {} should be in range [{}, {}]", v, min, max));
+        }
         return v;
     } else {
         throw ::arrus::IllegalArgumentException("Unsupported data type for the integer output.");
