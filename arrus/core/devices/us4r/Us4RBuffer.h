@@ -16,7 +16,10 @@ public:
     : us4oemComponents(std::move(us4oemComponents)) {
         // Intentionally copying input shape.
         std::vector<size_t> shapeInternal = this->us4oemComponents[0].getElementShape().getValues();
-        auto nChannels = static_cast<unsigned>(shapeInternal[2]);
+        // It's always the last axis, regardless IQ vs RF data.
+        size_t channelAxis = shapeInternal.size()-1;
+
+        auto nChannels = static_cast<unsigned>(shapeInternal[channelAxis]);
         unsigned nSamples = 0;
         framework::NdArray::DataType dataType = this->us4oemComponents[0].getDataType();
 
@@ -24,7 +27,7 @@ public:
         for(auto& component: this->us4oemComponents) {
             auto &componentShape = component.getElementShape();
             // Verify if we have the same number of channels for each component
-            if(nChannels != componentShape.get(2)) {
+            if(nChannels != componentShape.get(channelAxis)) {
                 throw IllegalArgumentException("Each Us4R buffer component should have the same number of channels.");
             }
             if(dataType != component.getDataType()) {
@@ -33,8 +36,8 @@ public:
             nSamples += static_cast<unsigned>(componentShape.get(0));
         }
         shapeInternal[0] = nSamples;
-        shapeInternal[2] = nChannels;
         // Possibly another dimension: 2 (DDC I/Q)
+        shapeInternal[channelAxis] = nChannels;
         elementShape = framework::NdArray::Shape{shapeInternal};
         elementDataType = dataType;
     }
