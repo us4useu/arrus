@@ -664,6 +664,40 @@ void Us4OEMImpl::checkState() {
     this->checkFirmwareVersion();
 }
 
+void Us4OEMImpl::setFiringIOBS(const uint32_t firing, const uint8_t bsId) {
+    ius4oem->SetFiringIOBS(firing, bsId);
+}
+void Us4OEMImpl::setIOBSRegister(uint8_t bsId, uint8_t regId, uint8_t levels, bool isEnd, uint16_t period) {
+    ius4oem->SetIOBSRegister(bsId, regId, levels, isEnd, period);
+}
+
+void Us4OEMImpl::setWaveformIODriveMode() {
+    ius4oem->SetWaveformIODriveMode();
+}
+
+void Us4OEMImpl::setIOLevels(uint8_t levels) {
+    ius4oem->SetIOLevels(levels);
+}
+
+void Us4OEMImpl::setStandardIODriveMode() {
+    ius4oem->SetStandardIODriveMode();
+}
+
+void Us4OEMImpl::listPeriphs() {
+    ius4oem->ListPeriphs();
+}
+void Us4OEMImpl::dumpPeriph(std::string fname, uint32_t periphId) {
+    ius4oem->DumpPeriph(fname, periphId);
+}
+
+uint32_t Us4OEMImpl::getSequencerConfRegister() {
+    return ius4oem->GetSequencerConfRegister();
+}
+
+uint32_t Us4OEMImpl::getSequencerCtrlRegister() {
+    return ius4oem->GetSequencerCtrlRegister();
+}
+
 void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     switch(pattern) {
     case RxTestPattern::RAMP:

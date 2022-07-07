@@ -311,6 +311,58 @@ void Us4RImpl::checkState() const {
     }
 }
 
+void Us4RImpl::setFiringIOBS(const uint32_t firing, const uint8_t bsId) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setFiringIOBS(firing, bsId);
+    }
+}
+void Us4RImpl::setIOBSRegister(uint8_t bsId, uint8_t regId, uint8_t levels, bool isEnd, uint16_t period) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setIOBSRegister(bsId, regId, levels, isEnd, period);
+    }
+}
+
+void Us4RImpl::setWaveformIODriveMode() {
+    for (auto &us4oem : us4oems) {
+        us4oem->setWaveformIODriveMode();
+    }
+}
+
+void Us4RImpl::setIOLevels(uint8_t levels) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setIOLevels(levels);
+    }
+}
+
+void Us4RImpl::setStandardIODriveMode() {
+    for (auto &us4oem : us4oems) {
+        us4oem->setStandardIODriveMode();
+    }
+}
+
+uint32_t Us4RImpl::getSequencerConfRegister(void) {
+        return us4oems[0]->getSequencerConfRegister();
+}
+
+uint32_t Us4RImpl::getSequencerCtrlRegister(void) {
+        return us4oems[0]->getSequencerCtrlRegister();
+}
+
+void Us4RImpl::listPeriphs() {
+    for (auto &us4oem : us4oems) {
+        us4oem->listPeriphs();
+    }
+}
+void Us4RImpl::dumpPeriph(std::string fname, uint32_t periphId) {
+    char n = '0';
+    std::string fnameId = fname;
+    fnameId.push_back(n);
+    for (auto &us4oem : us4oems) {
+        us4oem->dumpPeriph(fnameId, periphId);
+        n += 1;
+    }
+}
+
 std::vector<unsigned short> Us4RImpl::getChannelsMask() {
     return channelsMask;
 }

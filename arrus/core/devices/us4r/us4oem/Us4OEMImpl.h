@@ -125,6 +125,18 @@ public:
     void checkState() override;
     uint32 getTxFirmwareVersion() override;
 
+    void setFiringIOBS(const uint32_t firing, const uint8_t bsId);
+    void setIOBSRegister(uint8_t bsId, uint8_t regId, uint8_t levels, bool isEnd, uint16_t period);
+    void setWaveformIODriveMode();
+    void setIOLevels(uint8_t levels);
+    void setStandardIODriveMode();
+
+    void listPeriphs();
+    void dumpPeriph(std::string fname, uint32_t periphId);
+
+    uint32_t getSequencerConfRegister(void);
+    uint32_t getSequencerCtrlRegister(void);
+
     void setTestPattern(RxTestPattern pattern) override;
 
 private:

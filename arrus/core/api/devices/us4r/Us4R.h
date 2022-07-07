@@ -185,6 +185,20 @@ public:
      */
     virtual void checkState() const = 0;
 
+    virtual void setFiringIOBS(const uint32_t firing, const uint8_t bsId) = 0;
+    virtual void setIOBSRegister(uint8_t bsId, uint8_t regId, uint8_t levels, bool isEnd, uint16_t period) = 0;
+    virtual void setWaveformIODriveMode() = 0;
+
+
+    virtual void setIOLevels(uint8_t levels) = 0;
+    virtual void setStandardIODriveMode() = 0;
+
+    virtual void listPeriphs() = 0;
+    virtual void dumpPeriph(std::string fname, uint32_t id) = 0;
+
+    virtual uint32_t getSequencerConfRegister(void) = 0;
+    virtual uint32_t getSequencerCtrlRegister(void) = 0;
+
     /**
      * Set the system to stop when (RX or host) buffer overflow is detected.
      *

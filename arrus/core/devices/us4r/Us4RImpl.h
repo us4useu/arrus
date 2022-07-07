@@ -117,6 +117,18 @@ public:
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
 
+    void setFiringIOBS(const uint32_t firing, const uint8_t bsId);
+    void setIOBSRegister(uint8_t bsId, uint8_t regId, uint8_t levels, bool isEnd, uint16_t period);
+    void setWaveformIODriveMode();
+    void setIOLevels(uint8_t levels);
+    void setStandardIODriveMode();
+
+    void listPeriphs();
+    void dumpPeriph(std::string fname, uint32_t periphId);
+
+    uint32_t getSequencerConfRegister(void);
+    uint32_t getSequencerCtrlRegister(void);
+
     void setRxSettings(const RxSettings &settings) override;
     void setPgaGain(uint16 value) override;
     void setLnaGain(uint16 value) override;
