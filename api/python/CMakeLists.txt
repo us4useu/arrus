@@ -203,7 +203,7 @@ install(
 )
 
 install(
-        FILES
+    FILES
         examples/plane_wave_imaging.py
         examples/classical_beamforming.py
         examples/diverging_beams.py
@@ -212,8 +212,8 @@ install(
 	    examples/phased_array_scanning.py
         examples/probe_check.py
         examples/requirements.txt
-    examples/requirements.txt
-        DESTINATION
+        examples/requirements.txt
+    DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
 ################################################################################
