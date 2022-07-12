@@ -642,6 +642,10 @@ float Us4OEMImpl::getFPGATemperature() {
     return ius4oem->GetFPGATemp();
 }
 
+float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) {
+    return ius4oem->GetUCDVOUT(rail);
+}
+
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
         ius4oem->CheckFirmwareVersion();

@@ -66,6 +66,49 @@ void Us4RImpl::setVoltage(Voltage voltage) {
                             voltage, minVoltage, maxVoltage));
     }
     hv.value()->setVoltage(voltage);
+
+    //Wait to stabilise voltage output
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    //Verify register
+    if (this->getVoltage() != voltage) {
+        //throw exception
+    }
+
+    //Verify measured voltages on HV
+    float tolerance = static_cast<float>(voltage) / 20.0f; //5% setting tolerance
+    float measured = getMeasuredPVoltage();
+    if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+        //throw exception
+        throw IllegalStateException(
+            ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
+                measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+    }
+    measured = getMeasuredMVoltage();
+    if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+        //throw exception
+        throw IllegalStateException(
+            ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
+                measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+    }
+
+    //Verify measured voltages on OEMs
+    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+        measured = getUCDMeasuredHVPVoltage(i);
+        if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+            //throw exception
+            throw IllegalStateException(
+                ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
+                    measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+        }
+        measured = getUCDMeasuredHVMVoltage(i);
+        if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+            //throw exception
+            throw IllegalStateException(
+                ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
+                    measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+        }
+    }
 }
 
 unsigned char Us4RImpl::getVoltage() {
@@ -81,6 +124,16 @@ float Us4RImpl::getMeasuredPVoltage() {
 float Us4RImpl::getMeasuredMVoltage() {
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
     return hv.value()->getMeasuredMVoltage();
+}
+
+float Us4RImpl::getUCDMeasuredHVPVoltage(uint8_t oemId) {
+    //UCD rail 19 = HVP
+    return us4oems[oemId]->getUCDMeasuredVoltage(19);
+}
+
+float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
+    //UCD rail 20 = HVM}
+    return us4oems[oemId]->getUCDMeasuredVoltage(20);
 }
 
 void Us4RImpl::disableHV() {

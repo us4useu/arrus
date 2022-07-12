@@ -131,6 +131,8 @@ public:
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
+    float getUCDMeasuredHVPVoltage(uint8_t oemId) override;
+    float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
 
