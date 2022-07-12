@@ -39,20 +39,59 @@ python probe_check.py --help
 python probe_check.py --cfg_path /home/user/us4r.prototxt --method threshold
 python probe_check.py --cfg_path /home/user/us4r.prototxt --method neighborhood --rf_file rf.pkl
 """
-import argparse
-import matplotlib.pyplot as plt
+import time
 import os
+import collections
+import argparse
 import numpy as np
-from arrus.utils.probe_check import ProbeHealthVerifier
+import matplotlib.pyplot as plt
+import pickle
+from arrus.utils.probe_check import ProbeHealthVerifier, FeatureDescriptor
+from arrus.utils.probe_check import (
+    DURATION,
+    AMPLITUDE,
+    ENERGY
+)
+
 
 # ------------------------------------------ Utility functions
-class StdoutLogger:
-    def __init__(self):
-        for func in ("debug", "info", "error", "warning"):
-            setattr(self, func, self.log)
 
-    def log(self, msg):
-        print(msg)
+
+
+
+
+def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
+                      iframe=0):
+    """
+    The function plot selected fragments of all signals in input array on a
+    single figure.
+    It is assumed that signal array shape is number of transducers (rows)
+    x number of samples (columns).
+    """
+    import matplotlib.lines as mlines
+    data = report.data
+    nframe, ntx, nsamp, nrx = data.shape
+
+    ny = int(np.ceil(ntx / nx)) + 1  # + 1 row for the legend
+    fig, ax = plt.subplots(ny, nx, figsize=figsize)
+    k = 0
+    status_color = ["C1" if e.is_masked else "C0" for e in report.elements]
+
+    for j in range(nx):
+        ax[0, j].axis("off")
+
+    for i in range(1, ny):
+        for j in range(nx):
+            rf = data[iframe, k, minsamp:maxsamp, int(nrx/2) - 1]
+            rf = rf - np.mean(rf)
+            ax[i, j].plot(rf, c=status_color[k])
+            ax[i, j].set_title(f"{k}")
+            ax[i, j].axis("off")
+            k += 1
+    lact = mlines.Line2D([], [], color="C0", label="active")
+    lina = mlines.Line2D([], [], color="C1", label="inactive")
+    fig.legend(handles=[lact, lina])
+    fig.tight_layout()
 
 
 def init_rf_display(width, height):
@@ -72,15 +111,76 @@ def display_rf_frame(frame_number, data, figure, ax, canvas):
     plt.draw()
 
 
-def init_summary_display():
-    fig, ax = plt.subplots()
-    ax.set_xlabel("Channel")
-    ax.set_ylabel("Amplitude")
-    elements = np.arange(_N_ELEMENTS)
-    canvas, = plt.plot(elements, np.zeros((_N_ELEMENTS)))
-    ax.set_ylim(bottom=-3000, top=3000)
+def display_summary(n_elements, report):
+    fig, axes = plt.subplots(len(features), 1)
+    elements = np.arange(n_elements)
+    canvases = []
+    for ax, feature in zip(axes, features):
+        ax.set_xlabel("Channel")
+        ax.set_ylabel(feature.name)
+        canvas, = ax.plot(elements, np.zeros((n_elements)))
+        ax.set_ylim(bottom=-3000, top=3000)
     fig.show()
-    return fig, ax, canvas
+    return fig, axes, canvases
+
+
+def print_health_info(report, detailed=False):
+    features = report.params["features"]
+    method = report.params["method"]
+    elements_report = report.elements
+    invalid_elements = []
+    invalid_elements_numbers = []
+    for i, e in enumerate(elements_report):
+        for j, f in enumerate(e.features):
+            if f.verdict != "VALID":
+                invalid_elements.append(e)
+                invalid_elements_numbers.append(e.element_number)
+
+    for feature in features:
+        if len(invalid_elements) == 0:
+            print(f"Testing {feature.name} by {method} - all channels seems to "
+                  f"work correctly.")
+        else:
+            print(f"Testing {feature.name} by {method} - "
+                  f"found {len(invalid_elements)} suspect channels: ")
+            print(invalid_elements_numbers)
+
+            active_verdict = collections.defaultdict(list)
+            inactive_verdict = collections.defaultdict(list)
+            keys = set()
+            for element in invalid_elements:
+                e_nr = element.element_number
+                for feature in element.features:
+                    verdict_id = feature.verdict
+                    keys.add(verdict_id)
+                    if element.active:
+                        active_verdict[verdict_id].append(e_nr)
+                    else:
+                        inactive_verdict[verdict_id].append(e_nr)
+            keys = sorted(list(keys))
+            for k in keys:
+                active_elements = active_verdict[k]
+                inactive_elements = inactive_verdict[k]
+                if len(active_elements) > 0:
+                    print(f"Following active channels have {feature.name} {k}: "
+                          f"{active_elements}")
+                if len(inactive_elements) > 0:
+                    print(f"Following masked channels have {feature.name} {k}: "
+                          f"{active_elements}")
+            print(" ")
+
+        if detailed:
+            for element in invalid_elements:
+                active = not element.is_masked
+                state = "active" if active else "masked"
+                for feature in element.features:
+                    print(f"channel# {element.element_number}"
+                          f"    state: {state}"
+                          f"    feature: {feature.name} \n"
+                          f"    verdict: {feature.verdict}\n"
+                          f"    value: {np.round(feature.value, 2)}\n"
+                          f"    valid range: {element.valid_range}\n"
+                          )
 
 
 def main():
@@ -106,82 +206,48 @@ def main():
 
     cfg_path = args.cfg_path
     verifier = ProbeHealthVerifier(log=StdoutLogger())
-    reports = verifier.check_probe(cfg_path=cfg_path,
-                                   n=args.n,
-                                   features="all",
-                                   method=args.method)
 
+    features = [
+        FeatureDescriptor(
+            name=AMPLITUDE,
+            active_range=(200, 20000),  # [a.u.]
+            masked_elements_range=(0, 2000)  # [a.u.]
+        ),
+        FeatureDescriptor(
+            name=DURATION,
+            active_range=(0, 800),  # number of samples
+            masked_elements_range=(800, np.inf)  # number of samples
+        ),
+        FeatureDescriptor(
+            name=ENERGY,
+            active_range=(0, 15),  # [a.u.]
+            masked_elements_range=(0, np.inf)  # [a.u.]
+        ),
+    ]
+    report = verifier.check_probe(cfg_path=cfg_path, n=args.n,
+                                  features=features, method=args.method)
 
-    features = []
-    print("Following features will be tested:")
-    for feature in EXTRACTORS:
-        print(feature)
-        if feature == DURATION:
-            name = DURATION
-            active_range = DURATION_ACTIVE_RANGE
-            inactive_range = DURATION_INACTIVE_RANGE
-        elif feature == AMPLITUDE:
-            name = AMPLITUDE
-            active_range = AMPLITUDE_ACTIVE_RANGE
-            inactive_range = AMPLITUDE_INACTIVE_RANGE
-        elif feature == ENERGY:
-            name = ENERGY
-            active_range = ENERGY_ACTIVE_RANGE
-            inactive_range = ENERGY_INACTIVE_RANGE
-        else:
-            raise ValueError("Bad feature.")
-        features.append(
-            FeatureDescriptor(
-                name=name,
-                active_range=active_range,
-                inactive_range=inactive_range
-            )
-        )
+    print_health_info(report, detailed=False)
 
-    # Present results
-
-    figs = []
-    axes = []
-    canvases = []
-    if args.display_frame is not None:
-        _init_fun = lambda: init_rf_display(_N_ELEMENTS, _N_SAMPLES)
-    else:
-        _init_fun = lambda: init_summary_display()
-
-    for i in range(len(EXTRACTORS)):
-        fig, ax, canvas = _init_fun()
-        figs.append(fig)
-        axes.append(ax)
-        canvases.append(canvas)
-
-    for i, report in enumerate(reports):
-        # Show visual report
-        fig = figs[i]
-        ax = axes[i]
-        canvas = canvases[i]
-        _update_display(report, ax)
-        if report.params["method"] == "neighborhood":
-            values = report.feature_values_in_neighborhood
-        else:
-            values = report.feature_values
-        values = report.feature_values
-        if args.display_frame is None:
-            _display_summary(values, fig, ax, canvas)
-            time.sleep(1)
-        if args.display_frame is not None:
-            for frame in report.data:
-                display_rf_frame(args.display_frame, frame, fig, ax, canvas)
-                time.sleep(0.3)
-        # Save report
-        if args.rf_file is not None:
-            pickle.dump(report.data, open(args.rf_file, "wb"))
-        # Print information about element health.
-        _print_health_info(report, detailed=False)
-        print("Close the window to exit")
+    n_elements = report.sequence_metadata.context.device.probe.model.n_elements
+    start_sample, end_sample = report.sequence_metadata.raw_sequence.ops[
+        0].rx.sample_range
+    n_samples = end_sample - start_sample
 
     if args.display_frame is not None:
-        _visual_evaluation(report)
+        # Display the sequence of RF frames
+        fig, ax, canvas = init_rf_display(n_elements, n_samples)
+        for frame in report.data:
+            display_rf_frame(args.display_frame, frame, fig, ax, canvas)
+            time.sleep(0.3)
+        visual_evaluation(report)
         plt.show()
+    else:
+        display_summary(n_elements, report)
+    if args.rf_file is not None:
+        pickle.dump(report.data, open(args.rf_file, "wb"))
+    print("Close the window to exit")
+
 
 if __name__ == "__main__":
     main()

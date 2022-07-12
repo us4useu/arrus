@@ -1,25 +1,18 @@
+import collections.abc
+import dataclasses
+import math
+import time
+from abc import ABC, abstractmethod
+
 import numpy as np
-import argparse
-from arrus.ops.imaging import LinSequence
-from arrus.ops.us4r import Pulse, Scheme
+from scipy.optimize import curve_fit
+from scipy.signal import butter, sosfilt, hilbert
+
 import arrus.logging
 import arrus.utils.us4r
-import time
-import pickle
-import dataclasses
-import cupy as cp
-import os
-import math
-import collections.abc
-
-from abc import ABC, abstractmethod
-from scipy.optimize import curve_fit
-from scipy.signal import medfilt, butter, sosfilt, hilbert
-
+from arrus.ops.imaging import LinSequence
+from arrus.ops.us4r import Pulse, Scheme
 from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
-
-arrus.set_clog_level(arrus.logging.INFO)
-# arrus.add_log_file("channels_mask_test.log", arrus.logging.INFO)\ \
 
 _N_SKIPPED_SAMPLES = 10
 _NRX = 64
@@ -37,42 +30,49 @@ VALID_VERDICTS = {VALID, TOO_HIGH, TOO_LOW, INDEFINITE}
 AMPLITUDE = "amplitude"
 DURATION = "signal duration time"
 ENERGY = "energy"
-VALID_FEATURES = {AMPLITUDE, DURATION, ENERGY}
-
-# features values ranges
-AMPLITUDE_ACTIVE_RANGE = (200, 20000)
-AMPLITUDE_INACTIVE_RANGE = (0, 2000)
-DURATION_ACTIVE_RANGE = (0, 800)
-DURATION_INACTIVE_RANGE = (800, np.inf)
-ENERGY_ACTIVE_RANGE = (0, 15)
-ENERGY_INACTIVE_RANGE = (0, np.inf)
 
 
+class StdoutLogger:
+    def __init__(self):
+        for func in ("debug", "info", "error", "warning"):
+            setattr(self, func, self.log)
+
+    def log(self, msg):
+        print(msg)
+
+
+# TODO(zklog) all dataclasses here should be immutable ("frozen")
 @dataclasses.dataclass()
 class FeatureDescriptor:
     """
     Descriptor class for signal features used for probe 'diagnosis'.
-    :param name: feature name ("amplitude" or "signal_duration_time"),
-    :param active_range: feature range of values possible to obtain from active 'healthy' transducer,
-    :param inactive_range: feature range of values possible to obtain from inactive 'healthy' transducer.
-    """
 
+    :param name: feature name ("amplitude" or "signal_duration_time"),
+    :param active_range: feature range of values possible to obtain from active
+       'healthy' transducer,
+    :param masked_elements_range: feature range of values possible to obtain
+       from inactive 'healthy' transducer.
+    """
     name: str
     active_range: tuple
-    inactive_range: tuple
+    masked_elements_range: tuple
 
 
 @dataclasses.dataclass()
 class ProbeElementFeatureDescriptor:
     """
     Descriptor class for results of element checking.
+
     :param name: name of the feature used for element check,
-    :param verdict: verdict string (one of following {"VALID", "TOO_HIGH", "TOO_LOW", "INDEFINITE"},
     :param value: value of the feature.
+    :param correct_range: range of values (min, max), for which the element will
+      be marked as correct
+    :param verdict: verdict string (one of following "VALID_VERDICTS")
     """
     name: str
-    verdict: str
     value: float
+    valid_range: tuple
+    verdict: str
 
 
 class ProbeElementFeatureExtractor(ABC):
@@ -85,15 +85,17 @@ class ProbeElementFeatureExtractor(ABC):
 
 class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     """
-    Feature extractor class for extracting maximal amplitudes from array of rf signals.
-
+    Feature extractor class for extracting maximal amplitudes from array of
+    rf signals.
     """
     feature = AMPLITUDE
 
-    def extract(self, rf):
+    def extract(self, rf: np.ndarray) -> np.ndarray:
+        # TODO(zklog) perhaps it might be a good idea to also remove the DC component here?
         rf = rf.copy()
         rf = np.abs(rf[:, :, _N_SKIPPED_SAMPLES:, :])
-        # Reduce each RF frame into a vector of n elements # (where n is the number of probe elements).
+        # Reduce each RF frame into a vector of n elements
+        # (where n is the number of probe elements).
         frame_max = np.max(rf[:, :, :, :], axis=(2, 3))
         # Choose median of a list of Tx/Rxs sequences.
         frame_max = np.median(frame_max, axis=0)
@@ -108,30 +110,29 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
     of a tested transducer.
     The signal is normalised, thus when there is only noise,
     or the signal is long (ringing), the energy is high.
-
     """
     feature = ENERGY
 
+    # TODO(zklog) use type hints for function parameters
+    #  (see e.g. ProbeElementFeatureExtractor.extract)
     def extract(self, data):
         """
-        function extract parameter corelated with normalized signal energy.
+        Function extract parameter correlated with normalized signal energy.
 
         :param data: numpy array of rf data,
-
-        returns
-        -------
-        :param energies: numpy array of signal energies.
-
+        :return: numpy array of signal energies.
         """
-
-        # input data: (number of repetitions, number of tx, number of samples, number of rx channels)
-        nframe, ntx, _, nrx = data.shape
+        # TODO(zklog) why the below comment is not in the above docstring?
+        # input data: (number of repetitions, number of tx, number of
+        # samples, number of rx channels)
+        n_frames, ntx, _, nrx = data.shape
         energies = []
         for itx in range(ntx):
-            # todo number of repeats
             frames_energies = []
-            for iframe in range(nframe):
-                rf = data[iframe, itx, _N_SKIPPED_SAMPLES:, int(nrx / 2) - 1].copy().astype(float)
+            for frame in range(n_frames):
+                rf = data[frame, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
+                rf = rf.copy()
+                rf = rf.astype(float)
                 e = self.__get_signal_energy(np.squeeze(rf))
                 frames_energies.append(e)
             mean_energy = np.mean(frames_energies)
@@ -139,8 +140,10 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         return np.array(energies)
 
     def __hpfilter(self, rf, n=4, wn=1e5, fs=65e6):
+        # TODO(zklog) use " instead of '
         btype = 'highpass'
         output = 'sos'
+        # TODO(zklog) what the sos means here? speed of sound?
         sos = butter(n, wn, btype=btype, output=output, fs=fs)
         return sosfilt(sos, rf)
 
@@ -150,9 +153,10 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         return (x - mn) / (mx - mn)
 
     def __get_signal_energy(self, rf):
+        # TODO(zklog) why are you copying RF data here?
         rf = rf.copy()
         rf = self.__hpfilter(rf)
-        rf = rf**2
+        rf = rf ** 2
         rf = self.__normalize(rf)
         return np.sum(rf)
 
@@ -163,33 +167,34 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     from array of rf signals.
     It is assumed that input data is acquired after very short excitation
     of a tested transducer.
-    The pulse length (singal duration) is estimated via fitting gaussian function
-    to envelope of a high-pass filtered signal.
-
+    The pulse length (signal duration) is estimated via fitting gaussian
+    function to envelope of a high-pass filtered signal.
     """
     feature = DURATION
 
     def extract(self, data):
+        # TODO(zklog) don't start each comment with "function", etc.
+        # just write what this functions does
+        # Start comments with upper case letters.
         """
-        function extract parameter corelated with signal duration time.
+        function extract parameter correlated with signal duration time.
 
         :param data: numpy array of rf data,
-
-        returns
-        -------
-        :param times: list, list of signal duration times
-
+        :return: list, list of signal duration times
         """
-
-        # input data: (number of repetitions, number of tx, number of samples, number of rx channels)
-        nframe, ntx, _, nrx = data.shape
+        # TODO(zklog) why the below comment is not in the above docstring?
+        # input data: (number of repetitions, number of tx, number of
+        # samples, number of rx channels)
+        n_frames, ntx, _, nrx = data.shape
         times = []
         for itx in range(ntx):
             # todo number of repeats
             frames_times = []
-            for iframe in range(nframe):
-                # print(iframe)
-                rf = data[0, itx, _N_SKIPPED_SAMPLES:, int(nrx / 2) - 1].copy().astype(float)
+            for frame in range(n_frames):
+                # TODO(zklog) data[0 ???
+                rf = data[0, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
+                rf = rf.copy()
+                rf = rf.astype(float)
                 t = self.__get_signal_duration(np.squeeze(rf))
                 frames_times.append(t)
             mean_time = np.mean(frames_times)
@@ -203,6 +208,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     def __hpfilter(self, rf, n=4, wn=1e5, fs=65e6):
         btype = 'highpass'
         output = 'sos'
+        # TODO(zklog) what the sos means here? speed of sound?
         sos = butter(n, wn, btype=btype, output=output, fs=fs)
         return sosfilt(sos, rf)
 
@@ -216,9 +222,10 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
 
     def __preprocess_rf(self, rf):
         """
-        the function for initial preprocessing, before gauss curve fitting.
+        The function for initial preprocessing, before gauss curve fitting.
         preprocessing contains of highpass filtration and envelope detection.
         """
+        # TODO(zklog) why are copying the data here?
         rf = rf.copy()
         rf = self.__hpfilter(rf)
         rf = self.__envelope(rf)
@@ -226,8 +233,8 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
 
     def __fitgauss(self, y):
         """
-        the function fits gauss curve to signal,
-        and returns tuple of curve parameters.
+        The function fits gauss curve to signal, and returns tuple of curve
+        parameters.
         """
         if np.all(y == 0):
             pars = (0, 0, 0)
@@ -236,18 +243,14 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
                       np.array([np.max(y), len(y), len(y) * 0.9]))
             p0 = [np.max(y) / 2, len(y) / 2, 20]
             try:
-                pars, _ = curve_fit(
-                    self.__gauss,
-                    np.arange(y.size),
-                    y,
-                    bounds=bounds,
-                    p0=p0,
-                )
+                pars, _ = curve_fit(self.__gauss, np.arange(y.size), y,
+                                    bounds=bounds, p0=p0)
             except Exception as e:
-
+                # TODO(zklog) use logger instead of print
                 # When curve_fit() can not fit gauss, sigma is set to 0
-                pars = (0,0,0)
-                print("The expected signal envelope couldn't be fitted in some signal, probably due to low SNR.")
+                pars = (0, 0, 0)
+                print("The expected signal envelope couldn't be fitted in some "
+                      "signal, probably due to low SNR.")
 
         return pars
 
@@ -255,7 +258,15 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         rf = self.__preprocess_rf(rf)
         # for return values, see definition of __gauss
         _, _, sigma = self.__fitgauss(rf)
-        return round(3*sigma)
+        return round(3 * sigma)
+
+
+# A list of extractors
+EXTRACTORS = {
+    AMPLITUDE: MaxAmplitudeExtractor,
+    DURATION: SignalDurationTimeExtractor,
+    ENERGY: EnergyExtractor,
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -267,17 +278,17 @@ class ProbeElementHealthReport:
     - "VALID": the element seems to work correctly,
     - "TOO_HIGH": the element is characterised by too high feature value,
     - "TOO_LOW": the element is characterised by too low feature value,
-    - "INDEFINITE": the estimate of the feature value failed on signal from the element.
+    - "INDEFINITE": the estimate of the feature value failed on signal from
+      the element.
     The information on feature value are in features attribute, where
-    the list of ProbeElementFeatureDescrtiptor instancies are stored.
+    the list of ProbeElementFeatureDescriptor instances are stored.
 
-    :param is_masked: whether the element was masked in the system cfg,
-    :param features: list of ProbeElementFeatureDescriptor objects,
-    :param element_number: element number,
-
+    :param is_masked: whether the element was masked in the system cfg
+    :param features: list of ProbeElementFeatureDescriptor objects
+    :param element_number: element number
     """
     is_masked: bool
-    features: list
+    features: dict
     element_number: int
 
 
@@ -286,19 +297,15 @@ class ProbeHealthReport:
     """
     A complete report of the probe health.
 
-    Currently the health report contains only information about the
-    the health of each probe element separately.
+    Currently, the health report contains only information about the health
+    of each probe element separately.
 
     :param params: a dictionary with health verifier method parameters
     :param sequence_metadata: description of the TX/RX sequence used in the
       probe health verification procedure
     :param elements: a list of `ProbeElementHealthReport` objects
-    :param data: an RF data on the basis of which the probe verification was performed
-    :param feature_values: feature values - characteristic based on the RF data,
-        used to estimate the health of the probe elements.
-    :param feature_values_in_neighborhood: median of feature values acquired from
-        transducer in the neighborhood of examined item.
-
+    :param data: an RF data on the basis of which the probe verification was
+        performed
     """
     # Report generator parameters.
     params: dict
@@ -306,38 +313,19 @@ class ProbeHealthReport:
     # Report results
     elements: collections.abc.Iterable  # list of ProbeElementHealthReport
     data: np.ndarray
-    feature_values: np.ndarray
-    feature_values_in_neighborhood: np.ndarray
-
-    def get_elements_status(self):
-        status = []
-        for element in self.elements:
-            if element.is_masked:
-                status.append(False)
-            else:
-                status.append(True)
-        return status
-
-    def get_elements_status_colors(self):
-        return ['C0' if s else 'C1' for s in self.get_elements_status()]
 
 
 class ProbeHealthVerifier:
-    '''
-    Class for probe 'diagnosis'.
-    '''
-    def __init__(self, log):
-        self.log = log
+    """
+    Probe health verifier class.
+    """
 
-    def check_probe(
-            self,
-            cfg_path: str,
-            features: list,
-            method: str,
-            n=1,
-            subaperture_size=9,
-            group_size=32,
-    ):
+    def __init__(self, log=None):
+        self.log = log if log is not None else StdoutLogger()
+
+    def check_probe(self, cfg_path: str, features: list, method: str, n=1,
+                    subaperture_size=9, group_size=32):
+        # TODO(zklog) keep max 80 characters per line
         """
         Checks probe elements by using selected method (current: 'neighborhood' or 'threshold').
 
@@ -360,12 +348,12 @@ class ProbeHealthVerifier:
               and consists of a given number of adjacent probe elements.
             - Then, estimate the expected feature value
               - exclude from the neighborhood all elements which have an
-                amplitude below `inactive_threshold`, (that is they seems to be
+                amplitude below `inactive_threshold`, (that is they seem to be
                 inactive, e.g. they were turned off using channels mask in the
                 system configuration).
               - compute the median of the feature value in that neighborhood - this
                 is our estimate of the expected amplitude.
-              - Then determine if the element is valid, based on it's feature value
+              - Then determine if the element is valid, based on its feature value
                 and expected `feature_range_in_neighborhood`,
                 a pair `(feature_min, feature_max)`:
                 - if its feature value is out of the range
@@ -375,7 +363,7 @@ class ProbeHealthVerifier:
                   otherwise mark the element with state "VALID".
 
         :param cfg_path: a path to the system configuration file,
-        :param features: a list of feature descriptor instancies,
+        :param features: a list of feature descriptor instances,
         :param method: method used - `neighborhood` or `threshold`,
         :param n: number of TX/RX sequences to execute,
         :param amplitude_range: the accepted amplitude range, relative to the
@@ -386,24 +374,15 @@ class ProbeHealthVerifier:
         :return: an instance of the ProbeHealthReport
 
         """
-        global EXTRACTORS
-        global VALID_FEATURES
-        for feature in features:
-            if feature.name not in VALID_FEATURES:
-                raise ValueError(f"Each feature in \'features\' parameter "
-                                 f" must be one of the following: {VALID_FEATURES}")
-        valid_methods = {'neighborhood', 'threshold'}
-        if method == 'neighborhood':
-            test_fun = self._test_probe_elements_neighborhood
-        elif method == 'threshold':
-            test_fun = self._test_probe_elements_threshold
-        else:
-            raise ValueError(
-                f"Check probe method must be one of the following: {valid_methods}")
-        rfs, const_metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
+        rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
+
+        valid_methods = {"neighborhood": self._test_probe_elements_neighborhood,
+                         "threshold": self._test_probe_elements_threshold}
+        test_fun = valid_methods[method]
         reports = []
+        # TODO a single report for all features
         for feature in features:
-            extractor = EXTRACTORS[feature.name]
+            extractor = EXTRACTORS[feature.name]()
             feature_values = extractor.extract(rfs)
             elements_report, values_near = test_fun(
                 feature_values=feature_values,
@@ -414,32 +393,25 @@ class ProbeHealthVerifier:
             report = ProbeHealthReport(
                 params=dict(
                     method=method,
-                    feature=feature,
+                    features=features,
                     subaperture_size=subaperture_size,
                     group_size=group_size),
-                sequence_metadata=const_metadata,
+                sequence_metadata=metadata,
                 elements=elements_report,
-                data=rfs,
-                feature_values=feature_values,
-                feature_values_in_neighborhood=values_near,
+                data=rfs
             )
             reports.append(report)
         return reports
 
-    def _test_probe_elements_threshold(
-            self,
-            feature_values,
-            feature_descriptor,
-            masked_elements,
-            group_size=None,
-    ):
-
+    def _test_probe_elements_threshold(self, feature_values, feature_descriptor,
+                                       masked_elements, group_size=None):
         element_reports = []
         masked_elements = set(masked_elements)
         for i, value in enumerate(feature_values):
             is_masked = i in masked_elements
+
             if is_masked:
-                thr_min, thr_max = feature_descriptor.inactive_range
+                thr_min, thr_max = feature_descriptor.masked_elements_range
             else:
                 thr_min, thr_max = feature_descriptor.active_range
 
@@ -451,6 +423,9 @@ class ProbeHealthVerifier:
                 verdict = "VALID"
 
             element_reports.append(
+                ProbeElementFeatureDescriptor(
+                    name=
+                )
                 ProbeElementHealthReport(
                     is_masked=is_masked,
                     features=[
@@ -462,9 +437,7 @@ class ProbeHealthVerifier:
                     element_number=i,
                 )
             )
-
-        # The function returns two values (for 'cohesion' with test_probe_element_neighborhood() behavior).
-        return element_reports, np.array([np.nan])
+        return element_reports
 
     def _test_probe_elements_neighborhood(
             self,
@@ -482,14 +455,13 @@ class ProbeHealthVerifier:
 
         # Generate report
         element_reports = []
-        thr_min, thr_max = feature_descriptor.inactive_range
         values_near = np.full((2, *feature_values.shape), np.nan)
         for i, value in enumerate(feature_values):
             is_masked = i in masked_elements
             if is_masked:
                 # Masked elements should be below inactive threshold,
                 # otherwise there is something wrong.
-                thr_min, thr_max = feature_descriptor.inactive_range
+                thr_min, thr_max = feature_descriptor.masked_elements_range
                 if value > thr_max:
                     verdict = "TOO_HIGH"
                 elif value < thr_min:
@@ -520,8 +492,8 @@ class ProbeHealthVerifier:
                     try:
                         mn, mx = feature_range_in_neighborhood
                         center = np.median(near)
-                        lower_bound = center*mn
-                        upper_bound = center*mx
+                        lower_bound = center * mn
+                        upper_bound = center * mx
                         assert lower_bound <= upper_bound
                         values_near[0, i] = lower_bound
                         values_near[1, i] = upper_bound
