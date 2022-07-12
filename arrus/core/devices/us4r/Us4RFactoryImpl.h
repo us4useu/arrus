@@ -67,7 +67,8 @@ class Us4RFactoryImpl : public Us4RFactory {
                 settings.getChannelsMask(),
                 settings.getReprogrammingMode(),
                 settings.getNumberOfUs4oems(),
-                settings.getAdapterToUs4RModuleNumber()
+                settings.getAdapterToUs4RModuleNumber(),
+                settings.getTxDelayOffset()
             );
 
             // verify if the generated us4oemSettings.channelsMask is equal to us4oemChannelsMask field
@@ -121,7 +122,7 @@ class Us4RFactoryImpl : public Us4RFactory {
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger) {
-        ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,"At least one us4oem should be configured.");
+        ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1, "At least one us4oem should be configured.");
         auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
 
         // Initialize Us4OEMs.

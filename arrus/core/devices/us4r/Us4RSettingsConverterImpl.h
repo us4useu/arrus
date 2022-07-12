@@ -18,7 +18,8 @@ public:
                             const std::vector<ChannelIdx> &channelsMask,
                             Us4OEMSettings::ReprogrammingMode reprogrammingMode,
                             std::optional<Ordinal> nUs4OEMsSetting,
-                            const std::vector<Ordinal> &adapterToUs4RModuleNr) override {
+                            const std::vector<Ordinal> &adapterToUs4RModuleNr,
+                            float txDelayOffset = 0.0f) override {
         typedef ProbeAdapterSettings PAS;
         // Assumption:
         // for each module there is N_RX_CHANNELS*k elements in mapping
@@ -125,7 +126,7 @@ public:
         // END OF THE MASKS PRODUCTION
         for(int i = 0; i < nUs4OEMs; ++i) {
             result.push_back(Us4OEMSettings(us4oemChannelMapping[i], activeChannelGroups[i], rxSettings,
-                                            channelsMasks[i], reprogrammingMode));
+                                            channelsMasks[i], reprogrammingMode, txDelayOffset));
         }
         return {result,
                 ProbeAdapterSettings(

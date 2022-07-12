@@ -70,7 +70,7 @@ public:
                                             std::move(ius4oem), cfg.getActiveChannelGroups(),
                                             channelMapping, cfg.getRxSettings(),
                                             cfg.getChannelsMask(), cfg.getReprogrammingMode(),
-                                            isExternalTrigger);
+                                            isExternalTrigger, cfg.getTxDelayOffset());
     }
 
 private:

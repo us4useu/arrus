@@ -28,11 +28,12 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
                        std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                        std::unordered_set<uint8_t> channelsMask,
                        Us4OEMSettings::ReprogrammingMode reprogrammingMode,
-                       bool externalTrigger = false)
+                       bool externalTrigger = false,
+                       float txDelayOffset = 0.0f)
         : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()},
           ius4oem(std::move(ius4oem)), channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
           reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)),
-          externalTrigger(externalTrigger) {
+          externalTrigger(externalTrigger), txDelayOffset(txDelayOffset) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -90,7 +91,8 @@ void Us4OEMImpl::stopTrigger() {
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    using Validator<TxRxParamsSequence>::Validator;
+    Us4OEMTxRxValidator(std::string componentName, float txDelayOffset = 0.0f)
+        : Validator<TxRxParamsSequence>(componentName), txDelayOffset(txDelayOffset) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -109,7 +111,7 @@ public:
                         firingStr);
                 ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_VM(
                         op.getTxDelays(),
-                        Us4OEMImpl::MIN_TX_DELAY, Us4OEMImpl::MAX_TX_DELAY,
+                        Us4OEMImpl::MIN_TX_DELAY, Us4OEMImpl::MAX_TX_DELAY-txDelayOffset,
                         firingStr);
 
                 // Tx - pulse
@@ -165,6 +167,8 @@ public:
             }
         }
     }
+private:
+    float txDelayOffset{0.0f};
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
@@ -172,7 +176,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                             uint16 batchSize, std::optional<float> sri, bool triggerSync) {
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
-    Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr));
+    Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr), txDelayOffset);
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
@@ -248,7 +252,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             if(bit && !::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];
             }
-            ius4oem->SetTxDelay(txChannel, txDelay, opIdx);
+            ius4oem->SetTxDelay(txChannel, txDelay+txDelayOffset, opIdx);
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
@@ -290,12 +294,14 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 // The ARRUS API assumes that the start sample and end sample are for the same
                 // sampling frequency.
                 startSample = startSample*op.getRxDecimationFactor();
+                // The first sample should be a moment, when the TX starts (i.e. tx delay == 0).
+                uint32 sampleDelay = SAMPLE_DELAY + uint32_t(roundf(txDelayOffset*getSamplingFrequency()));
 
                 ARRUS_REQUIRES_AT_MOST(
                         outputAddress + nBytes, DDR_SIZE,
                         ::arrus::format("Total data size cannot exceed 4GiB (device {})",getDeviceId().toString()));
 
-                ius4oem->ScheduleReceive(firing, outputAddress, nSamples, SAMPLE_DELAY + startSample,
+                ius4oem->ScheduleReceive(firing, outputAddress, nSamples, sampleDelay + startSample,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
 
                 if(!op.isRxNOP() || this->isMaster()) {

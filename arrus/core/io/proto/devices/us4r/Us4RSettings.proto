@@ -43,4 +43,5 @@ message Us4RSettings {
   }
   repeated uint32 adapter_to_us4r_module_nr = 13;
   bool external_trigger = 14;
+  float tx_delay_offset = 15;
 }

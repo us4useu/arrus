@@ -29,7 +29,8 @@ public:
                             const std::vector<ChannelIdx> &channelsMask,
                             Us4OEMSettings::ReprogrammingMode reprogrammingMode,
                             std::optional<Ordinal> nUs4OEMs,
-                            const std::vector<Ordinal> &adapterToUs4RModuleNr) = 0;
+                            const std::vector<Ordinal> &adapterToUs4RModuleNr,
+                            float txDelayOffset) = 0;
 
     virtual ~Us4RSettingsConverter() = default;
 };

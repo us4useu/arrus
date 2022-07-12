@@ -61,18 +61,21 @@ public:
      * @param rxSettings initial rx settings to apply
      * @param channelMask channels that should be always turned off,
      *   CHANNEL NUMBERS STARTS FROM 0
+     * @param txDelayOffset to apply
      * @param reprogrammingMode us4OEM reprogramming mode
      */
     Us4OEMSettings(ChannelMapping channelMapping,
                    BitMask activeChannelGroups,
                    RxSettings rxSettings,
                    std::unordered_set<uint8> channelsMask,
-                   ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL)
+                   ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
+                   float txDelayOffset = 0.0f)
             : channelMapping(std::move(channelMapping)),
               activeChannelGroups(std::move(activeChannelGroups)),
               rxSettings(std::move(rxSettings)),
               channelsMask(std::move(channelsMask)),
-              reprogrammingMode(reprogrammingMode)
+              reprogrammingMode(reprogrammingMode),
+              txDelayOffset(txDelayOffset)
               {}
 
 
@@ -96,12 +99,15 @@ public:
         return reprogrammingMode;
     }
 
+    float getTxDelayOffset() const { return txDelayOffset; }
+
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
     RxSettings rxSettings;
     std::unordered_set<uint8> channelsMask;
     ReprogrammingMode reprogrammingMode;
+    float txDelayOffset{0.0f};
 };
 
 }

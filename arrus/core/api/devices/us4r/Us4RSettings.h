@@ -1,16 +1,16 @@
 #ifndef ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
 #define ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
 
-#include <utility>
 #include <map>
 #include <ostream>
+#include <utility>
 
-#include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
-#include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "RxSettings.h"
-#include "arrus/core/api/devices/us4r/HVSettings.h"
-#include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/devices/probe/ProbeSettings.h"
+#include "arrus/core/api/devices/us4r/HVSettings.h"
+#include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
+#include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 
 namespace arrus::devices {
 
@@ -21,76 +21,44 @@ public:
     explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
                           std::optional<Ordinal> nUs4OEMs = std::nullopt,
                           std::vector<Ordinal> adapterToUs4RModuleNumber = {})
-        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)),
-          nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)){}
+        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)), nUs4OEMs(nUs4OEMs),
+          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)) {}
 
-    Us4RSettings(
-        ProbeAdapterSettings probeAdapterSettings,
-        ProbeSettings probeSettings,
-        RxSettings rxSettings,
-        std::optional<HVSettings> hvSettings,
-        std::vector<ChannelIdx> channelsMask,
-        std::vector<std::vector<uint8>> us4oemChannelsMask,
-        ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
-        std::optional<Ordinal> nUs4OEMs = std::nullopt,
-        std::vector<Ordinal> adapterToUs4RModuleNumber = {},
-        bool externalTrigger = false
-    ) : probeAdapterSettings(std::move(probeAdapterSettings)),
-          probeSettings(std::move(probeSettings)),
-          rxSettings(std::move(rxSettings)),
-          hvSettings(std::move(hvSettings)),
-          channelsMask(std::move(channelsMask)),
-          us4oemChannelsMask(std::move(us4oemChannelsMask)),
-          reprogrammingMode(reprogrammingMode),
-          nUs4OEMs(nUs4OEMs),
-          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
-          externalTrigger(externalTrigger)
-    {}
+    Us4RSettings(ProbeAdapterSettings probeAdapterSettings, ProbeSettings probeSettings, RxSettings rxSettings,
+                 std::optional<HVSettings> hvSettings, std::vector<ChannelIdx> channelsMask,
+                 std::vector<std::vector<uint8>> us4oemChannelsMask,
+                 ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
+                 std::optional<Ordinal> nUs4OEMs = std::nullopt, std::vector<Ordinal> adapterToUs4RModuleNumber = {},
+                 bool externalTrigger = false, float txDelayOffset = 0.0f)
+        : probeAdapterSettings(std::move(probeAdapterSettings)), probeSettings(std::move(probeSettings)),
+          rxSettings(std::move(rxSettings)), hvSettings(std::move(hvSettings)), channelsMask(std::move(channelsMask)),
+          us4oemChannelsMask(std::move(us4oemChannelsMask)), reprogrammingMode(reprogrammingMode), nUs4OEMs(nUs4OEMs),
+          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)), externalTrigger(externalTrigger),
+          txDelayOffset(txDelayOffset) {}
 
-    const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
-        return us4oemSettings;
-    }
+    const std::vector<Us4OEMSettings> &getUs4OEMSettings() const { return us4oemSettings; }
 
-    const std::optional<ProbeAdapterSettings> &
-    getProbeAdapterSettings() const {
-        return probeAdapterSettings;
-    }
+    const std::optional<ProbeAdapterSettings> &getProbeAdapterSettings() const { return probeAdapterSettings; }
 
-    const std::optional<ProbeSettings> &getProbeSettings() const {
-        return probeSettings;
-    }
+    const std::optional<ProbeSettings> &getProbeSettings() const { return probeSettings; }
 
-    const std::optional<RxSettings> &getRxSettings() const {
-        return rxSettings;
-    }
+    const std::optional<RxSettings> &getRxSettings() const { return rxSettings; }
 
-    const std::optional<HVSettings> &getHVSettings() const {
-        return hvSettings;
-    }
+    const std::optional<HVSettings> &getHVSettings() const { return hvSettings; }
 
-    const std::vector<ChannelIdx> &getChannelsMask() const {
-        return channelsMask;
-    }
+    const std::vector<ChannelIdx> &getChannelsMask() const { return channelsMask; }
 
-    const std::vector<std::vector<uint8>> &getUs4OEMChannelsMask() const {
-        return us4oemChannelsMask;
-    }
+    const std::vector<std::vector<uint8>> &getUs4OEMChannelsMask() const { return us4oemChannelsMask; }
 
-    ReprogrammingMode getReprogrammingMode() const {
-        return reprogrammingMode;
-    }
+    ReprogrammingMode getReprogrammingMode() const { return reprogrammingMode; }
 
-    const std::optional<Ordinal> &getNumberOfUs4oems() const {
-        return nUs4OEMs;
-    }
+    const std::optional<Ordinal> &getNumberOfUs4oems() const { return nUs4OEMs; }
 
-    const std::vector<Ordinal> &getAdapterToUs4RModuleNumber() const {
-        return adapterToUs4RModuleNumber;
-    }
+    const std::vector<Ordinal> &getAdapterToUs4RModuleNumber() const { return adapterToUs4RModuleNumber; }
 
-    bool isExternalTrigger() const {
-        return externalTrigger;
-    }
+    bool isExternalTrigger() const { return externalTrigger; }
+
+    float getTxDelayOffset() const { return txDelayOffset; }
 
 private:
     /* A list of settings for Us4OEMs.
@@ -128,9 +96,12 @@ private:
      * and the actual ordinal number of us4OEM. Optional, empty vector means that
      * no mapping should be applied (identity mapping). */
     std::vector<Ordinal> adapterToUs4RModuleNumber = {};
+    /** Whether there the external trigger should be turned on */
     bool externalTrigger{false};
+    /** Offset to apply to tx delays (i.e. tx delays will be set to delay + offset), by default 0.0f.*/
+    float txDelayOffset{0.0f};
 };
 
-}
+}// namespace arrus::devices
 
-#endif //ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
+#endif//ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
