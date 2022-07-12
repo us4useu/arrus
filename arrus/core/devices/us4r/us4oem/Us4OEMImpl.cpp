@@ -210,7 +210,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
         auto sampleRange = op.getRxSampleRange().asPair();
         auto endSample = std::get<1>(sampleRange);
-        float rxTime = getRxTime(endSample, op.getRxDecimationFactor());
+        float rxTime = getRxTime(endSample, op.getRxDecimationFactor()) + txDelayOffset;
 
         // Computing total TX/RX time
         float txrxTime = 0.0f;
