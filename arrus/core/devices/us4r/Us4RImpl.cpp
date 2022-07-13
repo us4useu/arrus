@@ -75,39 +75,82 @@ void Us4RImpl::setVoltage(Voltage voltage) {
         //throw exception
     }
 
+    float tolerance = 3.0f; // 3V tolerance 
+
     //Verify measured voltages on HV
-    float tolerance = static_cast<float>(voltage) / 20.0f; //5% setting tolerance
+    //HVP voltage
     float measured = getMeasuredPVoltage();
+    uint8_t retries = 5;
+
+    while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        measured = getMeasuredPVoltage();
+    }
     if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+        disableHV();
         //throw exception
         throw IllegalStateException(
-            ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
+            ::arrus::format("Measured HVP voltage on HV module invalid '{}', should be in range: [{}, {}]",
                 measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
     }
+    logger->log(LogSeverity::INFO, ::arrus::format("Measured HVP on HV module = {} V", measured));
+
+    //HVM voltage
     measured = getMeasuredMVoltage();
+    retries = 5;
+
+    while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        measured = getMeasuredMVoltage();
+    }
     if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+        disableHV();
         //throw exception
         throw IllegalStateException(
-            ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
+            ::arrus::format("Measured HVM voltage on HV module invalid '{}', should be in range: [{}, {}]",
                 measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
     }
+    logger->log(LogSeverity::INFO, ::arrus::format("Measured HVM on HV module= {} V", measured));
 
     //Verify measured voltages on OEMs
     for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+        //HVP voltage
         measured = getUCDMeasuredHVPVoltage(i);
+        retries = 5;
+
+        while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            measured = getUCDMeasuredHVPVoltage(i);
+        }
         if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+            disableHV();
             //throw exception
             throw IllegalStateException(
-                ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
-                    measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+                ::arrus::format("Measured HVP voltage on OEM #{} invalid '{}', should be in range: [{}, {}]",
+                i, measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
         }
+        logger->log(LogSeverity::INFO, ::arrus::format("Measured HVP on OEM #{} = {} V", i, measured));
+
+        //HVM voltage
         measured = getUCDMeasuredHVMVoltage(i);
+        retries = 5;
+
+        while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            measured = getUCDMeasuredHVMVoltage(i);
+        }
         if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+            disableHV();
             //throw exception
             throw IllegalStateException(
-                ::arrus::format("HV measured voltage out of range '{}', should be in range: [{}, {}]",
-                    measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+                ::arrus::format("Measured HVM voltage on OEM #{} invalid '{}', should be in range: [{}, {}]",
+                    i, measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
         }
+        logger->log(LogSeverity::INFO, ::arrus::format("Measured HVM on OEM #{} = {} V", i, measured));
     }
 }
 

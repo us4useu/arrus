@@ -120,7 +120,10 @@ int main() noexcept {
         auto session = arrus::session::createSession(settings);
         if (auto us4r = dynamic_cast<Us4R *>(session->getDevice("/Us4R:0"));
             us4r != nullptr) {
-            us4r->setVoltage(5);
+            for (int i = 5; i < 28; i++) {
+                us4r->setVoltage(i);
+                us4r->setVoltage((55 - i));
+            }
         }
 
         std::cout << "Probe with " << NUM_CHANNELS << " elements." << std::endl;
@@ -136,7 +139,7 @@ int main() noexcept {
             [&, i = 0](const BufferElement::SharedHandle &ptr) mutable {
                 try {
                     std::cout << "    Iteration: " << i << std::endl;
-                    if (i == 1000) {
+                    if (i == 1) {
                         cv.notify_one();
                     }
 //                    std::this_thread::sleep_for(1s);
