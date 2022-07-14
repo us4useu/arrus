@@ -152,10 +152,11 @@ classdef Us4R < handle
                 error("ARRUS:IllegalArgument", ['Unrecognized adapter type: ', obj.sys.adapType]);
             end
             obj.sys.actChan = obj.sys.actChan & any(obj.sys.selElem == reshape(obj.sys.probeMap, 1, 1, []),3);
-
+            
+            obj.sys.isHardwareProgrammed = false;
         end
 
-        function upload(obj, sequenceOperation, reconstructOperation)
+        function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
             % Uploads operations to the us4R system.
             %
             % Currently, only supports :class:`SimpleTxRxSequence`
@@ -163,6 +164,8 @@ classdef Us4R < handle
             %
             % :param sequenceOperation: TX/RX sequence to perform on the us4R system
             % :param reconstructOperation: reconstruction to perform with the collected data
+            % :param enableHardwareProgramming: determines if the hardware
+            % is programmed or not (optional, default = true)
             % :returns: updated Us4R object
             
             switch(class(sequenceOperation))
@@ -176,7 +179,7 @@ classdef Us4R < handle
                     sequenceType = "custom";
                 otherwise
                     error("ARRUS:IllegalArgument", ...
-                        ['Unrecognized operation type ', class(sequenceOperation)])
+                        ['Unrecognized operation type ', class(sequenceOperation)]);
             end
             
             obj.setSeqParams(...
@@ -206,9 +209,12 @@ classdef Us4R < handle
             obj.validateSequence;
             
             % Program hardware
-            obj.programHW;
+            if nargin<4 || enableHardwareProgramming
+                obj.programHW;
+                obj.sys.isHardwareProgrammed = true;
+            end
             
-            if nargin==2
+            if nargin<3 || isempty(reconstructOperation)
                 obj.rec.enable = false;
                 return;
             end
@@ -1020,7 +1026,6 @@ classdef Us4R < handle
                 Us4MEX(iArius, "EnableSequencer");      % loading parameters after TX/RX
 %                 Us4MEX(iArius, "EnableSequencer", 1);   % loading parameters during TX/RX
             end
-            
            
         end
 
@@ -1037,6 +1042,10 @@ classdef Us4R < handle
         end
 
         function [rf, metadata] = execSequence(obj)
+            
+            if ~obj.sys.isHardwareProgrammed
+                error("execSequence: hardware is not programmed, sequence cannot be executed");
+            end
 
             nArius	= obj.sys.nArius;
             nChan	= obj.sys.nChArius;
