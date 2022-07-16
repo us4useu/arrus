@@ -671,7 +671,7 @@ classdef Us4R < handle
             end
             
             %% If GPU is available...
-            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('distcomp')) && parallel.gpu.GPUDevice.isAvailable;
+            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('parallel')) && parallel.gpu.GPUDevice.isAvailable;
             
             if obj.rec.gpuEnable && obj.rec.gridModeEnable
                 % Add location of the CUDA kernels
