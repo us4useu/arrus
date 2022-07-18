@@ -192,8 +192,6 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
             frames_energies = []
             for frame in range(n_frames):
                 rf = data[frame, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
-                # TODO(zklog) don't copy data here
-                rf = rf.copy()
                 rf = rf.astype(float)
                 e = self.__get_signal_energy(np.squeeze(rf))
                 frames_energies.append(e)
@@ -202,9 +200,8 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         return np.array(energies)
 
     def __hpfilter(self, rf, n=4, wn=1e5, fs=65e6):
-        # TODO(zklog) use " instead of '
-        btype = 'highpass'
-        output = 'sos'
+        btype = "highpass"
+        output = "sos"
         # TODO(zklog) what the sos means here? speed of sound?
         sos = butter(n, wn, btype=btype, output=output, fs=fs)
         return sosfilt(sos, rf)
@@ -238,11 +235,8 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         self.log = log
 
     def extract(self, data):
-        # TODO(zklog) don't start each comment with "function", etc.
-        # just write what this functions does
-        # Start comments with upper case letters.
         """
-        function extract parameter correlated with signal duration time.
+        Extracts parameter correlated with signal duration time.
 
         :param data: numpy array of rf data,
         :return: list, list of signal duration times
@@ -271,8 +265,8 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
 
     def __hpfilter(self, rf, n=4, wn=1e5, fs=65e6):
-        btype = 'highpass'
-        output = 'sos'
+        btype = "highpass"
+        output = "sos"
         # TODO(zklog) what the sos means here? speed of sound?
         sos = butter(n, wn, btype=btype, output=output, fs=fs)
         return sosfilt(sos, rf)
@@ -290,8 +284,6 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         The function for initial preprocessing, before gauss curve fitting.
         preprocessing contains of highpass filtration and envelope detection.
         """
-        # TODO(zklog) why are copying the data here?
-        rf = rf.copy()
         rf = self.__hpfilter(rf)
         rf = self.__envelope(rf)
         return rf
