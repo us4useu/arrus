@@ -17,6 +17,8 @@ from arrus.ops.imaging import LinSequence
 from arrus.ops.us4r import Pulse, Scheme
 from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
 
+LOGGER = arrus.logging.get_logger()
+
 _N_SKIPPED_SAMPLES = 10
 _NRX = 64
 _MID_RX = int(np.ceil(_NRX / 2) - 1)
@@ -283,8 +285,8 @@ class ProbeElementValidator(ABC):
             self,
             values: Iterable[float],
             masked: Iterable[int],
-            accept_range: Tuple[float, float],
-            masked_accept_range: Tuple[float, float]
+            active_range: Tuple[float, float],
+            masked_range: Tuple[float, float]
     ) -> List[ProbeElementValidatorResult]:
         raise ValueError("Abstract method")
 
@@ -303,18 +305,18 @@ class ByThresholdValidator(ProbeElementValidator):
             self,
             values: Iterable[float],
             masked: Iterable[int],
-            accept_range: Tuple[float, float],
-            masked_accept_range: Tuple[float, float]
+            active_range: Tuple[float, float],
+            masked_range: Tuple[float, float]
     ) -> List[ProbeElementValidatorResult]:
-
+        LOGGER.log(arrus.logging.INFO, "Running validator by threshold.")
         result = []
         masked = set(masked)
         for i, value in enumerate(values):
             is_masked = i in masked
             if not is_masked:
-                thr_min, thr_max = accept_range
+                thr_min, thr_max = active_range
             else:
-                thr_min, thr_max = masked_accept_range
+                thr_min, thr_max = masked_range
 
             if value > thr_max:
                 verdict = ElementValidationVerdict.TOO_HIGH
@@ -380,8 +382,8 @@ class ByNeighborhoodValidator(ProbeElementValidator):
             self,
             values: List[float],
             masked: Iterable[int],
-            accept_range: Tuple[float, float],
-            masked_accept_range: Tuple[float, float]
+            active_range: Tuple[float, float],
+            masked_range: Tuple[float, float]
     ) -> List[ProbeElementValidatorResult]:
 
         n_elements = len(values)
@@ -402,7 +404,7 @@ class ByNeighborhoodValidator(ProbeElementValidator):
             if is_masked:
                 # Masked elements should be below inactive threshold,
                 # otherwise there is something wrong.
-                thr_min, thr_max = masked_accept_range
+                thr_min, thr_max = masked_range
                 if value > thr_max:
                     verdict = ElementValidationVerdict.TOO_HIGH
                 elif value < thr_min:
@@ -410,7 +412,7 @@ class ByNeighborhoodValidator(ProbeElementValidator):
                 else:
                     verdict = ElementValidationVerdict.VALID
             else:
-                thr_min, thr_max = accept_range
+                thr_min, thr_max = active_range
 
                 # get elements from range [l, r)
                 if self.group_size == "all":
@@ -421,7 +423,7 @@ class ByNeighborhoodValidator(ProbeElementValidator):
                     r = i + self.group_size // 2 + 1
                     r = min(r, n_elements)
 
-                near = value[l:r]
+                near = values[l:r]
                 active_elements = np.argwhere(
                     np.logical_and(thr_min <= near, near <= thr_max))
                 # Exclude the current element.
@@ -508,7 +510,7 @@ class ProbeHealthVerifier:
     """
 
     def __init__(self, log=None):
-        self.log = log if log is not None else StdoutLogger()
+        self.log = log if log is not None else LOGGER
 
     def check_probe(
             self,
@@ -555,8 +557,8 @@ class ProbeHealthVerifier:
             validator_result = validator.validate(
                 values=extractor_result,
                 masked=masked_elements,
-                accept_range=feature.active_range,
-                masked_accept_range=feature.masked_elements_range
+                active_range=feature.active_range,
+                masked_range=feature.masked_elements_range
             )
             results[feature.name] = (extractor_result, validator_result)
 
