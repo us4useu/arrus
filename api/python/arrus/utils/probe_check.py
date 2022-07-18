@@ -33,8 +33,7 @@ class StdoutLogger:
         print(msg)
 
 
-# TODO(zklog) all dataclasses here should be immutable ("frozen")
-@dataclasses.dataclass()
+@dataclasses.dataclass(frozen=True)
 class FeatureDescriptor:
     """
     Descriptor class for signal features used for probe 'diagnosis'.
@@ -63,7 +62,7 @@ class ProbeElementValidatorResult:
     valid_range: tuple
 
 
-@dataclasses.dataclass()
+@dataclasses.dataclass(frozen=True)
 class ProbeElementFeatureDescriptor:
     """
     Descriptor class for results of element checking.
