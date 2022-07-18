@@ -36,30 +36,18 @@ Following options are accepted:
 
 Examples:
 python probe_check.py --help
-python probe_check.py --cfg_path /home/user/us4r.prototxt --method threshold
-python probe_check.py --cfg_path /home/user/us4r.prototxt --method neighborhood --rf_file rf.pkl
+python probe_check.py --cfg_path /home/user/us4r.prototxt
+python probe_check.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
 """
-import time
-import os
 import collections
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from arrus.utils.probe_check import ProbeHealthVerifier, FeatureDescriptor
-from arrus.utils.probe_check import (
-    DURATION,
-    AMPLITUDE,
-    ENERGY
-)
+from arrus.utils.probe_check import *
 
 
 # ------------------------------------------ Utility functions
-
-
-
-
-
 def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
                       iframe=0):
     """
@@ -82,7 +70,7 @@ def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
 
     for i in range(1, ny):
         for j in range(nx):
-            rf = data[iframe, k, minsamp:maxsamp, int(nrx/2) - 1]
+            rf = data[iframe, k, minsamp:maxsamp, int(nrx / 2) - 1]
             rf = rf - np.mean(rf)
             ax[i, j].plot(rf, c=status_color[k])
             ax[i, j].set_title(f"{k}")
@@ -111,76 +99,57 @@ def display_rf_frame(frame_number, data, figure, ax, canvas):
     plt.draw()
 
 
-def display_summary(n_elements, report):
-    fig, axes = plt.subplots(len(features), 1)
+def display_summary(n_elements: int, report: ProbeHealthReport):
+    characteristics = report.characteristics
+    fig, axes = plt.subplots(len(characteristics), 1)
     elements = np.arange(n_elements)
     canvases = []
-    for ax, feature in zip(axes, features):
+    for i, (name, c) in enumerate(characteristics.items()):
+        ax = axes[i]
         ax.set_xlabel("Channel")
-        ax.set_ylabel(feature.name)
-        canvas, = ax.plot(elements, np.zeros((n_elements)))
-        ax.set_ylim(bottom=-3000, top=3000)
+        ax.set_ylabel(name)
+        ax.plot(elements, c)
     fig.show()
-    return fig, axes, canvases
+    return fig, axes
 
 
-def print_health_info(report, detailed=False):
+def print_health_info(report):
     features = report.params["features"]
-    method = report.params["method"]
     elements_report = report.elements
-    invalid_elements = []
-    invalid_elements_numbers = []
+
+    invalid_els = collections.defaultdict(list)
+    # tuples: (nr, is_masked, element_feature_descriptor)
+
     for i, e in enumerate(elements_report):
-        for j, f in enumerate(e.features):
-            if f.verdict != "VALID":
-                invalid_elements.append(e)
-                invalid_elements_numbers.append(e.element_number)
+        for name, f in e.features.items():
+            if f.verdict != ElementValidationVerdict.VALID:
+                invalid_els[name].append((e.element_number, e.is_masked, f))
 
     for feature in features:
-        if len(invalid_elements) == 0:
-            print(f"Testing {feature.name} by {method} - all channels seems to "
-                  f"work correctly.")
+        print(f"Test results for feature: {feature.name}")
+        feature_invalid_elements = invalid_els[feature.name]
+        nrs, _, _ = zip(*feature_invalid_elements)
+        if len(nrs) == 0:
+            print("All channels seems to work correctly.")
         else:
-            print(f"Testing {feature.name} by {method} - "
-                  f"found {len(invalid_elements)} suspect channels: ")
-            print(invalid_elements_numbers)
+            print(f"Found {len(feature_invalid_elements)} suspect channels: ")
+            print(nrs)
 
-            active_verdict = collections.defaultdict(list)
-            inactive_verdict = collections.defaultdict(list)
-            keys = set()
-            for element in invalid_elements:
-                e_nr = element.element_number
-                for feature in element.features:
-                    verdict_id = feature.verdict
-                    keys.add(verdict_id)
-                    if element.active:
-                        active_verdict[verdict_id].append(e_nr)
-                    else:
-                        inactive_verdict[verdict_id].append(e_nr)
-            keys = sorted(list(keys))
-            for k in keys:
-                active_elements = active_verdict[k]
-                inactive_elements = inactive_verdict[k]
-                if len(active_elements) > 0:
-                    print(f"Following active channels have {feature.name} {k}: "
-                          f"{active_elements}")
-                if len(inactive_elements) > 0:
-                    print(f"Following masked channels have {feature.name} {k}: "
-                          f"{active_elements}")
-            print(" ")
+            for nr, is_masked, f_el_desc in invalid_els:
+                state = "masked" if is_masked else "active"
+                result = f_el_desc.validation_result
+                print(f"channel# {nr}, state: {state}, "
+                      f"verdict: {result.verdict}, "
+                      f"value: {np.round(f_el_desc.value, 2)}, "
+                      f"valid range: {result.valid_range}.")
 
-        if detailed:
-            for element in invalid_elements:
-                active = not element.is_masked
-                state = "active" if active else "masked"
-                for feature in element.features:
-                    print(f"channel# {element.element_number}"
-                          f"    state: {state}"
-                          f"    feature: {feature.name} \n"
-                          f"    verdict: {feature.verdict}\n"
-                          f"    value: {np.round(feature.value, 2)}\n"
-                          f"    valid range: {element.valid_range}\n"
-                          )
+
+def get_data_dimensions(metadata):
+    n_elements = metadata.context.device.probe.model.n_elements
+    sequence = metadata.raw_sequence
+    start_sample, end_sample = sequence.ops[0].rx.sample_range
+    n_samples = end_sample - start_sample
+    return n_elements, n_samples
 
 
 def main():
@@ -190,49 +159,42 @@ def main():
                         required=True)
     parser.add_argument("--display_frame", dest="display_frame",
                         help="Select a frame to be displayed. Optional, if not "
-                             "chosen, max amplitude will be displayed.",
+                             "chosen, summary of features will be displayed.",
                         required=False, type=int, default=None)
     parser.add_argument("--n", dest="n",
-                        help="Number of full Lin Sequence TXs to run.",
+                        help="Number of full TX/RX sequences to run.",
                         required=False, type=int, default=1)
-    parser.add_argument("--method", dest="method",
-                        help="Probe element check method.",
-                        required=False, type=str, default="threshold",
-                        choices=["neighborhood", "threshold"])
     parser.add_argument("--rf_file", dest="rf_file",
                         help="The name of the output file with RF data.",
                         required=False, default=None)
     args = parser.parse_args()
 
     cfg_path = args.cfg_path
-    verifier = ProbeHealthVerifier(log=StdoutLogger())
+    verifier = ProbeHealthVerifier()
 
     features = [
         FeatureDescriptor(
-            name=AMPLITUDE,
+            name=MaxAmplitudeExtractor.feature,
             active_range=(200, 20000),  # [a.u.]
             masked_elements_range=(0, 2000)  # [a.u.]
         ),
         FeatureDescriptor(
-            name=DURATION,
+            name=SignalDurationTimeExtractor.feature,
             active_range=(0, 800),  # number of samples
             masked_elements_range=(800, np.inf)  # number of samples
         ),
         FeatureDescriptor(
-            name=ENERGY,
+            name=EnergyExtractor.feature,
             active_range=(0, 15),  # [a.u.]
             masked_elements_range=(0, np.inf)  # [a.u.]
         ),
     ]
+    validator = ByNeighborhoodValidator()
     report = verifier.check_probe(cfg_path=cfg_path, n=args.n,
-                                  features=features, method=args.method)
+                                  features=features, validator=validator)
 
-    print_health_info(report, detailed=False)
-
-    n_elements = report.sequence_metadata.context.device.probe.model.n_elements
-    start_sample, end_sample = report.sequence_metadata.raw_sequence.ops[
-        0].rx.sample_range
-    n_samples = end_sample - start_sample
+    print_health_info(report)
+    n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
 
     if args.display_frame is not None:
         # Display the sequence of RF frames
@@ -240,8 +202,9 @@ def main():
         for frame in report.data:
             display_rf_frame(args.display_frame, frame, fig, ax, canvas)
             time.sleep(0.3)
-        visual_evaluation(report)
         plt.show()
+        #  Display all waveforms in a single window.
+        visual_evaluation(report)
     else:
         display_summary(n_elements, report)
     if args.rf_file is not None:

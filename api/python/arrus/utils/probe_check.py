@@ -4,7 +4,7 @@ import enum
 import math
 import time
 from abc import ABC, abstractmethod
-from typing import Set, List, Iterable, Tuple
+from typing import Set, List, Iterable, Tuple, Dict
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -77,6 +77,64 @@ class ProbeElementFeatureDescriptor:
     name: str
     value: float
     validation_result: ProbeElementValidatorResult
+
+
+@dataclasses.dataclass(frozen=True)
+class ProbeElementHealthReport:
+    """
+    Report of a single probe element health check.
+
+    The probe element can be in one of the following states:
+    - "VALID": the element seems to work correctly,
+    - "TOO_HIGH": the element is characterised by too high feature value,
+    - "TOO_LOW": the element is characterised by too low feature value,
+    - "INDEFINITE": the estimate of the feature value failed.
+    The information on feature value are in features attribute, where
+    the list of ProbeElementFeatureDescriptor instances are stored.
+
+    :param is_masked: whether the element was masked in the system cfg
+    :param features: dict of ProbeElementFeatureDescriptor oebjects
+      [feature name -> feature descriptor]
+    :param element_number: element number
+    """
+    is_masked: bool
+    features: Dict[str, ProbeElementFeatureDescriptor]
+    element_number: int
+
+
+@dataclasses.dataclass(frozen=True)
+class ProbeHealthReport:
+    """
+    A complete report of the probe health.
+
+    Currently, the health report contains only information about the health
+    of each probe element separately.
+
+    :param params: a dictionary with health verifier method parameters
+    :param sequence_metadata: description of the TX/RX sequence used in the
+      probe health verification procedure
+    :param elements: a list of `ProbeElementHealthReport` objects
+    :param data: an RF data on the basis of which the probe verification was
+        performed
+    """
+    # Report generator parameters.
+    params: dict
+    sequence_metadata: arrus.metadata.ConstMetadata
+    # Report results
+    elements: Iterable[ProbeElementHealthReport]
+    data: np.ndarray
+
+    @property
+    def characteristics(self) -> Dict[str, np.ndarray]:
+        result = collections.defaultdict(list)
+        for e in self.elements:
+            for name, desc in e.features.items():
+                result[name].append(desc.value)
+
+        # Convert ordinary lists to np.ndarrays
+        for name, c in result.items():
+            result[name] = np.asarray(c)
+        return result
 
 
 class ProbeElementFeatureExtractor(ABC):
@@ -297,6 +355,7 @@ class ProbeElementValidator(ABC):
 
 
 class ByThresholdValidator(ProbeElementValidator):
+    name = "threshold"
 
     def __init__(self):
         pass
@@ -371,6 +430,7 @@ class ByNeighborhoodValidator(ProbeElementValidator):
       if the number of active elements is < min_nim_of_neighbors, the verdict
       for the elements will be INDEFINITE
     """
+    name = "neighborhood"
 
     def __init__(self, group_size=32, feature_range_in_neighborhood=(0.5, 2),
                  min_num_of_neighbors=5):
@@ -450,52 +510,6 @@ class ByNeighborhoodValidator(ProbeElementValidator):
                     verdict=verdict,
                     valid_range=(lower_bound, upper_bound)))
         return results
-
-
-@dataclasses.dataclass(frozen=True)
-class ProbeElementHealthReport:
-    """
-    Report of a single probe element health check.
-
-    The probe element can be in one of the following states:
-    - "VALID": the element seems to work correctly,
-    - "TOO_HIGH": the element is characterised by too high feature value,
-    - "TOO_LOW": the element is characterised by too low feature value,
-    - "INDEFINITE": the estimate of the feature value failed.
-    The information on feature value are in features attribute, where
-    the list of ProbeElementFeatureDescriptor instances are stored.
-
-    :param is_masked: whether the element was masked in the system cfg
-    :param features: dict of ProbeElementFeatureDescriptor oebjects
-      [feature name -> feature descriptor]
-    :param element_number: element number
-    """
-    is_masked: bool
-    features: dict
-    element_number: int
-
-
-@dataclasses.dataclass(frozen=True)
-class ProbeHealthReport:
-    """
-    A complete report of the probe health.
-
-    Currently, the health report contains only information about the health
-    of each probe element separately.
-
-    :param params: a dictionary with health verifier method parameters
-    :param sequence_metadata: description of the TX/RX sequence used in the
-      probe health verification procedure
-    :param elements: a list of `ProbeElementHealthReport` objects
-    :param data: an RF data on the basis of which the probe verification was
-        performed
-    """
-    # Report generator parameters.
-    params: dict
-    sequence_metadata: arrus.metadata.ConstMetadata
-    # Report results
-    elements: collections.abc.Iterable  # list of ProbeElementHealthReport
-    data: np.ndarray
 
 
 EXTRACTORS = dict([(e.feature, e) for e in
