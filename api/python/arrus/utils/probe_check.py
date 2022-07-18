@@ -176,12 +176,12 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
 
     # TODO(zklog) use type hints for function parameters
     #  (see e.g. ProbeElementFeatureExtractor.extract)
-    def extract(self, data):
+    def extract(self, data: np.ndarray) -> np.ndarray:
         """
         Function extract parameter correlated with normalized signal energy.
 
-        :param data: numpy array of rf data,
-        :return: numpy array of signal energies.
+        :param data: numpy array of rf data
+        :return: numpy array of signal energies
         """
         # TODO(zklog) why the below comment is not in the above docstring?
         # input data: (number of repetitions, number of tx, number of
@@ -199,21 +199,43 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
             energies.append(mean_energy)
         return np.array(energies)
 
-    def __hpfilter(self, rf, n=4, wn=1e5, fs=65e6):
+    def __hpfilter(
+            self,
+            rf: np.ndarray,
+            n: int = 4,
+            wn: float = 1e5,
+            fs: float = 65e6
+    ) -> np.ndarray:
+        """
+        Returns high-pass filtered rf signals.
+
+        :param rf: numpy array of rf signals
+        :param n: the order of the filter
+        :param wn: cut-off frequency
+        :param fs: sampling frequency
+        :return: numpy array of filtered rf signals
+        """
         btype = "highpass"
         output = "sos"
-        # TODO(zklog) what the sos means here? speed of sound?
-        sos = butter(n, wn, btype=btype, output=output, fs=fs)
-        return sosfilt(sos, rf)
+        iir = butter(n, wn, btype=btype, output=output, fs=fs)
+        return sosfilt(iir, rf)
 
-    def __normalize(self, x):
+    def __normalize(self, x: np.ndarray) -> np.ndarray:
+        """
+        Normalizes input np.ndarray (i.e. moves values into [0, 1] range.
+        :param x: np.ndarray
+        :return: normalized np.ndarray
+        """
         mx = np.max(x)
         mn = np.min(x)
         return (x - mn) / (mx - mn)
 
-    def __get_signal_energy(self, rf):
-        # TODO(zklog) why are you copying RF data here?
-        rf = rf.copy()
+    def __get_signal_energy(self, rf: np.ndarray) -> np.float:
+        """
+        Returns normalized and high-pass filtered signal energy.
+        :param rf: signal
+        :return: signal energy (np.float)
+        """
         rf = self.__hpfilter(rf)
         rf = rf ** 2
         rf = self.__normalize(rf)
@@ -234,16 +256,17 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     def __init__(self, log):
         self.log = log
 
-    def extract(self, data):
+    def extract(self, data: np.ndarray) -> list:
         """
         Extracts parameter correlated with signal duration time.
 
-        :param data: numpy array of rf data,
+        :param data: numpy array of rf data with following dimensions:
+        [number of repetitions,
+         number of tx,
+         number of samples,
+         number of rx channels]
         :return: list, list of signal duration times
         """
-        # TODO(zklog) why the below comment is not in the above docstring?
-        # input data: (number of repetitions, number of tx, number of
-        # samples, number of rx channels)
         n_frames, ntx, _, nrx = data.shape
         times = []
         for itx in range(ntx):
@@ -261,9 +284,10 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         result = np.array(times)
         return result
 
-    def __gauss(self, x, a, x0, sigma):
+    def __gauss(self, x: float, a: float, x0: float, sigma: float) -> float:
         return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
 
+    #TODO move __hpfilter() and __normalize() and maybe other out of class
     def __hpfilter(self, rf, n=4, wn=1e5, fs=65e6):
         btype = "highpass"
         output = "sos"
@@ -276,7 +300,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         mn = np.min(x)
         return (x - mn) / (mx - mn)
 
-    def __envelope(self, rf):
+    def __envelope(self, rf: np.ndarray) -> np.ndarray:
         return np.abs(hilbert(rf))
 
     def __preprocess_rf(self, rf):
@@ -288,7 +312,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         rf = self.__envelope(rf)
         return rf
 
-    def __fitgauss(self, y):
+    def __fitgauss(self, y: np.ndarray) -> tuple:
         """
         The function fits gauss curve to signal, and returns tuple of curve
         parameters.
@@ -311,7 +335,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
 
         return pars
 
-    def __get_signal_duration(self, rf):
+    def __get_signal_duration(self, rf: np.ndarray) -> float:
         rf = self.__preprocess_rf(rf)
         # for return values, see definition of __gauss
         _, _, sigma = self.__fitgauss(rf)
