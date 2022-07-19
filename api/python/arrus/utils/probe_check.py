@@ -253,9 +253,6 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     """
     feature = "signal_duration_time"
 
-    def __init__(self, log):
-        self.log = log
-
     def extract(self, data: np.ndarray) -> list:
         """
         Extracts parameter correlated with signal duration time.
@@ -538,9 +535,6 @@ class ProbeHealthVerifier:
     Probe health verifier class.
     """
 
-    def __init__(self, log=None):
-        self.log = log if log is not None else LOGGER
-
     def check_probe(
             self,
             cfg_path: str, n: int,
@@ -581,7 +575,7 @@ class ProbeHealthVerifier:
         # validator.
         results = {}
         for feature in features:
-            extractor = EXTRACTORS[feature.name]
+            extractor = EXTRACTORS[feature.name]()
             extractor_result = extractor.extract(rfs)
             validator_result = validator.validate(
                 values=extractor_result,
@@ -662,13 +656,13 @@ class ProbeHealthVerifier:
             # Wait for the voltage to stabilize.
             time.sleep(1)
             # Start the device.
-            self.log.info("Starting TX/RX")
+            LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
             # Record RF frames.
             # Acquire n consecutive frames
             for i in range(n):
-                self.log.debug(f"Performing TX/RX: {i}")
+                LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX: {i}")
                 sess.run()
                 data = buffer.get()[0]
-                rfs.append(data.copy())
+                rfs.append(np.squeeze(data.copy()))
             rfs = np.stack(rfs)
         return rfs, const_metadata, masked_elements
