@@ -214,18 +214,15 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
     """
     feature = "energy"
 
-    # TODO(zklog) use type hints for function parameters
-    #  (see e.g. ProbeElementFeatureExtractor.extract)
     def extract(self, data: np.ndarray) -> np.ndarray:
         """
         Function extract parameter correlated with normalized signal energy.
 
-        :param data: numpy array of rf data
+        :param data: numpy array of rf data with the following shape:
+            (number of frames, number of tx, number of samples,
+            number of rx channels)
         :return: numpy array of signal energies
         """
-        # TODO(zklog) why the below comment is not in the above docstring?
-        # input data: (number of repetitions, number of tx, number of
-        # samples, number of rx channels)
         n_frames, ntx, _, nrx = data.shape
         energies = []
         for itx in range(ntx):
@@ -292,6 +289,16 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         return result
 
     def __gauss(self, x: float, a: float, x0: float, sigma: float) -> float:
+        """
+        Returns the value of a gaussian function
+            f(x)=a*exp(-(x-x0)**2/(2*sigma**2)
+        at given argument x.
+        :param x: argument
+        :param a: height of the peak
+        :param x0: expected value
+        :param sigma: standard deviation
+        :return: function value at x
+        """
         return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
 
 
@@ -310,11 +317,11 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
                 pars, _ = curve_fit(self.__gauss, np.arange(y.size), y,
                                     bounds=bounds, p0=p0)
             except Exception as e:
-                # TODO(zklog) use logger instead of print
                 # When curve_fit() can not fit gauss, sigma is set to 0
                 pars = (0, 0, 0)
-                print("The expected signal envelope couldn't be fitted in some "
-                      "signal, probably due to low SNR.")
+                LOGGER.log(arrus.logging.INFO,
+                    "The expected signal envelope couldn't be fitted "
+                    "in some signal, probably due to low SNR.")
 
         return pars
 
