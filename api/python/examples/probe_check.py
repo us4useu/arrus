@@ -80,6 +80,8 @@ def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
     lina = mlines.Line2D([], [], color="C1", label="inactive")
     fig.legend(handles=[lact, lina])
     fig.tight_layout()
+    fig.show()
+    plt.show()
 
 
 def init_rf_display(width, height):
@@ -110,6 +112,7 @@ def display_summary(n_elements: int, report: ProbeHealthReport):
         ax.set_ylabel(name)
         ax.plot(elements, c)
     fig.show()
+    plt.show()
     return fig, axes
 
 
@@ -122,7 +125,7 @@ def print_health_info(report):
 
     for i, e in enumerate(elements_report):
         for name, f in e.features.items():
-            if f.verdict != ElementValidationVerdict.VALID:
+            if f.validation_result.verdict != ElementValidationVerdict.VALID:
                 invalid_els[name].append((e.element_number, e.is_masked, f))
 
     for feature in features:
@@ -133,9 +136,7 @@ def print_health_info(report):
             print("All channels seems to work correctly.")
         else:
             print(f"Found {len(feature_invalid_elements)} suspect channels: ")
-            print(nrs)
-
-            for nr, is_masked, f_el_desc in invalid_els:
+            for nr, is_masked, f_el_desc in feature_invalid_elements:
                 state = "masked" if is_masked else "active"
                 result = f_el_desc.validation_result
                 print(f"channel# {nr}, state: {state}, "
@@ -146,7 +147,7 @@ def print_health_info(report):
 
 def get_data_dimensions(metadata):
     n_elements = metadata.context.device.probe.model.n_elements
-    sequence = metadata.raw_sequence
+    sequence = metadata.context.raw_sequence
     start_sample, end_sample = sequence.ops[0].rx.sample_range
     n_samples = end_sample - start_sample
     return n_elements, n_samples
