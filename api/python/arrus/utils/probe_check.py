@@ -48,6 +48,7 @@ def hpfilter(
 def normalize(x: np.ndarray) -> np.ndarray:
     """
     Normalizes input np.ndarray (i.e. moves values into [0, 1] range.
+
     :param x: np.ndarray
     :return: normalized np.ndarray
     """
@@ -59,10 +60,12 @@ def normalize(x: np.ndarray) -> np.ndarray:
 def envelope(rf: np.ndarray) -> np.ndarray:
     """
     Returns envelope of the signal using Hilbert transform.
+
     :param rf: signals in np.ndarray
     :return: envelope in np.ndarray
     """
     return np.abs(hilbert(rf))
+
 
 class StdoutLogger:
     def __init__(self):
@@ -78,11 +81,11 @@ class FeatureDescriptor:
     """
     Descriptor class for signal features used for probe 'diagnosis'.
 
-    :param name: feature name ("amplitude" or "signal_duration_time"),
+    :param name: feature name ("amplitude" or "signal_duration_time")
     :param active_range: feature range of values possible to obtain from active
-       'healthy' transducer,
+       'healthy' transducer
     :param masked_elements_range: feature range of values possible to obtain
-       from inactive 'healthy' transducer.
+       from inactive 'healthy' transducer
     """
     name: str
     active_range: tuple
@@ -107,8 +110,8 @@ class ProbeElementFeatureDescriptor:
     """
     Descriptor class for results of element checking.
 
-    :param name: name of the feature used for element check,
-    :param value: value of the feature.
+    :param name: name of the feature used for element check
+    :param value: value of the feature
     :param correct_range: range of values (min, max), for which the element will
       be marked as correct
     :param verdict: verdict string (one of following "VALID_VERDICTS")
@@ -246,7 +249,7 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         rf = hpfilter(rf)
         rf = rf ** 2
         rf = normalize(rf)
-        return np.sum(rf)
+        return float(np.sum(rf))
 
 
 class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
@@ -260,7 +263,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     """
     feature = "signal_duration_time"
 
-    def extract(self, data: np.ndarray) -> list:
+    def extract(self, data: np.ndarray) -> np.array:
         """
         Extracts parameter correlated with signal duration time.
 
@@ -269,16 +272,14 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
          number of tx,
          number of samples,
          number of rx channels]
-        :return: list, list of signal duration times
+        :return: np.array of signal duration times
         """
         n_frames, ntx, _, nrx = data.shape
         times = []
         for itx in range(ntx):
-            # todo number of repeats
             frames_times = []
-            for frame in range(n_frames):
-                # TODO(zklog) data[0 ???
-                rf = data[0, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
+            for iframe in range(n_frames):
+                rf = data[iframe, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
                 rf = rf.copy()
                 rf = rf.astype(float)
                 t = self.__get_signal_duration(np.squeeze(rf))
