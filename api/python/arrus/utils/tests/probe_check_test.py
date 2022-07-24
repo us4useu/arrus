@@ -95,5 +95,18 @@ class ByThresholdValidatorTest(AbstractElementValidatorTest):
                          ElementValidationVerdict.TOO_HIGH)
 
 
+class MaxAmplitudeExtractorTest(unittest.TestCase):
+
+    def test_extract(self):
+        amplitude_extractor = MaxAmplitudeExtractor()
+        nrx = 192
+        ntx = 16
+        nframe = 1
+        nsamp = 256
+        signal = np.random.random((nframe, ntx, nsamp, nrx))
+        self.assertEqual(1,1)
+
+
+
 if __name__ == "__main__":
     unittest.main()
