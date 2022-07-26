@@ -98,13 +98,19 @@ class ByThresholdValidatorTest(AbstractElementValidatorTest):
 class MaxAmplitudeExtractorTest(unittest.TestCase):
 
     def test_extract(self):
-        amplitude_extractor = MaxAmplitudeExtractor()
+        # generate synthetic rf signal
         nrx = 192
         ntx = 16
         nframe = 1
         nsamp = 256
         signal = np.random.random((nframe, ntx, nsamp, nrx))
-        self.assertEqual(1,1)
+        maxamp = 11;
+        for itx in range(ntx):
+            signal[0, itx, 64, 128] = 11;
+        # check extractor on the generated signal
+        extractor = MaxAmplitudeExtractor()
+        extracted = extractor.extract(signal)
+        self.assertEqual(extracted, np.ones(ntx)*maxamp)
 
 
 
