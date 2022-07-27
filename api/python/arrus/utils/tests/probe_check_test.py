@@ -95,7 +95,7 @@ class ByThresholdValidatorTest(AbstractElementValidatorTest):
                          ElementValidationVerdict.TOO_HIGH)
 
 
-class AbstractExtractorTest(unittest.TestCase)
+class AbstractExtractorTest(unittest.TestCase):
     def _generate_random_signal(self):
         # generate synthetic rf signal
         nrx = 192
@@ -111,6 +111,7 @@ class MaxAmplitudeExtractorTest(AbstractExtractorTest):
     def test_extract(self):
         # generate synthetic rf signal
         signal = self._generate_random_signal()
+        _, ntx, _, _ = signal.shape
         maxamp = 11
         for itx in range(ntx):
             signal[0, itx, 64, 128] = maxamp
@@ -120,13 +121,14 @@ class MaxAmplitudeExtractorTest(AbstractExtractorTest):
         self.assertTrue(np.all(extracted == np.ones(ntx)*maxamp))
 
 
-class EnergyExtractorTest(unittest.TestCase):
+class EnergyExtractorTest(AbstractExtractorTest):
 
     def test_extract_zero_signal(self):
         # generate synthetic rf signal
         signal = self._generate_random_signal()*0
+        _, ntx, nsamp, nrx = signal.shape
         extracted = EnergyExtractor().extract(signal)
-        self.assertTrue(np.all(signal == extracted))
+        self.assertTrue(np.all(extracted == np.zeros(ntx)))
 
 
 
