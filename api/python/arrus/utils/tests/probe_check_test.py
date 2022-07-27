@@ -110,7 +110,9 @@ class MaxAmplitudeExtractorTest(unittest.TestCase):
         # check extractor on the generated signal
         extractor = MaxAmplitudeExtractor()
         extracted = extractor.extract(signal)
-        self.assertEqual(extracted, np.ones(ntx)*maxamp)
+        # for i in range(len(extracted)):
+            # self.assertEqual(extracted, np.ones(ntx)*maxamp)
+        self.assertTrue(np.all(extracted == np.ones(ntx)*maxamp))
 
 
 
