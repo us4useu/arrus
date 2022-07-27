@@ -48,13 +48,24 @@ def hpfilter(
 def normalize(x: np.ndarray) -> np.ndarray:
     """
     Normalizes input np.ndarray (i.e. moves values into [0, 1] range.
+    If x contains some np.nans, they are ignored.
+    If x contains only np.nans, non-modified x is returned. 
 
     :param x: np.ndarray
     :return: normalized np.ndarray
     """
-    mx = np.max(x)
-    mn = np.min(x)
-    return (x - mn) / (mx - mn)
+
+    mx = np.nanmax(x)
+    if np.isfinite(mx):
+        mn = np.nanmin(x)
+        if mx != mn:
+            normalized = (x - mn) / (mx - mn)
+        else:
+            normalized = 0
+    else:
+        normalized = x
+        
+    return normalized
 
 
 def envelope(rf: np.ndarray) -> np.ndarray:
