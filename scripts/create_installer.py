@@ -22,6 +22,7 @@ def get_firmware_url_pattern(firmware_version, tx_firmware_version):
     name = get_firmware_tag_name(firmware_version, tx_firmware_version)
     return f"https://github.com/us4useu/arrus-public/releases/download/{name}/{name}.zip"
 
+
 def _search_for_single_pattern(pattern, content):
     for line in content:
         result = re.findall(pattern, line)

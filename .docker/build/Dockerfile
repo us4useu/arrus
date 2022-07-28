@@ -25,7 +25,8 @@ RUN apt-get update \
     git \
     vim \
     patchelf \
-    g++-9
+    g++-9 \
+    doxygen
 
 
 RUN echo "alias python=python3" >> /root/.bashrc

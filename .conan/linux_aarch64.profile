@@ -1,7 +1,6 @@
 [settings]
 arch=armv8
 arch_build=armv8
-build_type=Release
 compiler=gcc
 compiler.libcxx=libstdc++11
 compiler.version=7
