@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-
 from arrus.utils.probe_check import *
 
 
@@ -96,17 +95,31 @@ class ByThresholdValidatorTest(AbstractElementValidatorTest):
 
 
 class AbstractExtractorTest(unittest.TestCase):
-    def _generate_random_signal(self):
-        # generate synthetic rf signal
-        nrx = 192
-        ntx = 16
-        nframe = 1
-        nsamp = 256
-        return np.random.random((nframe, ntx, nsamp, nrx))
 
+    nrx = 192
+    ntx = 16
+    nframe = 4
+    nsamp = 256
+
+    def _generate_random_signal(self):
+        return np.random.random(
+            (self.nframe, self.ntx, self.nsamp, self.nrx))
+
+    def _generate_zero_signal(self):
+        return np.zeros(
+            (self.nframe, self.ntx, self.nsamp, self.nrx))
+
+    def test_extract_zero_signal(self):
+        # generate synthetic rf signal
+        signal = self._generate_zero_signal()
+        _, ntx, _, _ = signal.shape
+        extracted = self.extractor.extract(signal)
+        self.assertTrue(np.all(extracted == np.zeros(ntx)))
 
 
 class MaxAmplitudeExtractorTest(AbstractExtractorTest):
+
+    extractor = MaxAmplitudeExtractor()
 
     def test_extract(self):
         # generate synthetic rf signal
@@ -116,19 +129,21 @@ class MaxAmplitudeExtractorTest(AbstractExtractorTest):
         for itx in range(ntx):
             signal[0, itx, 64, 128] = maxamp
         # check extractor on the generated signal
-        extractor = MaxAmplitudeExtractor()
-        extracted = extractor.extract(signal)
+        # extractor = MaxAmplitudeExtractor()
+        extracted = self.extractor.extract(signal)
         self.assertTrue(np.all(extracted == np.ones(ntx)*maxamp))
 
 
 class EnergyExtractorTest(AbstractExtractorTest):
 
-    def test_extract_zero_signal(self):
-        # generate synthetic rf signal
-        signal = self._generate_random_signal()*0
-        _, ntx, nsamp, nrx = signal.shape
-        extracted = EnergyExtractor().extract(signal)
-        self.assertTrue(np.all(extracted == np.zeros(ntx)))
+    extractor = EnergyExtractor()
+
+    # def test_extract_zero_signal(self):
+    #     # generate synthetic rf signal
+    #     signal = self._generate_zero_signal()
+    #     _, ntx, _, _ = signal.shape
+    #     extracted = self.extractor.extract(signal)
+    #     self.assertTrue(np.all(extracted == np.zeros(ntx)))
 
 
 
