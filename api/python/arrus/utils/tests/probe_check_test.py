@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from arrus.utils.probe_check import *
+from probe_check import *
 
 
 class TestLogger:

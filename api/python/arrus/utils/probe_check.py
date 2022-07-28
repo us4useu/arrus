@@ -3,8 +3,8 @@ import dataclasses
 import enum
 import math
 import time
-from abc import abc, abstractmethod
-from typing import set, list, iterable, tuple, dict
+from abc import ABC, abstractmethod
+from typing import Set, List, Iterable, Tuple, Dict
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -13,11 +13,11 @@ from scipy.signal import butter, sosfilt, hilbert
 import arrus.session
 import arrus.logging
 import arrus.utils.us4r
-from arrus.ops.imaging import linsequence
-from arrus.ops.us4r import pulse, scheme
-from arrus.utils.imaging import pipeline, remaptologicalorder
+from arrus.ops.imaging import LinSequence
+from arrus.ops.us4r import Pulse, Scheme
+from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
 
-logger = arrus.logging.get_logger()
+LOGGER = arrus.logging.get_logger()
 
 _n_skipped_samples = 10
 _nrx = 64
