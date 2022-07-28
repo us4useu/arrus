@@ -3,8 +3,8 @@ import dataclasses
 import enum
 import math
 import time
-from abc import ABC, abstractmethod
-from typing import Set, List, Iterable, Tuple, Dict
+from abc import abc, abstractmethod
+from typing import set, list, iterable, tuple, dict
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -13,18 +13,18 @@ from scipy.signal import butter, sosfilt, hilbert
 import arrus.session
 import arrus.logging
 import arrus.utils.us4r
-from arrus.ops.imaging import LinSequence
-from arrus.ops.us4r import Pulse, Scheme
-from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
+from arrus.ops.imaging import linsequence
+from arrus.ops.us4r import pulse, scheme
+from arrus.utils.imaging import pipeline, remaptologicalorder
 
-LOGGER = arrus.logging.get_logger()
+logger = arrus.logging.get_logger()
 
-_N_SKIPPED_SAMPLES = 10
-_NRX = 64
-_MID_RX = int(np.ceil(_NRX / 2) - 1)
+_n_skipped_samples = 10
+_nrx = 64
+_mid_rx = int(np.ceil(_nrx / 2) - 1)
 
 
-def hpfilter(
+def _hpfilter(
         rf: np.ndarray,
         n: int = 4,
         wn: float = 1e5,
@@ -45,7 +45,7 @@ def hpfilter(
     return sosfilt(iir, rf)
 
 
-def normalize(x: np.ndarray) -> np.ndarray:
+def _normalize(x: np.ndarray) -> np.ndarray:
     """
     Normalizes input np.ndarray (i.e. moves values into [0, 1] range.
     If x contains some np.nans, they are ignored.
@@ -68,12 +68,12 @@ def normalize(x: np.ndarray) -> np.ndarray:
     return normalized
 
 
-def envelope(rf: np.ndarray) -> np.ndarray:
+def _envelope(rf: np.ndarray) -> np.ndarray:
     """
-    Returns envelope of the signal using Hilbert transform.
+    Returns _envelope of the signal using Hilbert transform.
 
     :param rf: signals in np.ndarray
-    :return: envelope in np.ndarray
+    :return: _envelope in np.ndarray
     """
     return np.abs(hilbert(rf))
 
@@ -257,9 +257,9 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         :param rf: signal
         :return: signal energy (np.float)
         """
-        rf = hpfilter(rf)
+        rf = _hpfilter(rf)
         rf = rf ** 2
-        rf = normalize(rf)
+        rf = _normalize(rf)
         return float(np.sum(rf))
 
 
@@ -270,7 +270,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     It is assumed that input data is acquired after very short excitation
     of a tested transducer.
     The pulse length (signal duration) is estimated via fitting gaussian
-    function to envelope of a high-pass filtered signal.
+    function to _envelope of a high-pass filtered signal.
     """
     feature = "signal_duration_time"
 
@@ -332,14 +332,14 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
                 # When curve_fit() can not fit gauss, sigma is set to 0
                 pars = (0, 0, 0)
                 LOGGER.log(arrus.logging.INFO,
-                    "The expected signal envelope couldn't be fitted "
+                    "The expected signal _envelope couldn't be fitted "
                     "in some signal, probably due to low SNR.")
 
         return pars
 
     def __get_signal_duration(self, rf: np.ndarray) -> float:
-        rf = hpfilter(rf)
-        rf = envelope(rf)
+        rf = _hpfilter(rf)
+        rf = _envelope(rf)
         # for return values, see definition of __gauss
         _, _, sigma = self.__fitgauss(rf)
         return round(3 * sigma)
