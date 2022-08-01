@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from probe_check import *
+from arrus.utils.probe_check import *
 
 
 class TestLogger:
@@ -96,10 +96,11 @@ class ByThresholdValidatorTest(AbstractElementValidatorTest):
 
 class AbstractExtractorTest(unittest.TestCase):
 
-    nrx = 192
-    ntx = 16
-    nframe = 4
-    nsamp = 256
+    # nrx = 192
+    # ntx = 16
+    # nframe = 4
+    # nsamp = 256
+    # extractor = ProbeElementFeatureExtractor
 
     def _generate_random_signal(self):
         return np.random.random(
@@ -109,44 +110,84 @@ class AbstractExtractorTest(unittest.TestCase):
         return np.zeros(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
 
-    def test_extract_zero_signal(self):
-        # generate synthetic rf signal
-        signal = self._generate_zero_signal()
-        _, ntx, _, _ = signal.shape
-        extracted = self.extractor.extract(signal)
-        self.assertTrue(np.all(extracted == np.zeros(ntx)))
+    # def test_extract_zero_signal(self):
+        ### generate synthetic rf signal
+        # signal = self._generate_zero_signal()
+        # _, ntx, _, _ = signal.shape
+        # extracted = self.extractor.extract(signal)
+        # self.assertTrue(np.all(extracted == np.zeros(ntx)))
 
 
 class MaxAmplitudeExtractorTest(AbstractExtractorTest):
 
+    nrx = 192
+    ntx = 16
+    nframe = 8
+    nsamp = 256
+    max_amplitude = 100
     extractor = MaxAmplitudeExtractor()
 
-    def test_extract(self):
+    def test_extract_random_signal(self):
         # generate synthetic rf signal
         signal = self._generate_random_signal()
-        _, ntx, _, _ = signal.shape
-        maxamp = 11
-        for itx in range(ntx):
-            signal[0, itx, 64, 128] = maxamp
+        # change some samples to max_amplitude
+        for iframe in range(self.nframe):
+            for itx in range(self.ntx):
+                signal[iframe, itx, 64-itx, 128-iframe] = self.max_amplitude
         # check extractor on the generated signal
-        # extractor = MaxAmplitudeExtractor()
         extracted = self.extractor.extract(signal)
-        self.assertTrue(np.all(extracted == np.ones(ntx)*maxamp))
+        self.assertTrue(
+            np.all(
+                extracted == np.ones(self.ntx)*self.max_amplitude
+            )
+        )
+
+    def test_extract_zero_signal(self):
+        # generate synthetic rf signal
+        signal = self._generate_zero_signal()
+        # check extractor on the generated signal
+        extracted = self.extractor.extract(signal)
+        self.assertTrue(
+            np.all(
+                extracted == np.zeros(self.ntx)
+            )
+        )
+
+
 
 
 class EnergyExtractorTest(AbstractExtractorTest):
 
+    nrx = 192
+    ntx = 16
+    nframe = 1
+    nsamp = 256
     extractor = EnergyExtractor()
+    # TODO: test z wygenerowanym sinusem o zadanej amplitudzie i dlugosci
+    #       i co za tym idzie znanej energii (mniej wiecej)
 
-    # def test_extract_zero_signal(self):
-    #     # generate synthetic rf signal
-    #     signal = self._generate_zero_signal()
-    #     _, ntx, _, _ = signal.shape
-    #     extracted = self.extractor.extract(signal)
-    #     self.assertTrue(np.all(extracted == np.zeros(ntx)))
+    def test_extract_zero_signal(self):
+        # generate synthetic rf signal
+        signal = self._generate_zero_signal()
+        extracted = self.extractor.extract(signal)
+        self.assertTrue(
+            np.all(
+                extracted == np.zeros(self.ntx)
+            )
+        )
 
 
+# TODO: 
+class SignalDurationTimeExtractorTest(AbstractExtractorTest):
+    pass
+    
+    
+# TODO: test_check_probe_data() ?
+class ProbeHealthVerifierTest(unittest.TestCase):
+    pass
 
+    
+    
 
 if __name__ == "__main__":
     unittest.main()
