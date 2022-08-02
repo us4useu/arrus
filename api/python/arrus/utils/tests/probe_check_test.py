@@ -106,8 +106,12 @@ class AbstractExtractorTest(unittest.TestCase):
         return np.random.random(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
 
-    def _generate_zero_signal(self):
+    def _generate_zeros_signal(self):
         return np.zeros(
+            (self.nframe, self.ntx, self.nsamp, self.nrx))
+
+    def _generate_ones_signal(self):
+        return np.ones(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
 
     # def test_extract_zero_signal(self):
@@ -142,9 +146,9 @@ class MaxAmplitudeExtractorTest(AbstractExtractorTest):
             )
         )
 
-    def test_extract_zero_signal(self):
+    def test_extract_zeros_signal(self):
         # generate synthetic rf signal
-        signal = self._generate_zero_signal()
+        signal = self._generate_zeros_signal()
         # check extractor on the generated signal
         extracted = self.extractor.extract(signal)
         self.assertTrue(
@@ -163,12 +167,10 @@ class EnergyExtractorTest(AbstractExtractorTest):
     nframe = 1
     nsamp = 256
     extractor = EnergyExtractor()
-    # TODO: test z wygenerowanym sinusem o zadanej amplitudzie i dlugosci
-    #       i co za tym idzie znanej energii (mniej wiecej)
 
-    def test_extract_zero_signal(self):
+    def test_extract_zeros_signal(self):
         # generate synthetic rf signal
-        signal = self._generate_zero_signal()
+        signal = self._generate_zeros_signal()
         extracted = self.extractor.extract(signal)
         self.assertTrue(
             np.all(
@@ -176,23 +178,57 @@ class EnergyExtractorTest(AbstractExtractorTest):
             )
         )
 
-
     def test_extract_random_signal(self):
         # generate synthetic rf signal
         signal = self._generate_random_signal()
         signal2 = signal*2
         extracted = self.extractor.extract(signal)
         extracted2 = self.extractor.extract(signal2)
-        print(np.sum(extracted))
-        print(np.sum(extracted2))
         self.assertTrue(
-            True
+            all(extracted == extracted2)
+        )
+
+    def test_extract_ones_signal(self):
+        # generate synthetic rf signal
+        signal = self._generate_ones_signal()
+        signal2 = signal.copy()
+        nframe, ntx, nsamp, nrx = signal.shape
+        for iframe in range(int(np.ceil(nframe/2))):
+            for itx in range(int(np.ceil(ntx/2))):
+                for isamp in range(nsamp):
+                    for irx in range(nrx):
+                        signal[iframe, itx, isamp, irx] = 0
+
+        extracted = self.extractor.extract(signal)
+        extracted2 = self.extractor.extract(signal2)
+        self.assertEqual(
+            2*np.sum(extracted), np.sum(extracted2)
         )
 
 
-# TODO:
 class SignalDurationTimeExtractorTest(AbstractExtractorTest):
-    pass
+
+    nrx = 192
+    ntx = 16
+    nframe = 1
+    nsamp = 256
+    extractor = SignalDurationTimeExtractor()
+    
+    def test_extract(self):
+        signal = self._generate_zeros_signal()
+        nframe, ntx, nsamp, nrx = signal.shape
+        for iframe in range(nframe):
+            for itx in range(ntx):
+                for irx in range(nrx):
+                    signal[iframe, itx, 100:116, irx] = 1
+        extracted = self.extractor.extract(signal)
+
+        self.assertTrue(
+            all(extracted[0] == extracted)
+            and extracted[0] >= 40
+            and extracted[0] < 45
+        )
+        
     
     
 # TODO: test_check_probe_data() ?
