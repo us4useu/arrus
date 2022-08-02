@@ -96,12 +96,6 @@ class ByThresholdValidatorTest(AbstractElementValidatorTest):
 
 class AbstractExtractorTest(unittest.TestCase):
 
-    # nrx = 192
-    # ntx = 16
-    # nframe = 4
-    # nsamp = 256
-    # extractor = ProbeElementFeatureExtractor
-
     def _generate_random_signal(self):
         return np.random.random(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
@@ -113,13 +107,6 @@ class AbstractExtractorTest(unittest.TestCase):
     def _generate_ones_signal(self):
         return np.ones(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
-
-    # def test_extract_zero_signal(self):
-        ### generate synthetic rf signal
-        # signal = self._generate_zero_signal()
-        # _, ntx, _, _ = signal.shape
-        # extracted = self.extractor.extract(signal)
-        # self.assertTrue(np.all(extracted == np.zeros(ntx)))
 
 
 class MaxAmplitudeExtractorTest(AbstractExtractorTest):
@@ -156,8 +143,6 @@ class MaxAmplitudeExtractorTest(AbstractExtractorTest):
                 extracted == np.zeros(self.ntx)
             )
         )
-
-
 
 
 class EnergyExtractorTest(AbstractExtractorTest):
@@ -198,7 +183,6 @@ class EnergyExtractorTest(AbstractExtractorTest):
                 for isamp in range(nsamp):
                     for irx in range(nrx):
                         signal[iframe, itx, isamp, irx] = 0
-
         extracted = self.extractor.extract(signal)
         extracted2 = self.extractor.extract(signal2)
         self.assertEqual(
@@ -222,21 +206,17 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
                 for irx in range(nrx):
                     signal[iframe, itx, 100:116, irx] = 1
         extracted = self.extractor.extract(signal)
-
         self.assertTrue(
             all(extracted[0] == extracted)
             and extracted[0] >= 40
             and extracted[0] < 45
         )
-        
-    
+
     
 # TODO: test_check_probe_data() ?
 class ProbeHealthVerifierTest(unittest.TestCase):
     pass
 
-    
-    
 
 if __name__ == "__main__":
     unittest.main()
