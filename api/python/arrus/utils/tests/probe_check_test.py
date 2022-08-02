@@ -177,7 +177,20 @@ class EnergyExtractorTest(AbstractExtractorTest):
         )
 
 
-# TODO: 
+    def test_extract_random_signal(self):
+        # generate synthetic rf signal
+        signal = self._generate_random_signal()
+        signal2 = signal*2
+        extracted = self.extractor.extract(signal)
+        extracted2 = self.extractor.extract(signal2)
+        print(np.sum(extracted))
+        print(np.sum(extracted2))
+        self.assertTrue(
+            True
+        )
+
+
+# TODO:
 class SignalDurationTimeExtractorTest(AbstractExtractorTest):
     pass
     
