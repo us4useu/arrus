@@ -202,6 +202,9 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     """
     Feature extractor class for extracting maximal amplitudes from array of
     rf signals.
+    Returns vector of lenght equal to number of transmissions (ntx), where
+    each element is a median over the frames of maximum amplitudes
+    occurred in each of the tramissions.
     """
     feature = "amplitude"
 
@@ -373,6 +376,13 @@ class ProbeElementValidator(ABC):
 
 
 class ByThresholdValidator(ProbeElementValidator):
+    """
+    Validator that check the value of the feature and compares it with
+    given value range. When the value of the feature is within the given
+    range the element is marked as VALID, otherwise it is marked as TOO_HIGH
+    or TOO_LOW.
+
+    """
     name = "threshold"
 
     def __init__(self):
