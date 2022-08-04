@@ -108,6 +108,17 @@ class AbstractExtractorTest(unittest.TestCase):
         return np.ones(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
 
+    def _put_values_into_signal_array(self, signal, value, nvalues):
+        nframe, ntx, nsamp, nrx = signal.shape
+        sample0 = 64
+        for iframe in range(nframe):
+            for itx in range(ntx):
+                for isamp in range(nvalues):
+                    for irx in range(nrx):
+                        signal[iframe, itx, sample0:sample0+nvalues, irx] = \
+                            value
+        return signal
+
 
 class MaxAmplitudeExtractorTest(AbstractExtractorTest):
 
@@ -163,7 +174,7 @@ class EnergyExtractorTest(AbstractExtractorTest):
             )
         )
 
-    def test_extract_random_signal(self):
+    def test_signal_normalization(self):
         # generate synthetic rf signal
         signal = self._generate_random_signal()
         signal2 = signal*2
@@ -189,6 +200,18 @@ class EnergyExtractorTest(AbstractExtractorTest):
             2*np.sum(extracted), np.sum(extracted2)
         )
 
+    def test_extract_doubled_energy(self):
+        signal = self._generate_zeros_signal()
+        signal_short = self._put_values_into_signal_array(
+            signal, value=1, nvalues=16)
+        signal_long = self._put_values_into_signal_array(
+            signal, value=1, nvalues=32)
+        extracted_short = self.extractor.extract(signal_short)
+        extracted_long = self.extractor.extract(signal_long)
+
+        self.assertEqual(
+            2*np.sum(extracted_short), np.sum(extracted_long), 3
+        )
 
 class SignalDurationTimeExtractorTest(AbstractExtractorTest):
 
@@ -212,7 +235,19 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
             and extracted[0] < 45
         )
 
-    
+    def test_extract_doubled_time(self):
+        signal = self._generate_zeros_signal()
+        signal_short = self._put_values_into_signal_array(
+            signal, value=1, nvalues=16)
+        signal_long = self._put_values_into_signal_array(
+            signal, value=1, nvalues=32)
+        extracted_short = self.extractor.extract(signal_short)
+        extracted_long = self.extractor.extract(signal_long)
+
+        self.assertEqual(
+            2*np.sum(extracted_short), np.sum(extracted_long), 3
+        )
+
 # TODO: test_check_probe_data() ?
 class ProbeHealthVerifierTest(unittest.TestCase):
     pass
