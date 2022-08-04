@@ -226,17 +226,23 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
     extractor = SignalDurationTimeExtractor()
     
     def test_extract(self):
+        """
+        This test is written when sampling frequency is equal 65e6 [Hz].
+        It is possible, that it will fail for much different sampling frequency.
+        """
         signal = self._generate_zeros_signal()
-        nframe, ntx, nsamp, nrx = signal.shape
-        for iframe in range(nframe):
-            for itx in range(ntx):
-                for irx in range(nrx):
-                    signal[iframe, itx, 100:116, irx] = 1
+        signal = self._put_fast_sine_into_signal_array(
+            signal, value=1, nvalues=16)
+        # nframe, ntx, nsamp, nrx = signal.shape
+        # for iframe in range(nframe):
+            # for itx in range(ntx):
+                # for irx in range(nrx):
+                    # signal[iframe, itx, 100:116, irx] = 1
         extracted = self.extractor.extract(signal)
         self.assertTrue(
             all(extracted[0] == extracted)
-            and extracted[0] >= 40
-            and extracted[0] < 45
+            and extracted[0] >= 30
+            and extracted[0] < 40
         )
 
     def test_extract_doubled_time(self):
