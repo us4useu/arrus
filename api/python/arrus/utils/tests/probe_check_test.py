@@ -108,15 +108,19 @@ class AbstractExtractorTest(unittest.TestCase):
         return np.ones(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
 
-    def _put_values_into_signal_array(self, signal, value, nvalues):
+    def _put_fast_sine_into_signal_array(self, signal, value, nvalues):
         nframe, ntx, nsamp, nrx = signal.shape
         sample0 = 64
         for iframe in range(nframe):
             for itx in range(ntx):
                 for isamp in range(nvalues):
                     for irx in range(nrx):
-                        signal[iframe, itx, sample0:sample0+nvalues, irx] = \
-                            value
+                        if np.mod(isamp, 2) == 0:
+                            signal[iframe, itx, sample0+isamp, irx] = \
+                                value
+                        else:
+                            signal[iframe, itx, sample0+isamp, irx] = \
+                                -value
         return signal
 
 
@@ -202,15 +206,15 @@ class EnergyExtractorTest(AbstractExtractorTest):
 
     def test_extract_doubled_energy(self):
         signal = self._generate_zeros_signal()
-        signal_short = self._put_values_into_signal_array(
-            signal, value=1, nvalues=16)
-        signal_long = self._put_values_into_signal_array(
+        signal_short = self._put_fast_sine_into_signal_array(
             signal, value=1, nvalues=32)
+        signal = self._generate_zeros_signal()            
+        signal_long = self._put_fast_sine_into_signal_array(
+            signal, value=1, nvalues=64)
         extracted_short = self.extractor.extract(signal_short)
         extracted_long = self.extractor.extract(signal_long)
-
-        self.assertEqual(
-            2*np.sum(extracted_short), np.sum(extracted_long), 3
+        self.assertAlmostEqual(
+            2*np.sum(extracted_short), np.sum(extracted_long), 1
         )
 
 class SignalDurationTimeExtractorTest(AbstractExtractorTest):
@@ -237,14 +241,14 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
 
     def test_extract_doubled_time(self):
         signal = self._generate_zeros_signal()
-        signal_short = self._put_values_into_signal_array(
+        signal_short = self._put_fast_sine_into_signal_array(
+            signal, value=1, nvalues=8)
+        signal = self._generate_zeros_signal()            
+        signal_long = self._put_fast_sine_into_signal_array(
             signal, value=1, nvalues=16)
-        signal_long = self._put_values_into_signal_array(
-            signal, value=1, nvalues=32)
         extracted_short = self.extractor.extract(signal_short)
         extracted_long = self.extractor.extract(signal_long)
-
-        self.assertEqual(
+        self.assertAlmostEqual(
             2*np.sum(extracted_short), np.sum(extracted_long), 3
         )
 
