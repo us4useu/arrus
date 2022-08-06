@@ -117,6 +117,8 @@ class ElementValidationVerdict(enum.Enum):
 class ProbeElementValidatorResult:
     """
     Contains single element validation result.
+    :param verdict: ElementValidationVerdict object
+    :param valid_range: tuple contained valid range for examined feature
     """
     verdict: ElementValidationVerdict
     valid_range: tuple
@@ -129,9 +131,8 @@ class ProbeElementFeatureDescriptor:
 
     :param name: name of the feature used for element check
     :param value: value of the feature
-    :param correct_range: range of values (min, max), for which the element will
-      be marked as correct
-    :param verdict: verdict string (one of following "VALID_VERDICTS")
+    :param validation_result: ProbeElementValidationResult object contained
+        verdict and valid range for examined feature
     """
     name: str
     value: float
