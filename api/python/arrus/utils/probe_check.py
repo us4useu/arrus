@@ -104,6 +104,9 @@ class FeatureDescriptor:
 
 
 class ElementValidationVerdict(enum.Enum):
+    """
+    Contains element validation verdict.
+    """
     VALID = enum.auto()
     TOO_HIGH = enum.auto()
     TOO_LOW = enum.auto()
@@ -112,6 +115,9 @@ class ElementValidationVerdict(enum.Enum):
 
 @dataclasses.dataclass(frozen=True)
 class ProbeElementValidatorResult:
+    """
+    Contains single element validation result.
+    """
     verdict: ElementValidationVerdict
     valid_range: tuple
 
@@ -191,6 +197,9 @@ class ProbeHealthReport:
 
 
 class ProbeElementFeatureExtractor(ABC):
+    """
+    Abstract class used for creation feature extractors.
+    """
     feature: str
 
     @abstractmethod
@@ -341,6 +350,11 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         return pars
 
     def __get_signal_duration(self, rf: np.ndarray) -> float:
+        """
+        Returns signal duration estimate.
+        :param rf: signal vector
+        :return: signal duration estimate in samples
+        """
         rf = _hpfilter(rf)
         rf = _envelope(rf)
         # for return values, see definition of __gauss
