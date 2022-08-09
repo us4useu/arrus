@@ -19,9 +19,9 @@ from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
 
 LOGGER = arrus.logging.get_logger()
 
-_n_skipped_samples = 10
-_nrx = 64
-_mid_rx = int(np.ceil(_nrx / 2) - 1)
+_N_SKIPPED_SAMPLES = 10
+_NRX = 64
+_MID_RX = int(np.ceil(_NRX / 2) - 1)
 
 
 def _hpfilter(
