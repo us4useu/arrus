@@ -127,11 +127,15 @@ def print_health_info(report):
         for name, f in e.features.items():
             if f.validation_result.verdict != ElementValidationVerdict.VALID:
                 invalid_els[name].append((e.element_number, e.is_masked, f))
-
+    
     for feature in features:
         print(f"Test results for feature: {feature.name}")
         feature_invalid_elements = invalid_els[feature.name]
-        nrs, _, _ = zip(*feature_invalid_elements)
+
+        if len(feature_invalid_elements) == 0:
+            nrs = []
+        else:
+            nrs, _, _ = zip(*feature_invalid_elements)
         if len(nrs) == 0:
             print("All channels seems to work correctly.")
         else:
