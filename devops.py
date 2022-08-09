@@ -4,6 +4,15 @@ import pydevops.conan as conan
 import pydevops.us4us as us4us
 
 
+# pydevops version
+version = "0.1.0"
+# Default branch or tag, which we will be looking for in the
+# US4R_API_RELEASE_DIR, if the us4r_api_dir parameters is not provided
+# explicitly. Note: the below tag/branch should conform with the us4R required
+# version.
+us4r_api_default_branch_tag = "v0.8.5"
+
+
 def get_default_generator_for_current_os():
     if os.name == "nt":
         return "'Visual Studio 15 2017 Win64'"
@@ -11,8 +20,12 @@ def get_default_generator_for_current_os():
         return "'Unix Makefiles'"
 
 
-# pydevops version
-version = "0.1.0"
+def get_default_us4r_api_dir():
+    key = "Us4R_API_RELEASE_DIR"
+    if key not in os.environ:
+        raise ValueError(f"us4r_api_dir option or {key} env variable is required")
+    return f"{os.environ[key]}/{us4r_api_default_branch_tag}"
+
 
 stages = {
     "cfg": (
@@ -47,6 +60,7 @@ aliases = {
 
 defaults = {
     "build_type": "Release",
+    "us4r_api_dir": get_default_us4r_api_dir(),
     "/cfg/cmake/generator": get_default_generator_for_current_os(),
     "/cfg/cmake/DARRUS_EMBED_DEPS": "ON"
 }
