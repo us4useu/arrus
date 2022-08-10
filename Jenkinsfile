@@ -19,6 +19,12 @@ pipeline {
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
         US4R_API_RELEASE_DIR = us4us.getUs4rApiReleaseDir(env)
     }
+
+     parameters {
+        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Turns on publishing arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
+        booleanParam(name: 'PUBLISH_PACKAGE', defaultValue: false, description: 'Turns on publishing arrus package with binary release on the github server. CHECKING THIS ONE WILL UPDATE ARRUS RELEASE')
+     }
+
     stages {
         stage('Configure') {
             steps {
@@ -69,30 +75,81 @@ pipeline {
         stage('PackageCpp') {
             steps {
                 sh """pydevops --stage package_cpp \
-                        --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                        ${DOCKER_DIRS} \
-                        ${SSH_DIRS} \
-                        --options \
-                        release_name='${env.BRANCH_NAME}' \
-                        src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/LICENSE;${env.RELEASE_DIR}/${env.JOB_NAME}/THIRD_PARTY_LICENSES;${env.RELEASE_DIR}/${env.JOB_NAME}/lib64;${env.RELEASE_DIR}/${env.JOB_NAME}/include;${env.RELEASE_DIR}/${env.JOB_NAME}/docs/arrus-cpp.pdf' \
-                        dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
-                        dst_artifact='${env.PACKAGE_NAME}_cpp'
+                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                      ${DOCKER_DIRS} \
+                      ${SSH_DIRS} \
+                      --options \
+                      release_name='${env.BRANCH_NAME}' \
+                      src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/LICENSE;${env.RELEASE_DIR}/${env.JOB_NAME}/THIRD_PARTY_LICENSES;${env.RELEASE_DIR}/${env.JOB_NAME}/lib64;${env.RELEASE_DIR}/${env.JOB_NAME}/include;${env.RELEASE_DIR}/${env.JOB_NAME}/docs/arrus-cpp.pdf;${env.RELEASE_DIR}/${env.JOB_NAME}/examples' \
+                      dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
+                      dst_artifact='${env.PACKAGE_NAME}_cpp'
                    """
             }
         }
-//         stage('Publish') {
-//             steps {
-//                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
-//                   sh """pydevops --stage publish \
-//                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-//                       ${DOCKER_DIRS} \
-//                       ${SSH_DIRS} \
-//                       --options \
-//                       /publish/token='$token'
-//                      """
-//                 }
-//             }
-//         }
+        stage('PublishCpp') {
+            when{
+                environment name: 'PUBLISH_PACKAGE', value: 'true'
+            }
+            steps {
+                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                  sh """pydevops --stage publish_cpp \
+                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                      ${DOCKER_DIRS} \
+                      ${SSH_DIRS} \
+                      --options \
+                      token='$token' \
+                      release_name='${env.BRANCH_NAME}' \
+                      src_artifact='${env.PACKAGE_DIR}/${env.JOB_NAME}/${env.PACKAGE_NAME}_cpp*' \
+                      dst_artifact='__same__' \
+                      repository_name='pjarosik/arrus' \
+                      description='${getBuildName(currentBuild)} (C++)'
+                     """
+                }
+            }
+        }
+        stage('PublishPython') {
+            when{
+                environment name: 'PUBLISH_PACKAGE', value: 'true'
+            }
+            steps {
+                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                  sh """pydevops --stage publish_py \
+                     --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                     ${DOCKER_DIRS} \
+                     ${SSH_DIRS} \
+                     --options \
+                     token='$token' \
+                     release_name='${env.BRANCH_NAME}' \
+                     src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/python/arrus*.whl' \
+                     dst_artifact='__same__' \
+                     repository_name='pjarosik/arrus' \
+                     description='${getBuildName(currentBuild)} (Python)'
+                     """
+                }
+            }
+        }
+        stage('PublishDocs') {
+             when{
+                 environment name: 'PUBLISH_DOCS', value: 'true'
+             }
+             steps {
+                   withCredentials([usernamePassword(credentialsId: 'us4us-dev-github-credentials', usernameVariable: 'username', passwordVariable: 'password')]){
+                   sh """pydevops --stage publish_docs \
+                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                      ${DOCKER_DIRS} \
+                      ${SSH_DIRS} \
+                      --options \
+                      token='$token' \
+                      version='${env.BRANCH_NAME}' \
+                      install_dir='${env.RELEASE_DIR}/${env.JOB_NAME}/' \
+                      repository='https://$username:$password@github.com/pjarosik/arrus-public.git' \
+                      commit_msg='Updated docs, ${getBuildName(currentBuild)}'
+                      """
+                 }
+             }
+         }
+
+
     }
 }
 
