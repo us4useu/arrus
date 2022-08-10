@@ -139,7 +139,6 @@ pipeline {
                       ${DOCKER_DIRS} \
                       ${SSH_DIRS} \
                       --options \
-                      token='$token' \
                       version='${env.BRANCH_NAME}' \
                       install_dir='${env.RELEASE_DIR}/${env.JOB_NAME}/' \
                       repository='https://$username:$password@github.com/pjarosik/arrus-public.git' \
