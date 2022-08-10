@@ -1,9 +1,12 @@
-# ARRUS 
+ARRUS
+=====
 
 API for Remote Research Ultrasound
 
-## Requirements
+Requirements
+------------
 
-### Linux
+Linux
+~~~~~
 
 - The latest Ubuntu 20.04 or later.
