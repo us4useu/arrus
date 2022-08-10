@@ -42,7 +42,7 @@ pipeline {
                     /cfg/conan/conan_home='${env.CONAN_HOME_DIR}' \
                     /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
                     /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
-                    ${env.MISC_OPTIONS}
+                    ${env.MISC_OPTIONS} \
                     /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX}
                     """
             }
@@ -156,6 +156,6 @@ pipeline {
 
 def getBuildName(build) {
     wrap([$class: 'BuildUser']) {
-        return "${env.PLATFORM} build #${build.id}, issued by: ${env.BUILD_USER_ID}, ${us4us.getCurrentDateTime()}";
+        return "${env.PLATFORM} build ${build.id}, issued by: ${env.BUILD_USER_ID}, ${us4us.getCurrentDateTime()}";
     }
 }
