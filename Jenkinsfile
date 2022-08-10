@@ -18,6 +18,7 @@ pipeline {
         BUILD_TYPE = us4us.getBuildType(env)
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
         US4R_API_RELEASE_DIR = us4us.getUs4rApiReleaseDir(env)
+        IS_ARRUS_WHL_SUFFIX = us4us.isArrusSuffixWhl(env)
     }
 
      parameters {
@@ -42,6 +43,7 @@ pipeline {
                     /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
                     /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
                     ${env.MISC_OPTIONS}
+                    /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX}
                     """
             }
         }
