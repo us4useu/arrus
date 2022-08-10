@@ -22,6 +22,7 @@ pipeline {
     stages {
         stage('Configure') {
             steps {
+                sh "env"
                 sh "pydevops --clean --stage cfg " +
                     "--host '${env.BUILD_ENV_ADDRESS}' " +
                     "${env.DOCKER_OPTIONS} " +
