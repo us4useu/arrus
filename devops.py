@@ -27,6 +27,7 @@ def get_default_us4r_api_dir(context):
             raise ValueError("us4r_api_dir or us4r_api_release_dir must be "
                              "provided.")
         release_dir = context.get_option("us4r_api_release_dir")
+        context.remove_option("us4r_api_release_dir")
         return f"{release_dir}/{us4r_api_default_branch_tag}"
 
 
