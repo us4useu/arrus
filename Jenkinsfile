@@ -1,145 +1,100 @@
+@Library("us4us-jenkins-shared-libraries@master") _;
+
 pipeline {
     agent any
 
     environment {
-        US4R_REQUIRED_VERSION = powershell(
-                script: "python '${env.WORKSPACE}/scripts/get_required_version.py' --source_dir='${env.WORKSPACE}' --requirement=Us4",
-                returnStdout: true
-        ).trim()
-        US4R_REQUIRED_TAG = "v$US4R_REQUIRED_VERSION"
+        PLATFORM = us4us.getPlatformName(env)
+        BUILD_ENV_ADDRESS = us4us.getUs4usJenkinsVariable(env, "BUILD_ENV_ADDRESS")
+        DOCKER_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONS")
+        DOCKER_DIRS = us4us.getRemoteDirs(env, "docker", "DOCKER_BUILD_ROOT")
+        SSH_DIRS = us4us.getRemoteDirs(env, "ssh", "SSH_BUILD_ROOT")
+        TARGET_WORKSPACE_DIR = us4us.getTargetWorkspaceDir(env, "DOCKER_BUILD_ROOT", "SSH_BUILD_ROOT")
+        CONAN_HOME_DIR = us4us.getUs4usJenkinsVariable(env, "CONAN_HOME_DIR")
+        CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
+        RELEASE_DIR = us4us.getUs4usJenkinsVariable(env, "RELEASE_DIR")
+        PACKAGE_NAME = us4us.getPackageName(env, "${env.JOB_NAME}")
+        PACKAGE_DIR = us4us.getUs4usJenkinsVariable(env, "PACKAGE_DIR")
+        BUILD_TYPE = us4us.getBuildType(env)
+        MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
+        US4R_API_RELEASE_DIR = us4us.getUs4rApiReleaseDir(env)
     }
-
-    parameters {
-        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Turns on publishing arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
-        booleanParam(name: 'PUBLISH_PACKAGE', defaultValue: false, description: 'Turns on publishing arrus package with binary release on the github server. CHECKING THIS ONE WILL UPDATE ARRUS RELEASE')
-    }
-
-    options {
-        timeout(time: 1, unit: 'HOURS')
-        buildDiscarder(logRotator(daysToKeepStr: '365'))
-    }
-
     stages {
-        stage('Prepare build environment') {
-            steps {
-                script {
-                    currentBuild.displayName = getBuildName(currentBuild)
-                }
-                sh "git clean -ffdx"
-            }
-        }
-        stage("Build dependencies") {
-            steps {
-                echo 'Building dependencies ...'
-
-                build "us4r/$US4R_REQUIRED_TAG"
-            }
-        }
         stage('Configure') {
             steps {
-                echo 'Configuring build ...'
-                sh "python '${env.WORKSPACE}/scripts/cfg_build.py' --source_dir '${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG' --src_branch_name ${env.BRANCH_NAME} --targets py matlab docs --run_targets tests --options ARRUS_EMBED_DEPS=ON ARRUS_APPEND_VERSION_SUFFIX_DATE=${isDevelopOnOff()}"
+                sh "pydevops --clean --stage cfg " +
+                    "--host '${env.BUILD_ENV_ADDRESS}' " +
+                    "${env.DOCKER_OPTIONS} " +
+                    "--src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' " +
+                    "${env.DOCKER_DIRS} " +
+                    "${env.SSH_DIRS} " +
+                    "--options " +
+                    "build_type='${env.BUILD_TYPE}' " +
+                    "/cfg/conan/conan_home='${env.CONAN_HOME_DIR}' " +
+                    "/cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' " +
+                    "/install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' " +
+                    "${env.MISC_OPTIONS}"
             }
         }
         stage('Build') {
             steps {
-                echo 'Building ...'
-                sh "python '${env.WORKSPACE}/scripts/build.py' --source_dir'=${env.WORKSPACE}' --us4r_dir '${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG'"
+                sh """pydevops --stage build \
+                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                      ${env.DOCKER_DIRS} \
+                      ${env.SSH_DIRS}
+                   """
             }
         }
         stage('Test') {
-            environment {
-                Path = "${env.US4R_INSTALL_DIR}/$US4R_REQUIRED_TAG/lib64;${env.Path}"
-            }
             steps {
-                echo 'Testing ...'
-                sh "python '${env.WORKSPACE}/scripts/test.py' --source_dir='${env.WORKSPACE}'"
+                sh """pydevops --stage test \
+                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                      ${env.DOCKER_DIRS} \
+                      ${env.SSH_DIRS}
+                   """
             }
         }
         stage('Install') {
             steps {
-                echo 'Installing ...'
-                sh "python '${env.WORKSPACE}/scripts/install.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
+                sh """pydevops --stage install \
+                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                      ${DOCKER_DIRS} \
+                      ${SSH_DIRS}
+                   """
             }
         }
-        stage('Create installer') {
+        stage('PackageCpp') {
             steps {
-                echo 'Installing ...'
-                sh "python '${env.WORKSPACE}/scripts/create_installer.py' --source_dir='${env.WORKSPACE}' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}'"
+                sh """pydevops --stage package_cpp \
+                        --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                        ${DOCKER_DIRS} \
+                        ${SSH_DIRS} \
+                        --options \
+                        /package/release_name='${env.BRANCH_NAME}' \
+                        /package/src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}' \
+                        /package/dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}' "  \
+                        /package/dst_artifact='${env.PACKAGE_NAME}_cpp'
+                   """
             }
         }
-        stage('Publish package') {
-            when{
-                environment name: 'PUBLISH_PACKAGE', value: 'true'
-                anyOf {
-                    branch 'master'
-                    branch 'develop'
-                }
-            }
-            steps {
-                echo "Publishing release package ..."
-                withCredentials([string(credentialsId: 'us4us-support-github-token', variable: 'token')]){
-                    sh "python '${env.WORKSPACE}/scripts/publish_releases.py' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}' --repository 'us4useu/arrus-public' --src_branch_name ${env.BRANCH_NAME} --token $token --build_id '${getBuildName(currentBuild)}'"
-                }
-            }
-        }
-        stage('Publish docs') {
-            when{
-                environment name: 'PUBLISH_DOCS', value: 'true'
-                anyOf {
-                    branch 'master'
-                    branch 'develop'
-                }
-            }
-            steps {
-                echo "Publishing docs ..."
-                withCredentials([usernamePassword(credentialsId: 'us4us-support-github-credentials', usernameVariable: 'username', passwordVariable: 'password')]){
-                    sh "python '${env.WORKSPACE}/scripts/publish_docs.py' --install_dir='${env.ARRUS_INSTALL_DIR}/${env.BRANCH_NAME}' --repository 'https://$username:$password@github.com/us4useu/arrus-public.git' --src_branch_name ${env.BRANCH_NAME} --build_id '${getBuildName(currentBuild)}'"
-                }
-            }
-        }
+//         stage('Publish') {
+//             steps {
+//                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+//                   sh """pydevops --stage publish \
+//                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+//                       ${DOCKER_DIRS} \
+//                       ${SSH_DIRS} \
+//                       --options \
+//                       /publish/token='$token'
+//                      """
+//                 }
+//             }
+//         }
     }
-    post {
-        failure {
-            script {
-                if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
-                    emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                             to:      "${env.ARRUS_DEVELOPER_EMAIL}",
-                             subject: "Build failed in Jenkins: $JOB_NAME")
-                }
-            }
-        }
-        unstable {
-            script {
-                if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
-                    emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                             to:      "${env.ARRUS_DEVELOPER_EMAIL}",
-                             subject: "Unstable build in Jenkins: $JOB_NAME")
-                }
-            }
-        }
-        changed {
-            script {
-                if(env.BRANCH_NAME == "master" || env.BRANCH_NAME == "develop") {
-                    emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                             to:      "${env.ARRUS_DEVELOPER_EMAIL}",
-                             subject: "Jenkins build is back to normal: $JOB_NAME")
-                }
-            }
-        }
-    }
-}
-
-def getBranchName() {
-    return env.BRANCH_NAME == "master" ? "master" : "develop";
-}
-
-def isDevelopOnOff() {
-    return env.BRANCH_NAME == "develop" ? "ON" : "OFF";
 }
 
 def getBuildName(build) {
     wrap([$class: 'BuildUser']) {
-        return "#${build.id} (${env.BUILD_USER_ID})";
+        return "${env.PLATFORM} build #${build.id}, issued by: ${env.BUILD_USER_ID}, ${us4us.getCurrentDateTime()}";
     }
 }
