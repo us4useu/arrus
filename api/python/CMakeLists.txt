@@ -95,6 +95,7 @@ set(SOURCE_FILES
         arrus/utils/interpolate.py
         arrus/utils/core.py
         arrus/utils/gui.py
+        arrus/utils/probe_check.py
         )
 
 set(TEST_FILES
@@ -202,16 +203,17 @@ install(
 )
 
 install(
-        FILES
+    FILES
         examples/plane_wave_imaging.py
         examples/classical_beamforming.py
         examples/diverging_beams.py
         examples/custom_tx_rx_sequence.py
         examples/custom_callback.py
-	examples/phased_array_scanning.py
+	    examples/phased_array_scanning.py
+        examples/probe_check.py
         examples/requirements.txt
-    examples/requirements.txt
-        DESTINATION
+        examples/requirements.txt
+    DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
 ################################################################################
