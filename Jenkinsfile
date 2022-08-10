@@ -75,7 +75,7 @@ pipeline {
                         --options \
                         /package/release_name='${env.BRANCH_NAME}' \
                         /package/src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}' \
-                        /package/dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}' "  \
+                        /package/dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
                         /package/dst_artifact='${env.PACKAGE_NAME}_cpp'
                    """
             }
