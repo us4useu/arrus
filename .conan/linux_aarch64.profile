@@ -3,7 +3,7 @@ arch=armv8
 arch_build=armv8
 compiler=gcc
 compiler.libcxx=libstdc++11
-compiler.version=7
+compiler.version=9
 os=Linux
 os_build=Linux
 [options]
