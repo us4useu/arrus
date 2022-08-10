@@ -136,17 +136,14 @@ public:
 
     void setTestPattern(RxTestPattern pattern) override;
 
-	uint16_t getAfe(uint8_t address) override;
-	void setAfe(uint8_t address, uint16_t value) override;
+    uint16_t getAfe(uint8_t address) override;
+    void setAfe(uint8_t address, uint16_t value) override;
 
     void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
         if(ddc.has_value()) {
             auto &value = ddc.value();
             setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(),
                         value.getFirCoefficients().data(), value.getFirCoefficients().size());
-        }
-        else {
-            disableAfeDemod();
         }
     }
 
