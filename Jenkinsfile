@@ -22,7 +22,6 @@ pipeline {
     stages {
         stage('Configure') {
             steps {
-                sh "env"
                 sh """
                    pydevops --clean --stage cfg \
                     --host '${env.BUILD_ENV_ADDRESS}' \
@@ -32,6 +31,7 @@ pipeline {
                     ${env.SSH_DIRS} \
                     --options \
                     build_type='${env.BUILD_TYPE}' \
+                    us4r_api_release_dir='${env.US4R_API_RELEASE_DIR}' \
                     /cfg/conan/conan_home='${env.CONAN_HOME_DIR}' \
                     /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
                     /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \

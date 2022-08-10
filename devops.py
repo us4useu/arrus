@@ -20,14 +20,14 @@ def get_default_generator_for_current_os():
         return "'Unix Makefiles'"
 
 
-def get_default_us4r_api_dir():
-    key = "US4R_API_RELEASE_DIR"
-    print("ENVIRONS")
-    print(os.environ)
-    print("ENVIRONS")
-    if key not in os.environ:
-        return "__US4R_API_DIR_NOT_FOUND__"
-    return f"{os.environ[key]}/{us4r_api_default_branch_tag}"
+def get_default_us4r_api_dir(context):
+    if (not context.has_option("us4r_api_dir")
+            and not context.has_option("/cfg/cmake/DUs4_ROOT_DIR")):
+        if not context.has_option("us4r_api_release_dir"):
+            raise ValueError("us4r_api_dir or us4r_api_release_dir must be "
+                             "provided.")
+        release_dir = context.get_option("us4r_api_release_dir")
+        return f"{release_dir}/{us4r_api_default_branch_tag}"
 
 
 stages = {
@@ -65,7 +65,7 @@ aliases = {
 
 defaults = {
     "build_type": "Release",
-    "us4r_api_dir": get_default_us4r_api_dir(),
+    "us4r_api_dir": get_default_us4r_api_dir,
     "/cfg/cmake/generator": get_default_generator_for_current_os(),
     "/cfg/cmake/DARRUS_EMBED_DEPS": "ON"
 }
