@@ -21,9 +21,9 @@ def get_default_generator_for_current_os():
 
 
 def get_default_us4r_api_dir():
-    key = "Us4R_API_RELEASE_DIR"
+    key = "US4R_API_RELEASE_DIR"
     if key not in os.environ:
-        raise ValueError(f"us4r_api_dir option or {key} env variable is required")
+        return ""
     return f"{os.environ[key]}/{us4r_api_default_branch_tag}"
 
 
@@ -35,8 +35,10 @@ stages = {
     "build": cmake.Build,
     "test": cmake.Test,
     "install": cmake.Install,
+    "package_cpp": us4us.Package,
     "publish_docs": us4us.PublishDocs,
-    "publish_releases": us4us.PublishReleases
+    "publish_cpp": us4us.PublishReleases,
+    "publish_py": us4us.PublishReleases
 }
 
 init_stages = ["cfg"]
