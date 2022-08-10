@@ -14,6 +14,8 @@ WORKDIR /tmp
 ENV CMAKE_VERSION=3.21.3
 ENV PYTHON_VERSIONS="3.8"
 
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
 # Install requirements
 RUN apt-get update \
  && apt-get install -yq --no-install-recommends \
