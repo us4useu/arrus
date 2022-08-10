@@ -143,7 +143,7 @@ pipeline {
                       --options \
                       version='${env.BRANCH_NAME}' \
                       install_dir='${env.RELEASE_DIR}/${env.JOB_NAME}/' \
-                      repository='https://$username:$password@github.com/pjarosik/arrus-public.git' \
+                      repository='https://$username:$password@github.com/pjarosik/arrus-docs.git' \
                       commit_msg='Updated docs, ${getBuildName(currentBuild)}'
                       """
                  }
