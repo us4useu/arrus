@@ -22,8 +22,11 @@ def get_default_generator_for_current_os():
 
 def get_default_us4r_api_dir():
     key = "US4R_API_RELEASE_DIR"
+    print("ENVIRONS")
+    print(os.environ)
+    print("ENVIRONS")
     if key not in os.environ:
-        return ""
+        return "__US4R_API_DIR_NOT_FOUND__"
     return f"{os.environ[key]}/{us4r_api_default_branch_tag}"
 
 

@@ -23,18 +23,20 @@ pipeline {
         stage('Configure') {
             steps {
                 sh "env"
-                sh "pydevops --clean --stage cfg " +
-                    "--host '${env.BUILD_ENV_ADDRESS}' " +
-                    "${env.DOCKER_OPTIONS} " +
-                    "--src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' " +
-                    "${env.DOCKER_DIRS} " +
-                    "${env.SSH_DIRS} " +
-                    "--options " +
-                    "build_type='${env.BUILD_TYPE}' " +
-                    "/cfg/conan/conan_home='${env.CONAN_HOME_DIR}' " +
-                    "/cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' " +
-                    "/install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' " +
-                    "${env.MISC_OPTIONS}"
+                sh """
+                   pydevops --clean --stage cfg \
+                    --host '${env.BUILD_ENV_ADDRESS}' \
+                    ${env.DOCKER_OPTIONS}  \
+                    --src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' \
+                    ${env.DOCKER_DIRS} \
+                    ${env.SSH_DIRS} \
+                    --options \
+                    build_type='${env.BUILD_TYPE}' \
+                    /cfg/conan/conan_home='${env.CONAN_HOME_DIR}' \
+                    /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
+                    /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
+                    ${env.MISC_OPTIONS}
+                    """
             }
         }
         stage('Build') {
