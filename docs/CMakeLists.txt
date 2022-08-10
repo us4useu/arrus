@@ -157,8 +157,8 @@ add_custom_target(arrus_cpp_doxygen ALL DEPENDS ${DOXYGEN_INDEX_FILE})
 ## C++ sphinx
 #CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package "")
 set(ARRUS_BREATHE_PROJECT_OPTION "-Dbreathe_projects.arrus=${DOXYGEN_OUTPUT_DIR}/xml")
-CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package "" ${ARRUS_BREATHE_PROJECT_OPTION})
-CREATE_DOC_TARGET(cpp html docs_venv sphinx_package "" ${ARRUS_BREATHE_PROJECT_OPTION})
+CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package arrus_cpp_doxygen ${ARRUS_BREATHE_PROJECT_OPTION})
+CREATE_DOC_TARGET(cpp html docs_venv sphinx_package arrus_cpp_doxygen ${ARRUS_BREATHE_PROJECT_OPTION})
 
 
 # Python
