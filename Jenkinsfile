@@ -20,52 +20,52 @@ pipeline {
         US4R_API_RELEASE_DIR = us4us.getUs4rApiReleaseDir(env)
     }
     stages {
-        stage('Configure') {
-            steps {
-                sh """
-                   pydevops --clean --stage cfg \
-                    --host '${env.BUILD_ENV_ADDRESS}' \
-                    ${env.DOCKER_OPTIONS}  \
-                    --src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' \
-                    ${env.DOCKER_DIRS} \
-                    ${env.SSH_DIRS} \
-                    --options \
-                    build_type='${env.BUILD_TYPE}' \
-                    us4r_api_release_dir='${env.US4R_API_RELEASE_DIR}' \
-                    /cfg/conan/conan_home='${env.CONAN_HOME_DIR}' \
-                    /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
-                    /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
-                    ${env.MISC_OPTIONS}
-                    """
-            }
-        }
-        stage('Build') {
-            steps {
-                sh """pydevops --stage build \
-                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                      ${env.DOCKER_DIRS} \
-                      ${env.SSH_DIRS}
-                   """
-            }
-        }
-        stage('Test') {
-            steps {
-                sh """pydevops --stage test \
-                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                      ${env.DOCKER_DIRS} \
-                      ${env.SSH_DIRS}
-                   """
-            }
-        }
-        stage('Install') {
-            steps {
-                sh """pydevops --stage install \
-                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                      ${DOCKER_DIRS} \
-                      ${SSH_DIRS}
-                   """
-            }
-        }
+//         stage('Configure') {
+//             steps {
+//                 sh """
+//                    pydevops --clean --stage cfg \
+//                     --host '${env.BUILD_ENV_ADDRESS}' \
+//                     ${env.DOCKER_OPTIONS}  \
+//                     --src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' \
+//                     ${env.DOCKER_DIRS} \
+//                     ${env.SSH_DIRS} \
+//                     --options \
+//                     build_type='${env.BUILD_TYPE}' \
+//                     us4r_api_release_dir='${env.US4R_API_RELEASE_DIR}' \
+//                     /cfg/conan/conan_home='${env.CONAN_HOME_DIR}' \
+//                     /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
+//                     /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
+//                     ${env.MISC_OPTIONS}
+//                     """
+//             }
+//         }
+//         stage('Build') {
+//             steps {
+//                 sh """pydevops --stage build \
+//                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+//                       ${env.DOCKER_DIRS} \
+//                       ${env.SSH_DIRS}
+//                    """
+//             }
+//         }
+//         stage('Test') {
+//             steps {
+//                 sh """pydevops --stage test \
+//                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+//                       ${env.DOCKER_DIRS} \
+//                       ${env.SSH_DIRS}
+//                    """
+//             }
+//         }
+//         stage('Install') {
+//             steps {
+//                 sh """pydevops --stage install \
+//                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+//                       ${DOCKER_DIRS} \
+//                       ${SSH_DIRS}
+//                    """
+//             }
+//         }
         stage('PackageCpp') {
             steps {
                 sh """pydevops --stage package_cpp \
@@ -73,10 +73,10 @@ pipeline {
                         ${DOCKER_DIRS} \
                         ${SSH_DIRS} \
                         --options \
-                        /package/release_name='${env.BRANCH_NAME}' \
-                        /package/src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}' \
-                        /package/dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
-                        /package/dst_artifact='${env.PACKAGE_NAME}_cpp'
+                        release_name='${env.BRANCH_NAME}' \
+                        src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/LICENSE;${env.RELEASE_DIR}/${env.JOB_NAME}/THIRD_PARTY_LICENSES;${env.RELEASE_DIR}/${env.JOB_NAME}/lib64;${env.RELEASE_DIR}/${env.JOB_NAME}/include;${env.RELEASE_DIR}/${env.JOB_NAME}/docs/arrus-cpp.pdf' \
+                        dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
+                        dst_artifact='${env.PACKAGE_NAME}_cpp'
                    """
             }
         }
