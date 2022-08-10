@@ -26,7 +26,10 @@ RUN apt-get update \
     vim \
     patchelf \
     g++-9 \
-    doxygen
+    doxygen \
+    latexmk \
+    texlive-latex-extra \
+    texlive-fonts-recommended
 
 
 RUN echo "alias python=python3" >> /root/.bashrc
