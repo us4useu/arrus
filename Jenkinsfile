@@ -103,7 +103,7 @@ pipeline {
                       release_name='${env.BRANCH_NAME}' \
                       src_artifact='${env.PACKAGE_DIR}/${env.JOB_NAME}/${env.CPP_PACKAGE_NAME}*' \
                       dst_artifact='__same__' \
-                      repository_name='pjarosik/arrus' \
+                      repository_name='us4useu/arrus' \
                       description='${getBuildName(currentBuild)} (C++)'
                      """
                 }
@@ -143,7 +143,7 @@ pipeline {
                       --options \
                       version='${env.BRANCH_NAME}' \
                       install_dir='${env.RELEASE_DIR}/${env.JOB_NAME}/' \
-                      repository='https://$username:$password@github.com/pjarosik/arrus-docs.git' \
+                      repository='https://$username:$password@github.com/us4useu/arrus-docs.git' \
                       commit_msg='Updated docs, ${getBuildName(currentBuild)}'
                       """
                  }
