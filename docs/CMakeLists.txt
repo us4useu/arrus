@@ -4,37 +4,38 @@
 set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DOC_FILES
-    "index.rst"
-    "content/introduction.rst"
-    "content/installation/index.rst"
-    "content/installation/api.python.rst"
-    "content/installation/api.matlab.rst"
-    "content/installation/img/dev_manager.png"
-    "content/installation/img/paths.png"
-    "content/installation/img/result.png"
-    "content/installation/img/install_result.png"
-    "content/installation/img/thunderbolt.png"
-    "content/installation/img/uninstall_arius_drv.png"
-    "content/examples/bmode_imaging.matlab.rst"
-    content/examples/mock_session_example.python.rst
+    index.rst
+    content/introduction.rst
+    content/installation/index.rst
+    content/installation/api.python.rst
+    content/installation/api.matlab.rst
+    content/installation/img/dev_manager.png
+    content/installation/img/paths.png
+    content/installation/img/result.png
+    content/installation/img/install_result.png
+    content/installation/img/thunderbolt.png
+    content/installation/img/uninstall_arius_drv.png
+    content/examples/bmode_imaging.matlab.rst
     content/user_guide.python.rst
     content/definitions.python.rst
-    "content/examples/img/coordinate_system.jpeg"
-    "content/examples/img/apertures.jpeg"
-    "content/examples/img/delays.jpeg"
-    "content/img/coordinate_system.jpeg"
-    "content/img/apertures.jpeg"
-    "content/img/delays.jpeg"
-    "content/img/scheme.jpeg"
-    "content/img/pwi-cysts.png"
-    "content/misc/release_notes.rst"
-    "content/misc/acknowledgments.rst"
-    "content/misc/img/ncbr.png"
-    "content/misc/img/us4us.png"
-    "content/api.python.rst"
-    "content/api.matlab.rst"
-    "content/api.cpp.rst"
-    "content/low_level_api.matlab.rst"
+    content/examples/img/coordinate_system.jpeg
+    content/examples/img/apertures.jpeg
+    content/examples/img/delays.jpeg
+    content/img/coordinate_system.jpeg
+    content/img/apertures.jpeg
+    content/img/delays.jpeg
+    content/img/scheme.png
+    content/img/bmode_pwi_phantom_cysts.png
+    content/img/bmode_div_phantom_cysts.png
+    content/img/bmode_bfr_phantom_cysts.png
+    content/misc/release_notes.rst
+    content/misc/acknowledgments.rst
+    content/misc/img/ncbr.png
+    content/misc/img/us4us.png
+    content/api.python.rst
+    content/api.matlab.rst
+    content/api.cpp.rst
+    content/low_level_api.matlab.rst
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 
@@ -156,8 +157,8 @@ add_custom_target(arrus_cpp_doxygen ALL DEPENDS ${DOXYGEN_INDEX_FILE})
 ## C++ sphinx
 #CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package "")
 set(ARRUS_BREATHE_PROJECT_OPTION "-Dbreathe_projects.arrus=${DOXYGEN_OUTPUT_DIR}/xml")
-CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package "" ${ARRUS_BREATHE_PROJECT_OPTION})
-CREATE_DOC_TARGET(cpp html docs_venv sphinx_package "" ${ARRUS_BREATHE_PROJECT_OPTION})
+CREATE_DOC_TARGET(cpp pdf docs_venv sphinx_package arrus_cpp_doxygen ${ARRUS_BREATHE_PROJECT_OPTION})
+CREATE_DOC_TARGET(cpp html docs_venv sphinx_package arrus_cpp_doxygen ${ARRUS_BREATHE_PROJECT_OPTION})
 
 
 # Python

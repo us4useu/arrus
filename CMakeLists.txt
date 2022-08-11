@@ -27,8 +27,6 @@ set(CMAKE_MODULE_PATH
 ################################################################################
 # Global options and settings
 ################################################################################
-include(common)
-
 set(ARRUS_ROOT_DIR ${CMAKE_SOURCE_DIR})
 set(ARRUS_DOCS_INSTALL_DIR docs)
 set(ARRUS_MATLAB_INSTALL_DIR matlab)

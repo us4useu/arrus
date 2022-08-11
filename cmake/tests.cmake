@@ -48,6 +48,17 @@ function(create_core_test test_src)
         ${compile_definitions})
     add_test(NAME ${test_src} COMMAND ${target_name})
 
-    prepend_env_path(ARRUS_TESTS_ENV_PATH ${Us4_LIB_DIR})
-    set_tests_properties(${test_src} PROPERTIES ENVIRONMENT "PATH=${ARRUS_TESTS_ENV_PATH}")
+    # Prepend PATH and LD_LIBRARY_PATH with dependencies.
+    if(WIN32)
+        set_tests_properties(${test_src}
+            PROPERTIES ENVIRONMENT
+            "PATH=${Boost_LIB_DIRS}\;${Us4_LIB_DIR}\;$ENV{PATH}"
+        )
+    elseif(UNIX)
+        set_tests_properties(${test_src}
+            PROPERTIES ENVIRONMENT
+            "LD_LIBRARY_PATH=${Boost_LIB_DIRS}:${Us4_LIB_DIR}:$ENV{LD_LIBRARY_PATH}"
+            )
+    endif()
+
 endfunction()
