@@ -13,7 +13,7 @@ pipeline {
         CONAN_HOME_DIR = us4us.getUs4usJenkinsVariable(env, "CONAN_HOME_DIR")
         CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
         RELEASE_DIR = us4us.getUs4usJenkinsVariable(env, "RELEASE_DIR")
-        PACKAGE_NAME = us4us.getPackageName(env, "${env.JOB_NAME}")
+        CPP_PACKAGE_NAME = us4us.getPackageName(env, "${env.JOB_NAME}", "cpp")
         PACKAGE_DIR = us4us.getUs4usJenkinsVariable(env, "PACKAGE_DIR")
         BUILD_TYPE = us4us.getBuildType(env)
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
@@ -84,7 +84,7 @@ pipeline {
                       release_name='${env.BRANCH_NAME}' \
                       src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/LICENSE;${env.RELEASE_DIR}/${env.JOB_NAME}/THIRD_PARTY_LICENSES;${env.RELEASE_DIR}/${env.JOB_NAME}/lib64;${env.RELEASE_DIR}/${env.JOB_NAME}/include;${env.RELEASE_DIR}/${env.JOB_NAME}/docs/arrus-cpp.pdf;${env.RELEASE_DIR}/${env.JOB_NAME}/examples' \
                       dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
-                      dst_artifact='${env.PACKAGE_NAME}_cpp'
+                      dst_artifact='${env.CPP_PACKAGE_NAME}'
                    """
             }
         }
@@ -101,7 +101,7 @@ pipeline {
                       --options \
                       token='$token' \
                       release_name='${env.BRANCH_NAME}' \
-                      src_artifact='${env.PACKAGE_DIR}/${env.JOB_NAME}/${env.PACKAGE_NAME}_cpp*' \
+                      src_artifact='${env.PACKAGE_DIR}/${env.JOB_NAME}/${env.CPP_PACKAGE_NAME}*' \
                       dst_artifact='__same__' \
                       repository_name='pjarosik/arrus' \
                       description='${getBuildName(currentBuild)} (C++)'
