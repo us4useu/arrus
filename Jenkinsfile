@@ -124,7 +124,7 @@ pipeline {
                      release_name='${env.BRANCH_NAME}' \
                      src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/python/arrus*.whl' \
                      dst_artifact='__same__' \
-                     repository_name='pjarosik/arrus' \
+                     repository_name='us4useu/arrus' \
                      description='${getBuildName(currentBuild)} (Python)'
                      """
                 }
