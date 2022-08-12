@@ -70,10 +70,22 @@ class Us4R(Device):
                 raise ValueError("There is no tx/rx sequence currently "
                                  "uploaded.")
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
-                self._current_sequence_context, tgc_curve)
+                self._current_sequence_context,
+                self.current_sampling_frequency,
+                tgc_curve)
         elif not isinstance(tgc_curve, Iterable):
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
-        self._handle.setTgcCurve(list(tgc_curve))
+        # Here, TGC curve is iterable.
+        # Check if we have a pair of iterables, or a single iterable
+        if len(tgc_curve) == 2 and (
+                isinstance(tgc_curve[0], Iterable)
+                and isinstance(tgc_curve[1], Iterable)):
+            t, y = tgc_curve
+            self._handle.setTgcCurve(list(t), list(y), True)
+        else:
+            # Otherwise, assume list of floats, use by default TGC sampling
+            # points.
+            self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
     def set_hv_voltage(self, voltage):
         """
@@ -98,9 +110,18 @@ class Us4R(Device):
     @property
     def sampling_frequency(self):
         """
-        Device sampling frequency [Hz].
+        Device NOMINAL sampling frequency [Hz].
         """
         return self._handle.getSamplingFrequency()
+
+    @property
+    def current_sampling_frequency(self):
+        """
+        Device current Rx data sampling frequency [Hz]. This value depends on
+        the TX/RX and DDC parameters (e.g. decimation factor) uploaded on
+        the system.
+        """
+        return self._handle.getCurrentSamplingFrequency()
 
     @property
     def n_us4oems(self):

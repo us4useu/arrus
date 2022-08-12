@@ -60,7 +60,8 @@ private:
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                                  uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync) {
+                                  uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync,
+                                  const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(::arrus::format("{} tx rx sequence", getDeviceId().toString()), numberOfChannels);
     validator.validate(seq);
@@ -199,7 +200,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
         auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
-                                                          batchSize, sri, triggerSync);
+                                                          batchSize, sri, triggerSync, ddc);
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
         currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
         numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames()*batchSize;
@@ -322,6 +323,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
+
     for(size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getFiring();
