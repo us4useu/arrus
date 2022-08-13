@@ -5,15 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 # Version
 set(PROJECT_VERSION 0.7.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
-
-option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
-# TODO remove ARRUS_DEVELOP_VERSION, use ARRUS_APPEND_VERSION_SUFFIX_DATE
-if(ARRUS_DEVELOP_VERSION)
-    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}-dev")
-else()
-    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}")
-endif()
-
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
 ################################################################################
