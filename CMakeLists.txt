@@ -147,24 +147,6 @@ if(ARRUS_EMBED_DEPS)
         DIRECTORY
             ${Us4_ROOT_DIR_SANITIZED}/lib64/
         DESTINATION
-            ${ARRUS_LIB_INSTALL_DIR}
-    )
-if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
-    install(
-       FILES
-            # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR_SANITIZED}/matlab/Us4MEX.mexw64
-       DESTINATION
-            matlab/arrus
-    )
-    install(
-        FILES
-            # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR_SANITIZED}/bin/us4OEMFirmwareUpdate.exe
-            ${Us4_ROOT_DIR_SANITIZED}/bin/Us4OEMStatus.exe
-        DESTINATION
-            ${ARRUS_BIN_INSTALL_DIR}
-    )
-endif()
+            ${ARRUS_LIB_INSTALL_DIR})
 endif()
 
