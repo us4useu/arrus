@@ -210,7 +210,7 @@ install(
         examples/custom_tx_rx_sequence.py
         examples/custom_callback.py
 	    examples/phased_array_scanning.py
-        examples/probe_check.py
+        examples/check_probe.py
         examples/requirements.txt
         examples/requirements.txt
     DESTINATION
