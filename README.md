@@ -11,7 +11,7 @@ proprietary APIs, each specific to the hardware for which they were prepared.
 # API
 
 Please check the [Releases](https://github.com/us4useu/ARRUS/releases)
-for the latest API .
+for the latest API
 
 # Building
 
