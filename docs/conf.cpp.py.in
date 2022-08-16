@@ -20,13 +20,12 @@ copyright = '${CURRENT_YEAR}, us4us Ltd.'
 author = 'us4us Ltd.'
 
 # The full version, including alpha/beta/rc tags
-release = '${PROJECT_FULL_VERSION}'
+release = '${ARRUS_PROJECT_VERSION}'
 
 rst_epilog = """
 .. |api_language| replace:: ${LANGUAGE}
 .. |arrus_version| replace:: ${PROJECT_VERSION}
 .. |arrus| replace:: arrus
-.. _arrus: https://github.com/us4useu/arrus-public/releases/download/${PROJECT_FULL_VERSION}/arrus-${PROJECT_FULL_VERSION}.zip
 """
 
 # -- General configuration ---------------------------------------------------

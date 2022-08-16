@@ -6,7 +6,6 @@ Welcome to ARRUS documentation!
     :caption: User Documentation
 
     content/introduction
-    content/installation/index
     content/definitions
     content/user_guide
     content/examples

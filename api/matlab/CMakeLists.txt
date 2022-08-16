@@ -60,11 +60,22 @@ foreach(MEX_SRC_FILE ${ARRUS_CUDA_MEX_SRC_FILES})
         "${ARRUS_MATLAB_MEXCUDA_COMMAND} mexcuda -outdir '${CMAKE_CURRENT_BINARY_DIR}/arrus/mexcuda' '${CMAKE_CURRENT_SOURCE_DIR}/${MEX_SRC_FILE}';")
 endforeach()
 
+set(ARRUS_MATLAB_CORE_SO_FILE "$<TARGET_FILE:arrus-core>")
 
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
     ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
+    # Copy binaries to the same folder where the mex fill produced
+    COMMAND
+    ${CMAKE_COMMAND} -E copy_directory
+    ${Us4_ROOT_DIR}/lib64 ${TOOLBOX_OUTPUT_DIR}
+    COMMAND
+    ${CMAKE_COMMAND} -E copy
+    ${ARRUS_MATLAB_CORE_SO_FILE} ${TOOLBOX_OUTPUT_DIR}
+    COMMAND
+    ${CMAKE_COMMAND} -E copy
+    ${Us4_ROOT_DIR}/matlab/Us4MEX.mexw64 ${TOOLBOX_OUTPUT_DIR}
     # Excluded directories/files
     COMMAND
     ${CMAKE_COMMAND} -E rm -rf "${TOOLBOX_OUTPUT_DIR}/mexcuda"
