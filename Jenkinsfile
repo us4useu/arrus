@@ -14,6 +14,7 @@ pipeline {
         CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
         RELEASE_DIR = us4us.getUs4usJenkinsVariable(env, "RELEASE_DIR")
         CPP_PACKAGE_NAME = us4us.getPackageName(env, "${env.JOB_NAME}", "cpp")
+        MATLAB_PACKAGE_NAME = us4us.getPackageName(env, "${env.JOB_NAME}", "matlab")
         PACKAGE_DIR = us4us.getUs4usJenkinsVariable(env, "PACKAGE_DIR")
         BUILD_TYPE = us4us.getBuildType(env)
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
@@ -88,6 +89,20 @@ pipeline {
                    """
             }
         }
+        stage('PackageMatlab') {
+             steps {
+                 sh """pydevops --stage package_matlab \
+                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                       ${DOCKER_DIRS} \
+                       ${SSH_DIRS} \
+                       --options \
+                       release_name='${env.BRANCH_NAME}' \
+                       src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/matlab' \
+                       dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
+                       dst_artifact='${env.MATLAB_PACKAGE_NAME}'
+                    """
+             }
+         }
         stage('PublishCpp') {
             when{
                 environment name: 'PUBLISH_PACKAGE', value: 'true'
@@ -126,6 +141,27 @@ pipeline {
                      dst_artifact='__same__' \
                      repository_name='us4useu/arrus' \
                      description='${getBuildName(currentBuild)} (Python)'
+                     """
+                }
+            }
+        }
+        stage('PublishMatlab') {
+            when{
+                environment name: 'PUBLISH_PACKAGE', value: 'true'
+            }
+            steps {
+                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                  sh """pydevops --stage publish_matlab \
+                     --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
+                     ${DOCKER_DIRS} \
+                     ${SSH_DIRS} \
+                     --options \
+                     token='$token' \
+                     release_name='${env.BRANCH_NAME}' \
+                     src_artifact='${env.PACKAGE_DIR}/${env.JOB_NAME}/${env.MATLAB_PACKAGE_NAME}*' \
+                     dst_artifact='__same__' \
+                     repository_name='us4useu/arrus' \
+                     description='${getBuildName(currentBuild)} (MATLAB)'
                      """
                 }
             }

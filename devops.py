@@ -40,9 +40,11 @@ stages = {
     "test": cmake.Test,
     "install": cmake.Install,
     "package_cpp": us4us.Package,
+    "package_matlab": us4us.Package,
     "publish_docs": us4us.PublishDocs,
     "publish_cpp": us4us.PublishReleases,
-    "publish_py": us4us.PublishReleases
+    "publish_py": us4us.PublishReleases,
+    "publish_matlab": us4us.PublishReleases
 }
 
 init_stages = ["cfg"]
