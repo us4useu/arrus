@@ -22,6 +22,7 @@ import arrus.utils
 import arrus.utils.imaging
 import arrus.framework
 import time
+from typing import Union
 
 
 class AbstractSession(abc.ABC):

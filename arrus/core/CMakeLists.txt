@@ -113,7 +113,8 @@ set(SRC_FILES
     io/validators/SessionSettingsProtoValidator.h
     io/validators/DictionaryProtoValidator.h
     io/validators/ProbeToAdapterConnectionProtoValidator.h
-    io/SettingsDictionary.h
+    api/session/DeviceDictionary.h
+    session/DeviceDictionary.cpp
 
     session/SessionImpl.cpp
     session/SessionSettings.h
