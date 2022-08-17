@@ -60,6 +60,8 @@ DeviceDictionary::~DeviceDictionary() = default;
 DeviceDictionary &DeviceDictionary::operator=(const DeviceDictionary &o) = default;
 DeviceDictionary &DeviceDictionary::operator=(DeviceDictionary &&o) noexcept = default;
 
+DeviceDictionary::DeviceDictionary(UniqueHandle<Impl> impl): impl(std::move(impl)) {}
+
 ProbeAdapterSettings DeviceDictionary::getAdapterSettings(const ProbeAdapterModelId &adapterModelId) const {
     return impl->getAdapterSettings(adapterModelId);
 }
@@ -71,26 +73,34 @@ ProbeModel DeviceDictionary::getProbeModel(const ProbeModelId &id) const { retur
 
 class DeviceDictionaryBuilder::Impl {
 public:
+    Impl() {
+         dict = UniqueHandle<DeviceDictionary::Impl>();
+    }
+
     void insertAdapterSettings(ProbeAdapterSettings &&adapter) {
         std::string key = DeviceDictionary::Impl::convertIdToString(adapter.getModelId());
-        dict.adaptersMap.emplace(key, std::forward<ProbeAdapterSettings>(adapter));
+        dict->adaptersMap.emplace(key, std::forward<ProbeAdapterSettings>(adapter));
     }
 
     void insertProbeSettings(ProbeSettings &&probe, const ProbeAdapterModelId &adapterId) {
         std::string adapterKey = DeviceDictionary::Impl::convertIdToString(adapterId);
         std::string probeKey = DeviceDictionary::Impl::convertIdToString(probe.getModel().getModelId());
         std::string key = probeKey + adapterKey;
-        dict.probesMap.emplace(key, std::forward<ProbeSettings>(probe));
+        dict->probesMap.emplace(key, std::forward<ProbeSettings>(probe));
     }
 
     void insertProbeModel(const ProbeModel &probeModel) {
         std::string key = DeviceDictionary::Impl::convertIdToString(probeModel.getModelId());
-        dict.modelsMap.emplace(key, probeModel);
+        dict->modelsMap.emplace(key, probeModel);
     }
 
+    DeviceDictionary build() {
+        return DeviceDictionary(dict);
+    }
 private:
-    DeviceDictionary::Impl dict;
+    UniqueHandle<DeviceDictionary::Impl> dict;
 };
+
 DeviceDictionaryBuilder &DeviceDictionaryBuilder::addAdapterModel(ProbeAdapterSettings adapter) {
     impl->insertAdapterSettings(std::move(adapter));
     return *this;
@@ -104,6 +114,13 @@ DeviceDictionaryBuilder &DeviceDictionaryBuilder::addProbeSettings(ProbeSettings
 DeviceDictionaryBuilder &DeviceDictionaryBuilder::addProbeModel(const ProbeModel &probeModel) {
     impl->insertProbeModel(probeModel);
     return *this;
+}
+DeviceDictionary DeviceDictionaryBuilder::build() {
+    return impl->build();
+}
+
+DeviceDictionaryBuilder::DeviceDictionaryBuilder() {
+    impl = UniqueHandle<Impl>();
 }
 
 DeviceDictionaryBuilder::DeviceDictionaryBuilder(const DeviceDictionaryBuilder &o) = default;

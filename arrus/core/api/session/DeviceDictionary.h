@@ -18,7 +18,6 @@ class DeviceDictionaryBuilder;
 class DeviceDictionary {
     class Impl;
     UniqueHandle<Impl> impl;
-    friend class DeviceDictionaryBuilder;
 public:
     ProbeAdapterSettings getAdapterSettings(const ProbeAdapterModelId &adapterModelId) const;
     ProbeSettings getProbeSettings(const ProbeModelId &probeId, const ProbeAdapterModelId &adapterId) const;
@@ -29,12 +28,18 @@ public:
     virtual ~DeviceDictionary();
     DeviceDictionary& operator=(const DeviceDictionary &o);
     DeviceDictionary& operator=(DeviceDictionary &&o) noexcept;
+private:
+    friend class DeviceDictionaryBuilder;
+
+    explicit DeviceDictionary(UniqueHandle<Impl> impl);
 };
 
 class DeviceDictionaryBuilder {
     class Impl;
     UniqueHandle<Impl> impl;
 public:
+    DeviceDictionaryBuilder();
+
     DeviceDictionaryBuilder &addAdapterModel(ProbeAdapterSettings adapter);
     DeviceDictionaryBuilder &addProbeSettings(ProbeSettings probe, const ProbeAdapterModelId &adapterId);
     DeviceDictionaryBuilder &addProbeModel(const ProbeModel &probeModel);
