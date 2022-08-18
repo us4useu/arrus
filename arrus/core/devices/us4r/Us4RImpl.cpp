@@ -314,6 +314,30 @@ void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     setRxSettings(newRxSettings);
 }
 
+void Us4RImpl::enableAfeAutoOffsetRemoval(void) {
+    for (auto &us4oem : us4oems) {
+        us4oem->enableAfeAutoOffsetRemoval();
+    }
+}
+
+void Us4RImpl::disableAfeAutoOffsetRemoval(void) {
+    for (auto &us4oem : us4oems) {
+        us4oem->disableAfeAutoOffsetRemoval();
+    }
+}
+
+void Us4RImpl::setAfeAutoOffsetRemovalCycles(uint16_t cycles) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setAfeAutoOffsetRemovalCycles(cycles);
+    }
+}
+
+void Us4RImpl::setAfeAutoOffsetRemovalDelay(uint16_t delay) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setAfeAutoOffsetRemovalDelay(delay);
+    }
+}
+
 uint8_t Us4RImpl::getNumberOfUs4OEMs() { return static_cast<uint8_t>(us4oems.size()); }
 
 void Us4RImpl::setTestPattern(Us4OEM::RxTestPattern pattern) {

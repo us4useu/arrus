@@ -187,6 +187,10 @@ private:
     void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
     void setLpfCutoffAfe(uint32 value, bool force);
     void setActiveTerminationAfe(std::optional<uint16> param, bool force);
+    void enableAfeAutoOffsetRemoval(void);
+    void disableAfeAutoOffsetRemoval(void);
+    void setAfeAutoOffsetRemovalCycles(uint16_t cycles);
+    void setAfeAutoOffsetRemovalDelay(uint16_t delay);
     void enableAfeDemod();
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);

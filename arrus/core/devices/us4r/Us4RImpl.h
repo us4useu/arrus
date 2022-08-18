@@ -111,6 +111,10 @@ public:
     void setLpfCutoff(uint32 value) override;
     void setDtgcAttenuation(std::optional<uint16> value) override;
     void setActiveTermination(std::optional<uint16> value) override;
+    void enableAfeAutoOffsetRemoval(void) override;
+    void disableAfeAutoOffsetRemoval(void) override;
+    void setAfeAutoOffsetRemovalCycles(uint16_t cycles) override;
+    void setAfeAutoOffsetRemovalDelay(uint16_t delay) override;
     uint8_t getNumberOfUs4OEMs() override;
     void setTestPattern(Us4OEM::RxTestPattern pattern) override;
     float getSamplingFrequency() const override;

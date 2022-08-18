@@ -180,6 +180,34 @@ public:
     virtual void setActiveTermination(std::optional<uint16> value) = 0;
 
     /**
+    * Enables AFE auto offset removal.
+    *
+    * See docs of arrus::devices:: for more information.
+    */
+    void enableAfeAutoOffsetRemoval(void) override;
+
+    /**
+    * EnDisables AFE auto offset removal.
+    *
+    * See docs of arrus::devices:: for more information.
+    */
+    void disableAfeAutoOffsetRemoval(void) override;
+
+    /**
+    * Sets AFE auto offset removal accumulator cycles number.
+    *
+    * See docs of arrus::devices:: for more information.
+    */
+    void setAfeAutoOffsetRemovalCycles(uint16_t cycles) override;
+
+    /**
+    * Sets AFE auto offset removal delay from TX_TRIG.
+    *
+    * See docs of arrus::devices:: for more information.
+    */
+    void setAfeAutoOffsetRemovalDelay(uint16_t delay) override;
+
+    /**
      * Sets a complete list of RxSettings on all Us4R components.
      *
      * @param settings settings to apply
