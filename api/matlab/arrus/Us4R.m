@@ -657,11 +657,65 @@ classdef Us4R < handle
                 obj.rec.dec = round(obj.seq.rxSampFreq / max(obj.seq.txFreq));
             end
             
+            %% Validate frames selection
+            if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.seq.nTx)
+                error("setRecParams: bmodeFrames refers to nonexistent transmission id");
+            end
+            
+            if obj.rec.colorEnable && any(obj.rec.colorFrames > obj.seq.nTx)
+                error("setRecParams: colorFrames refers to nonexistent transmission id");
+            end
+            
+            if obj.rec.vectorEnable && any(obj.rec.vect0Frames > obj.seq.nTx)
+                error("setRecParams: vector0Frames refers to nonexistent transmission id");
+            end
+            
+            if obj.rec.vectorEnable && any(obj.rec.vect1Frames > obj.seq.nTx)
+                error("setRecParams: vector1Frames refers to nonexistent transmission id");
+            end
+            
             %% Default bmodeFrames
             if obj.rec.bmodeEnable && isempty(obj.rec.bmodeFrames)
                 obj.rec.bmodeFrames = 1:obj.seq.nTx;
             end
-
+            
+            %% Validate/adjust size of the RxTangLims
+            obj.rec.bmodeRxTangLim = reshape(obj.rec.bmodeRxTangLim,[],2);
+            if obj.rec.bmodeEnable
+                if height(obj.rec.bmodeRxTangLim) == 1
+                    obj.rec.bmodeRxTangLim = obj.rec.bmodeRxTangLim.*ones(numel(obj.rec.bmodeFrames),1);
+                elseif height(obj.rec.bmodeRxTangLim) ~= numel(obj.rec.bmodeFrames)
+                    error("setRecParams: number of rows in bmodeRxTangLim must equal the length of bmodeFrames");
+                end
+            end
+            
+            obj.rec.colorRxTangLim = reshape(obj.rec.colorRxTangLim,[],2);
+            if obj.rec.colorEnable
+                if height(obj.rec.colorRxTangLim) == 1
+                    obj.rec.colorRxTangLim = obj.rec.colorRxTangLim.*ones(numel(obj.rec.colorFrames),1);
+                elseif height(obj.rec.colorRxTangLim) ~= numel(obj.rec.colorFrames)
+                    error("setRecParams: number of rows in colorRxTangLim must equal the length of colorFrames");
+                end
+            end
+            
+            obj.rec.vect0RxTangLim = reshape(obj.rec.vect0RxTangLim,[],2);
+            if obj.rec.vectorEnable
+                if height(obj.rec.vect0RxTangLim) == 1
+                    obj.rec.vect0RxTangLim = obj.rec.vect0RxTangLim.*ones(numel(obj.rec.vect0Frames),1);
+                elseif height(obj.rec.vect0RxTangLim) ~= numel(obj.rec.vect0Frames)
+                    error("setRecParams: number of rows in vector0RxTangLim must equal the length of vector0Frames");
+                end
+            end
+            
+            obj.rec.vect1RxTangLim = reshape(obj.rec.vect1RxTangLim,[],2);
+            if obj.rec.vectorEnable
+                if height(obj.rec.vect1RxTangLim) == 1
+                    obj.rec.vect1RxTangLim = obj.rec.vect1RxTangLim.*ones(numel(obj.rec.vect1Frames),1);
+                elseif height(obj.rec.vect1RxTangLim) ~= numel(obj.rec.vect1Frames)
+                    error("setRecParams: number of rows in vector1RxTangLim must equal the length of vector1Frames");
+                end
+            end
+            
             %% Resulting parameters
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
@@ -694,10 +748,10 @@ classdef Us4R < handle
                 obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
                 obj.seq.rxApFstElem    = gpuArray( int32(obj.seq.rxApOrig - 1));    % rxApOrig remains unchanged as it is used in data reorganization
                 obj.seq.nSampOmit      = gpuArray( int32(obj.seq.nSampOmit));
-                obj.rec.bmodeRxTangLim =          single(obj.rec.bmodeRxTangLim);
-                obj.rec.colorRxTangLim =          single(obj.rec.colorRxTangLim);
-                obj.rec.vect0RxTangLim =          single(obj.rec.vect0RxTangLim);
-                obj.rec.vect1RxTangLim =          single(obj.rec.vect1RxTangLim);
+                obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
+                obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
+                obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
+                obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
                 obj.seq.rxSampFreq     =          single(obj.seq.rxSampFreq);
                 obj.rec.sos            =          single(obj.rec.sos);
                 obj.seq.startSample    =          single(obj.seq.startSample);
@@ -1284,8 +1338,8 @@ classdef Us4R < handle
                                     obj.seq.txApLstElem(selFrames), ...
                                     obj.seq.rxApFstElem(selFrames), ...
                                     obj.seq.nSampOmit(selFrames) / obj.rec.dec, ...
-                                    rxTangLim(1), ...
-                                    rxTangLim(2), ...
+                                    rxTangLim(selFrames,1).', ...
+                                    rxTangLim(selFrames,2).', ...
                                     obj.seq.rxSampFreq / obj.rec.dec, ...
                                     obj.rec.sos);
             else
@@ -1299,8 +1353,8 @@ classdef Us4R < handle
                                     obj.seq.txApCentZ(selFrames), ...
                                     obj.seq.txApCentX(selFrames), ...
                                     obj.seq.rxApFstElem(selFrames), ...
-                                    rxTangLim(1), ...
-                                    rxTangLim(2), ...
+                                    gather(rxTangLim(1,1)), ...
+                                    gather(rxTangLim(1,2)), ...
                                     obj.seq.rxSampFreq / obj.rec.dec, ...
                                     gather(obj.seq.txFreq(1)), ...
                                     obj.rec.sos, ...
