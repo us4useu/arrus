@@ -179,6 +179,16 @@ public:
     MOCK_METHOD(void, AfeSoftReset, (uint8_t), (override));
     MOCK_METHOD(void, AfeSoftReset, (), (override));
     MOCK_METHOD(void, WaitForPendingInterrupts, (), (override));
+    MOCK_METHOD(uint32_t, GetSequencerConfRegister, (), (override));
+    MOCK_METHOD(uint32_t, GetSequencerCtrlRegister, (), (override));
+    MOCK_METHOD(void, SetStandardIODriveMode, (), (override));
+    MOCK_METHOD(void, SetWaveformIODriveMode, (), (override));
+    MOCK_METHOD(void, SetIOLevels, (uint8_t), (override));
+    MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint8_t), (override));
+    MOCK_METHOD(void, SetIOBSRegister, (uint8_t, uint8_t, uint8_t, bool, uint16_t), (override));
+    MOCK_METHOD(void, ListPeriphs, (), (override));
+    MOCK_METHOD(void, DumpPeriph, (std::string, uint32_t), (override));
+    MOCK_METHOD(void, GetBaseAddr, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
