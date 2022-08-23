@@ -188,7 +188,7 @@ public:
     MOCK_METHOD(void, SetIOBSRegister, (uint8_t, uint8_t, uint8_t, bool, uint16_t), (override));
     MOCK_METHOD(void, ListPeriphs, (), (override));
     MOCK_METHOD(void, DumpPeriph, (std::string, uint32_t), (override));
-    MOCK_METHOD(void, GetBaseAddr, (), (override));
+    MOCK_METHOD(size_t, GetBaseAddr, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
