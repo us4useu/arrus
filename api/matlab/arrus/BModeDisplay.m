@@ -12,16 +12,20 @@ classdef BModeDisplay < handle
     %   cineloop (optional name-value argument)
     % :param persistence: persistence filtration weights (vector) or \
     %   length (scalar) (optional name-value argument)
-    % :param bmodeTgc: applies linear TGC equal to bmodeTgc[dB]/depth \
-    %   (scalar) (optional name-value argument)
+    % :param bmodeTgc: applies linear TGC from 0 at top to bmodeTgc[dB] \
+    %   at bottom of the image (scalar) (optional name-value argument)
     % :param bmodeAutoTgcResp: applies linear TGC that adapts in time to \
     %   the imaging conditions, defines the responsiveness of the \
-    %   adaptation, <0,1> (scalar) (optional name-value argument)
+    %   adaptation (0-no adaptation, 1-instant adaptation), \
+    %   <0,1> (scalar) (optional name-value argument)
     % 
     % Old syntax (won't be supported in future releases):
     % :param xGrid: (1, width) vector, x-coordinates of the image pixels [m]
     % :param zGrid: (1, depth) vector z-coordinates of the image pixels [m]
     % :param dynamicRange: two-element vector [min, max], value lims to apply
+    % 
+    % BModeDisplay class includes a cineloop buffer. The content of the \
+    % buffer can be accessed through the getCineLoop method.
     
     properties(Access = private)
         hFig
