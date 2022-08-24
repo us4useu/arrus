@@ -59,6 +59,32 @@ public:
     //virtual void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) = 0;
 
     /**
+    * Enables AFE auto offset removal.
+    *
+    */
+    virtual void enableAfeAutoOffsetRemoval(void) = 0;
+
+    /**
+    * Disables AFE auto offset removal.
+    *
+    */
+    virtual void disableAfeAutoOffsetRemoval(void) = 0;
+
+    /**
+    * Sets AFE auto offset removal accumulator cycles number.
+    *
+    * @param cycles: number of cycles is given by N=(2^(cycles+6))-1
+    */
+    virtual void setAfeAutoOffsetRemovalCycles(uint16_t cycles) = 0;
+
+    /**
+    * Sets AFE auto offset removal delay from TX_TRIG
+    *
+    * @param delay: delay from TX_TRIG in reference clock cycles
+    */
+    virtual void setAfeAutoOffsetRemovalDelay(uint16_t delay) = 0;
+
+    /**
     * Enables and configures AFE built-in demodulator
     * 
     * @param demodulationFrequency: Demodulation frequency

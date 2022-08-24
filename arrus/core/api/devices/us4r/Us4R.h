@@ -184,28 +184,28 @@ public:
     *
     * See docs of arrus::devices:: for more information.
     */
-    void enableAfeAutoOffsetRemoval(void) override;
+    virtual void enableAfeAutoOffsetRemoval(void) = 0;
 
     /**
-    * EnDisables AFE auto offset removal.
+    * Disables AFE auto offset removal.
     *
     * See docs of arrus::devices:: for more information.
     */
-    void disableAfeAutoOffsetRemoval(void) override;
+    virtual void disableAfeAutoOffsetRemoval(void) = 0;
 
     /**
     * Sets AFE auto offset removal accumulator cycles number.
     *
     * See docs of arrus::devices:: for more information.
     */
-    void setAfeAutoOffsetRemovalCycles(uint16_t cycles) override;
+    virtual void setAfeAutoOffsetRemovalCycles(uint16_t cycles) = 0;
 
     /**
     * Sets AFE auto offset removal delay from TX_TRIG.
     *
     * See docs of arrus::devices:: for more information.
     */
-    void setAfeAutoOffsetRemovalDelay(uint16_t delay) override;
+    virtual void setAfeAutoOffsetRemovalDelay(uint16_t delay) = 0;
 
     /**
      * Sets a complete list of RxSettings on all Us4R components.

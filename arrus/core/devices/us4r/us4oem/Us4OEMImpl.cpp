@@ -86,9 +86,9 @@ void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
     ius4oem->AfeWriteRegister(1, address, value);
 }
 
-void Us4OEMImpl::enableAfeAutoOffsetRemoval(void) { ius4oem->AfeAutoOffsetRemovalEnable(); }
+void Us4OEMImpl::enableAfeAutoOffsetRemoval(void) { ius4oem->AfeEnableAutoOffsetRemoval(); }
 
-void Us4OEMImpl::disableAfeAutoOffsetRemoval(void) { ius4oem->AfeAutoOffsetRemovalDisable(); }
+void Us4OEMImpl::disableAfeAutoOffsetRemoval(void) { ius4oem->AfeDisableAutoOffsetRemoval(); }
 
 void Us4OEMImpl::setAfeAutoOffsetRemovalCycles(uint16_t cycles) { ius4oem->AfeSetAutoOffsetRemovalCycles(cycles); }
 
