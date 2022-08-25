@@ -186,7 +186,7 @@ public:
     virtual void enableAfeAutoOffsetRemoval(void) = 0;
 
     /**
-    * Disables AFE auto offset removal.
+    * Disables AFE auto offset removal (default).
     *
     */
     virtual void disableAfeAutoOffsetRemoval(void) = 0;
@@ -210,7 +210,7 @@ public:
     virtual void setAfeAutoOffsetRemovalCycles(uint16_t cycles) = 0;
 
     /**
-    * Sets AFE auto offset removal delay in reference clock cycles number from TX_TRIG.
+    * Sets AFE auto offset removal delay in reference clock cycles number from TX_TRIG (default = 0).
     *
     */
     virtual void setAfeAutoOffsetRemovalDelay(uint16_t delay) = 0;
