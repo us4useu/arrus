@@ -182,28 +182,36 @@ public:
     /**
     * Enables AFE auto offset removal.
     *
-    * See docs of arrus::devices:: for more information.
     */
     virtual void enableAfeAutoOffsetRemoval(void) = 0;
 
     /**
     * Disables AFE auto offset removal.
     *
-    * See docs of arrus::devices:: for more information.
     */
     virtual void disableAfeAutoOffsetRemoval(void) = 0;
 
     /**
-    * Sets AFE auto offset removal accumulator cycles number.
-    *
-    * See docs of arrus::devices:: for more information.
+    * Sets AFE auto offset removal accumulator cycles number to calculate average offset from.
+	 * Possible settings are:
+	 * 0 = 2047 cycles (default)
+	 * 1 = 127 cycles
+	 * 2 = 255 cycles
+	 * 3 = 511 cycles
+	 * 4 = 1023 cycles
+	 * 5 = 2047 cycles
+	 * 6 = 4095 cycles
+	 * 7 = 8191 cycles
+	 * 8 = 16383 cycles
+	 * 9 = 32767 cycles
+	 * 10 to 15 = 65535 cycles
+	 *
     */
     virtual void setAfeAutoOffsetRemovalCycles(uint16_t cycles) = 0;
 
     /**
-    * Sets AFE auto offset removal delay from TX_TRIG.
+    * Sets AFE auto offset removal delay in reference clock cycles number from TX_TRIG.
     *
-    * See docs of arrus::devices:: for more information.
     */
     virtual void setAfeAutoOffsetRemovalDelay(uint16_t delay) = 0;
 
