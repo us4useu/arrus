@@ -90,7 +90,10 @@ void Us4OEMImpl::enableAfeAutoOffsetRemoval(void) { ius4oem->AfeEnableAutoOffset
 
 void Us4OEMImpl::disableAfeAutoOffsetRemoval(void) { ius4oem->AfeDisableAutoOffsetRemoval(); }
 
-void Us4OEMImpl::setAfeAutoOffsetRemovalCycles(uint16_t cycles) { ius4oem->AfeSetAutoOffsetRemovalCycles(cycles); }
+void Us4OEMImpl::setAfeAutoOffsetRemovalCycles(uint16_t cycles) { 
+    ARRUS_REQUIRES_AT_MOST(cycles, 15, ::arrus::format("Invalid auto offset removal accumulator cycles setting ({}) valid range: {} - {}", cycles, 0, 15));
+    ius4oem->AfeSetAutoOffsetRemovalCycles(cycles); 
+}
 
 void Us4OEMImpl::setAfeAutoOffsetRemovalDelay(uint16_t delay) { ius4oem->AfeSetAutoOffsetRemovalDelay(delay); }
 
