@@ -173,16 +173,23 @@ void Us4RImpl::stopDevice() {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        this->getDefaultComponent()->stop();
+        for(auto &us4oem: us4oems) {
+            std::cout << "Waiting for pending interrupts" << std::endl;
+            us4oem->getIUs4oem()->WaitForPendingTransfers();
+            us4oem->getIUs4oem()->WaitForPendingInterrupts();
+        }
+        // Here all us4R IRQ threads should not work anymore.
+        // Cleanup.
         for (auto &us4oem : us4oems) {
             us4oem->getIUs4oem()->DisableInterrupts();
         }
-        this->getDefaultComponent()->stop();
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
+    // TODO: the below should be part of session handler
     if (this->buffer != nullptr) {
         this->buffer->shutdown();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        // We must be sure here, that there is no thread working on the us4rBuffer here.
         if (this->us4rBuffer) {
             getProbeImpl()->unregisterOutputBuffer();
             this->us4rBuffer.reset();
