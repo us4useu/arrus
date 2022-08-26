@@ -16,6 +16,7 @@ import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.ops.us4r
 import arrus.ops.imaging
+import arrus.ops.tgc
 import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.imaging
@@ -97,6 +98,21 @@ class Session(AbstractSession):
         actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
+        us_device.set_kernel_context(kernel_context)
+
+        # Set TGC curve.
+        if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
+            if seq.tgc_start is not None and seq.tgc_slope is not None:
+                us_device.set_tgc(arrus.ops.tgc.LinearTgc(
+                    start=seq.tgc_start,
+                    slope=seq.tgc_slope
+                ))
+            elif seq.tgc_curve is not None:
+                us_device.set_tgc(seq.tgc_curve)
+            else:
+                us_device.set_tgc([])
+        else:
+            us_device.set_tgc(seq.tgc_curve)
 
         # Prepare data buffer and constant context metadata
         fcm = arrus.core.getFrameChannelMapping(upload_result)
@@ -117,7 +133,7 @@ class Session(AbstractSession):
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq, us_device_dto, medium)
-        echo_data_description = self._create_data_description(raw_seq, us_device_dto, fcm)
+        echo_data_description = self._create_data_description(raw_seq, us_device, fcm)
 
         # --- Data buffer
         n_samples = raw_seq.get_n_samples()
@@ -131,9 +147,10 @@ class Session(AbstractSession):
         buffer = arrus.framework.DataBuffer(buffer_handle)
         input_shape = buffer.elements[0].data.shape
 
+        is_iq_data = scheme.digital_down_conversion is not None
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
-            input_shape=input_shape, is_iq_data=False, dtype="int16",
+            input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
             version=arrus.__version__
         )
 
@@ -272,8 +289,7 @@ class Session(AbstractSession):
 
     def _create_data_description(self, raw_seq, device, fcm):
         return arrus.metadata.EchoDataDescription(
-            sampling_frequency=device.sampling_frequency /
-                               raw_seq.ops[0].rx.downsampling_factor,
+            sampling_frequency=device.current_sampling_frequency,
             custom={"frame_channel_mapping": fcm}
         )
 

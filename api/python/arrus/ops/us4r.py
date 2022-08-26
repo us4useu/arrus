@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import typing
 import numpy as np
 from arrus.ops.operation import Operation
+from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,13 @@ class TxRxSequence:
 
 
 @dataclass(frozen=True)
+class DigitalDownConversion:
+    demodulation_frequency: float
+    fir_coefficients: Iterable[float]
+    decimation_factor: float
+
+
+@dataclass(frozen=True)
 class DataBufferSpec:
     """
     Output data buffer specification.
@@ -153,6 +161,7 @@ class Scheme:
     output_buffer: DataBufferSpec = DataBufferSpec(type="FIFO", n_elements=4)
     work_mode: str = "HOST"
     processing: object = None
+    digital_down_conversion: DigitalDownConversion = None
 
 
 

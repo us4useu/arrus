@@ -199,7 +199,6 @@ class ProcessingRunner:
         out_buffer_spec = processing.output_buffer
         in_buffer_spec = in_buffer_spec if in_buffer_spec is not None else default_buffer
         out_buffer_spec = out_buffer_spec if out_buffer_spec is not None else default_buffer
-
         self.gpu_buffer = Buffer(n_elements=in_buffer_spec.size,
                                  shape=const_metadata.input_shape,
                                  dtype=const_metadata.dtype, math_pkg=cp,
@@ -2099,7 +2098,7 @@ class RemapToLogicalOrder(Operation):
         else:
             # GPU
             import cupy as cp
-            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap_v1
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
@@ -2125,7 +2124,7 @@ class RemapToLogicalOrder(Operation):
                 batch_size
             )
             def gpu_remap_fn(data):
-                run_remap(self.grid_size, self.block_size,
+                run_remap_v1(self.grid_size, self.block_size,
                     [self._output_buffer, data,
                      self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
                      self._frame_offsets,
@@ -2138,6 +2137,146 @@ class RemapToLogicalOrder(Operation):
     def process(self, data):
         self._remap_fn(data)
         return self._output_buffer
+
+
+class RemapToLogicalOrderV2(Operation):
+    """
+    Remaps the order of the data to logical order defined by the us4r device.
+
+    If the batch size was equal 1, the raw ultrasound RF data with shape.
+    (1, n_frames, n_channels, n_samples, n_components).
+    A single metadata object will be returned.
+
+    If the batch size was > 1, the raw ultrasound RF data with shape
+    (n_us4oems*n_samples*n_frames*n_batches, n_components, 32) will be reordered
+    to (batch_size, n_frames, n_channels, n_samples, n_components).
+    A list of metadata objects will be returned.
+    """
+
+    def __init__(self, num_pkg=None):
+        self._output_buffer = None
+        self.xp = num_pkg
+        self.remap = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def _is_prepared(self):
+        return self._output_buffer is not None
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        xp = self.xp
+        # get shape, create an array with given shape
+        # create required transfers
+        # perform the transfers
+        fcm = const_metadata.data_description.custom["frame_channel_mapping"]
+        n_frames, n_channels = fcm.frames.shape
+        n_samples_set = {op.rx.get_n_samples()
+                         for op in const_metadata.context.raw_sequence.ops}
+
+        # get (unique) number of samples in a frame
+        if len(n_samples_set) > 1:
+            raise arrus.exceptions.IllegalArgumentError(
+                f"Each tx/rx in the sequence should acquire the same number of "
+                f"samples (actual: {n_samples_set})")
+        n_samples = next(iter(n_samples_set))
+        batch_size = fcm.batch_size
+
+        input_order = len(const_metadata.input_shape)
+        # Input: RF data: (total_n_samples, 32),
+        # IQ data: (total_n_samples, 2, 32)
+        n_components = 1 if input_order == 2 else 2
+        self.output_shape = (batch_size, n_frames, n_channels, n_samples, n_components)
+        self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
+        if xp == np:
+            # CPU
+            raise ValueError(f"'{type(self).__name__}' is not implemented for CPU")
+        else:
+            # GPU
+            import cupy as cp
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap_v2
+            self._fcm_frames = cp.asarray(fcm.frames)
+            self._fcm_channels = cp.asarray(fcm.channels)
+            self._fcm_us4oems = cp.asarray(fcm.us4oems)
+            frame_offsets = fcm.frame_offsets
+            #  TODO constant memory
+            self._frame_offsets = cp.asarray(frame_offsets)
+            # For each us4OEM, get number of physical frames this us4OEM gathers.
+            # Note: this is the maximum id of us4OEM IN USE.
+            n_us4oems = cp.max(self._fcm_us4oems).get()+1
+            n_frames_us4oems = []
+            for us4oem in range(n_us4oems):
+                us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
+                if us4oem_frames.size == 0:
+                    n_frames_us4oems.append(0)
+                else:
+                    n_frames_us4oem = cp.max(us4oem_frames).get().item()
+                    n_frames_us4oems.append(n_frames_us4oem)
+            #  TODO constant memory
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)+1
+            self.grid_size, self.block_size = get_default_grid_block_size(
+                self._fcm_frames, n_samples,
+                batch_size
+            )
+
+            def gpu_remap_fn(data):
+                run_remap_v2(self.grid_size, self.block_size,
+                          [self._output_buffer, data,
+                           self._fcm_frames, self._fcm_channels,
+                           self._fcm_us4oems, self._frame_offsets,
+                           self._n_frames_us4oems,
+                           batch_size, n_frames, n_samples, n_channels,
+                           n_components])
+
+            self._remap_fn = gpu_remap_fn
+        return const_metadata.copy(input_shape=self.output_shape)
+
+    def process(self, data):
+        self._remap_fn(data)
+        return self._output_buffer
+
+
+class ToRealOrComplex(Operation):
+    """
+    Converts the input array with shape
+    (..., n_components), a particular dtype, to:
+    - complex64 with shape (...) if n_components == 2 (regardles of dtype)
+    - dtype with shape (...) if n_components == 1 (simply, removes the last
+      axis).
+    """
+    def __init__(self, num_pkg=None):
+        self._output_buffer = None
+        self.xp = num_pkg
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        input_shape = const_metadata.input_shape
+        n_components = input_shape[-1]
+
+        output_shape = input_shape[:-1]
+        if n_components == 2:
+            output_dtype = self.xp.complex64
+            self.process = self._process_to_complex
+        elif n_components == 1:
+            output_dtype = const_metadata.dtype
+            self.process = self._process_to_real
+        else:
+            raise ValueError(f"Unhandled number of components: {n_components},"
+                             f"should be 1 (real) or 2 (complex).")
+
+        # get shape, create an array with given shape
+        # create required transfers
+        return const_metadata.copy(input_shape=output_shape,
+                                   dtype=output_dtype)
+
+    def _process_to_complex(self, data):
+        output = data.astype(self.xp.float32)
+        return output[..., 0] + 1j*output[..., 1]
+
+    def _process_to_real(self, data):
+        return data[..., 0]
 
 
 class Reshape(Operation):
@@ -2435,3 +2574,33 @@ class ReconstructLri3D(Operation):
         )
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
+
+
+class Equalize(Operation):
+    """
+    Equalize means values along a specific axis.
+    """
+    def __init__(self, axis=0, axis_offset=0, num_pkg=None):
+        self.axis = axis
+        self.axis_offset = axis_offset
+        self.xp = num_pkg
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        self.input_dtype = const_metadata.dtype
+        self.input_shape = const_metadata.input_shape
+        if self.axis >= len(self.input_shape):
+            raise ValueError(f"Equalize: axis out of bounds: {self.axis}, "
+                             f"for shape: {self.input_shape}.")
+        self.slice = [slice(None)]*len(self.input_shape)
+        self.slice[self.axis] = slice(self.axis_offset, None)
+        self.slice = tuple(self.slice)
+        return const_metadata.copy()
+
+    def process(self, data):
+        d = data[self.slice]
+        m = d.mean(axis=self.axis).astype(self.input_dtype)
+        m = self.xp.expand_dims(m, axis=self.axis)
+        return data-m

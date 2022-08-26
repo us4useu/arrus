@@ -23,8 +23,8 @@ if proc.iqEnable
     nSample = size(rfIn,1);
     t = (0:nSample-1)'/acq.rxSampFreq;
     
-    rfOut = 2*rfIn.*cos(-2*pi*acq.txFreq*t) ...
-          + 2*rfIn.*sin(-2*pi*acq.txFreq*t)*1i;
+    rfOut = 2*rfIn.*cos(-2*pi*reshape(acq.txFreq,1,1,[]).*t) ...
+          + 2*rfIn.*sin(-2*pi*reshape(acq.txFreq,1,1,[]).*t)*1i;
 else
     rfOut = rfIn;
 end

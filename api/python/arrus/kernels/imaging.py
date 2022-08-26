@@ -68,22 +68,6 @@ def __get_sample_range(context, tx_delay_center):
         raise ValueError(f"Unrecognized value '{init_delay}' for init_delay.")
 
 
-def __get_tgc_curve(context):
-    op = context.op
-    tgc_start = op.tgc_start
-    tgc_slope = op.tgc_slope
-
-    if tgc_start is None or tgc_slope is None:
-        if op.tgc_curve is None:
-            return []
-        else:
-            return op.tgc_curve
-    else:
-        return arrus.kernels.tgc.compute_linear_tgc(
-            context,
-            arrus.ops.tgc.LinearTgc(tgc_start, tgc_slope))
-
-
 def process_simple_tx_rx_sequence(context):
     op = context.op
 
@@ -95,10 +79,6 @@ def process_simple_tx_rx_sequence(context):
         probe=context.device.probe.model, sequence=op, c=c)
     n_tx = len(tx_rx_params["tx_ap_cent"])
     sample_range = __get_sample_range(context, tx_rx_params["tx_center_delay"])
-
-    # TGC
-    tgc_curve = __get_tgc_curve(context)
-
     txrx = []
     for i in range(n_tx):
         tx_aperture = tx_rx_params["tx_apertures"][i]
@@ -111,7 +91,8 @@ def process_simple_tx_rx_sequence(context):
         rx = Rx(rx_aperture, sample_range, op.downsampling_factor,
                 padding=rx_padding)
         txrx.append(TxRx(tx, rx, op.pri))
-    return TxRxSequence(txrx, tgc_curve=tgc_curve, sri=op.sri,
+    # TGC curve should be set on later stage
+    return TxRxSequence(txrx, tgc_curve=[], sri=op.sri,
                         n_repeats=op.n_repeats)
 
 

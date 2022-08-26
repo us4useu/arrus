@@ -190,3 +190,59 @@ The following log severity levels are available:
 ``arrus.logging.WARNING``,
 ``arrus.logging.ERROR``,
 ``arrus.logging.FATAL``
+
+Probe check functionality
+-------------------------
+
+.. autoclass:: arrus.utils.probe_check.FeatureDescriptor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ElementValidationVerdict
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ProbeElementValidatorResult
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ProbeElementFeatureDescriptor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ProbeElementHealthReport
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ProbeHealthReport
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ProbeElementFeatureExtractor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.MaxAmplitudeExtractor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.EnergyExtractor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.SignalDurationTimeExtractor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ByThresholdValidator
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ByNeigborhoodValidator
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.utils.probe_check.ProbeHealthVerifier
+    :members:
+    :show-inheritance:
+

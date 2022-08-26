@@ -142,6 +142,8 @@ using namespace ::arrus;
 
 %include "arrus/core/api/common/Tuple.h"
 %include "arrus/core/api/common/Interval.h"
+%include "arrus/core/api/common/Span.h"
+%include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 
 %feature("valuewrapper", "0");
 
@@ -333,11 +335,7 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
 }
 %};
 
-
-
 // ------------------------------------------ OPERATIONS
-
-
 // Us4R
 %feature("valuewrapper");
 %{
@@ -347,6 +345,7 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 #include <vector>
 using namespace arrus::ops::us4r;
 %};
@@ -359,6 +358,7 @@ using namespace arrus::ops::us4r;
 %include "arrus/core/api/ops/us4r/Tx.h"
 %include "arrus/core/api/ops/us4r/TxRxSequence.h"
 %include "arrus/core/api/ops/us4r/Scheme.h"
+%include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 
 
 %include "std_vector.i"
@@ -370,9 +370,12 @@ namespace std {
 
 %inline %{
 
-void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs,
-                        arrus::ops::us4r::TxRx &txrx) {
+void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs, arrus::ops::us4r::TxRx &txrx) {
     txrxs.push_back(txrx);
+}
+
+void VectorFloatPushBack(std::vector<float> &vector, double value) {
+    vector.push_back(float(value));
 }
 
 %};

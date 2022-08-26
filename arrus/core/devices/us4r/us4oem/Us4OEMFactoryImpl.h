@@ -65,7 +65,6 @@ public:
         // Other parameters
         // TGC
         // TODO replace the below calls with calls to the Us4OEM methods, i.e. remove the below code duplicate
-
         return std::make_unique<Us4OEMImpl>(DeviceId(DeviceType::Us4OEM, ordinal),
                                             std::move(ius4oem), cfg.getActiveChannelGroups(),
                                             channelMapping, cfg.getRxSettings(),
