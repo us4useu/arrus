@@ -175,7 +175,6 @@ void Us4RImpl::stopDevice() {
         logger->log(LogSeverity::DEBUG, "Stopping system.");
         this->getDefaultComponent()->stop();
         for(auto &us4oem: us4oems) {
-            std::cout << "Waiting for pending interrupts" << std::endl;
             us4oem->getIUs4oem()->WaitForPendingTransfers();
             us4oem->getIUs4oem()->WaitForPendingInterrupts();
         }
