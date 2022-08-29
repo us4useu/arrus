@@ -143,6 +143,8 @@ private:
      */
     void applyForAllUs4OEMs(const std::function<void(Us4OEM* us4oem)>& func, const std::string &funcName);
 
+    void checkVoltage(Voltage voltage, float tolerance, float(Us4RImpl::func));
+
     void disableAfeDemod();
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients);

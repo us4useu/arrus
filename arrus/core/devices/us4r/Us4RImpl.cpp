@@ -52,6 +52,24 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterIm
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
+void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, float(Us4RImpl::func), const std::string &name, int retries) {
+
+    float measured = (this->*func)();
+    while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        measured = getUCDMeasuredHVMVoltage(i);
+    }
+    if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+        disableHV();
+        //throw exception
+        throw IllegalStateException(
+            ::arrus::format(name + " invalid '{}', should be in range: [{}, {}]",
+                measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+    }
+    logger->log(LogSeverity::INFO, ::arrus::format(name + " = {} V", i, measured));
+}
+
 void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
@@ -72,86 +90,25 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     //Verify register
-    if (this->getVoltage() != voltage) {
-        //throw exception
+    voltage setVoltage = this->getVoltage();
+    if (setVoltage != voltage) {
+        throw IllegalStateException(
+            ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
     }
 
     float tolerance = 3.0f; // 3V tolerance 
+    int retries = 5;
 
     //Verify measured voltages on HV
-    //HVP voltage
-    float measured = getMeasuredPVoltage();
-    uint8_t retries = 5;
-
-    while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        measured = getMeasuredPVoltage();
-    }
-    if (abs(measured - static_cast<float>(voltage)) > tolerance) {
-        disableHV();
-        //throw exception
-        throw IllegalStateException(
-            ::arrus::format("Measured HVP voltage on HV module invalid '{}', should be in range: [{}, {}]",
-                measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
-    }
-    logger->log(LogSeverity::INFO, ::arrus::format("Measured HVP on HV module = {} V", measured));
-
-    //HVM voltage
-    measured = getMeasuredMVoltage();
-    retries = 5;
-
-    while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        measured = getMeasuredMVoltage();
-    }
-    if (abs(measured - static_cast<float>(voltage)) > tolerance) {
-        disableHV();
-        //throw exception
-        throw IllegalStateException(
-            ::arrus::format("Measured HVM voltage on HV module invalid '{}', should be in range: [{}, {}]",
-                measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
-    }
-    logger->log(LogSeverity::INFO, ::arrus::format("Measured HVM on HV module= {} V", measured));
+    checkVoltage(voltage, tolerance, &Us4RImpl::getMeasuredPVoltage(), "HVP on HV supply", retries);
+    checkVoltage(voltage, tolerance, &Us4RImpl::getMeasuredMVoltage(), "HVM on HV supply", retries);
 
     //Verify measured voltages on OEMs
     for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
         //HVP voltage
-        measured = getUCDMeasuredHVPVoltage(i);
-        retries = 5;
-
-        while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            measured = getUCDMeasuredHVPVoltage(i);
-        }
-        if (abs(measured - static_cast<float>(voltage)) > tolerance) {
-            disableHV();
-            //throw exception
-            throw IllegalStateException(
-                ::arrus::format("Measured HVP voltage on OEM #{} invalid '{}', should be in range: [{}, {}]",
-                i, measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
-        }
-        logger->log(LogSeverity::INFO, ::arrus::format("Measured HVP on OEM #{} = {} V", i, measured));
-
+        checkVoltage(voltage, tolerance, &Us4RImpl::getUCDMeasuredHVPVoltage(i), ("HVP on OEM# " + std::to_string(i)), retries);
         //HVM voltage
-        measured = getUCDMeasuredHVMVoltage(i);
-        retries = 5;
-
-        while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            measured = getUCDMeasuredHVMVoltage(i);
-        }
-        if (abs(measured - static_cast<float>(voltage)) > tolerance) {
-            disableHV();
-            //throw exception
-            throw IllegalStateException(
-                ::arrus::format("Measured HVM voltage on OEM #{} invalid '{}', should be in range: [{}, {}]",
-                    i, measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
-        }
-        logger->log(LogSeverity::INFO, ::arrus::format("Measured HVM on OEM #{} = {} V", i, measured));
+        checkVoltage(voltage, tolerance, &Us4RImpl::getUCDMeasuredHVMVoltage(i), ("HVM on OEM# " + std::to_string(i)), retries);
     }
 }
 
