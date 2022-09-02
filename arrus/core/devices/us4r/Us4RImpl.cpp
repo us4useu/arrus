@@ -58,8 +58,9 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     auto *device = getDefaultComponent();
     auto voltageRange = device->getAcceptedVoltageRange();
 
-    auto minVoltage = voltageRange.start();
-    auto maxVoltage = voltageRange.end();
+    // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
+    auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
+    auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
 
     if (voltage < minVoltage || voltage > maxVoltage) {
         throw IllegalArgumentException(::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]",
