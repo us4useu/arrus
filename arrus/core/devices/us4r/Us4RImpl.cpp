@@ -96,20 +96,24 @@ void Us4RImpl::setVoltage(Voltage voltage) {
             ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
     }
 
-    float tolerance = 3.0f; // 3V tolerance 
+    float tolerance = 3.0f; // 3V tolerance
     int retries = 5;
 
     //Verify measured voltages on HV
-    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); }, "HVP on HV supply", retries);
-    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); }, "HVM on HV supply", retries);
+    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
+                 "HVP on HV supply", retries);
+    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
+                 "HVM on HV supply", retries);
 
     //Verify measured voltages on OEMs
     for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-        
+
         //HVP voltage
-        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVPVoltage(i);}, ("HVP on OEM#" + std::to_string(i)), retries);
+        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVPVoltage(i);},
+                     ("HVP on OEM#" + std::to_string(i)), retries);
         //HVM voltage
-        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVMVoltage(i);}, ("HVM on OEM#" + std::to_string(i)), retries);
+        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVMVoltage(i);},
+                     ("HVM on OEM#" + std::to_string(i)), retries);
     }
 }
 
