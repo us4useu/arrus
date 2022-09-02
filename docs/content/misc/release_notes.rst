@@ -4,6 +4,12 @@ Release notes
 0.7.x
 -----
 
+0.7.1
+.....
+
+- core (C++):
+
+    - us4R: Limited the range of available voltage to [5, 90] V.
 
 0.7.0
 .....
