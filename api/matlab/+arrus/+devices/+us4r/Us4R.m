@@ -29,5 +29,35 @@ classdef Us4R < handle
             frequency = res{1, 1};
         end
 
+        function enableAfeAutoOffsetRemoval(obj)
+            %
+            % Enables the AFE auto offset removal.
+            %
+            obj.ptr.callMethod("enableAfeAutoOffsetRemoval", 0);
+        end
+
+        function disableAfeAutoOffsetRemoval(obj)
+            %
+            % Disables the AFE auto offset removal.
+            %
+            obj.ptr.callMethod("disableAfeAutoOffsetRemoval", 0);
+        end
+
+        function setAfeAutoOffsetRemovalCycles(obj, nCyclesId)
+            %
+            % Sets the AFE auto offset removal accumulator cycles number identifier to given value.
+            %
+            % :param nCyclesId: value to set
+            obj.ptr.callMethod("setAfeAutoOffsetRemovalCycles", 0, nCyclesId);
+        end
+
+        function setAfeAutoOffsetRemovalDelay(obj, delay)
+            %
+            % Sets the AFE auto offset removal accumulator delay to given value.
+            %
+            % :param delay: value to set
+            obj.ptr.callMethod("setAfeAutoOffsetRemovalDelay", 0, delay);
+        end
+
     end
 end

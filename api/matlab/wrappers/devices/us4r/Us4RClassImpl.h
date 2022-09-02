@@ -25,6 +25,10 @@ public:
     explicit Us4RClassImpl(const std::shared_ptr<MexContext> &ctx) : ClassObjectWrapper(ctx, CLASS_NAME) {
         ARRUS_MATLAB_ADD_METHOD("setVoltage", setVoltage);
         ARRUS_MATLAB_ADD_METHOD("getSamplingFrequency", getSamplingFrequency);
+        ARRUS_MATLAB_ADD_METHOD("enableAfeAutoOffsetRemoval", enableAfeAutoOffsetRemoval);
+        ARRUS_MATLAB_ADD_METHOD("disableAfeAutoOffsetRemoval", disableAfeAutoOffsetRemoval);
+        ARRUS_MATLAB_ADD_METHOD("setAfeAutoOffsetRemovalCycles", setAfeAutoOffsetRemovalCycles);
+        ARRUS_MATLAB_ADD_METHOD("setAfeAutoOffsetRemovalDelay", setAfeAutoOffsetRemovalDelay);
     }
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -36,6 +40,26 @@ public:
     void getSamplingFrequency(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         float fs = get(obj)->getSamplingFrequency();
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, float, fs);
+    }
+
+    void enableAfeAutoOffsetRemoval(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        get(obj)->enableAfeAutoOffsetRemoval();
+    }
+
+    void disableAfeAutoOffsetRemoval(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        get(obj)->disableAfeAutoOffsetRemoval();
+    }
+
+    void setAfeAutoOffsetRemovalCycles(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint16_t value = inputs[0][0];
+        ctx->logInfo(format("Us4R: setting AFE auto offset removal accumulator cycles number identifier {}", value));
+        get(obj)->setAfeAutoOffsetRemovalCycles(value);
+    }
+
+    void setAfeAutoOffsetRemovalDelay(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint16_t value = inputs[0][0];
+        ctx->logInfo(format("Us4R: setting AFE auto offset removal accumulator delay {}", value));
+        get(obj)->setAfeAutoOffsetRemovalDelay(value);
     }
 
 };
