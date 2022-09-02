@@ -60,8 +60,17 @@ target_compile_definitions(${TARGET_NAME}
 
 install(
     TARGETS
-    ${TARGET_NAME}
+        ${TARGET_NAME} 
+        arrus-core
     DESTINATION
-    ${ARRUS_MATLAB_INSTALL_DIR}
+        ${ARRUS_MATLAB_INSTALL_DIR}
 )
+
+# Copy all .dlls to the destination install dir
+string(REPLACE "\\" "/" Us4_ROOT_DIR_SANITIZED ${Us4_ROOT_DIR})
+install(
+    DIRECTORY
+        ${Us4_ROOT_DIR_SANITIZED}/lib64/
+    DESTINATION
+        ${ARRUS_MATLAB_INSTALL_DIR})
 

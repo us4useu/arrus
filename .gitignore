@@ -208,3 +208,6 @@ CMakeFiles
 .vs/arrus/v15/.suo
 .vs/
 
+# Arrus specific
+install
+
