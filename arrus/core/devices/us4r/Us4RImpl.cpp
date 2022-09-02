@@ -77,7 +77,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     auto *device = getDefaultComponent();
     auto voltageRange = device->getAcceptedVoltageRange();
 
-    // Note: us4R hvs voltage: minimum: 5V, maximum: 90V.
+    // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
     auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
     auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
 
@@ -232,16 +232,22 @@ void Us4RImpl::stopDevice() {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        this->getDefaultComponent()->stop();
+        for(auto &us4oem: us4oems) {
+            us4oem->getIUs4oem()->WaitForPendingTransfers();
+            us4oem->getIUs4oem()->WaitForPendingInterrupts();
+        }
+        // Here all us4R IRQ threads should not work anymore.
+        // Cleanup.
         for (auto &us4oem : us4oems) {
             us4oem->getIUs4oem()->DisableInterrupts();
         }
-        this->getDefaultComponent()->stop();
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
+    // TODO: the below should be part of session handler
     if (this->buffer != nullptr) {
         this->buffer->shutdown();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        // We must be sure here, that there is no thread working on the us4rBuffer here.
         if (this->us4rBuffer) {
             getProbeImpl()->unregisterOutputBuffer();
             this->us4rBuffer.reset();
