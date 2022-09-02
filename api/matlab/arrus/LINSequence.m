@@ -6,7 +6,7 @@ classdef LINSequence < SimpleTxRxSequence
    % :param rxApertureCenter: vector of rx aperture center positions [m]. \
    %   When empty, will be the same as txApertureCenter.
    % :param rxApertureSize: size of the rx aperture [element]. \
-   %   When empty, will be the same as txApertureSize.
+   %   When empty, will be the same as number of system channels.
     
     methods
         function obj = LINSequence(varargin)

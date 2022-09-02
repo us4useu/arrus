@@ -137,7 +137,7 @@ pipeline {
                      --options \
                      token='$token' \
                      release_name='${env.BRANCH_NAME}' \
-                     src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/python/arrus*.whl' \
+                     src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/python/${getArrusWhlNamePattern()}' \
                      dst_artifact='__same__' \
                      repository_name='us4useu/arrus' \
                      description='${getBuildName(currentBuild)} (Python)'
@@ -187,6 +187,15 @@ pipeline {
          }
 
 
+    }
+}
+
+def getArrusWhlNamePattern() {
+    if(us4us.isPrerelease("${env.BRANCH_NAME}")) {
+        return "arrus*${us4us.getTimestamp()}*.whl";
+    }
+    else {
+        return "arrus*.whl";
     }
 }
 
