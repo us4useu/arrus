@@ -8,13 +8,16 @@ Release notes
 .....
 
 - core (C++):
+
     - us4R: exposed hardware Digital Down Conversion,
     - us4R: scheme stopping procedure was improved (should take less time)
 
 - Python API:
+
     - Implemented new module `arrus.utils.probe_check` for probe checking and automatic channel health, see example: examples/check_probe.py
 
 - MATLAB API:
+
     - Exposed ARRUS core API to MATLAB interface.
 
 0.7.x
