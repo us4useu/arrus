@@ -30,6 +30,8 @@ classdef Us4R < handle
         sys
         seq
         rec
+        session
+        buffer
         logTime
     end
     
@@ -264,9 +266,7 @@ classdef Us4R < handle
             %
             % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
             
-            obj.openSequence;
             [rf, ~] = obj.execSequence;
-            obj.closeSequence;
             
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
@@ -282,9 +282,7 @@ classdef Us4R < handle
             % implementations.
             %
             % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
-            obj.openSequence;
             [rf, metadata] = obj.execSequence;
-            obj.closeSequence;
             
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
@@ -305,7 +303,6 @@ classdef Us4R < handle
             %   operation. Should take one parameter, which will be feed with \
             %   the output of the executed op.
             
-            obj.openSequence;
             i = 0;
             while(isContinue())
                 i = i + 1;
@@ -333,21 +330,6 @@ classdef Us4R < handle
                     disp('--------------------');
                 end
             end
-            obj.closeSequence;
-        end
-        
-        function prepareBuffer(obj, nElements)
-            Us4MEX(0, "PrepareInternalBuffer", nElements, obj.seq.nSamp*obj.seq.nTrig);
-        end
-        
-        function acquireToBuffer(obj, nElements)
-            obj.openSequence;
-            Us4MEX(0, "AcquireToInternalBuffer", nElements, obj.seq.txPri*obj.seq.nTrig);
-            obj.closeSequence;
-        end
-        
-        function [rf] = popBufferElement(obj)
-            rf = Us4MEX(0, "PopInternalBufferElement");
         end
         
         function [img] = reconstructOffline(obj,rfRaw)
@@ -968,135 +950,53 @@ classdef Us4R < handle
         
         function programHW(obj)
             
-            % Unloading Us4MEX should clear the device state.
-            munlock('Us4MEX');
-            clear Us4MEX;
+            import arrus.ops.us4r.*;
+            import arrus.framework.*;
             
-            %% Program mappings, gains, and voltage
+            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
             
+            obj.session = arrus.session.Session("C:/Users/Public/us4r.prototxt");
+            us4r = obj.session.getDevice("/Us4R:0");
             
-            Us4MEX(0, "Initialize", obj.sys.systemType, obj.sys.nArius);
-            try
-                Us4MEX(0,"EnableHV");
-            catch
-                warning('1st "EnableHV" failed');
-                Us4MEX(0,"EnableHV");
-            end
+            us4r.setVoltage(obj.seq.txVoltage);
+            
+%             us4r.enableAfeAutoOffsetRemoval();
+%             % us4r.disableAfeAutoOffsetRemoval();
+%             us4r.setAfeAutoOffsetRemovalCycles(uint16(1));
+%             us4r.setAfeAutoOffsetRemovalDelay(uint16(2048));
+            
+            if false % obj.rec.iqEnable
+                cutoffFrequency = mean(obj.seq.txFreq)/(us4r.getSamplingFrequency()/2);
+                firOrder = obj.rec.dec * 16;
+                firCoeff = fir1(firOrder, cutoffFrequency, "low"); %requires signal processing toolbox
+                firCoeff = firCoeff(1, 1:length(firCoeff)/2);
                 
-            try
-                Us4MEX(0, "SetHVVoltage", obj.seq.txVoltage);
-            catch
-                warning('1st "SetHVVoltage" failed');
-                Us4MEX(0, "SetHVVoltage", obj.seq.txVoltage);
+                ddc = DigitalDownConversion( ...
+                    "demodulationFrequency", mean(obj.seq.txFreq), ...
+                    "decimationFactor", obj.rec.dec, ...
+                    "firCoefficients", firCoeff);
+            else
+                ddc = [];
             end
             
-            for iArius=0:(obj.sys.nArius-1)
-                % Set Rx channel mapping
-%                 for iChan=1:32
-%                     Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,iChan), iChan);
-%                 end
-                for iFire=0:(obj.seq.nFire-1)
-                    Us4MEX(iArius, "SetRxChannelMapping", obj.sys.rxChannelMap(iArius+1,1:32), iFire);
-                end
-
-                % Set Tx channel mapping
-                for iChan=1:128
-                    Us4MEX(iArius, "SetTxChannelMapping", obj.sys.txChannelMap(iArius+1,iChan), iChan);
-                end
-
-                % init RX
-                Us4MEX(iArius, "SetPGAGain","30dB");
-                Us4MEX(iArius, "SetLPFCutoff","15MHz");
-                Us4MEX(iArius, "SetActiveTermination","EN", "200");
-                Us4MEX(iArius, "SetLNAGain","24dB");
-                Us4MEX(iArius, "SetDTGC","DIS", "0dB");                 % EN/DIS? (attenuation actually, 0:6:42)
-                Us4MEX(iArius, "TGCEnable");
-
-                
+            nTx = obj.seq.nTx;
+            nElem = max(obj.sys.probeMap);
+            for iTx=1:nTx
+                pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                txObj = Tx("aperture", obj.seq.txApMask(1:nElem,iTx).', 'delays', obj.seq.txDel(1:nElem,iTx).', "pulse", pulse);
+                rxObj = Rx("aperture", obj.seq.rxApMask(1:nElem,iTx).', "sampleRange", obj.seq.startSample + obj.sys.trigTxDel + [0, obj.seq.nSamp]);
+                txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
+            txrxSeq = TxRxSequence("ops", txrxList);
+
+            scheme = Scheme('txRxSequence', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
             
-            %% Program Tx/Rx sequence
-            for iArius=0:(obj.sys.nArius-1)
-                Us4MEX(iArius, "SetNumberOfFirings", obj.seq.nFire);
-                Us4MEX(iArius, "ClearScheduledReceive");
-
-                for iFire=0:(obj.seq.nFire-1)
-                    Us4MEX(iArius, "SetActiveChannelGroup", obj.maskFormat(obj.seq.actChanGroupMask(:,iArius+1)), iFire);
-                    
-                    %% Tx
-                    iTx     = 1 + floor(iFire/obj.seq.nSubTx);
-                    Us4MEX(iArius, "SetTxAperture", obj.maskFormat(obj.seq.txSubApMask(:,iTx,iArius+1)), iFire);
-                    Us4MEX(iArius, "SetTxDelays", obj.seq.txSubApDel{iArius+1,iTx}, iFire);
-                    Us4MEX(iArius, "SetTxFrequency", obj.seq.txFreq(iTx), iFire);
-                    Us4MEX(iArius, "SetTxHalfPeriods", obj.seq.txNPer(iTx)*2, iFire);
-                    Us4MEX(iArius, "SetTxInvert", obj.seq.txInvert(iTx), iFire);
-                    
-                    %% Rx
-                    % SetRxChannelMapping for the new esaote adapter
-                    if obj.sys.adapType == -1
-                        rxSubChanIdx = find(obj.seq.rxSubApMask(:,iFire+1,iArius+1));
-                        rxSubChanMap = obj.sys.rxChannelMap(iArius+1,rxSubChanIdx);
-                        rxSubChanIdx = 1+mod(rxSubChanIdx-1,obj.sys.nChArius);
-                        rxSubChanMap = 1+mod(rxSubChanMap-1,obj.sys.nChArius);
-                        rxMapping = nan(1, 32);
-                        rxMapping(rxSubChanIdx) = rxSubChanMap;
-                        % Mapping inactive elements to inactive channels
-                        % They are ommited in execSequence anyway
-                        rxMapping(isnan(rxMapping)) = find(~any((1:obj.sys.nChArius).' == rxSubChanMap, 2));
-                        
-                        Us4MEX(iArius, "SetRxChannelMapping", rxMapping, iFire);
-                    end
-                    Us4MEX(iArius, "SetRxAperture", obj.maskFormat(obj.seq.rxSubApMask(:,iFire+1,iArius+1)), iFire);
-                    Us4MEX(iArius, "SetRxTime", obj.seq.rxTime, iFire);
-                    Us4MEX(iArius, "SetRxDelay", obj.seq.rxDel, iFire);
-                    Us4MEX(iArius, "TGCSetSamples", obj.seq.tgcCurve, iFire);
-                    
-                end
-
-                Us4MEX(iArius, "EnableTransmit");
-            end
-            
-             %% Program recording
-            % ScheduleReceive should be done for every iTrig (not iFire)
-            % This loop will be probably used in the future
-            for iArius=0:(obj.sys.nArius-1)
-                for iTrig=0:(obj.seq.nTrig-1)
-                    iFire = mod(iTrig, obj.seq.nFire);
-                    Us4MEX(iArius, "ScheduleReceive", iTrig, iTrig*obj.seq.nSamp, ...
-                                    obj.seq.nSamp, ... 
-                                    obj.seq.startSample + obj.sys.trigTxDel, ...
-                                    obj.seq.fsDivider-1, iFire);
-                end
-            end
-            
-            %% Program triggering
-            for iArius=0:(obj.sys.nArius-1)
-                Us4MEX(iArius, "SetNTriggers", obj.seq.nTrig);
-                for iTrig=0:(obj.seq.nTrig-1)
-                    Us4MEX(iArius, "SetTrigger", obj.seq.txPri*1e6, 0, iTrig);
-                end
-                Us4MEX(iArius, "SetTrigger", obj.seq.txPri*1e6, 1, obj.seq.nTrig-1);
-                
-                Us4MEX(iArius, "EnableSequencer");      % loading parameters after TX/RX
-%                 Us4MEX(iArius, "EnableSequencer", 1);   % loading parameters during TX/RX
-            end
-           
-        end
-
-        function openSequence(obj)
-            %% Start acquisitions (1st sequence exec., no transfer to host)
-            Us4MEX(0, "TriggerStart");
-            pause(obj.seq.pauseMultip * obj.seq.txPri * obj.seq.nTrig);
-        end
-
-        function closeSequence(obj)
-            %% Stop acquisition
-            Us4MEX(0, "TriggerStop");
+            obj.buffer = obj.session.upload(scheme);
 
         end
 
         function [rf, metadata] = execSequence(obj)
-            
+
             if ~obj.sys.isHardwareProgrammed
                 error("execSequence: hardware is not programmed, sequence cannot be executed");
             end
@@ -1109,20 +1009,14 @@ classdef Us4R < handle
             nRep	= obj.seq.nRep;
             nTrig	= nTx*nSubTx*nRep;
 
-            %% Capture data
-            Us4MEX(0, "TriggerSync");
-            pause(obj.seq.pauseMultip * obj.seq.txPri * nTrig);
+            %% Capture & transfer data to PC
+            obj.session.run();
+            rf = obj.buffer.front().eval();
             
-            %% Transfer to PC
-            rf = Us4MEX(0, ...
-                        "TransferAllRXBuffersToHost",  ...
-                        zeros(nArius, 1), ...
-                        repmat(nSamp * nTrig, [nArius 1]), ...
-                        int8(obj.logTime) ...
-            );
             %% Get metadata
             metadata = zeros(nChan, nTrig, 'int16');
             metadata(:, :) = rf(:, 1:nSamp:nTrig*nSamp);
+
             %% Reorganize
             rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
 
