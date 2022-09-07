@@ -167,12 +167,13 @@ class Session(AbstractSession):
                     extract_metadata=False
                 )
             if isinstance(processing, _imaging.Processing):
-                self.processing = arrus.utils.imaging.ProcessingRunner(
+                processing = arrus.utils.imaging.ProcessingRunner(
                     buffer, const_metadata, processing)
-                outputs = self.processing.outputs
+                outputs = processing.outputs
             else:
                 raise ValueError("Unsupported type of processing: "
                                  f"{type(processing)}")
+            self._current_processing = processing
         else:
             # Device buffer and const_metadata
             outputs = buffer, const_metadata
