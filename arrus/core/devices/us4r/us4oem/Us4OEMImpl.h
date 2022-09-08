@@ -129,6 +129,7 @@ public:
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
+    float getUCDMeasuredVoltage(uint8_t rail) override;
     void checkFirmwareVersion() override;
     uint32 getFirmwareVersion() override;
     void checkState() override;

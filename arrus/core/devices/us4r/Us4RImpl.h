@@ -117,9 +117,12 @@ public:
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
     std::vector<unsigned short> getChannelsMask() override;
+    void checkVoltage(Voltage voltage, float tolerance, const std::function<float()> &func, const std::string &name, int retries);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
+    float getUCDMeasuredHVPVoltage(uint8_t oemId) override;
+    float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
 
@@ -140,6 +143,8 @@ private:
      * TODO consider implementing rollback mechanism?
      */
     void applyForAllUs4OEMs(const std::function<void(Us4OEM* us4oem)>& func, const std::string &funcName);
+
+    void checkVoltage(Voltage voltage, float tolerance, float(Us4RImpl::func));
 
     void disableAfeDemod();
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
