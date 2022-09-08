@@ -5,15 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 # Version
 set(PROJECT_VERSION 0.8.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
-
-option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
-# TODO remove ARRUS_DEVELOP_VERSION, use ARRUS_APPEND_VERSION_SUFFIX_DATE
-if(ARRUS_DEVELOP_VERSION)
-    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}-dev")
-else()
-    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}")
-endif()
-
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
 ################################################################################
@@ -27,8 +18,6 @@ set(CMAKE_MODULE_PATH
 ################################################################################
 # Global options and settings
 ################################################################################
-include(common)
-
 set(ARRUS_ROOT_DIR ${CMAKE_SOURCE_DIR})
 set(ARRUS_DOCS_INSTALL_DIR docs)
 set(ARRUS_MATLAB_INSTALL_DIR matlab)
@@ -71,8 +60,7 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
             _CRT_SECURE_NO_WARNINGS)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
-    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS -fvisibility=hidden)
-    set(ARRUS_CPP_COMMON_LINKER_OPTIONS -Wl,--exclude-libs=ALL) # Exclude all external dependencies from STV_DEFAULT
+    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror")
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
             ARRUS_LINUX
@@ -159,24 +147,6 @@ if(ARRUS_EMBED_DEPS)
         DIRECTORY
             ${Us4_ROOT_DIR_SANITIZED}/lib64/
         DESTINATION
-            ${ARRUS_LIB_INSTALL_DIR}
-    )
-if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
-    install(
-       FILES
-            # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR_SANITIZED}/matlab/Us4MEX.mexw64
-       DESTINATION
-            matlab/arrus
-    )
-    install(
-        FILES
-            # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR_SANITIZED}/bin/us4OEMFirmwareUpdate.exe
-            ${Us4_ROOT_DIR_SANITIZED}/bin/Us4OEMStatus.exe
-        DESTINATION
-            ${ARRUS_BIN_INSTALL_DIR}
-    )
-endif()
+            ${ARRUS_LIB_INSTALL_DIR})
 endif()
 

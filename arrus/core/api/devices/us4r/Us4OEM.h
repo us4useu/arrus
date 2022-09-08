@@ -40,6 +40,13 @@ public:
     virtual float getFPGATemperature() = 0;
 
     /**
+     * Returns rail voltage measured by Us4OEM's UCD [V].
+     *
+     * @param rail UCD rail number
+     */
+    virtual float getUCDMeasuredVoltage(uint8_t rail) = 0;
+
+    /**
     * Reads AFE register
     *
     * @param address: register address
@@ -87,6 +94,7 @@ public:
     *
     */
     virtual void disableAfeDemod() = 0;
+	
     /**
      * Checks if the firmware version on the Us4OEM module is correct.
      *

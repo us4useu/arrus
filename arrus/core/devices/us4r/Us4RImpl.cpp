@@ -52,6 +52,24 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterIm
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
+void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, const std::function<float()> &func, const std::string &name, int retries) {
+    float measured = func();
+    while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        measured = func();
+    }
+    if (abs(measured - static_cast<float>(voltage)) > tolerance) {
+        disableHV();
+        //throw exception
+        throw IllegalStateException(
+            ::arrus::format(name + " invalid '{}', should be in range: [{}, {}]",
+                measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+    }
+    logger->log(LogSeverity::INFO, ::arrus::format(name + " = {} V", measured));
+}
+
+
 void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
@@ -59,14 +77,45 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     auto *device = getDefaultComponent();
     auto voltageRange = device->getAcceptedVoltageRange();
 
-    auto minVoltage = voltageRange.start();
-    auto maxVoltage = voltageRange.end();
+    // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
+    auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
+    auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
 
     if (voltage < minVoltage || voltage > maxVoltage) {
         throw IllegalArgumentException(
             ::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
     }
     hv.value()->setVoltage(voltage);
+
+    //Wait to stabilise voltage output
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    //Verify register
+    Voltage setVoltage = this->getVoltage();
+    if (setVoltage != voltage) {
+        throw IllegalStateException(
+            ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
+    }
+
+    float tolerance = 3.0f; // 3V tolerance
+    int retries = 5;
+
+    //Verify measured voltages on HV
+    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
+                 "HVP on HV supply", retries);
+    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
+                 "HVM on HV supply", retries);
+
+    //Verify measured voltages on OEMs
+    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+
+        //HVP voltage
+        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVPVoltage(i);},
+                     ("HVP on OEM#" + std::to_string(i)), retries);
+        //HVM voltage
+        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVMVoltage(i);},
+                     ("HVM on OEM#" + std::to_string(i)), retries);
+    }
 }
 
 unsigned char Us4RImpl::getVoltage() {
@@ -82,6 +131,16 @@ float Us4RImpl::getMeasuredPVoltage() {
 float Us4RImpl::getMeasuredMVoltage() {
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
     return hv.value()->getMeasuredMVoltage();
+}
+
+float Us4RImpl::getUCDMeasuredHVPVoltage(uint8_t oemId) {
+    //UCD rail 19 = HVP
+    return us4oems[oemId]->getUCDMeasuredVoltage(19);
+}
+
+float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
+    //UCD rail 20 = HVM}
+    return us4oems[oemId]->getUCDMeasuredVoltage(20);
 }
 
 void Us4RImpl::disableHV() {
@@ -173,16 +232,22 @@ void Us4RImpl::stopDevice() {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        this->getDefaultComponent()->stop();
+        for(auto &us4oem: us4oems) {
+            us4oem->getIUs4oem()->WaitForPendingTransfers();
+            us4oem->getIUs4oem()->WaitForPendingInterrupts();
+        }
+        // Here all us4R IRQ threads should not work anymore.
+        // Cleanup.
         for (auto &us4oem : us4oems) {
             us4oem->getIUs4oem()->DisableInterrupts();
         }
-        this->getDefaultComponent()->stop();
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
+    // TODO: the below should be part of session handler
     if (this->buffer != nullptr) {
         this->buffer->shutdown();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        // We must be sure here, that there is no thread working on the us4rBuffer here.
         if (this->us4rBuffer) {
             getProbeImpl()->unregisterOutputBuffer();
             this->us4rBuffer.reset();
