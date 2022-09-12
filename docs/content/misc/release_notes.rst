@@ -15,6 +15,7 @@ Release notes
 - Python API:
 
     - Implemented new module `arrus.utils.probe_check` for probe checking and automatic channel health, see example: examples/check_probe.py
+    - exposed hardware Digital Down Conversion
 
 - MATLAB API:
 

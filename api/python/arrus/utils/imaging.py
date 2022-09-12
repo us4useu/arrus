@@ -2338,10 +2338,16 @@ class ExtractMetadata(Operation):
         # Metadata is saved by us4OEM:0 module only.
         self._n_frames = fcm.n_frames[0]
         self._n_repeats = const_metadata.context.raw_sequence.n_repeats
+
+        input_shape = const_metadata.input_shape
+        is_ddc = len(input_shape) == 3
+        self._slices = (slice(0, self._n_samples*self._n_frames, self._n_samples), )
+        if is_ddc:
+            self._slices = self._slices + (0, ) # Select "I" value.
         return const_metadata
 
     def process(self, data):
-        return data[:self._n_samples*self._n_frames:self._n_samples]\
+        return data[self._slices] \
             .reshape(self._n_frames, -1) \
             .copy()
 
