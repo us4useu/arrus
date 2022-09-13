@@ -313,7 +313,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 auto sampleOffset = isDDCOn ? getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor())
                                             : TX_SAMPLE_DELAY_RAW_DATA;
                 size_t nSamplesRaw = isDDCOn ? nSamples*2 : nSamples;
-                uint32_t startSampleRaw = isDDCOn ? startSample*2: startSample;
+                uint32_t startSampleRaw = isDDCOn ? startSample*((uint32_t)ddc->getDecimationFactor()): startSample;
                 ius4oem->ScheduleReceive(firing, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (!op.isRxNOP() || this->isMaster()) {
@@ -673,22 +673,25 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     default: throw IllegalArgumentException("Unrecognized test pattern");
     }
 }
+
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
+    //DDC valid data offset
     uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
-    // Note: the below value was determined experimentally, for a couple of decimation factors.
-    float decInt = 0;
-    float decFract = modf(ddcDecimationFactor, &decInt);
+    //float decInt = 0;
+    //float decFract = modf(ddcDecimationFactor, &decInt);
     // Currently only values 2, 3, ... 10 are supported.
-    if(decFract != 0.0f || decInt >= 10) {
+    if(offset>240) {
         // just return the original offset, for debug purposes
         this->logger->log(LogSeverity::WARNING,
-                          ::arrus::format("Currently decimation factor {} is not supported, you will get data"
-                                          "as it comes from the IQ demodulator (it may, or may not point "
-                                          "to the moment when TX starts).", ddcDecimationFactor));
+                          ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
+                                          " Delay TX by {} cycles to align start of RX data with start of TX."
+                                          , ddcDecimationFactor, (offset-240)));
         return offset;
     }
     else {
-        return offset + TX_SAMPLE_DELAY_DDC_DATA[int(decInt)-1]*2;
+        //Calculate offset pointing to DDC sample closest but lower than 240 cycles
+        offset += ((240u - offset) / (uint32_t)ddcDecimationFactor) * (uint32_t)ddcDecimationFactor;
+        return offset;
     }
 
 }

@@ -79,6 +79,7 @@ public:
     // Note: the below reffers to the number of IQ pairs (not the int16 values).
     static constexpr uint32_t TX_SAMPLE_DELAY_DDC_DATA[] = {
         // 1(?), 2,  3,  4,  5,  6,  7,  8,  9
+          //240,  0, 0, 0, 0, 0, 0, 0,  0
           240,  92, 87, 84, 70, 60, 56, 32,  27
     };
 
