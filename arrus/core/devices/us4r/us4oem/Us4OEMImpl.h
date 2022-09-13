@@ -217,10 +217,10 @@ private:
             expectedNumberOfCoeffs = 8 * decInt;
         }
         else if (nQuarters == 1) {
-            expectedNumberOfCoeffs = 16 * decInt + 8;
+            expectedNumberOfCoeffs = 32 * decInt + 8;
         }
         else if (nQuarters == 2) {
-            expectedNumberOfCoeffs = 32 * decInt + 8;
+            expectedNumberOfCoeffs = 16 * decInt + 8;
         }
         else if (nQuarters == 3) {
             expectedNumberOfCoeffs = 32 * decInt + 24;
