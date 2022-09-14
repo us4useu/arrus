@@ -313,7 +313,34 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 auto sampleOffset = isDDCOn ? getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor())
                                             : TX_SAMPLE_DELAY_RAW_DATA;
                 size_t nSamplesRaw = isDDCOn ? nSamples*2 : nSamples;
-                uint32_t startSampleRaw = isDDCOn ? startSample*((uint32_t)ddc->getDecimationFactor()): startSample;
+
+                uint32_t startSampleRaw = 0;
+
+                if (isDDCOn) {
+                    float decInt = 0;
+                    float decFloat = modf(ddc->getDecimationFactor(), &decInt);
+                    uint32_t div = 1;
+
+                    if (decFloat == 0.5f) {
+                        div = 2;
+                    }
+                    else if (decFloat == 0.25f || decFloat == 0.75f) {
+                        div = 4;
+                    }
+                    
+                    if (startSample != (startSample / div) * div) {
+                        startSample = (startSample / div) * div;
+                        this->logger->log(LogSeverity::WARNING,
+                            ::arrus::format("Decimation factor {} requires start offset to be multiple of {}. Offset adjusted to {}."
+                                             , ddc->getDecimationFactor(), div, startSample));
+                    }
+
+                    startSampleRaw = startSample * (uint32_t)ddc->getDecimationFactor();
+                }
+                else {
+                    startSampleRaw = startSample;
+                }
+                
                 ius4oem->ScheduleReceive(firing, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (!op.isRxNOP() || this->isMaster()) {
@@ -676,12 +703,11 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
-    //float decInt = 0;
-    //float decFract = modf(ddcDecimationFactor, &decInt);
-    // Currently only values 2, 3, ... 10 are supported.
+    uint32_t offset = 34u + (16 * (uint32_t)ddcDecimationFactor);
+
+    //Check if data valid offset is higher than TX offset
     if(offset>240) {
-        // just return the original offset, for debug purposes
+        //If TX offset is lower than data valid offset return just data valid offset and log warning
         this->logger->log(LogSeverity::WARNING,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} cycles to align start of RX data with start of TX."
@@ -689,7 +715,7 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
         return offset;
     }
     else {
-        //Calculate offset pointing to DDC sample closest but lower than 240 cycles
+        //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
         offset += ((240u - offset) / (uint32_t)ddcDecimationFactor) * (uint32_t)ddcDecimationFactor;
         return offset;
     }
