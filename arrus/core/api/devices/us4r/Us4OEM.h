@@ -122,6 +122,13 @@ public:
      */
     virtual uint32 getTxFirmwareVersion() = 0;
 
+    /**
+     * Returns current FPGA wall clock (time passed since Init function was called).
+     *
+     * @return FPGA wall clock (seconds)
+     */
+    virtual float getFPGAWallclock() = 0;
+
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
     void operator=(Us4OEM const&) = delete;

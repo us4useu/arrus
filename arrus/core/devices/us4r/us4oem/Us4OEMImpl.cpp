@@ -698,4 +698,8 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
     return currentSamplingFrequency;
 }
 
+float Us4OEMImpl::getFPGAWallclock() {
+    return ius4oem->GetFPGAWallclock();
+}
+
 }// namespace arrus::devices

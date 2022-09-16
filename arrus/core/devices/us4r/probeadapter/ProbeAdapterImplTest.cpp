@@ -117,6 +117,7 @@ public:
     MOCK_METHOD(uint16_t, getAfe, (uint8_t address), (override));
     MOCK_METHOD(void, setAfe, (uint8_t address, uint16_t value), (override));
     MOCK_METHOD(float, getUCDMeasuredVoltage, (uint8_t), (override));
+    MOCK_METHOD(float, getFPGAWallclock, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {

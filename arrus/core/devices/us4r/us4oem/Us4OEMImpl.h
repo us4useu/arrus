@@ -162,6 +162,8 @@ public:
     }
     float getCurrentSamplingFrequency() const override;
 
+    float getFPGAWallclock() override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
