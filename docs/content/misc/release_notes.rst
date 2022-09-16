@@ -11,6 +11,7 @@ Release notes
 
     - us4R: exposed hardware Digital Down Conversion,
     - us4R: scheme stopping procedure was improved (should take less time)
+    - us4R: exposed a function that allows to read us4OEM FPGA Wallclock
 
 - Python API:
 
