@@ -4,6 +4,13 @@ Release notes
 0.7.x
 -----
 
+0.7.2
+.....
+
+- Matlab API:
+
+    - Removed the requirement of integer values for txNPeriods in MATLAB API.
+
 0.7.1
 .....
 
