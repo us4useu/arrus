@@ -45,7 +45,7 @@ classdef SimpleTxRxSequence < Operation
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
         txFrequency (1,1) {mustBeProperNumber}
-        txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
+        txNPeriods (1,1) {mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         nRepetitions (1,:) = 1
