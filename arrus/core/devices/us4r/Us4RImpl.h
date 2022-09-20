@@ -122,6 +122,8 @@ public:
     float getMeasuredMVoltage() override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
+    void setHpfCornerFrequency(uint32_t frequency) override;
+    void disableHpf() override;
 
 
 private:
