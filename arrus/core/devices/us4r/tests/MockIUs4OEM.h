@@ -192,9 +192,12 @@ public:
     MOCK_METHOD(void, AfeSoftTrigger, (), (override));
     MOCK_METHOD(void, AfeEnableAutoOffsetRemoval, (), (override));
     MOCK_METHOD(void, AfeDisableAutoOffsetRemoval, (), (override));
-    MOCK_METHOD(void, AfeSetAutoOffsetRemovalCycles, (uint16_t), (override));
-    MOCK_METHOD(void, AfeSetAutoOffsetRemovalDelay, (uint16_t), (override));
+    MOCK_METHOD(void, AfeSetAutoOffsetRemovalCycles, (uint8_t), (override));
+    MOCK_METHOD(void, AfeSetAutoOffsetRemovalDelay, (uint8_t), (override));
     MOCK_METHOD(float, GetFPGAWallclock, (), (override));
+    MOCK_METHOD(void, AfeEnableHPF, (), (override));
+    MOCK_METHOD(void, AfeDisableHPF, (), (override));
+    MOCK_METHOD(void, AfeSetHPFCornerFrequency, (uint8_t), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
