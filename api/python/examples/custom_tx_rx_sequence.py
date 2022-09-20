@@ -37,7 +37,7 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 
 def main():
     # Here starts communication with the device.
-    with arrus.Session() as sess:
+    with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(20)
 

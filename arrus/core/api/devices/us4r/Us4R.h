@@ -145,6 +145,18 @@ public:
     virtual std::vector<float> getTgcCurvePoints(float maxT) const = 0;
 
     /**
+     * Sets AFE register.
+     *
+     */
+    virtual void setAfe(uint8_t addr, uint16 value) = 0;
+
+    /**
+     * Gets AFE register.
+     *
+     */
+    virtual uint16_t getAfe(uint8_t addr) = 0;
+
+    /**
      * Sets PGA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
@@ -214,6 +226,8 @@ public:
     *
     */
     virtual void setAfeAutoOffsetRemovalDelay(uint16_t delay) = 0;
+
+    virtual void printAfeAutoOffsetRemovalInfo(void) = 0;
 
     /**
      * Sets a complete list of RxSettings on all Us4R components.

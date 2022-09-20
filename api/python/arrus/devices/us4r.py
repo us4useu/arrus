@@ -95,6 +95,26 @@ class Us4R(Device):
         """
         self._handle.setVoltage(voltage)
 
+    def enable_dc_offset_removal(self, cycles, delay):
+        """
+        Enables default DC offset removal.
+
+        :param cycles: cycles
+        :param delay: delay
+        """
+        self._handle.enableAfeAutoOffsetRemoval()
+        self._handle.setAfeAutoOffsetRemovalCycles(cycles)
+        self._handle.setAfeAutoOffsetRemovalDelay(delay)
+    
+    def print_dc_offset_info(self):
+        self._handle.printAfeAutoOffsetRemovalInfo()
+
+    def setAfe(self, addr, reg):
+        self._handle.setAfe(addr, reg)
+
+    def getAfe(self, addr):
+        return self._handle.getAfe(addr)
+
     def start(self):
         """
         Starts uploaded tx/rx sequence execution.

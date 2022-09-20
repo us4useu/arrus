@@ -16,14 +16,14 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 # Here starts communication with the device.
-with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
+with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
     us4r = sess.get_device("/Us4R:0")
     us4r.set_hv_voltage(20)
 
     sequence = PwiSequence(
         angles=np.array([0]),
         pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
-        rx_sample_range=(0, 2*1024),
+        rx_sample_range=(0, 1024),
         speed_of_sound=1450,
         pri=400e-6,
         tgc_start=14,
@@ -61,8 +61,20 @@ with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
     buffer, metadata = sess.upload(scheme)
     display = Display2D(metadata=metadata, value_range=(-1000, 1000),
                         show_colorbar=True)
+   
+    print(us4r.getAfe(21))
+    #us4r.enable_dc_offset_removal(4,0)
+
+    k = 4;
+    hpf = (k<<1) + 1
+    us4r.setAfe(21, hpf)
+    us4r.setAfe(33, hpf)
+    us4r.setAfe(45, hpf)
+    us4r.setAfe(57, hpf)
+
     sess.start_scheme()
     display.start(buffer)
+   # us4r.print_dc_offset_info()
     np.save("ddc.npy", np.stack(q))
     print("Saved the data to ddc.npy")
 

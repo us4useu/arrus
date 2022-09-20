@@ -105,6 +105,9 @@ public:
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
     std::vector<float> getTgcCurvePoints(float endSample) const override;
 
+
+    void setAfe(uint8_t addr, uint16 value) override;
+    uint16_t getAfe(uint8_t addr) override;
     void setRxSettings(const RxSettings &settings) override;
     void setPgaGain(uint16 value) override;
     void setLnaGain(uint16 value) override;
@@ -115,6 +118,7 @@ public:
     void disableAfeAutoOffsetRemoval(void) override;
     void setAfeAutoOffsetRemovalCycles(uint16_t cycles) override;
     void setAfeAutoOffsetRemovalDelay(uint16_t delay) override;
+    void printAfeAutoOffsetRemovalInfo(void) override;
     uint8_t getNumberOfUs4OEMs() override;
     void setTestPattern(Us4OEM::RxTestPattern pattern) override;
     float getSamplingFrequency() const override;
