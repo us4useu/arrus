@@ -189,6 +189,12 @@ public:
     MOCK_METHOD(void, ListPeriphs, (), (override));
     MOCK_METHOD(void, DumpPeriph, (std::string, uint32_t), (override));
     MOCK_METHOD(size_t, GetBaseAddr, (), (override));
+    MOCK_METHOD(void, AfeSoftTrigger, (), (override));
+    MOCK_METHOD(void, AfeEnableAutoOffsetRemoval, (), (override));
+    MOCK_METHOD(void, AfeDisableAutoOffsetRemoval, (), (override));
+    MOCK_METHOD(void, AfeSetAutoOffsetRemovalCycles, (uint16_t), (override));
+    MOCK_METHOD(void, AfeSetAutoOffsetRemovalDelay, (uint16_t), (override));
+    MOCK_METHOD(float, GetFPGAWallclock, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

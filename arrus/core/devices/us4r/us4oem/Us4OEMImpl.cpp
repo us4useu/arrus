@@ -689,6 +689,10 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
 
 float Us4OEMImpl::getFPGATemperature() { return ius4oem->GetFPGATemp(); }
 
+float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) {
+    return ius4oem->GetUCDVOUT(rail);
+}
+
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
         ius4oem->CheckFirmwareVersion();
@@ -733,6 +737,10 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
 float Us4OEMImpl::getCurrentSamplingFrequency() const {
     std::unique_lock<std::mutex> lock{stateMutex};
     return currentSamplingFrequency;
+}
+
+float Us4OEMImpl::getFPGAWallclock() {
+    return ius4oem->GetFPGAWallclock();
 }
 
 }// namespace arrus::devices
