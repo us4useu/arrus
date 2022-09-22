@@ -105,14 +105,57 @@ class Us4R(Device):
         self._handle.enableAfeAutoOffsetRemoval()
         self._handle.setAfeAutoOffsetRemovalCycles(cycles)
         self._handle.setAfeAutoOffsetRemovalDelay(delay)
-    
-    def print_dc_offset_info(self):
-        self._handle.printAfeAutoOffsetRemovalInfo()
+
+    def disable_dc_offset_removal(self):
+        """
+        Disables DC offset removal
+        """
+        self._handle.disableAfeAutoOffsetRemoval()
+
+    def enable_hpf(self):
+        """
+        Enables AFE high pass filter (default)
+        """
+        self._handle.enableAfeHPF()
+
+    def disable_hpf(self):
+        """
+        Disables AFE high pass fitler
+        """
+        self._handle.disableAfeHPF()
+
+    def set_hpf_frequency(k):
+        """
+        Sets HPF corner frequency
+
+        :param k: corner frequency setting (2-10):
+                  2 = 4520 kHz
+                  3 = 2420 kHz
+                  4 = 1200 kHz
+                  5 = 600 kHz
+                  6 = 300 kHz (default)
+                  7 = 180 kHz
+                  8 = 80 kHz
+                  9 = 40 kHz
+                  10 = 20 kHz
+        """
+        self._handle.setAfeHPFCornerFrequency(k)
 
     def setAfe(self, addr, reg):
+        """
+        Writes AFE register
+
+        :param addr: register address (8-bit)
+        :param k: write value (16-bit)
+        """
         self._handle.setAfe(addr, reg)
 
     def getAfe(self, addr):
+        """
+        Reads AFE register value
+
+        :param addr: register address (8-bit)
+        """
         return self._handle.getAfe(addr)
 
     def start(self):
