@@ -189,8 +189,11 @@ private:
     void setActiveTerminationAfe(std::optional<uint16> param, bool force);
     void enableAfeAutoOffsetRemoval(void);
     void disableAfeAutoOffsetRemoval(void);
-    void setAfeAutoOffsetRemovalCycles(uint16_t cycles);
-    void setAfeAutoOffsetRemovalDelay(uint16_t delay);
+    void setAfeAutoOffsetRemovalCycles(uint8_t cycles);
+    void setAfeAutoOffsetRemovalDelay(uint8_t delay);
+    void enableAfeHPF(void);
+    void disableAfeHPF(void);
+    void setAfeHPFCornerFrequency(uint8_t k);
     void enableAfeDemod();
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);

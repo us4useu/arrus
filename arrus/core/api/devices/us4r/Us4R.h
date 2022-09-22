@@ -205,6 +205,8 @@ public:
 
     /**
     * Sets AFE auto offset removal accumulator cycles number to calculate average offset from.
+     *
+     * @param cycles number of cycles
 	 * Possible settings are:
 	 * 0 = 2047 cycles (default)
 	 * 1 = 127 cycles
@@ -219,15 +221,43 @@ public:
 	 * 10 to 15 = 65535 cycles
 	 *
     */
-    virtual void setAfeAutoOffsetRemovalCycles(uint16_t cycles) = 0;
+    virtual void setAfeAutoOffsetRemovalCycles(uint8_t cycles) = 0;
 
     /**
     * Sets AFE auto offset removal delay in reference clock cycles number from TX_TRIG (default = 0).
     *
+    * @param delay delay in reference clock cycles (65 MHz)
     */
-    virtual void setAfeAutoOffsetRemovalDelay(uint16_t delay) = 0;
+    virtual void setAfeAutoOffsetRemovalDelay(uint8_t delay) = 0;
 
-    virtual void printAfeAutoOffsetRemovalInfo(void) = 0;
+    /**
+    * Enables AFE high pass filter (enabled by default during AFE initialization)
+    *
+    */
+    virtual void enableAfeHPF(void) = 0;
+
+    /**
+    * Disables AFE high pass filter 
+    *
+    */
+    virtual void disableAfeHPF(void) = 0;
+
+    /**
+    * Sets AFE high pass filter corner frequency (default is 300 kHz, k=6)
+    *
+    * @param k sets HPF corner frequency
+     * Possible settings (for 65 MHz reference clock) are:
+     * 2 = 4520 kHz
+     * 3 = 2420 kHz
+     * 4 = 1200 kHz
+     * 5 = 600 kHz
+     * 6 = 300 kHz (default)
+     * 7 = 180 kHz
+     * 8 = 80 kHz
+     * 9 = 40 kHz
+     * 10 = 20 kHz
+    */
+    virtual void setAfeHPFCornerFrequency(uint8_t k) = 0;
 
     /**
      * Sets a complete list of RxSettings on all Us4R components.

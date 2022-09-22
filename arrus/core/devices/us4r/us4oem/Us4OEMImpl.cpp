@@ -90,12 +90,21 @@ void Us4OEMImpl::enableAfeAutoOffsetRemoval(void) { ius4oem->AfeEnableAutoOffset
 
 void Us4OEMImpl::disableAfeAutoOffsetRemoval(void) { ius4oem->AfeDisableAutoOffsetRemoval(); }
 
-void Us4OEMImpl::setAfeAutoOffsetRemovalCycles(uint16_t cycles) { 
+void Us4OEMImpl::setAfeAutoOffsetRemovalCycles(uint8_t cycles) { 
     ARRUS_REQUIRES_AT_MOST(cycles, 15, ::arrus::format("Invalid auto offset removal accumulator cycles setting ({}) valid range: {} - {}", cycles, 0, 15));
     ius4oem->AfeSetAutoOffsetRemovalCycles(cycles); 
 }
 
-void Us4OEMImpl::setAfeAutoOffsetRemovalDelay(uint16_t delay) { ius4oem->AfeSetAutoOffsetRemovalDelay(delay); }
+void Us4OEMImpl::setAfeAutoOffsetRemovalDelay(uint8_t delay) { ius4oem->AfeSetAutoOffsetRemovalDelay(delay); }
+
+void Us4OEMImpl::enableAfeHPF(void) { ius4oem->AfeEnableHPF(); }
+
+void Us4OEMImpl::disableAfeHPF(void) { ius4oem->AfeDisableHPF(); }
+
+void Us4OEMImpl::setAfeHPFCornerFrequency(uint8_t k) { 
+    ARRUS_REQUIRES_IN_CLOSED_INTERVAL(k, 2, 10, ::arrus::format("Invalid AFE HPF corner frequency setting ({}) valid range: {} - {}", k, 2, 10));
+    ius4oem->AfeSetHPFCornerFrequency(k);
+}
 
 void Us4OEMImpl::enableAfeDemod() { ius4oem->AfeDemodEnable(); }
 

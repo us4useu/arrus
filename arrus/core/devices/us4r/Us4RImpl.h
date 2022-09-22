@@ -116,9 +116,11 @@ public:
     void setActiveTermination(std::optional<uint16> value) override;
     void enableAfeAutoOffsetRemoval(void) override;
     void disableAfeAutoOffsetRemoval(void) override;
-    void setAfeAutoOffsetRemovalCycles(uint16_t cycles) override;
-    void setAfeAutoOffsetRemovalDelay(uint16_t delay) override;
-    void printAfeAutoOffsetRemovalInfo(void) override;
+    void setAfeAutoOffsetRemovalCycles(uint8_t cycles) override;
+    void setAfeAutoOffsetRemovalDelay(uint8_t delay) override;
+    void enableAfeHPF(void) override;
+    void disableAfeHPF(void) override;
+    void setAfeHPFCornerFrequency(uint8_t k) override;
     uint8_t getNumberOfUs4OEMs() override;
     void setTestPattern(Us4OEM::RxTestPattern pattern) override;
     float getSamplingFrequency() const override;

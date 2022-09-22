@@ -335,38 +335,18 @@ void Us4RImpl::disableAfeAutoOffsetRemoval(void) {
     }
 }
 
-void Us4RImpl::setAfeAutoOffsetRemovalCycles(uint16_t cycles) {
+void Us4RImpl::setAfeAutoOffsetRemovalCycles(uint8_t cycles) {
     getDefaultLogger()->log(LogSeverity::INFO, format("Auto offset removal cycles = {}.", cycles));
     for (auto &us4oem : us4oems) {
         us4oem->setAfeAutoOffsetRemovalCycles(cycles);
     }
 }
 
-void Us4RImpl::setAfeAutoOffsetRemovalDelay(uint16_t delay) {
+void Us4RImpl::setAfeAutoOffsetRemovalDelay(uint8_t delay) {
     getDefaultLogger()->log(LogSeverity::INFO, format("Auto offset removal delay = {}.", delay));
     for (auto &us4oem : us4oems) {
         us4oem->setAfeAutoOffsetRemovalDelay(delay);
     }
-}
-
-void Us4RImpl::printAfeAutoOffsetRemovalInfo(void) {
-    uint16_t reg[4];
-    for (auto &us4oem : us4oems) {
-        reg[0] = us4oem->getAfe(0x02);
-        reg[1] = us4oem->getAfe(0x03);
-        reg[2] = us4oem->getAfe(0x04);
-
-        getDefaultLogger()->log(LogSeverity::INFO, format("AFE DC removal: SELF(EN) = {} ({})", ((reg[2]&0x8000)>>15), reg[2]));
-        getDefaultLogger()->log(LogSeverity::INFO, format("AFE DC removal: DEL = {} ({},{})", ((reg[1] & 0x0600) >> 3) + (reg[0] & 0x003F), reg[1], reg[0]));
-        getDefaultLogger()->log(LogSeverity::INFO, format("AFE DC removal: CYC = {}", ((reg[2]>>9)&0x000F)));
-
-        for (uint16_t n = 0; n < 32; n++) {
-            us4oem->setAfe(0x07, (n<<11));
-            reg[3] = us4oem->getAfe(0x08);
-            getDefaultLogger()->log(LogSeverity::INFO, format("AFE DC removal: offet {} = {}", n, (int16_t)(reg[3] << 2) / 4));
-        }
-    }
-
 }
 
 void Us4RImpl::setAfe(uint8_t addr, uint16 value) {
@@ -374,7 +354,34 @@ void Us4RImpl::setAfe(uint8_t addr, uint16 value) {
         us4oem->setAfe(addr, value);
     }
 }
+
 uint16_t Us4RImpl::getAfe(uint8_t addr) { return us4oems[0]->getAfe(addr);}
+
+void Us4RImpl::enableAfeHPF(void)
+{
+    getDefaultLogger()->log(LogSeverity::INFO, "Enable AFE high pass filter.");
+    for (auto &us4oem : us4oems) {
+        us4oem->enableAfeHPF();
+    }
+}
+
+void Us4RImpl::disableAfeHPF(void)
+{
+    getDefaultLogger()->log(LogSeverity::INFO, "Disable AFE high pass filter.");
+    for (auto &us4oem : us4oems) {
+        us4oem->disableAfeHPF();
+    }
+}
+
+void Us4RImpl::setAfeHPFCornerFrequency(uint8_t k)
+{
+    ARRUS_REQUIRES_IN_CLOSED_INTERVAL(k, 2, 10, ::arrus::format("Invalid AFE HPF corner frequency setting ({}) valid range: {} - {}", k, 2, 10));
+    const uint16_t freq[9] = { 4520,2420,1200,600,300,180,80,40,20 };
+    getDefaultLogger()->log(LogSeverity::INFO, format("Set HPF corner frequency setting = {} ({} kHz).", k, freq[k-2]));
+    for (auto &us4oem : us4oems) {
+        us4oem->setAfeHPFCornerFrequency(k);
+    }
+}
 
 uint8_t Us4RImpl::getNumberOfUs4OEMs() { return static_cast<uint8_t>(us4oems.size()); }
 

@@ -75,14 +75,46 @@ public:
     *
     * @param cycles: number of cycles is given by N=(2^(cycles+6))-1
     */
-    virtual void setAfeAutoOffsetRemovalCycles(uint16_t cycles) = 0;
+    virtual void setAfeAutoOffsetRemovalCycles(uint8_t cycles) = 0;
 
     /**
     * Sets AFE auto offset removal delay from TX_TRIG
     *
     * @param delay: delay from TX_TRIG in reference clock cycles
     */
-    virtual void setAfeAutoOffsetRemovalDelay(uint16_t delay) = 0;
+    virtual void setAfeAutoOffsetRemovalDelay(uint8_t delay) = 0;
+
+    /**
+    * Enables AFE high pass filter.
+    *
+    */
+    virtual void enableAfeHPF(void) = 0;
+
+    /**
+    * Enables AFE high pass filter.
+    *
+    */
+    virtual void disableAfeHPF(void) = 0;
+
+    /**
+    * Sets AFE high pass filter corner frequency.
+    *
+    /**
+    * Sets AFE high pass filter corner frequency (default is 300 kHz, k=6)
+    *
+    * @param k sets HPF corner frequency
+     * Possible settings (for 65 MHz reference clock) are:
+     * 2 = 4520 kHz
+     * 3 = 2420 kHz
+     * 4 = 1200 kHz
+     * 5 = 600 kHz
+     * 6 = 300 kHz (default)
+     * 7 = 180 kHz
+     * 8 = 80 kHz
+     * 9 = 40 kHz
+     * 10 = 20 kHz
+    */
+    virtual void setAfeHPFCornerFrequency(uint8_t k) = 0;
 
     /**
     * Enables and configures AFE built-in demodulator
