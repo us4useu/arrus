@@ -2445,7 +2445,7 @@ class ReconstructLri3D(Operation):
         # Probe description
         # TODO specific for Vermon mat-3d probe.
         probe_model = const_metadata.context.device.probe.model
-        pitch = 0.3e-3 # probe_model.pitch
+        pitch = probe_model.pitch
         self.n_elements = 32
         n_rows_x = self.n_elements
         n_rows_y = self.n_elements + 3
