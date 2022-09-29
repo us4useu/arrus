@@ -125,6 +125,8 @@ public:
     float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
+    void setHpfCornerFrequency(uint32_t frequency) override;
+    void disableHpf() override;
 
 
 private:
@@ -143,7 +145,6 @@ private:
      * TODO consider implementing rollback mechanism?
      */
     void applyForAllUs4OEMs(const std::function<void(Us4OEM* us4oem)>& func, const std::string &funcName);
-
 
     void checkVoltage(Voltage voltage, float tolerance, float(Us4RImpl::func));
     void disableAfeDemod();

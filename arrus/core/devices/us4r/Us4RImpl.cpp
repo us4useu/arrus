@@ -445,4 +445,13 @@ void Us4RImpl::disableAfeDemod() {
 
 float Us4RImpl::getCurrentSamplingFrequency() const {return us4oems[0]->getCurrentSamplingFrequency(); }
 
+void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setHpfCornerFrequency(frequency); },
+                       "setAfeHpfCornerFrequency");
+}
+
+void Us4RImpl::disableHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
+}
+
 }// namespace arrus::devices

@@ -63,8 +63,8 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
                                       const unsigned int *nFramesUs4OEM, const unsigned nSequences,
                                       const unsigned nFrames, const unsigned nSamples, const unsigned nChannels,
                                       const unsigned nComponents) {
-    // TODO temporarily assuming, that maxium number of components == 2
-    __shared__ float tile[32][32][2]; // NOTE: this is also the runtime block size.
+    // TODO temporarily assuming, that maximum number of components == 2
+    __shared__ short tile[32][32][2]; // NOTE: this is also the runtime block size.
 
     // gridDim.x*32 ~= number of channels
     // gridDim.y*32 ~= number of samples
@@ -80,12 +80,6 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
     }
     // FCM describes here a single sequence
     int physicalChannel = fcmChannels[localFrame*nChannels + channel];
-    if (physicalChannel < 0) {
-        // channel is turned off
-        return;
-    }
-    // 32 == number of channels in the physical mapping
-    // [us4oem, sequence, physicalFrame, sample, component, physicalChannel]
     int physicalFrame = fcmFrames[localFrame*nChannels + channel];
     int us4oem = fcmUs4oems[localFrame*nChannels + channel];
     int us4oemOffset = frameOffsets[us4oem];
@@ -100,22 +94,29 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
     int lChannelSize = nSamples*nComponents;
     int lFrameSize = nChannels*lChannelSize;
     int lSequenceSize = nFrames*lFrameSize;
+    short value = 0;
 
     for(unsigned component = 0; component < nComponents; ++component) {
-        size_t indexIn = us4oemOffset * pFrameSize + sequence * nPhysicalFrames * pFrameSize
-            + physicalFrame * pFrameSize + sample * pSampleSize + component * nus4OEMChannels + physicalChannel;
-        // Note: optimistic assumption, that we get consecutive physical channel numbers
-        // (and that is satisfied e.g. for full RX aperture on esaote3 adapter, like in plane wave imaging).
-        tile[threadIdx.y][threadIdx.x][component] = in[indexIn];
+        if(physicalChannel < 0) {
+            value = 0;
+        }
+        else {
+            // Note: optimistic assumption, that we get consecutive physical channel numbers
+            // (and that is satisfied e.g. for full RX aperture on esaote3 adapter, like in plane wave imaging).
+            size_t indexIn = us4oemOffset*pFrameSize + sequence*nPhysicalFrames*pFrameSize
+              + physicalFrame*pFrameSize + sample*pSampleSize + component*nus4OEMChannels + physicalChannel;
+            value = in[indexIn];
+        }
+        tile[threadIdx.y][threadIdx.x][component] = value;
     }
     __syncthreads();
     // Output
-    sample = blockIdx.y*32 + threadIdx.x;
-    channel = blockIdx.x*32 + threadIdx.y;
+    int targetSample = blockIdx.y*32 + threadIdx.x;
+    int targetChannel = blockIdx.x*32 + threadIdx.y;
     for(unsigned component = 0; component < nComponents; ++component) {
         // [sequence, frame, channel, sample, component]
         size_t indexOut =
-            sequence*lSequenceSize + localFrame*lFrameSize + channel*lChannelSize + sample*nComponents + component;
+            sequence*lSequenceSize + localFrame*lFrameSize + targetChannel*lChannelSize + targetSample*nComponents + component;
         out[indexOut] = tile[threadIdx.x][threadIdx.y][component];
     }
 }

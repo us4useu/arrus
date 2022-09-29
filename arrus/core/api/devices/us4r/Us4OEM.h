@@ -94,7 +94,7 @@ public:
     *
     */
     virtual void disableAfeDemod() = 0;
-	
+
     /**
      * Checks if the firmware version on the Us4OEM module is correct.
      *
@@ -121,6 +121,28 @@ public:
      * Returns Tx component firmware version installed on this us4OEM module.
      */
     virtual uint32 getTxFirmwareVersion() = 0;
+
+    /**
+     * Returns current FPGA wall clock (time passed since Init function was called).
+     *
+     * @return FPGA wall clock (seconds)
+     */
+    virtual float getFPGAWallclock() = 0;
+
+    /**
+     * Enables High-Pass Filter and sets a given corner frequency.
+     *
+     * Available corner frequency values (Hz): 4520'000, 2420'000, 1200'000, 600'000, 300'000, 180'000,
+     * 80'000, 40'000, 20'000.
+     *
+     * @param frequency corner high-pass filter frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables digital high-pass filter.
+     */
+    virtual void disableHpf() = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

@@ -256,6 +256,21 @@ public:
      */
     virtual bool isStopOnOverflow() const = 0;
 
+    /**
+     * Enables High-Pass Filter and sets a given corner frequency.
+     *
+     * Available corner frequency values (Hz): 4520'000, 2420'000, 1200'000, 600'000, 300'000, 180'000,
+     * 80'000, 40'000, 20'000.
+     *
+     * @param frequency corner high-pass filter frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables digital high-pass filter.
+     */
+    virtual void disableHpf() = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;
