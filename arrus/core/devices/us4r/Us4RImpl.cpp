@@ -89,22 +89,26 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-    //Verify register
-    Voltage setVoltage = this->getVoltage();
-    if (setVoltage != voltage) {
-        throw IllegalStateException(
-            ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
-    }
-
     float tolerance = 3.0f; // 3V tolerance
     int retries = 5;
 
-    //Verify measured voltages on HV
-    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
-                 "HVP on HV supply", retries);
-    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
-                 "HVM on HV supply", retries);
+    //Verify register
+    auto &hvModel = this->hv.value()->getModelId();
+    bool isUS4PSC = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc";
+    if(!isUS4PSC) {
+        // Do not check the voltage measured by US4RPSC, as it may not be correct
+        // for this hardware.
+        Voltage setVoltage = this->getVoltage();
+        if (setVoltage != voltage) {
+            throw IllegalStateException(
+                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
+        }
+        //Verify measured voltages on HV
+        checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
+                     "HVP on HV supply", retries);
+        checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
+                     "HVM on HV supply", retries);
+    }
 
     //Verify measured voltages on OEMs
     for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
