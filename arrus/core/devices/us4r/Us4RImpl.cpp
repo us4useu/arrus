@@ -109,6 +109,11 @@ void Us4RImpl::setVoltage(Voltage voltage) {
         checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
                      "HVM on HV supply", retries);
     }
+    else {
+        this->logger->log(LogSeverity::INFO,
+                          "Skipping voltage verification (measured by HV: "
+                          "US4PSC does not provide the possibility to measure the voltage).");
+    }
 
     //Verify measured voltages on OEMs
     for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
