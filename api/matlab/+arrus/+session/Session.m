@@ -29,7 +29,12 @@ classdef Session < handle
             % :return: upload result information: output data buffer, metadata describing the data that will be generated
             res = obj.ptr.callMethod("upload", 2, scheme);
             buffer = arrus.framework.Buffer(res{1, 1});
-            % TODO Convert raw metadata to Matlab metadata
+            % FCM
+            frameOffsets = res{1, 2};
+            numberOfFrames = res{1, 3};
+            us4oems = res{1, 4};
+            frames = res{1, 5};
+            channels = res{1, 6};
         end
 
         function run(obj)
