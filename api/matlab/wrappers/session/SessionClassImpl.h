@@ -92,7 +92,56 @@ public:
         auto buffer = uploadResult.getBuffer();
         // Outputs
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, MatlabObjectHandle, MatlabObjectHandle(buffer.get()));
-        outputs[1] = ARRUS_MATLAB_GET_MATLAB_STRING(ctx, "test");
+
+        // METADATA
+        // FCM
+        // Convert FrameChannelMapping to a collection of arrays.
+        using namespace arrus::devices;
+        using FCM = FrameChannelMapping;
+        using FCMA = FrameChannelMappingAddress;
+        auto fcm = uploadResult.getConstMetadata()->get<FCM>("frameChannelMapping");
+        auto frameOffsets = fcm->getFrameOffsets();
+        auto numberOfFrames = fcm->getNumberOfFrames();
+
+
+        using FrameNr = std::decay<decltype(*std::begin(frameOffsets))>::type;
+        using Us4OEMNr = std::result_of<decltype(&FCMA::getUs4oem)(FCMA)>::type;
+        using Us4OEMChannelNr = std::result_of<decltype(&FCMA::getChannel)(FCMA)>::type;
+
+        auto frameOffsetsArr = ctx->createVector<FrameNr>(frameOffsets);
+        auto numberOfFramesArr = ctx->createVector<FrameNr>(numberOfFrames);
+
+        // us4oems, channels, frames
+        // shape
+        size_t nFrames = fcm->getNumberOfLogicalFrames();
+        size_t nChannels = fcm->getNumberOfLogicalChannels();
+        framework::NdArray::Shape fcmArrayShape = {nFrames, nChannels};
+        size_t fcmArraySize = fcmArrayShape.product();
+
+
+        std::vector<Us4OEMNr> us4oems(fcmArraySize);
+        std::vector<FrameNr> frames(fcmArraySize);
+        std::vector<Us4OEMChannelNr> channels(fcmArraySize);
+        for(size_t frame = 0; frame < nFrames; ++frame) {
+            for(size_t channel = 0; channel < nChannels; ++channel) {
+                auto addr = fcm->getLogical(frame, channel);
+                auto idx = frame*nChannels + channel;
+                us4oems[idx] = addr.getUs4oem();
+                frames[idx] = addr.getFrame();
+                channels[idx] = addr.getChannel();
+            }
+        }
+
+        auto us4oemsArr = ctx->createTypedArray<Us4OEMNr>(us4oems, fcmArrayShape);
+        auto framesArr = ctx->createTypedArray<FrameNr>(frames, fcmArrayShape);
+        auto channelsArr = ctx->createTypedArray<Us4OEMChannelNr>(channels, fcmArrayShape);
+
+
+        outputs[1] = frameOffsetsArr;
+        outputs[2] = numberOfFramesArr;
+        outputs[3] = us4oemsArr;
+        outputs[4] = framesArr;
+        outputs[5] = channelsArr;
     }
 
     void startScheme(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
