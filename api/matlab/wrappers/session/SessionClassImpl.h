@@ -109,7 +109,7 @@ public:
         using Us4OEMChannelNr = std::result_of<decltype(&FCMA::getChannel)(FCMA)>::type;
 
         auto frameOffsetsArr = ctx->createVector<FrameNr>(frameOffsets);
-        auto numberOfFramesArr =ctx->createVector<FrameNr>(numberOfFrames);
+        auto numberOfFramesArr = ctx->createVector<FrameNr>(numberOfFrames);
 
         // us4oems, channels, frames
         // shape

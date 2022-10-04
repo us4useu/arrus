@@ -20,16 +20,42 @@ classdef Session < handle
             device = res{1, 1};
         end
 
-        function buffer = upload(obj, scheme)
+        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels] = upload(obj, scheme)
             % Uploads a given scheme on the available devices.
             % Currently, the scheme upload is performed on the Us4R:0 device only.
             % After uploading a new sequence the previously returned output buffers will be in invalid state.
             %
             % :param scheme: scheme to upload (arrus.ops.us4r.Scheme)
             % :return: upload result information: output data buffer, metadata describing the data that will be generated
-            res = obj.ptr.callMethod("upload", 2, scheme);
+            res = obj.ptr.callMethod("upload", 6, scheme); % Note: 6 == number of output arrays
             buffer = arrus.framework.Buffer(res{1, 1});
             % FCM
+            %% NOTE! bellow we assume numbering starting from 0!
+            %% Consider output data array with dimensions (nSamples*totalNTxRxs, 32)
+            %% For example: (32, 4096*12), where 12 = 2 us4oems * 3 Tx/Rxs (to cover full RX aperture) * 2 TxRxs.
+            %% Frame offset says where given us4oem data starts, for example:
+            %%
+            %% frameOffsets(0): number of frame produced by us4OEM:0, frameOffset(1): number of frame produce by us4OEM:1
+            %% NOTE! Each us4oem may gather different number of RF frames (e.g. 2nd us4oem will be not used,
+            %% if the RX aperture will be fully covered by the first module).
+            %%
+            %% numberOfFrames: how many frames a given us4OEM produces
+            %% us4oems: an array with dimensions (number of logical channels, number of logical TxRxs),
+            %%   value: us4OEM number (starting from 0) that execute given logical (channel, frame)
+            %% frames: an array with dimensions (number of logical channels, number of logical TxRxs),
+            %%   value: physical frame number with data for the given logical (channel, frame)
+            %% channels: an array with dimensions (number of logical channels, number of logical TxRxs),
+            %%   value: physical channel number with data for the given logical (channel, frame)
+            %% A tuple [us4oems(i, j), frames(i, j), channels(i, j)] uniquely addresses where
+            %%   the given frame and channel are located in the output raw RF data.
+            %% For example, logical frame 2, channel 33 can be obtained in the following way:
+            %% us4oem = us4oems(lChannel, lFrame);
+            %% frame = frames(lChannel, lFrame);
+            %% channel = channels(lChannel, lFrame);
+            %% us4oemFirstFrame = frameOffsets(us4oem);
+            %% value = data(channel, :, us4oemFirstFrame+frame); % assume we have resized
+                                                                 % raw data to (nPhysicalFrames, nSamples, nPhysicalChannels)
+
             frameOffsets = res{1, 2};
             numberOfFrames = res{1, 3};
             us4oems = res{1, 4};
