@@ -117,11 +117,16 @@ public:
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
     std::vector<unsigned short> getChannelsMask() override;
+    void checkVoltage(Voltage voltage, float tolerance, const std::function<float()> &func, const std::string &name, int retries);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
+    float getUCDMeasuredHVPVoltage(uint8_t oemId) override;
+    float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
+    void setHpfCornerFrequency(uint32_t frequency) override;
+    void disableHpf() override;
 
 
 private:

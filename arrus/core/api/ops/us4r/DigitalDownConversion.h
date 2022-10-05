@@ -13,7 +13,7 @@ class ARRUS_CPP_EXPORT DigitalDownConversion {
     UniqueHandle<Impl> impl;
 public:
     DigitalDownConversion(float demodulationFrequency, std::vector<float> firCoefficients, float decimationFactor)
-    : DigitalDownConversion(demodulationFrequency, Span<float>{std::move(firCoefficients)}, decimationFactor) {}
+    : DigitalDownConversion(demodulationFrequency, Span<float>{firCoefficients}, decimationFactor) {}
     DigitalDownConversion(float demodulationFrequency, Span<float> firCoefficients, float decimationFactor);
     DigitalDownConversion(const DigitalDownConversion &o);
     DigitalDownConversion(DigitalDownConversion &&o) noexcept;

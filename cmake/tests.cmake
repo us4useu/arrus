@@ -49,6 +49,15 @@ function(create_core_test test_src)
 
     # Prepend PATH and LD_LIBRARY_PATH with dependencies.
     if(WIN32)
+        target_compile_options(
+                ${target_name} PRIVATE
+                ${ARRUS_CPP_COMMON_COMPILE_OPTIONS}
+                # Increase generated obj max limit size, to potentially avoid MSVC error C1128.
+                # (currently we use boost log headers heavily in tests).
+                $<$<CONFIG:Debug>:
+                    /bigobj
+                >
+        )
         set_tests_properties(${test_src}
             PROPERTIES ENVIRONMENT
             "PATH=${Boost_LIB_DIRS}\;${Us4_LIB_DIR}\;$ENV{PATH}"

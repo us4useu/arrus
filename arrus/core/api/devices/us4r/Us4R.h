@@ -91,6 +91,22 @@ public:
     virtual float getMeasuredMVoltage() = 0;
 
     /**
+     * Gets positive HV voltage measurement by UCD chip on OEM.
+     *
+     * @param oemId OEM ID
+     * @return positive HV voltage UCD measurement [V]
+     */
+    virtual float getUCDMeasuredHVPVoltage(uint8_t oemId) = 0;
+
+    /**
+     * Gets negative HV voltage measurement by UCD chip on OEM.
+     *
+     * @param oemId OEM ID
+     * @return negative HV voltage UCD measurement [V]
+     */
+    virtual float getUCDMeasuredHVMVoltage(uint8_t oemId) = 0;
+
+    /**
      * Disables HV voltage.
      */
     virtual void disableHV() = 0;
@@ -239,6 +255,21 @@ public:
      * @param isStopOnOverflow whether the system should stop when buffer overflow is detected.
      */
     virtual bool isStopOnOverflow() const = 0;
+
+    /**
+     * Enables High-Pass Filter and sets a given corner frequency.
+     *
+     * Available corner frequency values (Hz): 4520'000, 2420'000, 1200'000, 600'000, 300'000, 180'000,
+     * 80'000, 40'000, 20'000.
+     *
+     * @param frequency corner high-pass filter frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables digital high-pass filter.
+     */
+    virtual void disableHpf() = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

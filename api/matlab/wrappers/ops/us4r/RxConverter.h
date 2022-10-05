@@ -23,7 +23,7 @@ public:
         return RxConverter{ctx, ARRUS_MATLAB_GET_CPP_VECTOR(ctx, bool, aperture, object),
                            ARRUS_MATLAB_GET_CPP_PAIR(ctx, uint32_t, sampleRange, object),
                            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, uint32_t, downsamplingFactor, object),
-                           ARRUS_MATLAB_GET_CPP_PAIR(ctx, uint16_t, sampleRange, object)};
+                           ARRUS_MATLAB_GET_CPP_PAIR(ctx, uint16_t, padding, object)};
     }
 
     static RxConverter from(const MexContext::SharedHandle &ctx, const Rx &object) {

@@ -14,7 +14,7 @@ class Span {
 public:
     Span(const T *ptr, size_t nElements) : ptr(ptr), nElements(nElements) {}
 
-    Span(const std::vector<T> vec): ptr(vec.data()), nElements(vec.size()) {}
+    Span(const std::vector<T> &vec): ptr(vec.data()), nElements(vec.size()) {}
 
     const T* data() const noexcept {
         return ptr;

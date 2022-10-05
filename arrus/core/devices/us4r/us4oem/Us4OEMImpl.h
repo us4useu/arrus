@@ -129,6 +129,7 @@ public:
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
+    float getUCDMeasuredVoltage(uint8_t rail) override;
     void checkFirmwareVersion() override;
     uint32 getFirmwareVersion() override;
     void checkState() override;
@@ -160,6 +161,8 @@ public:
         ius4oem->AfeDemodDisable();
     }
     float getCurrentSamplingFrequency() const override;
+
+    float getFPGAWallclock() override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
@@ -199,6 +202,8 @@ private:
     void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length);
     void writeAfeFIRCoeffs(const float* coeffs, uint16_t length);
     void resetAfe();
+    void setHpfCornerFrequency(uint32_t frequency);
+    void disableHpf();
 
     template<typename T>
     void setAfeDemodInternal(float demodulationFrequency, float decimationFactor, const T *firCoefficients,

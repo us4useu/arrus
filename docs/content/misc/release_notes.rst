@@ -1,9 +1,41 @@
 Release notes
 =============
 
+0.8.x
+-----
+
+0.8.0
+.....
+
+- core (C++):
+
+    - us4R: exposed hardware Digital Down Conversion,
+    - us4R: scheme stopping procedure was improved (should take less time)
+    - us4R: exposed a function that allows to read us4OEM FPGA Wallclock
+    - us4R: enabled hardware high-pass filter, by default us4OEMs will be initialized with 300 kHz cutoff frequency
+    - us4R: exposed the possibility to change hardware high-pass filter (HPF) cutoff frequency or to disable HPF 
+
+- Python API:
+
+    - Implemented new module `arrus.utils.probe_check` for probe checking and automatic channel health, see example: examples/check_probe.py
+    - exposed hardware Digital Down Conversion
+    - us4R: exposed the possibility to change hardware high-pass filter cutoff frequency
+    - arrus.utils.imaging: changed the default filter type for BandpassFilter to hamming windows (firwin)
+
+
+- MATLAB API:
+
+    - Exposed ARRUS core API to MATLAB interface.
+
 0.7.x
 -----
 
+0.7.1
+.....
+
+- core (C++):
+
+    - us4R: Limited the range of available voltage to [5, 90] V.
 
 0.7.0
 .....

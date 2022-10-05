@@ -124,6 +124,47 @@ void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
     ius4oem->AfeDemodWriteFirCoeffs(coeffs, length);
 }
 
+void Us4OEMImpl::setHpfCornerFrequency(uint32_t frequency) {
+    uint8_t coefficient = 10;
+    switch(frequency) {
+        case 4520'000:
+            coefficient = 2;
+            break;
+        case 2420'000:
+            coefficient = 3;
+            break;
+        case 1200'000:
+            coefficient = 4;
+            break;
+        case 600'000:
+            coefficient = 5;
+            break;
+        case 300'000:
+            coefficient = 6;
+            break;
+        case 180'000:
+            coefficient = 7;
+            break;
+        case 80'000:
+            coefficient = 8;
+            break;
+        case 40'000:
+            coefficient = 9;
+            break;
+        case 20'000:
+            coefficient = 10;
+            break;
+        default:
+            throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported HPF corner frequency: {}", frequency));
+    }
+    ius4oem->AfeEnableHPF();
+    ius4oem->AfeSetHPFCornerFrequency(coefficient);
+}
+
+void Us4OEMImpl::disableHpf() {
+    ius4oem->AfeDisableHPF();
+}
+
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
@@ -648,6 +689,10 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
 
 float Us4OEMImpl::getFPGATemperature() { return ius4oem->GetFPGATemp(); }
 
+float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) {
+    return ius4oem->GetUCDVOUT(rail);
+}
+
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
         ius4oem->CheckFirmwareVersion();
@@ -692,6 +737,10 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
 float Us4OEMImpl::getCurrentSamplingFrequency() const {
     std::unique_lock<std::mutex> lock{stateMutex};
     return currentSamplingFrequency;
+}
+
+float Us4OEMImpl::getFPGAWallclock() {
+    return ius4oem->GetFPGAWallclock();
 }
 
 }// namespace arrus::devices

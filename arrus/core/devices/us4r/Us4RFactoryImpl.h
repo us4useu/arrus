@@ -104,15 +104,26 @@ class Us4RFactoryImpl : public Us4RFactory {
                        us4oemSettings.size()))
         );
         for (unsigned i = 0; i < us4oemSettings.size(); ++i) {
-            auto &setting = us4oemSettings[i];
-            std::unordered_set<uint8> us4oemMask(std::begin(us4oemChannelsMasks[i]), std::end(us4oemChannelsMasks[i]));
-            
-            ARRUS_REQUIRES_TRUE_E(
-                setting.getChannelsMask() == us4oemMask,
-                ::arrus::IllegalArgumentException(
-                    format("The provided us4r channels masks does not match the provided us4oem channels masks, "
-                    "for us4oem {}", i))
-            );
+            auto &setting = us4oemSettings[i]; // inferred from probe element masking
+            std::unordered_set<uint8> us4oemMask(
+                    std::begin(us4oemChannelsMasks[i]),
+                    std::end(us4oemChannelsMasks[i])); // provided by user
+            if(!setting.getChannelsMask().empty() || !us4oemMask.empty()) {
+                if(us4oemMask.empty()) {
+                    // Avoid additional validation (for convenience) when no us4OEM channels were explicitly provided.
+                    getDefaultLogger()->log(LogSeverity::WARNING,
+                                            format("No channel masking provided explicitly for us4OEM {}, "
+                                            "I am skipping additional validation.", i));
+                }
+                else {
+                    ARRUS_REQUIRES_TRUE_E(
+                        setting.getChannelsMask() == us4oemMask,
+                        ::arrus::IllegalArgumentException(
+                            format(
+                            "The provided us4r channels masks does not match the provided us4oem channels masks, "
+                            "for us4oem {}", i)));
+                }
+            }
         }
     }
 

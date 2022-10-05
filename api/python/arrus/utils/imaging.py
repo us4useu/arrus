@@ -601,21 +601,29 @@ class BandpassFilter(Operation):
     define what kind of filter is used (e.g. by providing filter coefficients).
     """
 
-    def __init__(self, numtaps=7, bounds=(0.5, 1.5), filter_type="butter",
-                 num_pkg=None, filter_pkg=None):
+    def __init__(self, order=15, bounds=(0.5, 1.5), filter_type="hamming",
+                 num_pkg=None, filter_pkg=None, **kwargs):
         """
         Bandpass filter constructor.
 
+        Currently, the filtering is performed simply by convolving input signal
+        with given type of filter. The band of frequencies is automatically
+        determined basing on the TX frequency.
+
+        :param order: filter order
         :param bounds: determines filter's frequency boundaries,
             e.g. setting 0.5 will give a bandpass filter
             [0.5*center_frequency, 1.5*center_frequency].
+        :param filter_type: one of "butter" (for Butterworth coefficients)
+            or one of windows provided by scipy.signal.get_window
         """
         self.taps = None
-        self.numtaps = numtaps
+        self.order = order
         self.bound_l, self.bound_r = bounds
         self.filter_type = filter_type
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
+        self.kwargs = kwargs
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
@@ -623,13 +631,21 @@ class BandpassFilter(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
-        seq = const_metadata.context.sequence
         center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         sampling_frequency = const_metadata.data_description.sampling_frequency
-        taps, _ = scipy.signal.butter(
-                2,
-                [l * center_frequency, r * center_frequency],
-                btype='bandpass', fs=sampling_frequency)
+        band = [l * center_frequency, r * center_frequency]
+        if self.filter_type == "butter":
+            taps, _ = scipy.signal.butter(
+                    self.order, band,
+                    btype='bandpass', fs=sampling_frequency)
+        else:
+            taps = scipy.signal.firwin(
+                numtaps=self.order,
+                cutoff=band,
+                window=self.filter_type,
+                fs=sampling_frequency,
+                **self.kwargs
+            )
         self.taps = self.xp.asarray(taps).astype(self.xp.float32)
         return const_metadata
 
@@ -764,104 +780,105 @@ class QuadratureDemodulation(Operation):
         return self.mod_factor * data
 
 
-class Decimation(Operation):
+class DigitalDownConversion(Operation):
     """
-    Decimation + CIC (Cascade Integrator-Comb) filter.
-
-    See: https://en.wikipedia.org/wiki/Cascaded_integrator%E2%80%93comb_filter
+    IQ demodulation, decimation.
     """
-
-    def __init__(self, decimation_factor, cic_order, num_pkg=None, impl="legacy"):
-        """
-        Decimation op constructor.
-
-        :param decimation_factor: decimation factor to apply
-        :param cic_order: CIC filter order
-        """
+    def __init__(self, decimation_factor, fir_params=None,
+                 fir_cutoff_relative=1.5, fir_order=15, fir_type="hamming"):
         self.decimation_factor = decimation_factor
-        self.cic_order = cic_order
-        self.xp = num_pkg
-        self.impl = impl
-        if self.impl == "legacy":
-            self._decimate = self._legacy_decimate
-        elif self.impl == "fir":
-            self._decimate = self._fir_decimate
+        self.fir_cutoff_relative = fir_cutoff_relative
+        self.fir_order = fir_order
+        self.fir_type = fir_type
+        self.fir_params = fir_params if fir_params is not None else {}
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
-        self.filter_pkg = filter_pkg # not used by the GPU implementation (custom kernel for complex input data)
+        self.filter_pkg = filter_pkg
+
+    def prepare(self, const_metadata):
+        self.demodulator = QuadratureDemodulation()
+        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        sampling_frequency = const_metadata.data_description.sampling_frequency
+        fir_coefficients = scipy.signal.firwin(
+                numtaps=self.fir_order,
+                cutoff=center_frequency*(self.fir_cutoff_relative - 1),
+                window=self.fir_type,
+                fs=sampling_frequency,
+                pass_zero="lowpass",
+                **self.fir_params
+            )
+        self.decimator = Decimation(
+            self.decimation_factor,
+            filter_coeffs=fir_coefficients, filter_type="fir")
+        self.demodulator.set_pkgs(num_pkg=self.xp, filter_pkg=self.filter_pkg)
+        self.decimator.set_pkgs(num_pkg=self.xp, filter_pkg=self.filter_pkg)
+        const_metadata = self.demodulator.prepare(const_metadata)
+        return self.decimator.prepare(const_metadata)
+
+    def process(self, data):
+        data = self.demodulator.process(data)
+        return self.decimator.process(data)
+
+
+class Decimation(Operation):
+    """
+    Downsampling + Low-pass filter.
+
+    By default CIC filter is used.
+    """
+
+    def __init__(self, decimation_factor, filter_type="cic",
+                 filter_coeffs=None, cic_order=2, num_pkg=None):
+        """
+        Decimation.
+
+        :param decimation_factor: decimation factor to apply
+        """
+        self.decimation_factor = decimation_factor
+        self.xp = num_pkg
+        if filter_type == "cic":
+            self.filter_coeffs = self._get_cic_filter_coeffs(
+                decimation_factor=self.decimation_factor,
+                order=cic_order
+            )
+        elif filter_type == "fir":
+            if filter_coeffs is None:
+                raise ValueError("Decimation: FIR filter requires "
+                                 "manually specified filter coefficients.")
+            self.filter_coeffs = filter_coeffs
+        else:
+            raise ValueError(f"Unsupported filter type: {filter_type}")
+
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+
+    def _get_cic_filter_coeffs(self, decimation_factor, order):
+        cicFir = np.array([1], dtype=np.float32)
+        cicFir1 = np.ones(decimation_factor, dtype=np.float32)
+        for _ in range(order):
+            cicFir = np.convolve(cicFir, cicFir1, 'full')
+        return cicFir
 
     def prepare(self, const_metadata):
         new_fs = (const_metadata.data_description.sampling_frequency
                   / self.decimation_factor)
-        new_signal_description = arrus.metadata.EchoDataDescription(
-            sampling_frequency=new_fs, custom=
-            const_metadata.data_description.custom)
-
+        new_signal_description = dataclasses.replace(
+            const_metadata.data_description,
+            sampling_frequency=new_fs)
         input_shape = const_metadata.input_shape
         n_samples = input_shape[-1]
-        total_n_samples = math.prod(input_shape)
+        self.filter_coeffs = self.xp.asarray(self.filter_coeffs)
+        self.filter_coeffs = self.filter_coeffs.astype(self.xp.float32)
         output_shape = input_shape[:-1] + (math.ceil(n_samples/self.decimation_factor), )
-
-        # CIC FIR coefficients
-        if self.impl == "fir":
-            cicFir = self.xp.array([1], dtype=self.xp.float32)
-            cicFir1 = self.xp.ones(self.decimation_factor, dtype=self.xp.float32)
-            for i in range(self.cic_order):
-                cicFir = self.xp.convolve(cicFir, cicFir1, 'full')
-            fir_taps = cicFir
-            n_fir_taps = len(fir_taps)
-            if self.xp == np:
-                def _cpu_fir_filter(data):
-                    return self.filter_pkg.convolve1d(
-                        np.real(data), fir_taps,
-                        axis=-1, mode='constant',
-                        cval=0, origin=-1) \
-                        + self.filter_pkg.convolve1d(np.imag(data),
-                                          fir_taps, axis=-1,
-                                          mode='constant', cval=0,
-                                          origin=-1)*1j
-                # CPU
-                self._fir_filter = _cpu_fir_filter
-            else:
-                # GPU
-                import cupy as cp
-                _fir_output_buffer = cp.zeros(const_metadata.input_shape,
-                                                dtype=cp.complex64)
-                # Kernel settings
-                from arrus.utils.fir import (
-                    get_default_grid_block_size,
-                    get_default_shared_mem_size,
-                    run_fir)
-                grid_size, block_size = get_default_grid_block_size(n_samples, total_n_samples)
-                shared_memory_size = get_default_shared_mem_size(n_samples, n_fir_taps)
-
-                def _gpu_fir_filter(data):
-                    run_fir(grid_size, block_size,
-                        (_fir_output_buffer, data, n_samples,
-                         total_n_samples, fir_taps, n_fir_taps),
-                            shared_memory_size)
-                    return _fir_output_buffer
-
-                self._fir_filter = _gpu_fir_filter
         return const_metadata.copy(data_desc=new_signal_description,
                                    input_shape=output_shape)
 
     def process(self, data):
-        return self._decimate(data)
-
-    def _fir_decimate(self, data):
-        fir_output = self._fir_filter(data)
+        fir_output = self.filter_pkg.convolve1d(
+            data, self.filter_coeffs, axis=-1, mode='constant')
         data_out = fir_output[..., 0::self.decimation_factor]
-        return data_out
-
-    def _legacy_decimate(self, data):
-        data_out = data
-        for i in range(self.cic_order):
-            data_out = self.xp.cumsum(data_out, axis=-1)
-        data_out = data_out[..., 0::self.decimation_factor]
-        for i in range(self.cic_order):
-            data_out[..., 1:] = self.xp.diff(data_out, axis=-1)
         return data_out
 
 
@@ -2338,10 +2355,16 @@ class ExtractMetadata(Operation):
         # Metadata is saved by us4OEM:0 module only.
         self._n_frames = fcm.n_frames[0]
         self._n_repeats = const_metadata.context.raw_sequence.n_repeats
+
+        input_shape = const_metadata.input_shape
+        is_ddc = len(input_shape) == 3
+        self._slices = (slice(0, self._n_samples*self._n_frames, self._n_samples), )
+        if is_ddc:
+            self._slices = self._slices + (0, ) # Select "I" value.
         return const_metadata
 
     def process(self, data):
-        return data[:self._n_samples*self._n_frames:self._n_samples]\
+        return data[self._slices] \
             .reshape(self._n_frames, -1) \
             .copy()
 
@@ -2439,7 +2462,7 @@ class ReconstructLri3D(Operation):
         # Probe description
         # TODO specific for Vermon mat-3d probe.
         probe_model = const_metadata.context.device.probe.model
-        pitch = 0.3e-3 # probe_model.pitch
+        pitch = probe_model.pitch
         self.n_elements = 32
         n_rows_x = self.n_elements
         n_rows_y = self.n_elements + 3
