@@ -546,9 +546,6 @@ classdef Us4R < handle
             end
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
             
-            %% Sub-sequence parameters
-            obj.calcTxRxSubParams;
-            
             %% Active channels group mask
             if obj.sys.adapType == -1
                 [~,I] = sort(obj.sys.rxChannelMap.');
@@ -859,50 +856,6 @@ classdef Us4R < handle
 
         end
         
-        function calcTxRxSubParams(obj)
-            nArius	= obj.sys.nArius;
-            nChan	= obj.sys.nChArius;
-            nSubTx	= obj.seq.nSubTx;
-            nTx     = obj.seq.nTx;
-            nFire	= obj.seq.nFire;
-            
-            txSubApDel = cell(nArius,nTx);
-            txSubApMask = false(128,nTx,nArius);
-            rxSubApMask = false(128,nFire,nArius);
-            rxSubElemId = zeros(128,nFire,nArius);
-            for iArius=0:(nArius-1)
-                txSubApDel(iArius+1,:) = mat2cell(obj.seq.txDel(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1), 128, ones(1,nTx));
-                txSubApMask(:,:,iArius+1) = obj.seq.txApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
-                
-                rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
-                rxApMaskSelect = reshape(rxApMaskSelect,nChan,4,nTx);
-                iSubTx = cumsum(rxApMaskSelect,2) .* rxApMaskSelect;
-                iSubTx = reshape(iSubTx,[],1,nTx);
-                rxSubApMask(:,:,iArius+1) = reshape(iSubTx == (1:nSubTx),[],nFire);
-                
-                % rxSubApMask correction for the new esaote adapter
-                if obj.sys.adapType == -1
-                    for iFire=0:(nFire-1)
-                        rxSubChanMap = 1+mod(obj.sys.rxChannelMap(iArius+1,rxSubApMask(:,iFire+1,iArius+1))-1,obj.sys.nChArius);
-                        rejElem = floor((find(triu(rxSubChanMap==rxSubChanMap.',1)) - 1) / length(rxSubChanMap)) + 1;
-                        if ~isempty(rejElem)
-                            elemIdx = cumsum(rxSubApMask(:,iFire+1,iArius+1)) .* rxSubApMask(:,iFire+1,iArius+1);
-                            rejElem = any(elemIdx == rejElem.', 2);
-                            rxSubApMask(rejElem,iFire+1,iArius+1) = false;
-                        end
-                    end
-                end
-                
-                rxElemIdSelect = obj.seq.rxElemId(obj.sys.selElem(:,iArius+1), :) .* obj.sys.actChan(:,iArius+1);
-                rxSubElemId(:,:,iArius+1) = reshape(reshape(rxElemIdSelect,[],1,nTx) .* ...
-                                                    reshape(rxSubApMask(:,:,iArius+1),[],nSubTx,nTx), [],nFire);
-            end
-            
-            obj.seq.txSubApMask = txSubApMask;
-            obj.seq.txSubApDel = txSubApDel;
-            obj.seq.rxSubApMask = rxSubApMask;
-            obj.seq.rxSubElemId = rxSubElemId;
-        end
         
         function validateSequence(obj)
             
