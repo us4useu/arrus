@@ -1076,24 +1076,7 @@ classdef Us4R < handle
             
             
         end
-
-        function maskString = maskFormat(obj,maskLogical)
-            
-            [maskLength,nMask] = size(maskLogical);
-            
-            if maskLength~=16 && maskLength~=128
-                error("maskFormat: invalid mask length, should be 16 or 128");
-            end
-            
-            if maskLength == 16
-                % active channel group mask: needs reordering
-                maskLogical = reshape(permute(reshape(maskLogical,4,2,2,nMask),[3,2,1,4]),16,nMask);
-            end
-            
-            maskString = join(string(double(maskLogical.')),"").';
-            maskString = reverse(maskString);
-            
-        end
+        
         
         function iqLri = runCudaReconstruction(obj,iqRaw,selFramesType)
             
