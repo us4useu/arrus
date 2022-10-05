@@ -983,8 +983,13 @@ classdef Us4R < handle
 
             scheme = Scheme('txRxSequence', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
             
-            obj.buffer = obj.session.upload(scheme);
-
+            [obj.buffer.data, ...
+             obj.buffer.frameOffsets, ...
+             obj.buffer.numberOfFrames, ...
+             obj.buffer.us4oems, ...
+             obj.buffer.frames, ...
+             obj.buffer.channels] = obj.session.upload(scheme);
+            
         end
 
         function [rf, metadata] = execSequence(obj)
@@ -1003,66 +1008,18 @@ classdef Us4R < handle
 
             %% Capture & transfer data to PC
             obj.session.run();
-            rf = obj.buffer.front().eval();
+            rf0 = obj.buffer.data.front().eval();
             
             %% Get metadata
             metadata = zeros(nChan, nTrig, 'int16');
-            metadata(:, :) = rf(:, 1:nSamp:nTrig*nSamp);
+            metadata(:, :) = rf0(:, 1:nSamp:nTrig*nSamp);
 
             %% Reorganize
-            rf	= reshape(rf, [nChan, nSamp, nSubTx, nTx, nRep, nArius]);
-
-            rxApOrig = obj.seq.rxApOrig;
-            if obj.sys.adapType == 0
-                rf	= permute(rf,[2 1 3 6 4 5]);
-                
-                % "old esaote" adapter type
-%                 for iTx=1:nTx
-%                     rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-min(32,max(0,rxApOrig(iTx)-1-nChan*(4-1))),2);
-%                 end
-%                 rf	= rf(:,1:nChan,:,:);
-%                 for iTx=1:nTx
-%                     if ~(rxApOrig(iTx) > 1+nChan*(4-1) && rxApOrig(iTx) < 1+nChan*4)
-%                         rf(:,:,iTx,:)	= circshift(rf(:,:,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
-%                     end
-%                 end
-                
-                for iTx=1:nTx
-                    iArius = ceil(rxApOrig(iTx) / (nChan * 4)) - 1;
-                    if iArius >= 0 && iArius < nArius
-                        rf(:,:,:,iArius+1,iTx,:)	= circshift(rf(:,:,:,iArius+1,iTx,:),-mod(rxApOrig(iTx)-1,nChan),2);
-                    end
-                end
-                rf = reshape(rf,nSamp,nChan*nSubTx*nArius,nTx,nRep);
-                for iTx=1:nTx
-                    rxApEnd = rxApOrig(iTx) + obj.seq.rxApSize - 1;
-                    nZerosL = max(0, min(  0,rxApEnd) -          rxApOrig(iTx)  + 1);
-                    nZerosR = max(0,         rxApEnd  - max(193, rxApOrig(iTx)) + 1);
-                    nChan0  = max(0, min(128,rxApEnd) - max(  1, rxApOrig(iTx)) + 1);
-                    nChan1  = max(0, min(192,rxApEnd) - max(129, rxApOrig(iTx)) + 1);
-                    
-                    rf(:,1:obj.seq.rxApSize,iTx,:) = [  zeros(nSamp,nZerosL,1,nRep), ...
-                                                        rf(:,(1:nChan0) + 0*nChan*nSubTx,iTx,:), ...
-                                                        rf(:,(1:nChan1) + 1*nChan*nSubTx,iTx,:), ...
-                                                        zeros(nSamp,nZerosR,1,nRep) ];
-                end
-                rf(:,(obj.seq.rxApSize+1):end,:,:) = [];
-                
-            else
-                % "ultrasonix" or "new esaote" adapter type
-                rf0	= permute(rf,[2 1 3 4 6 5]);
-                rf0	= reshape(rf0,nSamp,nChan*nSubTx*nTx*nArius,nRep);
-                rf	= zeros(nSamp,obj.seq.rxApSize*nTx,nRep,'int16');
-                
-                addressFrom = reshape(any(reshape(obj.seq.rxSubApMask,nChan,4,[]),2),[],1);
-                addressTo   = reshape(sum(reshape(obj.seq.rxSubElemId,nChan,4,[]),2),[],1);
-                addressTo   = addressTo + reshape((0:(nTx-1)).*ones(nChan*nSubTx,1,nArius),[],1)*obj.seq.rxApSize;
-                addressTo   = addressTo(addressFrom);
-                
-                rf(:,addressTo,:) = rf0(:,addressFrom,:);
-                rf	= reshape(rf,nSamp,obj.seq.rxApSize,nTx,nRep);
-                
-            end
+            rf0	= reshape(rf0, nChan, nSamp, sum(obj.buffer.numberOfFrames));
+            rf0	= permute(rf0, [2 1 3]);
+            rf  = rf0(:, 1 + uint32(obj.buffer.channels) + ...
+                        (obj.buffer.frameOffsets(1 + obj.buffer.us4oems) + obj.buffer.frames)*nChan);
+            rf  = reshape(rf, nSamp, obj.seq.rxApSize, nTx);
 
         end
         
