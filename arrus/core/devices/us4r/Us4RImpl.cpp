@@ -454,4 +454,14 @@ void Us4RImpl::disableHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
 }
 
+uint16_t Us4RImpl::getAfe(uint8_t reg) {
+    return us4oems[0]->getAfe(reg);
+}
+
+void Us4RImpl::setAfe(uint8_t reg, uint16_t val) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setAfe(reg, val);
+    }
+}
+
 }// namespace arrus::devices

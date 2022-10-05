@@ -267,6 +267,21 @@ public:
     virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
 
     /**
+     * Reads AFE register
+     *
+     * @param reg register address
+     */
+    virtual uint16_t getAfe(uint8_t reg) = 0;
+
+    /**
+     * Writes AFE register
+     *
+     * @param reg register address
+     * @param val register value
+     */
+    virtual void setAfe(uint8_t reg, uint16_t val) = 0;
+
+    /**
      * Disables digital high-pass filter.
      */
     virtual void disableHpf() = 0;
