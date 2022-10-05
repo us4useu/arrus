@@ -74,8 +74,6 @@ classdef Us4R < handle
             
             obj.sys.maxVpp = probe.maxVpp;
             obj.sys.adapType = probe.adapType;                      
-            obj.sys.txChannelMap = probe.txChannelMap;
-            obj.sys.rxChannelMap = probe.rxChannelMap;
             obj.sys.curvRadius = probe.curvRadius;
             obj.sys.probeMap = probe.probeMap;
             obj.sys.pitch = probe.pitch;
@@ -420,8 +418,6 @@ classdef Us4R < handle
             
             %% Fixed parameters
             obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
-            obj.seq.rxDel       = 0e-6;
-            obj.seq.pauseMultip	= 1.5;
             
             %% Number of Tx
             obj.seq.nTx	= length(obj.seq.txAng);
@@ -447,12 +443,10 @@ classdef Us4R < handle
                 obj.seq.nSamp = diff(obj.seq.nSamp) + 1;
             end
             
-            %% txPri & rxTime
+            %% txPri
             if isempty(obj.seq.txPri)
                 obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
             end
-            
-            obj.seq.rxTime = obj.seq.txPri - obj.seq.rxDel - 5e-6;	% [s] rx time (max 4000us)
             
             %% txVoltage
             if 2*obj.seq.txVoltage > obj.sys.maxVpp
