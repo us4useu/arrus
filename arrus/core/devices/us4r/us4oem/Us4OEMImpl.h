@@ -142,11 +142,6 @@ public:
         }
     }
 
-    void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16_t *firCoefficients,
-                     size_t nCoefficients) override {
-        setAfeDemodInternal(demodulationFrequency, decimationFactor, firCoefficients, nCoefficients);
-    }
-
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients) override {
         setAfeDemodInternal(demodulationFrequency, decimationFactor, firCoefficients, nCoefficients);
@@ -185,6 +180,7 @@ private:
     void setLpfCutoffAfe(uint32 value, bool force);
     void setActiveTerminationAfe(std::optional<uint16> param, bool force);
     void enableAfeDemod();
+    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float* firCoeffs, uint16_t firLength, float freq);
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);
     void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
@@ -199,8 +195,7 @@ private:
     void setHpfCornerFrequency(uint32_t frequency);
     void disableHpf();
 
-    template<typename T>
-    void setAfeDemodInternal(float demodulationFrequency, float decimationFactor, const T *firCoefficients,
+    void setAfeDemodInternal(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                              size_t nCoefficients) {
         //check decimation factor
         if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
@@ -234,14 +229,8 @@ private:
                                                   "actual: {}", expectedNumberOfCoeffs, nCoefficients));
         }
         enableAfeDemod();
-        //write default config
-        setAfeDemodDefault();
-        //set demodulation frequency
-        setAfeDemodFrequency(demodulationFrequency);
-        //set decimation factor
-        setAfeDemodDecimationFactor(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters));
-        //write fir
-        writeAfeFIRCoeffs(firCoefficients, static_cast<uint16_t>(nCoefficients));
+        setAfeDemodConfig(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters), 
+            firCoefficients, static_cast<uint16_t>(nCoefficients), demodulationFrequency);
     }
 
     Logger::Handle logger;

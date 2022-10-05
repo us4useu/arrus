@@ -88,6 +88,10 @@ void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
 
 void Us4OEMImpl::enableAfeDemod() { ius4oem->AfeDemodEnable(); }
 
+void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float* firCoeffs, uint16_t firLength, float freq) {
+    ius4oem->AfeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq);
+}
+
 void Us4OEMImpl::setAfeDemodDefault() { ius4oem->AfeDemodSetDefault(); }
 
 void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer) { ius4oem->AfeDemodSetDecimationFactor(integer); }
