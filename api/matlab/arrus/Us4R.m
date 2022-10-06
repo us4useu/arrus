@@ -919,11 +919,20 @@ classdef Us4R < handle
             scheme = Scheme('txRxSequence', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
             
             [obj.buffer.data, ...
-             obj.buffer.frameOffsets, ...
-             obj.buffer.numberOfFrames, ...
-             obj.buffer.us4oems, ...
-             obj.buffer.frames, ...
-             obj.buffer.channels] = obj.session.upload(scheme);
+             obj.buffer.framesOffset, ...
+             obj.buffer.framesNumber, ...
+             obj.buffer.oemId, ...
+             obj.buffer.frameId, ...
+             obj.buffer.channelId] = obj.session.upload(scheme);
+            
+            nChan = obj.sys.nChArius;
+            nRep = obj.seq.nRep;
+            iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
+            obj.buffer.reorgAddrFrom = 1 + ...
+                ( obj.buffer.framesOffset(1 + obj.buffer.oemId) + ...    % offset due to oemId
+                  obj.buffer.framesNumber(1 + obj.buffer.oemId) / nRep .* iRep + ...    % offset due to iRep
+                  obj.buffer.frameId ) * nChan  + ...    % offset due to frameId
+                uint32(obj.buffer.channelId);   % offset due to channelId
             
         end
 
@@ -950,11 +959,10 @@ classdef Us4R < handle
             metadata(:, :) = rf0(:, 1:nSamp:nTrig*nSamp);
 
             %% Reorganize
-            rf0	= reshape(rf0, nChan, nSamp, sum(obj.buffer.numberOfFrames));
+            rf0	= reshape(rf0, nChan, nSamp, sum(obj.buffer.framesNumber));
             rf0	= permute(rf0, [2 1 3]);
-            rf  = rf0(:, 1 + uint32(obj.buffer.channels) + ...
-                        (obj.buffer.frameOffsets(1 + obj.buffer.us4oems) + obj.buffer.frames)*nChan);
-            rf  = reshape(rf, nSamp, obj.seq.rxApSize, nTx);
+            rf  = rf0(:, obj.buffer.reorgAddrFrom);
+            rf  = reshape(rf, nSamp, obj.seq.rxApSize, nTx, nRep);
 
         end
         
