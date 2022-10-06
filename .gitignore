@@ -208,3 +208,5 @@ CMakeFiles
 .vs/arrus/v15/.suo
 .vs/
 
+# Installation folder
+install/
