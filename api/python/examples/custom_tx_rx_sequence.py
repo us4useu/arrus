@@ -52,8 +52,8 @@ def main():
                        # Custom delays 1.
                        delays=[0]*n_elements),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 2048),
-                       downsampling_factor=2),
+                       sample_range=(0, 4096),
+                       downsampling_factor=1),
                     pri=200e-6
                 ),
                 TxRx(
@@ -63,8 +63,8 @@ def main():
                        # Custom delays 2.
                        delays=np.linspace(0, 1e-6, n_elements)),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 2048),
-                       downsampling_factor=2),
+                       sample_range=(0, 4096),
+                       downsampling_factor=1),
                     pri=200e-6
                 ),
             ],
