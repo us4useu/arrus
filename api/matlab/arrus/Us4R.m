@@ -739,7 +739,7 @@ classdef Us4R < handle
             % obj.seq.txApLstElem	- [element] (1 x nTx) number of probe element being the last in the tx aperture
             % obj.seq.txApMask      - [logical] (nChTotal x nTx) tx aperture mask
             % obj.seq.rxApMask      - [logical] (nChTotal x nTx) rx aperture mask
-            % obj.seq.rxElemId      - [element] (nChTotal x nTx) element numbering in the rx aperture
+            % obj.seq.rxApPadding   - [element] (2 x nTx) rx aperture padding
             
             iElem = nan(1,max(obj.sys.probeMap));
             iElem(obj.sys.probeMap) = 1:obj.sys.nElem;
@@ -762,8 +762,8 @@ classdef Us4R < handle
             obj.seq.txApMask = obj.seq.txApMask & systemChannelsMask;
             obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
             obj.seq.rxApMask = obj.seq.rxApMask & systemChannelsMask;
-            obj.seq.rxElemId = (iElem.' - obj.seq.rxApOrig + 1) .* obj.seq.rxApMask;
-            obj.seq.rxElemId(isnan(obj.seq.rxElemId)) = 0;
+            obj.seq.rxApPadding = [-min(0, obj.seq.rxApOrig - 1); ...
+                                    max(0, obj.seq.rxApOrig - 1 + obj.seq.rxApSize - obj.sys.nElem)];
         end
 
         function calcTxDelays(obj)
@@ -911,7 +911,7 @@ classdef Us4R < handle
             for iTx=1:nTx
                 pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
                 txObj = Tx("aperture", obj.seq.txApMask(1:nElem,iTx).', 'delays', obj.seq.txDel(1:nElem,iTx).', "pulse", pulse);
-                rxObj = Rx("aperture", obj.seq.rxApMask(1:nElem,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fsDivider);
+                rxObj = Rx("aperture", obj.seq.rxApMask(1:nElem,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fsDivider);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
             txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve);
@@ -928,12 +928,17 @@ classdef Us4R < handle
             nChan = obj.sys.nChArius;
             nRep = obj.seq.nRep;
             iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
-            obj.buffer.reorgAddrFrom = 1 + ...
-                ( obj.buffer.framesOffset(1 + obj.buffer.oemId) + ...    % offset due to oemId
-                  obj.buffer.framesNumber(1 + obj.buffer.oemId) / nRep .* iRep + ...    % offset due to iRep
-                  obj.buffer.frameId ) * nChan  + ...    % offset due to frameId
-                uint32(obj.buffer.channelId);   % offset due to channelId
             
+
+            obj.buffer.reorgAddrDest = (1 : obj.seq.rxApSize*nTx*nRep).';
+            obj.buffer.reorgAddrOrig = 1 + ...
+                ( obj.buffer.framesOffset(1 + obj.buffer.oemId) + ...                 % offset due to oemId
+                  obj.buffer.framesNumber(1 + obj.buffer.oemId) / nRep .* iRep + ...  % offset due to iRep
+                  obj.buffer.frameId ) * nChan  + ...                                 % offset due to frameId
+                uint32(obj.buffer.channelId);                                         % offset due to channelId
+
+            obj.buffer.reorgAddrDest = obj.buffer.reorgAddrDest(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
+            obj.buffer.reorgAddrOrig = obj.buffer.reorgAddrOrig(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
         end
 
         function [rf, metadata] = execSequence(obj)
@@ -961,7 +966,9 @@ classdef Us4R < handle
             %% Reorganize
             rf0	= reshape(rf0, nChan, nSamp, sum(obj.buffer.framesNumber));
             rf0	= permute(rf0, [2 1 3]);
-            rf  = rf0(:, obj.buffer.reorgAddrFrom);
+            
+            rf  = zeros(nSamp, obj.seq.rxApSize*nTx*nRep);
+            rf(:,obj.buffer.reorgAddrDest) = rf0(:, obj.buffer.reorgAddrOrig);
             rf  = reshape(rf, nSamp, obj.seq.rxApSize, nTx, nRep);
 
         end
