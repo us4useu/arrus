@@ -682,36 +682,36 @@ classdef Us4R_old < handle
             %% Validate/adjust size of the RxTangLims
             obj.rec.bmodeRxTangLim = reshape(obj.rec.bmodeRxTangLim,[],2);
             if obj.rec.bmodeEnable
-                if height(obj.rec.bmodeRxTangLim) == 1
+                if size(obj.rec.bmodeRxTangLim,1) == 1
                     obj.rec.bmodeRxTangLim = obj.rec.bmodeRxTangLim.*ones(numel(obj.rec.bmodeFrames),1);
-                elseif height(obj.rec.bmodeRxTangLim) ~= numel(obj.rec.bmodeFrames)
+                elseif size(obj.rec.bmodeRxTangLim,1) ~= numel(obj.rec.bmodeFrames)
                     error("setRecParams: number of rows in bmodeRxTangLim must equal the length of bmodeFrames");
                 end
             end
             
             obj.rec.colorRxTangLim = reshape(obj.rec.colorRxTangLim,[],2);
             if obj.rec.colorEnable
-                if height(obj.rec.colorRxTangLim) == 1
+                if size(obj.rec.colorRxTangLim,1) == 1
                     obj.rec.colorRxTangLim = obj.rec.colorRxTangLim.*ones(numel(obj.rec.colorFrames),1);
-                elseif height(obj.rec.colorRxTangLim) ~= numel(obj.rec.colorFrames)
+                elseif size(obj.rec.colorRxTangLim,1) ~= numel(obj.rec.colorFrames)
                     error("setRecParams: number of rows in colorRxTangLim must equal the length of colorFrames");
                 end
             end
             
             obj.rec.vect0RxTangLim = reshape(obj.rec.vect0RxTangLim,[],2);
             if obj.rec.vectorEnable
-                if height(obj.rec.vect0RxTangLim) == 1
+                if size(obj.rec.vect0RxTangLim,1) == 1
                     obj.rec.vect0RxTangLim = obj.rec.vect0RxTangLim.*ones(numel(obj.rec.vect0Frames),1);
-                elseif height(obj.rec.vect0RxTangLim) ~= numel(obj.rec.vect0Frames)
+                elseif size(obj.rec.vect0RxTangLim,1) ~= numel(obj.rec.vect0Frames)
                     error("setRecParams: number of rows in vector0RxTangLim must equal the length of vector0Frames");
                 end
             end
             
             obj.rec.vect1RxTangLim = reshape(obj.rec.vect1RxTangLim,[],2);
             if obj.rec.vectorEnable
-                if height(obj.rec.vect1RxTangLim) == 1
+                if size(obj.rec.vect1RxTangLim,1) == 1
                     obj.rec.vect1RxTangLim = obj.rec.vect1RxTangLim.*ones(numel(obj.rec.vect1Frames),1);
-                elseif height(obj.rec.vect1RxTangLim) ~= numel(obj.rec.vect1Frames)
+                elseif size(obj.rec.vect1RxTangLim,1) ~= numel(obj.rec.vect1Frames)
                     error("setRecParams: number of rows in vector1RxTangLim must equal the length of vector1Frames");
                 end
             end
