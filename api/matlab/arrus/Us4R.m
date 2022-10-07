@@ -925,6 +925,12 @@ classdef Us4R < handle
              obj.buffer.frameId, ...
              obj.buffer.channelId] = obj.session.upload(scheme);
             
+            obj.buffer.framesOffset
+            obj.buffer.framesNumber
+            obj.buffer.oemId
+            obj.buffer.frameId
+            obj.buffer.channelId
+            
             nChan = obj.sys.nChArius;
             nRep = obj.seq.nRep;
             iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
@@ -958,6 +964,8 @@ classdef Us4R < handle
             %% Capture & transfer data to PC
             obj.session.run();
             rf0 = obj.buffer.data.front().eval();
+            
+            obj.session.close();
             
             %% Get metadata
             metadata = zeros(nChan, nTrig, 'int16');
