@@ -1,10 +1,14 @@
 import dataclasses
 import abc
 
+import numpy as np
+
 import arrus.devices.device
 import arrus.medium
 import arrus.ops
 import arrus.ops.us4r
+from typing import List, Sized
+from enum import Enum, auto
 
 
 @dataclasses.dataclass(frozen=True)
@@ -29,6 +33,39 @@ class DataDescription(abc.ABC):
     pass
 
 
+class Units(Enum):
+    PIXELS = auto()
+    SECONDS = auto()
+    METERS = auto()
+
+
+@dataclasses.dataclass(frozen=True)
+class GridDescriptor:
+    points: Sized
+    unit: Units
+
+    @property
+    def n(self):
+        return len(self.points)
+
+
+@dataclasses.dataclass(frozen=True)
+class RegularGridDescriptor:
+    """
+    A descriptor of grid along a single dimension.
+    """
+    start: float
+    step: float
+    n: int
+    unit: Units
+
+    @property
+    def points(self):
+        return np.arange(
+            start=self.start, stop=self.start+self.step*self.n,
+            step=self.step)
+
+
 @dataclasses.dataclass(frozen=True)
 class EchoDataDescription(DataDescription):
     """
@@ -36,9 +73,11 @@ class EchoDataDescription(DataDescription):
 
     :param sampling_frequency: a sampling frequency of the data
     :param custom: custom information
+    :parma grid: a description of each grid point; only 2 or 3 axes are considered
     """
     sampling_frequency: float
     custom: dict = dataclasses.field(default_factory=dict)
+    grid: List[GridDescriptor] = None
 
 
 class ConstMetadata:

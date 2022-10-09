@@ -865,9 +865,16 @@ class Decimation(Operation):
     def prepare(self, const_metadata):
         new_fs = (const_metadata.data_description.sampling_frequency
                   / self.decimation_factor)
+
+        output_grid = list(const_metadata.data_description.grid)
+        new_last_grid = dataclasses.replace(output_grid[-1], step=1/new_fs)
+        output_grid[-1] = new_last_grid
+        output_grid = tuple(output_grid)
+
         new_signal_description = dataclasses.replace(
             const_metadata.data_description,
-            sampling_frequency=new_fs)
+            sampling_frequency=new_fs,
+            grid=output_grid)
         input_shape = const_metadata.input_shape
         n_samples = input_shape[-1]
         self.filter_coeffs = self.xp.asarray(self.filter_coeffs)
@@ -1205,11 +1212,16 @@ class Transpose(Operation):
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
 
-    def prepare(self, const_metadata):
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         input_shape = const_metadata.input_shape
         axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
         output_shape = tuple(input_shape[ax] for ax in axes)
-        return const_metadata.copy(input_shape=output_shape)
+        grid = const_metadata.data_description.grid
+        new_grids = tuple(grid[ax] for ax in axes)
+        data_desc = dataclasses.replace(const_metadata.data_description,
+                                        grid=new_grids)
+        return const_metadata.copy(input_shape=output_shape,
+                                   data_desc=data_desc)
 
     def process(self, data):
         return self.xp.transpose(data, self.axes)
@@ -1240,6 +1252,11 @@ class ScanConversion(Operation):
         self.z_grid = z_grid.reshape(1, -1)
         self.is_gpu = False
         self.num_pkg = None
+        meters = arrus.metadata.Units.METERS
+        self.ox_grid_desc = arrus.metadata.GridDescriptor(
+            np.squeeze(self.x_grid), unit=meters)
+        self.oz_grid_desc = arrus.metadata.GridDescriptor(
+            np.squeeze(self.z_grid), unit=meters)
 
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg != np:
@@ -1247,6 +1264,11 @@ class ScanConversion(Operation):
         self.num_pkg = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        self.input_grid = const_metadata.data_description.grid
+        self.output_grid = self.input_grid[:-2] + [
+            self.ox_grid_desc, self.oz_grid_desc]
+        self.output_grid = tuple(self.output_grid)
+
         probe = const_metadata.context.device.probe.model
         if probe.is_convex_array():
             self.process = self._process_convex
@@ -1321,7 +1343,10 @@ class ScanConversion(Operation):
 
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
         self.buffer = cp.zeros(self.dst_shape, dtype=cp.float32)
-        return const_metadata.copy(input_shape=self.dst_shape)
+
+        data_desc = dataclasses.replace(const_metadata.data_description,
+                                        grid=self.output_grid)
+        return const_metadata.copy(input_shape=self.dst_shape, data_desc=data_desc)
 
     def _process_linear_array(self, data):
         for i in range(self.n_frames):
@@ -1394,7 +1419,9 @@ class ScanConversion(Operation):
         self.dst_points = self.num_pkg.asarray(dst_points,
                                                dtype=self.num_pkg.float32)
         self.output_buffer = self.num_pkg.zeros(self.dst_shape, dtype=np.float32)
-        return const_metadata.copy(input_shape=self.dst_shape)
+        data_desc = dataclasses.replace(const_metadata.data_description,
+                                        grid=self.output_grid)
+        return const_metadata.copy(input_shape=self.dst_shape, data_desc=data_desc)
 
     def _process_convex(self, data):
         data[np.isnan(data)] = 0.0
@@ -1436,7 +1463,9 @@ class ScanConversion(Operation):
         self.dst_points = dst_points.reshape((w * h, d))
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
         self.output_buffer = np.zeros(self.dst_shape, dtype=np.float32)
-        return const_metadata.copy(input_shape=self.dst_shape)
+        data_desc = dataclasses.replace(const_metadata.data_description,
+                                        grid=self.output_grid)
+        return const_metadata.copy(input_shape=self.dst_shape, data_desc=data_desc)
 
     def _process_phased_array(self, data):
         if self.is_gpu:
@@ -1788,7 +1817,12 @@ class Squeeze(Operation):
 
     def prepare(self, const_metadata):
         output_shape = tuple(i for i in const_metadata.input_shape if i != 1)
-        return const_metadata.copy(input_shape=output_shape)
+        output_grid = tuple(
+            g for i, g in zip(const_metadata.input_shape, const_metadata.data_description.grid)
+            if i != 1)
+        data_desc = dataclasses.replace(
+            const_metadata.data_description, grid=output_grid)
+        return const_metadata.copy(input_shape=output_shape, data_desc=data_desc)
 
     def process(self, data):
         return self.xp.squeeze(data)
@@ -1817,6 +1851,12 @@ class ReconstructLri(Operation):
             raise ValueError("ReconstructLri operation is implemented for GPU only.")
 
     def prepare(self, const_metadata):
+        meters = arrus.metadata.Units.METERS
+        ox_grid = arrus.metadata.GridDescriptor(self.x_grid, unit=meters)
+        oz_grid = arrus.metadata.GridDescriptor(self.z_grid, unit=meters)
+        output_grid = const_metadata.data_description.grid[:-2] + [ox_grid, oz_grid]
+        output_grid = tuple(output_grid)
+
         import cupy as cp
 
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
@@ -1914,7 +1954,10 @@ class ReconstructLri(Operation):
         burst_factor = seq.pulse.n_periods / (2*self.fn)
         self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
-        return const_metadata.copy(input_shape=output_shape)
+
+        # Output grid
+        data_desc = dataclasses.replace(const_metadata.data_description, grid=output_grid)
+        return const_metadata.copy(input_shape=output_shape, data_desc=data_desc)
 
     def process(self, data):
         data = self.num_pkg.ascontiguousarray(data)
@@ -1954,7 +1997,12 @@ class Sum(Operation):
         output_shape = list(const_metadata.input_shape)
         actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
-        return const_metadata.copy(input_shape=tuple(output_shape))
+        output_grid = list(const_metadata.output_grid)
+        del output_grid[actual_axis]
+        data_desc = dataclasses.replace(
+            const_metadata.data_description, grid=output_grid)
+        return const_metadata.copy(input_shape=tuple(output_shape),
+                                   data_desc=data_desc)
 
     def process(self, data):
         return self.num_pkg.sum(data, axis=self.axis)
@@ -1978,7 +2026,12 @@ class Mean(Operation):
         output_shape = list(const_metadata.input_shape)
         actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
-        return const_metadata.copy(input_shape=tuple(output_shape))
+        output_grid = list(const_metadata.output_grid)
+        del output_grid[actual_axis]
+        data_desc = dataclasses.replace(
+            const_metadata.data_description, grid=output_grid)
+        return const_metadata.copy(input_shape=tuple(output_shape),
+                                   data_desc=data_desc)
 
     def process(self, data):
         return self.num_pkg.mean(data, axis=self.axis)
@@ -2150,7 +2203,23 @@ class RemapToLogicalOrder(Operation):
                      batch_size, n_frames, n_samples, n_channels])
 
             self._remap_fn = gpu_remap_fn
-        return const_metadata.copy(input_shape=self.output_shape)
+
+        fs = const_metadata.data_description.sampling_frequency
+        secs = arrus.metadata.Units.SECONDS
+        pix = arrus.metadata.Units.PIXELS
+        grid_sequence = arrus.metadata.RegularGridDescriptor(
+            start=0, step=1, n=batch_size, unit=pix)
+        grid_transmit = arrus.metadata.RegularGridDescriptor(
+            start=0, step=1, n=n_frames, unit=pix)
+        grid_time = arrus.metadata.RegularGridDescriptor(
+            start=0, step=1/fs, n=n_samples, unit=secs)
+        grid_ch = arrus.metadata.RegularGridDescriptor(
+            start=0, step=1, n=n_channels, unit=pix)
+        data_desc = dataclasses.replace(
+            const_metadata.data_description, grid=[
+                grid_sequence, grid_transmit, grid_time, grid_ch])
+        return const_metadata.copy(input_shape=self.output_shape,
+                                   data_desc=data_desc)
 
     def process(self, data):
         self._remap_fn(data)
@@ -2247,7 +2316,22 @@ class RemapToLogicalOrderV2(Operation):
                            n_components])
 
             self._remap_fn = gpu_remap_fn
-        return const_metadata.copy(input_shape=self.output_shape)
+            fs = const_metadata.data_description.sampling_frequency
+            secs = arrus.metadata.Units.SECONDS
+            pix = arrus.metadata.Units.PIXELS
+            grid_sequence = arrus.metadata.RegularGridDescriptor(
+                start=0, step=1, n=batch_size, unit=pix)
+            grid_transmit = arrus.metadata.RegularGridDescriptor(
+                start=0, step=1, n=n_frames, unit=pix)
+            grid_time = arrus.metadata.RegularGridDescriptor(
+                start=0, step=1/fs, n=n_samples, unit=secs)
+            grid_ch = arrus.metadata.RegularGridDescriptor(
+                start=0, step=1, n=n_channels, unit=pix)
+            data_desc = dataclasses.replace(
+            const_metadata.data_description, grid=[
+                grid_sequence, grid_transmit, grid_ch, grid_time])
+        return const_metadata.copy(input_shape=self.output_shape,
+                                   data_desc=data_desc)
 
     def process(self, data):
         self._remap_fn(data)
@@ -2413,6 +2497,13 @@ class ReconstructLri3D(Operation):
         return min_x, max_x, min_y, max_y
 
     def prepare(self, const_metadata):
+        meters = arrus.metadata.Units.METERS
+        ox_grid = arrus.metadata.GridDescriptor(self.x_grid, unit=meters)
+        oz_grid = arrus.metadata.GridDescriptor(self.z_grid, unit=meters)
+        oy_grid = arrus.metadata.GridDescriptor(self.y_grid, unit=meters)
+        # TODO consider batch size
+        output_grid = [oy_grid, ox_grid, oz_grid]
+
         import cupy as cp
 
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
@@ -2574,8 +2665,8 @@ class ReconstructLri3D(Operation):
         self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
         self.rx_apod = self.num_pkg.asarray(self.rx_apod)
         self.n_rx_apod = self.num_pkg.int32(len(self.rx_apod))
-
-        return const_metadata.copy(input_shape=output_shape)
+        data_desc = dataclasses.replace(const_metadata.data_description, grid=output_grid)
+        return const_metadata.copy(input_shape=output_shape, data_desc=data_desc)
 
     def process(self, data):
         data = self.num_pkg.ascontiguousarray(data)
