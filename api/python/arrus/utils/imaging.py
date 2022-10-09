@@ -1854,7 +1854,7 @@ class ReconstructLri(Operation):
         meters = arrus.metadata.Units.METERS
         ox_grid = arrus.metadata.GridDescriptor(self.x_grid, unit=meters)
         oz_grid = arrus.metadata.GridDescriptor(self.z_grid, unit=meters)
-        output_grid = const_metadata.data_description.grid[:-2] + [ox_grid, oz_grid]
+        output_grid = const_metadata.data_description.grid[:-2] + (ox_grid, oz_grid)
         output_grid = tuple(output_grid)
 
         import cupy as cp
@@ -1997,7 +1997,7 @@ class Sum(Operation):
         output_shape = list(const_metadata.input_shape)
         actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
-        output_grid = list(const_metadata.output_grid)
+        output_grid = list(const_metadata.data_description.grid)
         del output_grid[actual_axis]
         data_desc = dataclasses.replace(
             const_metadata.data_description, grid=output_grid)
@@ -2026,7 +2026,7 @@ class Mean(Operation):
         output_shape = list(const_metadata.input_shape)
         actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
-        output_grid = list(const_metadata.output_grid)
+        output_grid = list(const_metadata.data_description.grid)
         del output_grid[actual_axis]
         data_desc = dataclasses.replace(
             const_metadata.data_description, grid=output_grid)
