@@ -1217,7 +1217,11 @@ class Transpose(Operation):
         axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
         output_shape = tuple(input_shape[ax] for ax in axes)
         grid = const_metadata.data_description.grid
-        new_grids = tuple(grid[ax] for ax in axes)
+        if grid is None:
+            new_grids = [arrus.metadata.RegularGridDescriptor(start=0, step=1, n=dim)
+                         for dim in output_shape]
+        else:
+            new_grids = tuple(grid[ax] for ax in axes)
         data_desc = dataclasses.replace(const_metadata.data_description,
                                         grid=new_grids)
         return const_metadata.copy(input_shape=output_shape,
@@ -2497,12 +2501,6 @@ class ReconstructLri3D(Operation):
         return min_x, max_x, min_y, max_y
 
     def prepare(self, const_metadata):
-        meters = arrus.metadata.Units.METERS
-        ox_grid = arrus.metadata.GridDescriptor(self.x_grid, unit=meters)
-        oz_grid = arrus.metadata.GridDescriptor(self.z_grid, unit=meters)
-        oy_grid = arrus.metadata.GridDescriptor(self.y_grid, unit=meters)
-        # TODO consider batch size
-        output_grid = [oy_grid, ox_grid, oz_grid]
 
         import cupy as cp
 
@@ -2515,6 +2513,16 @@ class ReconstructLri3D(Operation):
         # INPUT PARAMETERS.
         # Input data shape.
         self.n_seq, self.n_tx, self.n_rx_y, self.n_rx_x, self.n_samples = const_metadata.input_shape
+
+        meters = arrus.metadata.Units.METERS
+        n_seq_grid = arrus.metadata.RegularGridDescriptor(
+            0, 1, self.n_seq,
+            arrus.metadata.Units.PIXELS)
+        ox_grid = arrus.metadata.GridDescriptor(self.x_grid, unit=meters)
+        oz_grid = arrus.metadata.GridDescriptor(self.z_grid, unit=meters)
+        oy_grid = arrus.metadata.GridDescriptor(self.y_grid, unit=meters)
+        # TODO consider batch size
+        output_grid = [n_seq_grid, oy_grid, ox_grid, oz_grid]
 
         seq = const_metadata.context.raw_sequence
         # TODO note: we assume here that a single TX/RX has the below properties
