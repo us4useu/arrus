@@ -894,9 +894,9 @@ classdef Us4R < handle
             
             if false % obj.rec.iqEnable
                 cutoffFrequency = mean(obj.seq.txFreq)/(us4r.getSamplingFrequency()/2);
-                firOrder = obj.rec.dec * 16;
+                firOrder = obj.rec.dec * 16 - 1;
                 firCoeff = fir1(firOrder, cutoffFrequency, "low"); %requires signal processing toolbox
-                firCoeff = firCoeff(1, 1:length(firCoeff)/2);
+                firCoeff = firCoeff((numel(firCoeff)/2 + 1) : end);
                 
                 ddc = DigitalDownConversion( ...
                     "demodulationFrequency", mean(obj.seq.txFreq), ...
