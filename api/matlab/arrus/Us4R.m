@@ -972,10 +972,14 @@ classdef Us4R < handle
             metadata(:, :) = rf0(:, 1:nSamp:nTrig*nSamp);
 
             %% Reorganize
-            rf0	= reshape(rf0, nChan, nSamp, sum(obj.buffer.framesNumber));
-            rf0	= permute(rf0, [2 1 3]);
+            if obj.rec.iqEnable
+                rf0 = reshape(rf0, nChan, 2, nSamp, sum(obj.buffer.framesNumber));
+                rf0 = complex(rf0(:,1,:,:), rf0(:,2,:,:));
+            end
+            rf0 = reshape(rf0, nChan, nSamp, sum(obj.buffer.framesNumber));
+            rf0 = permute(rf0, [2 1 3]);
             
-            rf  = zeros(nSamp, obj.seq.rxApSize*nTx*nRep);
+            rf  = zeros(nSamp, obj.seq.rxApSize*nTx*nRep,'like',rf0);
             rf(:,obj.buffer.reorgAddrDest) = rf0(:, obj.buffer.reorgAddrOrig);
             rf  = reshape(rf, nSamp, obj.seq.rxApSize, nTx, nRep);
 
