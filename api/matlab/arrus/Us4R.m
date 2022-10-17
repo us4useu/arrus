@@ -44,6 +44,8 @@ classdef Us4R < handle
             % System parameters
             obj.sys.nChArius = 32;
 
+            obj.sys.rxSampFreq	= 65e6;
+
             obj.sys.voltage = voltage;
             
             if(isempty(probe))
@@ -196,11 +198,12 @@ classdef Us4R < handle
                 'txNPeriods', sequenceOperation.txNPeriods, ...
                 'rxDepthRange', sequenceOperation.rxDepthRange, ...
                 'rxNSamples', sequenceOperation.rxNSamples, ...
+                'iqEnable', sequenceOperation.iqEnable, ...
+                'decimation', sequenceOperation.decimation, ...
                 'nRepetitions', sequenceOperation.nRepetitions, ...
                 'txPri', sequenceOperation.txPri, ...
                 'tgcStart', sequenceOperation.tgcStart, ...
                 'tgcSlope', sequenceOperation.tgcSlope, ...
-                'fsDivider', sequenceOperation.fsDivider, ...
                 'txInvert', sequenceOperation.txInvert);
             
             % Validate compatibility of the sequence & the hardware
@@ -223,9 +226,6 @@ classdef Us4R < handle
                 'filterACoeff', reconstructOperation.filterACoeff, ...
                 'filterBCoeff', reconstructOperation.filterBCoeff, ...
                 'filterDelay', reconstructOperation.filterDelay, ...
-                'iqEnable', reconstructOperation.iqEnable, ...
-                'cicOrder', reconstructOperation.cicOrder, ...
-                'decimation', reconstructOperation.decimation, ...
                 'xGrid', reconstructOperation.xGrid, ...
                 'zGrid', reconstructOperation.zGrid, ...
                 'sos', reconstructOperation.sos, ...
@@ -399,11 +399,12 @@ classdef Us4R < handle
                                 'txNPeriods',       'txNPer'; ...
                                 'rxDepthRange',     'dRange'; ...
                                 'rxNSamples',       'nSamp'; ...
+                                'iqEnable',         'iqEnable'; ...
+                                'decimation',       'dec'; ...
                                 'nRepetitions',     'nRep'; ...
                                 'txPri',            'txPri'; ...
                                 'tgcStart',         'tgcStart'; ...
                                 'tgcSlope',         'tgcSlope'; ...
-                                'fsDivider'         'fsDivider'; ...
                                 'txInvert'          'txInvert'};
 
             for iPar=1:size(seqParamMapping,1)
@@ -416,8 +417,28 @@ classdef Us4R < handle
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
-            %% Fixed parameters
-            obj.seq.rxSampFreq	= 65e6./obj.seq.fsDivider; % [Hz] sampling frequency
+            %% Default decimation & DDC filter coefficients
+            if obj.seq.iqEnable
+                if isempty(obj.seq.dec)
+                    obj.seq.dec = round(obj.sys.rxSampFreq / max(obj.seq.txFreq));
+                end
+                obj.seq.fpgaDec = 1;
+                
+                cutoffFrequency = mean(obj.seq.txFreq)/(obj.sys.rxSampFreq/2);
+                firOrder = obj.seq.dec * 16 - 1;
+                firCoeff = fir1(firOrder, cutoffFrequency, "low");
+                obj.seq.ddcFirCoeff = firCoeff((numel(firCoeff)/2 + 1) : end);
+
+            else
+                if isempty(obj.seq.dec)
+                    obj.seq.dec = 1;
+                end
+                obj.seq.fpgaDec = obj.seq.dec;
+                
+            end
+            
+            %% Sampling frequency
+            obj.seq.rxSampFreq	= obj.sys.rxSampFreq / obj.seq.dec; % [Hz] sampling frequency
             
             %% Number of Tx
             obj.seq.nTx	= length(obj.seq.txAng);
@@ -465,9 +486,7 @@ classdef Us4R < handle
                 obj.seq.tgcSlope = 2 * 0.5e2 * mean(obj.seq.txFreq)*1e-6;
             end
             
-            distance = (round(400/obj.seq.fsDivider) : ...
-                        round(150/obj.seq.fsDivider) : ...
-                        (obj.seq.startSample + obj.seq.nSamp - 1)) / obj.seq.rxSampFreq * obj.seq.c;         % [m]
+            distance = (400 : 150 : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec) / obj.sys.rxSampFreq * obj.seq.c;         % [m]
             obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
             if any(obj.seq.tgcCurve < 14 | obj.seq.tgcCurve > 54)
                 warning('TGC values are limited to 14-54dB range');
@@ -520,7 +539,7 @@ classdef Us4R < handle
             obj.calcTxDelays;
             
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
-            obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + 50;
+            obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
             
             %% Number of: SubTx, Firings, Triggers
             nSubTx = zeros(1,obj.sys.nArius);
@@ -535,7 +554,7 @@ classdef Us4R < handle
             if isstring(obj.seq.nRep) && obj.seq.nRep == "max"
                 obj.seq.nRep = min(floor([ ...
                                 2^14 / obj.seq.nFire, ...
-                                2^32 / obj.seq.nFire / (obj.sys.nChArius * obj.seq.nSamp * 2)]));
+                                2^32 / obj.seq.nFire / (obj.sys.nChArius * obj.seq.nSamp * 2 * (1 + double(obj.seq.iqEnable)))]));
                 disp(['nRepetitions set to ' num2str(obj.seq.nRep) '.']);
             end
             obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
@@ -551,9 +570,6 @@ classdef Us4R < handle
                                 'filterACoeff',     'filtA'; ...
                                 'filterBCoeff',     'filtB'; ...
                                 'filterDelay',      'filtDel'; ...
-                                'iqEnable',         'iqEnable'; ...
-                                'cicOrder',         'cicOrd'; ...
-                                'decimation',       'dec'; ...
                                 'xGrid',            'xGrid'; ...
                                 'zGrid',            'zGrid'; ...
                                 'sos',              'sos'; ...
@@ -603,11 +619,6 @@ classdef Us4R < handle
             %% Default sos
             if isempty(obj.rec.sos)
                 obj.rec.sos = obj.seq.c;
-            end
-            
-            %% Default decimation
-            if isempty(obj.rec.dec)
-                obj.rec.dec = round(obj.seq.rxSampFreq / max(obj.seq.txFreq));
             end
             
             %% Validate frames selection
@@ -856,9 +867,9 @@ classdef Us4R < handle
             end
             
             %% Validate number of samples
-            if obj.seq.nSamp > 65536
+            if obj.seq.nSamp > 65536 / (1 + double(obj.seq.iqEnable))
                 error("ARRUS:IllegalArgument", ...
-                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536) '.'])
+                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536 / (1 + double(obj.seq.iqEnable))) '.'])
             end
             
             if mod(obj.seq.nSamp,64) ~= 0
@@ -867,7 +878,7 @@ classdef Us4R < handle
             end
             
             %% Validate memory usage
-            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * obj.seq.nTrig;  % [B]
+            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * (1 + double(obj.seq.iqEnable)) * obj.seq.nTrig;  % [B]
             if memoryRequired > 2^32  % 4GB
                 error("ARRUS:OutOfMemory", ...
                         ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
@@ -887,21 +898,11 @@ classdef Us4R < handle
             
             us4r.setVoltage(obj.seq.txVoltage);
             
-%             us4r.enableAfeAutoOffsetRemoval();
-%             % us4r.disableAfeAutoOffsetRemoval();
-%             us4r.setAfeAutoOffsetRemovalCycles(uint16(1));
-%             us4r.setAfeAutoOffsetRemovalDelay(uint16(2048));
-            
-            if false % obj.rec.iqEnable
-                cutoffFrequency = mean(obj.seq.txFreq)/(us4r.getSamplingFrequency()/2);
-                firOrder = obj.rec.dec * 16 - 1;
-                firCoeff = fir1(firOrder, cutoffFrequency, "low"); %requires signal processing toolbox
-                firCoeff = firCoeff((numel(firCoeff)/2 + 1) : end);
-                
+            if obj.seq.iqEnable
                 ddc = DigitalDownConversion( ...
                     "demodulationFrequency", mean(obj.seq.txFreq), ...
-                    "decimationFactor", obj.rec.dec, ...
-                    "firCoefficients", firCoeff);
+                    "decimationFactor", obj.seq.dec, ...
+                    "firCoefficients", obj.seq.ddcFirCoeff);
             else
                 ddc = [];
             end
@@ -911,7 +912,7 @@ classdef Us4R < handle
             for iTx=1:nTx
                 pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
                 txObj = Tx("aperture", obj.seq.txApMask(1:nElem,iTx).', 'delays', obj.seq.txDel(1:nElem,iTx).', "pulse", pulse);
-                rxObj = Rx("aperture", obj.seq.rxApMask(1:nElem,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fsDivider);
+                rxObj = Rx("aperture", obj.seq.rxApMask(1:nElem,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
             txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve);
@@ -972,7 +973,7 @@ classdef Us4R < handle
             metadata(:, :) = rf0(:, 1:nSamp:nTrig*nSamp);
 
             %% Reorganize
-            if obj.rec.iqEnable
+            if obj.seq.iqEnable
                 rf0 = reshape(rf0, nChan, 2, nSamp, sum(obj.buffer.framesNumber));
                 rf0 = complex(rf0(:,1,:,:), rf0(:,2,:,:));
             end
@@ -1001,12 +1002,6 @@ classdef Us4R < handle
             end
 
             rfRaw = single(rfRaw);
-            
-            % Digital Down Conversion
-            rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
-            
-            % warning: both filtration and decimation introduce phase delay!
-            % rfRaw = preProc(rfRaw,obj.seq,obj.rec);
 
             %% Reconstruction
             if ~obj.rec.gridModeEnable
@@ -1050,7 +1045,7 @@ classdef Us4R < handle
 
             %% Postprocessing
             % Obtain complex signal (if it isn't complex already)
-            if ~obj.rec.iqEnable
+            if ~obj.seq.iqEnable
                 nanMask = isnan(rfBfr);
                 rfBfr(nanMask) = 0;
                 rfBfr = hilbert(rfBfr);
@@ -1125,10 +1120,10 @@ classdef Us4R < handle
                                     obj.seq.txApFstElem(selFrames), ...
                                     obj.seq.txApLstElem(selFrames), ...
                                     obj.seq.rxApFstElem(selFrames), ...
-                                    obj.seq.nSampOmit(selFrames) / obj.rec.dec, ...
+                                    obj.seq.nSampOmit(selFrames), ...
                                     rxTangLim(selFrames,1).', ...
                                     rxTangLim(selFrames,2).', ...
-                                    obj.seq.rxSampFreq / obj.rec.dec, ...
+                                    obj.seq.rxSampFreq, ...
                                     obj.rec.sos);
             else
                 iqLri	= iqRaw2Lri_SSTA_Wedge( ...
@@ -1143,7 +1138,7 @@ classdef Us4R < handle
                                     obj.seq.rxApFstElem(selFrames), ...
                                     gather(rxTangLim(1,1)), ...
                                     gather(rxTangLim(1,2)), ...
-                                    obj.seq.rxSampFreq / obj.rec.dec, ...
+                                    obj.seq.rxSampFreq, ...
                                     gather(obj.seq.txFreq(1)), ...
                                     obj.rec.sos, ...
                                     obj.sys.interfSos, ...
