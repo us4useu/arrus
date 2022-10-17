@@ -856,9 +856,9 @@ classdef Us4R < handle
             end
             
             %% Validate number of samples
-            if obj.seq.nSamp > 65536/obj.seq.fsDivider
+            if obj.seq.nSamp > 65536
                 error("ARRUS:IllegalArgument", ...
-                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536/obj.seq.fsDivider) '.'])
+                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536) '.'])
             end
             
             if mod(obj.seq.nSamp,64) ~= 0
