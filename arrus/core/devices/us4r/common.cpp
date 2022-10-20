@@ -202,7 +202,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                     // rx NOP will be transferred from us4OEM to host memory,
                     // to get the frame metadata. Therefore we need to increase
                     // the number of frames a given element contains.
-                    currentFrameIdx[us4oemOrdinal] += (maxSize-resSeq.size());
+                    currentFrameIdx[us4oemOrdinal] += FrameNumber(maxSize-resSeq.size());
                 }
                 resSeq.resize(maxSize, TxRxParameters::createRxNOPCopy(resSeq[resSeq.size()-1]));
 
