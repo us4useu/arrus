@@ -19,6 +19,10 @@ classdef SimpleTxRxSequence < Operation
     % :param rxNSamples: number of samples (if scalar) or 
     %   starting and ending sample numbers (if 2-element vector) \ 
     %   of recorded signal [sample]
+    % :param iqEnable: enables complex iq output
+    % :param decimation: decimation factor, for real output (iqEnable==false) \
+    %   it must be positive integer, for complex output (iqEnable==true) \
+    %   it must be multiple of 0.25 and be >=2 
     % :param nRepetitions: number of repetitions of the sequence (positive \
     %   integer). Can be a string "max" -- in this case, the maximum number \
     %   of repetitions that can be performed on the system (taking into \ 
@@ -50,6 +54,8 @@ classdef SimpleTxRxSequence < Operation
         txNPeriods (1,:) {mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
+        iqEnable (1,1) {mustBeLogical} = true
+        decimation (1,1) {mustBePositive}
         nRepetitions (1,:) = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
