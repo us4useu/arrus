@@ -35,9 +35,9 @@ Following options are accepted:
 --n : optional, the number of full Tx cycles to run
 
 Examples:
-python probe_check.py --help
-python probe_check.py --cfg_path /home/user/us4r.prototxt
-python probe_check.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
+python check_probe.py --help
+python check_probe.py --cfg_path /home/user/us4r.prototxt
+python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
 """
 import collections
 import argparse
