@@ -88,7 +88,8 @@ void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
 
 void Us4OEMImpl::enableAfeDemod() { ius4oem->AfeDemodEnable(); }
 
-void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float* firCoeffs, uint16_t firLength, float freq) {
+void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength,
+                                   float freq) {
     ius4oem->AfeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq);
 }
 
@@ -102,13 +103,13 @@ void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) 
 
 void Us4OEMImpl::setAfeDemodFrequency(float frequency) {
     // Note: us4r-api expects frequency in Hz.
-    ius4oem->AfeDemodSetDemodFrequency(frequency/1e6f);
+    ius4oem->AfeDemodSetDemodFrequency(frequency / 1e6f);
     ius4oem->AfeDemodFsweepDisable();
 }
 
 void Us4OEMImpl::setAfeDemodFrequency(float startFrequency, float stopFrequency) {
     // Note: us4r-api expects frequency in Hz.
-    ius4oem->AfeDemodSetDemodFrequency(startFrequency/1e6f, stopFrequency/1e6f);
+    ius4oem->AfeDemodSetDemodFrequency(startFrequency / 1e6f, stopFrequency / 1e6f);
     ius4oem->AfeDemodFsweepEnable();
 }
 
@@ -130,44 +131,24 @@ void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
 
 void Us4OEMImpl::setHpfCornerFrequency(uint32_t frequency) {
     uint8_t coefficient = 10;
-    switch(frequency) {
-        case 4520'000:
-            coefficient = 2;
-            break;
-        case 2420'000:
-            coefficient = 3;
-            break;
-        case 1200'000:
-            coefficient = 4;
-            break;
-        case 600'000:
-            coefficient = 5;
-            break;
-        case 300'000:
-            coefficient = 6;
-            break;
-        case 180'000:
-            coefficient = 7;
-            break;
-        case 80'000:
-            coefficient = 8;
-            break;
-        case 40'000:
-            coefficient = 9;
-            break;
-        case 20'000:
-            coefficient = 10;
-            break;
-        default:
-            throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported HPF corner frequency: {}", frequency));
+    switch (frequency) {
+    case 4520'000: coefficient = 2; break;
+    case 2420'000: coefficient = 3; break;
+    case 1200'000: coefficient = 4; break;
+    case 600'000: coefficient = 5; break;
+    case 300'000: coefficient = 6; break;
+    case 180'000: coefficient = 7; break;
+    case 80'000: coefficient = 8; break;
+    case 40'000: coefficient = 9; break;
+    case 20'000: coefficient = 10; break;
+    default:
+        throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported HPF corner frequency: {}", frequency));
     }
     ius4oem->AfeEnableHPF();
     ius4oem->AfeSetHPFCornerFrequency(coefficient);
 }
 
-void Us4OEMImpl::disableHpf() {
-    ius4oem->AfeDisableHPF();
-}
+void Us4OEMImpl::disableHpf() { ius4oem->AfeDisableHPF(); }
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
@@ -264,8 +245,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
         auto sampleRange = op.getRxSampleRange().asPair();
         auto endSample = std::get<1>(sampleRange);
-        float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float)op.getRxDecimationFactor();
-        this->currentSamplingFrequency = SAMPLING_FREQUENCY/decimationFactor;
+        float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float) op.getRxDecimationFactor();
+        this->currentSamplingFrequency = SAMPLING_FREQUENCY / decimationFactor;
         float rxTime = getRxTime(endSample, this->currentSamplingFrequency);
 
         // Computing total TX/RX time
@@ -340,7 +321,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 auto const &op = seq[opIdx];
                 auto [startSample, endSample] = op.getRxSampleRange().asPair();
                 size_t nSamples = endSample - startSample;
-                size_t sampleSize = isDDCOn ? 2*sizeof(OutputDType) : sizeof(OutputDType);
+                size_t sampleSize = isDDCOn ? 2 * sizeof(OutputDType) : sizeof(OutputDType);
                 size_t nBytes = nSamples * N_RX_CHANNELS * sampleSize;
                 auto rxMapId = rxMappings.find(opIdx)->second;
 
@@ -350,14 +331,14 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 // sampling frequency.
                 // Note: in the case of DDC turned on, rx decimation factor doesn't matter (will be overwritten by
                 // the hardware DDC factor).
-                startSample = isDDCOn ? startSample: startSample * op.getRxDecimationFactor();
+                startSample = isDDCOn ? startSample : startSample * op.getRxDecimationFactor();
 
                 ARRUS_REQUIRES_AT_MOST(
                     outputAddress + nBytes, DDR_SIZE,
                     ::arrus::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
-                auto sampleOffset = isDDCOn ? getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor())
-                                            : TX_SAMPLE_DELAY_RAW_DATA;
-                size_t nSamplesRaw = isDDCOn ? nSamples*2 : nSamples;
+                auto sampleOffset =
+                    isDDCOn ? getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor()) : TX_SAMPLE_DELAY_RAW_DATA;
+                size_t nSamplesRaw = isDDCOn ? nSamples * 2 : nSamples;
 
                 uint32_t startSampleRaw = 0;
 
@@ -368,24 +349,23 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
 
                     if (decFloat == 0.5f) {
                         div = 2;
-                    }
-                    else if (decFloat == 0.25f || decFloat == 0.75f) {
+                    } else if (decFloat == 0.25f || decFloat == 0.75f) {
                         div = 4;
                     }
-                    
+
                     if (startSample != (startSample / div) * div) {
                         startSample = (startSample / div) * div;
                         this->logger->log(LogSeverity::WARNING,
-                            ::arrus::format("Decimation factor {} requires start offset to be multiple of {}. Offset adjusted to {}."
-                                             , ddc->getDecimationFactor(), div, startSample));
+                                          ::arrus::format("Decimation factor {} requires start offset to be multiple "
+                                                          "of {}. Offset adjusted to {}.",
+                                                          ddc->getDecimationFactor(), div, startSample));
                     }
 
-                    startSampleRaw = startSample * (uint32_t)ddc->getDecimationFactor();
-                }
-                else {
+                    startSampleRaw = startSample * (uint32_t) ddc->getDecimationFactor();
+                } else {
                     startSampleRaw = startSample;
                 }
-                
+
                 ius4oem->ScheduleReceive(firing, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (!op.isRxNOP() || this->isMaster()) {
@@ -406,10 +386,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
         framework::NdArray::Shape shape;
-        if(isDDCOn) {
+        if (isDDCOn) {
             shape = {totalNSamples, 2, N_RX_CHANNELS};
-        }
-        else {
+        } else {
             shape = {totalNSamples, N_RX_CHANNELS};
         }
         rxBufferElements.emplace_back(srcAddress, size, firing, shape, NdArrayDataType);
@@ -590,7 +569,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 float Us4OEMImpl::getSamplingFrequency() { return Us4OEMImpl::SAMPLING_FREQUENCY; }
 
 float Us4OEMImpl::getRxTime(size_t nSamples, float samplingFrequency) {
-    return std::max(MIN_RX_TIME, (float)nSamples / samplingFrequency + RX_TIME_EPSILON);
+    return std::max(MIN_RX_TIME, (float) nSamples / samplingFrequency + RX_TIME_EPSILON);
 }
 
 std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(std::bitset<N_ADDR_CHANNELS> aperture) {
@@ -720,9 +699,7 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
 
 float Us4OEMImpl::getFPGATemperature() { return ius4oem->GetFPGATemp(); }
 
-float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) {
-    return ius4oem->GetUCDVOUT(rail);
-}
+float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
 
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
@@ -748,23 +725,21 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 34u + (16 * (uint32_t)ddcDecimationFactor);
+    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
 
     //Check if data valid offset is higher than TX offset
-    if(offset>240) {
+    if (offset > 240) {
         //If TX offset is lower than data valid offset return just data valid offset and log warning
         this->logger->log(LogSeverity::WARNING,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
-                                          " Delay TX by {} cycles to align start of RX data with start of TX."
-                                          , ddcDecimationFactor, (offset-240)));
+                                          " Delay TX by {} cycles to align start of RX data with start of TX.",
+                                          ddcDecimationFactor, (offset - 240)));
         return offset;
-    }
-    else {
+    } else {
         //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
-        offset += ((240u - offset) / (uint32_t)ddcDecimationFactor) * (uint32_t)ddcDecimationFactor;
+        offset += ((240u - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
         return offset;
     }
-
 }
 
 float Us4OEMImpl::getCurrentSamplingFrequency() const {
@@ -772,8 +747,50 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
     return currentSamplingFrequency;
 }
 
-float Us4OEMImpl::getFPGAWallclock() {
-    return ius4oem->GetFPGAWallclock();
+float Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
+
+void Us4OEMImpl::setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
+    if (ddc.has_value()) {
+        auto &value = ddc.value();
+        setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(), value.getFirCoefficients().data(),
+                    value.getFirCoefficients().size());
+    }
+}
+
+void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
+                             size_t nCoefficients) {
+    //check decimation factor
+    if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
+        throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
+    }
+
+    int decInt = static_cast<int>(decimationFactor);
+    float decFract = decimationFactor - static_cast<float>(decInt);
+    int nQuarters = 0;
+    if (decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
+        nQuarters = int(decFract * 4.0f);
+    } else {
+        throw IllegalArgumentException("Decimation's fractional part should be equal 0.0, 0.25, 0.5 or 0.75");
+    }
+    int expectedNumberOfCoeffs = 0;
+    //check if fir size is correct for given decimation factor
+    if (nQuarters == 0) {
+        expectedNumberOfCoeffs = 8 * decInt;
+    } else if (nQuarters == 1) {
+        expectedNumberOfCoeffs = 32 * decInt + 8;
+    } else if (nQuarters == 2) {
+        expectedNumberOfCoeffs = 16 * decInt + 8;
+    } else if (nQuarters == 3) {
+        expectedNumberOfCoeffs = 32 * decInt + 24;
+    }
+    if (static_cast<size_t>(expectedNumberOfCoeffs) != nCoefficients) {
+        throw IllegalArgumentException(format("Incorrect number of DDC FIR filter coefficients, should be {}, "
+                                              "actual: {}",
+                                              expectedNumberOfCoeffs, nCoefficients));
+    }
+    enableAfeDemod();
+    setAfeDemodConfig(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters), firCoefficients,
+                      static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
 
 }// namespace arrus::devices

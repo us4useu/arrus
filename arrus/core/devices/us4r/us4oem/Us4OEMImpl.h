@@ -134,18 +134,11 @@ public:
     uint16_t getAfe(uint8_t address) override;
     void setAfe(uint8_t address, uint16_t value) override;
 
-    void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
-        if(ddc.has_value()) {
-            auto &value = ddc.value();
-            setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(),
-                        value.getFirCoefficients().data(), value.getFirCoefficients().size());
-        }
-    }
+    void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc);
 
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                     size_t nCoefficients) override {
-        setAfeDemodInternal(demodulationFrequency, decimationFactor, firCoefficients, nCoefficients);
-    }
+                     size_t nCoefficients) override;
+
     void disableAfeDemod() override {
         ius4oem->AfeDemodDisable();
     }
@@ -194,44 +187,6 @@ private:
     void resetAfe();
     void setHpfCornerFrequency(uint32_t frequency);
     void disableHpf();
-
-    void setAfeDemodInternal(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                             size_t nCoefficients) {
-        //check decimation factor
-        if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
-            throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
-        }
-
-        int decInt = static_cast<int>(decimationFactor);
-        float decFract = decimationFactor - static_cast<float>(decInt);
-        int nQuarters = 0;
-        if (decFract == 0.0f || decFract == 0.25f || decFract == 0.5f || decFract == 0.75f) {
-            nQuarters = int(decFract * 4.0f);
-        } else {
-            throw IllegalArgumentException("Decimation's fractional part should be equal 0.0, 0.25, 0.5 or 0.75");
-        }
-        int expectedNumberOfCoeffs = 0;
-        //check if fir size is correct for given decimation factor
-        if (nQuarters == 0) {
-            expectedNumberOfCoeffs = 8 * decInt;
-        }
-        else if (nQuarters == 1) {
-            expectedNumberOfCoeffs = 32 * decInt + 8;
-        }
-        else if (nQuarters == 2) {
-            expectedNumberOfCoeffs = 16 * decInt + 8;
-        }
-        else if (nQuarters == 3) {
-            expectedNumberOfCoeffs = 32 * decInt + 24;
-        }
-        if(static_cast<size_t>(expectedNumberOfCoeffs) != nCoefficients) {
-            throw IllegalArgumentException(format("Incorrect number of DDC FIR filter coefficients, should be {}, "
-                                                  "actual: {}", expectedNumberOfCoeffs, nCoefficients));
-        }
-        enableAfeDemod();
-        setAfeDemodConfig(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters), 
-            firCoefficients, static_cast<uint16_t>(nCoefficients), demodulationFrequency);
-    }
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
