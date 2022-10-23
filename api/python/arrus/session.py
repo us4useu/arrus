@@ -103,6 +103,9 @@ class Session(AbstractSession):
         # Set TGC curve.
         if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
             if seq.tgc_start is not None and seq.tgc_slope is not None:
+                # NOTE: the below line has to be called
+                # session.upload call, otherwise an invalid sampling
+                # frequency may be used.
                 us_device.set_tgc(arrus.ops.tgc.LinearTgc(
                     start=seq.tgc_start,
                     slope=seq.tgc_slope

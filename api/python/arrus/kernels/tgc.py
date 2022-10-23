@@ -14,7 +14,9 @@ def compute_linear_tgc(seq_context, fs, linear_tgc):
     c = seq.speed_of_sound
     if c is None:
         c = seq_context.medium.speed_of_sound
-
-    sampling_time = np.arange(0, end_sample, 50)/fs  # Arbitrary sampling freq.
+    ds = 64  # Arbitrary TGC curve sampling
+    sampling_time = np.arange(0, end_sample, ds)
+    sampling_time = np.append(sampling_time, [end_sample-1])
+    sampling_time = sampling_time/fs
     distance = sampling_time*c
     return sampling_time, tgc_start + distance*tgc_slope

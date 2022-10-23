@@ -89,22 +89,31 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-    //Verify register
-    Voltage setVoltage = this->getVoltage();
-    if (setVoltage != voltage) {
-        throw IllegalStateException(
-            ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
-    }
-
     float tolerance = 3.0f; // 3V tolerance
     int retries = 5;
 
-    //Verify measured voltages on HV
-    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
-                 "HVP on HV supply", retries);
-    checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
-                 "HVM on HV supply", retries);
+    //Verify register
+    auto &hvModel = this->hv.value()->getModelId();
+    bool isUS4PSC = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc";
+    if(!isUS4PSC) {
+        // Do not check the voltage measured by US4RPSC, as it may not be correct
+        // for this hardware.
+        Voltage setVoltage = this->getVoltage();
+        if (setVoltage != voltage) {
+            throw IllegalStateException(
+                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
+        }
+        //Verify measured voltages on HV
+        checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
+                     "HVP on HV supply", retries);
+        checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
+                     "HVM on HV supply", retries);
+    }
+    else {
+        this->logger->log(LogSeverity::INFO,
+                          "Skipping voltage verification (measured by HV: "
+                          "US4PSC does not provide the possibility to measure the voltage).");
+    }
 
     //Verify measured voltages on OEMs
     for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
@@ -304,6 +313,7 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyC
 void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if(y.empty()) {
+        // Turn off TGC
         setTgcCurve(y, applyCharacteristic);
     } else {
         auto timeStartIt = std::min_element(std::begin(t), std::end(t));
@@ -321,11 +331,16 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
-    // TODO re-validate the below values.
     float nominalFs = getSamplingFrequency();
-    float offset = 300/nominalFs;
-    float tgcT = 150/nominalFs; // 150/nominal frequency, the value "150" was determined experimentally.
-    return ::arrus::getRange<float>(offset, maxT, tgcT);
+    uint16 offset = 400;
+    uint16 tgcT = 153;
+    // TODO try avoid converting from samples to time then back to samples
+    uint16 maxNSamples = int16(roundf(maxT*nominalFs));
+    // Note: the last TGC sample should be applied before the reception ends.
+    // This is to avoid using the same TGC curve between triggers.
+    auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
+    std::vector<float> time(values.size());
+    return time;
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
