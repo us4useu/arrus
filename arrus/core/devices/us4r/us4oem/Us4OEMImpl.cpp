@@ -321,27 +321,23 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 auto const &op = seq[opIdx];
                 auto [startSample, endSample] = op.getRxSampleRange().asPair();
                 size_t nSamples = endSample - startSample;
-                size_t sampleSize = isDDCOn ? 2 * sizeof(OutputDType) : sizeof(OutputDType);
-                size_t nBytes = nSamples * N_RX_CHANNELS * sampleSize;
                 auto rxMapId = rxMappings.find(opIdx)->second;
 
+                // Start sample, after transforming to the system number of cycles.
                 // The start sample should be provided to the us4r-api
                 // as for the nominal sampling frequency of us4OEM, i.e. 65 MHz.
                 // The ARRUS API assumes that the start sample and end sample are for the same
                 // sampling frequency.
-                // Note: in the case of DDC turned on, rx decimation factor doesn't matter (will be overwritten by
-                // the hardware DDC factor).
-                startSample = isDDCOn ? startSample : startSample * op.getRxDecimationFactor();
-
-                ARRUS_REQUIRES_AT_MOST(
-                    outputAddress + nBytes, DDR_SIZE,
-                    ::arrus::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
-                auto sampleOffset =
-                    isDDCOn ? getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor()) : TX_SAMPLE_DELAY_RAW_DATA;
-                size_t nSamplesRaw = isDDCOn ? nSamples * 2 : nSamples;
-
                 uint32_t startSampleRaw = 0;
+                // RX offset to the moment tx delay = 0.
+                uint32_t sampleOffset = 0;
+                // Number of samples to acquire to be set in us4r::IUS4OEM object.
+                size_t nSamplesRaw = 0;
+                // Number of bytes a single sample takes (e.g. RF: a single int16, IQ: a pair of int16)
+                size_t sampleSize = 0;
 
+                // Determine number of samples and offsets depending on whether hardware
+                // DDC is on or off.
                 if (isDDCOn) {
                     float decInt = 0;
                     float decFloat = modf(ddc->getDecimationFactor(), &decInt);
@@ -360,11 +356,21 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                                           "of {}. Offset adjusted to {}.",
                                                           ddc->getDecimationFactor(), div, startSample));
                     }
-
                     startSampleRaw = startSample * (uint32_t) ddc->getDecimationFactor();
+                    sampleOffset = getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor());
+                    nSamplesRaw = nSamples * 2;
+                    sampleSize = 2 * sizeof(OutputDType);
                 } else {
-                    startSampleRaw = startSample;
+                    startSampleRaw = startSample * op.getRxDecimationFactor();
+                    sampleOffset = TX_SAMPLE_DELAY_RAW_DATA;
+                    nSamplesRaw = nSamples;
+                    sampleSize = sizeof(OutputDType);
                 }
+                size_t nBytes = nSamples * N_RX_CHANNELS * sampleSize;
+
+                ARRUS_REQUIRES_AT_MOST(
+                    outputAddress + nBytes, DDR_SIZE,
+                    ::arrus::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
 
                 ius4oem->ScheduleReceive(firing, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
