@@ -333,13 +333,12 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     float nominalFs = getSamplingFrequency();
     uint16 offset = 400;
-    uint16 tgcT = 150;
+    uint16 tgcT = 153;
     // TODO try avoid converting from samples to time then back to samples
     uint16 maxNSamples = int16(roundf(maxT*nominalFs));
-    uint16 maxNSamplesUpper = ((maxNSamples-1)/tgcT+1)*tgcT;
-    // +1, because we want to include the maxNSamplesUpper
-    // in the output values.
-    auto values = ::arrus::getRange<uint16>(offset, maxNSamplesUpper+1, tgcT);
+    // Note: the last TGC sample should be applied before the reception ends.
+    // This is to avoid using the same TGC curve between triggers.
+    auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
     std::vector<float> time(values.size());
     return time;
 }
