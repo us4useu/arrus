@@ -37,7 +37,14 @@ with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
     z_grid = np.arange(5, 40, 0.1) * 1e-3
 
     decimation_factor = 2
-    filter_order = decimation_factor*16
+    
+    if np.modf(decimation_factor)[0] == 0.25 or np.modf(decimation_factor)[0] == 0.75 :
+        filter_order = np.uint32(decimation_factor*64)
+    elif np.modf(decimation_factor)[0] == 0.5 :
+        filter_order = np.uint32(decimation_factor*32)
+    else :
+        filter_order = np.uint32(decimation_factor*16)
+
     cutoff = 6e6
     fs = us4r.sampling_frequency
     coeffs = scipy.signal.firwin(filter_order, cutoff, fs=fs)

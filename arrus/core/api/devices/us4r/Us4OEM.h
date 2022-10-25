@@ -63,19 +63,6 @@ public:
     * @throws arrus::IllegalStateException when invalid input parameters detected
     */
 	virtual void setAfe(uint8_t address, uint16_t value) = 0;
-    //virtual void setAfeFir(uint8_t address, uint16_t* coeffs, uint8_t length) = 0;
-
-    /**
-    * Enables and configures AFE built-in demodulator
-    * 
-    * @param demodulationFrequency: Demodulation frequency
-    * @param decimationFactor: Decimation factor
-    * @param firCoefficients: Pointer to Low pass filter coefficients buffer
-    * @param nCoefficients: Number of FIR coefficients
-    * @throws arrus::IllegalStateException when invalid input parameters detected
-    */
-    virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
-                             size_t nCoefficients) = 0;
 
     /**
     * Enables and configures AFE built-in demodulator
