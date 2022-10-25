@@ -128,6 +128,9 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
 
+    uint16_t getAfe(uint8_t reg) override;
+    void setAfe(uint8_t reg, uint16_t val) override;
+
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -145,7 +148,6 @@ private:
      * TODO consider implementing rollback mechanism?
      */
     void applyForAllUs4OEMs(const std::function<void(Us4OEM* us4oem)>& func, const std::string &funcName);
-
     void disableAfeDemod();
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients);

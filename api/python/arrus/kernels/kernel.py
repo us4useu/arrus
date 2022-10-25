@@ -1,7 +1,9 @@
 import dataclasses
 import arrus.medium
 import arrus.ops
+import arrus.ops.us4r
 import arrus.devices.device
+
 
 @dataclasses.dataclass(frozen=True)
 class KernelExecutionContext:
@@ -20,3 +22,4 @@ class KernelExecutionContext:
     medium: arrus.medium.MediumDTO
     op: arrus.ops.Operation
     custom: dict
+    hardware_ddc: arrus.ops.us4r.DigitalDownConversion = None

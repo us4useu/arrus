@@ -90,7 +90,8 @@ class Session(AbstractSession):
         seq = scheme.tx_rx_sequence
         processing = scheme.processing
 
-        kernel_context = self._create_kernel_context(seq, us_device_dto, medium)
+        kernel_context = self._create_kernel_context(seq, us_device_dto, medium,
+                                                     scheme.digital_down_conversion)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
 
         batch_size = raw_seq.n_repeats
@@ -280,9 +281,11 @@ class Session(AbstractSession):
             devices["/GPU:0"] = arrus.devices.gpu.GPU(0)
         return devices
 
-    def _create_kernel_context(self, seq, device, medium):
+    def _create_kernel_context(self, seq, device, medium, hardware_ddc):
         return arrus.kernels.kernel.KernelExecutionContext(
-            device=device, medium=medium, op=seq, custom={})
+            device=device, medium=medium, op=seq, custom={},
+            hardware_ddc=hardware_ddc
+        )
 
     def _create_frame_acquisition_context(self, seq, raw_seq, device, medium):
         return arrus.metadata.FrameAcquisitionContext(
