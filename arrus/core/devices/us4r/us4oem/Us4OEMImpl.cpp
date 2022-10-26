@@ -743,8 +743,16 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
         return offset;
     } else {
         //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
-        offset += ((240u - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
-        return offset;
+        if(ddcDecimationFactor == 4) {
+            // Note: for some reason us4OEM AFE has a different offset for
+            // decimation factor; the below values was determined
+            // experimentally.
+            return offset + 2*84;
+        }
+        else {
+            offset += ((240u - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
+            return offset;
+        }
     }
 }
 
