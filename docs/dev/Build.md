@@ -34,7 +34,10 @@ All platforms and languages:
 - gcc >= 9.0,
 - patchelf: `apt-get install patchelf`
 - make sure that you are using libstdc++ for new ABI in your default conan profile
-  `~/.conan/profiles/default`, the field `compiler.libcxx` should be set to `libstdc++11`
+  `~/.conan/profiles/default`, the field `compiler.libcxx` should be set to `libstdc++11`. 
+  In particular, you can generate a default profile settings file (if you don't have one), 
+  using the following command `conan profile new default --detect`, then change the libstdc++ version
+  in the config file appropriately. 
 
 ### Building C++ API (*core*)
 
