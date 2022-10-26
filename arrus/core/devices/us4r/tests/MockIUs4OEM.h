@@ -198,6 +198,8 @@ public:
     MOCK_METHOD(void, AfeEnableHPF, (), (override));
     MOCK_METHOD(void, AfeDisableHPF, (), (override));
     MOCK_METHOD(void, AfeSetHPFCornerFrequency, (uint8_t), (override));
+    MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, const float*, uint16_t, float), (override));
+    MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, uint8_t, const float*, uint16_t, float), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

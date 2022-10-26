@@ -109,8 +109,6 @@ public:
     MOCK_METHOD(void, checkState, (), (override));
     MOCK_METHOD(uint32, getFirmwareVersion, (), (override));
     MOCK_METHOD(uint32, getTxFirmwareVersion, (), (override));
-    MOCK_METHOD(void, setAfeDemod, (float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
-                                    size_t nCoefficients), (override));
     MOCK_METHOD(void, setAfeDemod, (float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                                     size_t nCoefficients), (override));
     MOCK_METHOD(void, disableAfeDemod, (), (override));

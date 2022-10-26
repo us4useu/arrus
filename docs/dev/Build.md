@@ -34,7 +34,10 @@ All platforms and languages:
 - gcc >= 9.0,
 - patchelf: `apt-get install patchelf`
 - make sure that you are using libstdc++ for new ABI in your default conan profile
-  `~/.conan/profiles/default`, the field `compiler.libcxx` should be set to `libstdc++11`
+  `~/.conan/profiles/default`, the field `compiler.libcxx` should be set to `libstdc++11`. 
+  In particular, you can generate a default profile settings file (if you don't have one), 
+  using the following command `conan profile new default --detect`, then change the libstdc++ version
+  in the config file appropriately. 
 
 ### Building C++ API (*core*)
 
@@ -43,7 +46,7 @@ to this repository, then select the parameters to be used during the build,
 for example:
 
 ```
-pydevops --clean --options build_type=Debug j=8
+pydevops --clean --options build_type=Debug j=8 us4r_api_dir=/path/to/us4us/libraries
 ```
 The above call will run `conan` and `cmake` configuration steps, build
 the sources using OS-dependent generator (MSBuild or Unix Makefiles),
@@ -81,10 +84,10 @@ The following CMake options are available:
 
 ##### Building
 
-Just remember to use option `py=on`
+Just remember to use option `py=on` 
 
 ```
-pydevops --clean --options j=8 py=on
+pydevops --clean --options j=8 py=on us4r_api_dir=/path/to/us4us/libraries
 ```
 
 #### MATLAB
@@ -96,7 +99,7 @@ pydevops --clean --options j=8 py=on
 Just remember to use option `matlab=on`
 
 ```
-pydevops --clean --options j=8 matlab=on
+pydevops --clean --options j=8 matlab=on us4r_api_dir=/path/to/us4us/libraries
 ```
 
 #### Documentation
