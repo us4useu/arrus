@@ -43,7 +43,7 @@ to this repository, then select the parameters to be used during the build,
 for example:
 
 ```
-pydevops --clean --options build_type=Debug j=8
+pydevops --clean --options build_type=Debug j=8 us4r_api_dir=/path/to/us4us/libraries
 ```
 The above call will run `conan` and `cmake` configuration steps, build
 the sources using OS-dependent generator (MSBuild or Unix Makefiles),
@@ -84,7 +84,7 @@ The following CMake options are available:
 Just remember to use option `py=on`
 
 ```
-pydevops --clean --options j=8 py=on
+pydevops --clean --options j=8 py=on us4r_api_dir=/path/to/us4us/libraries
 ```
 
 #### MATLAB
@@ -96,7 +96,7 @@ pydevops --clean --options j=8 py=on
 Just remember to use option `matlab=on`
 
 ```
-pydevops --clean --options j=8 matlab=on
+pydevops --clean --options j=8 matlab=on us4r_api_dir=/path/to/us4us/libraries
 ```
 
 #### Documentation
