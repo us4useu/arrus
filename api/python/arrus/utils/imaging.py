@@ -642,6 +642,7 @@ class BandpassFilter(Operation):
             taps = scipy.signal.firwin(
                 numtaps=self.order,
                 cutoff=band,
+                pass_zero=False,
                 window=self.filter_type,
                 fs=sampling_frequency,
                 **self.kwargs

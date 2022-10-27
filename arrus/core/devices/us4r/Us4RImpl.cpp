@@ -313,6 +313,7 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyC
 void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if(y.empty()) {
+        // Turn off TGC
         setTgcCurve(y, applyCharacteristic);
     } else {
         auto timeStartIt = std::min_element(std::begin(t), std::end(t));
@@ -330,11 +331,16 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
-    // TODO re-validate the below values.
     float nominalFs = getSamplingFrequency();
-    float offset = 300/nominalFs;
-    float tgcT = 150/nominalFs; // 150/nominal frequency, the value "150" was determined experimentally.
-    return ::arrus::getRange<float>(offset, maxT, tgcT);
+    uint16 offset = 400;
+    uint16 tgcT = 153;
+    // TODO try avoid converting from samples to time then back to samples
+    uint16 maxNSamples = int16(roundf(maxT*nominalFs));
+    // Note: the last TGC sample should be applied before the reception ends.
+    // This is to avoid using the same TGC curve between triggers.
+    auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
+    std::vector<float> time(values.size());
+    return time;
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
@@ -461,6 +467,16 @@ void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
 
 void Us4RImpl::disableHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
+}
+
+uint16_t Us4RImpl::getAfe(uint8_t reg) {
+    return us4oems[0]->getAfe(reg);
+}
+
+void Us4RImpl::setAfe(uint8_t reg, uint16_t val) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setAfe(reg, val);
+    }
 }
 
 }// namespace arrus::devices

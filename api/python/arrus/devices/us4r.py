@@ -186,6 +186,23 @@ class Us4R(Device):
         """
         self._handle.disableHpf()
 
+    def set_afe(self, addr, reg):
+        """
+        Writes AFE register
+
+        :param addr: register address (8-bit)
+        :param k: write value (16-bit)
+        """
+        self._handle.setAfe(addr, reg)
+
+    def get_afe(self, addr):
+        """
+        Reads AFE register value
+
+        :param addr: register address (8-bit)
+        """
+        return self._handle.getAfe(addr)
+
     @property
     def channels_mask(self):
         """
