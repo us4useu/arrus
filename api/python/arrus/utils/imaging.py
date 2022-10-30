@@ -432,7 +432,9 @@ class Pipeline:
         for step in self.steps:
             if step.endpoint:
                 step_outputs = step.process(data)
-                for output in step_outputs:
+                # To keep the order of step_outputs, appendleft
+                # collection in reversed order.
+                for output in reversed(step_outputs):
                     outputs.appendleft(output)
             else:
                 data = step.process(data)
@@ -441,10 +443,21 @@ class Pipeline:
         return outputs
 
     def __initialize(self, const_metadata):
-        input_shape = const_metadata.input_shape
-        input_dtype = const_metadata.dtype
-        self._input_buffer = self.num_pkg.zeros(
-            input_shape, dtype=input_dtype)+1000
+        if not isinstance(const_metadata, Iterable):
+            const_metadata = [const_metadata]
+        buffers = []
+        for cm in const_metadata:
+            input_shape = cm.input_shape
+            input_dtype = cm.dtype
+            b = self.num_pkg.zeros(input_shape, dtype=input_dtype)
+            b = b + 1000
+            buffers.append(b)
+        if len(buffers) == 1:
+            # Backward compatibility
+            self._input_buffer = buffers[0]
+        else:
+            self._input_buffer = buffers
+
         data = self._input_buffer
         for step in self.steps:
             if not isinstance(step, (Pipeline, Output)):
@@ -458,7 +471,9 @@ class Pipeline:
                 child_metadatas = step.prepare(current_metadata)
                 if not isinstance(child_metadatas, Iterable):
                     child_metadatas = (child_metadatas, )
-                for metadata in child_metadatas:
+                # To keep the order of child_metadatas, appendleft
+                # collection in reversed order.
+                for metadata in reversed(child_metadatas):
                     metadatas.appendleft(metadata)
                 step.endpoint = True
             else:
