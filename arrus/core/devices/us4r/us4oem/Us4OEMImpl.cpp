@@ -356,7 +356,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                                           "of {}. Offset adjusted to {}.",
                                                           ddc->getDecimationFactor(), div, startSample));
                     }
-                    startSampleRaw = startSample * (uint32_t) ddc->getDecimationFactor();
+                    startSampleRaw = (uint32_t)(startSample * ddc->getDecimationFactor());
                     sampleOffset = getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor());
                     nSamplesRaw = nSamples * 2;
                     sampleSize = 2 * sizeof(OutputDType);
@@ -731,7 +731,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
+    uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
 
     //Check if data valid offset is higher than TX offset
     if (offset > 240) {
@@ -740,12 +740,27 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} cycles to align start of RX data with start of TX.",
                                           ddcDecimationFactor, (offset - 240)));
-        return offset;
     } else {
-        //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
-        offset += ((240u - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
-        return offset;
+        float decInt = 0;
+        float decFloat = modf(ddcDecimationFactor, &decInt);
+
+        if (decFloat == 0.5f) {
+            offset += ((240u - offset) / (uint32_t)(2 * ddcDecimationFactor)) * (uint32_t)(2 * ddcDecimationFactor);
+        }
+        else if (decFloat == 0.25f || decFloat == 0.75f) {
+            offset += ((240u - offset) / (uint32_t)(4 * ddcDecimationFactor)) * (uint32_t)(4 * ddcDecimationFactor);
+        }
+        else {
+            offset += ((240u - offset) / (uint32_t)ddcDecimationFactor) * (uint32_t)ddcDecimationFactor;
+        }
+        if (240 - offset) {
+            this->logger->log(LogSeverity::INFO,
+                ::arrus::format("For decimation factor {} RX data starts {} clock cycles before TX signal.",
+                    ddcDecimationFactor, (240-offset)));
+        }
     }
+
+    return offset;
 }
 
 float Us4OEMImpl::getCurrentSamplingFrequency() const {
