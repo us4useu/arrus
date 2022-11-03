@@ -49,7 +49,7 @@ def _normalize(x: np.ndarray) -> np.ndarray:
     """
     Normalizes input np.ndarray (i.e. moves values into [0, 1] range.
     If x contains some np.nans, they are ignored.
-    If x contains only np.nans, non-modified x is returned. 
+    If x contains only np.nans, non-modified x is returned.
 
     :param x: np.ndarray
     :return: normalized np.ndarray
@@ -64,7 +64,7 @@ def _normalize(x: np.ndarray) -> np.ndarray:
             normalized = 0
     else:
         normalized = x
-        
+
     return normalized
 
 
@@ -561,6 +561,25 @@ EXTRACTORS = dict([(e.feature, e) for e in
                     EnergyExtractor]])
 
 
+class ByFootprintValidator(ProbeElementValidator):
+    """
+    (...)
+    """
+
+    name = "footprint"
+    def __init__(self):
+        pass
+
+    def validate(
+            self,
+            values: List[float],
+            masked: Iterable[int],
+            active_range: Tuple[float, float],
+            masked_range: Tuple[float, float]
+    ) -> List[ProbeElementValidatorResult]:
+        pass
+
+
 class ProbeHealthVerifier:
     """
     Probe health verifier class.
@@ -568,13 +587,16 @@ class ProbeHealthVerifier:
 
     def check_probe(
             self,
-            cfg_path: str, n: int,
+            cfg_path: str,
+            n: int,
             features: List[FeatureDescriptor],
-            validator: ProbeElementValidator) -> ProbeHealthReport:
+            validator: ProbeElementValidator,
+            footprint: np.ndarray,
+    )-> ProbeHealthReport:
         """
         Checks probe elements by validating selected features of the acquired
-        data.
 
+        data.
         This method:
         - runs data acquisition,
         - computes signal features,
@@ -588,18 +610,30 @@ class ProbeHealthVerifier:
           that should be used to determine
         :return: an instance of the ProbeHealthReport
         """
+        if isinstance(validator, ByFootprintValidator):
+            print("yes")
+        else:
+            print("no")
         rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
-        return self.check_probe_data(
-            rfs=rfs, metadata=metadata,
+        health_report = self.check_probe_data(
+            rfs=rfs,
+            metadata=metadata,
             masked_elements=masked_elements,
-            features=features, validator=validator)
+            features=features,
+            validator=validator
+        )
+
+        return health_report
 
     def check_probe_data(
             self,
-            rfs: np.ndarray, metadata: arrus.metadata.ConstMetadata,
+            rfs: np.ndarray,
+            metadata: arrus.metadata.ConstMetadata,
             masked_elements: Set[int],
             features: List[FeatureDescriptor],
-            validator: ProbeElementValidator) -> ProbeHealthReport:
+            validator: ProbeElementValidator
+    ) -> ProbeHealthReport:
+
         n_seq, n_tx_channels, n_samples, n_rx = rfs.shape
 
         # Compute feature values, verify the values according to given
@@ -646,7 +680,8 @@ class ProbeHealthVerifier:
             params=dict(
                 method=validator.name,
                 method_params=validator.params,
-                features=features),
+                features=features
+            ),
             sequence_metadata=metadata,
             elements=elements_descriptors,
             data=rfs

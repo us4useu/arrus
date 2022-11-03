@@ -44,7 +44,11 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from arrus.utils.probe_check import *
+# from arrus.utils.probe_check import *
+
+import sys
+sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
+from probe_check import *
 
 
 # ------------------------------------------ Utility functions
@@ -127,7 +131,7 @@ def print_health_info(report):
         for name, f in e.features.items():
             if f.validation_result.verdict != ElementValidationVerdict.VALID:
                 invalid_els[name].append((e.element_number, e.is_masked, f))
-    
+
     for feature in features:
         print(f"Test results for feature: {feature.name}")
         feature_invalid_elements = invalid_els[feature.name]
@@ -156,6 +160,11 @@ def get_data_dimensions(metadata):
     n_samples = end_sample - start_sample
     return n_elements, n_samples
 
+def load_footprint(path):
+    with open(path, "rb") as f:
+        data = pickle.load(f)
+        print("Footprint data loaded")
+        return data
 
 def main():
     parser = argparse.ArgumentParser(description="Channels mask test.")
@@ -172,10 +181,14 @@ def main():
     parser.add_argument("--rf_file", dest="rf_file",
                         help="The name of the output file with RF data.",
                         required=False, default=None)
+    parser.add_argument("--footprint", dest="footprint",
+                        help="The name of the footprint file with RF data.",
+                        required=False, default=None)
     args = parser.parse_args()
 
     cfg_path = args.cfg_path
     verifier = ProbeHealthVerifier()
+    footprint = load_footprint(args.footprint)
 
     features = [
         FeatureDescriptor(
@@ -195,8 +208,13 @@ def main():
         ),
     ]
     validator = ByNeighborhoodValidator()
-    report = verifier.check_probe(cfg_path=cfg_path, n=args.n,
-                                  features=features, validator=validator)
+    report = verifier.check_probe(
+        cfg_path=cfg_path,
+        n=args.n,
+        features=features,
+        validator=validator,
+        footprint=footprint,
+    )
 
     print_health_info(report)
     n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
