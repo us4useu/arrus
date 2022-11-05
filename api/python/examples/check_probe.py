@@ -161,9 +161,13 @@ def get_data_dimensions(metadata):
     return n_elements, n_samples
 
 def load_footprint(path):
-    with open(path, "rb") as f:
-        data = pickle.load(f)
-        print("Footprint data loaded")
+    if isinstance(path, str) is False:
+        return None
+    else:
+        with open(path, "rb") as f:
+            print("Loading footprint data...")
+            data = pickle.load(f)
+            print("Footprint data loaded.")
         return data
 
 def main():
@@ -184,11 +188,15 @@ def main():
     parser.add_argument("--footprint", dest="footprint",
                         help="The name of the footprint file with RF data.",
                         required=False, default=None)
+    parser.add_argument("--display_summary", dest="display_summary",
+                        help="Select a frame to be displayed. Optional, if not "
+                             "chosen, summary of features will be displayed.",
+                        required=False, type=bool, default=False)
     args = parser.parse_args()
 
     cfg_path = args.cfg_path
-    verifier = ProbeHealthVerifier()
     footprint = load_footprint(args.footprint)
+    verifier = ProbeHealthVerifier()
 
     features = [
         FeatureDescriptor(
@@ -207,7 +215,8 @@ def main():
             masked_elements_range=(0, np.inf)  # [a.u.]
         ),
     ]
-    validator = ByNeighborhoodValidator()
+    # validator = ByNeighborhoodValidator()
+    validator = ByFootprintValidator()
     report = verifier.check_probe(
         cfg_path=cfg_path,
         n=args.n,
@@ -228,10 +237,13 @@ def main():
         plt.show()
         #  Display all waveforms in a single window.
         visual_evaluation(report)
-    else:
+
+    if args.display_summary:
         display_summary(n_elements, report)
+
     if args.rf_file is not None:
         pickle.dump(report.data, open(args.rf_file, "wb"))
+
     print("Close the window to exit")
 
 

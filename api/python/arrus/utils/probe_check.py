@@ -183,6 +183,7 @@ class ProbeHealthReport:
     # Report results
     elements: Iterable[ProbeElementHealthReport]
     data: np.ndarray
+    footprint: np.ndarray
 
     @property
     def characteristics(self) -> Dict[str, np.ndarray]:
@@ -362,6 +363,18 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         _, _, sigma = self.__fitgauss(rf)
         return round(3 * sigma)
 
+class FootprintSimilarityExtractor(ProbeElementFeatureExtractor):
+
+    """
+    (...)
+    """
+    feature = "footprint_similarity"
+
+    def extract(self,
+        data: np.ndarray,
+        footprint: np.ndarray
+    ) -> np.ndarray:
+        pass
 
 class ProbeElementValidator(ABC):
     """
@@ -434,6 +447,7 @@ class ByThresholdValidator(ProbeElementValidator):
 
 
 class ByNeighborhoodValidator(ProbeElementValidator):
+
     """
     Validator that compares each element with its neighborhood.
 
@@ -558,7 +572,8 @@ class ByNeighborhoodValidator(ProbeElementValidator):
 EXTRACTORS = dict([(e.feature, e) for e in
                    [MaxAmplitudeExtractor,
                     SignalDurationTimeExtractor,
-                    EnergyExtractor]])
+                    EnergyExtractor,
+                    FootprintSimilarityExtractor]])
 
 
 class ByFootprintValidator(ProbeElementValidator):
@@ -610,13 +625,11 @@ class ProbeHealthVerifier:
           that should be used to determine
         :return: an instance of the ProbeHealthReport
         """
-        if isinstance(validator, ByFootprintValidator):
-            print("yes")
-        else:
-            print("no")
+
         rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
         health_report = self.check_probe_data(
             rfs=rfs,
+            footprint=footprint,
             metadata=metadata,
             masked_elements=masked_elements,
             features=features,
@@ -628,64 +641,89 @@ class ProbeHealthVerifier:
     def check_probe_data(
             self,
             rfs: np.ndarray,
+            footprint: np.ndarray,
             metadata: arrus.metadata.ConstMetadata,
             masked_elements: Set[int],
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator
     ) -> ProbeHealthReport:
 
-        n_seq, n_tx_channels, n_samples, n_rx = rfs.shape
+        # if isinstance(footprint, np.ndarray) and \
+            # rfs.shape==footprint.shape:
+            # print("data array and footprint shapes are equal")
+        # else:
+            # print("data array and footprint do not correspond")
 
-        # Compute feature values, verify the values according to given
-        # validator.
-        results = {}
-        for feature in features:
-            extractor = EXTRACTORS[feature.name]()
-            extractor_result = extractor.extract(rfs)
-            validator_result = validator.validate(
-                values=extractor_result,
-                masked=masked_elements,
-                active_range=feature.active_range,
-                masked_range=feature.masked_elements_range
+        if isinstance(validator, ByFootprintValidator):
+            print("footprint validator detected")
+            print(f"footprint and data are equal: {rfs.shape==footprint.shape}")
+            elements_descriptors = []
+            report = ProbeHealthReport(
+                params=dict(
+                    method=validator.name,
+                    method_params=[],
+                    features=[]
+                ),
+                sequence_metadata=metadata,
+                elements=elements_descriptors,
+                data=rfs,
+                footprint=footprint
             )
-            results[feature.name] = (extractor_result, validator_result)
 
-        # Prepare descriptor for examined element.
-        masked_elements_set = set(masked_elements)
-        elements_descriptors = []
+        else:
+            n_seq, n_tx_channels, n_samples, n_rx = rfs.shape
 
-        # For each examined channel
-        for i in range(n_tx_channels):
-            # For each examined feature
-            feature_descriptors = {}
+            # Compute feature values, verify the values according to given
+            # validator.
+            results = {}
             for feature in features:
-                extractor_result, validator_result = results[feature.name]
-                feature_value = extractor_result[i]
-                element_validation_result = validator_result[i]
-
-                descriptor = ProbeElementFeatureDescriptor(
-                    name=feature.name,
-                    value=feature_value,
-                    validation_result=element_validation_result
+                extractor = EXTRACTORS[feature.name]()
+                extractor_result = extractor.extract(rfs)
+                validator_result = validator.validate(
+                    values=extractor_result,
+                    masked=masked_elements,
+                    active_range=feature.active_range,
+                    masked_range=feature.masked_elements_range
                 )
-                feature_descriptors[feature.name] = descriptor
-            element_descriptor = ProbeElementHealthReport(
-                is_masked=i in masked_elements_set,
-                features=feature_descriptors,
-                element_number=i
-            )
-            elements_descriptors.append(element_descriptor)
+                results[feature.name] = (extractor_result, validator_result)
 
-        report = ProbeHealthReport(
-            params=dict(
-                method=validator.name,
-                method_params=validator.params,
-                features=features
-            ),
-            sequence_metadata=metadata,
-            elements=elements_descriptors,
-            data=rfs
-        )
+            # Prepare descriptor for examined element.
+            masked_elements_set = set(masked_elements)
+            elements_descriptors = []
+
+            # For each examined channel
+            for i in range(n_tx_channels):
+                # For each examined feature
+                feature_descriptors = {}
+                for feature in features:
+                    extractor_result, validator_result = results[feature.name]
+                    feature_value = extractor_result[i]
+                    element_validation_result = validator_result[i]
+
+                    descriptor = ProbeElementFeatureDescriptor(
+                        name=feature.name,
+                        value=feature_value,
+                        validation_result=element_validation_result
+                    )
+                    feature_descriptors[feature.name] = descriptor
+                element_descriptor = ProbeElementHealthReport(
+                    is_masked=i in masked_elements_set,
+                    features=feature_descriptors,
+                    element_number=i
+                )
+                elements_descriptors.append(element_descriptor)
+
+            report = ProbeHealthReport(
+                params=dict(
+                    method=validator.name,
+                    method_params=validator.params,
+                    features=features
+                ),
+                sequence_metadata=metadata,
+                elements=elements_descriptors,
+                data=rfs,
+                footprint=footprint
+            )
         return report
 
     def _acquire_rf_data(self, cfg_path, n):
