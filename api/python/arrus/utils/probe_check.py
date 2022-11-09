@@ -17,12 +17,22 @@ from arrus.ops.imaging import LinSequence
 from arrus.ops.us4r import Pulse, Scheme
 from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
 
-LOGGER = arrus.logging.get_logger()
 
-_N_SKIPPED_SAMPLES = 10
+# number of samples skipped at the beggining 
+_N_SKIPPED_SAMPLES = 50
+
+# known size of the receiving aperture
 _NRX = 64
+
+# channel in the receiving aperture corresponding
+# to the transmit one
 _MID_RX = int(np.ceil(_NRX / 2) - 1)
 
+# amplitude of a signal
+_VOLTAGE = 5
+
+
+LOGGER = arrus.logging.get_logger()
 
 def _hpfilter(
         rf: np.ndarray,
@@ -363,54 +373,66 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         _, _, sigma = self.__fitgauss(rf)
         return round(3 * sigma)
 
-class FootprintSimilarityExtractor(ProbeElementFeatureExtractor):
+
+class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
 
     """
     (...)
     """
-    feature = "footprint_similarity"
+    feature = "footprint_pcc"
 
     def extract(
             self,
             data: np.ndarray,
             footprint: np.ndarray
-    ) -> np.ndarray:
+    )-> np.ndarray:
 
-        smp = slice(72, 327)
+        smp = slice(_N_SKIPPED_SAMPLES, _N_SKIPPED_SAMPLES+256)
         crs = self.__get_corrcoefs(
             data,
             footprint,
             smp=smp,
         )
+        # print(crs)
         return crs
-
 
     def __get_corrcoefs(
             self,
             data,
-            refdata,
+            footprint,
             smp=None,
             nround=3,
     ):
 
         nframe, ntx, nsmp, nrx = data.shape
-        irx = int(nrx/2)-1
+        # irx = int(nrx/2)-1
         crs = np.full(ntx, np.nan)
         # average frames
         avdat = data.mean(axis=0)
-        avref = refdata.mean(axis=0)
+        avref = footprint.mean(axis=0)
 
         if smp is None:
             smp = slice(0, nsmp)
         n = smp.stop - smp.start
 
         for itx in range(ntx):
-            dline = avdat[itx, smp, irx]
-            rline = avref[itx, smp, irx]
+            dline = avdat[itx, smp, _MID_RX]
+            rline = avref[itx, smp, _MID_RX]
             crs[itx] = np.corrcoef(dline, rline)[0,1].round(nround)
 
+        # # block below is for drawing signals from 
+        # # acquired rf array and the reference
+        # print("inside pcc extractor")
+        # import matplotlib.pyplot as plt
+        # iframe = 0
+        # itx = 0
+        # plt.plot(data[iframe,itx ,smp, _MID_RX])
+        # plt.plot(footprint[iframe,itx,smp, _MID_RX])
+        # plt.show()
+        # print(crs[itx])
 
         return crs
+
 
 class ProbeElementValidator(ABC):
     """
@@ -609,26 +631,7 @@ EXTRACTORS = dict([(e.feature, e) for e in
                    [MaxAmplitudeExtractor,
                     SignalDurationTimeExtractor,
                     EnergyExtractor,
-                    FootprintSimilarityExtractor]])
-
-
-# class ByFootprintValidator(ProbeElementValidator):
-    # """
-    # (...)
-    # """
-# 
-    # name = "footprint"
-    # def __init__(self):
-        # pass
-# 
-    # def validate(
-            # self,
-            # values: List[float],
-            # masked: Iterable[int],
-            # active_range: Tuple[float, float],
-            # masked_range: Tuple[float, float]
-    # ) -> List[ProbeElementValidatorResult]:
-        # pass
+                    FootprintSimilarityPCCExtractor]])
 
 
 class ProbeHealthVerifier:
@@ -692,7 +695,7 @@ class ProbeHealthVerifier:
         results = {}
         for feature in features:
             extractor = EXTRACTORS[feature.name]()
-            if feature.name == "footprint_similarity":
+            if feature.name == "footprint_pcc":
                 extractor_result = extractor.extract(rfs, footprint)
             else:
                 extractor_result = extractor.extract(rfs)
@@ -737,8 +740,8 @@ class ProbeHealthVerifier:
                 method_params=validator.params,
                 features=features
             ),
-            sequence_metadata=metadata,
             elements=elements_descriptors,
+            sequence_metadata=metadata,
             data=rfs,
             footprint=footprint
         )
@@ -774,7 +777,7 @@ class ProbeHealthVerifier:
                             work_mode="MANUAL")
             buffer, const_metadata = sess.upload(scheme)
             rfs = []
-            us4r.set_hv_voltage(5)
+            us4r.set_hv_voltage(_VOLTAGE)
             # Wait for the voltage to stabilize.
             time.sleep(1)
             # Start the device.

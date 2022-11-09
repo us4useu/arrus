@@ -133,6 +133,7 @@ def print_health_info(report):
                 invalid_els[name].append((e.element_number, e.is_masked, f))
 
     for feature in features:
+        print("----------------------------------------------")
         print(f"Test results for feature: {feature.name}")
         feature_invalid_elements = invalid_els[feature.name]
 
@@ -170,6 +171,12 @@ def load_footprint(path):
             print("Footprint data loaded.")
         return data
 
+# TODO 
+# 1. Create funciton returning footprint in probe_check.py
+# 2. reference -> footprint
+# 1a. footprint must have information on the masked channels, sequence etc. 
+# 3. Check if neighborhood validator can use full aperture data.
+
 def main():
     parser = argparse.ArgumentParser(description="Channels mask test.")
     parser.add_argument("--cfg_path", dest="cfg_path",
@@ -195,7 +202,10 @@ def main():
     args = parser.parse_args()
 
     cfg_path = args.cfg_path
-    footprint = load_footprint(args.footprint)
+    footprint_data = load_footprint(args.footprint)
+    footprint = footprint_data["rf"]
+    footprint_context = footprint_data["context"]
+    # TODO: wziac parametry z kontextu takie jak liczba framów, etc.
     verifier = ProbeHealthVerifier()
 
     features = [
@@ -213,10 +223,10 @@ def main():
             # name=EnergyExtractor.feature,
             # active_range=(0, 15),  # [a.u.]
             # masked_elements_range=(0, np.inf)  # [a.u.]
-        # ),
+    # ),
         FeatureDescriptor(
-            name=FootprintSimilarityExtractor.feature,
-            active_range=(0.8, 1),  # [a.u.]
+            name=FootprintSimilarityPCCExtractor.feature,
+            active_range=(0.5, 1),  # [a.u.]
             masked_elements_range=(0, 1)  # [a.u.]
         ),
     ]
@@ -247,8 +257,11 @@ def main():
         display_summary(n_elements, report)
 
     if args.rf_file is not None:
-        pickle.dump(report.data, open(args.rf_file, "wb"))
+        data = {"rf": report.data, "context": report.sequence_metadata}
+        pickle.dump(data, open(args.rf_file, "wb"))
+        # pickle.dump(report.data, open(args.rf_file, "wb"))
 
+    print("----------------------------------------------")
     print("Close the window to exit")
 
 
