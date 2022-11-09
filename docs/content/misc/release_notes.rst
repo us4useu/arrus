@@ -4,6 +4,11 @@ Release notes
 0.7.x
 -----
 
+0.7.3
+.....
+
+- core: Updated us4r-api to 0.8.7 (support multiple versions of US4RDBAR firmware).
+
 0.7.2
 .....
 
