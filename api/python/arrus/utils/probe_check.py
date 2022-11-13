@@ -16,6 +16,7 @@ import arrus.utils.us4r
 from arrus.ops.imaging import LinSequence
 from arrus.ops.us4r import Pulse, Scheme
 from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
+from arrus.metadata import Metadata
 
 
 # number of samples skipped at the beggining 
@@ -24,8 +25,8 @@ _N_SKIPPED_SAMPLES = 50
 # known size of the receiving aperture
 _NRX = 64
 
-# channel in the receiving aperture corresponding
-# to the transmit one
+# channel in the receiving aperture 
+# corresponding to the transmit one
 _MID_RX = int(np.ceil(_NRX / 2) - 1)
 
 # amplitude of a signal
@@ -95,6 +96,31 @@ class StdoutLogger:
 
     def log(self, msg):
         print(msg)
+
+
+@dataclasses.dataclass(frozen=True)
+class Footprint:
+    """
+    Contains footprint data - a reference signals and
+    corresponding context.
+    :rf: np.ndarray of rf signals
+    :context: arrus metadata
+    :masked channels: list of channels masked during footprint acquisition
+    """
+    rf: np.ndarray
+    metadata: Metadata
+    masked_elements: tuple
+    creation_time: float
+
+    def get_number_of_frames(self):
+        # return self.metadata.input_shape
+        return self.rf.shape[0]
+
+    def get_tx_frequency(self):
+        return self.metadata.context.sequence.pulse.center_frequency
+
+    def get_sequence(self):
+        return self.metadata.context.sequence
 
 
 @dataclasses.dataclass(frozen=True)
@@ -639,13 +665,32 @@ class ProbeHealthVerifier:
     Probe health verifier class.
     """
 
+    def get_footprint(
+            self,
+            cfg_path: str,
+            n: int,
+    )-> Footprint:
+        """
+        """
+
+        rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
+        footprint = Footprint(
+            rf=rfs,
+            metadata=metadata,
+            masked_elements=masked_elements,
+            creation_time=time.time(),
+
+        )
+        return footprint
+
     def check_probe(
             self,
             cfg_path: str,
             n: int,
+            tx_frequency: float,
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator,
-            footprint: np.ndarray,
+            footprint: Footprint=None,
     )-> ProbeHealthReport:
         """
         Checks probe elements by validating selected features of the acquired
@@ -665,8 +710,13 @@ class ProbeHealthVerifier:
         :return: an instance of the ProbeHealthReport
         """
 
-        rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
-        health_report = self.check_probe_data(
+        rfs, metadata, masked_elements = self._acquire_rf_data(
+            cfg_path,
+            n,
+            tx_frequency,
+            footprint,
+        )
+        health_report = self._check_probe_data(
             rfs=rfs,
             footprint=footprint,
             metadata=metadata,
@@ -677,11 +727,11 @@ class ProbeHealthVerifier:
 
         return health_report
 
-    def check_probe_data(
+    def _check_probe_data(
             self,
             rfs: np.ndarray,
-            footprint: np.ndarray,
             metadata: arrus.metadata.ConstMetadata,
+            footprint: Footprint,
             masked_elements: Set[int],
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator
@@ -696,16 +746,20 @@ class ProbeHealthVerifier:
         for feature in features:
             extractor = EXTRACTORS[feature.name]()
             if feature.name == "footprint_pcc":
-                extractor_result = extractor.extract(rfs, footprint)
+                try:
+                    extractor_result = extractor.extract(rfs, footprint.rf)
+                except:
+                    raise TypeError("The footprint must by of a class Footprint.")
             else:
                 extractor_result = extractor.extract(rfs)
-            # print(f"extractor result: {extractor_result}")
+
             validator_result = validator.validate(
                 values=extractor_result,
                 masked=masked_elements,
                 active_range=feature.active_range,
                 masked_range=feature.masked_elements_range
             )
+
             results[feature.name] = (extractor_result, validator_result)
 
         masked_elements_set = set(masked_elements)
@@ -747,7 +801,13 @@ class ProbeHealthVerifier:
         )
         return report
 
-    def _acquire_rf_data(self, cfg_path, n):
+    def _acquire_rf_data(
+            self,
+            cfg_path,
+            n=1,
+            tx_frequency=8e6,
+            footprint=None
+    ):
         with arrus.session.Session(cfg_path) as sess:
             rf_reorder = Pipeline(
                 steps=(
@@ -758,27 +818,39 @@ class ProbeHealthVerifier:
             us4r = sess.get_device("/Us4R:0")
             n_elements = us4r.get_probe_model().n_elements
             masked_elements = us4r.channels_mask
-            seq = LinSequence(
-                tx_aperture_center_element=np.arange(0, n_elements),
-                tx_aperture_size=1,
-                tx_focus=30e-3,
-                pulse=Pulse(center_frequency=8e6, n_periods=0.5,
-                            inverse=False),
-                rx_aperture_center_element=np.arange(0, n_elements),
-                rx_aperture_size=_NRX,
-                rx_sample_range=(0, 1024),
-                pri=1000e-6,
-                tgc_start=14,
-                tgc_slope=0,
-                downsampling_factor=1,
-                speed_of_sound=1490,
-                sri=800e-3)
-            scheme = Scheme(tx_rx_sequence=seq, processing=rf_reorder,
-                            work_mode="MANUAL")
+            if footprint is None:
+                seq = LinSequence(
+                    tx_aperture_center_element=np.arange(0, n_elements),
+                    tx_aperture_size=1,
+                    tx_focus=30e-3,
+                    pulse=Pulse(
+                        center_frequency=tx_frequency,
+                        n_periods=0.5,
+                        inverse=False,
+                    ),
+                    rx_aperture_center_element=np.arange(0, n_elements),
+                    rx_aperture_size=_NRX,
+                    rx_sample_range=(0, 512),
+                    pri=1000e-6,
+                    tgc_start=14,
+                    tgc_slope=0,
+                    downsampling_factor=1,
+                    speed_of_sound=1490,
+                    sri=2000e-3)
+            else:
+                seq = footprint.get_sequence()
+                n = footprint.get_number_of_frames()
+                print("Sequence loaded from footprint.")
+
+            scheme = Scheme(
+                tx_rx_sequence=seq,
+                processing=rf_reorder,
+                work_mode="MANUAL",
+            )
             buffer, const_metadata = sess.upload(scheme)
             rfs = []
-            us4r.set_hv_voltage(_VOLTAGE)
             # Wait for the voltage to stabilize.
+            us4r.set_hv_voltage(_VOLTAGE)
             time.sleep(1)
             # Start the device.
             LOGGER.log(arrus.logging.INFO, "Starting TX/RX")

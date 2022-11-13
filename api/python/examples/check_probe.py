@@ -51,7 +51,8 @@ sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
 from probe_check import *
 
 
-# ------------------------------------------ Utility functions
+# ------------------------- Utility functions ---------------------------------
+
 def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
                       iframe=0):
     """
@@ -178,6 +179,11 @@ def load_footprint(path):
 # 3. Check if neighborhood validator can use full aperture data.
 
 def main():
+    # set log severity level
+    arrus.set_clog_level(arrus.logging.TRACE)
+
+
+    # parse input parameters
     parser = argparse.ArgumentParser(description="Channels mask test.")
     parser.add_argument("--cfg_path", dest="cfg_path",
                         help="Path to the system configuration file.",
@@ -189,11 +195,19 @@ def main():
     parser.add_argument("--n", dest="n",
                         help="Number of full TX/RX sequences to run.",
                         required=False, type=int, default=1)
+    parser.add_argument("--tx_frequency", dest="tx_frequency",
+                        help="Pulse transmit frequency.",
+                        required=False, type=float, default=8e6)
     parser.add_argument("--rf_file", dest="rf_file",
                         help="The name of the output file with RF data.",
                         required=False, default=None)
-    parser.add_argument("--footprint", dest="footprint",
-                        help="The name of the footprint file with RF data.",
+    parser.add_argument("--use_footprint", dest="footprint",
+                        help="The name of the footprint file with RF data \
+                              to be loaded for comparison.",
+                        required=False, default=None)
+    parser.add_argument("--create_footprint", dest="create_footprint",
+                        help="The name of the footprint file with RF data \
+                              to be created .",
                         required=False, default=None)
     parser.add_argument("--display_summary", dest="display_summary",
                         help="Select a frame to be displayed. Optional, if not "
@@ -201,13 +215,19 @@ def main():
                         required=False, type=bool, default=False)
     args = parser.parse_args()
 
-    cfg_path = args.cfg_path
-    footprint_data = load_footprint(args.footprint)
-    footprint = footprint_data["rf"]
-    footprint_context = footprint_data["context"]
-    # TODO: wziac parametry z kontextu takie jak liczba framów, etc.
     verifier = ProbeHealthVerifier()
 
+    # footprint creation (optional)
+    if args.create_footprint is not None:
+        footprint = verifier.get_footprint(args.cfg_path, args.n)
+        pickle.dump(footprint, open(args.create_footprint, "wb"))
+        print(f"The footptint have been created and store in {args.create_footprint} file.")
+        print("The script ends here.")
+        quit()
+
+    footprint = load_footprint(args.footprint)
+
+    # define features list
     features = [
         # FeatureDescriptor(
             # name=MaxAmplitudeExtractor.feature,
@@ -219,11 +239,11 @@ def main():
             # active_range=(0, 800),  # number of samples
             # masked_elements_range=(800, np.inf)  # number of samples
         # ),
-        # FeatureDescriptor(
-            # name=EnergyExtractor.feature,
-            # active_range=(0, 15),  # [a.u.]
-            # masked_elements_range=(0, np.inf)  # [a.u.]
-    # ),
+        FeatureDescriptor(
+            name=EnergyExtractor.feature,
+            active_range=(0, 15),  # [a.u.]
+            masked_elements_range=(0, np.inf)  # [a.u.]
+        ),
         FeatureDescriptor(
             name=FootprintSimilarityPCCExtractor.feature,
             active_range=(0.5, 1),  # [a.u.]
@@ -233,8 +253,9 @@ def main():
     # validator = ByNeighborhoodValidator()
     validator = ByThresholdValidator()
     report = verifier.check_probe(
-        cfg_path=cfg_path,
+        cfg_path=args.cfg_path,
         n=args.n,
+        tx_frequency=args.tx_frequency,
         features=features,
         validator=validator,
         footprint=footprint,
@@ -260,6 +281,7 @@ def main():
         data = {"rf": report.data, "context": report.sequence_metadata}
         pickle.dump(data, open(args.rf_file, "wb"))
         # pickle.dump(report.data, open(args.rf_file, "wb"))
+
 
     print("----------------------------------------------")
     print("Close the window to exit")
