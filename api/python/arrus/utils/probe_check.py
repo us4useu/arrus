@@ -29,10 +29,6 @@ _NRX = 64
 # corresponding to the transmit one
 _MID_RX = int(np.ceil(_NRX / 2) - 1)
 
-# amplitude of a signal
-_VOLTAGE = 5
-
-
 LOGGER = arrus.logging.get_logger()
 
 def _hpfilter(
@@ -102,10 +98,12 @@ class StdoutLogger:
 class Footprint:
     """
     Contains footprint data - a reference signals and
-    corresponding context.
-    :rf: np.ndarray of rf signals
-    :context: arrus metadata
-    :masked channels: list of channels masked during footprint acquisition
+    corresponding metadata.
+    :param rf: np.ndarray of rf signals
+    :param metadata: arrus metadata
+    :param masked channels: list of channels masked during footprint acquisition
+    :param creation_time: time of footprint creation in seconds since epoch
+    (see time.time() description)
     """
     rf: np.ndarray
     metadata: Metadata
@@ -403,39 +401,38 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
 class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
 
     """
-    (...)
+    Feature exctractor for extraction Pearson Correlation Coefficient (PCC)
+    between given rf array and footprint rf array.
     """
     feature = "footprint_pcc"
 
     def extract(
             self,
-            data: np.ndarray,
-            footprint: np.ndarray
+            rf: np.ndarray,
+            footprint_rf: np.ndarray
     )-> np.ndarray:
 
         smp = slice(_N_SKIPPED_SAMPLES, _N_SKIPPED_SAMPLES+256)
         crs = self.__get_corrcoefs(
-            data,
-            footprint,
+            rf,
+            footprint_rf,
             smp=smp,
         )
-        # print(crs)
         return crs
 
     def __get_corrcoefs(
             self,
-            data,
-            footprint,
+            rf,
+            footprint_rf,
             smp=None,
             nround=3,
     ):
 
-        nframe, ntx, nsmp, nrx = data.shape
-        # irx = int(nrx/2)-1
+        nframe, ntx, nsmp, nrx = rf.shape
         crs = np.full(ntx, np.nan)
         # average frames
-        avdat = data.mean(axis=0)
-        avref = footprint.mean(axis=0)
+        avdat = rf.mean(axis=0)
+        avref = footprint_rf.mean(axis=0)
 
         if smp is None:
             smp = slice(0, nsmp)
@@ -452,8 +449,8 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
         # import matplotlib.pyplot as plt
         # iframe = 0
         # itx = 0
-        # plt.plot(data[iframe,itx ,smp, _MID_RX])
-        # plt.plot(footprint[iframe,itx,smp, _MID_RX])
+        # plt.plot(rf[iframe,itx ,smp, _MID_RX])
+        # plt.plot(footprint_rf[iframe,itx,smp, _MID_RX])
         # plt.show()
         # print(crs[itx])
 
@@ -671,6 +668,7 @@ class ProbeHealthVerifier:
             n: int,
     )-> Footprint:
         """
+        Creates and returns Footprint object.
         """
 
         rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
@@ -690,31 +688,37 @@ class ProbeHealthVerifier:
             tx_frequency: float,
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator,
+            voltage: int=5,
             footprint: Footprint=None,
     )-> ProbeHealthReport:
         """
-        Checks probe elements by validating selected features of the acquired
-
-        data.
-        This method:
+        Checks probe elements by validating selected features
+        of the acquired data.
+        This metho:
         - runs data acquisition,
         - computes signal features,
         - tries to determine which elements are valid or not.
 
-        :param cfg_path: a path to the system configuration file,
+        :param cfg_path: a path to the system configuration file
         :param n: number of TX/RX sequences to execute (this may improve
-          feature value estimation),
-        :param features: a list of features to check,
-        :param validator: ProbeElementValidator instance, i.e. a validator
-          that should be used to determine
+                  feature value estimation)
+        :param tx_frequency: pulse transmit frequency to be used in tx/rx scheme
+        :param features: a list of features to check
+        :param validator: ProbeElementValidator object, i.e. a validator
+                          that should be used to determine if given parameter
+                          have value within valid range
+        :param voltage: voltage to be used in tx/rx scheme
+        :param footprint: object of the Footprint class;
+                          if given, footprint tx/rx scheme will be used
         :return: an instance of the ProbeHealthReport
         """
 
         rfs, metadata, masked_elements = self._acquire_rf_data(
-            cfg_path,
-            n,
-            tx_frequency,
-            footprint,
+            cfg_path=cfg_path,
+            n=n,
+            tx_frequency=tx_frequency,
+            voltage=voltage,
+            footprint=footprint,
         )
         health_report = self._check_probe_data(
             rfs=rfs,
@@ -736,6 +740,10 @@ class ProbeHealthVerifier:
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator
     ) -> ProbeHealthReport:
+
+        """
+        Creates probe health report.
+        """
 
 
         n_seq, n_tx_channels, n_samples, n_rx = rfs.shape
@@ -806,8 +814,12 @@ class ProbeHealthVerifier:
             cfg_path,
             n=1,
             tx_frequency=8e6,
+            voltage=5,
             footprint=None
     ):
+        """
+        Acquires rf data. If footprint is given the footprint sequence is used,
+        """
         with arrus.session.Session(cfg_path) as sess:
             rf_reorder = Pipeline(
                 steps=(
@@ -836,7 +848,7 @@ class ProbeHealthVerifier:
                     tgc_slope=0,
                     downsampling_factor=1,
                     speed_of_sound=1490,
-                    sri=2000e-3)
+                )
             else:
                 seq = footprint.get_sequence()
                 n = footprint.get_number_of_frames()
@@ -849,8 +861,11 @@ class ProbeHealthVerifier:
             )
             buffer, const_metadata = sess.upload(scheme)
             rfs = []
+            if voltage > 15:
+                raise ValueError("The voltage can not be higher "
+                                 "than 15V for probe check")
+            us4r.set_hv_voltage(voltage)
             # Wait for the voltage to stabilize.
-            us4r.set_hv_voltage(_VOLTAGE)
             time.sleep(1)
             # Start the device.
             LOGGER.log(arrus.logging.INFO, "Starting TX/RX")

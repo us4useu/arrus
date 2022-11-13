@@ -229,16 +229,16 @@ def main():
 
     # define features list
     features = [
-        # FeatureDescriptor(
-            # name=MaxAmplitudeExtractor.feature,
-            # active_range=(200, 20000),  # [a.u.]
-            # masked_elements_range=(0, 2000)  # [a.u.]
-        # ),
-        # FeatureDescriptor(
-            # name=SignalDurationTimeExtractor.feature,
-            # active_range=(0, 800),  # number of samples
-            # masked_elements_range=(800, np.inf)  # number of samples
-        # ),
+        FeatureDescriptor(
+            name=MaxAmplitudeExtractor.feature,
+            active_range=(200, 20000),  # [a.u.]
+            masked_elements_range=(0, 2000)  # [a.u.]
+        ),
+        FeatureDescriptor(
+            name=SignalDurationTimeExtractor.feature,
+            active_range=(0, 800),  # number of samples
+            masked_elements_range=(800, np.inf)  # number of samples
+        ),
         FeatureDescriptor(
             name=EnergyExtractor.feature,
             active_range=(0, 15),  # [a.u.]
