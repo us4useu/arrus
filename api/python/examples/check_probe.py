@@ -310,8 +310,10 @@ def main():
         pickle.dump(data, open(args.rf_file, "wb"))
         # pickle.dump(report.data, open(args.rf_file, "wb"))
 
+    # The line below can be used for visual comparison of
+    # signals from selected channel.
+    footprint.show_pulse_comparison(report.data, itx=0)
 
-    footprint.show_pulse_comparison(report.data, 0)
     print("----------------------------------------------")
     print("Close the window to exit")
 

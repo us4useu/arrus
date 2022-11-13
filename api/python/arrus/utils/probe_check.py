@@ -147,6 +147,7 @@ class Footprint:
         plt.legend(["rf", "footprint rf"])
         plt.xlabel("samples")
         plt.ylabel("[a.u.]")
+        plt.title(f"channel {itx}")
         plt.show()
 
 
