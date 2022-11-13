@@ -312,7 +312,7 @@ def main():
 
     # The line below can be used for visual comparison of
     # signals from selected channel.
-    footprint.show_pulse_comparison(report.data, itx=0)
+    # footprint.show_pulse_comparison(report.data, itx=0)
 
     print("----------------------------------------------")
     print("Close the window to exit")
