@@ -23,7 +23,7 @@ from arrus.metadata import Metadata
 _N_SKIPPED_SAMPLES = 50
 
 # known size of the receiving aperture
-_NRX = 64
+_NRX = 32
 
 # channel in the receiving aperture 
 # corresponding to the transmit one
@@ -61,7 +61,6 @@ def _normalize(x: np.ndarray) -> np.ndarray:
     :param x: np.ndarray
     :return: normalized np.ndarray
     """
-
     mx = np.nanmax(x)
     if np.isfinite(mx):
         mn = np.nanmin(x)
@@ -100,6 +99,7 @@ class Footprint:
     """
     Contains footprint data - a reference signals and
     corresponding metadata.
+
     :param rf: np.ndarray of rf signals
     :param metadata: arrus metadata
     :param masked channels: list of channels masked during footprint acquisition
@@ -153,6 +153,7 @@ class ElementValidationVerdict(enum.Enum):
 class ProbeElementValidatorResult:
     """
     Contains single element validation result.
+
     :param verdict: ElementValidationVerdict object
     :param valid_range: tuple contained valid range for examined feature
     """
@@ -304,6 +305,7 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
     def __get_signal_energy(self, rf: np.ndarray) -> np.float:
         """
         Returns normalized and high-pass filtered signal energy.
+
         :param rf: signal
         :return: signal energy (np.float)
         """
@@ -355,6 +357,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         Returns the value of a gaussian function
             f(x)=a*exp(-(x-x0)**2/(2*sigma**2)
         at given argument x.
+
         :param x: argument
         :param a: height of the peak
         :param x0: expected value
@@ -390,6 +393,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     def __get_signal_duration(self, rf: np.ndarray) -> float:
         """
         Returns signal duration estimate.
+
         :param rf: signal vector
         :return: signal duration estimate in samples
         """
@@ -429,33 +433,17 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
             smp=None,
             nround=3,
     ):
-
         nframe, ntx, nsmp, nrx = rf.shape
         crs = np.full(ntx, np.nan)
         # average frames
         avdat = rf.mean(axis=0)
         avref = footprint_rf.mean(axis=0)
-
         if smp is None:
             smp = slice(0, nsmp)
-        n = smp.stop - smp.start
-
         for itx in range(ntx):
             dline = avdat[itx, smp, _MID_RX]
             rline = avref[itx, smp, _MID_RX]
             crs[itx] = np.corrcoef(dline, rline)[0,1].round(nround)
-
-        # # block below is for drawing signals from 
-        # # acquired rf array and the reference
-        # print("inside pcc extractor")
-        # import matplotlib.pyplot as plt
-        # iframe = 0
-        # plt.plot(rf[iframe,itx ,smp, _MID_RX])
-        # itx = 0
-        # plt.plot(footprint_rf[iframe,itx,smp, _MID_RX])
-        # plt.show()
-        # print(crs[itx])
-
         return crs
 
 
@@ -492,7 +480,6 @@ class ByThresholdValidator(ProbeElementValidator):
     given value range. When the value of the feature is within the given
     range the element is marked as VALID, otherwise it is marked as TOO_HIGH
     or TOO_LOW.
-
     """
     name = "threshold"
 
@@ -530,7 +517,6 @@ class ByThresholdValidator(ProbeElementValidator):
 
 
 class ByNeighborhoodValidator(ProbeElementValidator):
-
     """
     Validator that compares each element with its neighborhood.
 
