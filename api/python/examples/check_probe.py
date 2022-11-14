@@ -172,6 +172,37 @@ def load_footprint(path):
             print("Footprint data loaded.")
         return data
 
+def show_footprint_pulse_comparison(
+        footprint,
+        report,
+        itx,
+        iframe=0,
+        smp=slice(0, 256),
+):
+    """
+    Show plot of given signal and corresponding footprint signal.
+    :param footprint: Footprint object
+    :param rf: np.ndarray, given rf signals array
+    :param itx: int, channel number
+    :iframe: int, frame number (optional - default 0)
+    :smp: slice, samples range (optional)
+    :irx: receiving aperture channel number
+         (optional - default correponds with itx)
+    """
+
+    rf = report.data
+    if rf.shape != footprint.rf.shape:
+        raise ValueError(
+            "The input rf array has different shape than footprint.rf")
+    _, _,_, nrx = rf.shape
+    irx = int(np.ceil(nrx / 2) - 1)
+    plt.plot(rf[iframe, itx, smp, irx])
+    plt.plot(footprint.rf[iframe, itx, smp, irx])
+    plt.legend(["rf", "footprint rf"])
+    plt.xlabel("samples")
+    plt.ylabel("[a.u.]")
+    plt.title(f"channel {itx}")
+    plt.show()
 # TODO 
 # 1. Create funciton returning footprint in probe_check.py
 # 2. reference -> footprint
@@ -316,7 +347,7 @@ def main():
 
     print("----------------------------------------------")
     print("Close the window to exit")
-
+    show_footprint_pulse_comparison(footprint, report, itx=40)
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,6 @@ import time
 from abc import ABC, abstractmethod
 from typing import Set, List, Iterable, Tuple, Dict
 
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import butter, sosfilt, hilbert
@@ -87,6 +86,7 @@ def _envelope(rf: np.ndarray) -> np.ndarray:
 
 
 class StdoutLogger:
+
     def __init__(self):
         for func in ("debug", "info", "error", "warning", "warn"):
             setattr(self, func, self.log)
@@ -121,34 +121,6 @@ class Footprint:
     def get_sequence(self):
         return self.metadata.context.sequence
 
-    def show_pulse_comparison(
-            self,
-            rf,
-            itx,
-            iframe=0,
-            smp=slice(_N_SKIPPED_SAMPLES,_N_SKIPPED_SAMPLES+256),
-            irx=_MID_RX,
-    ):
-        """
-        Show plot of given signal and corresponding footprint signal.
-        :param rf: np.ndarray, given rf signals array
-        :param itx: int, channel number
-        :iframe: int, frame number (optional - default 0)
-        :smp: slice, samples range (optional)
-        :irx: receiving aperture channel number
-             (optional - default correponds with itx)
-        """
-
-        if rf.shape != self.rf.shape:
-            raise ValueError(
-                "The input rf array has different shape than footprint.rf")
-        plt.plot(rf[iframe, itx, smp, irx])
-        plt.plot(self.rf[iframe, itx, smp, irx])
-        plt.legend(["rf", "footprint rf"])
-        plt.xlabel("samples")
-        plt.ylabel("[a.u.]")
-        plt.title(f"channel {itx}")
-        plt.show()
 
 
 @dataclasses.dataclass(frozen=True)
