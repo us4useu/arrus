@@ -103,13 +103,13 @@ class Footprint:
     :param rf: np.ndarray of rf signals
     :param metadata: arrus metadata
     :param masked channels: list of channels masked during footprint acquisition
-    :param creation_time: time of footprint creation in seconds since epoch
-    (see time.time() description)
+    :param timestamp: time of footprint creation in nanoseconds since epoch
+    (see time.time_ns() description)
     """
     rf: np.ndarray
     metadata: Metadata
     masked_elements: tuple
-    creation_time: float
+    timestamp: int
 
     def get_number_of_frames(self):
         # return self.metadata.input_shape
@@ -706,7 +706,7 @@ class ProbeHealthVerifier:
             rf=rfs,
             metadata=metadata,
             masked_elements=masked_elements,
-            creation_time=time.time(),
+            timestamp=time.time_ns(),
 
         )
         return footprint

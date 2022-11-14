@@ -248,9 +248,9 @@ def main():
     if args.create_footprint is not None:
         footprint = verifier.get_footprint(args.cfg_path, args.n)
         pickle.dump(footprint, open(args.create_footprint, "wb"))
-        print(f"The footptint have been created\
-                and store in {args.create_footprint} file.")
-        print("The script ends here.")
+        print("The footptint have been created "
+              f"and store in {args.create_footprint} file.")
+        print(f"The script {__file__} ends here.")
         quit()
 
     footprint = load_footprint(args.footprint)
@@ -312,7 +312,7 @@ def main():
 
     # The line below can be used for visual comparison of
     # signals from selected channel.
-    # footprint.show_pulse_comparison(report.data, itx=0)
+    # footprint.show_pulse_comparison(report.data, itx=40)
 
     print("----------------------------------------------")
     print("Close the window to exit")
