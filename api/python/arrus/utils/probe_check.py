@@ -20,15 +20,19 @@ from arrus.metadata import Metadata
 
 
 # number of samples skipped at the beggining 
-_N_SKIPPED_SAMPLES = 50
+_N_SKIPPED_SAMPLES = 10
 
+#TODO niech ta wielkosc subapertury pojawia sie tylko przy 
+# zbieraniu danych, bo w innych funkcjach to psuje.
+# niech w przypadku kiedy jest footprint zawsze bedzie brany 
+# schemat z footprintu, bo inaczej sie miesza
 # known size of the receiving aperture
-_NRX = 32
+_NRX = 64
 
 # channel in the receiving aperture 
 # corresponding to the transmit one
-_MID_RX = int(np.ceil(_NRX / 2) - 1)
 
+_MID_RX = int(np.ceil(_NRX / 2) - 1)
 LOGGER = arrus.logging.get_logger()
 
 def _hpfilter(
@@ -112,7 +116,6 @@ class Footprint:
     timestamp: int
 
     def get_number_of_frames(self):
-        # return self.metadata.input_shape
         return self.rf.shape[0]
 
     def get_tx_frequency(self):
@@ -120,7 +123,6 @@ class Footprint:
 
     def get_sequence(self):
         return self.metadata.context.sequence
-
 
 
 @dataclasses.dataclass(frozen=True)
@@ -405,7 +407,6 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
 
 
 class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
-
     """
     Feature exctractor for extraction Pearson Correlation Coefficient (PCC)
     between given rf array and footprint rf array.
@@ -433,17 +434,23 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
             smp=None,
             nround=3,
     ):
+        if rf.shape != footprint_rf.shape:
+            raise ValueError(
+                "rf and footprint.rf arrays must have the same shape"
+            )
         nframe, ntx, nsmp, nrx = rf.shape
-        crs = np.full(ntx, np.nan)
+        mid_rx = int(np.ceil(nrx/2) - 1)
         # average frames
         avdat = rf.mean(axis=0)
         avref = footprint_rf.mean(axis=0)
+        crs = np.full(ntx, 0).astype(float)
         if smp is None:
             smp = slice(0, nsmp)
         for itx in range(ntx):
-            dline = avdat[itx, smp, _MID_RX]
-            rline = avref[itx, smp, _MID_RX]
+            dline = avdat[itx, smp, mid_rx]
+            rline = avref[itx, smp, mid_rx]
             crs[itx] = np.corrcoef(dline, rline)[0,1].round(nround)
+        print(crs)
         return crs
 
 
@@ -649,7 +656,6 @@ class ProbeHealthVerifier:
     """
     Probe health verifier class.
     """
-
     def get_footprint(
             self,
             cfg_path: str,
@@ -658,14 +664,12 @@ class ProbeHealthVerifier:
         """
         Creates and returns Footprint object.
         """
-
         rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
         footprint = Footprint(
             rf=rfs,
             metadata=metadata,
             masked_elements=masked_elements,
             timestamp=time.time_ns(),
-
         )
         return footprint
 
@@ -700,7 +704,6 @@ class ProbeHealthVerifier:
                           if given, footprint tx/rx scheme will be used
         :return: an instance of the ProbeHealthReport
         """
-
         rfs, metadata, masked_elements = self._acquire_rf_data(
             cfg_path=cfg_path,
             n=n,
@@ -716,7 +719,6 @@ class ProbeHealthVerifier:
             features=features,
             validator=validator
         )
-
         return health_report
 
     def _check_probe_data(
@@ -728,13 +730,10 @@ class ProbeHealthVerifier:
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator
     ) -> ProbeHealthReport:
-
         """
         Creates probe health report.
         """
-
-
-        n_seq, n_tx_channels, n_samples, n_rx = rfs.shape
+        _, ntx, _, _ = rfs.shape
 
         # Compute feature values, verify the values according to given
         # validator.
@@ -763,7 +762,7 @@ class ProbeHealthVerifier:
         elements_descriptors = []
 
         # For each examined channel
-        for i in range(n_tx_channels):
+        for i in range(ntx):
             # For each examined feature
             feature_descriptors = {}
             for feature in features:

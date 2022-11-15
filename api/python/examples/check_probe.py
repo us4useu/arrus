@@ -109,6 +109,8 @@ def display_rf_frame(frame_number, data, figure, ax, canvas):
 def display_summary(n_elements: int, report: ProbeHealthReport):
     characteristics = report.characteristics
     fig, axes = plt.subplots(len(characteristics), 1)
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([axes])
     elements = np.arange(n_elements)
     canvases = []
     for i, (name, c) in enumerate(characteristics.items()):
@@ -181,6 +183,7 @@ def show_footprint_pulse_comparison(
 ):
     """
     Show plot of given signal and corresponding footprint signal.
+
     :param footprint: Footprint object
     :param rf: np.ndarray, given rf signals array
     :param itx: int, channel number
@@ -189,7 +192,6 @@ def show_footprint_pulse_comparison(
     :irx: receiving aperture channel number
          (optional - default correponds with itx)
     """
-
     rf = report.data
     if rf.shape != footprint.rf.shape:
         raise ValueError(
@@ -203,11 +205,6 @@ def show_footprint_pulse_comparison(
     plt.ylabel("[a.u.]")
     plt.title(f"channel {itx}")
     plt.show()
-# TODO 
-# 1. Create funciton returning footprint in probe_check.py
-# 2. reference -> footprint
-# 1a. footprint must have information on the masked channels, sequence etc. 
-# 3. Check if neighborhood validator can use full aperture data.
 
 def main():
     # set log severity level
@@ -288,16 +285,16 @@ def main():
 
     # define features list
     features = [
-        FeatureDescriptor(
-            name=MaxAmplitudeExtractor.feature,
-            active_range=(200, 20000),  # [a.u.]
-            masked_elements_range=(0, 2000)  # [a.u.]
-        ),
-        FeatureDescriptor(
-            name=SignalDurationTimeExtractor.feature,
-            active_range=(0, 800),  # number of samples
-            masked_elements_range=(800, np.inf)  # number of samples
-        ),
+        # FeatureDescriptor(
+            # name=MaxAmplitudeExtractor.feature,
+            # active_range=(200, 20000),  # [a.u.]
+            # masked_elements_range=(0, 2000)  # [a.u.]
+        # ),
+        # FeatureDescriptor(
+            # name=SignalDurationTimeExtractor.feature,
+            # active_range=(0, 800),  # number of samples
+            # masked_elements_range=(800, np.inf)  # number of samples
+        # ),
         FeatureDescriptor(
             name=EnergyExtractor.feature,
             active_range=(0, 15),  # [a.u.]
@@ -322,6 +319,8 @@ def main():
 
     print_health_info(report)
     n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
+    print("----------------------------------------------")
+    print("Close the window to exit")
 
     if args.display_frame is not None:
         # Display the sequence of RF frames
@@ -343,10 +342,11 @@ def main():
 
     # The line below can be used for visual comparison of
     # signals from selected channel.
-    # show_footprint_pulse_comparison(footprint, report, itx=40)
-
-    print("----------------------------------------------")
-    print("Close the window to exit")
+    # show_footprint_pulse_comparison(footprint, report, itx=0)
+    # plt.plot(report.data[0,0,:,31])
+    # plt.show()
+    print(report.data.shape)
+    print(footprint.rf.shape)
 
 if __name__ == "__main__":
     main()
