@@ -2643,3 +2643,102 @@ class Equalize(Operation):
         m = d.mean(axis=self.axis).astype(self.input_dtype)
         m = self.xp.expand_dims(m, axis=self.axis)
         return data-m
+
+
+class DelayAndSumLUT(Operation):
+    """
+    Delay and sum using look-up tables.
+
+    This operator requires GPU and cupy package installed.
+    TODO Note:: the below operator will not work correctly for:
+    - start_sample != 0,
+    - downsampling_factor != 1.
+    """
+
+    def __init__(self,
+                 tx_delays, tx_apodization,
+                 rx_apodization, rx_delays,
+                 output_type=None):
+        self.tx_delays = tx_delays
+        self.rx_delays = rx_delays
+        self.tx_apodization = tx_apodization
+        self.rx_apodization = rx_apodization
+        import cupy as cp
+        self.num_pkg = cp
+        self.output_type = output_type if output_type is not None else "hri"
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg is np:
+            raise ValueError("ReconstructLri operation is implemented for GPU only.")
+
+    def prepare(self, const_metadata):
+        import cupy as cp
+        current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+        _kernel_source = Path(os.path.join(current_dir, "das_lut.cu")).read_text()
+        self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
+
+        # INPUT PARAMETERS.
+        # Input data shape.
+        self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
+        self.n_tx, self.y_size, self.x_size, self.z_size = self.tx_delays.shape
+        self.n_rx, _, _, _ = self.rx_delays.shape
+
+        seq = const_metadata.context.sequence
+        raw_seq = const_metadata.context.raw_sequence
+        probe_model = const_metadata.context.device.probe.model
+
+        if self.output_type == "hri":
+            self._kernel = self._kernel_module.get_function("delayAndSumLutHri")
+            output_shape = (self.n_seq, self.y_size, self.x_size, self.z_size)
+        elif self.output_type == "lri":
+            self._kernel = self._kernel_module.get_function("delayAndSumLutLri")
+            output_shape = (self.n_seq, self.n_tx, self.y_size, self.x_size, self.z_size)
+        else:
+            raise ValueError(f"Unsupported output type: {self.output_type}")
+
+        downsampling_factor = raw_seq.ops[0].rx.downsampling_factor
+        start_sample = raw_seq.ops[0].rx.sample_range[0]
+
+        if downsampling_factor != 1:
+            raise ValueError("Currently only downsampling factor == 1 "
+                             f"is supported (got: {downsampling_factor})")
+        if start_sample != 0:
+            raise ValueError("Currently only start sample == 0 "
+                             f"is supported (got: {start_sample})")
+        acq_fs = (const_metadata.context.device.sampling_frequency / downsampling_factor)
+        self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
+        y_block_size = min(self.y_size, 8)
+        x_block_size = min(self.x_size, 8)
+        z_block_size = min(self.z_size, 8)
+        self.block_size = (z_block_size, x_block_size, y_block_size)
+        self.grid_size = (int((self.z_size - 1) // z_block_size + 1),
+                          int((self.x_size - 1) // x_block_size + 1),
+                          int((self.y_size - 1) // y_block_size + 1))
+        self.tx_delays = self.num_pkg.asarray(self.tx_delays, dtype=self.num_pkg.float32)
+        self.rx_delays = self.num_pkg.asarray(self.rx_delays, dtype=self.num_pkg.float32)
+        self.tx_apodization = self.num_pkg.asarray(self.tx_apodization, dtype=self.num_pkg.uint8)
+        self.rx_apodization = self.num_pkg.asarray(self.rx_apodization, dtype=self.num_pkg.float32)
+        # System and transmit properties.
+        pulse = raw_seq.ops[0].tx.excitation
+        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
+        self.fn = self.num_pkg.float32(pulse.center_frequency)
+
+        self.n_elements = probe_model.n_elements
+        burst_factor = pulse.n_periods / (2 * self.fn)
+        self.initial_delay = -start_sample / 65e6 + burst_factor
+        self.initial_delay = self.num_pkg.float32(self.initial_delay)
+        return const_metadata.copy(input_shape=output_shape)
+
+    def process(self, data):
+        data = self.num_pkg.ascontiguousarray(data)
+        params = (
+            self.output_buffer,
+            data,
+            self.tx_delays, self.rx_delays,
+            self.tx_apodization, self.rx_apodization,
+            self.initial_delay,
+            self.n_tx, self.n_samples, self.n_rx,
+            self.y_size, self.x_size, self.z_size,
+            self.fs, self.fn)
+        self._kernel(self.grid_size, self.block_size, params)
+        return self.output_buffer
