@@ -1,3 +1,4 @@
+#TODO update docstring
 """
 This is a python script for evaluating transducers in ultrasound probe.
 The evaluation is made on the basis of values of features
@@ -46,6 +47,7 @@ import matplotlib.pyplot as plt
 import pickle
 # from arrus.utils.probe_check import *
 
+#TODO: at the end below should be deleted, and abowe uncommented
 import sys
 sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
 from probe_check import *
@@ -108,16 +110,16 @@ def display_rf_frame(frame_number, data, figure, ax, canvas):
 
 def display_summary(n_elements: int, report: ProbeHealthReport):
     characteristics = report.characteristics
-    fig, axes = plt.subplots(len(characteristics), 1)
+    fig, axes = plt.subplots(len(characteristics), 1, sharex=True)
     if not isinstance(axes, np.ndarray):
         axes = np.array([axes])
     elements = np.arange(n_elements)
     canvases = []
     for i, (name, c) in enumerate(characteristics.items()):
         ax = axes[i]
-        ax.set_xlabel("Channel")
         ax.set_ylabel(name)
         ax.plot(elements, c)
+    ax.set_xlabel("Channels")
     fig.show()
     plt.show()
     return fig, axes
@@ -241,6 +243,13 @@ def main():
         default=8e6,
     )
     parser.add_argument(
+        "--nrx", dest="nrx",
+        help="Size of receiving aperture",
+        required=False,
+        type=int,
+        default=32,
+    )
+    parser.add_argument(
         "--rf_file", dest="rf_file",
         help="The name of the output file with RF data.",
         required=False,
@@ -269,12 +278,18 @@ def main():
         default=False,
     )
     args = parser.parse_args()
+    print(args)
 
     verifier = ProbeHealthVerifier()
 
     # footprint creation (optional)
     if args.create_footprint is not None:
-        footprint = verifier.get_footprint(args.cfg_path, args.n)
+        footprint = verifier.get_footprint(
+            cfg_path=args.cfg_path,
+            n=args.n,
+            tx_frequency=args.tx_frequency,
+            nrx=args.nrx,
+        )
         pickle.dump(footprint, open(args.create_footprint, "wb"))
         print("The footptint have been created "
               f"and store in {args.create_footprint} file.")
@@ -285,33 +300,35 @@ def main():
 
     # define features list
     features = [
-        # FeatureDescriptor(
-            # name=MaxAmplitudeExtractor.feature,
-            # active_range=(200, 20000),  # [a.u.]
-            # masked_elements_range=(0, 2000)  # [a.u.]
-        # ),
-        # FeatureDescriptor(
-            # name=SignalDurationTimeExtractor.feature,
-            # active_range=(0, 800),  # number of samples
-            # masked_elements_range=(800, np.inf)  # number of samples
-        # ),
+        FeatureDescriptor(
+            name=MaxAmplitudeExtractor.feature,
+            active_range=(200, 20000),  # [a.u.]
+            masked_elements_range=(0, 2000)  # [a.u.]
+        ),
+        FeatureDescriptor(
+            name=SignalDurationTimeExtractor.feature,
+            active_range=(0, 800),  # number of samples
+            masked_elements_range=(800, np.inf)  # number of samples
+        ),
         FeatureDescriptor(
             name=EnergyExtractor.feature,
             active_range=(0, 15),  # [a.u.]
             masked_elements_range=(0, np.inf)  # [a.u.]
         ),
-        FeatureDescriptor(
-            name=FootprintSimilarityPCCExtractor.feature,
-            active_range=(0.5, 1),  # [a.u.]
-            masked_elements_range=(0, 1)  # [a.u.]
-        ),
+        # FeatureDescriptor(
+            # name=FootprintSimilarityPCCExtractor.feature,
+            # active_range=(0.5, 1),  # [a.u.]
+            # masked_elements_range=(0, 1)  # [a.u.]
+        # ),
     ]
 
-    validator = ByThresholdValidator()
+    validator = ByNeighborhoodValidator()
+    # validator = ByThresholdValidator()
     report = verifier.check_probe(
         cfg_path=args.cfg_path,
         n=args.n,
         tx_frequency=args.tx_frequency,
+        nrx=args.nrx,
         features=features,
         validator=validator,
         footprint=footprint,

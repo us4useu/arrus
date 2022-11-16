@@ -20,20 +20,18 @@ from arrus.metadata import Metadata
 
 
 # number of samples skipped at the beggining 
-_N_SKIPPED_SAMPLES = 10
+_N_SKIPPED_SAMPLES = 75
 
-#TODO niech ta wielkosc subapertury pojawia sie tylko przy 
-# zbieraniu danych, bo w innych funkcjach to psuje.
-# niech w przypadku kiedy jest footprint zawsze bedzie brany 
-# schemat z footprintu, bo inaczej sie miesza
-# known size of the receiving aperture
-_NRX = 64
-
-# channel in the receiving aperture 
-# corresponding to the transmit one
-
-_MID_RX = int(np.ceil(_NRX / 2) - 1)
 LOGGER = arrus.logging.get_logger()
+
+
+def _get_mid_rx(nrx):
+    """
+    Returns channel in the receiving aperture
+    corresponding to the transmit one.
+    """
+    return int(np.ceil(nrx/2) - 1)
+
 
 def _hpfilter(
         rf: np.ndarray,
@@ -108,7 +106,7 @@ class Footprint:
     :param metadata: arrus metadata
     :param masked channels: list of channels masked during footprint acquisition
     :param timestamp: time of footprint creation in nanoseconds since epoch
-    (see time.time_ns() description)
+                  (see time.time_ns() description)
     """
     rf: np.ndarray
     metadata: Metadata
@@ -295,7 +293,7 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         for itx in range(ntx):
             frames_energies = []
             for frame in range(n_frames):
-                rf = data[frame, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
+                rf = data[frame, itx, _N_SKIPPED_SAMPLES:, _get_mid_rx(nrx)]
                 rf = rf.astype(float)
                 e = self.__get_signal_energy(np.squeeze(rf))
                 frames_energies.append(e)
@@ -344,7 +342,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         for itx in range(ntx):
             frames_times = []
             for iframe in range(n_frames):
-                rf = data[iframe, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
+                rf = data[iframe, itx, _N_SKIPPED_SAMPLES:, _get_mid_rx(nrx)]
                 rf = rf.copy()
                 rf = rf.astype(float)
                 t = self.__get_signal_duration(np.squeeze(rf))
@@ -450,7 +448,7 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
             dline = avdat[itx, smp, mid_rx]
             rline = avref[itx, smp, mid_rx]
             crs[itx] = np.corrcoef(dline, rline)[0,1].round(nround)
-        print(crs)
+        # print(crs)
         return crs
 
 
@@ -660,11 +658,20 @@ class ProbeHealthVerifier:
             self,
             cfg_path: str,
             n: int,
+            tx_frequency: float,
+            nrx: int=32,
+            voltage: int=5,
     )-> Footprint:
         """
         Creates and returns Footprint object.
         """
-        rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
+        rfs, metadata, masked_elements = self._acquire_rf_data(
+            cfg_path,
+            n,
+            tx_frequency,
+            nrx,
+            voltage,
+        )
         footprint = Footprint(
             rf=rfs,
             metadata=metadata,
@@ -680,6 +687,7 @@ class ProbeHealthVerifier:
             tx_frequency: float,
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator,
+            nrx: int=32,
             voltage: int=5,
             footprint: Footprint=None,
     )-> ProbeHealthReport:
@@ -699,6 +707,7 @@ class ProbeHealthVerifier:
         :param validator: ProbeElementValidator object, i.e. a validator
                           that should be used to determine if given parameter
                           have value within valid range
+        :param nrx: size of the receiving aperture
         :param voltage: voltage to be used in tx/rx scheme
         :param footprint: object of the Footprint class;
                           if given, footprint tx/rx scheme will be used
@@ -708,6 +717,7 @@ class ProbeHealthVerifier:
             cfg_path=cfg_path,
             n=n,
             tx_frequency=tx_frequency,
+            nrx=nrx,
             voltage=voltage,
             footprint=footprint,
         )
@@ -756,6 +766,7 @@ class ProbeHealthVerifier:
             )
 
             results[feature.name] = (extractor_result, validator_result)
+            # print(extractor_result)
 
         masked_elements_set = set(masked_elements)
         # Prepare descriptor for examined element.
@@ -766,8 +777,8 @@ class ProbeHealthVerifier:
             # For each examined feature
             feature_descriptors = {}
             for feature in features:
-                feature_value = extractor_result[i]
                 extractor_result, validator_result = results[feature.name]
+                feature_value = extractor_result[i]
                 element_validation_result = validator_result[i]
 
                 descriptor = ProbeElementFeatureDescriptor(
@@ -799,10 +810,11 @@ class ProbeHealthVerifier:
     def _acquire_rf_data(
             self,
             cfg_path,
-            n=1,
-            tx_frequency=8e6,
-            voltage=5,
-            footprint=None
+            n,
+            tx_frequency,
+            nrx,
+            voltage,
+            footprint=None,
     ):
         """
         Acquires rf data. If footprint is given the footprint sequence is used,
@@ -828,7 +840,7 @@ class ProbeHealthVerifier:
                         inverse=False,
                     ),
                     rx_aperture_center_element=np.arange(0, n_elements),
-                    rx_aperture_size=_NRX,
+                    rx_aperture_size=nrx,
                     rx_sample_range=(0, 512),
                     pri=1000e-6,
                     tgc_start=14,
