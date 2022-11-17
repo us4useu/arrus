@@ -754,7 +754,10 @@ class ProbeHealthVerifier:
                 try:
                     extractor_result = extractor.extract(rfs, footprint.rf)
                 except:
-                    raise TypeError("The footprint must by of a class Footprint.")
+                    raise ValueError(
+                        "The footprint must by of a class Footprint. "
+                        "Check if appropriate footprint is given."
+                    )
             else:
                 extractor_result = extractor.extract(rfs)
 

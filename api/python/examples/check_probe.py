@@ -5,7 +5,17 @@ The evaluation is made on the basis of values of features
 estimated from signals acquired by each transducer.
 The transmit-receive scheme includes transmitting by single transducer
 and receiving by transducers in aperture centered on the transmitter.
-The features are amplitude, pulse duration and energy of normalised signal.
+
+Current features are
+1. amplitude,
+2. pulse duration,
+3. energy of normalised signal,
+4. pearson correlation coefficient (PCC) with 'footprint' signal.
+PCC require a footprint (i.e. object containing reference rf signal array).
+The footprint should be acquired earlier using the same setup.
+This feature measure how much the signals changed comparing to footprint.
+When transducer is broken, the acquired signal should be different comparing
+to signal acquired before damage.
 
 There are two methods of evaluation.
 1. 'Threshold' - bases on the values of features.
@@ -13,12 +23,15 @@ If the value is outside predefined range,
 the corresponding transducer is treated as 'suspected'.
 These ranges can be set at the beginning of the script
 (below the line "# features values ranges").
+This ranges can differs for different probes.
 2. 'Neighborhood'  - bases on the values of features
 estimated from signals acquired from transducers in close neighborhood
 of the examined transducer.
 If the value from the examined transducer differs
 from the values from other transducers by more then arbitrary percentage,
 the transducer is treated as 'suspected'.
+Note, that PCC should be validated usign threshold method
+(i.e. usign ByThresholdValidator()).
 
 At the end of its run, the scripts (optionally) display figures with values of
 the features, and initial segments of signals from all transducer, for visual
@@ -27,19 +40,33 @@ evaluation.
 HOW TO USE THE SCRIPT
 The script is called from command line with some options.
 Following options are accepted:
---cfg_path: required, path to the system's configuration file,
---help : optional,  displays help,
---method : optional, determines which method will be used ('threshold' (default)
+(required)
+--cfg_path: path to the system's configuration file,
+
+(optional)
+--help : displays help,
+--method : determines which method will be used ('threshold' (default)
   or 'neighborhood'),
---rf_file : optional, determines the name of possible output file with rf data,
---display_frame : optional, determines if script will display figures,
---n : optional, the number of full Tx cycles to run
+--rf_file : determines the name of possible output file with rf data,
+--display_frame : determines if script will display figures,
+--n : the number of full Tx cycles to run (default 1),
+--tx_frequency : determines tranmit frequency in [Hz] (default 8e6),
+--nrx : determines the size of receiving aperture (default 32),
+--create_footprint : creates footprint and store it in given file,
+--use_footprint : determines which footprint file to use,
+--display_summary : displays features values on figure,
+--show_pulse_comparison : displays acquired pulse and corresponding
+    footprint signal
 
 Examples:
 python check_probe.py --help
 python check_probe.py --cfg_path /home/user/us4r.prototxt
 python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
+python check_probe.py --cfg_path ~/us4r.prototxt --create_footprint footprint.pkl --n=16
+python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
+
 """
+
 import collections
 import argparse
 import numpy as np
@@ -47,7 +74,7 @@ import matplotlib.pyplot as plt
 import pickle
 # from arrus.utils.probe_check import *
 
-#TODO: at the end below should be deleted, and abowe uncommented
+#TODO: at the end below should be deleted, and above uncommented
 import sys
 sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
 from probe_check import *
@@ -166,6 +193,7 @@ def get_data_dimensions(metadata):
     n_samples = end_sample - start_sample
     return n_elements, n_samples
 
+
 def load_footprint(path):
     if isinstance(path, str) is False:
         return None
@@ -176,18 +204,20 @@ def load_footprint(path):
             print("Footprint data loaded.")
         return data
 
+
 def show_footprint_pulse_comparison(
         footprint,
         report,
         itx,
         iframe=0,
-        smp=slice(0, 256),
+        smp=None,
+        irx=None,
 ):
     """
     Show plot of given signal and corresponding footprint signal.
 
     :param footprint: Footprint object
-    :param rf: np.ndarray, given rf signals array
+    :param report: ProbeHealthReport object (contains rf signal array)
     :param itx: int, channel number
     :iframe: int, frame number (optional - default 0)
     :smp: slice, samples range (optional)
@@ -198,8 +228,11 @@ def show_footprint_pulse_comparison(
     if rf.shape != footprint.rf.shape:
         raise ValueError(
             "The input rf array has different shape than footprint.rf")
-    _, _,_, nrx = rf.shape
-    irx = int(np.ceil(nrx / 2) - 1)
+    _, _,nsmp, nrx = rf.shape
+    if smp is None:
+        smp = slice(0, nsmp)
+    if irx is None:
+        irx = int(np.ceil(nrx / 2) - 1)
     plt.plot(rf[iframe, itx, smp, irx])
     plt.plot(footprint.rf[iframe, itx, smp, irx])
     plt.legend(["rf", "footprint rf"])
@@ -277,6 +310,19 @@ def main():
         type=bool,
         default=False,
     )
+    parser.add_argument(
+        "--show_pulse_comparison", dest="show_pulse_comparison",
+        help="Shows pulses (acquired and footprint) from selected channel.",
+        required=False,
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        "--method", dest="method",
+        help="Method used - threshold (default) or neighborhood",
+        required=False,
+        default="threshold",
+    )
     args = parser.parse_args()
     print(args)
 
@@ -302,28 +348,39 @@ def main():
     features = [
         FeatureDescriptor(
             name=MaxAmplitudeExtractor.feature,
-            active_range=(200, 20000),  # [a.u.]
+            active_range=(200, 2000),  # [a.u.]
             masked_elements_range=(0, 2000)  # [a.u.]
         ),
         FeatureDescriptor(
             name=SignalDurationTimeExtractor.feature,
-            active_range=(0, 800),  # number of samples
-            masked_elements_range=(800, np.inf)  # number of samples
+            active_range=(0, 200),  # number of samples
+            masked_elements_range=(200, np.inf)  # number of samples
         ),
         FeatureDescriptor(
             name=EnergyExtractor.feature,
-            active_range=(0, 15),  # [a.u.]
+            active_range=(0, 10),  # [a.u.]
             masked_elements_range=(0, np.inf)  # [a.u.]
         ),
-        # FeatureDescriptor(
-            # name=FootprintSimilarityPCCExtractor.feature,
-            # active_range=(0.5, 1),  # [a.u.]
-            # masked_elements_range=(0, 1)  # [a.u.]
-        # ),
+        FeatureDescriptor(
+            name=FootprintSimilarityPCCExtractor.feature,
+            active_range=(0.5, 1),  # [a.u.]
+            masked_elements_range=(0, 1)  # [a.u.]
+        ),
     ]
 
-    validator = ByNeighborhoodValidator()
-    # validator = ByThresholdValidator()
+    # create validator
+    if args.method == "threshold":
+        validator = ByThresholdValidator()
+    elif args.method == "neighborhood":
+        validator = ByNeighborhoodValidator()
+    else:
+        import warnings
+        warnings.warn(
+            "Unknown method - using default (threshold)."
+        )
+        validator = ByThresholdValidator()
+
+    # check probe
     report = verifier.check_probe(
         cfg_path=args.cfg_path,
         n=args.n,
@@ -334,6 +391,7 @@ def main():
         footprint=footprint,
     )
 
+    # show results
     print_health_info(report)
     n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
     print("----------------------------------------------")
@@ -355,15 +413,17 @@ def main():
     if args.rf_file is not None:
         data = {"rf": report.data, "context": report.sequence_metadata}
         pickle.dump(data, open(args.rf_file, "wb"))
-        # pickle.dump(report.data, open(args.rf_file, "wb"))
+
+    if args.show_pulse_comparison is not None:
+        show_footprint_pulse_comparison(
+            footprint,
+            report,
+            itx=args.show_pulse_comparison,
+        )
 
     # The line below can be used for visual comparison of
     # signals from selected channel.
-    # show_footprint_pulse_comparison(footprint, report, itx=0)
-    # plt.plot(report.data[0,0,:,31])
-    # plt.show()
-    print(report.data.shape)
-    print(footprint.rf.shape)
+    # show_footprint_pulse_comparison(footprint, report, itx=21)
 
 if __name__ == "__main__":
     main()
