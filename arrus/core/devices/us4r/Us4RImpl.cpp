@@ -339,7 +339,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     // Note: the last TGC sample should be applied before the reception ends.
     // This is to avoid using the same TGC curve between triggers.
     auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
-    std::vector<float> time(values.size());
+    std::vector<float> time;
+    for(auto v: values) {
+        time.push_back(v/nominalFs);
+    }
     return time;
 }
 

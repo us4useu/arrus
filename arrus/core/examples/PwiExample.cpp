@@ -39,7 +39,7 @@ int main() noexcept {
                 delays[d] = d*i*1e-9f;
             }
             arrus::BitMask txAperture(nElements, true);
-            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(txAperture, sampleRange), 200e-6f);
+            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 200e-6f);
         }
 
         TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 32);
