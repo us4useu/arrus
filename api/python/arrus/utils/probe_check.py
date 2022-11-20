@@ -19,8 +19,10 @@ from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
 from arrus.metadata import Metadata
 
 
-# number of samples skipped at the beggining 
-_N_SKIPPED_SAMPLES = 75
+# number of samples skipped at the beggining - not used in further analysis
+_N_SKIPPED_SAMPLES = 90
+# number of frames skipped at the beggining - when need to 'warm up' the system
+_N_SKIPPED_SEQUENCES = 1
 
 LOGGER = arrus.logging.get_logger()
 
@@ -139,8 +141,6 @@ class FeatureDescriptor:
     masked_elements_range: tuple
 
 
-
-
 class ElementValidationVerdict(enum.Enum):
     """
     Contains element validation verdict.
@@ -188,7 +188,6 @@ class ProbeElementValidator(ABC):
     def params(self) -> dict:
         return dict((k, v) for k, v in vars(self).items()
                     if not k.startswith("_"))
-                    
 
 
 @dataclasses.dataclass(frozen=True)
@@ -879,9 +878,11 @@ class ProbeHealthVerifier:
             LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
             # Record RF frames.
             # Acquire n consecutive frames
-            for i in range(n):
+            for i in range(n + _N_SKIPPED_SEQUENCES):
                 LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX: {i}")
                 sess.run()
+                if i < _N_SKIPPED_SEQUENCES:
+                    continue
                 data = buffer.get()[0]
                 rfs.append(np.squeeze(data.copy()))
             rfs = np.stack(rfs)
