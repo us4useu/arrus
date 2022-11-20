@@ -13,6 +13,7 @@ Current features are
 4. pearson correlation coefficient (PCC) with 'footprint' signal.
 PCC require a footprint (i.e. object containing reference rf signal array).
 The footprint should be acquired earlier using the same setup.
+The probe should be 'in the air' - the analysed signal is assumed to be reflection from the lens surface.
 This feature measure how much the signals changed comparing to footprint.
 When transducer is broken, the acquired signal should be different comparing
 to signal acquired before damage.
@@ -23,7 +24,7 @@ If the value is outside predefined range,
 the corresponding transducer is treated as 'suspected'.
 These ranges can be set at the beginning of the script
 (below the line "# features values ranges").
-This ranges can differs for different probes.
+This ranges can differs for different probes, and should be set by user.
 2. 'Neighborhood'  - bases on the values of features
 estimated from signals acquired from transducers in close neighborhood
 of the examined transducer.
@@ -72,12 +73,12 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-# from arrus.utils.probe_check import *
+from arrus.utils.probe_check import *
 
 #TODO: at the end below should be deleted, and above uncommented
-import sys
-sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
-from probe_check import *
+# import sys
+# sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
+# from probe_check import *
 
 
 # ------------------------- Utility functions ---------------------------------
@@ -166,7 +167,9 @@ def print_health_info(report):
 
     for feature in features:
         print("----------------------------------------------")
-        print(f"Test results for feature: {feature.name}")
+        print("Test results:")
+        print(f"  feature: {feature.name}")
+        print(f"   method: {report.validator.name}")
         feature_invalid_elements = invalid_els[feature.name]
 
         if len(feature_invalid_elements) == 0:
@@ -353,7 +356,7 @@ def main():
         ),
         FeatureDescriptor(
             name=SignalDurationTimeExtractor.feature,
-            active_range=(0, 200),  # number of samples
+            active_range=(0, 500),  # number of samples
             masked_elements_range=(200, np.inf)  # number of samples
         ),
         FeatureDescriptor(
@@ -421,9 +424,6 @@ def main():
             itx=args.show_pulse_comparison,
         )
 
-    # The line below can be used for visual comparison of
-    # signals from selected channel.
-    # show_footprint_pulse_comparison(footprint, report, itx=21)
 
 if __name__ == "__main__":
     main()

@@ -139,6 +139,8 @@ class FeatureDescriptor:
     masked_elements_range: tuple
 
 
+
+
 class ElementValidationVerdict(enum.Enum):
     """
     Contains element validation verdict.
@@ -159,6 +161,34 @@ class ProbeElementValidatorResult:
     """
     verdict: ElementValidationVerdict
     valid_range: tuple
+
+
+class ProbeElementValidator(ABC):
+    """
+    Probe Element validator.
+
+    Note: each probe element validator should store its public parameters
+    as attributes with names that DOES NOT start with single underscore ("_").
+    All private members should start with a single underscore.
+    See the implementation of the "params" property for more details.
+    """
+    name: str
+
+    @abstractmethod
+    def validate(
+            self,
+            values: Iterable[float],
+            masked: Iterable[int],
+            active_range: Tuple[float, float],
+            masked_range: Tuple[float, float]
+    ) -> List[ProbeElementValidatorResult]:
+        raise ValueError("Abstract method")
+
+    @property
+    def params(self) -> dict:
+        return dict((k, v) for k, v in vars(self).items()
+                    if not k.startswith("_"))
+                    
 
 
 @dataclasses.dataclass(frozen=True)
@@ -199,6 +229,7 @@ class ProbeElementHealthReport:
     element_number: int
 
 
+                    
 @dataclasses.dataclass(frozen=True)
 class ProbeHealthReport:
     """
@@ -221,6 +252,7 @@ class ProbeHealthReport:
     elements: Iterable[ProbeElementHealthReport]
     data: np.ndarray
     footprint: np.ndarray
+    validator: ProbeElementValidator
 
     @property
     def characteristics(self) -> Dict[str, np.ndarray]:
@@ -450,33 +482,6 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
             crs[itx] = np.corrcoef(dline, rline)[0,1].round(nround)
         # print(crs)
         return crs
-
-
-class ProbeElementValidator(ABC):
-    """
-    Probe Element validator.
-
-    Note: each probe element validator should store its public parameters
-    as attributes with names that DOES NOT start with single underscore ("_").
-    All private members should start with a single underscore.
-    See the implementation of the "params" property for more details.
-    """
-    name: str
-
-    @abstractmethod
-    def validate(
-            self,
-            values: Iterable[float],
-            masked: Iterable[int],
-            active_range: Tuple[float, float],
-            masked_range: Tuple[float, float]
-    ) -> List[ProbeElementValidatorResult]:
-        raise ValueError("Abstract method")
-
-    @property
-    def params(self) -> dict:
-        return dict((k, v) for k, v in vars(self).items()
-                    if not k.startswith("_"))
 
 
 class ByThresholdValidator(ProbeElementValidator):
@@ -806,7 +811,8 @@ class ProbeHealthVerifier:
             elements=elements_descriptors,
             sequence_metadata=metadata,
             data=rfs,
-            footprint=footprint
+            footprint=footprint,
+            validator=validator,
         )
         return report
 
@@ -844,7 +850,7 @@ class ProbeHealthVerifier:
                     ),
                     rx_aperture_center_element=np.arange(0, n_elements),
                     rx_aperture_size=nrx,
-                    rx_sample_range=(0, 512),
+                    rx_sample_range=(0, 1024),
                     pri=1000e-6,
                     tgc_start=14,
                     tgc_slope=0,
