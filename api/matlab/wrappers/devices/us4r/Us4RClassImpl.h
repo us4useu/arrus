@@ -27,6 +27,7 @@ public:
         ARRUS_MATLAB_ADD_METHOD("setVoltage", setVoltage);
         ARRUS_MATLAB_ADD_METHOD("getSamplingFrequency", getSamplingFrequency);
         ARRUS_MATLAB_ADD_METHOD("getProbeModel", getProbeModel);
+        ARRUS_MATLAB_ADD_METHOD("getChannelsMask", getChannelsMask);
     }
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -43,6 +44,11 @@ public:
     void getProbeModel(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         auto &model = get(obj)->getProbe(0)->getModel();
         outputs[0] = ::arrus::matlab::devices::probe::ProbeModelConverter::from(ctx, model).toMatlab();
+    }
+
+    void getChannelsMask(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        auto channelsMask = get(obj)->getChannelsMask();
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, unsigned short, channelsMask);
     }
 
 };

@@ -38,5 +38,14 @@ classdef Us4R < handle
             res = obj.ptr.callMethod("getProbeModel", 1);
             model = res{1, 1};
         end
+
+        function [channelsMask] = getChannelsMask(obj)
+            %
+            % Returns list of masked elements/system channels.
+            % Note: channel numbering starts from 0.
+            %
+            res = obj.ptr.callMethod("getChannelsMask", 1);
+            channelsMask = res{1, 1};
+        end
     end
 end
