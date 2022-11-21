@@ -78,7 +78,7 @@ public:
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, double, pitch, pitch.getValues()),
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, float, txFrequencyRange, txFrequencyRange.asPair()),
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, Voltage, voltageRange, voltageRange.asPair()),
-                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, uint32_t, curvatureRadius)
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, double, curvatureRadius)
             }
         );
     }
