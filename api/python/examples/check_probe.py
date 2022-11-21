@@ -73,12 +73,12 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from arrus.utils.probe_check import *
+# from arrus.utils.probe_check import *
 
 #TODO: at the end below should be deleted, and above uncommented
-# import sys
-# sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
-# from probe_check import *
+import sys
+sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
+from probe_check import *
 
 
 # ------------------------- Utility functions ---------------------------------
@@ -340,9 +340,11 @@ def main():
             nrx=args.nrx,
         )
         pickle.dump(footprint, open(args.create_footprint, "wb"))
+        print("---------------------------------------------------------------")
         print("The footptint have been created "
               f"and store in {args.create_footprint} file.")
         print(f"The script {__file__} ends here.")
+        print("---------------------------------------------------------------")
         quit()
 
     footprint = load_footprint(args.footprint)
@@ -361,7 +363,7 @@ def main():
         ),
         FeatureDescriptor(
             name=EnergyExtractor.feature,
-            active_range=(0, 10),  # [a.u.]
+            active_range=(0, 20),  # [a.u.]
             masked_elements_range=(0, np.inf)  # [a.u.]
         ),
         FeatureDescriptor(

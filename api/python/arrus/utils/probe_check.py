@@ -22,7 +22,7 @@ from arrus.metadata import Metadata
 # number of samples skipped at the beggining - not used in further analysis
 _N_SKIPPED_SAMPLES = 90
 # number of frames skipped at the beggining - when need to 'warm up' the system
-_N_SKIPPED_SEQUENCES = 1
+_N_SKIPPED_SEQUENCES = 4
 
 LOGGER = arrus.logging.get_logger()
 
@@ -228,7 +228,6 @@ class ProbeElementHealthReport:
     element_number: int
 
 
-                    
 @dataclasses.dataclass(frozen=True)
 class ProbeHealthReport:
     """
@@ -632,6 +631,11 @@ class ByNeighborhoodValidator(ProbeElementValidator):
                     center = np.median(near)
                     lower_bound = center * mn
                     upper_bound = center * mx
+                    # # lines below are for test
+                    # center = np.mean(near)
+                    # s = np.std(near)
+                    # lower_bound = center - 3*s
+                    # upper_bound = center + 3*s
                     assert lower_bound <= upper_bound
 
                     if value > upper_bound:
@@ -643,7 +647,9 @@ class ByNeighborhoodValidator(ProbeElementValidator):
             results.append(
                 ProbeElementValidatorResult(
                     verdict=verdict,
-                    valid_range=(lower_bound, upper_bound)))
+                    valid_range=(lower_bound, upper_bound)
+                )
+            )
         return results
 
 
