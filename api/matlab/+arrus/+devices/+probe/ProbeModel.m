@@ -5,24 +5,29 @@ classdef ProbeModel
     % :param nElements: (scalar (for 2-D probe) or a pair (for 3-D probe))\
     %   probe's number of elements 
     % :param pitch: (scalar (for 2-D probe) or a pair (for 3-D probe))\
-    %   probe's element pitch
+    %   probe's element pitch [m]
     % :param txFrequencyRange: (a pair - two-element vector) 
-    %   a range [min, max] of the available tx center frequencies  
+    %   a range [min, max] of the available tx center frequencies
+    % :param voltageRange: (a pair - two-element vector)
+    %   a range [min, max] of the available TX voltage
+    % :param curvatureRadius: probe curvature radius, equal 0 for linear arrays [m]
+
+    properties(Constant, Hidden=true)
+        REQUIRED_PARAMS = {"modelId", "nElements", "pitch", "txFrequencyRange", "voltageRange", "curvatureRadius"};
+    end
     
-    properties(GetAccess = public, SetAccess = private)
+    properties
         modelId arrus.devices.probe.ProbeModelId
         nElements 
         pitch
-        txFrequencyRange (1, 2)
+        txFrequencyRange
+        voltageRange
+        curvatureRadius
     end
     
     methods
-        function obj = ProbeModel(modelId, nElements, pitch, ...
-                     txFrequencyRange)
-            obj.modelId = modelId;
-            obj.nElements = nElements;
-            obj.pitch = pitch;
-            obj.txFrequencyRange = txFrequencyRange;
+        function obj = ProbeModel(varargin)
+            obj = arrus.utils.setArgs(obj, varargin, obj.REQUIRED_PARAMS);
         end
     end
     

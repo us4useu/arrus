@@ -3,6 +3,7 @@ classdef Us4R < handle
     properties(GetAccess = protected, SetAccess = immutable, Transient = true, Hidden = true)
         ptr arrus.Ptr {mustBeScalarOrEmpty}
     end
+
     methods
         function obj = Us4R(ptr)
             %
@@ -29,5 +30,13 @@ classdef Us4R < handle
             frequency = res{1, 1};
         end
 
+        function [model] = getProbeModel(obj)
+            %
+            % Returns probe model definition.
+            %
+            % :return: probe model definition, an instance of class arrus.devices.probe.ProbeModel
+            res = obj.ptr.callMethod("getProbeModel", 1);
+            model = res{1, 1};
+        end
     end
 end

@@ -53,6 +53,13 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                     std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
                 this->logging->addOutputStream(logFileStream, level);
             } else if (methodId == "createExampleObject") {
+                auto probeModel = ::arrus::matlab::devices::probe::ProbeModelConverter::from(
+                    ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]}).toCore();
+                std::cout << "Probe model" << std::endl;
+                std::cout << "n elements " << probeModel.getNumberOfElements()[0] << std::endl;
+                std::cout << "pitch " << probeModel.getPitch()[0] << std::endl;
+                std::cout << "curv radius " << probeModel.getCurvatureRadius() << std::endl;
+                outputs[0] = ::arrus::matlab::devices::probe::ProbeModelConverter::from(ctx, probeModel).toMatlab();
 //                auto scheme = ::arrus::matlab::ops::us4r::SchemeConverter::from(
 //                                  ctx, ::arrus::matlab::converters::MatlabElementRef{inputs[2]})
 //                                  .toCore();
