@@ -79,7 +79,7 @@ Devices
 
 .. autoclass:: arrus.devices.us4r.Us4R
     :members:
-    :exclude-members: start, stop, set_tgc, get_probe_model
+    :exclude-members: start, stop, get_probe_model
     :show-inheritance:
 
 .. autoclass:: arrus.devices.gpu.GPU

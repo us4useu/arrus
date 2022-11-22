@@ -182,6 +182,7 @@ namespace arrus {
 %include "arrus/core/api/framework/DataBuffer.h"
 
 %feature("director") OnNewDataCallbackWrapper;
+%feature("director") OnBufferOverflowCallbackWrapper;
 
 %inline %{
 class OnNewDataCallbackWrapper {

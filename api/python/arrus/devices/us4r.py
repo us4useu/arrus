@@ -95,6 +95,12 @@ class Us4R(Device):
         """
         self._handle.setVoltage(voltage)
 
+    def disable_hv(self):
+        """
+        Turns off HV.
+        """
+        self._handle.disableHV()
+
     def start(self):
         """
         Starts uploaded tx/rx sequence execution.
@@ -162,6 +168,40 @@ class Us4R(Device):
         """
         test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
         self._handle.setTestPattern(test_pattern_core)
+
+    def set_hpf_corner_frequency(self, frequency: int):
+        """
+        Enables digital High-Pass Filter and sets a given corner frequency.
+        Available corner frequency values (Hz): 4520'000, 2420'000,
+        1200'000, 600'000, 300'000, 180'000,
+        80'000, 40'000, 20'000.
+
+        :param frequency: corner high-pass filter frequency to set
+        """
+        self._handle.setHpfCornerFrequency(frequency)
+
+    def disable_hpf(self):
+        """
+        Disables digital high-pass filter.
+        """
+        self._handle.disableHpf()
+
+    def set_afe(self, addr, reg):
+        """
+        Writes AFE register
+
+        :param addr: register address (8-bit)
+        :param k: write value (16-bit)
+        """
+        self._handle.setAfe(addr, reg)
+
+    def get_afe(self, addr):
+        """
+        Reads AFE register value
+
+        :param addr: register address (8-bit)
+        """
+        return self._handle.getAfe(addr)
 
     @property
     def channels_mask(self):

@@ -60,8 +60,11 @@ def __get_sample_range(context, tx_delay_center):
     if init_delay == "tx_start":
         return sample_range
     elif init_delay == "tx_center":
-        fs = context.device.sampling_frequency/op.downsampling_factor
-        delay = get_init_delay(pulse, tx_delay_center) # [s]
+        if context.hardware_ddc is not None:
+            fs = context.device.sampling_frequency/context.hardware_ddc.decimation_factor
+        else:
+            fs = context.device.sampling_frequency/op.downsampling_factor
+        delay = get_init_delay(pulse, tx_delay_center)  # [s]
         delay = delay*fs
         return tuple(int(round(v+delay)) for v in sample_range)
     else:

@@ -125,6 +125,20 @@ public:
         return getArrayFactory().createArray(dims, start, end);
     }
 
+    template<typename T>
+    ::matlab::data::Array createTypedArray(const std::vector<T> &array, const framework::NdArray::Shape &shape) {
+        ::matlab::data::ArrayDimensions dims = shape.getValues();
+        // Note: C-contiguous shape to F-shape (just reverse orders).
+        std::reverse(std::begin(dims), std::end(dims));
+        auto nElements = array.size();
+        if(nElements == 0) {
+            return getArrayFactory().createEmptyArray();
+        }
+        auto *start = &array[0];
+        auto *end = start + nElements;
+        return getArrayFactory().createArray(dims, start, end);
+    }
+
 private:
     ::matlab::data::ArrayFactory factory;
     MatlabEnginePtr matlabEngine;

@@ -109,13 +109,15 @@ public:
     MOCK_METHOD(void, checkState, (), (override));
     MOCK_METHOD(uint32, getFirmwareVersion, (), (override));
     MOCK_METHOD(uint32, getTxFirmwareVersion, (), (override));
-    MOCK_METHOD(void, setAfeDemod, (float demodulationFrequency, float decimationFactor, const int16 *firCoefficients,
-                                    size_t nCoefficients), (override));
     MOCK_METHOD(void, setAfeDemod, (float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                                     size_t nCoefficients), (override));
     MOCK_METHOD(void, disableAfeDemod, (), (override));
     MOCK_METHOD(uint16_t, getAfe, (uint8_t address), (override));
     MOCK_METHOD(void, setAfe, (uint8_t address, uint16_t value), (override));
+    MOCK_METHOD(float, getUCDMeasuredVoltage, (uint8_t), (override));
+    MOCK_METHOD(float, getFPGAWallclock, (), (override));
+    MOCK_METHOD(void, setHpfCornerFrequency, (uint32_t), (override));
+    MOCK_METHOD(void, disableHpf, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
