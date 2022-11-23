@@ -22,7 +22,7 @@ from arrus.metadata import Metadata
 # number of samples skipped at the beggining - not used in further analysis
 _N_SKIPPED_SAMPLES = 90
 # number of frames skipped at the beggining - when need to 'warm up' the system
-_N_SKIPPED_SEQUENCES = 4
+_N_SKIPPED_SEQUENCES = 0
 
 LOGGER = arrus.logging.get_logger()
 
@@ -884,11 +884,14 @@ class ProbeHealthVerifier:
             LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
             # Record RF frames.
             # Acquire n consecutive frames
-            for i in range(n + _N_SKIPPED_SEQUENCES):
+            # Skip n first sequences
+            for _ in range(_N_SKIPPED_SAMPLES):
+                sess.run()
+                buffer.get()[0]
+            # Now do the actual acquisition.    
+            for i in range(n):
                 LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX: {i}")
                 sess.run()
-                if i < _N_SKIPPED_SEQUENCES:
-                    continue
                 data = buffer.get()[0]
                 rfs.append(np.squeeze(data.copy()))
             rfs = np.stack(rfs)

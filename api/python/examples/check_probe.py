@@ -73,12 +73,12 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-# from arrus.utils.probe_check import *
+from arrus.utils.probe_check import *
 
 #TODO: at the end below should be deleted, and above uncommented
-import sys
-sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
-from probe_check import *
+# import sys
+# sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
+# from probe_check import *
 
 
 # ------------------------- Utility functions ---------------------------------
