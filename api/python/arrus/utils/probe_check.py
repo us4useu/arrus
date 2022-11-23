@@ -896,3 +896,4 @@ class ProbeHealthVerifier:
                 rfs.append(np.squeeze(data.copy()))
             rfs = np.stack(rfs)
         return rfs, const_metadata, masked_elements
+

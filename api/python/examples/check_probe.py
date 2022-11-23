@@ -78,6 +78,7 @@ from arrus.utils.probe_check import *
 #TODO: at the end below should be deleted, and above uncommented
 # import sys
 # sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
+# sys.path.append( 'c:/users/zklim/repos/arrus/api/python/arrus/utils/' )
 # from probe_check import *
 
 
