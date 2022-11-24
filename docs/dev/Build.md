@@ -132,6 +132,3 @@ Just remember to use option `docs=on`
 ```
 pydevops --clean --options docs=on
 ```
-
-##### Installing (python)
-
