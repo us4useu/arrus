@@ -129,3 +129,7 @@ Just remember to use option `docs=on`
 ```
 pydevops --clean --options docs=on
 ```
+
+##### Installing (python)
+After the build is completed, the package is in `build/api/python`.
+To install use `pip install -e build/api/python` command.
