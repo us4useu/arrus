@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import typing
 import numpy as np
 from arrus.ops.operation import Operation
+from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -122,6 +123,30 @@ class TxRxSequence:
         """
         return {op.rx.get_n_samples() for op in self.ops}
 
+    def get_sample_range(self):
+        """
+        Returns a set of sample ranges that the Tx/Rx sequence defines.
+        """
+        return {op.rx.sample_range for op in self.ops}
+
+    def get_sample_range_unique(self):
+        """
+        Returns a unique sample range that the Tx/Rx sequence defines.
+        If there are couple of different number of samples in a single sequence,
+        a ValueError will be raised.
+        """
+        sample_range = self.get_sample_range()
+        if len(sample_range) > 1:
+            raise ValueError("All TX/RXs should acquire the same sample range.")
+        return next(iter(sample_range))
+
+
+@dataclass(frozen=True)
+class DigitalDownConversion:
+    demodulation_frequency: float
+    fir_coefficients: Iterable[float]
+    decimation_factor: float
+
 
 @dataclass(frozen=True)
 class DataBufferSpec:
@@ -153,6 +178,7 @@ class Scheme:
     output_buffer: DataBufferSpec = DataBufferSpec(type="FIFO", n_elements=4)
     work_mode: str = "HOST"
     processing: object = None
+    digital_down_conversion: DigitalDownConversion = None
 
 
 

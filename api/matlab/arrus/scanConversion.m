@@ -5,7 +5,7 @@ nSamp       = size(rfBfrIn,1);
 fs          = acq.rxSampFreq/proc.dec;
 
 radGridIn	= ( (acq.startSample - 1)/acq.rxSampFreq ...
-              + (0:(nSamp-1))'/fs ) * acq.c/2;
+              + (0:(nSamp-1))'/fs ) * proc.sos/2;
 
 if isnan(sys.curvRadius) && ...                 % linear/phased array
    all(diff(acq.txAng) == 0) && ...             % txAng = const

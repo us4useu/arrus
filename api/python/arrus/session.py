@@ -16,6 +16,7 @@ import arrus.devices.cpu
 import arrus.devices.gpu
 import arrus.ops.us4r
 import arrus.ops.imaging
+import arrus.ops.tgc
 import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.imaging
@@ -89,7 +90,8 @@ class Session(AbstractSession):
         seq = scheme.tx_rx_sequence
         processing = scheme.processing
 
-        kernel_context = self._create_kernel_context(seq, us_device_dto, medium)
+        kernel_context = self._create_kernel_context(seq, us_device_dto, medium,
+                                                     scheme.digital_down_conversion)
         raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
 
         batch_size = raw_seq.n_repeats
@@ -97,6 +99,24 @@ class Session(AbstractSession):
         actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
+        us_device.set_kernel_context(kernel_context)
+
+        # Set TGC curve.
+        if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
+            if seq.tgc_start is not None and seq.tgc_slope is not None:
+                # NOTE: the below line has to be called
+                # session.upload call, otherwise an invalid sampling
+                # frequency may be used.
+                us_device.set_tgc(arrus.ops.tgc.LinearTgc(
+                    start=seq.tgc_start,
+                    slope=seq.tgc_slope
+                ))
+            elif seq.tgc_curve is not None:
+                us_device.set_tgc(seq.tgc_curve)
+            else:
+                us_device.set_tgc([])
+        else:
+            us_device.set_tgc(seq.tgc_curve)
 
         # Prepare data buffer and constant context metadata
         fcm = arrus.core.getFrameChannelMapping(upload_result)
@@ -117,7 +137,7 @@ class Session(AbstractSession):
 
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(seq, raw_seq, us_device_dto, medium)
-        echo_data_description = self._create_data_description(raw_seq, us_device_dto, fcm)
+        echo_data_description = self._create_data_description(raw_seq, us_device, fcm)
 
         # --- Data buffer
         n_samples = raw_seq.get_n_samples()
@@ -131,9 +151,10 @@ class Session(AbstractSession):
         buffer = arrus.framework.DataBuffer(buffer_handle)
         input_shape = buffer.elements[0].data.shape
 
+        is_iq_data = scheme.digital_down_conversion is not None
         const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=echo_data_description,
-            input_shape=input_shape, is_iq_data=False, dtype="int16",
+            input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
             version=arrus.__version__
         )
 
@@ -150,12 +171,13 @@ class Session(AbstractSession):
                     extract_metadata=False
                 )
             if isinstance(processing, _imaging.Processing):
-                self.processing = arrus.utils.imaging.ProcessingRunner(
+                processing = arrus.utils.imaging.ProcessingRunner(
                     buffer, const_metadata, processing)
-                outputs = self.processing.outputs
+                outputs = processing.outputs
             else:
                 raise ValueError("Unsupported type of processing: "
                                  f"{type(processing)}")
+            self._current_processing = processing
         else:
             # Device buffer and const_metadata
             outputs = buffer, const_metadata
@@ -178,9 +200,7 @@ class Session(AbstractSession):
         """
         Stops execution of the scheme.
         """
-        _STOP_TIME = 2
         arrus.core.arrusSessionStopScheme(self._session_handle)
-        time.sleep(_STOP_TIME)
         if self._current_processing is not None:
             self._current_processing.stop()
 
@@ -261,9 +281,11 @@ class Session(AbstractSession):
             devices["/GPU:0"] = arrus.devices.gpu.GPU(0)
         return devices
 
-    def _create_kernel_context(self, seq, device, medium):
+    def _create_kernel_context(self, seq, device, medium, hardware_ddc):
         return arrus.kernels.kernel.KernelExecutionContext(
-            device=device, medium=medium, op=seq, custom={})
+            device=device, medium=medium, op=seq, custom={},
+            hardware_ddc=hardware_ddc
+        )
 
     def _create_frame_acquisition_context(self, seq, raw_seq, device, medium):
         return arrus.metadata.FrameAcquisitionContext(
@@ -272,8 +294,7 @@ class Session(AbstractSession):
 
     def _create_data_description(self, raw_seq, device, fcm):
         return arrus.metadata.EchoDataDescription(
-            sampling_frequency=device.sampling_frequency /
-                               raw_seq.ops[0].rx.downsampling_factor,
+            sampling_frequency=device.current_sampling_frequency,
             custom={"frame_channel_mapping": fcm}
         )
 

@@ -1058,14 +1058,14 @@ probe_models: [
             name: "mat-3d"
         }
         n_elements: 1024,
-        pitch: 0.1e-3,
+        pitch: 0.3e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
         },
         voltage_range: {
     	    begin: 0,
-    		end: 10
+    	    end: 20
     	}
     },
     {

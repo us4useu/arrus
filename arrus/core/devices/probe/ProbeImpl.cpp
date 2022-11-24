@@ -51,7 +51,8 @@ class ProbeTxRxValidator : public Validator<TxRxParamsSequence> {
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                           uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri, bool triggerSync) {
+                           uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
+                           const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
     // Validate input sequence
     ProbeTxRxValidator validator(format("tx rx sequence for {}", getDeviceId().toString()), model);
     validator.validate(seq);
@@ -104,7 +105,8 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
         rxPaddingRight.push_back(op.getRxPadding()[1]);
     }
 
-    auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync);
+    auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
+                                                 ddc);
     FrameChannelMapping::Handle actualFcm = remapFcm(fcm, rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
     return std::make_tuple(std::move(buffer), std::move(actualFcm));
 }
@@ -135,6 +137,7 @@ void ProbeImpl::unregisterOutputBuffer() {
 }
 
 // Remaps FCM according to given rx aperture active channels mappings.
+
 /**
  * This function reorders channels in FCM produced by ProbeAdapterImpl, so the order of channel
  * is correct even in case of some permutation between probe and adapter channels (e.g. like

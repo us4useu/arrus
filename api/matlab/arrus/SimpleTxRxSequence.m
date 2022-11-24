@@ -3,15 +3,16 @@ classdef SimpleTxRxSequence < Operation
     %
     % :param txCenterElement: vector of tx aperture center elements [element]
     % :param txApertureCenter: vector of tx aperture center positions [m]
-    % :param txApertureSize: size of the tx aperture [element]
+    % :param txApertureSize: vector of tx aperture sizes element]
     % :param rxCenterElement: vector of rx aperture center elements [element]
     % :param rxApertureCenter: vector of rx aperture center positions [m].
     % :param rxApertureSize: size of the rx aperture [element]
-    % :param txFocus: tx focal length [m]
-    % :param txAngle: tx angle [rad]
+    % :param txFocus: vector of tx focal lengths [m]
+    % :param txAngle: vector of tx angles [rad]
     % :param speedOfSound: speed of sound for [m/s]
-    % :param txFrequency: tx frequency [Hz]
-    % :param txNPeriods: number of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
+    % :param txVoltage: tx voltage [V]
+    % :param txFrequency: vector of tx frequencies [Hz]
+    % :param txNPeriods: vector of numbers of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
     % :param rxDepthRange: defines the end (if scalar) or
     %   the begining and the end (if two-element vector) \ 
     %   of the acquisition expressed by depth range [m]
@@ -37,24 +38,25 @@ classdef SimpleTxRxSequence < Operation
     properties
         txCenterElement (1,:) {mustBeFinite, mustBeReal}
         txApertureCenter (1,:) {mustBeFinite, mustBeReal}
-        txApertureSize (1,1)
+        txApertureSize (1,:)
         rxCenterElement (1,:) {mustBeFinite, mustBeReal}
         rxApertureCenter (1,:) {mustBeFinite, mustBeReal}
         rxApertureSize (1,1)
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txFrequency (1,1) {mustBeProperNumber}
-        txNPeriods (1,1) {mustBeInteger, mustBeProperNumber}
+        txVoltage (1,1) {mustBeNonnegative} = 0;
+        txFrequency (1,:) {mustBeProperNumber}
+        txNPeriods (1,:) {mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         nRepetitions (1,:) = 1
-        txPri (1,1) double {mustBePositive} = 100e-6
-        tgcStart (1,1)
-        tgcSlope (1,1)
+        txPri (1,:) double {mustBePositive}
+        tgcStart (1,:)
+        tgcSlope (1,:)
         fsDivider(1,1) {mustBeInteger, mustBePositive, ...
             mustBeLessThan(fsDivider, 257)} = 1
-        txInvert (1,1) {mustBeLogical} = 0
+        txInvert (1,:) {mustBeLogical} = false
     end
     
     methods
@@ -90,8 +92,12 @@ classdef SimpleTxRxSequence < Operation
                         length(obj.txApertureCenter) ...
                         length(obj.rxCenterElement) ...
                         length(obj.rxApertureCenter) ...
+                        length(obj.txApertureSize) ...
                         length(obj.txFocus) ...
-                        length(obj.txAngle) ]);
+                        length(obj.txAngle) ...
+                        length(obj.txFrequency) ...
+                        length(obj.txNPeriods) ...
+                        length(obj.txInvert) ]);
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
             obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
@@ -99,6 +105,12 @@ classdef SimpleTxRxSequence < Operation
             obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
+            obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
+            obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
+            obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
+            if ~isstring(obj.txApertureSize)
+                obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
+            end
             
             obj.txInvert = double(obj.txInvert);
             
@@ -114,13 +126,11 @@ function mustBeProperNumber(a)
 end
 
 function mustBeLogical(a)
-    if ~islogical(a) && ~isequal(a,1) && ~isequal(a,0)
+    if ~islogical(a) && ~all(any(a==[0;1],1),2)
         error('txInvert property must be equal one of the following: true, false, 1 or 0.')
     end
         
 end
-
-
 
 function mustBeXor(obj,fieldNames)
     

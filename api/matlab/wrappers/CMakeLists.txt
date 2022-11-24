@@ -27,16 +27,6 @@ matlab_add_mex(
     session/SessionClassImpl.h
     framework/BufferClassImpl.h
     framework/BufferElementClassImpl.h
-    #        session/convertSessionSettings.h
-    #        devices/convertDeviceId.h
-    #        devices/us4r/convertUs4RSettings.h
-    #        devices/us4r/convertUs4OEMSettings.h
-    #        devices/us4r/convertProbeAdapterSettings.h
-    #        devices/us4r/convertProbeAdapterModelId.h
-    #        devices/probe/convertProbeModel.h
-    #        devices/probe/convertProbeModelId.h
-    #        devices/probe/convertProbeSettings.h
-    #        devices/us4r/convertRxSettings.h
     MatlabStdoutBuffer.h
     LINK_TO
     arrus-core

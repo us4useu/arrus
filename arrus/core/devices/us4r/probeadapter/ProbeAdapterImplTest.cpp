@@ -74,7 +74,7 @@ createEmptySetTxRxResult(FrameChannelMapping::Us4OEMNumber us4oem, FrameChannelM
             builder.setChannelMapping(i, j, us4oem, i, j);
         }
     }
-    Us4OEMBuffer buffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
+    Us4OEMBuffer buffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)}, {});
     return std::make_tuple(buffer, builder.build());
 }
 
@@ -88,10 +88,11 @@ public:
             setTxRxSequence,
             (const TxRxParamsSequence &seq, const::arrus::ops::us4r::TGCCurve &tgc,
                     uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri,
-                    bool triggerSync),
+                    bool triggerSync, const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc),
             (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
     MOCK_METHOD(float, getSamplingFrequency, (), (override));
+    MOCK_METHOD(float, getCurrentSamplingFrequency, (), (const, override));
     MOCK_METHOD(void, startTrigger, (), (override));
     MOCK_METHOD(void, stopTrigger, (), (override));
     MOCK_METHOD(void, start, (), (override));
@@ -108,6 +109,15 @@ public:
     MOCK_METHOD(void, checkState, (), (override));
     MOCK_METHOD(uint32, getFirmwareVersion, (), (override));
     MOCK_METHOD(uint32, getTxFirmwareVersion, (), (override));
+    MOCK_METHOD(void, setAfeDemod, (float demodulationFrequency, float decimationFactor, const float *firCoefficients,
+                                    size_t nCoefficients), (override));
+    MOCK_METHOD(void, disableAfeDemod, (), (override));
+    MOCK_METHOD(uint16_t, getAfe, (uint8_t address), (override));
+    MOCK_METHOD(void, setAfe, (uint8_t address, uint16_t value), (override));
+    MOCK_METHOD(float, getUCDMeasuredVoltage, (uint8_t), (override));
+    MOCK_METHOD(float, getFPGAWallclock, (), (override));
+    MOCK_METHOD(void, setHpfCornerFrequency, (uint32_t), (override));
+    MOCK_METHOD(void, disableHpf, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
@@ -218,7 +228,7 @@ class ProbeAdapterChannelMapping1Test : public AbstractProbeAdapterImplTest {
 #define EXPECT_SEQUENCE_PROPERTY_NFRAMES(deviceId, matcher, nFrames) \
         do {                                                         \
             \
-            EXPECT_CALL(*(us4oems[deviceId].get()), setTxRxSequence(matcher, _, _, _, _, _)) \
+            EXPECT_CALL(*(us4oems[deviceId].get()), setTxRxSequence(matcher, _, _, _, _, _, _)) \
                 .WillOnce(Return(ByMove(createEmptySetTxRxResult(deviceId, nFrames, 32)))); \
         } while(0)
 
@@ -229,7 +239,7 @@ class ProbeAdapterChannelMapping1Test : public AbstractProbeAdapterImplTest {
     probeAdapter->setTxRxSequence(seq, defaultTGCCurve)
 
 #define US4OEM_MOCK_SET_TX_RX_SEQUENCE() \
-    setTxRxSequence(_, _, _, _, _, _)
+    setTxRxSequence(_, _, _, _, _, _, _)
 
 TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectly) {
     BitMask txAperture(64, false);
@@ -715,7 +725,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     }
     auto fcm1 = builder1.build();
     Us4OEMBuffer
-            us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)}, {});
+            us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)}, {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
@@ -793,7 +803,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
                               {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
@@ -887,7 +897,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
                               {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
@@ -976,7 +986,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     // No active channels
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
                               {});
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
@@ -1036,7 +1046,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
                               {});
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
@@ -1097,7 +1107,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<unsigned>({1, 1}), NdArray::DataType::INT16)},
+    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
                               {});
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
