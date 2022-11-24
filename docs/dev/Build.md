@@ -99,6 +99,9 @@ Just remember to use option `matlab=on`
 pydevops --clean --options j=8 matlab=on us4r_api_dir=/path/to/us4us/libraries
 ```
 
+After the build is completed, the package is available in the subdirectory `build/api/python`.
+To install it in your current Python environment, run `pip install -e build/api/python`.
+
 #### Documentation
 
 ##### Prerequisites
@@ -131,5 +134,4 @@ pydevops --clean --options docs=on
 ```
 
 ##### Installing (python)
-After the build is completed, the package is in `build/api/python`.
-To install use `pip install -e build/api/python` command.
+
