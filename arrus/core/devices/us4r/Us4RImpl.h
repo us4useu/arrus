@@ -106,8 +106,6 @@ public:
 
     void stop() override;
 
-    void trigger();
-
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;
@@ -122,7 +120,7 @@ public:
     void setLpfCutoff(uint32 value) override;
     void setDtgcAttenuation(std::optional<uint16> value) override;
     void setActiveTermination(std::optional<uint16> value) override;
-    void trigger() override;
+    void trigger();
 
     uint8_t getNumberOfUs4OEMs() override;
 

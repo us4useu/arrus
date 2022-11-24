@@ -14,6 +14,8 @@ import dataclasses
 import threading
 from collections import deque
 from collections.abc import Iterable
+import os
+from pathlib import Path
 
 import cupy
 if cupy.__version__ < "9.0.0":
@@ -1577,7 +1579,6 @@ class RxBeamformingImg(Operation):
 class ReconstructLri(Operation):
     """
     Rx beamforming for synthetic aperture imaging.
-
     Expected input data shape: n_emissions, n_rx, n_samples
     :param x_grid: output image grid points (OX coordinates)
     :param z_grid: output image grid points  (OZ coordinates)
@@ -1594,18 +1595,20 @@ class ReconstructLri(Operation):
 
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg is np:
-            raise ValueError("Currently reconstructLri operation is "
-                             "implemented for GPU only.")
+            raise ValueError("ReconstructLri operation is implemented for GPU only.")
 
     def prepare(self, const_metadata):
-        from pathlib import Path
-        import os
+
+        import cupy as cp
+
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
         _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri.cu")).read_text()
-        self._kernel = self.num_pkg.RawKernel(_kernel_source, "iqRaw2Lri")
+        self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
+        self._kernel = self._kernel_module.get_function("iqRaw2Lri")
+        self._z_elem_const = self._kernel_module.get_global("zElemConst")
+        self._tang_elem_const = self._kernel_module.get_global("tangElemConst")
 
         # INPUT PARAMETERS.
-
         # Input data shape.
         self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
 
@@ -1620,10 +1623,11 @@ class ReconstructLri(Operation):
         self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
         x_block_size = min(self.x_size, 16)
         z_block_size = min(self.z_size, 16)
-        self.block_size = (z_block_size, x_block_size, 1)
+        tx_block_size = min(self.n_tx, 4)
+        self.block_size = (z_block_size, x_block_size, tx_block_size)
         self.grid_size = (int((self.z_size-1)//z_block_size + 1),
                           int((self.x_size-1)//x_block_size + 1),
-                          self.n_tx)
+                          int((self.n_tx-1)//tx_block_size + 1))
         self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
         self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
 
@@ -1637,10 +1641,22 @@ class ReconstructLri(Operation):
         element_pos_x = probe_model.element_pos_x
         element_pos_z = probe_model.element_pos_z
         element_angle_tang = np.tan(probe_model.element_angle)
-        self.x_elem = self.num_pkg.asarray(element_pos_x, dtype=self.num_pkg.float32)
-        self.z_elem = self.num_pkg.asarray(element_pos_z, dtype=self.num_pkg.float32)
-        self.tang_elem = self.num_pkg.asarray(element_angle_tang, dtype=self.num_pkg.float32)
+
         self.n_elements = probe_model.n_elements
+
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < 256*3*4: # 3 float32 arrays, 256 elements max
+            raise ValueError("There is not enough constant memory available!")
+
+        x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
+        self._x_elem_const = _get_const_memory_array(
+            self._kernel_module, name="xElemConst", input_array=x_elem)
+        z_elem = np.asarray(element_pos_z, dtype=self.num_pkg.float32)
+        self._z_elem_const = _get_const_memory_array(
+            self._kernel_module, name="zElemConst", input_array=z_elem)
+        tang_elem = np.asarray(element_angle_tang, dtype=self.num_pkg.float32)
+        self._tang_elem_const = _get_const_memory_array(
+            self._kernel_module, name="tangElemConst", input_array=tang_elem)
 
         # TX aperture description
         # Convert the sequence to the positions of the aperture centers
@@ -1689,8 +1705,7 @@ class ReconstructLri(Operation):
         params = (
             self.output_buffer,
             data,
-            self.x_elem, self.z_elem, self.tang_elem, self.n_elements, # DONE
-            self.n_tx, self.n_samples,
+            self.n_elements, self.n_tx, self.n_samples,
             self.z_pix, self.z_size,
             self.x_pix, self.x_size,
             self.sos, self.fs, self.fn,
@@ -1923,4 +1938,13 @@ class RemapToLogicalOrder(Operation):
     def process(self, data):
         self._remap_fn(data)
         return self._output_buffer
+
+
+def _get_const_memory_array(module, name, input_array):
+    import cupy as cp
+    const_arr_ptr = module.get_global(name)
+    const_arr = cp.ndarray(shape=input_array.shape, dtype=input_array.dtype,
+                           memptr=const_arr_ptr)
+    const_arr.set(input_array)
+    return const_arr
 

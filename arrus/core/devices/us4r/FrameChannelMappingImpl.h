@@ -31,8 +31,7 @@ struct tuple_element<2, ::arrus::devices::FrameChannelMappingAddress> {
 };
 
 template<std::size_t Index>
-std::tuple_element_t<Index, ::arrus::devices::FrameChannelMappingAddress> get(
-    const ::arrus::devices::FrameChannelMappingAddress& address)
+std::tuple_element_t<Index, ::arrus::devices::FrameChannelMappingAddress> get(const ::arrus::devices::FrameChannelMappingAddress& address)
 {
     static_assert(Index < 3, "Index out of bounds for FrameChannelMappingAddress");
     if constexpr (Index == 0) return address.getUs4oem();

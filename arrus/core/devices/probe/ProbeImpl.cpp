@@ -7,6 +7,7 @@
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 
 namespace arrus::devices {
+using namespace std;
 
 ProbeImpl::ProbeImpl(const DeviceId &id, ProbeModel model,
                      ProbeAdapterImplBase::RawHandle adapter,
@@ -189,8 +190,11 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
         auto nChannels = adapterFcm->getNumberOfLogicalChannels();
         for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
             if(pch >= paddingLeft && pch < (nChannels-paddingRight)) {
-                auto [us4oem, physicalFrame, physicalChannel] =
-                    adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
+		    // std::tuple<FrameChannelMapping::Us4OEMNumber, FrameChannelMapping::FrameNumber, int8_t> [us4oem, physicalFrame, physicalChannel] =
+		    auto fcmAddress = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
+		    auto us4oem = fcmAddress.getUs4oem();
+		    auto physicalFrame = fcmAddress.getFrame();
+		    auto physicalChannel = fcmAddress.getChannel();
 
                 builder.setChannelMapping(frameNumber, pch, us4oem, physicalFrame, physicalChannel);
             }

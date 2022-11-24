@@ -1,0 +1,37 @@
+
+us4r: {
+    probe_id: {
+        manufacturer: "atl/philips"
+        name: "l7-4"
+    }
+
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "atl/philips"
+    }
+
+    # Default initial values.
+    rx_settings: {
+        lna_gain: 24
+        pga_gain: 30
+        lpf_cutoff: 15000000
+        active_termination: 200
+        dtgc_attenuation: 0
+    }
+
+    hv: {
+        model_id {
+            manufacturer: "us4us"
+            name: "hv256"
+        }
+    }
+
+    channels_mask: {}
+
+    us4oem_channels_mask: [
+        {},
+        {}
+    ]
+}
+
+
