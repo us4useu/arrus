@@ -363,7 +363,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
                     std::this_thread::sleep_for(1ms);
                 }
                 if(isMaster) {
-                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->SyncReceive();
                     }
                 }
@@ -389,7 +389,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
                     std::this_thread::sleep_for(1ms);
                 }
                 if(isMaster) {
-                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->SyncTransfer();
                     }
                 }
