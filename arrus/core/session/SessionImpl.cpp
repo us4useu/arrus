@@ -134,6 +134,7 @@ void SessionImpl::stopScheme() {
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
     us4r->stop();
     state = State::STOPPED;
+    getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
 }
 
 void SessionImpl::run() {

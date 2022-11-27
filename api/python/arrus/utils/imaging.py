@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from pathlib import Path
 import os
 import importlib.util
+from enum import Enum
 
 
 def is_package_available(package_name):
@@ -184,14 +185,23 @@ class Buffer:
 
 class ProcessingRunner:
     """
+    Runs processing on a specified processing device (GPU in particular).
+
+    Currently only GPU:0 is supported.
+
     Currently, the input buffer should be located in CPU device,
     output buffer should be located on GPU.
     """
+
+    class State(Enum):
+        READY = 1
+        CLOSED = 2
 
     def __init__(self, input_buffer, const_metadata, processing):
         import cupy as cp
         # Initialize pipeline.
         self.cp = cp
+        # Pin input buffer.
         self.input_buffer = self.__register_buffer(input_buffer)
         default_buffer = ProcessingBuffer(size=2, type="locked")
 
@@ -213,6 +223,7 @@ class ProcessingRunner:
                            for m in self.out_metadata]
         # Wait for all the initialization done in by the Pipeline.
         cp.cuda.Stream.null.synchronize()
+        # Pin output buffers.
         self.out_buffers = self.__register_buffer(self.out_buffers)
         if not isinstance(self.out_buffers, Iterable):
             self.out_buffers = (self.out_buffers, )
@@ -235,6 +246,8 @@ class ProcessingRunner:
         if processing.on_buffer_overflow_callback is not None:
             self.input_buffer.append_on_buffer_overflow_callback(
                 processing.on_buffer_overflow_callback)
+        self._state = ProcessingRunner.State.READY
+        self._state_lock = threading.Lock()
 
     @property
     def outputs(self):
@@ -293,10 +306,14 @@ class ProcessingRunner:
             self.processing_stream.launch_host_func(self.__release, gpu_element)
             self.processing_stream.launch_host_func(self.callback, out_elements)
 
-    def stop(self):
-        # cleanup
-        self.__unregister_buffer(self.input_buffer)
-        self.__unregister_buffer(self.out_buffers)
+    def close(self):
+        with self._state_lock:
+            if self._state == ProcessingRunner.State.CLOSED:
+                # Already closed.
+                return
+            self.__unregister_buffer(self.input_buffer)
+            self.__unregister_buffer(self.out_buffers)
+            self._state = ProcessingRunner.State.CLOSED
 
     def sync(self):
         self.data_stream.synchronize()
