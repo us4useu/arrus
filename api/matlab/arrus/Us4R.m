@@ -118,40 +118,20 @@ classdef Us4R < handle
                 % old adapter type (00001111)
                 obj.sys.nChCont = obj.sys.nChArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
-                
-                obj.sys.selElem = (1:128).' + (0:(nArius-1))*128;
-                obj.sys.actChan = true(128,nArius);
             elseif obj.sys.adapType == 1 || obj.sys.adapType == -1
                 % place for new adapter support
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/abs(obj.sys.adapType);
-                
-                obj.sys.selElem = reshape(  (1:obj.sys.nChArius).' ...
-                                          + (0:3)*obj.sys.nChArius*nArius, [], 1) ...
-                                          + (0:(nArius-1))*obj.sys.nChArius;  % [nchannels x nArius]
-                obj.sys.actChan = [true(96,nArius); false(32,nArius)];
-                
             elseif obj.sys.adapType == 2
                 % new adapter type (01010101)
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/obj.sys.adapType;
-                
-%                 obj.sys.selElem = reshape((1:obj.sys.nChArius).' + (0:3)*obj.sys.nChArius*nArius,[],1) + (0:(nArius-1))*obj.sys.nChArius;
-%                 nChanTot = obj.sys.nChArius*4*nArius;
-                obj.sys.selElem = repmat((1:128).',[1 nArius]);
-                obj.sys.actChan = mod(ceil((1:128)' / obj.sys.nChArius) - 1, nArius) == (0:(nArius-1));
             elseif obj.sys.adapType == 3
                 obj.sys.nChCont = obj.sys.nChArius * nArius;
                 obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
-                
-                obj.sys.selElem = reshape((1:obj.sys.nChArius).' + (0:3)*obj.sys.nChArius*nArius, [], 1) ...
-                                + [(0:(nArius/2-1))*2, (0:(nArius/2-1))*2+1]*obj.sys.nChArius;  % [nchannels x nArius]
-                
-                obj.sys.actChan = [true(32, nArius); false(96, nArius)]; % [nchannels x nArius]
             else
                 error("ARRUS:IllegalArgument", ['Unrecognized adapter type: ', obj.sys.adapType]);
             end
-            obj.sys.actChan = obj.sys.actChan & any(obj.sys.selElem == reshape(obj.sys.probeMap, 1, 1, []),3);
             
             obj.sys.isHardwareProgrammed = false;
         end
@@ -205,9 +185,6 @@ classdef Us4R < handle
                 'tgcStart', sequenceOperation.tgcStart, ...
                 'tgcSlope', sequenceOperation.tgcSlope, ...
                 'txInvert', sequenceOperation.txInvert);
-            
-            % Validate compatibility of the sequence & the hardware
-            obj.validateSequence;
             
             % Program hardware
             if nargin<4 || enableHardwareProgramming
@@ -540,24 +517,6 @@ classdef Us4R < handle
             
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
             obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
-            
-            %% Number of: SubTx, Firings, Triggers
-            nSubTx = zeros(1,obj.sys.nArius);
-            for iArius=0:(obj.sys.nArius-1)
-                rxApMaskSelect = obj.seq.rxApMask(obj.sys.selElem(:,iArius+1), :) & obj.sys.actChan(:,iArius+1);
-                iSubTx = cumsum(reshape(rxApMaskSelect,obj.sys.nChArius,4,obj.seq.nTx),2);
-                nSubTx(iArius+1) = max(iSubTx(:));
-            end
-            obj.seq.nSubTx = max(nSubTx);
-            obj.seq.nFire = obj.seq.nTx * obj.seq.nSubTx;
-            
-            if isstring(obj.seq.nRep) && obj.seq.nRep == "max"
-                obj.seq.nRep = min(floor([ ...
-                                2^14 / obj.seq.nFire, ...
-                                2^32 / obj.seq.nFire / (obj.sys.nChArius * obj.seq.nSamp * 2 * (1 + double(obj.seq.iqEnable)))]));
-                disp(['nRepetitions set to ' num2str(obj.seq.nRep) '.']);
-            end
-            obj.seq.nTrig = obj.seq.nFire * obj.seq.nRep;
 
         end
 
@@ -851,41 +810,6 @@ classdef Us4R < handle
 
         end
         
-        
-        function validateSequence(obj)
-            
-            %% Validate number of firings
-            if obj.seq.nFire > 2048
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of firings (' num2str(obj.seq.nFire) ') cannot exceed 1024.' ]);
-            end
-            
-            %% Validate number of triggers
-            if obj.seq.nTrig > 16384
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of triggers (' num2str(obj.seq.nTrig) ') cannot exceed 16384.']);
-            end
-            
-            %% Validate number of samples
-            if obj.seq.nSamp > 65536 / (1 + double(obj.seq.iqEnable))
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of samples ' num2str(obj.seq.nSamp) ' cannot exceed ' num2str(65536 / (1 + double(obj.seq.iqEnable))) '.'])
-            end
-            
-            if mod(obj.seq.nSamp,64) ~= 0
-                error("ARRUS:IllegalArgument", ...
-                        ['Number of samples (' num2str(obj.seq.nSamp) ') must be divisible by 64.']);
-            end
-            
-            %% Validate memory usage
-            memoryRequired = obj.sys.nChArius * obj.seq.nSamp * 2 * (1 + double(obj.seq.iqEnable)) * obj.seq.nTrig;  % [B]
-            if memoryRequired > 2^32  % 4GB
-                error("ARRUS:OutOfMemory", ...
-                        ['Required memory per module (' num2str(memoryRequired/2^30) 'GB) cannot exceed 4GB.']);
-            end
-            
-        end
-        
         function programHW(obj)
             
             import arrus.ops.us4r.*;
@@ -926,17 +850,10 @@ classdef Us4R < handle
              obj.buffer.frameId, ...
              obj.buffer.channelId] = obj.session.upload(scheme);
             
-            obj.buffer.framesOffset
-            obj.buffer.framesNumber
-            obj.buffer.oemId
-            obj.buffer.frameId
-            obj.buffer.channelId
-            
             nChan = obj.sys.nChArius;
             nRep = obj.seq.nRep;
             iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
             
-
             obj.buffer.reorgAddrDest = (1 : obj.seq.rxApSize*nTx*nRep).';
             obj.buffer.reorgAddrOrig = 1 + ...
                 ( obj.buffer.framesOffset(1 + obj.buffer.oemId) + ...                 % offset due to oemId
@@ -953,11 +870,9 @@ classdef Us4R < handle
             if ~obj.sys.isHardwareProgrammed
                 error("execSequence: hardware is not programmed, sequence cannot be executed");
             end
-
-            nArius	= obj.sys.nArius;
+            
             nChan	= obj.sys.nChArius;
             nSamp	= obj.seq.nSamp;
-            nSubTx	= obj.seq.nSubTx;
             nTx     = obj.seq.nTx;
             nRep	= obj.seq.nRep;
             nTrig	= nTx*nSubTx*nRep;
