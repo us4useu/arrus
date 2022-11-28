@@ -22,6 +22,7 @@ Release notes
     - us4R: exposed the possibility to change hardware high-pass filter cutoff frequency
     - arrus.utils.imaging: changed the default filter type for BandpassFilter to hamming windows (firwin)
     - Implemented a general delay and sum look up table beamformer for 3D output volume reconstruction
+    - From now on TGC curve gain values will be clipped to the [min hardware gain, max hardware gain] range by default. Change arrus.ops.tgc.LinearTGC.clip to False to restore the previous behavior.
 
 
 - MATLAB API:
