@@ -55,7 +55,7 @@ classdef SimpleTxRxSequence < Operation
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         iqEnable (1,1) {mustBeLogical} = true
-        decimation (1,1) {mustBePositive}
+        decimation (1,1) {mustBePositive} = 1
         nRepetitions (1,:) = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
