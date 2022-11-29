@@ -374,10 +374,17 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
 
                 ius4oem->ScheduleReceive(firing, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
-                if (!op.isRxNOP() || this->isMaster()) {
-                    if (batchIdx == 0) {
-                        rxBufferElementParts.emplace_back(outputAddress, nBytes, firing);
+                if (batchIdx == 0) {
+                    size_t partSize = 0;
+                    if(!op.isRxNOP() || this->isMaster()) {
+                        partSize = nBytes;
                     }
+                    // Otherwise, make an empty part (i.e. partSize = 0).
+                    // (note: the firing number will be needed for transfer configuration to release element in
+                    // us4oem sequencer).
+                    rxBufferElementParts.emplace_back(outputAddress, partSize, firing);
+                }
+                if (!op.isRxNOP() || this->isMaster()) {
                     // Also, allows rx nops for master module.
                     // Master module gathers frame metadata, so we cannot miss any of it.
                     // All RX nops are just overwritten.
