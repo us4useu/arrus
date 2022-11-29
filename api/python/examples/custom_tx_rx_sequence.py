@@ -81,6 +81,7 @@ def main():
             processing=Pipeline(
                 steps=(
                     RemapToLogicalOrder(),
+                    Squeeze(), 
                     SelectFrames([0]),
                     Squeeze(),
                     Lambda(lambda data: data-(data.mean(axis=0).astype(np.int16)))
