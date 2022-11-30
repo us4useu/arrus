@@ -818,7 +818,7 @@ class DigitalDownConversion(Operation):
     IQ demodulation, decimation.
     """
     def __init__(self, decimation_factor, fir_params=None,
-                 fir_cutoff_relative=1.5, fir_order=15, fir_type="hamming"):
+                 fir_cutoff_relative=1.0, fir_order=15, fir_type="hamming"):
         self.decimation_factor = decimation_factor
         self.fir_cutoff_relative = fir_cutoff_relative
         self.fir_order = fir_order
@@ -833,9 +833,10 @@ class DigitalDownConversion(Operation):
         self.demodulator = QuadratureDemodulation()
         center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         sampling_frequency = const_metadata.data_description.sampling_frequency
+        cutoff_freq = center_frequency*self.fir_cutoff_relative
         fir_coefficients = scipy.signal.firwin(
                 numtaps=self.fir_order,
-                cutoff=center_frequency*(self.fir_cutoff_relative - 1),
+                cutoff=cutoff_freq,
                 window=self.fir_type,
                 fs=sampling_frequency,
                 pass_zero="lowpass",
