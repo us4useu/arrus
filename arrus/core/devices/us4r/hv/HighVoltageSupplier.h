@@ -43,6 +43,14 @@ public:
         return hv->GetHVVoltage();
     }
 
+    void setRDAC(unsigned char rdac) {
+        hv->SetHVRDAC(rdac);
+    }
+
+    unsigned char getRDAC() {
+        return hv->GetHVRDAC();
+    }
+
     float getMeasuredPVoltage() {
         return hv->GetMeasuredHVPVoltage();
     }
