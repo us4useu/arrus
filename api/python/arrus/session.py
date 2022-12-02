@@ -202,7 +202,7 @@ class Session(AbstractSession):
         """
         arrus.core.arrusSessionStopScheme(self._session_handle)
         if self._current_processing is not None:
-            self._current_processing.stop()
+            self._current_processing.close()
 
     def run(self):
         """
@@ -223,6 +223,7 @@ class Session(AbstractSession):
         Sets the state of the session to closed, any subsequent call to the object
         methods (e.g. upload, startScheme..) will result in exception.
         """
+        self.stop_scheme()
         self._session_handle.close()
 
     def get_device(self, path: str):
