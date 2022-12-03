@@ -97,7 +97,8 @@ class StdoutLogger:
     def log(self, msg):
         print(msg)
 
-
+#TODO: masked_channels can be get from metadata?
+# consider method get_masked_channels()
 @dataclasses.dataclass(frozen=True)
 class Footprint:
     """
@@ -108,12 +109,16 @@ class Footprint:
     :param metadata: arrus metadata
     :param masked channels: list of channels masked during footprint acquisition
     :param timestamp: time of footprint creation in nanoseconds since epoch
-                  (see time.time_ns() description)
+        (see time.time_ns() description)
+    :param subsequences: the total sequence have some max txrx events, and a sequence
+        corresponding to single frame have to be splitted to subsequences.
+        This is list of this subsequences (need for exact footprint sequence repetition).
     """
     rf: np.ndarray
     metadata: Metadata
     masked_elements: tuple
     timestamp: int
+    subsequences: list
 
     def get_number_of_frames(self):
         return self.rf.shape[0]
@@ -123,6 +128,9 @@ class Footprint:
 
     def get_sequence(self):
         return self.metadata.context.sequence
+
+    def get_subsequences(self):
+        return self.subsequences
 
 
 @dataclasses.dataclass(frozen=True)
@@ -540,7 +548,7 @@ class ByNeighborhoodValidator(ProbeElementValidator):
               - exclude from the neighborhood all elements which have an
                 amplitude outside the active_range
                 (see FeatureDescriptor class), that is they seem to be inactive
-                e.g. they were turned off using channels mask in the system
+                # e.g. they were turned off using channels mask in the system
                 configuration,
               - if the number of active elements is less than the
                 min_num_of_neighbors, set verdict for the element to
@@ -671,22 +679,27 @@ class ProbeHealthVerifier:
             tx_frequency: float,
             nrx: int=32,
             voltage: int=5,
+            footprint: Footprint=None,
+            max_subsequence_length: int=128,
     )-> Footprint:
         """
         Creates and returns Footprint object.
         """
-        rfs, metadata, masked_elements = self._acquire_rf_data(
+        rfs, metadata, masked_elements, subsequences = self._acquire_rf_data(
             cfg_path,
             n,
             tx_frequency,
             nrx,
             voltage,
+            footprint,
+            max_subsequence_length,
         )
         footprint = Footprint(
             rf=rfs,
             metadata=metadata,
             masked_elements=masked_elements,
             timestamp=time.time_ns(),
+            subsequences=subsequences,
         )
         return footprint
 
@@ -700,6 +713,7 @@ class ProbeHealthVerifier:
             nrx: int=32,
             voltage: int=5,
             footprint: Footprint=None,
+            max_subsequence_length: int=128,
     )-> ProbeHealthReport:
         """
         Checks probe elements by validating selected features
@@ -723,13 +737,14 @@ class ProbeHealthVerifier:
                           if given, footprint tx/rx scheme will be used
         :return: an instance of the ProbeHealthReport
         """
-        rfs, metadata, masked_elements = self._acquire_rf_data(
+        rfs, metadata, masked_elements, subsequences = self._acquire_rf_data(
             cfg_path=cfg_path,
             n=n,
             tx_frequency=tx_frequency,
             nrx=nrx,
             voltage=voltage,
             footprint=footprint,
+            max_subsequence_length=max_subsequence_length,
         )
         health_report = self._check_probe_data(
             rfs=rfs,
@@ -828,7 +843,8 @@ class ProbeHealthVerifier:
             tx_frequency,
             nrx,
             voltage,
-            footprint=None,
+            footprint,
+            max_subsequence_length,
     ):
         """
         Acquires rf data. If footprint is given the footprint sequence is used,
@@ -843,37 +859,41 @@ class ProbeHealthVerifier:
             us4r = sess.get_device("/Us4R:0")
             n_elements = us4r.get_probe_model().n_elements
             masked_elements = us4r.channels_mask
+            #TODO: consider footprint.masked_elements use.
+            # It is possible, that masked_elements variable above
+            # is different to footprint.masked_elements.
+            # Use set sum?
             if footprint is None:
-                seq = LinSequence(
-                    tx_aperture_center_element=np.arange(0, n_elements),
-                    tx_aperture_size=1,
-                    tx_focus=30e-3,
-                    pulse=Pulse(
-                        center_frequency=tx_frequency,
-                        n_periods=0.5,
-                        inverse=False,
-                    ),
-                    rx_aperture_center_element=np.arange(0, n_elements),
-                    rx_aperture_size=nrx,
-                    rx_sample_range=(0, 1024),
-                    pri=1000e-6,
-                    tgc_start=14,
-                    tgc_slope=0,
-                    downsampling_factor=1,
-                    speed_of_sound=1490,
-                )
+                subsequences = []
+                n_subsequences = np.ceil(n_elements/max_subsequence_length).astype(int)
+                subapertures = np.array_split(np.arange(n_elements), n_subsequences)
+                for i in range(n_subsequences):
+
+                    seq = LinSequence(
+                        tx_aperture_center_element=subapertures[i],
+                        tx_aperture_size=1,
+                        tx_focus=30e-3,
+                        pulse=Pulse(
+                            center_frequency=tx_frequency,
+                            n_periods=0.5,
+                            inverse=False,
+                        ),
+                        rx_aperture_center_element=subapertures[i],
+                        rx_aperture_size=nrx,
+                        rx_sample_range=(0, 1024),
+                        pri=1000e-6,
+                        tgc_start=14,
+                        tgc_slope=0,
+                        downsampling_factor=1,
+                        speed_of_sound=1490,
+                    )
+                    subsequences.append(seq)
             else:
-                seq = footprint.get_sequence()
+                # seq = footprint.get_sequence()
+                subsequences = footprint.get_subsequences()
                 n = footprint.get_number_of_frames()
                 print("Sequence loaded from footprint.")
 
-            scheme = Scheme(
-                tx_rx_sequence=seq,
-                processing=rf_reorder,
-                work_mode="MANUAL",
-            )
-            buffer, const_metadata = sess.upload(scheme)
-            rfs = []
             if voltage > 15:
                 raise ValueError("The voltage can not be higher "
                                  "than 15V for probe check")
@@ -885,15 +905,44 @@ class ProbeHealthVerifier:
             # Record RF frames.
             # Acquire n consecutive frames
             # Skip n first sequences
+
+            # for seq in sequences:
+                # scheme = Scheme(
+                    # tx_rx_sequence=seq,
+                    # processing=rf_reorder,
+                    # work_mode="MANUAL",
+                # )
+            # buffer, const_metadata = sess.upload(scheme)
+
+            # Do dummy acquisition
+            scheme = Scheme(
+                tx_rx_sequence=subsequences[0],
+                processing=rf_reorder,
+                work_mode="MANUAL",
+            )
+            buffer, const_metadata = sess.upload(scheme)
             for _ in range(_N_SKIPPED_SAMPLES):
                 sess.run()
                 buffer.get()[0]
+                sess.stop_scheme()
+
             # Now do the actual acquisition.    
+            rfs = []
             for i in range(n):
                 LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX: {i}")
-                sess.run()
-                data = buffer.get()[0]
-                rfs.append(np.squeeze(data.copy()))
+                seqrfs = []
+                for seq in subsequences:
+                    scheme = Scheme(
+                        tx_rx_sequence=seq,
+                        processing=rf_reorder,
+                        work_mode="MANUAL",
+                    )
+                    buffer, const_metadata = sess.upload(scheme)
+                    sess.run()
+                    data = buffer.get()[0]
+                    sess.stop_scheme()
+                    seqrfs.append(np.squeeze(data.copy()))
+                rfs.append(np.stack(seqrfs, axis=1))
             rfs = np.stack(rfs)
-        return rfs, const_metadata, masked_elements
+        return rfs, const_metadata, masked_elements, subsequences
 
