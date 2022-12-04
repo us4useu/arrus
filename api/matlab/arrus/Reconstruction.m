@@ -6,12 +6,12 @@ classdef Reconstruction < Operation
     % :param filterACoeff: 1-D filter denominator coefficient
     % :param filterBCoeff: 1-D filter numerator coefficient
     % :param filterDelay: delay introduced by the filter [samples] (not implemented yet)
-    % :param iqEnable: boolean, enable iq signal reconstruction instead of raw RF
-    % :param cicOrder: order of the Cascaded-Integrator-Comb anti-aliasing filter
+    % :param swDdcEnable: boolean, enable software digital down convertion
     % :param decimation: decimation factor
     % :param xGrid: (1, width) vector, x-coordinates of the image pixels [m]
     % :param zGrid: (1, depth) vector z-coordinates of the image pixels [m]
     % :param sos: speed of sound used for reconstruction [m/s]
+    % :param rxApod: apodization window
     % :param bmodeEnable: boolean, enable B-Mode reconstruction
     % :param colorEnable: boolean, enable Color Doppler reconstruction and duplex imaging
     % :param vectorEnable: boolean, enable Vector Doppler reconstruction and duplex imaging
@@ -34,8 +34,7 @@ classdef Reconstruction < Operation
         filterACoeff
         filterBCoeff
         filterDelay = 0
-        iqEnable = true
-        cicOrder = 2
+        swDdcEnable
         decimation
         xGrid
         zGrid

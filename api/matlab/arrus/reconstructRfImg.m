@@ -7,12 +7,18 @@ function[rfBfr,rfTx] = reconstructRfImg(rfRaw,sys,acq,proc)
 % 
 % Inputs:
 % rfRaw                     - (nSamp,nRx,nTx) raw rf data
-%                           rx aperture must cover all the probe elements;
-% sys                       - system-related parameters
-% sys.nElem                 - [elem] number of probe elements
-% sys.pitch                 - [m] transducer pitch
+%                             rx aperture must cover all the probe elements;
 % 
+% sys                       - system-related parameters
+% sys.pitch                 - [m] transducer pitch
+% sys.nElem                 - [elem] number of probe elements
+% sys.xElem                 - [elem] x-position of probe elements
+% 
+% acq                       - acquisition-related parameters
 % acq.type                  - 'sta' or 'pwi' for STA scan or PWI scan
+% acq.rxApOrig              - [elem] rx aperture origin element
+% acq.startSample           - [samp] starting sample number
+% acq.txDelCent             - [s] tx aperture center delay
 % acq.rxSampFreq            - [Hz] sampling frequency
 % acq.txFreq                - [Hz] carrier (nominal) frequency
 % acq.txNPer                - [] number of periods in the emitted pulse
@@ -20,9 +26,11 @@ function[rfBfr,rfTx] = reconstructRfImg(rfRaw,sys,acq,proc)
 % acq.txApCent              - [m] x-positions of tx aperture center
 % acq.txFoc                 - [m] focal length for STA scheme
 % acq.txAng                 - [rad] tilting angles for PWI scheme
+% acq.hwDdcEnable           - [logical] hardware DDC enable
 % 
-% proc.dec                  - [] decimation factor
-% proc.iqEnable             - [logical] 
+% proc                      - processing-related parameters
+% proc.swDdcEnable          - [logical] software DDC enable
+% proc.dec                  - [] software DDC decimation factor
 % proc.xGrid                - [m] (1,xSize) x-grid vector for output rf image
 % proc.zGrid                - [m] (1,zSize) z-grid vector for output rf image
 % proc.txApod               - [] number of sigmas in the gaussian window used in tx apodization (0 -> rect. window)
@@ -122,7 +130,7 @@ for iTx=1:nTx
     wghRx	= txApod(:,:,iTx).*rxApod;
     
     % modulate if iq signal is used
-    if proc.iqEnable
+    if acq.hwDdcEnable || proc.swDdcEnable
         rfRx	= rfRx.*exp(1i*2*pi*acq.txFreq*delTot);
     end
     

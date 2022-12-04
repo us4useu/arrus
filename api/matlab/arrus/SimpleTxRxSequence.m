@@ -3,7 +3,7 @@ classdef SimpleTxRxSequence < Operation
     %
     % :param txCenterElement: vector of tx aperture center elements [element]
     % :param txApertureCenter: vector of tx aperture center positions [m]
-    % :param txApertureSize: vector of tx aperture sizes element]
+    % :param txApertureSize: vector of tx aperture sizes [element]
     % :param rxCenterElement: vector of rx aperture center elements [element]
     % :param rxApertureCenter: vector of rx aperture center positions [m].
     % :param rxApertureSize: size of the rx aperture [element]
@@ -19,9 +19,9 @@ classdef SimpleTxRxSequence < Operation
     % :param rxNSamples: number of samples (if scalar) or 
     %   starting and ending sample numbers (if 2-element vector) \ 
     %   of recorded signal [sample]
-    % :param iqEnable: enables complex iq output
-    % :param decimation: decimation factor, for real output (iqEnable==false) \
-    %   it must be positive integer, for complex output (iqEnable==true) \
+    % :param hwDdcEnable: enables complex iq output
+    % :param decimation: decimation factor, for real output (hwDdcEnable==false) \
+    %   it must be positive integer, for complex output (hwDdcEnable==true) \
     %   it must be multiple of 0.25 and be >=2 
     % :param nRepetitions: number of repetitions of the sequence (positive \
     %   integer). Can be a string "max" -- in this case, the maximum number \
@@ -30,9 +30,6 @@ classdef SimpleTxRxSequence < Operation
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
-    % :param fsDivider: sampling frequency divider. Should be positive int. \ 
-    %   Default value is equal to 1, which means sampling with \
-    %   the highest possible frequency (no decimation)
     % :param txInvert: tx pulse polarity marker
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
@@ -54,14 +51,12 @@ classdef SimpleTxRxSequence < Operation
         txNPeriods (1,:) {mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
-        iqEnable (1,1) {mustBeLogical} = true
-        decimation (1,1) {mustBePositive} = 1
+        hwDdcEnable (1,1) {mustBeLogical} = true
+        decimation (1,:) {mustBePositive}
         nRepetitions (1,:) = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
         tgcSlope (1,:)
-        fsDivider(1,1) {mustBeInteger, mustBePositive, ...
-            mustBeLessThan(fsDivider, 257)} = 1
         txInvert (1,:) {mustBeLogical} = false
     end
     
@@ -89,9 +84,12 @@ classdef SimpleTxRxSequence < Operation
             obj.rxNSamples = mustBeLimit(obj,'rxNSamples',1);
             
             % Specific validations
-            mustBeIntOrStr(obj,'nRepetitions',1,"max");
             mustBeIntOrStr(obj,'txApertureSize',0,"nElements");
-            mustBeIntOrStr(obj,'rxApertureSize',0,["nChannels","nElements"]);
+            mustBeIntOrStr(obj,'rxApertureSize',0,"nElements");
+            mustBeIntOrStr(obj,'nRepetitions',1,"max");
+            if isstring(obj.nRepetitions)
+                error('Support for nRepetitions="max" is temporarily suspended.');
+            end
             
             %% Check size compatibility of aperture/focus/angle parameters
             nTx = max([	length(obj.txCenterElement) ...

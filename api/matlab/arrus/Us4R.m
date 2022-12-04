@@ -4,32 +4,15 @@ classdef Us4R < handle
     % This class provides functions to configure the system and perform
     % data acquisition using the Us4R.
     % 
-    % Available probe names:
-    % 
-    % - Esaote: 'AL2442', 'SL1543', 'AC2541', 'SP2430'
-    % - Ultrasonix: 'L14-5/38'.
-    % - ATL: 'L7-4'
-    % 
-    % Available adapter types:
-    %
-    % - 'esaote': 1st esaote adapter (no alternation in element handling),
-    % - 'esaote2': 2nd esaote adapter (troublesome mapping),
-    % - 'esaote3': current version of the esaote adapter,
-    % - 'ultrasonix': current version of the ultrasonix probe adapter. 
-    % - 'atl/philips': current version of the ATL/PHILIPS probe adapter.
-    % 
-    % Only one of the following parameters should be provided:
-    %
+    % :param configFile: name of the prototxt file containing setup information.
     % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Optional. Will be replaced with txVoltage parameter in SimpleTxRxSequence.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
-    % :param probeName: name of the probe to use. The parameter is required when ``probe`` is not provided.
-    % :param adapterType: name of the adapter type to use. The parameter is required when ``probe`` is not provided.
-    % :param probe: definition of the probe to use. The parameter is required when ``probeName`` and ``adapterType`` are not provided.
 
     properties(Access = private)
         sys
         seq
         rec
+        us4r
         session
         buffer
         logTime
@@ -38,67 +21,76 @@ classdef Us4R < handle
     methods
 
         function obj = Us4R(varargin)
-            [voltage, probeName, adapterType, interfaceName, logTime, probe] = Us4R.parseUs4RParams(varargin{:});
-
-            obj.logTime = logTime;
-            % System parameters
+            
+            % Input parser
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
+            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
+            addParameter(paramsParser, 'voltage', 0, @(x) validateattributes(x, {'numeric'}, {'scalar','nonnegative'}, 'Us4R', 'voltage'));
+            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
+            parse(paramsParser, varargin{:});
+            
+            configFile   = paramsParser.Results.configFile;
+            interfEnable = paramsParser.Results.interfEnable;
+            voltage      = paramsParser.Results.voltage;
+            logTime      = paramsParser.Results.logTime;
+            
+            if isempty(configFile) || ~isfile(configFile)
+                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
+                if filterIndex	== 0
+                    obj = [];
+                    return;
+                else
+                    configFile = [pathName fileName];
+                end
+            end
+            
+            % Initialization
+            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
+            
+            obj.session = arrus.session.Session(configFile);
+            obj.us4r = obj.session.getDevice("/Us4R:0");
+            
             obj.sys.nChArius = 32;
-
-            obj.sys.rxSampFreq	= 65e6;
-
+            obj.sys.rxSampFreq = 65e6;
             obj.sys.voltage = voltage;
+            obj.logTime = logTime;
             
-            if(isempty(probe))
-                probe = probeParams(probeName,adapterType,interfaceName);
-            end
+            % Probe parameters
+            probe = obj.us4r.getProbeModel;
+            obj.sys.nElem = double(probe.nElements);
+            obj.sys.pitch = probe.pitch;
+            obj.sys.freqRange = double(probe.txFrequencyRange);
+            obj.sys.maxVpp = double(probe.voltageRange(2));
+            obj.sys.curvRadius = probe.curvatureRadius;
             
-            obj.sys.nArius = probe.nUs4OEM; % number of Arius modules
-            nArius = obj.sys.nArius;
-            obj.sys.systemType = probe.systemType;
-            
-            % checking if voltage is safe
-            isProperVoltageValue = @(x) ...
-                   isnumeric(x) ...
-                && isscalar(x) ...
-                && isfinite(x) ...
-                && x >= 0;
-
-            if ~isProperVoltageValue(voltage)
-                error('Invalid exctitation voltage value.')
-            end
-            
-            if 2*voltage > probe.maxVpp
-                error(['The electrical pulse exceeds the safe limit. ', ...
+            % Validate voltage
+            if 2*obj.sys.voltage > obj.sys.maxVpp
+                error(['Voltage exceeds the safe limit. ', ...
                        'For the current probe the limit is ', ...
-                       num2str(probe.maxVpp/2), '[V].' ...
+                       num2str(obj.sys.maxVpp/2), '[V].' ...
                        ])
             end
-            
-            obj.sys.maxVpp = probe.maxVpp;
-            obj.sys.adapType = probe.adapType;                      
-            obj.sys.curvRadius = probe.curvRadius;
-            obj.sys.probeMap = probe.probeMap;
-            obj.sys.pitch = probe.pitch;
-            obj.sys.nElem = probe.nElem;
-            obj.sys.interfEnable = probe.interfEnable;
 
-             % position (pos,x,z) and orientation (ang) of each probe element
-             obj.sys.posElem = (-(probe.nElem-1)/2 : (probe.nElem-1)/2) * probe.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-             if isnan(probe.curvRadius)
-                 obj.sys.angElem = zeros(1,probe.nElem); % [rad] (1 x nElem) orientation of probe elements
+             % Position (pos,x,z) and orientation (ang) of each probe element
+             obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+             if obj.sys.curvRadius == 0
+                 obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
                  obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                 obj.sys.zElem = zeros(1,probe.nElem);% [m] (1 x nElem) x-position of probe elements
+                 obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
              else
-                 obj.sys.angElem = obj.sys.posElem / -probe.curvRadius;
-                 obj.sys.xElem = -probe.curvRadius * sin(obj.sys.angElem);
-                 obj.sys.zElem = -probe.curvRadius * cos(obj.sys.angElem);
+                 obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
+                 obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
+                 obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
                  obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
              end
              
+             obj.sys.interfEnable = interfEnable;
              if obj.sys.interfEnable
-                 obj.sys.interfSize = probe.interfSize;
-                 obj.sys.interfAng = probe.interfAng;
-                 obj.sys.interfSos = probe.interfSos;
+                 wedge = wedgeParams();
+                 obj.sys.interfSize = wedge.interfSize;
+                 obj.sys.interfAng  = wedge.interfAng;
+                 obj.sys.interfSos  = wedge.interfSos;
                  
                  obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
                  
@@ -112,28 +104,16 @@ classdef Us4R < handle
              end
              
              obj.sys.tangElem = tan(obj.sys.angElem);
-             obj.sys.probeChannelsMask = probe.channelsMask;
-
-            if obj.sys.adapType == 0
-                % old adapter type (00001111)
-                obj.sys.nChCont = obj.sys.nChArius;
-                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
-            elseif obj.sys.adapType == 1 || obj.sys.adapType == -1
-                % place for new adapter support
-                obj.sys.nChCont = obj.sys.nChArius * nArius;
-                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/abs(obj.sys.adapType);
-            elseif obj.sys.adapType == 2
-                % new adapter type (01010101)
-                obj.sys.nChCont = obj.sys.nChArius * nArius;
-                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius/obj.sys.adapType;
-            elseif obj.sys.adapType == 3
-                obj.sys.nChCont = obj.sys.nChArius * nArius;
-                obj.sys.nChTotal = obj.sys.nChArius * 4 * nArius;
-            else
-                error("ARRUS:IllegalArgument", ['Unrecognized adapter type: ', obj.sys.adapType]);
-            end
             
-            obj.sys.isHardwareProgrammed = false;
+             obj.sys.isHardwareProgrammed = false;
+        end
+        
+        function closeSession(obj)
+            obj.session.close();
+        end
+        
+        function nProbeElem = getNProbeElem(obj)
+            nProbeElem = obj.sys.nElem;
         end
 
         function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
@@ -178,7 +158,7 @@ classdef Us4R < handle
                 'txNPeriods', sequenceOperation.txNPeriods, ...
                 'rxDepthRange', sequenceOperation.rxDepthRange, ...
                 'rxNSamples', sequenceOperation.rxNSamples, ...
-                'iqEnable', sequenceOperation.iqEnable, ...
+                'hwDdcEnable', sequenceOperation.hwDdcEnable, ...
                 'decimation', sequenceOperation.decimation, ...
                 'nRepetitions', sequenceOperation.nRepetitions, ...
                 'txPri', sequenceOperation.txPri, ...
@@ -203,6 +183,8 @@ classdef Us4R < handle
                 'filterACoeff', reconstructOperation.filterACoeff, ...
                 'filterBCoeff', reconstructOperation.filterBCoeff, ...
                 'filterDelay', reconstructOperation.filterDelay, ...
+                'swDdcEnable', reconstructOperation.swDdcEnable, ...
+                'decimation', reconstructOperation.decimation, ...
                 'xGrid', reconstructOperation.xGrid, ...
                 'zGrid', reconstructOperation.zGrid, ...
                 'sos', reconstructOperation.sos, ...
@@ -310,50 +292,6 @@ classdef Us4R < handle
         end
     end
     
-    methods(Access = private, Static)
-        
-        function [voltage, probeName, adapterType, interfaceName, logTime, probe] = parseUs4RParams(varargin)
-           paramsParser = inputParser;
-           addParameter(paramsParser, 'nUs4OEM', []);
-           addParameter(paramsParser, 'voltage', 0);
-           addParameter(paramsParser, 'logTime', false);
-           addParameter(paramsParser, 'probeName', []);
-           addParameter(paramsParser, 'adapterType', []);
-           addParameter(paramsParser, 'interfaceName', 'none');
-           addParameter(paramsParser, 'probe', []);
-           parse(paramsParser, varargin{:});
-
-           nArius = paramsParser.Results.nUs4OEM;
-           % TODO remove the nUs4OEM parameter value
-           if(~isempty(nArius))
-               warning("Parameter 'nUs4OEM' is deprecated and will be ignored.");
-           end
-           voltage = paramsParser.Results.voltage;
-           if(~isscalar(voltage))
-               error("ARRUS:IllegalArgument", ...
-               "Parameter voltage should be a scalar");
-           end
-           logTime = paramsParser.Results.logTime;
-
-           % First option
-           probeName = paramsParser.Results.probeName;
-           adapterType = paramsParser.Results.adapterType;
-           interfaceName = paramsParser.Results.interfaceName;
-           if xor(isempty(probeName), isempty(adapterType))
-               error("ARRUS:IllegalArgument", ...
-               "All or none of the following parameters are required: probeName, adapterType");
-           end
-           % Consider reorganizing the 1st and 2nd option conditions
-
-           % Second option
-           probe = paramsParser.Results.probe;
-           if ~xor(isempty(probe), isempty(probeName))
-               error("ARRUS:IllegalArgument", ...
-                 "Exactly one of the following parameter should be provided: probe, pair(probeName, adapterType)");
-           end
-       end
-    end
-
     methods(Access = private)
 
         function setSeqParams(obj,varargin)
@@ -376,7 +314,7 @@ classdef Us4R < handle
                                 'txNPeriods',       'txNPer'; ...
                                 'rxDepthRange',     'dRange'; ...
                                 'rxNSamples',       'nSamp'; ...
-                                'iqEnable',         'iqEnable'; ...
+                                'hwDdcEnable',      'hwDdcEnable'; ...
                                 'decimation',       'dec'; ...
                                 'nRepetitions',     'nRep'; ...
                                 'txPri',            'txPri'; ...
@@ -395,7 +333,7 @@ classdef Us4R < handle
             end
             
             %% Default decimation & DDC filter coefficients
-            if obj.seq.iqEnable
+            if obj.seq.hwDdcEnable
                 if isempty(obj.seq.dec)
                     obj.seq.dec = round(obj.sys.rxSampFreq / max(obj.seq.txFreq));
                 end
@@ -405,7 +343,7 @@ classdef Us4R < handle
                 firOrder = obj.seq.dec * 16 - 1;
                 firCoeff = fir1(firOrder, cutoffFrequency, "low");
                 obj.seq.ddcFirCoeff = firCoeff((numel(firCoeff)/2 + 1) : end);
-
+                
             else
                 if isempty(obj.seq.dec)
                     obj.seq.dec = 1;
@@ -472,16 +410,12 @@ classdef Us4R < handle
             
             %% Tx/Rx aperture string/missing parameters
             if isstring(obj.seq.txApSize) && obj.seq.txApSize == "nElements"
-                obj.seq.txApSize = min(obj.sys.nChTotal,obj.sys.nElem) * ones(1,obj.seq.nTx);
+                obj.seq.txApSize = obj.sys.nElem * ones(1,obj.seq.nTx);
                 disp(['txApertureSize set to ' num2str(obj.seq.txApSize(1)) '.']);
             end
             
-            if isstring(obj.seq.rxApSize)
-                if obj.seq.rxApSize == "nChannels"
-                    obj.seq.rxApSize = obj.sys.nChCont;
-                elseif obj.seq.rxApSize == "nElements"
-                    obj.seq.rxApSize = min(obj.sys.nChTotal,obj.sys.nElem);
-                end
+            if isstring(obj.seq.rxApSize) && obj.seq.rxApSize == "nElements"
+                obj.seq.rxApSize = obj.sys.nElem;
                 disp(['rxApertureSize set to ' num2str(obj.seq.rxApSize) '.']);
             end
             
@@ -515,8 +449,11 @@ classdef Us4R < handle
             obj.calcTxRxApMask;
             obj.calcTxDelays;
             
-            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq) + 8/obj.seq.rxSampFreq;
             obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
+            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
+            if obj.seq.hwDdcEnable
+                obj.seq.initDel   = obj.seq.initDel + (8+1)/obj.seq.rxSampFreq;
+            end
 
         end
 
@@ -529,6 +466,8 @@ classdef Us4R < handle
                                 'filterACoeff',     'filtA'; ...
                                 'filterBCoeff',     'filtB'; ...
                                 'filterDelay',      'filtDel'; ...
+                                'swDdcEnable',      'swDdcEnable'; ...
+                                'decimation',       'dec'; ...
                                 'xGrid',            'xGrid'; ...
                                 'zGrid',            'zGrid'; ...
                                 'sos',              'sos'; ...
@@ -568,6 +507,27 @@ classdef Us4R < handle
                     case "custom"
                         error("setRecParams: undefined reconstruction mode");
                 end
+            end
+            
+            %% Software DDC parameters
+            if isempty(obj.rec.swDdcEnable)
+                obj.rec.swDdcEnable = ~obj.seq.hwDdcEnable;
+            end
+            if obj.rec.swDdcEnable
+                if obj.seq.hwDdcEnable
+                    error("setRecParams: hwDdcEnable & swDdcEnable cannot be set to true at a time");
+                end
+                if isempty(obj.rec.dec)
+                    obj.rec.dec = round(obj.seq.rxSampFreq / max(obj.seq.txFreq));
+                end
+                
+                % Filter design the same as in hardware DDC
+                % downConvertion.m performs filtration with no phase delay
+                cutoffFrequency = mean(obj.seq.txFreq)/(obj.seq.rxSampFreq/2);
+                firOrder = obj.rec.dec * 16 - 1;
+                obj.rec.ddcFirCoeff = fir1(firOrder, cutoffFrequency, "low");
+            else
+                obj.rec.dec = 1;
             end
             
             %% Validate reconstruction if wedge interface is used
@@ -669,7 +629,7 @@ classdef Us4R < handle
                 obj.seq.initDel        = gpuArray(single(obj.seq.initDel));
                 obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
                 obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
-                obj.seq.rxApFstElem    = gpuArray( int32(obj.seq.rxApOrig - 1));    % rxApOrig remains unchanged as it is used in data reorganization
+                obj.seq.rxApOrig       = gpuArray( int32(obj.seq.rxApOrig - 1));
                 obj.seq.nSampOmit      = gpuArray( int32(obj.seq.nSampOmit));
                 obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
                 obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
@@ -683,103 +643,61 @@ classdef Us4R < handle
             end
         end
         
-        function val = get(obj,paramName)
-
-            if isfield(obj.sys,paramName)
-                val = obj.sys.(paramName);
-            else
-                if isfield(obj.seq,paramName)
-                    val = obj.seq.(paramName);
-                else
-                    if isfield(obj.rec,paramName)
-                        val = obj.rec.(paramName);
-                    else
-                        error('Invalid parameter name');
-                    end
-                end
-            end
-
-        end
-        
         function calcTxRxApMask(obj)
             % calcTxRxApMask appends the following fields to the in/out obj:
             % obj.seq.txApOrig      - [element] (1 x nTx) number of probe element being the origin of the tx aperture
             % obj.seq.rxApOrig      - [element] (1 x nTx) number of probe element being the origin of the rx aperture
             % obj.seq.txApFstElem	- [element] (1 x nTx) number of probe element being the first in the tx aperture
             % obj.seq.txApLstElem	- [element] (1 x nTx) number of probe element being the last in the tx aperture
-            % obj.seq.txApMask      - [logical] (nChTotal x nTx) tx aperture mask
-            % obj.seq.rxApMask      - [logical] (nChTotal x nTx) rx aperture mask
+            % obj.seq.txApMask      - [logical] (nElem x nTx) tx aperture mask
+            % obj.seq.rxApMask      - [logical] (nElem x nTx) rx aperture mask
             % obj.seq.rxApPadding   - [element] (2 x nTx) rx aperture padding
             
-            iElem = nan(1,max(obj.sys.probeMap));
-            iElem(obj.sys.probeMap) = 1:obj.sys.nElem;
-            if length(iElem) >= obj.sys.nChTotal
-                iElem = iElem(1:obj.sys.nChTotal);
-            else
-                iElem = [iElem, nan(1, obj.sys.nChTotal-length(iElem))];
-            end
+            nElem = obj.sys.nElem;
+            iElem = 1:nElem;
             
-
             obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
             
-            obj.seq.txApFstElem = max(1,          obj.seq.txApOrig);
-            obj.seq.txApLstElem = min(max(iElem), obj.seq.txApOrig + obj.seq.txApSize - 1);
+            obj.seq.txApFstElem = max(1,     obj.seq.txApOrig);
+            obj.seq.txApLstElem = min(nElem, obj.seq.txApOrig + obj.seq.txApSize - 1);
             
             obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
-            systemChannelsMask = true(size(obj.seq.txApMask));
-            systemChannelsMask(obj.sys.probeMap(obj.sys.probeChannelsMask), :) = false;
-            obj.seq.txApMask = obj.seq.txApMask & systemChannelsMask;
             obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
-            obj.seq.rxApMask = obj.seq.rxApMask & systemChannelsMask;
+            
             obj.seq.rxApPadding = [-min(0, obj.seq.rxApOrig - 1); ...
                                     max(0, obj.seq.rxApOrig - 1 + obj.seq.rxApSize - obj.sys.nElem)];
         end
 
         function calcTxDelays(obj)
             % calcTxDelays appends the following fields to the in/out obj:
-            % obj.seq.txDel         - [s] (nArius*128 x nTx) tx delays for each element
+            % obj.seq.txDel         - [s] (nElem x nTx) tx delays for each element
             % obj.seq.txDelCent     - [s] (1 x nTx) tx delays for tx aperture centers
             
-            nElem = max(obj.sys.probeMap);
-            xElem = nan(1,nElem);
-            zElem = nan(1,nElem);
-            xElem(obj.sys.probeMap) = obj.sys.xElem;
-            zElem(obj.sys.probeMap) = obj.sys.zElem;
-            if nElem >= obj.sys.nChTotal
-                xElem = xElem(1:obj.sys.nChTotal);
-                zElem = zElem(1:obj.sys.nChTotal);
-            else
-                xElem = [xElem, nan(1, obj.sys.nChTotal-nElem)];
-                zElem = [zElem, nan(1, obj.sys.nChTotal-nElem)];
-            end
-            
             %% CALCULATE DELAYS
-            sos = obj.seq.c;
-            
-            txDel = nan(obj.sys.nChTotal,obj.seq.nTx);
+            txDel = nan(obj.sys.nElem,obj.seq.nTx);
             txDelCent = nan(1,obj.seq.nTx);
             
             isFocInf = isinf(obj.seq.txFoc);
             
             if any(isFocInf)
                 % Delays due to the tilting the plane wavefront
-                txDel(:,isFocInf)   = (xElem.'                     .* sin(obj.seq.txAngZX(isFocInf)) + ...
-                                       zElem.'                     .* cos(obj.seq.txAngZX(isFocInf))) / sos;  % [s] (nElem x nTx) delays for tx elements
+                txDel(:,isFocInf)   = (obj.sys.xElem.'             .* sin(obj.seq.txAngZX(isFocInf)) + ...
+                                       obj.sys.zElem.'             .* cos(obj.seq.txAngZX(isFocInf))) / obj.seq.c;  % [s] (nElem x nTx) delays for tx elements
                 txDelCent(isFocInf)	= (obj.seq.txApCentX(isFocInf) .* sin(obj.seq.txAngZX(isFocInf)) + ...
-                                       obj.seq.txApCentZ(isFocInf) .* cos(obj.seq.txAngZX(isFocInf))) / sos;  % [s] (1 x nTx) delays for tx aperture center
+                                       obj.seq.txApCentZ(isFocInf) .* cos(obj.seq.txAngZX(isFocInf))) / obj.seq.c;  % [s] (1 x nTx) delays for tx aperture center
             end
             
             if any(~isFocInf)
                 % Focal point positions
-                xFoc = obj.seq.txApCentX(~isFocInf) + obj.seq.txFoc(~isFocInf) .* sin(obj.seq.txAngZX(~isFocInf));	% [m] (1 x nTxFoc) x-position of the focal point
-                zFoc = obj.seq.txApCentZ(~isFocInf) + obj.seq.txFoc(~isFocInf) .* cos(obj.seq.txAngZX(~isFocInf));	% [m] (1 x nTxFoc) z-position of the focal point
+                xFoc = obj.seq.txApCentX(~isFocInf) + obj.seq.txFoc(~isFocInf) .* sin(obj.seq.txAngZX(~isFocInf));  % [m] (1 x nTxFoc) x-position of the focal point
+                zFoc = obj.seq.txApCentZ(~isFocInf) + obj.seq.txFoc(~isFocInf) .* cos(obj.seq.txAngZX(~isFocInf));  % [m] (1 x nTxFoc) z-position of the focal point
                 
                 % Delays due to the element - focal point distances
-                txDel(:,~isFocInf)   = sqrt( (xFoc -         xElem.'             ).^2 + ...
-                                             (zFoc -         zElem.'             ).^2) / sos; % [s] (nElem x nTx) delays for tx elements
+                txDel(:,~isFocInf)   = sqrt( (xFoc - obj.sys.xElem.'             ).^2 + ...
+                                             (zFoc - obj.sys.zElem.'             ).^2) / obj.seq.c; % [s] (nElem x nTx) delays for tx elements
                 txDelCent(~isFocInf) = sqrt( (xFoc - obj.seq.txApCentX(~isFocInf)).^2 + ...
-                                             (zFoc - obj.seq.txApCentZ(~isFocInf)).^2) / sos; % [s] (1 x nTx) delays for tx aperture center
+                                             (zFoc - obj.seq.txApCentZ(~isFocInf)).^2) / obj.seq.c; % [s] (1 x nTx) delays for tx aperture center
                 
                 % Inverse the delays for the 'focusing' option (txFoc>0)
                 % For 'defocusing' the delays remain unchanged
@@ -813,16 +731,21 @@ classdef Us4R < handle
         function programHW(obj)
             
             import arrus.ops.us4r.*;
-            import arrus.framework.*;
             
-            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
+            obj.us4r.setVoltage(obj.seq.txVoltage);
             
-            obj.session = arrus.session.Session("C:/Users/Public/us4r.prototxt");
-            us4r = obj.session.getDevice("/Us4R:0");
+            % Tx/Rx sequence
+            nTx = obj.seq.nTx;
+            for iTx=1:nTx
+                pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                txObj = Tx("aperture", obj.seq.txApMask(:,iTx).', 'delays', obj.seq.txDel(:,iTx).', "pulse", pulse);
+                rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
+                txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
+            end
+            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve);
             
-            us4r.setVoltage(obj.seq.txVoltage);
-            
-            if obj.seq.iqEnable
+            % Digital Down Conversion
+            if obj.seq.hwDdcEnable
                 ddc = DigitalDownConversion( ...
                     "demodulationFrequency", mean(obj.seq.txFreq), ...
                     "decimationFactor", obj.seq.dec, ...
@@ -831,16 +754,7 @@ classdef Us4R < handle
                 ddc = [];
             end
             
-            nTx = obj.seq.nTx;
-            nElem = max(obj.sys.probeMap);
-            for iTx=1:nTx
-                pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
-                txObj = Tx("aperture", obj.seq.txApMask(1:nElem,iTx).', 'delays', obj.seq.txDel(1:nElem,iTx).', "pulse", pulse);
-                rxObj = Rx("aperture", obj.seq.rxApMask(1:nElem,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
-                txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
-            end
-            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve);
-
+            % Upload scheme
             scheme = Scheme('txRxSequence', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
             
             [obj.buffer.data, ...
@@ -850,6 +764,7 @@ classdef Us4R < handle
              obj.buffer.frameId, ...
              obj.buffer.channelId] = obj.session.upload(scheme);
             
+            % Data reorganization addresses
             nChan = obj.sys.nChArius;
             nRep = obj.seq.nRep;
             iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
@@ -875,20 +790,18 @@ classdef Us4R < handle
             nSamp	= obj.seq.nSamp;
             nTx     = obj.seq.nTx;
             nRep	= obj.seq.nRep;
-            nTrig	= nTx*nSubTx*nRep;
+            nTrig0  = obj.buffer.framesNumber(1);
 
             %% Capture & transfer data to PC
             obj.session.run();
             rf0 = obj.buffer.data.front().eval();
             
-            obj.session.close();
-            
             %% Get metadata
-            metadata = zeros(nChan, nTrig, 'int16');
-            metadata(:, :) = rf0(:, 1:nSamp:nTrig*nSamp);
+            metadata = zeros(nChan, nTrig0, 'int16');
+            metadata(:, :) = rf0(:, 1:nSamp:nTrig0*nSamp);
 
             %% Reorganize
-            if obj.seq.iqEnable
+            if obj.seq.hwDdcEnable
                 rf0 = reshape(rf0, nChan, 2, nSamp, sum(obj.buffer.framesNumber));
                 rf0 = complex(rf0(:,1,:,:), rf0(:,2,:,:));
             end
@@ -917,6 +830,11 @@ classdef Us4R < handle
             end
 
             rfRaw = single(rfRaw);
+            
+            % Digital Down Conversion
+            if obj.rec.swDdcEnable
+                rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
+            end
 
             %% Reconstruction
             if ~obj.rec.gridModeEnable
@@ -960,7 +878,7 @@ classdef Us4R < handle
 
             %% Postprocessing
             % Obtain complex signal (if it isn't complex already)
-            if ~obj.seq.iqEnable
+            if ~obj.seq.hwDdcEnable && ~obj.rec.swDdcEnable
                 nanMask = isnan(rfBfr);
                 rfBfr(nanMask) = 0;
                 rfBfr = hilbert(rfBfr);
@@ -998,7 +916,6 @@ classdef Us4R < handle
             
         end
         
-        
         function iqLri = runCudaReconstruction(obj,iqRaw,selFramesType)
             
             switch selFramesType
@@ -1034,11 +951,11 @@ classdef Us4R < handle
                                     obj.seq.initDel(selFrames), ...
                                     obj.seq.txApFstElem(selFrames), ...
                                     obj.seq.txApLstElem(selFrames), ...
-                                    obj.seq.rxApFstElem(selFrames), ...
-                                    obj.seq.nSampOmit(selFrames), ...
-                                    rxTangLim(selFrames,1).', ...
-                                    rxTangLim(selFrames,2).', ...
-                                    obj.seq.rxSampFreq, ...
+                                    obj.seq.rxApOrig(selFrames), ...
+                                    obj.seq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                    rxTangLim(:,1).', ...
+                                    rxTangLim(:,2).', ...
+                                    obj.seq.rxSampFreq/obj.rec.dec, ...
                                     obj.rec.sos);
             else
                 iqLri	= iqRaw2Lri_SSTA_Wedge( ...
@@ -1050,10 +967,10 @@ classdef Us4R < handle
                                     obj.rec.xGrid, ...
                                     obj.seq.txApCentZ(selFrames), ...
                                     obj.seq.txApCentX(selFrames), ...
-                                    obj.seq.rxApFstElem(selFrames), ...
+                                    obj.seq.rxApOrig(selFrames), ...
                                     gather(rxTangLim(1,1)), ...
                                     gather(rxTangLim(1,2)), ...
-                                    obj.seq.rxSampFreq, ...
+                                    obj.seq.rxSampFreq/obj.rec.dec, ...
                                     gather(obj.seq.txFreq(1)), ...
                                     obj.rec.sos, ...
                                     obj.sys.interfSos, ...
