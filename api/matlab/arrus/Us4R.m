@@ -170,6 +170,8 @@ classdef Us4R < handle
             if nargin<4 || enableHardwareProgramming
                 obj.programHW;
                 obj.sys.isHardwareProgrammed = true;
+            else
+                error('Support for enableHardwareProgramming=false is temporarily suspended');
             end
             
             if nargin<3 || isempty(reconstructOperation)
