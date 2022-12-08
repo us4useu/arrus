@@ -66,7 +66,7 @@ xVec        = rVec.*sin(txAng);                             % [mm] (nSamp,1,1 or
 zVec        = rVec.*cos(txAng);                             % [mm] (nSamp,1,1 or nTx) vert.  distance from the line origin
 
 posElem     = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;	% [mm] (1,nRx) position of the rx aperture elements along probes curvature
-if isnan(sys.curvRadius)
+if sys.curvRadius == 0
     angElem	= zeros(1,nRx);
     xElem	= posElem;
     zElem	= zeros(1,nRx);
