@@ -15,7 +15,6 @@ function[rfBfr,rfTx] = reconstructRfImg(rfRaw,sys,acq,proc)
 % sys.xElem                 - [elem] x-position of probe elements
 % 
 % acq                       - acquisition-related parameters
-% acq.type                  - 'sta' or 'pwi' for STA scan or PWI scan
 % acq.rxApOrig              - [elem] rx aperture origin element
 % acq.startSample           - [samp] starting sample number
 % acq.txDelCent             - [s] tx aperture center delay
@@ -70,33 +69,32 @@ else
 end
 
 %% Precalculate tx delays and apodization
-switch acq.type
-    case 'sta'
-        % synthetic transmit aperture method
-        txFoc	= reshape(acq.txFoc,1,1,[]);
-        xFoc	= reshape(acq.txFoc.*sin(acq.txAng) + acq.txApCent,1,1,[]);
-        zFoc	= reshape(acq.txFoc.*cos(acq.txAng),1,1,[]);
-        
-        txDist	= sqrt((proc.zGrid' - zFoc).^2 + (proc.xGrid - xFoc).^2);
-        txDist	= txDist.*sign(proc.zGrid' - zFoc) + txFoc;          % WARNING: sign()=0 => invalid txDist value
-        
-        txTang	= abs((proc.xGrid - xFoc)) ./ max(abs(proc.zGrid' - zFoc),1e-12);
-        txApod	= double(txTang < maxTang);
-%         txApod	= double(txTang < maxTang).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
-        
-    case 'pwi'
-        % plane wave imaging method
-        txAng	= reshape(acq.txAng,1,1,[]);
-        
-        txDist	= (proc.xGrid - 0).*sin(txAng) + proc.zGrid'.*cos(txAng);
-        
-        % xElem: put the actual txAperture edges here
-        r1      = (proc.xGrid-xElem(   1)).*cos(txAng) - proc.zGrid'.*sin(txAng);
-        r2      = (proc.xGrid-xElem( end)).*cos(txAng) - proc.zGrid'.*sin(txAng);
-        txApod	= double(r1 >= 0 & r2 <= 0);
-%         txTang	= tan(txAng);
-%         txApod	= double(r1 >= 0 & r2 <= 0).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
-        
+if ~any(isinf(acq.txFoc))
+    % synthetic transmit aperture method
+    txFoc	= reshape(acq.txFoc,1,1,[]);
+    xFoc	= reshape(acq.txFoc.*sin(acq.txAng) + acq.txApCent,1,1,[]);
+    zFoc	= reshape(acq.txFoc.*cos(acq.txAng),1,1,[]);
+    
+    txDist	= sqrt((proc.zGrid' - zFoc).^2 + (proc.xGrid - xFoc).^2);
+    txDist	= txDist.*sign(proc.zGrid' - zFoc) + txFoc;          % WARNING: sign()=0 => invalid txDist value
+    
+    txTang	= abs((proc.xGrid - xFoc)) ./ max(abs(proc.zGrid' - zFoc),1e-12);
+    txApod	= double(txTang < maxTang);
+%     txApod	= double(txTang < maxTang).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
+elseif all(isinf(acq.txFoc))
+    % plane wave imaging method
+    txAng	= reshape(acq.txAng,1,1,[]);
+    
+    txDist	= (proc.xGrid - 0).*sin(txAng) + proc.zGrid'.*cos(txAng);
+    
+    % xElem: put the actual txAperture edges here
+    r1      = (proc.xGrid-xElem(   1)).*cos(txAng) - proc.zGrid'.*sin(txAng);
+    r2      = (proc.xGrid-xElem( end)).*cos(txAng) - proc.zGrid'.*sin(txAng);
+    txApod	= double(r1 >= 0 & r2 <= 0);
+%     txTang	= tan(txAng);
+%     txApod	= double(r1 >= 0 & r2 <= 0).*exp(-(txTang.^2)/(2*min(1e12,maxTang/proc.txApod)^2));
+else
+    error("reconstructRfImg does not support mixed STA/PWI schemes");
 end
 
 %% Precalculate rx delays and apodization

@@ -13,7 +13,7 @@ classdef (Abstract) Us4RSystem < handle
         function upload(obj, sequenceOperation, reconstructOperation)
             % Uploads operations to the us4R system.
             %
-            % Currently, only supports :class:`SimpleTxRxSequence`
+            % Currently, only supports :class:`CustomTxRxSequence`
             % and :class:`Reconstruction` implementations.
             %
             % :param sequenceOperation: TX/RX sequence to perform on the us4R system
@@ -24,7 +24,7 @@ classdef (Abstract) Us4RSystem < handle
         function [rf,img] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
-            % Currently, only supports :class:`SimpleTxRxSequence` and :class:`Reconstruction`
+            % Currently, only supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
             % :returns: RF frame and reconstructed image \ 
@@ -41,7 +41,7 @@ classdef (Abstract) Us4RSystem < handle
         function runLoop(obj, isContinue, callback)
             % Runs the uploaded operations in a loop.
             % 
-            % Currently, only supports :class:`SimpleTxRxSequence` and \
+            % Currently, only supports :class:`CustomTxRxSequence` and \
             % :class:`Reconstruction` implementations.
             %
             % :param isContinue: should the system continue executing \

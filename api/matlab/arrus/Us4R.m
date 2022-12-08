@@ -5,7 +5,7 @@ classdef Us4R < handle
     % data acquisition using the Us4R.
     % 
     % :param configFile: name of the prototxt file containing setup information.
-    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Optional. Will be replaced with txVoltage parameter in SimpleTxRxSequence.
+    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Optional. Will be replaced with txVoltage parameter in CustomTxRxSequence.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
 
     properties(Access = private)
@@ -119,7 +119,7 @@ classdef Us4R < handle
         function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
             % Uploads operations to the us4R system.
             %
-            % Currently, only supports :class:`SimpleTxRxSequence`
+            % Supports :class:`CustomTxRxSequence`
             % and :class:`Reconstruction` implementations.
             %
             % :param sequenceOperation: TX/RX sequence to perform on the us4R system
@@ -128,22 +128,17 @@ classdef Us4R < handle
             % is programmed or not (optional, default = true)
             % :returns: updated Us4R object
             
-            switch(class(sequenceOperation))
-                case 'PWISequence'
-                    sequenceType = "pwi";
-                case 'STASequence'
-                    sequenceType = "sta";
-                case 'LINSequence'
-                    sequenceType = "lin";
-                case {'SimpleTxRxSequence','CustomTxRxSequence'}
-                    sequenceType = "custom";
-                otherwise
-                    error("ARRUS:IllegalArgument", ...
-                        ['Unrecognized operation type ', class(sequenceOperation)]);
+            if ~isa(sequenceOperation,'CustomTxRxSequence')
+                error("ARRUS:IllegalArgument", ...
+                      'Invalid sequence object, must be CustomTxRxSequence');
+            end
+
+            if nargin>=3 && ~isempty(reconstructOperation) && ~isa(reconstructOperation,'Reconstruction')
+                error("ARRUS:IllegalArgument", ...
+                      'Invalid reconstruction object, must be Reconstruction');
             end
             
             obj.setSeqParams(...
-                'sequenceType', sequenceType, ...
                 'txCenterElement', sequenceOperation.txCenterElement, ...
                 'txApertureCenter', sequenceOperation.txApertureCenter, ...
                 'txApertureSize', sequenceOperation.txApertureSize, ...
@@ -218,7 +213,7 @@ classdef Us4R < handle
         function [rf,img] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
-            % Currently, only supports :class:`SimpleTxRxSequence` and :class:`Reconstruction`
+            % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
             % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
@@ -235,7 +230,7 @@ classdef Us4R < handle
         function [rf, img, metadata] = runWithMetadata(obj)
             % Runs uploaded operations in the us4R system.
             %
-            % Currently, only supports :class:`SimpleTxRxSequence` and :class:`Reconstruction`
+            % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
             % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
@@ -251,7 +246,7 @@ classdef Us4R < handle
         function runLoop(obj, isContinue, callback)
             % Runs the uploaded operations in a loop.
             % 
-            % Currently, only supports :class:`SimpleTxRxSequence` and \
+            % Supports :class:`CustomTxRxSequence` and \
             % :class:`Reconstruction` implementations.
             %
             % :param isContinue: should the system continue executing \
@@ -301,8 +296,7 @@ classdef Us4R < handle
             %% Set sequence parameters
             % Sequence parameters names mapping
             %                    public name         private name
-            seqParamMapping = { 'sequenceType',     'type'; ...
-                                'txCenterElement',  'txCentElem'; ...
+            seqParamMapping = { 'txCenterElement',  'txCentElem'; ...
                                 'txApertureCenter', 'txApCent'; ...
                                 'txApertureSize',   'txApSize'; ...
                                 'rxCenterElement',  'rxCentElem'; ...
@@ -439,7 +433,7 @@ classdef Us4R < handle
             end
             
             %% Validate sequence if wedge interface is used
-            if obj.sys.interfEnable && (~any(strcmp(obj.seq.type,{'sta','custom'})) || any(obj.seq.txApSize~=1))
+            if obj.sys.interfEnable && any(obj.seq.txApSize~=1)
                 error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
             end
             
@@ -497,18 +491,6 @@ classdef Us4R < handle
             for iPar=1:nPar
                 idPar = strcmpi(varargin{iPar*2-1},recParamMapping(:,1));
                 obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
-            end
-            
-            %% Manage undefined reconstruction mode
-            if isempty(obj.rec.gridModeEnable)
-                switch obj.seq.type
-                    case {"pwi","sta"}
-                        obj.rec.gridModeEnable = true;
-                    case "lin"
-                        obj.rec.gridModeEnable = false;
-                    case "custom"
-                        error("setRecParams: undefined reconstruction mode");
-                end
             end
             
             %% Software DDC parameters
