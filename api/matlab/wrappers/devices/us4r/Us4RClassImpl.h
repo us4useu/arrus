@@ -25,9 +25,15 @@ public:
 
     explicit Us4RClassImpl(const std::shared_ptr<MexContext> &ctx) : ClassObjectWrapper(ctx, CLASS_NAME) {
         ARRUS_MATLAB_ADD_METHOD("setVoltage", setVoltage);
+        ARRUS_MATLAB_ADD_METHOD("disableHV", disableHV);
         ARRUS_MATLAB_ADD_METHOD("getSamplingFrequency", getSamplingFrequency);
         ARRUS_MATLAB_ADD_METHOD("getProbeModel", getProbeModel);
         ARRUS_MATLAB_ADD_METHOD("getChannelsMask", getChannelsMask);
+    }
+
+    void disableHV(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        ctx->logInfo("Us4R: disabling HV");
+        get(obj)->disableHV();
     }
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {

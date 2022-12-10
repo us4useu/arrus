@@ -13,6 +13,13 @@ classdef Us4R < handle
             obj.ptr = arrus.Ptr("arrus.devices.us4r.Us4R", ptr);
         end
 
+        function disableHV(obj)
+            %
+            % Disables HV.
+            %
+            obj.ptr.callMethod("disableHV", 0);
+        end
+
         function setVoltage(obj, voltage)
             %
             % Sets the voltage to given value.
