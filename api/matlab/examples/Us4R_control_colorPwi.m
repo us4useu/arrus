@@ -1,10 +1,7 @@
 
-%% paths to the MATLAB API/ARRUS files
-pathArrus = 'C:\Users\user\Documents\GitHub\arrus\'; % path to the arrus repo
-
-addpath([pathArrus 'install\matlab']);
-addpath([pathArrus 'api\matlab']);
-addpath([pathArrus 'api\matlab\arrus']);
+%% paths to the MATLAB ARRUS files
+addpath('..\');
+addpath('..\arrus');
 
 %% Color Doppler parameters
 ensembleLength  = 64;
