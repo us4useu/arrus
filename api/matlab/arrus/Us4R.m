@@ -5,7 +5,6 @@ classdef Us4R < handle
     % data acquisition using the Us4R.
     % 
     % :param configFile: name of the prototxt file containing setup information.
-    % :param voltage: a voltage to set, should be in range 0-90 [0.5*Vpp]. Optional. Will be replaced with txVoltage parameter in CustomTxRxSequence.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
 
     properties(Access = private)
@@ -26,13 +25,11 @@ classdef Us4R < handle
             paramsParser = inputParser;
             addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
             addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
-            addParameter(paramsParser, 'voltage', 0, @(x) validateattributes(x, {'numeric'}, {'scalar','nonnegative'}, 'Us4R', 'voltage'));
             addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
             parse(paramsParser, varargin{:});
             
             configFile   = paramsParser.Results.configFile;
             interfEnable = paramsParser.Results.interfEnable;
-            voltage      = paramsParser.Results.voltage;
             logTime      = paramsParser.Results.logTime;
             
             if isempty(configFile) || ~isfile(configFile)
@@ -53,7 +50,6 @@ classdef Us4R < handle
             
             obj.sys.nChArius = 32;
             obj.sys.rxSampFreq = 65e6;
-            obj.sys.voltage = voltage;
             obj.logTime = logTime;
             
             % Probe parameters
@@ -61,16 +57,7 @@ classdef Us4R < handle
             obj.sys.nElem = double(probe.nElements);
             obj.sys.pitch = probe.pitch;
             obj.sys.freqRange = double(probe.txFrequencyRange);
-            obj.sys.maxVpp = double(probe.voltageRange(2));
             obj.sys.curvRadius = probe.curvatureRadius;
-            
-            % Validate voltage
-            if 2*obj.sys.voltage > obj.sys.maxVpp
-                error(['Voltage exceeds the safe limit. ', ...
-                       'For the current probe the limit is ', ...
-                       num2str(obj.sys.maxVpp/2), '[V].' ...
-                       ])
-            end
 
              % Position (pos,x,z) and orientation (ang) of each probe element
              obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
@@ -379,14 +366,6 @@ classdef Us4R < handle
             if isempty(obj.seq.txPri)
                 obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
             end
-            
-            %% txVoltage
-            if 2*obj.seq.txVoltage > obj.sys.maxVpp
-                error(['txVoltage exceeds the safe limit. ', ...
-                       'For the current probe the limit is ', ...
-                       num2str(obj.sys.maxVpp/2), '[V].']);
-            end
-            obj.seq.txVoltage = max(obj.seq.txVoltage, obj.sys.voltage);
             
             %% TGC
             % Default TGC

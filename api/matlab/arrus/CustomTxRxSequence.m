@@ -10,7 +10,7 @@ classdef CustomTxRxSequence < Operation
     % :param txFocus: vector of tx focal lengths [m]
     % :param txAngle: vector of tx angles [rad]
     % :param speedOfSound: speed of sound for [m/s]
-    % :param txVoltage: tx voltage [V]
+    % :param txVoltage: tx voltage amplitude (Vpp/2) [V]
     % :param txFrequency: vector of tx frequencies [Hz]
     % :param txNPeriods: vector of numbers of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
     % :param rxDepthRange: defines the end (if scalar) or
