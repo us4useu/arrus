@@ -34,6 +34,7 @@ set(SOURCE_FILES
 set(ARRUS_CUDA_MEX_SRC_FILES
     arrus/mexcuda/dopplerColor.cu
     arrus/mexcuda/iqRaw2Lri.cu
+    arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu
 )
 
 ################################################################################
