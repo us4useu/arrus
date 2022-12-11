@@ -7,7 +7,6 @@ import arrus.metadata
 import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
-import arrus.kernels.imaging
 import arrus.utils.us4r
 import arrus.ops.imaging
 import arrus.ops.us4r
@@ -20,6 +19,8 @@ from pathlib import Path
 import os
 import importlib.util
 from enum import Enum
+import arrus.kernels.simple_tx_rx_sequence
+import arrus.kernels.tx_rx_sequence
 
 
 def is_package_available(package_name):
@@ -998,9 +999,8 @@ class RxBeamformingPhasedScanning(Operation):
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
-            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-                probe_model, seq, c)
-            tx_center_delay = tx_rx_params["tx_center_delay"]
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=c, probe_model=probe_model)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1025,7 +1025,7 @@ class RxBeamformingPhasedScanning(Operation):
                           int((self.n_seq-1)//n_seq_block_size + 1))
         # xElemConst
         # Get aperture origin (for the given aperture center element/aperture center)
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
         # There is a single TX and RX aperture center for all TX/RXs
         rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
         rx_aperture_origin = _get_rx_aperture_origin(
@@ -1088,7 +1088,7 @@ class RxBeamformingLin(Operation):
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         medium = const_metadata.context.medium
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
         rx_aperture_center_element = np.array(tx_rx_params["tx_ap_cent"])
 
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
@@ -1121,9 +1121,8 @@ class RxBeamformingLin(Operation):
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
-            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-                probe_model, seq, c)
-            tx_center_delay = tx_rx_params["tx_center_delay"]
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=c, probe_model=probe_model)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1323,7 +1322,7 @@ class ScanConversion(Operation):
             raise ValueError("Scan conversion works only with LinSequence.")
         medium = const_metadata.context.medium
         probe = const_metadata.context.device.probe.model
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
         n_elements = probe.n_elements
         if n_elements % 2 != 0:
@@ -1390,7 +1389,7 @@ class ScanConversion(Operation):
         else:
             c = medium.speed_of_sound
 
-        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_aperture_center(
+        tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius \
@@ -1450,9 +1449,9 @@ class ScanConversion(Operation):
         start_sample, _ = seq.rx_sample_range
         start_time = start_sample/acq_fs
         c = _get_speed_of_sound(const_metadata.context)
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
-        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.imaging.get_aperture_center(
+        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_ap_cent_elem, probe)
 
         # There is a single position of TX aperture.
@@ -1911,15 +1910,18 @@ class ReconstructLri(Operation):
 
         # TX aperture description
         # Convert the sequence to the positions of the aperture centers
-        tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
             probe_model,
             seq,
             seq.speed_of_sound)
         tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
         rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
-        tx_center_delay = tx_rx_params["tx_center_delay"]
 
-        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.imaging.get_aperture_center(tx_centers, probe_model)
+        tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model)
+
+        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
+            tx_centers, probe_model)
         tx_center_angles = tx_center_angles + seq.angles
         self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
         self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
