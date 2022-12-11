@@ -123,6 +123,23 @@ class TxRxSequence:
         """
         return {op.rx.get_n_samples() for op in self.ops}
 
+    def get_sample_range(self):
+        """
+        Returns a set of sample ranges that the Tx/Rx sequence defines.
+        """
+        return {op.rx.sample_range for op in self.ops}
+
+    def get_sample_range_unique(self):
+        """
+        Returns a unique sample range that the Tx/Rx sequence defines.
+        If there are couple of different number of samples in a single sequence,
+        a ValueError will be raised.
+        """
+        sample_range = self.get_sample_range()
+        if len(sample_range) > 1:
+            raise ValueError("All TX/RXs should acquire the same sample range.")
+        return next(iter(sample_range))
+
 
 @dataclass(frozen=True)
 class DigitalDownConversion:
