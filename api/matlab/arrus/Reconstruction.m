@@ -1,4 +1,4 @@
-classdef Reconstruction < Operation
+classdef Reconstruction
     % A reconstruction operation to perform in the system.
     %
     % :param gridModeEnable: boolean, switches from line to grid reconstruction

@@ -1,4 +1,4 @@
-classdef CustomTxRxSequence < Operation
+classdef CustomTxRxSequence
     % A sequence of Tx/Rx operations to perform on a device.
     %
     % :param txCenterElement: vector of tx aperture center elements [element]
