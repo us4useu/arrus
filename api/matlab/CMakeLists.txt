@@ -13,13 +13,11 @@ set(SOURCE_FILES
     arrus/downConversion.m
     arrus/DuplexDisplay.m
     arrus/mustBeDivisible.m
-    arrus/Operation.m
     arrus/Reconstruction.m
     arrus/reconstructRfImg.m
     arrus/reconstructRfLin.m
     arrus/scanConversion.m
     arrus/Us4R.m
-    arrus/Us4RSystem.m
     arrus/wedgeParams.m
 
 
