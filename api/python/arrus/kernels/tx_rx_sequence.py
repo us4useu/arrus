@@ -20,12 +20,21 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
     into a list of raw delays.
     """
     sequence: TxRxSequence = context.op
+    probe_model = context.device.probe.model
+    fs: float = __get_sampling_frequency(context)
     # Update the following sequence parameters (if necessary):
     # - tx: aperture (to binary mask)
     # - rx: aperture (to binary mask), rx padding
+    sequence = convert_to_us4r_sequence(sequence=sequence,
+                                        probe_model=probe_model,
+                                        fs=fs)
+    return sequence
+
+
+def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=sequence,
-        probe=context.device.probe.model
+        probe=probe_model
     )
     # We want all operators to have exactly the same combination
     # of parameters: delays or focus,angle,speed of sound.
@@ -46,14 +55,14 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
         # Updates in the input sequence the following parameters:
         # - tx: delays, focus, angle, speed_of_sound
         # - rx: init_delay, sample_range
-        probe = context.device.probe.model
         # Otherwise, we need to convert focus, angle, c to raw TX delays.
-        dels, tx_center_delay = get_tx_delays(probe, sequence, sequence_with_masks)
+        dels, tx_center_delay = get_tx_delays(probe_model, sequence, sequence_with_masks)
         new_ops = []
         # Update input sequence.
         for i, op in enumerate(sequence_with_masks.ops):
             d = dels[i]
-            sample_range = __get_sample_range(context, op, tx_center_delay)
+            sample_range = __get_sample_range(
+                op=op, tx_delay_center=tx_center_delay, fs=fs)
             # Replace
             old_tx = op.tx
             new_tx = dataclasses.replace(old_tx, delays=np.atleast_1d(d),
@@ -66,11 +75,13 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
             new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
             new_ops.append(new_op)
         sequence = dataclasses.replace(sequence, ops=new_ops)
-    context = dataclasses.replace(context, op=sequence)
     return sequence
 
 
 def get_tx_delays(probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence):
+    """
+    Returns tx_center_delay = None when all TXs have empty aperture.
+    """
     # COMPUTE TX APERTURE CENTERS.
     tx_aperture_center_element = []
     for op in sequence.ops:
@@ -129,20 +140,36 @@ def get_tx_delays(probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence):
         tx_aperture_mask = seq_with_masks.ops[i].tx.aperture
         # Use only delays for the active elements.
         op_delays = op_delays[tx_aperture_mask]
-        # Move tx delays to bias = 0.
-        delays_min = np.min(op_delays).item()
-        op_delays = op_delays - delays_min
-        op_center_delay = op_center_delay - delays_min
-        normalized_tx_delays.append(op_delays)
-        normalized_tx_center_delays.append(op_center_delay)
+        if len(op_delays) == 0:
+            # Empty TX aperture.
+            normalized_tx_delays.append(op_delays)
+            normalized_tx_center_delays.append(np.nan)
+        else:
+            # Move tx delays to bias = 0.
+            delays_min = np.min(op_delays).item()
+            op_delays = op_delays - delays_min
+            op_center_delay = op_center_delay - delays_min
+            normalized_tx_delays.append(op_delays)
+            normalized_tx_center_delays.append(op_center_delay)
     # Equalize
     # The common delay applied for center of each TX aperture
     # So we can use a single TX center delay when RX beamforming the data.
     # The center of transmit will be in the same position for all TX/RXs.
-    tx_center_delay = np.max(normalized_tx_center_delays)
+    # Note: in the case when all TXs have empty TX aperture, None should be
+    # returned.
+    is_all_empty_tx_aperture = np.asarray([
+        len(d) == 0 for d in normalized_tx_delays
+    ]).all()
+    if is_all_empty_tx_aperture:
+        tx_center_delay = None
+    else:
+        tx_center_delay = np.nanmax(normalized_tx_center_delays)
     equalized_tx_delays = []
     for i, op in enumerate(sequence.ops):
-        d = normalized_tx_delays[i] - normalized_tx_center_delays[i] + tx_center_delay
+        d = normalized_tx_delays[i]
+        if len(d) > 0:
+            # Non-empty delays.
+            d = d - normalized_tx_center_delays[i] + tx_center_delay
         equalized_tx_delays.append(d)
     return equalized_tx_delays, tx_center_delay
 
@@ -241,6 +268,8 @@ def set_aperture_masks(sequence, probe) -> TxRxSequence:
 
 def __get_aperture_mask_with_padding(center_element, size, probe_model):
     n_elem = probe_model.n_elements
+    if size == 0:
+        return np.zeros(size).astype(bool), (0, 0)
     if size is None:
         size = n_elem
     left_half_size = (size - 1) / 2  # e.g. size 32 -> 15, size 33 -> 16
@@ -258,23 +287,25 @@ def __get_aperture_mask_with_padding(center_element, size, probe_model):
     return aperture, (left_padding, right_padding)
 
 
-def __get_sample_range(context, op: TxRx, tx_delay_center):
-    seq = context.op
+def __get_sample_range(op: TxRx, tx_delay_center, fs):
     sample_range = op.rx.sample_range
     init_delay = op.rx.init_delay
     pulse = op.tx.excitation
     if init_delay == "tx_start":
         return sample_range
     elif init_delay == "tx_center":
-        if context.hardware_ddc is not None:
-            fs = context.device.sampling_frequency / context.hardware_ddc.decimation_factor
-        else:
-            fs = context.device.sampling_frequency / op.rx.downsampling_factor
         delay = get_init_delay(pulse, tx_delay_center)  # [s]
-        delay = delay * fs
+        delay = delay * fs / op.rx.downsampling_factor
         return tuple(int(round(v + delay)) for v in sample_range)
     else:
         raise ValueError(f"Unrecognized value '{init_delay}' for init_delay.")
+
+
+def __get_sampling_frequency(context: KernelExecutionContext):
+    if context.hardware_ddc is not None:
+        return context.device.sampling_frequency / context.hardware_ddc.decimation_factor
+    else:
+        return context.device.sampling_frequency
 
 
 def get_init_delay(pulse, tx_delay_center):
