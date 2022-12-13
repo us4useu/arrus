@@ -75,7 +75,9 @@ def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
             new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
             new_ops.append(new_op)
         sequence = dataclasses.replace(sequence, ops=new_ops)
-    return sequence, tx_center_delay
+        return sequence, tx_center_delay
+    else:
+        return sequence, None
 
 
 def get_tx_delays(probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence):
