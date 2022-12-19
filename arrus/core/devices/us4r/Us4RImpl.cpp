@@ -89,7 +89,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    float tolerance = 3.0f; // 3V tolerance
+    float tolerance = 4.0f; // 4V tolerance
     int retries = 5;
 
     //Verify register
