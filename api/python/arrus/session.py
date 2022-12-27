@@ -272,18 +272,18 @@ class Session(AbstractSession):
         TODO: note: this method currently is not thread-safe
         """
         if self._current_processing is not None:
-            return self._current_processing.set_parameter(key, value)
+            return self._current_processing.pipeline.set_parameter(key, value)
 
     def get_parameter(self, key: str) -> Sequence[Number]:
         """
         Returns the current value for parameter with the given name.
         """
         if self._current_processing is not None:
-            return self._current_processing.get_parameter(key)
+            return self._current_processing.pipeline.get_parameter(key)
 
     def get_parameters(self) -> Dict[str, arrus.params.ParameterDef]:
         if self._current_processing is not None:
-            return self._current_processing.get_parameters()
+            return self._current_processing.pipeline.get_parameters()
 
     def get_session_context(self):
         return self._context
