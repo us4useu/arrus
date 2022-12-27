@@ -1712,7 +1712,7 @@ class ToGrayscaleImg(Operation):
         self.xp = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        return const_metadata
+        return const_metadata.copy(dtype=np.uint8)
 
     def process(self, data):
         data = data - self.xp.min(data)
