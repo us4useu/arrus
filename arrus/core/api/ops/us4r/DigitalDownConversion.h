@@ -13,21 +13,21 @@ class ARRUS_CPP_EXPORT DigitalDownConversion {
     UniqueHandle<Impl> impl;
 public:
     /**
-	 * Us4R Digital Down Conversion block.
-     * 
+     * Us4R Digital Down Conversion block.
+     *
      * Note: the decimation factor can also have a fractional part: 0.25, 0.5 or 0.75.
-     * 
-     * Note: the FIR filter order (i.e. total number of taps)depends on the decimation factor 
-     * and should be equal: decimationFactor*16 for integer decimation factor; decimationFactor*32 for 
-     * decimation factor with fractional part 0.5; decimationFactor*64 for decimation facator with 
-     * fractional part 0.25 or 0.75. 
-     * 
-     * Note: only a upper half of the FIR filter coefficients should be provided. 
-	 *
-	 * @param demodulationFrequency demodulation frequency to apply [Hz]
-	 * @param firCoefficients FIR filter coefficients to apply
-	 * @param decimationFactor decimation factor to apply, should be in range [2, 63] 
-	 */
+     *
+     * Note: the FIR filter order (i.e. total number of taps)depends on the decimation factor
+     * and should be equal: decimationFactor*16 for integer decimation factor; decimationFactor*32 for
+     * decimation factor with fractional part 0.5; decimationFactor*64 for decimation facator with
+     * fractional part 0.25 or 0.75.
+     *
+     * Note: only a upper half of the FIR filter coefficients should be provided.
+     *
+     * @param demodulationFrequency demodulation frequency to apply [Hz]
+     * @param firCoefficients FIR filter coefficients to apply
+     * @param decimationFactor decimation factor to apply, should be in range [2, 63]
+     */
     DigitalDownConversion(float demodulationFrequency, std::vector<float> firCoefficients, float decimationFactor)
     : DigitalDownConversion(demodulationFrequency, Span<float>{firCoefficients}, decimationFactor) {}
     DigitalDownConversion(float demodulationFrequency, Span<float> firCoefficients, float decimationFactor);
