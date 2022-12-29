@@ -7,7 +7,6 @@ import arrus.metadata
 import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
-import arrus.kernels.imaging
 import arrus.utils.us4r
 import arrus.ops.imaging
 import arrus.ops.us4r
@@ -19,6 +18,9 @@ from collections.abc import Iterable
 from pathlib import Path
 import os
 import importlib.util
+from enum import Enum
+import arrus.kernels.simple_tx_rx_sequence
+import arrus.kernels.tx_rx_sequence
 
 
 def is_package_available(package_name):
@@ -184,14 +186,23 @@ class Buffer:
 
 class ProcessingRunner:
     """
+    Runs processing on a specified processing device (GPU in particular).
+
+    Currently only GPU:0 is supported.
+
     Currently, the input buffer should be located in CPU device,
     output buffer should be located on GPU.
     """
+
+    class State(Enum):
+        READY = 1
+        CLOSED = 2
 
     def __init__(self, input_buffer, const_metadata, processing):
         import cupy as cp
         # Initialize pipeline.
         self.cp = cp
+        # Pin input buffer.
         self.input_buffer = self.__register_buffer(input_buffer)
         default_buffer = ProcessingBuffer(size=2, type="locked")
 
@@ -213,6 +224,7 @@ class ProcessingRunner:
                            for m in self.out_metadata]
         # Wait for all the initialization done in by the Pipeline.
         cp.cuda.Stream.null.synchronize()
+        # Pin output buffers.
         self.out_buffers = self.__register_buffer(self.out_buffers)
         if not isinstance(self.out_buffers, Iterable):
             self.out_buffers = (self.out_buffers, )
@@ -235,6 +247,8 @@ class ProcessingRunner:
         if processing.on_buffer_overflow_callback is not None:
             self.input_buffer.append_on_buffer_overflow_callback(
                 processing.on_buffer_overflow_callback)
+        self._state = ProcessingRunner.State.READY
+        self._state_lock = threading.Lock()
 
     @property
     def outputs(self):
@@ -293,10 +307,14 @@ class ProcessingRunner:
             self.processing_stream.launch_host_func(self.__release, gpu_element)
             self.processing_stream.launch_host_func(self.callback, out_elements)
 
-    def stop(self):
-        # cleanup
-        self.__unregister_buffer(self.input_buffer)
-        self.__unregister_buffer(self.out_buffers)
+    def close(self):
+        with self._state_lock:
+            if self._state == ProcessingRunner.State.CLOSED:
+                # Already closed.
+                return
+            self.__unregister_buffer(self.input_buffer)
+            self.__unregister_buffer(self.out_buffers)
+            self._state = ProcessingRunner.State.CLOSED
 
     def sync(self):
         self.data_stream.synchronize()
@@ -801,7 +819,7 @@ class DigitalDownConversion(Operation):
     IQ demodulation, decimation.
     """
     def __init__(self, decimation_factor, fir_params=None,
-                 fir_cutoff_relative=1.5, fir_order=15, fir_type="hamming"):
+                 fir_cutoff_relative=1.0, fir_order=15, fir_type="hamming"):
         self.decimation_factor = decimation_factor
         self.fir_cutoff_relative = fir_cutoff_relative
         self.fir_order = fir_order
@@ -816,9 +834,10 @@ class DigitalDownConversion(Operation):
         self.demodulator = QuadratureDemodulation()
         center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         sampling_frequency = const_metadata.data_description.sampling_frequency
+        cutoff_freq = center_frequency*self.fir_cutoff_relative
         fir_coefficients = scipy.signal.firwin(
                 numtaps=self.fir_order,
-                cutoff=center_frequency*(self.fir_cutoff_relative - 1),
+                cutoff=cutoff_freq,
                 window=self.fir_type,
                 fs=sampling_frequency,
                 pass_zero="lowpass",
@@ -980,9 +999,8 @@ class RxBeamformingPhasedScanning(Operation):
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
-            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-                probe_model, seq, c)
-            tx_center_delay = tx_rx_params["tx_center_delay"]
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=c, probe_model=probe_model)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1007,7 +1025,7 @@ class RxBeamformingPhasedScanning(Operation):
                           int((self.n_seq-1)//n_seq_block_size + 1))
         # xElemConst
         # Get aperture origin (for the given aperture center element/aperture center)
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
         # There is a single TX and RX aperture center for all TX/RXs
         rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
         rx_aperture_origin = _get_rx_aperture_origin(
@@ -1070,7 +1088,7 @@ class RxBeamformingLin(Operation):
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         medium = const_metadata.context.medium
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
         rx_aperture_center_element = np.array(tx_rx_params["tx_ap_cent"])
 
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
@@ -1103,9 +1121,8 @@ class RxBeamformingLin(Operation):
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
-            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-                probe_model, seq, c)
-            tx_center_delay = tx_rx_params["tx_center_delay"]
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=c, probe_model=probe_model)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1305,7 +1322,7 @@ class ScanConversion(Operation):
             raise ValueError("Scan conversion works only with LinSequence.")
         medium = const_metadata.context.medium
         probe = const_metadata.context.device.probe.model
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
         n_elements = probe.n_elements
         if n_elements % 2 != 0:
@@ -1372,7 +1389,7 @@ class ScanConversion(Operation):
         else:
             c = medium.speed_of_sound
 
-        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_aperture_center(
+        tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius \
@@ -1432,9 +1449,9 @@ class ScanConversion(Operation):
         start_sample, _ = seq.rx_sample_range
         start_time = start_sample/acq_fs
         c = _get_speed_of_sound(const_metadata.context)
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
-        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.imaging.get_aperture_center(
+        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_ap_cent_elem, probe)
 
         # There is a single position of TX aperture.
@@ -1528,7 +1545,7 @@ class ToGrayscaleImg(Operation):
         self.xp = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        return const_metadata
+        return const_metadata.copy(dtype=np.uint8)
 
     def process(self, data):
         data = data - self.xp.min(data)
@@ -1893,15 +1910,18 @@ class ReconstructLri(Operation):
 
         # TX aperture description
         # Convert the sequence to the positions of the aperture centers
-        tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
             probe_model,
             seq,
             seq.speed_of_sound)
         tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
         rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
-        tx_center_delay = tx_rx_params["tx_center_delay"]
 
-        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.imaging.get_aperture_center(tx_centers, probe_model)
+        tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model)
+
+        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
+            tx_centers, probe_model)
         tx_center_angles = tx_center_angles + seq.angles
         self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
         self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)

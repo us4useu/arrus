@@ -62,6 +62,10 @@ class SimpleTxRxSequence:
       by the total pri only. [s]
     :param n_repeats: size of a single batch -- how many times this sequence should be \
       repeated before data is transferred to computer (integer)
+    :param init_delay: when the recording should start, \
+      available options: 'tx_start' - the first recorded sample is when the  \
+      transmit starts, 'tx_center' - the first recorded sample is delayed by \
+      tx aperture center delay and burst factor.
     """
     pulse: arrus.ops.us4r.Pulse
     rx_sample_range: tuple
@@ -81,6 +85,7 @@ class SimpleTxRxSequence:
     tgc_slope: float = None
     tgc_curve: list = None
     n_repeats: int = 1
+    init_delay: str = "tx_start"
 
     def __post_init__(self):
         # Validation
@@ -158,13 +163,7 @@ class LinSequence(SimpleTxRxSequence):
 
     - tx_focus must be finite positive and scalar,
     - tx angle must be a scalar.
-
-    :param init_delay: when the record should start, \
-      available options: 'tx_start' - the first recorded sample is when the  \
-      transmit starts, 'tx_center' - the first recorded sample is delayed by \
-      tx aperture center delay and burst factor.
     """
-    init_delay: str = "tx_start"
 
     def __post_init__(self):
         super().__post_init__()

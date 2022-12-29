@@ -73,10 +73,10 @@ extern "C"
 
     for(int tx = 0; tx < nTx; ++tx) {
         txDelay = txDelays[IDX_4D(tx, y, x, z, nYPix, nXPix, nZPix)];
-        txWeight = txApodization[IDX_3D(tx, x, z, nXPix, nZPix)];
+        txWeight = txApodization[IDX_4D(tx, y, x, z, nYPix, nXPix, nZPix)];
         if(txWeight == 1.0f) {
             for(int rx = 0; rx < nRx; ++rx) {
-                rxWeight = rxApodization[IDX_3D(rx, y, z, nYPix, nZPix)];
+                rxWeight = rxApodization[IDX_4D(rx, y, x, z, nYPix, nXPix, nZPix)];
                 if(rxWeight != 0.0f) {
                     rxDelay = rxDelays[IDX_4D(rx, y, x, z, nYPix, nXPix, nZPix)];
                     delay = initDelay + txDelay + rxDelay;
@@ -143,11 +143,11 @@ extern "C"
 
     for(int tx = 0; tx < nTx; ++tx) {
         txDelay = txDelays[IDX_4D(tx, y, x, z, nYPix, nXPix, nZPix)];
-        txWeight = txApodization[IDX_3D(tx, x, z, nXPix, nZPix)];
+        txWeight = txApodization[IDX_4D(tx, y, x, z, nYPix, nXPix, nZPix)];
         pixelValue = 0.0f;
         if(txWeight == 1.0f) {
             for(int rx = 0; rx < nRx; ++rx) {
-                rxWeight = rxApodization[IDX_3D(rx, y, z, nYPix, nZPix)];
+                rxWeight = rxApodization[IDX_4D(rx, y, x, z, nYPix, nXPix, nZPix)];
                 if(rxWeight != 0.0f) {
                     rxDelay = rxDelays[IDX_4D(rx, y, x, z, nYPix, nXPix, nZPix)];
                     delay = initDelay + txDelay + rxDelay;
