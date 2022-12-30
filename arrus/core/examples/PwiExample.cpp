@@ -15,6 +15,8 @@ int main() noexcept {
     try {
         auto *logging = ::arrus::useDefaultLoggerFactory();
         logging->setClogLevel(::arrus::LogSeverity::TRACE);
+        std::shared_ptr<std::ofstream> logFile = std::make_shared<std::ofstream>("log.log");
+        logging->addOutputStream(logFile, ::arrus::LogSeverity::TRACE);
         auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
@@ -31,7 +33,7 @@ int main() noexcept {
         std::vector<TxRx> txrxs;
 
 		// 10 plane waves
-        for(int i = 0; i < 128; ++i) {
+        for(int i = 0; i < 1; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
