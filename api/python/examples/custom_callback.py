@@ -49,7 +49,7 @@ def main():
         tx_rx_sequence=seq,
         rx_buffer_size=4,
         output_buffer=DataBufferSpec(type="FIFO", n_elements=12),
-        work_mode="ASYNC")
+        work_mode="HOST")
 
     # Here starts communication with the device.
     with arrus.Session() as sess:

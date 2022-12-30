@@ -69,6 +69,10 @@ Custom Tx/Rx sequences
     :project: arrus
     :members:
 
+.. doxygenclass:: arrus::ops::us4r::DigitalDownConversion
+    :project: arrus
+    :members:
+
 .. doxygentypedef:: arrus::ops::us4r::TGCCurve
 
 Devices

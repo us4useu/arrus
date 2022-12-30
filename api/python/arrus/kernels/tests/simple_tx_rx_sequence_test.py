@@ -1,6 +1,7 @@
 import numpy as np
 import math
-import arrus.kernels.imaging
+import arrus.kernels.simple_tx_rx_sequence
+import arrus.kernels.tx_rx_sequence
 import arrus.ops.imaging
 import arrus.medium
 from arrus.kernels.kernel import KernelExecutionContext
@@ -115,7 +116,7 @@ class PwiSequenceTest(SimpleTxRxSequenceTest):
         context = ContextMock(device=self.default_device,
                               medium=self.default_medium,
                               op=self.default_sequence)
-        sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         # Expect
         tx_rxs = sequence.ops
         # should be 3 TX/RXs
@@ -181,7 +182,7 @@ class PwiSequenceTest(SimpleTxRxSequenceTest):
         context = ContextMock(device=device,
                               medium=self.default_medium,
                               op=input_sequence)
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), 3)
         # TX/RX apertures:
@@ -228,7 +229,7 @@ class PwiSequenceTest(SimpleTxRxSequenceTest):
         context = ContextMock(device=device,
                               medium=self.default_medium,
                               op=input_sequence)
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), 9)
         # TX/RX apertures:
@@ -264,8 +265,6 @@ class PwiSequenceTest(SimpleTxRxSequenceTest):
             np.testing.assert_almost_equal(expected_delays[i], tx_delays, decimal=12)
 
 
-
-
 class LinSequenceTest(SimpleTxRxSequenceTest):
 
     def setUp(self) -> None:
@@ -289,7 +288,6 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
             rx_aperture_size=8,
         )
 
-
     def test_simple_sequence_with_paddings(self):
         # three tx/rxs with aperture centers: 0, 16, 31
         seq = arrus.ops.imaging.LinSequence(
@@ -312,14 +310,20 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
             pitch=0.2e-3, n_elements=32, curvature_radius=0.0)
         device = DeviceMock(probe=ProbeMock(model=probe_model))
         context = ContextMock(device=device, medium=medium, op=seq)
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(
             context)
+        # A TX/RX sequence without
+        seq2 = arrus.kernels.simple_tx_rx_sequence.convert_to_tx_rx_sequence(
+            c=medium.speed_of_sound, op=seq, probe_model=probe_model
+        )
+        seq2_with_mask: TxRxSequence = arrus.kernels.tx_rx_sequence.set_aperture_masks(
+            sequence=seq2, probe=probe_model
+        )
+        delays, _ = arrus.kernels.tx_rx_sequence.get_tx_delays(probe_model, seq2, seq2_with_mask)
 
         # expected delays
-        tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-            probe_model, seq, c=medium.speed_of_sound)
-
-        delays = tx_rx_params["tx_delays"]
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
+            probe_model, seq)
 
         # Expected aperture tx/rx 1
         expected_aperture = np.zeros((32,), dtype=bool)
@@ -376,7 +380,7 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
         context = ContextMock(device=device,
                               medium=self.default_medium,
                               op=input_sequence)
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), 128)
         # TX/RX expected delays.
@@ -412,7 +416,7 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
         context = ContextMock(device=device,
                               medium=self.default_medium,
                               op=input_sequence)
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), n_elements)
         expected_delays_profile = np.array([9.671847e-08, 1.883984e-07, 2.748402e-07, 3.55846e-07, 4.312216e-07, 5.007779e-07, 5.643331e-07, 6.217144e-07, 6.727603e-07, 7.173223e-07, 7.55267e-07, 7.86478e-07, 8.108577e-07, 8.283283e-07, 8.388334e-07, 8.42339e-07, 8.388334e-07, 8.283283e-07, 8.108577e-07, 7.86478e-07, 7.55267e-07, 7.173223e-07, 6.727603e-07, 6.217144e-07, 5.643331e-07, 5.007779e-07, 4.312216e-07, 3.55846e-07, 2.748402e-07, 1.883984e-07, 9.671847e-08, 5.082198e-21])
@@ -445,7 +449,7 @@ class StaSequenceTest(SimpleTxRxSequenceTest):
         )
 
     def test_compliance_linear_array_ultrasonix_l14_5_38_parameters(self):
-        """Tests linear array + LIN delays."""
+        """Tests linear array + STA delays."""
         n_elements = 128
         device = DeviceMock(ProbeMock(
             ProbeModel(model_id=ProbeModelId("ultrasonix", "l14-5/38"),
@@ -469,7 +473,7 @@ class StaSequenceTest(SimpleTxRxSequenceTest):
         context = ContextMock(device=device,
                               medium=self.default_medium,
                               op=input_sequence)
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), 128)
         # TX/RX expected delays.
@@ -506,7 +510,7 @@ class StaSequenceTest(SimpleTxRxSequenceTest):
         context = ContextMock(device=device,
                               medium=self.default_medium,
                               op=input_sequence)
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), n_elements)
         expected_delays_profile = np.array([0])
@@ -542,7 +546,7 @@ class StaSequenceTest(SimpleTxRxSequenceTest):
                               medium=self.default_medium,
                               op=input_sequence)
 
-        tx_rx_sequence = arrus.kernels.imaging.process_simple_tx_rx_sequence(context)
+        tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
         ops = tx_rx_sequence.ops
         self.assertEqual(len(ops), len(aperture_center))
         expected_delays_profile = np.array([6.277186e-06, 6.130122e-06, 5.983590e-06, 5.837612e-06, 5.692214e-06, 5.547423e-06, 5.403266e-06, 5.259772e-06, 5.116970e-06, 4.974892e-06, 4.833570e-06, 4.693038e-06, 4.553331e-06, 4.414486e-06, 4.276541e-06, 4.139537e-06, 4.003516e-06, 3.868520e-06, 3.734596e-06, 3.601792e-06, 3.470156e-06, 3.339741e-06, 3.210600e-06, 3.082790e-06, 2.956370e-06, 2.831401e-06, 2.707946e-06, 2.586072e-06, 2.465848e-06, 2.347345e-06, 2.230638e-06, 2.115805e-06, 2.002925e-06, 1.892081e-06, 1.783360e-06, 1.676850e-06, 1.572642e-06, 1.470831e-06, 1.371514e-06, 1.274789e-06, 1.180759e-06, 1.089527e-06, 1.001199e-06, 9.158811e-07, 8.336823e-07, 7.547116e-07, 6.790784e-07, 6.068922e-07, 5.382617e-07, 4.732946e-07, 4.120965e-07, 3.547708e-07, 3.014175e-07, 2.521329e-07, 2.070084e-07, 1.661303e-07, 1.295787e-07, 9.742690e-08, 6.974070e-08, 4.657782e-08, 2.798728e-08, 1.400893e-08, 4.673056e-09, 1.694066e-21, 1.694066e-21, 4.673056e-09, 1.400893e-08, 2.798728e-08, 4.657782e-08, 6.974070e-08, 9.742690e-08, 1.295787e-07, 1.661303e-07, 2.070084e-07, 2.521329e-07, 3.014175e-07, 3.547708e-07, 4.120965e-07, 4.732946e-07, 5.382617e-07, 6.068922e-07, 6.790784e-07, 7.547116e-07, 8.336823e-07, 9.158811e-07, 1.001199e-06, 1.089527e-06, 1.180759e-06, 1.274789e-06, 1.371514e-06, 1.470831e-06, 1.572642e-06, 1.676850e-06, 1.783360e-06, 1.892081e-06, 2.002925e-06, 2.115805e-06, 2.230638e-06, 2.347345e-06, 2.465848e-06, 2.586072e-06, 2.707946e-06, 2.831401e-06, 2.956370e-06, 3.082790e-06, 3.210600e-06, 3.339741e-06, 3.470156e-06, 3.601792e-06, 3.734596e-06, 3.868520e-06, 4.003516e-06, 4.139537e-06, 4.276541e-06, 4.414486e-06, 4.553331e-06, 4.693038e-06, 4.833570e-06, 4.974892e-06, 5.116970e-06, 5.259772e-06, 5.403266e-06, 5.547423e-06, 5.692214e-06, 5.837612e-06, 5.983590e-06, 6.130122e-06, 6.277186e-06])

@@ -381,8 +381,11 @@ template<typename T>
 
 #define ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, type, value) getMatlabVector<type>(ctx, value)
 // Produces pair: key, value, key will be determined by value keyword.
+#define ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, type, key, value)                                                            \
+    getMatlabString(ctx, u## #key), ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, type, value)
 #define ARRUS_MATLAB_GET_MATLAB_VECTOR_KV(ctx, type, value)                                                            \
     getMatlabString(ctx, u## #value), ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, type, value)
+
 
 // C++ Object -> MATLAB ARRAY
 template<typename T, typename Converter>

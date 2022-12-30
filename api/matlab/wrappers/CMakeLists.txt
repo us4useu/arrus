@@ -65,3 +65,16 @@ install(
     ${ARRUS_MATLAB_INSTALL_DIR}
 )
 
+install(
+	DIRECTORY
+	${Us4_ROOT_DIR}/lib64/
+	DESTINATION
+	${ARRUS_MATLAB_INSTALL_DIR}
+)
+
+install(
+	TARGETS
+	arrus-core
+	DESTINATION
+	${ARRUS_MATLAB_INSTALL_DIR}
+)

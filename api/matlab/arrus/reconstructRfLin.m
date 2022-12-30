@@ -11,19 +11,27 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 %                   tx time delay of the tx aperture center element (txCentDel) must be constant for all tx's;
 %                   if rfRaw is gpuArray then calculations are done on GPU;
 % 
-% sys                       - system-related parameters
-% sys.pitch                 - [m] probe's pitch
+% sys               - system-related parameters
+% sys.pitch         - [m] probe's pitch
+% sys.curvRadius    - [m] radius of probe curvature
 % 
+% acq               - acquisition-related parameters
 % acq.rxSampFreq	- [Hz] sampling frequency
 % acq.txFreq        - [Hz] carrier (nominal) frequency
 % acq.initDel       - [s] initial delay due to txDelays, rxDelay, and burst factor
 % acq.txAng         - [rad] tx angle
+% acq.txFoc         - [rad] tx focal distance
+% acq.txCentElem    - [elem] tx aperture center element
+% acq.rxCentElem    - [elem] rx aperture center element
+% acq.rxApOrig      - [elem] rx aperture origin element
+% acq.startSample   - [samp] starting sample number
 % acq.txDelCent     - [s] (1,1) time delay between 1st rx sample and tx with the center of the tx aperture (line origin)
+% acq.hwDdcEnable   - [logical] hardware DDC enable
 % 
-% 
-% proc.dec          - [] decimation factor
+% proc              - processing-related parameters
+% proc.swDdcEnable  - [logical] software DDC enable
+% proc.dec          - [] software DDC decimation factor
 % proc.sos          - [m/s] assumed speed of sound in the medium
-% proc.iqEnable     - [logical] 
 % proc.rxApod       - [] number of sigmas in the gaussian window used in rx apodization (0 -> rect. window)
 
 quickRecEnable	= diff([acq.txAng; ...
@@ -58,7 +66,7 @@ xVec        = rVec.*sin(txAng);                             % [mm] (nSamp,1,1 or
 zVec        = rVec.*cos(txAng);                             % [mm] (nSamp,1,1 or nTx) vert.  distance from the line origin
 
 posElem     = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;	% [mm] (1,nRx) position of the rx aperture elements along probes curvature
-if isnan(sys.curvRadius)
+if sys.curvRadius == 0
     angElem	= zeros(1,nRx);
     xElem	= posElem;
     zElem	= zeros(1,nRx);
@@ -98,7 +106,7 @@ end
 rfBfr	= reshape(rfBfr,[nSamp,nRx,nTx]);
 
 % modulate if iq signal is used
-if proc.iqEnable
+if acq.hwDdcEnable || proc.swDdcEnable
     rfBfr	= rfBfr.*exp(1i*2*pi*txFreq.*t);
 end
 
