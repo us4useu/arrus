@@ -100,8 +100,8 @@ void Us4RImpl::setVoltage(Voltage voltage) {
         // for this hardware.
         Voltage setVoltage = this->getVoltage();
         if (setVoltage != voltage) {
-            throw IllegalStateException(
-                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
+            //throw IllegalStateException(
+            //    ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
         }
         //Verify measured voltages on HV
         /*checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
@@ -484,4 +484,13 @@ void Us4RImpl::setAfe(uint8_t reg, uint16_t val) {
     }
 }
 
+void Us4RImpl::setRDAC(unsigned char value) {
+    auto &hv2 = this->hv.value();
+    hv2->setRDAC(value);
+}
+
+unsigned char Us4RImpl::getRDAC() {
+    auto &hv2 = this->hv.value();
+    return hv2->getRDAC();
+}    
 }// namespace arrus::devices

@@ -286,6 +286,9 @@ public:
      */
     virtual void disableHpf() = 0;
 
+    virtual void setRDAC(unsigned char rdac) =0 ; 
+    virtual unsigned char getRDAC() = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

@@ -28,6 +28,22 @@ classdef Us4R < handle
             obj.ptr.callMethod("setVoltage", 0, voltage);
         end
 
+        function setRDAC(obj, rdac)
+            %
+            % Sets the rdac to given value.
+            %
+            % :param rdac: value to set
+            obj.ptr.callMethod("setRDAC", 0, rdac);
+        end
+
+        function [rdac] = getRDAC(obj)
+            %
+            % Returns the rdac value.
+            %
+            % :return: rdac value.
+            obj.ptr.callMethod("getRDAC", 1);
+        end
+
         function [frequency] = getSamplingFrequency(obj)
             %
             % Returns NOMINAL sampling frequency.

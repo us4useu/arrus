@@ -24,8 +24,10 @@ public:
     inline static const std::string CLASS_NAME = "arrus.devices.us4r.Us4R";
 
     explicit Us4RClassImpl(const std::shared_ptr<MexContext> &ctx) : ClassObjectWrapper(ctx, CLASS_NAME) {
-        ARRUS_MATLAB_ADD_METHOD("setVoltage", setVoltage);
         ARRUS_MATLAB_ADD_METHOD("disableHV", disableHV);
+        ARRUS_MATLAB_ADD_METHOD("setVoltage", setVoltage);
+        ARRUS_MATLAB_ADD_METHOD("setRDAC", setRDAC);
+        ARRUS_MATLAB_ADD_METHOD("getRDAC", getRDAC);
         ARRUS_MATLAB_ADD_METHOD("getSamplingFrequency", getSamplingFrequency);
         ARRUS_MATLAB_ADD_METHOD("getProbeModel", getProbeModel);
         ARRUS_MATLAB_ADD_METHOD("getChannelsMask", getChannelsMask);
@@ -40,6 +42,17 @@ public:
         ::arrus::Voltage value = inputs[0][0];
         ctx->logInfo(format("Us4R: setting voltage {}", value));
         get(obj)->setVoltage(value);
+    }
+
+    void setRDAC(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        unsigned char rdac = inputs[0][0];
+        ctx->logInfo(format("Us4R: setting rdac {}", rdac));
+        get(obj)->setRDAC(rdac);
+    }
+
+    void getRDAC(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        unsigned char rdac = get(obj)->getRDAC();
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, unsigned char, rdac);
     }
 
     void getSamplingFrequency(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
