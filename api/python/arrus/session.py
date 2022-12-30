@@ -22,6 +22,8 @@ import arrus.utils
 import arrus.utils.imaging
 import arrus.framework
 import time
+from typing import Sequence, Dict
+from numbers import Number
 
 
 class AbstractSession(abc.ABC):
@@ -72,7 +74,7 @@ class Session(AbstractSession):
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
-        self._current_processing = None
+        self._current_processing: arrus.utils.imaging.Processing = None
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
@@ -263,6 +265,25 @@ class Session(AbstractSession):
         # TODO(pjarosik) key should be an id, not the whole path
         self._py_devices[path] = specific_device
         return specific_device
+
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        """
+        Sets the value for parameter with the given name.
+        TODO: note: this method currently is not thread-safe
+        """
+        if self._current_processing is not None:
+            return self._current_processing.pipeline.set_parameter(key, value)
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        """
+        Returns the current value for parameter with the given name.
+        """
+        if self._current_processing is not None:
+            return self._current_processing.pipeline.get_parameter(key)
+
+    def get_parameters(self) -> Dict[str, arrus.params.ParameterDef]:
+        if self._current_processing is not None:
+            return self._current_processing.pipeline.get_parameters()
 
     def get_session_context(self):
         return self._context
