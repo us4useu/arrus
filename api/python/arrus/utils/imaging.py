@@ -760,7 +760,7 @@ class BandpassFilter(Operation):
     define what kind of filter is used (e.g. by providing filter coefficients).
     """
 
-    def __init__(self, order=15, bounds=(0.5, 1.5), filter_type="hamming",
+    def __init__(self, order=63, bounds=(0.5, 1.5), filter_type="hamming",
                  num_pkg=None, filter_pkg=None, **kwargs):
         """
         Bandpass filter constructor.
@@ -2080,8 +2080,7 @@ class ReconstructLri(Operation):
         # Convert the sequence to the positions of the aperture centers
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
             probe_model,
-            seq,
-            seq.speed_of_sound)
+            seq)
         tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
         rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
 

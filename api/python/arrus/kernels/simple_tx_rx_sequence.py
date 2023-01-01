@@ -12,7 +12,11 @@ from arrus.ops.tgc import LinearTgc
 import arrus.utils.imaging
 import arrus.kernels.tgc
 from arrus.kernels.kernel import KernelExecutionContext
-from arrus.kernels.tx_rx_sequence import process_tx_rx_sequence, get_tx_delays
+from arrus.kernels.tx_rx_sequence import (
+    process_tx_rx_sequence,
+    get_tx_delays,
+    set_aperture_masks
+)
 
 
 def process_simple_tx_rx_sequence(context: KernelExecutionContext):
@@ -39,7 +43,12 @@ def process_simple_tx_rx_sequence(context: KernelExecutionContext):
 
 def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model):
     tx_rx_sequence = convert_to_tx_rx_sequence(c, sequence, probe_model)
-    _, center_delay = get_tx_delays(probe_model, tx_rx_sequence)
+    sequence_with_masks: TxRxSequence = set_aperture_masks(
+        sequence=tx_rx_sequence,
+        probe=probe_model
+    )
+    _, center_delay = get_tx_delays(probe_model, tx_rx_sequence,
+                                    sequence_with_masks)
     return center_delay
 
 
