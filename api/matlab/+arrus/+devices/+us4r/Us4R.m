@@ -41,7 +41,8 @@ classdef Us4R < handle
             % Returns the rdac value.
             %
             % :return: rdac value.
-            obj.ptr.callMethod("getRDAC", 1);
+            res = obj.ptr.callMethod("getRDAC", 1);
+            rdac = res{1, 1};
         end
 
         function [frequency] = getSamplingFrequency(obj)
