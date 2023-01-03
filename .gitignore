@@ -209,3 +209,6 @@ CMakeFiles
 .vs/
 
 install
+
+# vim swap files
+.swp
