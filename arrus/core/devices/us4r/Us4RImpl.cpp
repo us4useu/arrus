@@ -52,23 +52,55 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterIm
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
-void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, const std::function<float()> &func, const std::string &name, int retries) {
-    float measured = func();
-    while ((abs(measured - static_cast<float>(voltage)) > tolerance) && retries--)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        measured = func();
+std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(void) {
+    std::vector<std::pair <std::string,float>> voltages;
+    std::pair <std::string,float> temp;
+    // Do not log the voltage measured by US4RPSC, as it may not be correct
+    // for this hardware.
+    if(!isUS4PSC) {
+        //Measure voltages on HV
+        temp = std::make_pair(std::string("HVP on HV supply"), this->getMeasuredPVoltage());
+        voltages.push_back = temp;
+        temp = std::make_pair(std::string("HVM on HV supply"), this->getMeasuredMVoltage());
+        voltages.push_back = temp;
     }
-    if (abs(measured - static_cast<float>(voltage)) > tolerance) {
-        disableHV();
-        //throw exception
-        throw IllegalStateException(
-            ::arrus::format(name + " invalid '{}', should be in range: [{}, {}]",
-                measured, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+
+    //Verify measured voltages on OEMs
+    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+        temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), this->getUCDMeasuredHVPVoltage());
+        voltages.push_back = this->getUCDMeasuredHVPVoltage(i);
+        temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), this->getUCDMeasuredHVMVoltage());
+        voltages.push_back = this->getUCDMeasuredHVPVoltage(i);
     }
-    logger->log(LogSeverity::INFO, ::arrus::format(name + " = {} V", measured));
+
+    return voltages;
 }
 
+void Us4RImpl::checkVoltages(Voltage voltage, float tolerance, int retries) {
+    std::vector<std::pair <std::string,float>> voltages;
+    Bool fail = true;
+    while(retries-- && fail) {
+        voltages = logVoltages();
+        for(int i = 0; i < voltages.size(); i++) {
+            if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) { 
+                fail = true; 
+            }
+            else { fail = false; }
+        }
+        if(!fail) { break; }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+    if(fail){
+        disableHV();
+        //find violating voltage
+        for(int i = 0; i < voltages.size(); i++) {
+            if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) { 
+                throw IllegalStateException(::arrus::format(voltages[i].first + " invalid '{}', should be in range: [{}, {}]",
+                voltages[i].second, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+            }
+    }
+    
+}
 
 void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
@@ -95,19 +127,16 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     //Verify register
     auto &hvModel = this->hv.value()->getModelId();
     bool isUS4PSC = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc";
+
     if(!isUS4PSC) {
         // Do not check the voltage measured by US4RPSC, as it may not be correct
         // for this hardware.
         Voltage setVoltage = this->getVoltage();
         if (setVoltage != voltage) {
+            disableHV();
             throw IllegalStateException(
                 ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
         }
-        //Verify measured voltages on HV
-        checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
-                     "HVP on HV supply", retries);
-        checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
-                     "HVM on HV supply", retries);
     }
     else {
         this->logger->log(LogSeverity::INFO,
@@ -115,16 +144,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
 
-    //Verify measured voltages on OEMs
-    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-
-        //HVP voltage
-        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVPVoltage(i);},
-                     ("HVP on OEM#" + std::to_string(i)), retries);
-        //HVM voltage
-        checkVoltage(voltage, tolerance, [this, i]() {return this->getUCDMeasuredHVMVoltage(i);},
-                     ("HVM on OEM#" + std::to_string(i)), retries);
-    }
+    checkVoltages(voltage, tolerance, retries);
 }
 
 unsigned char Us4RImpl::getVoltage() {
