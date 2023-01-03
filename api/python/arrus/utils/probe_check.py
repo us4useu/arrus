@@ -22,7 +22,7 @@ from arrus.metadata import Metadata
 # number of samples skipped at the beggining - not used in further analysis
 _N_SKIPPED_SAMPLES = 90
 # number of frames skipped at the beggining - when need to 'warm up' the system
-_N_SKIPPED_SEQUENCES = 0
+_N_SKIPPED_SEQUENCES = 1
 
 LOGGER = arrus.logging.get_logger()
 
@@ -885,7 +885,7 @@ class ProbeHealthVerifier:
             # Record RF frames.
             # Acquire n consecutive frames
             # Skip n first sequences
-            for _ in range(_N_SKIPPED_SAMPLES):
+            for _ in range(_N_SKIPPED_SEQUENCES):
                 sess.run()
                 buffer.get()[0]
             # Now do the actual acquisition.    
