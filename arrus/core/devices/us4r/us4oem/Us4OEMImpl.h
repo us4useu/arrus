@@ -202,6 +202,11 @@ private:
     float currentSamplingFrequency;
     /** Global state mutex */
     mutable std::mutex stateMutex;
+    /** Should be set to true if any acquisitions have been
+     * programmed on the module, which then require data transfer.
+     * This attribute is used to determine, whether enable sequencer
+     * should be called when starting the device. */
+    bool isProgrammedToTxOrRx{false};
 };
 
 }
