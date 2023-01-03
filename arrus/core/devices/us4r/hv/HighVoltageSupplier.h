@@ -44,6 +44,7 @@ public:
     }
 
     void setRDAC(unsigned char rdac) {
+        hv->EnableHV();
         hv->SetHVRDAC(rdac);
     }
 
