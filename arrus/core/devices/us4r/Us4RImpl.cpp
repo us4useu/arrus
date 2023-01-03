@@ -95,6 +95,12 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
         if(!fail) { break; }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
+    
+    //log last measured voltages
+    for(int i = 0; i < voltages.size(); i++) {
+        logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].first + " = {} V", voltages[i].second));
+    }
+
     if(fail){
         disableHV();
         //find violating voltage
