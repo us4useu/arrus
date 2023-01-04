@@ -1,4 +1,3 @@
-#TODO update docstring
 """
 This is a python script for evaluating transducers in ultrasound probe.
 The evaluation is made on the basis of values of features
@@ -48,10 +47,10 @@ Following options are accepted:
 --help : displays help,
 --method : determines which method will be used ('threshold' (default)
   or 'neighborhood'),
---rf_file : determines the name of possible output file with rf data,
+--rf_file : determines the name of optional output file with rf data,
 --display_frame : determines if script will display figures,
---n : the number of full Tx cycles to run (default 1),
---tx_frequency : determines tranmit frequency in [Hz] (default 8e6),
+--n : the number of full Tx cycles to run (default 8),
+--tx_frequency : determines transmit frequency in [Hz] (default 8e6),
 --nrx : determines the size of receiving aperture (default 32),
 --create_footprint : creates footprint and store it in given file,
 --use_footprint : determines which footprint file to use,
@@ -66,7 +65,31 @@ python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --create_footprint footprint.pkl --n=16
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
 
+Additional notes:
+1. This script tries to identify channels it considers suspicious.
+In the case of a suspicious channel, the user should verify it manually
+(i.e. to look on the signal from the channel and decide, if it is good or not),
+because the features used are only indicative.
+2. Some features (like pulse duration) are more 'sensitive' than the others,
+i.e. are more likely to give false positives.
+If there are a lot of false positives one can remove the feature from the list
+of features to verify.
+3. Using of threshold method assume that one know the range of values
+of verified features.
+These ranges often are different for different probes.
+If one do not know the feature range of values, the neighborhood method can be used.
+4. The use of probe footprint seems to be the most convenient, however it require
+to create a footprint (using --create_footprint option).
+It assume, that all channels are ok during footprint creation, and later it
+just indentify channels where signals not match with the footprint.
+Thus, when some channel is damaged during footprint creation, it may be undetected
+on later tests.
+5. Remember to set proper tx_frequency (using --tx_frequency) when create a footprint
+or making tests without it.
+When footprint is used, tx/rx scheme parameters will be get from it.
+
 """
+
 
 import collections
 import argparse
@@ -74,13 +97,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from arrus.utils.probe_check import *
-
-#TODO: at the end below should be deleted, and above uncommented
-# import sys
-# sys.path.append( '/home/zklim/src/arrus/api/python/arrus/utils/' )
-# sys.path.append( 'c:/users/zklim/repos/arrus/api/python/arrus/utils/' )
-# from probe_check import *
-
 
 # ------------------------- Utility functions ---------------------------------
 
@@ -229,7 +245,7 @@ def show_footprint_pulse_comparison(
          (optional - default correponds with itx)
     """
     rf = report.data
-    if rf.shape != footprint.rf.shape:
+    if footprint is not None and rf.shape != footprint.rf.shape:
         raise ValueError(
             "The input rf array has different shape than footprint.rf")
     _, _,nsmp, nrx = rf.shape
@@ -238,7 +254,8 @@ def show_footprint_pulse_comparison(
     if irx is None:
         irx = int(np.ceil(nrx / 2) - 1)
     plt.plot(rf[iframe, itx, smp, irx])
-    plt.plot(footprint.rf[iframe, itx, smp, irx])
+    if footprint is not None:
+        plt.plot(footprint.rf[iframe, itx, smp, irx])
     plt.legend(["rf", "footprint rf"])
     plt.xlabel("samples")
     plt.ylabel("[a.u.]")
@@ -247,10 +264,8 @@ def show_footprint_pulse_comparison(
 
 def main():
     # set log severity level
-    arrus.set_clog_level(arrus.logging.TRACE)
+    arrus.set_clog_level(arrus.logging.INFO)
     arrus.add_log_file("probe_check.log", arrus.logging.TRACE)
-
-
 
     # parse input parameters
     parser = argparse.ArgumentParser(description="Channels mask test.")
@@ -272,7 +287,7 @@ def main():
         help="Number of full TX/RX sequences to run.",
         required=False,
         type=int,
-        default=1,
+        default=8,
     )
     parser.add_argument(
         "--tx_frequency", dest="tx_frequency",
@@ -334,7 +349,7 @@ def main():
 
     verifier = ProbeHealthVerifier()
 
-    # footprint creation (optional)
+    # create footprint and quit (when --create_footprint option is used)
     if args.create_footprint is not None:
         footprint = verifier.get_footprint(
             cfg_path=args.cfg_path,
@@ -352,30 +367,6 @@ def main():
 
     footprint = load_footprint(args.footprint)
 
-    # define features list
-    features = [
-        FeatureDescriptor(
-            name=MaxAmplitudeExtractor.feature,
-            active_range=(200, 2000),  # [a.u.]
-            masked_elements_range=(0, 2000)  # [a.u.]
-        ),
-        FeatureDescriptor(
-            name=SignalDurationTimeExtractor.feature,
-            active_range=(0, 500),  # number of samples
-            masked_elements_range=(200, np.inf)  # number of samples
-        ),
-        FeatureDescriptor(
-            name=EnergyExtractor.feature,
-            active_range=(0, 20),  # [a.u.]
-            masked_elements_range=(0, np.inf)  # [a.u.]
-        ),
-        FeatureDescriptor(
-            name=FootprintSimilarityPCCExtractor.feature,
-            active_range=(0.5, 1),  # [a.u.]
-            masked_elements_range=(0, 1)  # [a.u.]
-        ),
-    ]
-
     # create validator
     if args.method == "threshold":
         validator = ByThresholdValidator()
@@ -387,6 +378,34 @@ def main():
             "Unknown method - using default (threshold)."
         )
         validator = ByThresholdValidator()
+
+    # define features list
+    features = [
+        FeatureDescriptor(
+            name=MaxAmplitudeExtractor.feature,
+            active_range=(0, 2000),  # [a.u.]
+            masked_elements_range=(0, 2000)  # [a.u.]
+        ),
+        FeatureDescriptor(
+            name=SignalDurationTimeExtractor.feature,
+            active_range=(0, 1000),  # number of samples
+            masked_elements_range=(200, np.inf)  # number of samples
+        ),
+        FeatureDescriptor(
+            name=EnergyExtractor.feature,
+            active_range=(0, 200),  # [a.u.]
+            masked_elements_range=(0, np.inf)  # [a.u.]
+        ),
+    ]
+
+    if footprint is not None and args.method == "threshold":
+        features.append(
+            FeatureDescriptor(
+                name=FootprintSimilarityPCCExtractor.feature,
+                active_range=(0.5, 1),  # [a.u.]
+                masked_elements_range=(0, 1)  # [a.u.]
+            )
+        )
 
     # check probe
     report = verifier.check_probe(

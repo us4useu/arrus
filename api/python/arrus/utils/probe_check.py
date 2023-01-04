@@ -20,9 +20,11 @@ from arrus.metadata import Metadata
 
 
 # number of samples skipped at the beggining - not used in further analysis
-_N_SKIPPED_SAMPLES = 90
+_N_SKIPPED_SAMPLES = 100
 # number of frames skipped at the beggining - when need to 'warm up' the system
 _N_SKIPPED_SEQUENCES = 1
+# pulse excitation amplitude - should be int, and not exceed 15V
+_VOLTAGE = 10
 
 LOGGER = arrus.logging.get_logger()
 
@@ -39,7 +41,8 @@ def _hpfilter(
         rf: np.ndarray,
         n: int = 4,
         wn: float = 1e5,
-        fs: float = 65e6
+        fs: float = 65e6,
+        axis: int = -1,
 ) -> np.ndarray:
     """
     Returns rf signals high-pass filtered using the Butterworth filter.
@@ -53,7 +56,7 @@ def _hpfilter(
     btype = "highpass"
     output = "sos"
     iir = butter(n, wn, btype=btype, output=output, fs=fs)
-    return sosfilt(iir, rf)
+    return sosfilt(iir, rf, axis=axis)
 
 
 def _normalize(x: np.ndarray) -> np.ndarray:
@@ -289,10 +292,11 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     def extract(self, rf: np.ndarray) -> np.ndarray:
         # TODO(zklog) perhaps it might be a good idea to also remove the DC component here?
         rf = rf.copy()
-        rf = np.abs(rf[:, :, _N_SKIPPED_SAMPLES:, :])
+        # rf = _hpfilter(rf, axis=-2)
+        rf = np.abs(rf[:, :, :, :])
         # Reduce each RF frame into a vector of n elements
         # (where n is the number of probe elements).
-        frame_max = np.max(rf[:, :, :, :], axis=(2, 3))
+        frame_max = np.max(rf[:, :, _N_SKIPPED_SAMPLES:, :], axis=(2, 3))
         # Choose median of a list of Tx/Rxs sequences.
         frame_max = np.median(frame_max, axis=0)
         return frame_max
@@ -447,7 +451,8 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
             footprint_rf: np.ndarray
     )-> np.ndarray:
 
-        smp = slice(_N_SKIPPED_SAMPLES, _N_SKIPPED_SAMPLES+256)
+        gate_length = 128
+        smp = slice(_N_SKIPPED_SAMPLES, _N_SKIPPED_SAMPLES + gate_length)
         crs = self.__get_corrcoefs(
             rf,
             footprint_rf,
@@ -469,8 +474,8 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
         nframe, ntx, nsmp, nrx = rf.shape
         mid_rx = int(np.ceil(nrx/2) - 1)
         # average frames
-        avdat = rf.mean(axis=0)
-        avref = footprint_rf.mean(axis=0)
+        avdat = _hpfilter(rf.mean(axis=0))
+        avref = _hpfilter(footprint_rf.mean(axis=0))
         crs = np.full(ntx, 0).astype(float)
         if smp is None:
             smp = slice(0, nsmp)
@@ -478,7 +483,6 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
             dline = avdat[itx, smp, mid_rx]
             rline = avref[itx, smp, mid_rx]
             crs[itx] = np.corrcoef(dline, rline)[0,1].round(nround)
-        # print(crs)
         return crs
 
 
@@ -486,8 +490,8 @@ class ByThresholdValidator(ProbeElementValidator):
     """
     Validator that check the value of the feature and compares it with
     given value range. When the value of the feature is within the given
-    range the element is marked as VALID, otherwise it is marked as TOO_HIGH
     or TOO_LOW.
+    range the element is marked as VALID, otherwise it is marked as TOO_HIGH
     """
     name = "threshold"
 
@@ -670,7 +674,7 @@ class ProbeHealthVerifier:
             n: int,
             tx_frequency: float,
             nrx: int=32,
-            voltage: int=5,
+            voltage: int=_VOLTAGE,
     )-> Footprint:
         """
         Creates and returns Footprint object.
@@ -698,13 +702,13 @@ class ProbeHealthVerifier:
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator,
             nrx: int=32,
-            voltage: int=5,
+            voltage: int=_VOLTAGE,
             footprint: Footprint=None,
     )-> ProbeHealthReport:
         """
         Checks probe elements by validating selected features
         of the acquired data.
-        This metho:
+        This method:
         - runs data acquisition,
         - computes signal features,
         - tries to determine which elements are valid or not.
@@ -850,7 +854,7 @@ class ProbeHealthVerifier:
                     tx_focus=30e-3,
                     pulse=Pulse(
                         center_frequency=tx_frequency,
-                        n_periods=0.5,
+                        n_periods=1,
                         inverse=False,
                     ),
                     rx_aperture_center_element=np.arange(0, n_elements),
@@ -885,7 +889,7 @@ class ProbeHealthVerifier:
             # Record RF frames.
             # Acquire n consecutive frames
             # Skip n first sequences
-            for _ in range(_N_SKIPPED_SEQUENCES):
+            for i in range(_N_SKIPPED_SEQUENCES):
                 sess.run()
                 buffer.get()[0]
             # Now do the actual acquisition.    
