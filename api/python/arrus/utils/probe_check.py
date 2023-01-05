@@ -570,8 +570,12 @@ class ByNeighborhoodValidator(ProbeElementValidator):
     """
     name = "neighborhood"
 
-    def __init__(self, group_size=32, feature_range_in_neighborhood=(0.5, 2),
-                 min_num_of_neighbors=5):
+    def __init__(
+            self,
+            group_size=32,
+            feature_range_in_neighborhood=(0.5, 2),
+            min_num_of_neighbors=5,
+    ):
         self.group_size = group_size
         self.feature_range_in_neighborhood = feature_range_in_neighborhood
         self.min_num_of_neighbors = min_num_of_neighbors
