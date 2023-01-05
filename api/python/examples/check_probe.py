@@ -18,19 +18,22 @@ When transducer is broken, the acquired signal should be different comparing
 to signal acquired before damage.
 
 There are two methods of evaluation.
-1. 'Threshold' - bases on the values of features.
+1. 'Threshold'
+It bases on the values of features estimated
+from signals acquired from examined transducer.
 If the value is outside predefined range,
 the corresponding transducer is treated as 'suspected'.
-These ranges can be set at the beginning of the script
-(below the line "# features values ranges").
+These ranges can be set in FeatureDescriptor() calls in the main() function the script.
+(below "# define features list").
 This ranges can differs for different probes, and should be set by user.
-2. 'Neighborhood'  - bases on the values of features
-estimated from signals acquired from transducers in close neighborhood
-of the examined transducer.
+2. 'Neighborhood'
+It bases on the values of features estimated
+from signals acquired from examined transducer and transducers
+in close neighborhood.
 If the value from the examined transducer differs
 from the values from other transducers by more then arbitrary percentage,
 the transducer is treated as 'suspected'.
-Note, that PCC should be validated usign threshold method
+Note, that PCC should be validated using threshold method
 (i.e. usign ByThresholdValidator()).
 
 At the end of its run, the scripts (optionally) display figures with values of
