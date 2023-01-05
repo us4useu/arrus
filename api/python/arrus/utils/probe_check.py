@@ -443,8 +443,8 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
     Feature exctractor for extraction Pearson Correlation Coefficient (PCC)
     between given rf array and footprint rf array.
     """
-    feature = "footprint_pcc"
 
+    feature = "footprint_pcc"
     def extract(
             self,
             rf: np.ndarray,

@@ -268,9 +268,6 @@ def show_footprint_pulse_comparison(
     plt.show()
 
 def main():
-    # set log severity level
-    arrus.set_clog_level(arrus.logging.INFO)
-    arrus.add_log_file("probe_check.log", arrus.logging.TRACE)
 
     # parse input parameters
     parser = argparse.ArgumentParser(description="Channels mask test.")
