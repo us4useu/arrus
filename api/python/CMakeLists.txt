@@ -85,7 +85,8 @@ set(SOURCE_FILES
         arrus/devices/device.py
         arrus/kernels/__init__.py
         arrus/kernels/kernel.py
-        arrus/kernels/imaging.py
+        arrus/kernels/simple_tx_rx_sequence.py
+        arrus/kernels/tx_rx_sequence.py
         arrus/kernels/tgc.py
         arrus/utils/__init__.py
         arrus/utils/imaging.py
@@ -99,7 +100,7 @@ set(SOURCE_FILES
         )
 
 set(TEST_FILES
-#    arrus/kernels/tests/imaging_test.py
+#    arrus/kernels/tests/simple_tx_rx_sequence_test.py
 )
 
 if(ARRUS_CUDA)
