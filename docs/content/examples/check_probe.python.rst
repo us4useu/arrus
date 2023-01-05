@@ -69,18 +69,18 @@ Following options are accepted:
 
 **optional**::
 
---help: displays help,
---method: determines which method will be used - 'threshold' (default) or 'neighborhood',
---rf_file: determines the name of optional output file with rf data,
---display_frame: determines if script will display figures for visual evaluation,
---n: the number of full Tx cycles to run (default 8),
---tx_frequency: determines transmit frequency in [Hz] (default 8e6),
---nrx: determines the size of receiving aperture (default 32),
---create_footprint: creates footprint and store it in given pickle file,
---use_footprint: determines which footprint file to use,
---display_summary: displays features values on figure,
---show_pulse_comparison: displays acquired pulse and corresponding footprint signal
-
+    --help: displays help,
+    --method: determines which method will be used - 'threshold' (default) or 'neighborhood',
+    --rf_file: determines the name of optional output file with rf data,
+    --display_frame: determines if script will display figures for visual evaluation,
+    --n: the number of full Tx cycles to run (default 8),
+    --tx_frequency: determines transmit frequency in [Hz] (default 8e6),
+    --nrx: determines the size of receiving aperture (default 32),
+    --create_footprint: creates footprint and store it in given pickle file,
+    --use_footprint: determines which footprint file to use,
+    --display_summary: displays features values on figure,
+    --show_pulse_comparison: displays acquired pulse and corresponding footprint signal
+    --features: features to evaluation (amplitude, energy, duration, pcc)
 
 **Examples**::
 
@@ -89,7 +89,7 @@ Following options are accepted:
     python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
     python check_probe.py --cfg_path ~/us4r.prototxt --create_footprint footprint.pkl --n=16
     python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
-
+    python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl --features amplitude pcc
 
 **Additional notes:**
 
