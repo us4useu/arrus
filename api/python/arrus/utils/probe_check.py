@@ -716,6 +716,11 @@ class ProbeHealthVerifier:
         - runs data acquisition,
         - computes signal features,
         - tries to determine which elements are valid or not.
+        Available features are:
+            1. amplitude
+            2. energy
+            3. signal_duration_time
+            4. footprint_pcc
 
         :param cfg_path: a path to the system configuration file
         :param n: number of TX/RX sequences to execute (this may improve
