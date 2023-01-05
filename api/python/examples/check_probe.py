@@ -59,7 +59,8 @@ Following options are accepted:
 --use_footprint : determines which footprint file to use,
 --display_summary : displays features values on figure,
 --show_pulse_comparison : displays acquired pulse and corresponding
-    footprint signal
+    footprint signal,
+--features: features to evaluation (amplitude, energy, duration, pcc)
 
 Examples:
 python check_probe.py --help
@@ -67,6 +68,7 @@ python check_probe.py --cfg_path /home/user/us4r.prototxt
 python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --create_footprint footprint.pkl --n=16
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
+python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl --features amplitude pcc
 
 Additional notes:
 1. This script tries to identify channels it considers suspicious.
@@ -347,8 +349,14 @@ def main():
         required=False,
         default="threshold",
     )
+    parser.add_argument(
+        "--features", dest="features",
+        help="List of features used for evaluation",
+        required=False,
+        default="all",
+        nargs="+",
+    )
     args = parser.parse_args()
-    print(args)
 
     verifier = ProbeHealthVerifier()
 
@@ -382,33 +390,57 @@ def main():
         )
         validator = ByThresholdValidator()
 
-    # define features list
-    features = [
-        FeatureDescriptor(
-            name=MaxAmplitudeExtractor.feature,
-            active_range=(0, 2000),  # [a.u.]
-            masked_elements_range=(0, 2000)  # [a.u.]
-        ),
-        FeatureDescriptor(
-            name=SignalDurationTimeExtractor.feature,
-            active_range=(0, 1000),  # number of samples
-            masked_elements_range=(200, np.inf)  # number of samples
-        ),
-        FeatureDescriptor(
-            name=EnergyExtractor.feature,
-            active_range=(0, 200),  # [a.u.]
-            masked_elements_range=(0, np.inf)  # [a.u.]
-        ),
+    # prepare examined features list
+    available_features = [
+        "amplitude",
+        "duration",
+        "energy",
+        "pcc"
     ]
-
-    if footprint is not None and args.method == "threshold":
-        features.append(
-            FeatureDescriptor(
-                name=FootprintSimilarityPCCExtractor.feature,
-                active_range=(0.5, 1),  # [a.u.]
-                masked_elements_range=(0, 1)  # [a.u.]
+    can_use_footprint = args.method == "threshold" and footprint is not None
+    if args.features == 'all':
+        given_features = available_features
+        if not can_use_footprint:
+            given_features.pop(3)
+    else:
+        given_features = args.features
+    features = []
+    for feat in given_features:
+        if feat == "amplitude":
+            features.append(
+                FeatureDescriptor(
+                    name=MaxAmplitudeExtractor.feature,
+                    active_range=(0, 2000),  # [a.u.]
+                    masked_elements_range=(0, 2000)  # [a.u.]
+                )
             )
-        )
+        elif feat == "duration":
+            features.append(
+                FeatureDescriptor(
+                    name=SignalDurationTimeExtractor.feature,
+                    active_range=(0, 1000),  # number of samples
+                    masked_elements_range=(200, np.inf)  # number of samples
+                )
+            )
+        elif feat == "energy":
+            features.append(
+                FeatureDescriptor(
+                    name=EnergyExtractor.feature,
+                    active_range=(0, 200),  # [a.u.]
+                    masked_elements_range=(0, np.inf)  # [a.u.]
+                )
+            )
+        elif feat == "pcc":
+            if can_use_footprint:
+                features.append(
+                    FeatureDescriptor(
+                        name=FootprintSimilarityPCCExtractor.feature,
+                        active_range=(0.5, 1),  # [a.u.]
+                        masked_elements_range=(0, 1)  # [a.u.]
+                    )
+                )
+        else:
+            raise ValueError(f"{feat} is a bad feature name")
 
     # check probe
     report = verifier.check_probe(
