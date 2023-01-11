@@ -868,7 +868,7 @@ probe_models: [
         pitch: 0.245e-3,
         tx_frequency_range: {
             begin: 1e6,
-            end: 10e6
+            end: 12e6
         },
         voltage_range: {
 			begin: 0,
