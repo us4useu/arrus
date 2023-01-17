@@ -43,10 +43,11 @@ class Display2D:
         :param interval: number of milliseconds between successive img updates
         :param extent: OX/OZ extent: a tuple of (ox_min, ox_max, oz_max, oz_min)
         """
-        if "value_range" not in kwargs:
-            kwargs["value_range"] = None
-        if "cmap" not in kwargs:
-            kwargs["cmap"] = None
+        if "layers" not in kwargs:
+            if "value_range" not in kwargs:
+                kwargs["value_range"] = None
+            if "cmap" not in kwargs:
+                kwargs["cmap"] = None
 
         accepted_params = [
             {"metadata", "value_range", "cmap"},
