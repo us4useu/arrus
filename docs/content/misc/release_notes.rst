@@ -4,6 +4,13 @@ Release notes
 0.7.x
 -----
 
+
+0.7.4
+.....
+
+- Python API: Fixed 2D display for scheme with multiple outputs (layers).
+
+
 0.7.3
 .....
 
