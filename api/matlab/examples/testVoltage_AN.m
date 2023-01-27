@@ -1,7 +1,7 @@
 % Script for testing the voltage stabilization for AN
 
 % Use SL1543 probe with esaote3 adapter
-% Make sure a proper prototxt is indicated (line 13)
+% Make sure a proper prototxt is indicated
 % Select proper sample position using example script for rf acquisition
 % Restart (also unplug/plug the power supply cable) the Us4R-lite before the measurement
 
