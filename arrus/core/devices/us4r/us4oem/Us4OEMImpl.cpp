@@ -215,8 +215,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
-    this->isProgrammedToTxOrRx = false;
-
     // General sequence parameters.
     auto nOps = static_cast<uint16>(seq.size());
     ARRUS_REQUIRES_AT_MOST(nOps, 1024, ::arrus::format("Exceeded the maximum ({}) number of firings: {}", 1024, nOps));
@@ -244,7 +242,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             logger->log(LogSeverity::TRACE, format("Setting tx/rx {}: NOP {}", opIdx, ::arrus::toString(op)));
         } else {
             logger->log(LogSeverity::DEBUG, arrus::format("Setting tx/rx {}: {}", opIdx, ::arrus::toString(op)));
-            this->isProgrammedToTxOrRx = true;
         }
         auto sampleRange = op.getRxSampleRange().asPair();
         auto endSample = std::get<1>(sampleRange);
@@ -612,11 +609,6 @@ void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() { return ius4oem.get(); }
 
 void Us4OEMImpl::enableSequencer() {
-    if(!isProgrammedToTxOrRx && !this->isMaster()) {
-        this->logger->log(LogSeverity::DEBUG,
-                         "There is no TX/RX sequence to run, sequencer will be disabled.");
-        return;
-    }
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
