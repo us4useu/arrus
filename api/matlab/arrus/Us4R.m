@@ -281,6 +281,10 @@ classdef Us4R < handle
             end
             obj.us4r.setRDAC(uint8(targetVoltage*3));
         end
+        
+        function [] = disableReconstruct(obj)
+            obj.rec.enable = false;
+        end
     end
     
     methods(Access = private)
