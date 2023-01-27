@@ -274,6 +274,13 @@ classdef Us4R < handle
         function [img] = reconstructOffline(obj,rfRaw)
             img = obj.execReconstr(rfRaw);
         end
+        
+        function [] = reduceVoltage(obj,targetVoltage)
+            if targetVoltage*3 > obj.us4r.getRDAC()
+                error('Target voltage is higher than actual voltage.');
+            end
+            obj.us4r.setRDAC(uint8(targetVoltage*3));
+        end
     end
     
     methods(Access = private)
@@ -695,7 +702,11 @@ classdef Us4R < handle
             
             import arrus.ops.us4r.*;
             
-            obj.us4r.setVoltage(obj.seq.txVoltage);
+%             obj.us4r.setVoltage(obj.seq.txVoltage);
+            for v=1:obj.seq.txVoltage
+                obj.us4r.setRDAC(uint8(v*3));
+                pause(0.1);
+            end
             
             % Tx/Rx sequence
             nTx = obj.seq.nTx;
