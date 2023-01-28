@@ -726,6 +726,9 @@ classdef Us4R < handle
              obj.buffer.oemId, ...
              obj.buffer.frameId, ...
              obj.buffer.channelId] = obj.session.upload(scheme);
+
+            obj.buffer.framesOffset = obj.buffer.framesOffset.';
+            obj.buffer.framesNumber = obj.buffer.framesNumber.';
             
             % Data reorganization addresses
             nChan = obj.sys.nChArius;
