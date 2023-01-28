@@ -27,6 +27,7 @@ set(DOC_FILES
     content/api.matlab.rst
     content/api.cpp.rst
     content/low_level_api.matlab.rst
+    content/examples/check_probe.python.rst
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 

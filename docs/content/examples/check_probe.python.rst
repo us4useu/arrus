@@ -1,6 +1,5 @@
-===================
-Check probe example
-===================
+Check probe
+===========
 
 Sometimes some of the transducers in the probe can be damaged, e.g. mechanically.
 Such a damaged transducer can be potentially dangerous to the system,
@@ -18,7 +17,7 @@ Each transducer is excited by a short (single period) and low voltage (10V).
 
 
 Current features
-================
+----------------
 
 #. amplitude
 #. pulse duration
@@ -32,7 +31,7 @@ Current features
 
 
 Methods of evaluation
-=====================
+---------------------
 
 #. **Threshold**
     It bases on the values of features estimated
@@ -55,7 +54,7 @@ Methods of evaluation
 
 
 How to use the script
-=====================
+---------------------
 The script is called from command line with some options.
 At the end of its run, the scripts (optionally) display figures with values of
 the features, and initial segments of signals from all transducer, for visual
