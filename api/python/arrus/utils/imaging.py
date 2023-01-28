@@ -307,14 +307,14 @@ class ProcessingRunner:
                     out_i = self._out_i[i]
                     out_element = out_buffer.elements[out_i]
                     self._out_i[i] = (out_i + 1) % out_buffer.n_elements
-                    self.processing_stream.launch_host_func(
-                        lambda element: element.acquire(), out_element)
-                    result.get(self.processing_stream, out=out_element.data)
+                    out_element.acquire()
+                    # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
+                    out_element.data[:] = result.get()  
                     out_elements.append(out_element)
             if self.is_extract_metadata:
                 out_elements.insert(0, metadata)
-            self.processing_stream.launch_host_func(self.__release, gpu_element)
-            self.processing_stream.launch_host_func(self.callback, out_elements)
+            self.__release(gpu_element)
+            self.callback(out_elements)
 
     def close(self):
         with self._state_lock:

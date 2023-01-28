@@ -104,10 +104,10 @@ void Us4RImpl::setVoltage(Voltage voltage) {
                 ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
         }
         //Verify measured voltages on HV
-        /*checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
+        checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredPVoltage(); },
                      "HVP on HV supply", retries);
         checkVoltage(voltage, tolerance, [this] () { return this->getMeasuredMVoltage(); },
-                     "HVM on HV supply", retries);*/
+                     "HVM on HV supply", retries);
     }
     else {
         this->logger->log(LogSeverity::INFO,
