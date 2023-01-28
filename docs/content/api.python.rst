@@ -238,7 +238,7 @@ Probe check functionality
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.utils.probe_check.ByNeigborhoodValidator
+.. autoclass:: arrus.utils.probe_check.ByNeighborhoodValidator
     :members:
     :show-inheritance:
 

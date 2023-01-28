@@ -336,12 +336,12 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         return np.array(energies)
 
 
-    def __get_signal_energy(self, rf: np.ndarray) -> np.float:
+    def __get_signal_energy(self, rf: np.ndarray) -> float:
         """
         Returns normalized and high-pass filtered signal energy.
 
         :param rf: signal
-        :return: signal energy (np.float)
+        :return: signal energy (float)
         """
         rf = _hpfilter(rf)
         rf = rf ** 2
