@@ -2,7 +2,7 @@
 Check probe example
 ===================
 
-Sometimes some of he transducers in the probe can be damaged, e.g. mechanically.
+Sometimes some of the transducers in the probe can be damaged, e.g. mechanically.
 Such a damaged transducer can be potentially dangerous to the system,
 e.g. it can cause mismatched current flow in some subsystem and damage it.
 This example consists of a python script (arrus/api/python/examples/check_probe.py)
@@ -41,7 +41,7 @@ Methods of evaluation
     treated as *suspected*.
     These ranges can be set in FeatureDescriptor() calls 
     in the main() function of the script (below "# define features list").
-    This ranges can differs for different probes.
+    This ranges can differs between probes.
 
 #. **Neighborhood**
     It bases on the values of features estimated
@@ -117,6 +117,6 @@ on later tests.
 
 5. Remember to set proper *tx_frequency* (using --tx_frequency) when create a footprint
 or making tests without it
-(when footprint is used, tx/rx scheme parameters will be get from it).
+(when footprint is used, tx/rx scheme parameters will be taken from it).
 
 
