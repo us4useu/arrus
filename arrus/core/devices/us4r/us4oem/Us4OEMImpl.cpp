@@ -738,7 +738,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 35u + (16 * (uint32_t) ddcDecimationFactor);
+    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
 
     //Check if data valid offset is higher than TX offset
     if (offset > 240) {
