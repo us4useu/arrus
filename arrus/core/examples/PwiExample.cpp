@@ -17,9 +17,10 @@ int main() noexcept {
         logging->setClogLevel(::arrus::LogSeverity::TRACE);
         std::shared_ptr<std::ofstream> logFile = std::make_shared<std::ofstream>("log.log");
         logging->addOutputStream(logFile, ::arrus::LogSeverity::TRACE);
-        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
+        auto settings = ::arrus::io::readSessionSettings("/home/pjarosik/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
+	us4r->disableHV();
         auto probe = us4r->getProbe(0);
 
         unsigned nElements = probe->getModel().getNumberOfElements().product();
@@ -41,7 +42,7 @@ int main() noexcept {
             for(int d = 0; d < nElements; ++d) {
                 delays[d] = d*1e-9f;
             }
-            arrus::BitMask txAperture(nElements, true);
+            arrus::BitMask txAperture(nElements, false); // No TX.
             txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 200e-6f);
         }
 

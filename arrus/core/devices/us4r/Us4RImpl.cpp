@@ -86,7 +86,7 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
     bool fail = true;
     while(retries-- && fail) {
         voltages = logVoltages(isUS4PSC);
-        for(int i = 0; i < voltages.size(); i++) {
+        for(size_t i = 0; i < voltages.size(); i++) {
             if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) { 
                 fail = true; 
             }
@@ -97,14 +97,14 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
     }
     
     //log last measured voltages
-    for(int i = 0; i < voltages.size(); i++) {
+    for(size_t i = 0; i < voltages.size(); i++) {
         logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].first + " = {} V", voltages[i].second));
     }
 
     if(fail){
         disableHV();
         //find violating voltage
-        for(int i = 0; i < voltages.size(); i++) {
+        for(size_t i = 0; i < voltages.size(); i++) {
             if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) { 
                 throw IllegalStateException(::arrus::format(voltages[i].first + " invalid '{}', should be in range: [{}, {}]",
                 voltages[i].second, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
