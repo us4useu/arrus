@@ -1,3 +1,6 @@
+import abc
+from abc import abstractmethod
+
 import numpy as np
 import math
 import scipy
@@ -21,6 +24,10 @@ import importlib.util
 from enum import Enum
 import arrus.kernels.simple_tx_rx_sequence
 import arrus.kernels.tx_rx_sequence
+from numbers import Number
+from typing import Sequence, Dict, Callable, Union, Tuple
+from arrus.params import ParameterDef, Unit, Box
+from collections import defaultdict
 
 
 def is_package_available(package_name):
@@ -30,6 +37,7 @@ def is_package_available(package_name):
 if is_package_available("cupy"):
     import cupy
     import re
+
     if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
         raise ValueError(f"Unrecognized pattern "
                          f"of the cupy version: {cupy.__version__}")
@@ -88,7 +96,7 @@ def get_bmode_imaging(sequence, grid, placement="/GPU:0",
             ),
             placement=placement)
     elif isinstance(sequence, arrus.ops.imaging.PwiSequence) \
-      or isinstance(sequence, arrus.ops.imaging.StaSequence):
+            or isinstance(sequence, arrus.ops.imaging.StaSequence):
         # Synthetic aperture imaging.
         return Pipeline(
             steps=(
@@ -146,6 +154,7 @@ class BufferElementLockBased:
     Acquiring the element when it's not released will block the caller
     until the element is released.
     """
+
     def __init__(self, pos, data):
         self.pos = pos
         self.data = data
@@ -219,15 +228,15 @@ class ProcessingRunner:
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
         self.out_metadata = processing.pipeline.prepare(const_metadata)
         self.out_buffers = [Buffer(n_elements=out_buffer_spec.size, shape=m.input_shape,
-                                  dtype=m.dtype, math_pkg=np,
-                                  type=out_buffer_spec.type)
-                           for m in self.out_metadata]
+                                   dtype=m.dtype, math_pkg=np,
+                                   type=out_buffer_spec.type)
+                            for m in self.out_metadata]
         # Wait for all the initialization done in by the Pipeline.
         cp.cuda.Stream.null.synchronize()
         # Pin output buffers.
         self.out_buffers = self.__register_buffer(self.out_buffers)
         if not isinstance(self.out_buffers, Iterable):
-            self.out_buffers = (self.out_buffers, )
+            self.out_buffers = (self.out_buffers,)
         self._process_lock = threading.Lock()
         if processing.callback is not None:
             self.user_out_buffer = None
@@ -236,7 +245,7 @@ class ProcessingRunner:
             self.user_out_buffer = queue.Queue(maxsize=1)
             self.callback = self.default_callback
         self._gpu_i = 0
-        self._out_i = [0]*len(self.out_buffers)
+        self._out_i = [0] * len(self.out_buffers)
         self.i = 0
         # Metadata extraction.
         self.is_extract_metadata = processing.extract_metadata
@@ -264,7 +273,7 @@ class ProcessingRunner:
 
     def default_callback(self, elements):
         try:
-            user_elements = [None]*len(elements)
+            user_elements = [None] * len(elements)
             for i, element in enumerate(elements):
                 user_elements[i] = element.data.copy()
                 element.release()
@@ -283,7 +292,7 @@ class ProcessingRunner:
                 metadata = self.metadata_extractor.process(input_element.data)
             gpu_element = self.gpu_buffer.acquire(self._gpu_i)
             gpu_array = gpu_element.data
-            self._gpu_i = (self._gpu_i+1) % self.gpu_buffer.n_elements
+            self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
             gpu_array.set(input_element.data, stream=self.data_stream)
             self.data_stream.launch_host_func(self.__release, input_element)
 
@@ -297,15 +306,15 @@ class ProcessingRunner:
                 for i, (result, out_buffer) in enumerate(zip(results, self.out_buffers)):
                     out_i = self._out_i[i]
                     out_element = out_buffer.elements[out_i]
-                    self._out_i[i] = (out_i+1) % out_buffer.n_elements
-                    self.processing_stream.launch_host_func(
-                        lambda element: element.acquire(), out_element)
-                    result.get(self.processing_stream, out=out_element.data)
+                    self._out_i[i] = (out_i + 1) % out_buffer.n_elements
+                    out_element.acquire()
+                    # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
+                    out_element.data[:] = result.get()  
                     out_elements.append(out_element)
             if self.is_extract_metadata:
                 out_elements.insert(0, metadata)
-            self.processing_stream.launch_host_func(self.__release, gpu_element)
-            self.processing_stream.launch_host_func(self.callback, out_elements)
+            self.__release(gpu_element)
+            self.callback(out_elements)
 
     def close(self):
         with self._state_lock:
@@ -326,7 +335,7 @@ class ProcessingRunner:
     def __register_buffer(self, buffers):
         import cupy as cp
         if not isinstance(buffers, Iterable):
-            buffers = (buffers, )
+            buffers = (buffers,)
         for buffer in buffers:
             for element in buffer.elements:
                 cp.cuda.runtime.hostRegister(element.data.ctypes.data,
@@ -338,7 +347,7 @@ class ProcessingRunner:
     def __unregister_buffer(self, buffers):
         import cupy as cp
         if not isinstance(buffers, Iterable):
-            buffers = (buffers, )
+            buffers = (buffers,)
         for buffer in buffers:
             for element in buffer.elements:
                 cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
@@ -348,7 +357,13 @@ class Operation:
     """
     An operation to perform in the imaging pipeline -- one data processing
     stage.
+
+    :param name: operation name, should be unique in a given context.
+        None means that a unique name should be automatically generated.
     """
+
+    def __init__(self, name=None):
+        self.name = name
 
     def prepare(self, const_metadata):
         """
@@ -396,6 +411,39 @@ class Operation:
         """
         pass
 
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        """
+        Sets the value for parameter with a given name.
+        :param key:
+        :param value:
+        :return:
+        """
+        raise ValueError(f"Unknown parameter: {key}")
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        """
+        Returns the current value for parameter with the given name.
+        """
+        raise ValueError(f"Unknown parameter: {key}")
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        """
+        Returns description of parameters that can be set
+        for this operation.
+        """
+        return dict()
+
+
+def _get_default_op_name(op: Operation, ordinal: int):
+    return f"{type(op).__name__}:{ordinal}"
+
+
+def _get_op_context_param_name(op_name: str, param_name: str):
+    param_name = param_name.strip()
+    if not param_name.startswith("/"):
+        param_name = f"/{param_name}"
+    return f"/{op_name}{param_name}"
+
 
 class Output(Operation):
     """
@@ -420,7 +468,7 @@ class Output(Operation):
         return const_metadata
 
     def process(self, data):
-        return (data, )
+        return data,
 
 
 class Pipeline:
@@ -432,15 +480,38 @@ class Pipeline:
     :param steps: processing steps to run
     :param placement: device on which the processing should take place,
       default: GPU:0
-    :param callback: callback to run when output data is ready. By default
     """
-    def __init__(self, steps, placement=None):
-        self.steps = steps
+
+    def __init__(self, steps, placement=None, name=None):
+        self.steps: Sequence[Operation] = steps
+        self.name = name
         self._placement = None
         self._processing_stream = None
         self._input_buffer = None
         if placement is not None:
             self.set_placement(placement)
+        self._set_names()
+        self._param_ops: Dict[str, Tuple[Operation, str]] = {}
+        self._param_defs: Dict[str, ParameterDef] = {}
+        self._determine_params()
+
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        """
+        Sets the value for parameter with the given name.
+        TODO: note: this method currently is not thread-safe
+        """
+        op, op_param_name = self._param_ops[key]
+        op.set_parameter(op_param_name, value)
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        """
+        Returns the current value for parameter with the given name.
+        """
+        op, op_param_name = self._param_ops[key]
+        return op.get_parameter(op_param_name)
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        return self._param_defs
 
     def __call__(self, data):
         return self.process(data)
@@ -488,7 +559,7 @@ class Pipeline:
             if isinstance(step, (Pipeline, Output)):
                 child_metadatas = step.prepare(current_metadata)
                 if not isinstance(child_metadatas, Iterable):
-                    child_metadatas = (child_metadatas, )
+                    child_metadatas = (child_metadatas,)
                 # To keep the order of child_metadatas, appendleft
                 # collection in reversed order.
                 for metadata in reversed(child_metadatas):
@@ -551,6 +622,32 @@ class Pipeline:
         self.num_pkg = pkgs['num_pkg']
         self.filter_pkg = pkgs['filter_pkg']
 
+    def _set_names(self):
+        """
+        Names all the children.
+        """
+        type_counter = defaultdict(int)
+        for step in self.steps:
+            if not hasattr(step, "name") or step.name is None:
+                t = type(step)
+                step.name = _get_default_op_name(step, type_counter[t])
+                type_counter[t] += 1
+
+    def _determine_params(self):
+        """
+        Creates an internal hashmap for all parameters available
+        in the pipeline.
+        """
+        self._param_ops = {}
+        self._param_defs = {}
+        for step in self.steps:
+            name = step.name
+            params = step.get_parameters()
+            for k, param_def in params.items():
+                prefixed_k = _get_op_context_param_name(name, k)
+                self._param_ops[prefixed_k] = step, k
+                self._param_defs[prefixed_k] = param_def
+
 
 @dataclasses.dataclass(frozen=True)
 class ProcessingBuffer:
@@ -564,16 +661,45 @@ class Processing:
     A description of complete data processing run in the arrus.utils.imaging.
     """
 
-    def __init__(self, pipeline, callback=None, extract_metadata=False,
-                 input_buffer: ProcessingBuffer=None,
-                 output_buffer: ProcessingBuffer=None,
-                 on_buffer_overflow_callback=None):
+    def __init__(
+            self, pipeline: Pipeline,
+            callback: Callable[[Sequence[Union[BufferElement, BufferElementLockBased]]], None] = None,
+            extract_metadata: bool = False,
+            input_buffer: ProcessingBuffer = None,
+            output_buffer: ProcessingBuffer = None,
+            on_buffer_overflow_callback=None):
         self.pipeline = pipeline
+        self._pipeline_name = _get_default_op_name(self.pipeline, 0)
+        self._pipeline_params = self._determine_params()
         self.callback = callback
         self.extract_metadata = extract_metadata
         self.input_buffer = input_buffer
         self.output_buffer = output_buffer
         self.on_buffer_overflow_callback = on_buffer_overflow_callback
+
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        """
+        Sets the value for parameter with the given name.
+        """
+        pipeline_param_name = self._pipeline_params[key]
+        self.pipeline.set_parameter(pipeline_param_name, value)
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        """
+        Returns the current value for parameter with the given name.
+        """
+        pipeline_param_name = self._pipeline_params[key]
+        return self.get_parameter(pipeline_param_name)
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        return self._pipeline_params
+
+    def _determine_params(self):
+        _pipeline_param_name = {}
+        for k, param_def in self.pipeline.get_parameters().items():
+            prefixed_k = _get_op_context_param_name(self._pipeline_name, k)
+            _pipeline_param_name[prefixed_k] = k
+        return _pipeline_param_name
 
 
 class Lambda(Operation):
@@ -634,7 +760,7 @@ class BandpassFilter(Operation):
     define what kind of filter is used (e.g. by providing filter coefficients).
     """
 
-    def __init__(self, order=15, bounds=(0.5, 1.5), filter_type="hamming",
+    def __init__(self, order=63, bounds=(0.5, 1.5), filter_type="hamming",
                  num_pkg=None, filter_pkg=None, **kwargs):
         """
         Bandpass filter constructor.
@@ -669,8 +795,8 @@ class BandpassFilter(Operation):
         band = [l * center_frequency, r * center_frequency]
         if self.filter_type == "butter":
             taps, _ = scipy.signal.butter(
-                    self.order, band,
-                    btype='bandpass', fs=sampling_frequency)
+                self.order, band,
+                btype='bandpass', fs=sampling_frequency)
         else:
             taps = scipy.signal.firwin(
                 numtaps=self.order,
@@ -739,9 +865,10 @@ class FirFilter(Operation):
             run_fir_int16(
                 grid_size, block_size,
                 (fir_output_buffer, data, n_samples,
-                total_n_samples, self.taps, n_taps),
+                 total_n_samples, self.taps, n_taps),
                 shared_memory_size)
             return fir_output_buffer
+
         self.convolve1d_func = gpu_convolve1d
         return const_metadata.copy(dtype=self.xp.float32)
 
@@ -786,6 +913,7 @@ class QuadratureDemodulation(Operation):
     """
     Quadrature demodulation (I/Q decomposition).
     """
+
     def __init__(self, num_pkg=None):
         self.mod_factor = None
         self.xp = num_pkg
@@ -818,6 +946,7 @@ class DigitalDownConversion(Operation):
     """
     IQ demodulation, decimation.
     """
+
     def __init__(self, decimation_factor, fir_params=None,
                  fir_cutoff_relative=1.0, fir_order=15, fir_type="hamming"):
         self.decimation_factor = decimation_factor
@@ -834,15 +963,15 @@ class DigitalDownConversion(Operation):
         self.demodulator = QuadratureDemodulation()
         center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         sampling_frequency = const_metadata.data_description.sampling_frequency
-        cutoff_freq = center_frequency*self.fir_cutoff_relative
+        cutoff_freq = center_frequency * self.fir_cutoff_relative
         fir_coefficients = scipy.signal.firwin(
-                numtaps=self.fir_order,
-                cutoff=cutoff_freq,
-                window=self.fir_type,
-                fs=sampling_frequency,
-                pass_zero="lowpass",
-                **self.fir_params
-            )
+            numtaps=self.fir_order,
+            cutoff=cutoff_freq,
+            window=self.fir_type,
+            fs=sampling_frequency,
+            pass_zero="lowpass",
+            **self.fir_params
+        )
         self.decimator = Decimation(
             self.decimation_factor,
             filter_coeffs=fir_coefficients, filter_type="fir")
@@ -906,7 +1035,7 @@ class Decimation(Operation):
         n_samples = input_shape[-1]
         self.filter_coeffs = self.xp.asarray(self.filter_coeffs)
         self.filter_coeffs = self.filter_coeffs.astype(self.xp.float32)
-        output_shape = input_shape[:-1] + (math.ceil(n_samples/self.decimation_factor), )
+        output_shape = input_shape[:-1] + (math.ceil(n_samples / self.decimation_factor),)
         return const_metadata.copy(data_desc=new_signal_description,
                                    input_shape=output_shape)
 
@@ -923,6 +1052,7 @@ class RxBeamforming(Operation):
     This operator implements beamforming for linear scanning (element by element)
     and phased scanning (angle by angle).
     """
+
     def __init__(self, num_pkg=None):
         # Actual implementation of the operator.
         self._op = None
@@ -986,7 +1116,7 @@ class RxBeamformingPhasedScanning(Operation):
         self.tx_angles = cp.asarray(seq.angles, dtype=cp.float32)
 
         device_fs = const_metadata.context.device.sampling_frequency
-        acq_fs = (device_fs/seq.downsampling_factor)
+        acq_fs = (device_fs / seq.downsampling_factor)
         fs = const_metadata.data_description.sampling_frequency
         fc = seq.pulse.center_frequency
         n_periods = seq.pulse.n_periods
@@ -1013,16 +1143,16 @@ class RxBeamformingPhasedScanning(Operation):
         self.c = cp.float32(c)
         # Note: start sample has to be appropriately adjusted for
         # the ACQ sampling frequency.
-        self.start_time = cp.float32(start_sample/acq_fs)
+        self.start_time = cp.float32(start_sample / acq_fs)
         self.init_delay = cp.float32(initial_delay)
         self.max_tang = cp.float32(max_tang)
         sample_block_size = min(self.n_samples, 16)
         scanline_block_size = min(self.n_tx, 16)
         n_seq_block_size = min(self.n_seq, 4)
         self.block_size = (sample_block_size, scanline_block_size, n_seq_block_size)
-        self.grid_size = (int((self.n_samples-1)//sample_block_size + 1),
-                          int((self.n_tx-1)//scanline_block_size + 1),
-                          int((self.n_seq-1)//n_seq_block_size + 1))
+        self.grid_size = (int((self.n_samples - 1) // sample_block_size + 1),
+                          int((self.n_tx - 1) // scanline_block_size + 1),
+                          int((self.n_seq - 1) // n_seq_block_size + 1))
         # xElemConst
         # Get aperture origin (for the given aperture center element/aperture center)
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
@@ -1030,8 +1160,8 @@ class RxBeamformingPhasedScanning(Operation):
         rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
         rx_aperture_origin = _get_rx_aperture_origin(
             rx_aperture_center_element, seq.rx_aperture_size)
-        rx_aperture_offset = rx_aperture_center_element-rx_aperture_origin
-        x_elem = (np.arange(0, self.n_rx)-rx_aperture_offset) * probe_model.pitch
+        rx_aperture_offset = rx_aperture_center_element - rx_aperture_origin
+        x_elem = (np.arange(0, self.n_rx) - rx_aperture_offset) * probe_model.pitch
         x_elem = x_elem.astype(np.float32)
         self.x_elem_const = _get_const_memory_array(
             self._kernel_module, "xElemConst", x_elem)
@@ -1100,7 +1230,7 @@ class RxBeamformingLin(Operation):
 
         # -- Output buffer
         self.buffer = self.xp.zeros(
-            (self.n_seq*self.n_tx, self.n_rx * self.n_samples),
+            (self.n_seq * self.n_tx, self.n_rx * self.n_samples),
             dtype=buffer_dtype)
 
         # -- Delays
@@ -1127,7 +1257,7 @@ class RxBeamformingLin(Operation):
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
         radial_distance = (
-                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs) * c/2
+                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs) * c / 2
         )
         x_distance = (radial_distance * np.sin(tx_angle)).reshape(1, -1)
         z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
@@ -1156,8 +1286,8 @@ class RxBeamformingLin(Operation):
         self.delays = self.t * fs  # in number of samples
         total_n_samples = self.n_rx * self.n_samples
         # Move samples outside the available area
-        self.delays[np.isclose(self.delays, self.n_samples-1)] = self.n_samples-1
-        self.delays[self.delays > self.n_samples-1] = total_n_samples + 1
+        self.delays[np.isclose(self.delays, self.n_samples - 1)] = self.n_samples - 1
+        self.delays[self.delays > self.n_samples - 1] = total_n_samples + 1
         # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
         #  row-wise major order).
         self.delays = self.xp.asarray(self.delays)
@@ -1174,7 +1304,7 @@ class RxBeamformingLin(Operation):
         rx_apodization = (rx_tang < max_tang).astype(np.float32)
         rx_apod_sum = np.sum(rx_apodization, axis=0)
         rx_apod_sum[rx_apod_sum == 0] = 1
-        rx_apodization = rx_apodization/(rx_apod_sum.reshape(1, self.n_samples))
+        rx_apodization = rx_apodization / (rx_apod_sum.reshape(1, self.n_samples))
         self.rx_apodization = self.xp.asarray(rx_apodization)
         # IQ correction
         self.t = self.xp.asarray(self.t)
@@ -1184,7 +1314,7 @@ class RxBeamformingLin(Operation):
         return const_metadata.copy(input_shape=(self.n_seq, self.n_tx, self.n_samples))
 
     def process(self, data):
-        data = data.copy().reshape(self.n_seq*self.n_tx, self.n_rx * self.n_samples)
+        data = data.copy().reshape(self.n_seq * self.n_tx, self.n_rx * self.n_samples)
 
         self.interp1d_func(data, self.delays, self.buffer)
         out = self.buffer.reshape((self.n_seq, self.n_tx, self.n_rx, self.n_samples))
@@ -1231,6 +1361,7 @@ class Transpose(Operation):
         """
         :param axes: permutation of axes to apply
         """
+        super().__init__()
         self.axes = axes
         self.xp = None
 
@@ -1332,23 +1463,23 @@ class ScanConversion(Operation):
         c = _get_speed_of_sound(const_metadata.context)
         tx_center_diff = np.diff(tx_aperture_center_element)
         # Check if tx aperture centers are evenly spaced.
-        if not np.allclose(tx_center_diff, [tx_center_diff[0]]*len(tx_center_diff)):
+        if not np.allclose(tx_center_diff, [tx_center_diff[0]] * len(tx_center_diff)):
             raise ValueError("Transmits should be done by consecutive "
                              "center elements (got tx center elements: "
                              f"{tx_aperture_center_element}")
         tx_center_diff = tx_center_diff[0]
         # Determine input grid.
-        input_x_grid_diff = tx_center_diff*pitch
-        input_x_grid_origin = (tx_aperture_center_element[0]-(n_elements-1)/2)*pitch
+        input_x_grid_diff = tx_center_diff * pitch
+        input_x_grid_origin = (tx_aperture_center_element[0] - (n_elements - 1) / 2) * pitch
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
         start_sample = seq.rx_sample_range[0]
-        input_z_grid_origin = start_sample/acq_fs*c/2
-        input_z_grid_diff = c/(fs*2)
+        input_z_grid_origin = start_sample / acq_fs * c / 2
+        input_z_grid_diff = c / (fs * 2)
         # Map x_grid and z_grid to the RF frame coordinates.
-        interp_x_grid = (self.x_grid-input_x_grid_origin)/input_x_grid_diff
-        interp_z_grid = (self.z_grid-input_z_grid_origin)/input_z_grid_diff
+        interp_x_grid = (self.x_grid - input_x_grid_origin) / input_x_grid_diff
+        interp_z_grid = (self.z_grid - input_z_grid_origin) / input_z_grid_diff
         self._interp_mesh = cp.asarray(np.meshgrid(interp_z_grid, interp_x_grid, indexing="ij"))
 
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
@@ -1393,7 +1524,7 @@ class ScanConversion(Operation):
             seq.tx_aperture_center_element, probe)
 
         z_grid_moved = self.z_grid.T + probe.curvature_radius \
-            - self.num_pkg.max(probe.element_pos_z)
+                       - self.num_pkg.max(probe.element_pos_z)
 
         self.radGridIn = (
                 (start_sample / acq_fs + self.num_pkg.arange(0, n_samples) / fs)
@@ -1412,7 +1543,7 @@ class ScanConversion(Operation):
         def get_equalized_diff(values, param_name):
             diffs = np.diff(values)
             # Check if all values are evenly spaced
-            if not np.allclose(diffs, [diffs[0]]*len(diffs)):
+            if not np.allclose(diffs, [diffs[0]] * len(diffs)):
                 raise ValueError(f"{param_name} should be evenly spaced, "
                                  f"got {values}")
             return diffs[0]
@@ -1447,7 +1578,7 @@ class ScanConversion(Operation):
         acq_fs = fs / seq.downsampling_factor
         fs = data_desc.sampling_frequency
         start_sample, _ = seq.rx_sample_range
-        start_time = start_sample/acq_fs
+        start_time = start_sample / acq_fs
         c = _get_speed_of_sound(const_metadata.context)
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
@@ -1459,10 +1590,10 @@ class ScanConversion(Operation):
         tx_ap_cent_z = tx_ap_cent_z.squeeze().item()
         tx_ap_cent_ang = tx_ap_cent_ang.squeeze().item()
 
-        self.radGridIn = (start_time + np.arange(0, n_samples)/fs)*c/2
+        self.radGridIn = (start_time + np.arange(0, n_samples) / fs) * c / 2
         self.azimuthGridIn = seq.angles + tx_ap_cent_ang
-        azimuthGridOut = np.arctan2((self.x_grid-tx_ap_cent_x), (self.z_grid.T-tx_ap_cent_z))
-        radGridOut = np.sqrt((self.x_grid-tx_ap_cent_x)**2 + (self.z_grid.T-tx_ap_cent_z)**2)
+        azimuthGridOut = np.arctan2((self.x_grid - tx_ap_cent_x), (self.z_grid.T - tx_ap_cent_z))
+        radGridOut = np.sqrt((self.x_grid - tx_ap_cent_x) ** 2 + (self.z_grid.T - tx_ap_cent_z) ** 2)
         dst_points = np.dstack((radGridOut, azimuthGridOut))
         w, h, d = dst_points.shape
         self.dst_points = dst_points.reshape((w * h, d))
@@ -1487,6 +1618,7 @@ class LogCompression(Operation):
     """
     Converts data to decibel scale.
     """
+
     def __init__(self):
         self.num_pkg = None
         self.is_gpu = False
@@ -1504,7 +1636,7 @@ class LogCompression(Operation):
 
     def process(self, data):
         data[data <= 0] = 1e-9
-        return 20*self.num_pkg.log10(data)
+        return 20 * self.num_pkg.log10(data)
 
 
 class DynamicRangeAdjustment(Operation):
@@ -1512,16 +1644,51 @@ class DynamicRangeAdjustment(Operation):
     Clips data values to given range.
     """
 
-    def __init__(self, min=20, max=80):
+    def __init__(self, min=20, max=80, name=None):
         """
         Constructor.
 
         :param min: minimum value to clamp
         :param max: maximum value to clamp
         """
+        super().__init__(name=name)
         self.min = min
         self.max = max
         self.xp = None
+
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        if not hasattr(self, key):
+            raise ValueError(f"{type(self).__name__} has no {key} parameter.")
+        setattr(self, key, value)
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        if not hasattr(self, key):
+            raise ValueError(f"{type(self).__name__} has no {key} parameter.")
+        return getattr(self, key)
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        return {
+            "min": ParameterDef(
+                name="min",
+                space=Box(
+                    shape=(1, ),
+                    dtype=np.float32,
+                    unit=Unit.dB,
+                    low=-np.inf,
+                    high=np.inf
+                ),
+            ),
+            "max": ParameterDef(
+                name="max",
+                space=Box(
+                    shape=(1, ),
+                    dtype=np.float32,
+                    unit=Unit.dB,
+                    low=-np.inf,
+                    high=np.inf
+                ),
+            )
+        }
 
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
@@ -1549,7 +1716,7 @@ class ToGrayscaleImg(Operation):
 
     def process(self, data):
         data = data - self.xp.min(data)
-        data = data/self.xp.max(data)*255
+        data = data / self.xp.max(data) * 255
         return data.astype(self.xp.uint8)
 
 
@@ -1653,12 +1820,12 @@ class SelectSequenceRaw(Operation):
         frame_offsets = []
         current_frame = 0  # Current physical frame.
         for us4oem in us4oems:
-            n_frames = self.num_pkg.max(fcm_frames[fcm_us4oems == us4oem])+1
+            n_frames = self.num_pkg.max(fcm_frames[fcm_us4oems == us4oem]) + 1
             us4oem_offset = fcm.frame_offsets[us4oem]
             # NOTE: below we use only a single sequence
-            src_start = us4oem_offset*n_samples+self.sequence[0]*n_frames*n_samples
-            src_end = src_start+n_frames*n_samples
-            dst_end = dst_start+n_frames*n_samples
+            src_start = us4oem_offset * n_samples + self.sequence[0] * n_frames * n_samples
+            src_end = src_start + n_frames * n_samples
+            dst_end = dst_start + n_frames * n_samples
             self.positions.append((src_start, dst_start, src_end, dst_end))
             frame_offsets.append(current_frame)
             current_frame += n_frames
@@ -1722,7 +1889,7 @@ class SelectSequence(Operation):
         n_seq = len(self.sequence)
 
         output_shape = input_shape[1:]
-        output_shape = (n_seq, ) + output_shape
+        output_shape = (n_seq,) + output_shape
         new_seq = dataclasses.replace(seq, n_repeats=n_seq)
         new_raw_seq = dataclasses.replace(raw_seq, n_repeats=n_seq)
         new_context = arrus.metadata.FrameAcquisitionContext(
@@ -1812,6 +1979,7 @@ class Squeeze(Operation):
     """
     Squeezes input array (removes axes = 1).
     """
+
     def __init__(self):
         pass
 
@@ -1842,7 +2010,7 @@ class ReconstructLri(Operation):
         self.z_grid = z_grid
         import cupy as cp
         self.num_pkg = cp
-        self.rx_tang_limits = rx_tang_limits # Currently used only by Convex PWI implementation
+        self.rx_tang_limits = rx_tang_limits  # Currently used only by Convex PWI implementation
 
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg is np:
@@ -1875,9 +2043,9 @@ class ReconstructLri(Operation):
         z_block_size = min(self.z_size, 16)
         tx_block_size = min(self.n_tx, 4)
         self.block_size = (z_block_size, x_block_size, tx_block_size)
-        self.grid_size = (int((self.z_size-1)//z_block_size + 1),
-                          int((self.x_size-1)//x_block_size + 1),
-                          int((self.n_seq*self.n_tx-1)//tx_block_size + 1))
+        self.grid_size = (int((self.z_size - 1) // z_block_size + 1),
+                          int((self.x_size - 1) // x_block_size + 1),
+                          int((self.n_seq * self.n_tx - 1) // tx_block_size + 1))
         self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
         self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
 
@@ -1895,7 +2063,7 @@ class ReconstructLri(Operation):
         self.n_elements = probe_model.n_elements
 
         device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < 256*3*4:  # 3 float32 arrays, 256 elements max
+        if device_props["totalConstMem"] < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
             raise ValueError("There is not enough constant memory available!")
 
         x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
@@ -1912,8 +2080,7 @@ class ReconstructLri(Operation):
         # Convert the sequence to the positions of the aperture centers
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
             probe_model,
-            seq,
-            seq.speed_of_sound)
+            seq)
         tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
         rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
 
@@ -1928,10 +2095,10 @@ class ReconstructLri(Operation):
         self.tx_ap_cent_z = self.num_pkg.asarray(tx_center_z, dtype=self.num_pkg.float32)
 
         # first/last probe element in TX aperture
-        tx_ap_origin = np.round(tx_centers-(tx_sizes-1)/2 + 1e-9).astype(np.int32)
-        rx_ap_origin = np.round(rx_centers-(rx_sizes-1)/2 + 1e-9).astype(np.int32)
+        tx_ap_origin = np.round(tx_centers - (tx_sizes - 1) / 2 + 1e-9).astype(np.int32)
+        rx_ap_origin = np.round(rx_centers - (rx_sizes - 1) / 2 + 1e-9).astype(np.int32)
         tx_ap_first_elem = np.maximum(tx_ap_origin, 0)
-        tx_ap_last_elem = np.minimum(tx_ap_origin+tx_sizes-1, probe_model.n_elements-1)
+        tx_ap_last_elem = np.minimum(tx_ap_origin + tx_sizes - 1, probe_model.n_elements - 1)
         self.tx_ap_first_elem = self.num_pkg.asarray(tx_ap_first_elem, dtype=self.num_pkg.int32)
         self.tx_ap_last_elem = self.num_pkg.asarray(tx_ap_last_elem, dtype=self.num_pkg.int32)
         self.rx_ap_origin = self.num_pkg.asarray(rx_ap_origin, dtype=self.num_pkg.int32)
@@ -1945,9 +2112,9 @@ class ReconstructLri(Operation):
 
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
-        self.tx_foc = self.num_pkg.asarray([seq.tx_focus]*self.n_tx, dtype=self.num_pkg.float32)
-        burst_factor = seq.pulse.n_periods / (2*self.fn)
-        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
+        self.tx_foc = self.num_pkg.asarray([seq.tx_focus] * self.n_tx, dtype=self.num_pkg.float32)
+        burst_factor = seq.pulse.n_periods / (2 * self.fn)
+        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         return const_metadata.copy(input_shape=output_shape)
 
@@ -1987,7 +2154,7 @@ class Sum(Operation):
 
     def prepare(self, const_metadata):
         output_shape = list(const_metadata.input_shape)
-        actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
+        actual_axis = len(output_shape) - 1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
         return const_metadata.copy(input_shape=tuple(output_shape))
 
@@ -2011,7 +2178,7 @@ class Mean(Operation):
 
     def prepare(self, const_metadata):
         output_shape = list(const_metadata.input_shape)
-        actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
+        actual_axis = len(output_shape) - 1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
         return const_metadata.copy(input_shape=tuple(output_shape))
 
@@ -2020,7 +2187,7 @@ class Mean(Operation):
 
 
 def _get_rx_aperture_origin(aperture_center_element, aperture_size):
-    return np.round(aperture_center_element-(aperture_size-1)/2+1e-9)
+    return np.round(aperture_center_element - (aperture_size - 1) / 2 + 1e-9)
 
 
 # -------------------------------------------- RF frame remapping.
@@ -2059,7 +2226,7 @@ def __group_transfers(frame_channel_mapping):
                     # new src frame
                     or src_frame != prev_src_frame
                     # a gap in current frame
-                    or src_channel != prev_src_channel+1):
+                    or src_channel != prev_src_channel + 1):
                 # Close current source range
                 if current_src_frame is not None:
                     transfer = Transfer(
@@ -2160,7 +2327,7 @@ class RemapToLogicalOrder(Operation):
             self._frame_offsets = cp.asarray(frame_offsets)
             # For each us4OEM, get number of physical frames this us4OEM gathers.
             # Note: this is the max number of us4OEMs IN USE.
-            n_us4oems = cp.max(self._fcm_us4oems).get()+1
+            n_us4oems = cp.max(self._fcm_us4oems).get() + 1
             n_frames_us4oems = []
             for us4oem in range(n_us4oems):
                 us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
@@ -2171,18 +2338,19 @@ class RemapToLogicalOrder(Operation):
                     n_frames_us4oems.append(n_frames_us4oem)
 
             #  TODO constant memory
-            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)+1
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size
             )
+
             def gpu_remap_fn(data):
                 run_remap_v1(self.grid_size, self.block_size,
-                    [self._output_buffer, data,
-                     self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
-                     self._frame_offsets,
-                     self._n_frames_us4oems,
-                     batch_size, n_frames, n_samples, n_channels])
+                             [self._output_buffer, data,
+                              self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
+                              self._frame_offsets,
+                              self._n_frames_us4oems,
+                              batch_size, n_frames, n_samples, n_channels])
 
             self._remap_fn = gpu_remap_fn
         return const_metadata.copy(input_shape=self.output_shape)
@@ -2256,7 +2424,7 @@ class RemapToLogicalOrderV2(Operation):
             self._frame_offsets = cp.asarray(frame_offsets)
             # For each us4OEM, get number of physical frames this us4OEM gathers.
             # Note: this is the maximum id of us4OEM IN USE.
-            n_us4oems = cp.max(self._fcm_us4oems).get()+1
+            n_us4oems = cp.max(self._fcm_us4oems).get() + 1
             n_frames_us4oems = []
             for us4oem in range(n_us4oems):
                 us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
@@ -2266,7 +2434,7 @@ class RemapToLogicalOrderV2(Operation):
                     n_frames_us4oem = cp.max(us4oem_frames).get().item()
                     n_frames_us4oems.append(n_frames_us4oem)
             #  TODO constant memory
-            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)+1
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size
@@ -2274,12 +2442,12 @@ class RemapToLogicalOrderV2(Operation):
 
             def gpu_remap_fn(data):
                 run_remap_v2(self.grid_size, self.block_size,
-                          [self._output_buffer, data,
-                           self._fcm_frames, self._fcm_channels,
-                           self._fcm_us4oems, self._frame_offsets,
-                           self._n_frames_us4oems,
-                           batch_size, n_frames, n_samples, n_channels,
-                           n_components])
+                             [self._output_buffer, data,
+                              self._fcm_frames, self._fcm_channels,
+                              self._fcm_us4oems, self._frame_offsets,
+                              self._n_frames_us4oems,
+                              batch_size, n_frames, n_samples, n_channels,
+                              n_components])
 
             self._remap_fn = gpu_remap_fn
         return const_metadata.copy(input_shape=self.output_shape)
@@ -2297,6 +2465,7 @@ class ToRealOrComplex(Operation):
     - dtype with shape (...) if n_components == 1 (simply, removes the last
       axis).
     """
+
     def __init__(self, num_pkg=None):
         self._output_buffer = None
         self.xp = num_pkg
@@ -2326,7 +2495,7 @@ class ToRealOrComplex(Operation):
 
     def _process_to_complex(self, data):
         output = data.astype(self.xp.float32)
-        return output[..., 0] + 1j*output[..., 1]
+        return output[..., 0] + 1j * output[..., 1]
 
     def _process_to_real(self, data):
         return data[..., 0]
@@ -2394,9 +2563,9 @@ class ExtractMetadata(Operation):
 
         input_shape = const_metadata.input_shape
         is_ddc = len(input_shape) == 3
-        self._slices = (slice(0, self._n_samples*self._n_frames, self._n_samples), )
+        self._slices = (slice(0, self._n_samples * self._n_frames, self._n_samples),)
         if is_ddc:
-            self._slices = self._slices + (0, ) # Select "I" value.
+            self._slices = self._slices + (0,)  # Select "I" value.
         return const_metadata
 
     def process(self, data):
@@ -2441,6 +2610,7 @@ class ReconstructLri3D(Operation):
             cords = np.argwhere(ap)
             y, x = zip(*cords)
             return np.min(x), np.max(x), np.min(y), np.max(y)
+
         min_max_x_y = (get_min_max_x_y(aperture) for aperture in apertures)
         min_x, max_x, min_y, max_y = zip(*min_max_x_y)
         min_x, max_x = np.atleast_1d(min_x), np.atleast_1d(max_x)
@@ -2479,9 +2649,9 @@ class ReconstructLri3D(Operation):
         y_block_size = min(self.x_size, 8)
         z_block_size = min(self.y_size, 8)
         self.block_size = (x_block_size, y_block_size, z_block_size)
-        self.grid_size = (int((self.z_size-1)//z_block_size + 1),
-                          int((self.x_size-1)//x_block_size + 1),
-                          int((self.y_size-1)//y_block_size + 1))
+        self.grid_size = (int((self.z_size - 1) // z_block_size + 1),
+                          int((self.x_size - 1) // x_block_size + 1),
+                          int((self.y_size - 1) // y_block_size + 1))
 
         self.y_pix = self.num_pkg.asarray(self.y_grid, dtype=self.num_pkg.float32)
         self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
@@ -2503,18 +2673,18 @@ class ReconstructLri3D(Operation):
         n_rows_x = self.n_elements
         n_rows_y = self.n_elements + 3
         # General regular position of elements
-        element_pos_x = np.linspace(-(n_rows_x - 1)/2, (n_rows_x - 1)/2, num=n_rows_x)
-        element_pos_x = element_pos_x*pitch
+        element_pos_x = np.linspace(-(n_rows_x - 1) / 2, (n_rows_x - 1) / 2, num=n_rows_x)
+        element_pos_x = element_pos_x * pitch
 
-        element_pos_y = np.linspace(-(n_rows_y - 1)/2, (n_rows_y - 1)/2, num=n_rows_y)
-        element_pos_y = element_pos_y*pitch
+        element_pos_y = np.linspace(-(n_rows_y - 1) / 2, (n_rows_y - 1) / 2, num=n_rows_y)
+        element_pos_y = element_pos_y * pitch
         element_pos_y = np.delete(element_pos_y, (8, 17, 26))
 
         element_pos_x = element_pos_x.astype(np.float32)
         element_pos_y = element_pos_y.astype(np.float32)
         # Put the data into GPU constant memory.
         device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < 256*2*4:  # 2 float32 arrays, 256 elements max
+        if device_props["totalConstMem"] < 256 * 2 * 4:  # 2 float32 arrays, 256 elements max
             raise ValueError("There is not enough constant memory available!")
         x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
         self._x_elem_const = _get_const_memory_array(
@@ -2535,8 +2705,8 @@ class ReconstructLri3D(Operation):
         rx_bounds = self._get_aperture_boundaries(rx_apertures)
         txap_min_x, txap_max_x, txap_min_y, txap_max_y = tx_bounds
         rxap_min_x, rxap_max_x, rxap_min_y, rxap_max_y = rx_bounds
-        rxap_size_x = set((rxap_max_x-rxap_min_x).tolist())
-        rxap_size_y = set((rxap_max_y-rxap_min_y).tolist())
+        rxap_size_x = set((rxap_max_x - rxap_min_x).tolist())
+        rxap_size_y = set((rxap_max_y - rxap_min_y).tolist())
         if len(rxap_size_x) > 1 or len(rxap_size_y) > 1:
             raise ValueError("Each TX/RX aperture should have the same square aperture size.")
         rxap_size_x = next(iter(rxap_size_x))
@@ -2554,8 +2724,8 @@ class ReconstructLri3D(Operation):
         # Find the center of TX aperture.
         # TODO note: this method assumes that all TX/RXs have a rectangle TX aperture
         # 1. Find the position of the center.
-        tx_ap_center_x = (element_pos_x[txap_min_x] + element_pos_x[txap_max_x])/2
-        tx_ap_center_y = (element_pos_y[txap_min_y] + element_pos_y[txap_max_y])/2
+        tx_ap_center_x = (element_pos_x[txap_min_x] + element_pos_x[txap_max_x]) / 2
+        tx_ap_center_y = (element_pos_y[txap_min_y] + element_pos_y[txap_max_y]) / 2
         # element index -> element position
         ap_center_elem_x = np.interp(tx_ap_center_x, element_pos_x, np.arange(len(element_pos_x)))
         ap_center_elem_y = np.interp(tx_ap_center_y, element_pos_y, np.arange(len(element_pos_y)))
@@ -2603,8 +2773,8 @@ class ReconstructLri3D(Operation):
             self.min_tang, self.max_tang = -0.5, 0.5
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
-        burst_factor = ref_tx.excitation.n_periods / (2*self.fn)
-        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
+        burst_factor = ref_tx.excitation.n_periods / (2 * self.fn)
+        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
         self.rx_apod = self.num_pkg.asarray(self.rx_apod)
@@ -2639,6 +2809,7 @@ class Equalize(Operation):
     """
     Equalize means values along a specific axis.
     """
+
     def __init__(self, axis=0, axis_offset=0, num_pkg=None):
         self.axis = axis
         self.axis_offset = axis_offset
@@ -2653,7 +2824,7 @@ class Equalize(Operation):
         if self.axis >= len(self.input_shape):
             raise ValueError(f"Equalize: axis out of bounds: {self.axis}, "
                              f"for shape: {self.input_shape}.")
-        self.slice = [slice(None)]*len(self.input_shape)
+        self.slice = [slice(None)] * len(self.input_shape)
         self.slice[self.axis] = slice(self.axis_offset, None)
         self.slice = tuple(self.slice)
         return const_metadata.copy()
@@ -2662,7 +2833,7 @@ class Equalize(Operation):
         d = data[self.slice]
         m = d.mean(axis=self.axis).astype(self.input_dtype)
         m = self.xp.expand_dims(m, axis=self.axis)
-        return data-m
+        return data - m
 
 
 class DelayAndSumLUT(Operation):
