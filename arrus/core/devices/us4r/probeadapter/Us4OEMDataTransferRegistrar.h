@@ -177,7 +177,6 @@ public:
     IGNORE_UNUSED(currentTransferIdx);               \
     IGNORE_UNUSED(currentDstIdx);                    \
     try {                                            \
-        ius4oem->MarkEntriesAsReadyForReceive(transferFirstFiring, transferLastFiring); \
         ARRUS_ON_NEW_DATA_CALLBACK_strategy_##strategy                             \
         ARRUS_ON_NEW_DATA_CALLBACK_signal_##signal                       \
     } \

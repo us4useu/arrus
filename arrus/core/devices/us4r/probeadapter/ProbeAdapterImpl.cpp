@@ -334,16 +334,18 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             std::function<void()> releaseFunc;
             if(isTriggerRequired) {
                 releaseFunc = [this, startFiring, endFiring]() {
-                    for (auto &us4oem: this->us4oems) {
-                        us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                     }
                     getMasterUs4oem()->syncTrigger();
                 };
             }
             else {
                 releaseFunc = [this, startFiring, endFiring]() {
-                    for (auto &us4oem: this->us4oems) {
-                        us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                     }
                 };
             }
