@@ -493,4 +493,5 @@ unsigned char Us4RImpl::getRDAC() {
     auto &hv2 = this->hv.value();
     return hv2->getRDAC();
 }    
+
 }// namespace arrus::devices

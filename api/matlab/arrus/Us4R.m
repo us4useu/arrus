@@ -57,7 +57,7 @@ classdef Us4R < handle
             obj.sys.nElem = double(probe.nElements);
             obj.sys.pitch = probe.pitch;
             obj.sys.freqRange = double(probe.txFrequencyRange);
-            obj.sys.curvRadius = probe.curvatureRadius;
+            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
 
              % Position (pos,x,z) and orientation (ang) of each probe element
              obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
@@ -374,8 +374,12 @@ classdef Us4R < handle
             end
             
             %% txPri
+            txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
             if isempty(obj.seq.txPri)
-                obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
+                obj.seq.txPri = txPriMin;
+            elseif obj.seq.txPri < txPriMin
+                warning(['txPri value is too low. It is increased to ' num2str(txPriMin)]);
+                obj.seq.txPri = txPriMin;
             end
             
             %% TGC
@@ -741,6 +745,9 @@ classdef Us4R < handle
              obj.buffer.oemId, ...
              obj.buffer.frameId, ...
              obj.buffer.channelId] = obj.session.upload(scheme);
+			
+			obj.buffer.framesOffset = obj.buffer.framesOffset.';
+            obj.buffer.framesNumber = obj.buffer.framesNumber.';
             
             % Data reorganization addresses
             nChan = obj.sys.nChArius;
