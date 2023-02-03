@@ -71,7 +71,7 @@ class Session(AbstractSession):
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
-        self._current_processing = None
+        self._current_processing: arrus.utils.imaging.Processing = None
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
@@ -150,12 +150,13 @@ class Session(AbstractSession):
                     extract_metadata=False
                 )
             if isinstance(processing, _imaging.Processing):
-                self.processing = arrus.utils.imaging.ProcessingRunner(
+                processing = arrus.utils.imaging.ProcessingRunner(
                     buffer, const_metadata, processing)
-                outputs = self.processing.outputs
+                outputs = processing.outputs
             else:
                 raise ValueError("Unsupported type of processing: "
                                  f"{type(processing)}")
+            self._current_processing = processing
         else:
             # Device buffer and const_metadata
             outputs = buffer, const_metadata
@@ -203,6 +204,7 @@ class Session(AbstractSession):
         Sets the state of the session to closed, any subsequent call to the object
         methods (e.g. upload, startScheme..) will result in exception.
         """
+        self.stop_scheme()
         self._session_handle.close()
 
     def get_device(self, path: str):

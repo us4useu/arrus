@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from pathlib import Path
 import os
 import importlib.util
+from enum import Enum
 
 
 def is_package_available(package_name):
@@ -188,6 +189,11 @@ class ProcessingRunner:
     output buffer should be located on GPU.
     """
 
+    class State(Enum):
+        READY = 1
+        CLOSED = 2
+
+
     def __init__(self, input_buffer, const_metadata, processing):
         import cupy as cp
         # Initialize pipeline.
@@ -236,6 +242,8 @@ class ProcessingRunner:
         if processing.on_buffer_overflow_callback is not None:
             self.input_buffer.append_on_buffer_overflow_callback(
                 processing.on_buffer_overflow_callback)
+        self._state = ProcessingRunner.State.READY
+        self._state_lock = threading.Lock()
 
     @property
     def outputs(self):
@@ -295,9 +303,13 @@ class ProcessingRunner:
             self.processing_stream.launch_host_func(self.callback, out_elements)
 
     def stop(self):
-        # cleanup
-        self.__unregister_buffer(self.input_buffer)
-        self.__unregister_buffer(self.out_buffers)
+        with self._state_lock:
+            if self._state == ProcessingRunner.State.CLOSED:
+                # Already closed.
+                return
+            self.__unregister_buffer(self.input_buffer)
+            self.__unregister_buffer(self.out_buffers)
+            self._state = ProcessingRunner.State.CLOSED
 
     def sync(self):
         self.data_stream.synchronize()
