@@ -57,7 +57,7 @@ classdef Us4R < handle
             obj.sys.nElem = double(probe.nElements);
             obj.sys.pitch = probe.pitch;
             obj.sys.freqRange = double(probe.txFrequencyRange);
-            obj.sys.curvRadius = probe.curvatureRadius;
+            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
 
              % Position (pos,x,z) and orientation (ang) of each probe element
              obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
