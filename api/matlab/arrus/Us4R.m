@@ -363,8 +363,12 @@ classdef Us4R < handle
             end
             
             %% txPri
+            txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
             if isempty(obj.seq.txPri)
-                obj.seq.txPri = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
+                obj.seq.txPri = txPriMin;
+            elseif obj.seq.txPri < txPriMin
+                warning(['txPri value is too low. It is increased to ' num2str(txPriMin)]);
+                obj.seq.txPri = txPriMin;
             end
             
             %% TGC
