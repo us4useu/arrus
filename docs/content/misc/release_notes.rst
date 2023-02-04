@@ -4,6 +4,11 @@ Release notes
 0.7.x
 -----
 
+0.7.5
+.....
+
+- Python API: Fixed CUDA host memory unpinning on the arrus session close.
+
 
 0.7.4
 .....
