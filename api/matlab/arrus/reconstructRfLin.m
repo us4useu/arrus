@@ -32,7 +32,9 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 % proc.swDdcEnable  - [logical] software DDC enable
 % proc.dec          - [] software DDC decimation factor
 % proc.sos          - [m/s] assumed speed of sound in the medium
-% proc.rxApod       - [] number of sigmas in the gaussian window used in rx apodization (0 -> rect. window)
+% proc.bmodeRxTangLim - [] rx tangent limits
+% proc.rxApod       - [] rx apodization window
+
 
 quickRecEnable	= diff([acq.txAng; ...
                         acq.txFoc; ...
@@ -45,10 +47,12 @@ if quickRecEnable
     txAng	= acq.txAng(1);
     txFreq	= acq.txFreq(1);
     dT      = acq.initDel(1);
+    tangLim = proc.bmodeRxTangLim(1,:);
 else
     txAng	= reshape(acq.txAng,1,1,[]);
     txFreq	= reshape(acq.txFreq,1,1,[]);
     dT      = reshape(acq.initDel,1,1,[]);
+    tangLim = reshape(proc.bmodeRxTangLim.',1,2,[]);
 end
 
 %% Reconstruction
@@ -56,8 +60,6 @@ end
 rfRaw       = reshape(rfRaw,[nSamp*nRx,nTx]);
 
 fs          = acq.rxSampFreq/proc.dec;
-
-maxTang     = tan(asin(min(1,(proc.sos./txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
 
 rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * proc.sos/2;           % [mm] (nSamp,1) radial distance from the line origin
@@ -91,11 +93,11 @@ iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx,
 iSamp(iSamp<1 | iSamp>nSamp)	= inf;
 iSamp       = reshape(iSamp + (0:(nRx-1))*nSamp,nSamp*nRx,[]);	% [samp] (nSamp*nRx,1 or nTx)
 
-rxTang      = abs(tan(atan2(xVec-xElem,zVec-zElem) - angElem)); % [] (nSamp,nRx,1 or nTx)
-rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
-% rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
+rxTang      = tan(atan2(xVec-xElem,zVec-zElem) - angElem);  % [] (nSamp,nRx,1 or nTx)
+rxApod      = double(rxTang >= tangLim(1,1,:) & ...
+                     rxTang <= tangLim(1,2,:));             % [] (nSamp,nRx,1 or nTx)
+rxApod      = rxApod.*interp1(proc.rxApod,linspace(1,numel(proc.rxApod),nRx));
 rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or nTx) normalized rx apodization vector
-% warning - does the apodization takes into account for the clipped aperture?
 
 % Delay & Sum
 if quickRecEnable
