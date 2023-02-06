@@ -808,7 +808,14 @@ classdef Us4R < handle
 
             %% Reconstruction
             if ~obj.rec.gridModeEnable
-                rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
+                if numel(obj.rec.bmodeFrames) ~= obj.seq.nTx || ...
+                   any(obj.rec.bmodeFrames ~= 1:obj.seq.nTx) || ...
+                   obj.rec.colorEnable || obj.rec.vectorEnable
+                    error("execReconstr: frames selection or doppler modes are not supported when gridModeEnable=false");
+                end
+                if obj.rec.bmodeEnable
+                    rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
+                end
             else
 %                 rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
                 
