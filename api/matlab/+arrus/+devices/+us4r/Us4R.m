@@ -3,6 +3,7 @@ classdef Us4R < handle
     properties(GetAccess = protected, SetAccess = immutable, Transient = true, Hidden = true)
         ptr arrus.Ptr {mustBeScalarOrEmpty}
     end
+
     methods
         function obj = Us4R(ptr)
             %
@@ -10,6 +11,13 @@ classdef Us4R < handle
             %
             % :param ptr: pointer to the underlying device
             obj.ptr = arrus.Ptr("arrus.devices.us4r.Us4R", ptr);
+        end
+
+        function disableHV(obj)
+            %
+            % Disables HV.
+            %
+            obj.ptr.callMethod("disableHV", 0);
         end
 
         function setVoltage(obj, voltage)
@@ -29,5 +37,22 @@ classdef Us4R < handle
             frequency = res{1, 1};
         end
 
+        function [model] = getProbeModel(obj)
+            %
+            % Returns probe model definition.
+            %
+            % :return: probe model definition, an instance of class arrus.devices.probe.ProbeModel
+            res = obj.ptr.callMethod("getProbeModel", 1);
+            model = res{1, 1};
+        end
+
+        function [channelsMask] = getChannelsMask(obj)
+            %
+            % Returns list of masked elements/system channels.
+            % Note: channel numbering starts from 0.
+            %
+            res = obj.ptr.callMethod("getChannelsMask", 1);
+            channelsMask = res{1, 1};
+        end
     end
 end

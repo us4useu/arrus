@@ -1,0 +1,50 @@
+us4r: {
+    probe_id: {
+        manufacturer: "esaote"
+        name: "sl1543"
+    }
+
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "esaote3"
+    }
+
+    # Default initial values.
+    rx_settings: {
+        lna_gain: 24
+        pga_gain: 30
+        lpf_cutoff: 15000000
+        active_termination: 200
+    }
+
+    hv: {
+        model_id {
+            manufacturer: "us4us"
+            name: "hv256"
+        }
+    }
+
+    channels_mask: {
+        channels: []
+    }
+
+	# us4oem channels mask are redundant here to minimize the risk of changing masking by mistake
+    us4oem_channels_mask: [
+        {
+            # Us4OEM:0
+            # probe elements [0, 31) are connected to us4OEM:0 channels [0, 31) (1:1 mapping)
+            # probe elements [64, 95) are connected to us4OEM:0 channels [32, 63) (1:1 mapping)
+            # probe elements [128, 159) are connected to us4OEM:0 channels [64, 95) (1:1 mapping)
+            channels: []
+        },
+        {
+            # Us4OEM:1
+            # probe elements [32, 63) are connected to us4OEM:1 channels [0, 31) (1:1 mapping)
+            # probe elements [96, 127) are connected to us4OEM:1 channels [32, 63) (1:1 mapping)
+            # probe elements [160, 191) are connected to us4OEM:1 channels [64, 95) (1:1 mapping)
+            channels: []
+        }
+    ]
+}
+
+

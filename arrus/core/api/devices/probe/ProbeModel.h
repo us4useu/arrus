@@ -35,6 +35,10 @@ public:
             throw IllegalArgumentException(
                 "Number of elements and pitch should have the same size.");
         }
+        size_t probeOrder = numberOfElements.size();
+        if(probeOrder != 1 && probeOrder != 2) {
+            throw IllegalArgumentException("Only 1D and 2D array probes are supported");
+        }
     }
 
     const ProbeModelId &getModelId() const {

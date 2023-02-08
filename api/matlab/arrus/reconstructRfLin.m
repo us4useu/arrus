@@ -11,20 +11,30 @@ function[rfBfr] = reconstructRfLin(rfRaw,sys,acq,proc)
 %                   tx time delay of the tx aperture center element (txCentDel) must be constant for all tx's;
 %                   if rfRaw is gpuArray then calculations are done on GPU;
 % 
-% sys                       - system-related parameters
-% sys.pitch                 - [m] probe's pitch
+% sys               - system-related parameters
+% sys.pitch         - [m] probe's pitch
+% sys.curvRadius    - [m] radius of probe curvature
 % 
+% acq               - acquisition-related parameters
 % acq.rxSampFreq	- [Hz] sampling frequency
 % acq.txFreq        - [Hz] carrier (nominal) frequency
 % acq.initDel       - [s] initial delay due to txDelays, rxDelay, and burst factor
 % acq.txAng         - [rad] tx angle
+% acq.txFoc         - [rad] tx focal distance
+% acq.txCentElem    - [elem] tx aperture center element
+% acq.rxCentElem    - [elem] rx aperture center element
+% acq.rxApOrig      - [elem] rx aperture origin element
+% acq.startSample   - [samp] starting sample number
 % acq.txDelCent     - [s] (1,1) time delay between 1st rx sample and tx with the center of the tx aperture (line origin)
+% acq.hwDdcEnable   - [logical] hardware DDC enable
 % 
-% 
-% proc.dec          - [] decimation factor
+% proc              - processing-related parameters
+% proc.swDdcEnable  - [logical] software DDC enable
+% proc.dec          - [] software DDC decimation factor
 % proc.sos          - [m/s] assumed speed of sound in the medium
-% proc.iqEnable     - [logical] 
-% proc.rxApod       - [] number of sigmas in the gaussian window used in rx apodization (0 -> rect. window)
+% proc.bmodeRxTangLim - [] rx tangent limits
+% proc.rxApod       - [] rx apodization window
+
 
 quickRecEnable	= diff([acq.txAng; ...
                         acq.txFoc; ...
@@ -37,10 +47,12 @@ if quickRecEnable
     txAng	= acq.txAng(1);
     txFreq	= acq.txFreq(1);
     dT      = acq.initDel(1);
+    tangLim = proc.bmodeRxTangLim(1,:);
 else
     txAng	= reshape(acq.txAng,1,1,[]);
     txFreq	= reshape(acq.txFreq,1,1,[]);
     dT      = reshape(acq.initDel,1,1,[]);
+    tangLim = reshape(proc.bmodeRxTangLim.',1,2,[]);
 end
 
 %% Reconstruction
@@ -49,8 +61,6 @@ rfRaw       = reshape(rfRaw,[nSamp*nRx,nTx]);
 
 fs          = acq.rxSampFreq/proc.dec;
 
-maxTang     = tan(asin(min(1,(proc.sos./txFreq*2/3)/sys.pitch)));  % 2/3*Lambda/pitch -> -6dB
-
 rVec        = ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * proc.sos/2;           % [mm] (nSamp,1) radial distance from the line origin
 
@@ -58,7 +68,7 @@ xVec        = rVec.*sin(txAng);                             % [mm] (nSamp,1,1 or
 zVec        = rVec.*cos(txAng);                             % [mm] (nSamp,1,1 or nTx) vert.  distance from the line origin
 
 posElem     = ((0:(nRx-1)) + acq.rxApOrig(1) - acq.rxCentElem(1))*sys.pitch;	% [mm] (1,nRx) position of the rx aperture elements along probes curvature
-if isnan(sys.curvRadius)
+if sys.curvRadius == 0
     angElem	= zeros(1,nRx);
     xElem	= posElem;
     zElem	= zeros(1,nRx);
@@ -83,11 +93,11 @@ iSamp       = t*fs + 1;                                     % [samp] (nSamp,nRx,
 iSamp(iSamp<1 | iSamp>nSamp)	= inf;
 iSamp       = reshape(iSamp + (0:(nRx-1))*nSamp,nSamp*nRx,[]);	% [samp] (nSamp*nRx,1 or nTx)
 
-rxTang      = abs(tan(atan2(xVec-xElem,zVec-zElem) - angElem)); % [] (nSamp,nRx,1 or nTx)
-rxApod      = double(rxTang < maxTang);                     % [] (nSamp,nRx,1 or nTx)
-% rxApod      = double(rxTang < maxTang).*exp(-(rxTang.^2)/(2*min(1e12,maxTang/proc.rxApod)^2));
+rxTang      = tan(atan2(xVec-xElem,zVec-zElem) - angElem);  % [] (nSamp,nRx,1 or nTx)
+rxApod      = double(rxTang >= tangLim(1,1,:) & ...
+                     rxTang <= tangLim(1,2,:));             % [] (nSamp,nRx,1 or nTx)
+rxApod      = rxApod.*interp1(proc.rxApod,linspace(1,numel(proc.rxApod),nRx));
 rxApod      = rxApod./sum(rxApod,2);                        % [] (nSamp,nRx,1 or nTx) normalized rx apodization vector
-% warning - does the apodization takes into account for the clipped aperture?
 
 % Delay & Sum
 if quickRecEnable
@@ -98,7 +108,7 @@ end
 rfBfr	= reshape(rfBfr,[nSamp,nRx,nTx]);
 
 % modulate if iq signal is used
-if proc.iqEnable
+if acq.hwDdcEnable || proc.swDdcEnable
     rfBfr	= rfBfr.*exp(1i*2*pi*txFreq.*t);
 end
 
