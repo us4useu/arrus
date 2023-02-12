@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/EchoDataDescription.h"
 #include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
@@ -99,7 +100,8 @@ public:
 
     void syncTrigger() override;
 
-    std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+    //std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+    std::tuple<Us4OEMBuffer, EchoDataDescription::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false,
                     const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt) override;

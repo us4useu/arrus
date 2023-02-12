@@ -14,6 +14,7 @@
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/common/validation.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
+#include "arrus/core/devices/us4r/ExhoDataDescription.h"
 #include "arrus/core/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
@@ -203,7 +204,8 @@ public:
     }
 };
 
-std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+//std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+std::tuple<Us4OEMBuffer, EchoDataDescription::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
                             uint16 batchSize, std::optional<float> sri, bool triggerSync,
                             const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
@@ -447,7 +449,11 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
     }
     setAfeDemod(ddc);
-    return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
+
+    EchoDataDescription edc;
+    edc::fcm = std::move(fcm);
+    edc::rxOffset = sampleOffset;
+    return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(edc)};
 }
 
 float Us4OEMImpl::getTxRxTime(float rxTime) const {
@@ -738,7 +744,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 35u + (16 * (uint32_t) ddcDecimationFactor);
+    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
 
     //Check if data valid offset is higher than TX offset
     if (offset > 240) {

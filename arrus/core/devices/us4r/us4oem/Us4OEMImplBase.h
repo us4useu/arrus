@@ -5,6 +5,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/EchoDataDescription.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
@@ -31,7 +32,8 @@ public:
 
     virtual bool isMaster() = 0;
 
-    virtual std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+    //virtual std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
+    virtual std::tuple<Us4OEMBuffer, EchoDataDescription::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
                     const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) = 0;
