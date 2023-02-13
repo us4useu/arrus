@@ -10,13 +10,24 @@ namespace arrus::devices {
 
 class EchoDataDescription {
 public:
-    using Handle = std::shared_ptr<EchoDataDescription>;
+    using Handle = std::unique_ptr<EchoDataDescription>;
+    using SharedHandle = std::shared_ptr<EchoDataDescription>;
 
-    EchoDataDescription(FrameChannelMapping::Handle fcm, uint32_t rxOffset)
+    EchoDataDescription(FrameChannelMapping::Handle fcm, int32_t rxOffset)
     : fcm(std::move(fcm)), rxOffset(rxOffset) {}
 
+    // TODO getters
+    int32_t getRxOffset() {
+        return rxOffset;
+    }
+
+    FrameChannelMapping::Handle getFrameChannelMapping() {
+        return fcm;
+    }
+
+private:
     FrameChannelMapping::Handle fcm;
-    uint32_t rxOffset;
+    int32_t rxOffset;
 };
 
 }
