@@ -86,7 +86,7 @@ public:
         return probe.value().get();
     }
 
-    std::pair<std::shared_ptr<arrus::framework::Buffer>,std::shared_ptr<arrus::devices::FrameChannelMapping>>
+    std::pair<std::shared_ptr<arrus::framework::Buffer>,std::shared_ptr<arrus::devices::EchoDataDescription>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override;
 
     void start() override;
@@ -137,7 +137,7 @@ private:
 
     void stopDevice();
 
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
     uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync,
                    const std::optional<ops::us4r::DigitalDownConversion> &ddc);
 

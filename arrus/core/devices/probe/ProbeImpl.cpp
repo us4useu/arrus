@@ -49,7 +49,7 @@ class ProbeTxRxValidator : public Validator<TxRxParamsSequence> {
   const ProbeModel &modelRef;
 };
 
-std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
                            uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
                            const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
@@ -105,10 +105,11 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
         rxPaddingRight.push_back(op.getRxPadding()[1]);
     }
 
-    auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
+    auto[buffer, edd] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
                                                  ddc);
-    FrameChannelMapping::Handle actualFcm = remapFcm(fcm, rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
-    return std::make_tuple(std::move(buffer), std::move(actualFcm));
+    FrameChannelMapping::Handle actualFcm = remapFcm(edd->fcm, rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
+    auto outEdd = std::make_shared<EchoDataDescription>(std::move(actualFcm), edd->rxOffset);
+    return std::make_tuple(std::move(buffer), std::move(edd));
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {

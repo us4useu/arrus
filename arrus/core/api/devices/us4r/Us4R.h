@@ -14,6 +14,7 @@
 #include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "FrameChannelMapping.h"
+#include "EchoDataDescription.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 
 namespace arrus::devices {
@@ -58,7 +59,7 @@ public:
 
     virtual std::pair<
         std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::devices::FrameChannelMapping>
+        std::shared_ptr<arrus::devices::EchoDataDescription>
     >
     upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 

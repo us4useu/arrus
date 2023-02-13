@@ -14,7 +14,7 @@
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/common/validation.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
-#include "arrus/core/devices/us4r/ExhoDataDescription.h"
+#include "arrus/core/api/devices/us4r/EchoDataDescription.h"
 #include "arrus/core/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
@@ -450,10 +450,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     }
     setAfeDemod(ddc);
 
-    EchoDataDescription edc;
-    edc::fcm = std::move(fcm);
-    edc::rxOffset = sampleOffset;
-    return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(edc)};
+    auto edd = std::make_shared<EchoDataDescription>(std::move(fcm), getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor()));
+    return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(edd)};
 }
 
 float Us4OEMImpl::getTxRxTime(float rxTime) const {

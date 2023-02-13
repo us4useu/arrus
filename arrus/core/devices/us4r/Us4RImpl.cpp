@@ -158,7 +158,8 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
+std::pair<Buffer::SharedHandle, EchoDataDescription::Handle>
+//std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferNElements = scheme.getRxBufferSize();
@@ -182,7 +183,7 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     }
     // Upload and register buffers.
     bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
-    auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
+    auto [rxBuffer, edd] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
                                           scheme.getDigitalDownConversion());
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
@@ -210,7 +211,7 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // TODO implement Us4RBuffer move constructor.
     this->us4rBuffer = std::move(rxBuffer);
 
-    return {this->buffer, std::move(fcm)};
+    return {this->buffer, edd};
 }
 
 void Us4RImpl::start() {
@@ -275,7 +276,7 @@ Us4RImpl::~Us4RImpl() {
     }
 }
 
-std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
 Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync,
                          const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
     std::vector<TxRxParameters> actualSeq;

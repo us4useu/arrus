@@ -15,7 +15,7 @@ public:
     using Probe::Probe;
 
     virtual
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
                     const std::optional<ops::us4r::DigitalDownConversion> &ddc) = 0;

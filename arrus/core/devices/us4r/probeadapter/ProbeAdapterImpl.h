@@ -31,7 +31,7 @@ public:
         return numberOfChannels;
     }
 
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize=2,
                     uint16 rxBatchSize=1, std::optional<float> sri=std::nullopt,

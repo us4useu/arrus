@@ -5,6 +5,7 @@
 #include "arrus/core/common/validation.h"
 #include "arrus/core/common/aperture.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
+#include "arrus/core/api/devices/us4r/EchoDataDescription.h"
 #include "arrus/common/utils.h"
 
 #undef ERROR
@@ -58,7 +59,7 @@ private:
     ChannelIdx nChannels;
 };
 
-std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
                                   uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync,
                                   const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
@@ -196,15 +197,20 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     std::vector<uint32> frameOffsets(static_cast<unsigned int>(us4oems.size()), 0);
     std::vector<uint32> numberOfFrames(static_cast<unsigned int>(us4oems.size()), 0);
 
+    uint32_t rxOffset = 0;
+
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
+
+        auto[buffer, edDescription] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
                                                           batchSize, sri, triggerSync, ddc);
+
+        rxOffset = edDescription->rxOffset;
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
-        currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
-        numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames()*batchSize;
-        fcMappings.push_back(std::move(fcMapping));
+        currentFrameOffset += edDescription->fcm->getNumberOfLogicalFrames()*batchSize;
+        numberOfFrames[us4oemOrdinal] = edDescription->fcm->getNumberOfLogicalFrames()*batchSize;
+        fcMappings.push_back(std::move(edDescription->fcm));
         // fcMapping is not valid anymore here
         us4RBufferBuilder.pushBack(buffer);
     }
@@ -259,7 +265,10 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     }
     outFcBuilder.setFrameOffsets(frameOffsets);
     outFcBuilder.setNumberOfFrames(numberOfFrames);
-    return {us4RBufferBuilder.build(), outFcBuilder.build()};
+
+    auto outEdDescription = std::make_shared<EchoDataDescription>(std::move(outFcBuilder.build()), rxOffset);
+
+    return {us4RBufferBuilder.build(), std::move(outEdDescription)};
 }
 
 Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() {

@@ -3,6 +3,7 @@
 
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/EchoDataDescription.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/devices/TxRxParameters.h"
@@ -20,7 +21,7 @@ public:
     using RawHandle = PtrHandle<ProbeAdapterImplBase>;
 
     virtual
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri,
