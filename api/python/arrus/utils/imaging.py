@@ -10,7 +10,6 @@ import arrus.metadata
 import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
-import arrus.kernels.imaging
 import arrus.utils.us4r
 import arrus.ops.imaging
 import arrus.ops.us4r
