@@ -107,9 +107,9 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
 
     auto[buffer, edd] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
                                                  ddc);
-    FrameChannelMapping::Handle actualFcm = remapFcm(edd->fcm, rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
-    auto outEdd = std::make_shared<EchoDataDescription>(std::move(actualFcm), edd->rxOffset);
-    return std::make_tuple(std::move(buffer), std::move(edd));
+    FrameChannelMapping::Handle actualFcm = remapFcm(edd -> getFrameChannelMapping(), rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
+    auto outEdd = std::make_unique<EchoDataDescription>(std::move(actualFcm), edd->getRxOffset());
+    return std::make_tuple(std::move(buffer), std::move(outEdd));
 }
 
 Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {

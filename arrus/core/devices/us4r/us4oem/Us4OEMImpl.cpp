@@ -450,12 +450,15 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     }
     setAfeDemod(ddc);
 
-    if(isDDCOn)
-        auto edd = std::make_shared<EchoDataDescription>(std::move(fcm), getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor()));
-    else 
-        auto edd = std::make_shared<EchoDataDescription>(std::move(fcm), TX_SAMPLE_DELAY_RAW_DATA);
+    if(isDDCOn) {
+        auto edd = std::make_unique<EchoDataDescription>(std::move(fcm), (240-getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor())));
+        return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(edd)};
+    }
+    else {
+        auto edd = std::make_unique<EchoDataDescription>(std::move(fcm), 0);
+        return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(edd)};
+    }
 
-    return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(edd)};
 }
 
 float Us4OEMImpl::getTxRxTime(float rxTime) const {

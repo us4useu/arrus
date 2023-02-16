@@ -22,7 +22,7 @@ public:
     }
 
     FrameChannelMapping::Handle getFrameChannelMapping() {
-        return fcm;
+        return std::move(fcm);
     }
 
 private:

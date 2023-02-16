@@ -206,11 +206,11 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         auto[buffer, edDescription] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
                                                           batchSize, sri, triggerSync, ddc);
 
-        rxOffset = edDescription->rxOffset;
+        rxOffset = edDescription->getRxOffset();
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
-        currentFrameOffset += edDescription->fcm->getNumberOfLogicalFrames()*batchSize;
-        numberOfFrames[us4oemOrdinal] = edDescription->fcm->getNumberOfLogicalFrames()*batchSize;
-        fcMappings.push_back(std::move(edDescription->fcm));
+        currentFrameOffset += edDescription->getFrameChannelMapping()->getNumberOfLogicalFrames()*batchSize;
+        numberOfFrames[us4oemOrdinal] = edDescription->getFrameChannelMapping()->getNumberOfLogicalFrames()*batchSize;
+        fcMappings.push_back(std::move(edDescription->getFrameChannelMapping()));
         // fcMapping is not valid anymore here
         us4RBufferBuilder.pushBack(buffer);
     }
@@ -266,7 +266,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     outFcBuilder.setFrameOffsets(frameOffsets);
     outFcBuilder.setNumberOfFrames(numberOfFrames);
 
-    auto outEdDescription = std::make_shared<EchoDataDescription>(std::move(outFcBuilder.build()), rxOffset);
+    auto outEdDescription = std::make_unique<EchoDataDescription>(std::move(outFcBuilder.build()), rxOffset);
 
     return {us4RBufferBuilder.build(), std::move(outEdDescription)};
 }

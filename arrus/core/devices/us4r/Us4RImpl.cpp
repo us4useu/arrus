@@ -158,7 +158,7 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::pair<Buffer::SharedHandle, EchoDataDescription::Handle>
+std::pair<Buffer::SharedHandle, EchoDataDescription::SharedHandle>
 //std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
@@ -211,7 +211,9 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // TODO implement Us4RBuffer move constructor.
     this->us4rBuffer = std::move(rxBuffer);
 
-    return {this->buffer, edd};
+   // auto edds = std::make_shared<EchoDataDescription>(edd->getFrameChannelMapping(), edd->getRxOffset());
+
+    return {this->buffer, std::move(edd)};
 }
 
 void Us4RImpl::start() {
