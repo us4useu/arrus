@@ -14,20 +14,20 @@ public:
     using SharedHandle = std::shared_ptr<EchoDataDescription>;
 
     EchoDataDescription(FrameChannelMapping::Handle fcm, int32_t rxOffset)
-    : fcm(std::move(fcm)), rxOffset(rxOffset) {}
+    : fcm_(std::move(fcm)), rxOffset_(rxOffset) {}
 
     // TODO getters
     int32_t getRxOffset() {
-        return rxOffset;
+        return rxOffset_;
     }
 
     FrameChannelMapping::Handle getFrameChannelMapping() {
-        return std::move(fcm);
+        return std::move(fcm_);
     }
 
 private:
-    FrameChannelMapping::Handle fcm;
-    int32_t rxOffset;
+    FrameChannelMapping::Handle fcm_;
+    int32_t rxOffset_;
 };
 
 }

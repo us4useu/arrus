@@ -160,11 +160,13 @@ using namespace ::arrus;
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/EchoDataDescription.h"
 using namespace arrus::framework;
 using namespace arrus::devices;
 %};
 
 %shared_ptr(arrus::devices::FrameChannelMapping);
+%shared_ptr(arrus::devices::EchoDataDescription);
 %shared_ptr(arrus::framework::Buffer);
 %shared_ptr(arrus::framework::BufferElement);
 %shared_ptr(arrus::framework::DataBuffer);
@@ -177,6 +179,7 @@ namespace arrus {
 
 %include "arrus/core/api/framework/NdArray.h"
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+%include "arrus/core/api/devices/us4r/EchoDataDescription.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
 %include "arrus/core/api/framework/Buffer.h"
 %include "arrus/core/api/framework/DataBuffer.h"
@@ -261,6 +264,10 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
 
 std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arrus::session::UploadResult* uploadResult) {
     return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
+}
+
+std::shared_ptr<arrus::devices::EchoDataDescription> getDataDescription(arrus::session::UploadResult* uploadResult) {
+    return uploadResult->getConstMetadata()->get<arrus::devices::EchoDataDescription>("dataDescription");
 }
 
 std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {

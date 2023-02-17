@@ -39,6 +39,7 @@ class EchoDataDescription(DataDescription):
     """
     sampling_frequency: float
     custom: dict = dataclasses.field(default_factory=dict)
+    rx_offset: int
 
 
 class ConstMetadata:
