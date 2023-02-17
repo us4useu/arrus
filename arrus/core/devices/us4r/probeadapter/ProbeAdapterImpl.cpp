@@ -203,14 +203,16 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
 
-        auto[buffer, edDescription] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
+        auto[buffer, edd] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
                                                           batchSize, sri, triggerSync, ddc);
 
-        rxOffset = edDescription->getRxOffset();
+        rxOffset = edd->getRxOffset();
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
-        currentFrameOffset += edDescription->getFrameChannelMapping()->getNumberOfLogicalFrames()*batchSize;
-        numberOfFrames[us4oemOrdinal] = edDescription->getFrameChannelMapping()->getNumberOfLogicalFrames()*batchSize;
-        fcMappings.push_back(std::move(edDescription->getFrameChannelMapping()));
+        currentFrameOffset += edd->getFrameChannelMapping()->getNumberOfLogicalFrames()*batchSize;
+        numberOfFrames[us4oemOrdinal] = edd->getFrameChannelMapping()->getNumberOfLogicalFrames()*batchSize;
+        FrameChannelMapping::Handle fcm = std::unique_ptr<FrameChannelMapping>(edd -> getFrameChannelMapping().get());
+        edd-> setFrameChannelMapping(nullptr);
+        fcMappings.push_back(std::move(fcm));
         // fcMapping is not valid anymore here
         us4RBufferBuilder.pushBack(buffer);
     }

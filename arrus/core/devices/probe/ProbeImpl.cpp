@@ -106,8 +106,10 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
     }
 
     auto[buffer, edd] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
-                                                 ddc);
-    FrameChannelMapping::Handle actualFcm = remapFcm(std::move(edd -> getFrameChannelMapping()), rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
+                                                 ddc);  
+    FrameChannelMapping::Handle fcm = std::unique_ptr<FrameChannelMapping>(edd -> getFrameChannelMapping().get());
+    edd-> setFrameChannelMapping(nullptr);
+    FrameChannelMapping::Handle actualFcm = remapFcm(std::move(fcm), rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
     auto outEdd = std::make_unique<EchoDataDescription>(std::move(actualFcm), edd->getRxOffset());
     return std::make_tuple(std::move(buffer), std::move(outEdd));
 }

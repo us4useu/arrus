@@ -13,7 +13,7 @@ public:
     using Handle = std::unique_ptr<EchoDataDescription>;
     using SharedHandle = std::shared_ptr<EchoDataDescription>;
 
-    EchoDataDescription(FrameChannelMapping::Handle fcm, int32_t rxOffset)
+    EchoDataDescription(FrameChannelMapping::SharedHandle fcm, int32_t rxOffset)
     : fcm_(std::move(fcm)), rxOffset_(rxOffset) {}
 
     // TODO getters
@@ -21,12 +21,16 @@ public:
         return rxOffset_;
     }
 
-    FrameChannelMapping::Handle getFrameChannelMapping() {
-        return std::move(fcm_);
+    FrameChannelMapping::SharedHandle getFrameChannelMapping() {
+        return fcm_;
+    }
+
+    void setFrameChannelMapping(FrameChannelMapping::SharedHandle fcm) { 
+        fcm_ = std::move(fcm); 
     }
 
 private:
-    FrameChannelMapping::Handle fcm_;
+    FrameChannelMapping::SharedHandle fcm_;
     int32_t rxOffset_;
 };
 
