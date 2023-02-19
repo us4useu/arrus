@@ -19,7 +19,13 @@ from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
 
 LOGGER = arrus.logging.get_logger()
 
-_N_SKIPPED_SAMPLES = 10
+# Don't use first 80 samples.
+# On us4R/us4R-lite, around the sample 65 there is a switch from
+# The 1us after the last transmission is the moment when RX on AFE turns on.
+# At the time of switching to RX, the acquired signal can contain a noise,
+# the amplitude of which increases with the decrease in receiving aperture.
+# The Max sample number = 80 was selected experimentally.
+_N_SKIPPED_SAMPLES = 80
 _NRX = 64
 _MID_RX = int(np.ceil(_NRX / 2) - 1)
 
@@ -219,9 +225,16 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     feature = "amplitude"
 
     def extract(self, rf: np.ndarray) -> np.ndarray:
-        # TODO(zklog) perhaps it might be a good idea to also remove the DC component here?
         rf = rf.copy()
-        rf = np.abs(rf[:, :, _N_SKIPPED_SAMPLES:, :])
+        # On us4R/us4R-lite, the first 65 samples corresponds to the time when
+        # us4OEM switches from TX to RX, during this period the acquired data
+        # may contain a lot of noise.
+        rf[:, :, :_N_SKIPPED_SAMPLES, _MID_RX] = 0
+        first_rx_sample = 10  # Refers to all RX elements.
+        # The value 10 was selected experimentally.
+        # Simply, we don't want to use first 10 samples from all RX channels
+        # (in particular, these samples may contain frame metadata on us4R/us4R-lite).
+        rf = np.abs(rf[:, :, first_rx_sample:, :])
         # Reduce each RF frame into a vector of n elements
         # (where n is the number of probe elements).
         frame_max = np.max(rf[:, :, :, :], axis=(2, 3))
