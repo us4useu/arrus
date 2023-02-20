@@ -4,6 +4,12 @@ Release notes
 0.7.x
 -----
 
+0.7.6
+.....
+
+- Python API: Now it should be possible to use arrus.devices.us4r.Us4r.set_tgc when arrus.ops.us4r.TxRxSequence is uploaded.
+
+
 0.7.5
 .....
 
