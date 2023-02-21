@@ -72,8 +72,10 @@ int main() noexcept {
                 if(i == 100) {
                     cv.notify_one();
                 }
-                std::this_thread::sleep_for(150ms);
+                std::this_thread::sleep_for(1ms);
+                std::cout << "Before release" << std::endl;
                 ptr->release();
+                std::cout << "Release" << std::endl;
                 ++i;
             } catch(const std::exception &e) {
                 std::cout << "Exception: " << e.what() << std::endl;

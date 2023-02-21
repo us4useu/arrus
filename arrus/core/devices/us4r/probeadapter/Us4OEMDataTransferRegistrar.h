@@ -177,8 +177,11 @@ public:
     IGNORE_UNUSED(currentTransferIdx);               \
     IGNORE_UNUSED(currentDstIdx);                    \
     try {                                            \
+        logger->log(LogSeverity::ERROR, format("Before signal {}, {}", us4oemOrdinal, strategy)); \
         ARRUS_ON_NEW_DATA_CALLBACK_strategy_##strategy                             \
+        logger->log(LogSeverity::ERROR, format("Inside signal {}", us4oemOrdinal)); \
         ARRUS_ON_NEW_DATA_CALLBACK_signal_##signal                       \
+        logger->log(LogSeverity::ERROR, format("After signal {}", us4oemOrdinal)); \
     } \
     catch (const std::exception &e) { \
         logger->log(LogSeverity::ERROR, format("Us4OEM {}: callback exception: {}", us4oemOrdinal, e.what())); \
