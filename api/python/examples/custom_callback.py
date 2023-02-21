@@ -19,6 +19,10 @@ from arrus.ops.imaging import PwiSequence
 arrus.set_clog_level(arrus.logging.TRACE)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
+def getbits_thread(dev):
+    while(1):
+        time.sleep(0.01)
+        print(dev.get_stopbits(0))
 
 class Timer:
     def __init__(self):
@@ -49,12 +53,12 @@ def main():
 
     scheme = Scheme(
         tx_rx_sequence=seq,
-        rx_buffer_size=4,
-        output_buffer=DataBufferSpec(type="FIFO", n_elements=4),
+        rx_buffer_size=32,
+        output_buffer=DataBufferSpec(type="FIFO", n_elements=32),
         work_mode="ASYNC")
 
     # Here starts communication with the device.
-    with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
+    with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(5)
         # Upload sequence on the us4r-lite device.

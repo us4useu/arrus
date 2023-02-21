@@ -57,6 +57,7 @@ with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
     q = deque(maxlen=10)
     scheme = Scheme(
         tx_rx_sequence=sequence,
+        work_mode="ASYNC",
         processing=Pipeline(
             steps=(
                 RemapToLogicalOrderV2(),
@@ -71,7 +72,7 @@ with arrus.Session("C:/Users/Public/us4r.prototxt") as sess:
         digital_down_conversion=arrus.ops.us4r.DigitalDownConversion(
             demodulation_frequency=6e6,
            decimation_factor=decimation_factor,
-           fir_coefficients=coeffs)
+           fir_coefficients=coeffs,)
     )
     
     # Upload sequence on the us4r-lite device.

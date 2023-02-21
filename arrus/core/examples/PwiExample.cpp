@@ -17,7 +17,7 @@ int main() noexcept {
         logging->setClogLevel(::arrus::LogSeverity::TRACE);
         std::shared_ptr<std::ofstream> logFile = std::make_shared<std::ofstream>("log.log");
         logging->addOutputStream(logFile, ::arrus::LogSeverity::TRACE);
-        auto settings = ::arrus::io::readSessionSettings("/home/pjarosik/us4r.prototxt");
+        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
 	us4r->disableHV();
