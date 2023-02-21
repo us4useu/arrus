@@ -64,6 +64,8 @@ public:
     */
 	virtual void setAfe(uint8_t address, uint16_t value) = 0;
 
+    virtual uint8_t getStopBits() = 0;
+
     /**
     * Enables and configures AFE built-in demodulator
     *

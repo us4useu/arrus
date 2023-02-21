@@ -814,4 +814,6 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
                       static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
 
+uint8_t Us4OEMImpl::getStopBits() { return ius4oem->GetStopBits(); }
+
 }// namespace arrus::devices

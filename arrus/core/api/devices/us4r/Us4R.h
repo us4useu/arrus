@@ -273,6 +273,8 @@ public:
      */
     virtual uint16_t getAfe(uint8_t reg) = 0;
 
+    virtual uint8_t getStopBits(uint8_t oem) = 0;
+
     /**
      * Writes AFE register
      *

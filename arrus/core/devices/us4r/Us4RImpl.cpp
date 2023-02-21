@@ -515,4 +515,6 @@ void Us4RImpl::setAfe(uint8_t reg, uint16_t val) {
     }
 }
 
+uint8_t Us4RImpl::getStopBits(uint8_t oem) { return us4oems[oem]->getStopBits(); }
+
 }// namespace arrus::devices

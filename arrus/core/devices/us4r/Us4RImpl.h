@@ -131,6 +131,7 @@ public:
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
+    uint8_t getStopBits(uint8_t oem) override;
 
 
 private:

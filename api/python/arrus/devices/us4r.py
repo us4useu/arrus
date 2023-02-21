@@ -203,6 +203,9 @@ class Us4R(Device):
         """
         return self._handle.getAfe(addr)
 
+    def get_stopbits(self, oem):
+        return self._handle.getStopBits(oem)
+
     @property
     def channels_mask(self):
         """
