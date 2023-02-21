@@ -13,10 +13,14 @@ int main() noexcept {
     using namespace ::arrus::ops::us4r;
     using namespace ::arrus::framework;
     try {
-        // TODO set path to us4r-lite configuration file
-        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
+        auto *logging = ::arrus::useDefaultLoggerFactory();
+        logging->setClogLevel(::arrus::LogSeverity::TRACE);
+        std::shared_ptr<std::ofstream> logFile = std::make_shared<std::ofstream>("log.log");
+        logging->addOutputStream(logFile, ::arrus::LogSeverity::TRACE);
+        auto settings = ::arrus::io::readSessionSettings("/home/pjarosik/us4r.prototxt");
         auto session = ::arrus::session::createSession(settings);
         auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
+	us4r->disableHV();
         auto probe = us4r->getProbe(0);
 
         unsigned nElements = probe->getModel().getNumberOfElements().product();
@@ -25,29 +29,30 @@ int main() noexcept {
         ::arrus::BitMask rxAperture(nElements, true);
 
         Pulse pulse(6e6, 2, false);
-        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 8192};
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 2048};
 
         std::vector<TxRx> txrxs;
 
 		// 10 plane waves
-        for(int i = 0; i < 4; ++i) {
+        for(int i = 0; i < 1; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
             std::vector<float> delays(nElements, 0.0f);
             for(int d = 0; d < nElements; ++d) {
-                delays[d] = d*i*1e-9f;
+                delays[d] = d*1e-9f;
             }
-            arrus::BitMask txAperture(nElements, true);
+            arrus::BitMask txAperture(nElements, false); // No TX.
             txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 200e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 32);
-        DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
-        Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
+        TxRxSequence seq(txrxs, {}, 100e-3);
+        DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 16};
+        Scheme scheme(seq, 16, outputBuffer, Scheme::WorkMode::ASYNC);
+        std::cout << "SYNC mode" << std::endl;
 
         auto result = session->upload(scheme);
-		us4r->setVoltage(5);
+		us4r->disableHV();
 
         std::condition_variable cv;
         using namespace std::chrono_literals;
@@ -64,9 +69,10 @@ int main() noexcept {
                                      ")" << std::endl;
 
                 // Stop the system after 10-th frame.
-                if(i == 3) {
+                if(i == 100) {
                     cv.notify_one();
                 }
+                std::this_thread::sleep_for(150ms);
                 ptr->release();
                 ++i;
             } catch(const std::exception &e) {

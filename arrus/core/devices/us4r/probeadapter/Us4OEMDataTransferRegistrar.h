@@ -177,7 +177,6 @@ public:
     IGNORE_UNUSED(currentTransferIdx);               \
     IGNORE_UNUSED(currentDstIdx);                    \
     try {                                            \
-        ius4oem->MarkEntriesAsReadyForReceive(transferFirstFiring, transferLastFiring); \
         ARRUS_ON_NEW_DATA_CALLBACK_strategy_##strategy                             \
         ARRUS_ON_NEW_DATA_CALLBACK_signal_##signal                       \
     } \
@@ -196,6 +195,7 @@ public:
             uint16 elementLastFiring = srcBuffer.getElement(srcIdx).getFiring();
             // for each element's part transfer:
             uint16 transferFirstFiring = elementFirstFiring;
+	    transferFirstFiring = transferFirstFiring;
             for(uint16 localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
                 auto &transfer = elementTransfers[localTransferIdx];
                 size_t transferIdx = srcIdx*nTransfersPerElement + localTransferIdx; // global transfer idx

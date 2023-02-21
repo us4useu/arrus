@@ -1,5 +1,7 @@
 #include "ProbeAdapterImpl.h"
 
+#include <thread>
+
 #include "arrus/core/external/eigen/Dense.h"
 #include "arrus/core/devices/us4r/common.h"
 #include "arrus/core/common/validation.h"
@@ -321,6 +323,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
 
     // Register buffer element release functions.
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
+    bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterUs4oem()->getDeviceId().getOrdinal();
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
 
@@ -331,16 +334,18 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             std::function<void()> releaseFunc;
             if(isTriggerRequired) {
                 releaseFunc = [this, startFiring, endFiring]() {
-                    for (auto &us4oem: this->us4oems) {
-                        us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                     }
                     getMasterUs4oem()->syncTrigger();
                 };
             }
             else {
                 releaseFunc = [this, startFiring, endFiring]() {
-                    for (auto &us4oem: this->us4oems) {
-                        us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                        us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                     }
                 };
             }
@@ -350,14 +355,25 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     }
 
     // Overflow handling
-    ius4oem->RegisterReceiveOverflowCallback([this, bufferDst]() {
+    using namespace std::chrono_literals;
+    ius4oem->RegisterReceiveOverflowCallback([this, bufferDst, isMaster]() {
         try {
             if(bufferDst->isStopOnOverflow()) {
                 this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
-                this->getMasterUs4oem()->stop();
-                bufferDst->markAsInvalid();
+                size_t nElements = bufferDst->getNumberOfElements();
+                while(nElements != bufferDst->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::this_thread::sleep_for(1ms);
+                }
+                if(isMaster) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncReceive();
+                    }
+                }
+//                this->getMasterUs4oem()->stop();
+//                bufferDst->markAsInvalid();
             } else {
                 this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+
             }
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
@@ -366,12 +382,21 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
         }
     });
 
-    ius4oem->RegisterTransferOverflowCallback([this, bufferDst]() {
+    ius4oem->RegisterTransferOverflowCallback([this, bufferDst, isMaster]() {
         try {
             if(bufferDst->isStopOnOverflow()) {
                 this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
-                this->getMasterUs4oem()->stop();
-                bufferDst->markAsInvalid();
+                size_t nElements = bufferDst->getNumberOfElements();
+                while(nElements != bufferDst->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::this_thread::sleep_for(1ms);
+                }
+                if(isMaster) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncTransfer();
+                    }
+                }
+//                this->getMasterUs4oem()->stop();
+//                bufferDst->markAsInvalid();
             }
             else {
                 this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
@@ -382,6 +407,8 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
         }
     });
+    ius4oem->EnableWaitOnReceiveOverflow();
+    ius4oem->EnableWaitOnTransferOverflow();
 }
 
 size_t ProbeAdapterImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {

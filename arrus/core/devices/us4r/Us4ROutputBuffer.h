@@ -41,6 +41,7 @@ public:
         std::unique_lock<std::mutex> guard(mutex);
         this->accumulator = 0;
         releaseFunction();
+        this->state = State::FREE;
     }
 
     int16 *getAddress() {
@@ -77,33 +78,39 @@ public:
 
     [[nodiscard]] bool isElementReady() {
         std::unique_lock<std::mutex> guard(mutex);
-        return accumulator == filledAccumulator;
+        return state == State::READY;
     }
 
     void signal(Ordinal n) {
         std::unique_lock<std::mutex> guard(mutex);
-        // TODO increase counter for the given element
-        // If the given counter is ready, set the accumulator as below
         AccumulatorType us4oemPattern = 1ul << n;
         if((accumulator & us4oemPattern) != 0) {
             throw IllegalStateException("Detected data overflow, buffer is in invalid state.");
         }
         accumulator |= us4oemPattern;
+        if(accumulator == filledAccumulator) {
+            this->state = State::READY;
+        }
     }
 
     void resetState() {
         accumulator = 0;
+        this->state = State::FREE;
     }
 
     void markAsInvalid() {
-        this->isInvalid = true;
+        this->state = State::INVALID;
     }
 
     void validateState() const {
-        if(this->isInvalid) {
+        if(getState() == State::INVALID) {
             throw ::arrus::IllegalStateException(
                     "The buffer is in invalid state (probably some data transfer overflow happened).");
         }
+    }
+
+    [[nodiscard]] State getState() const override {
+        return this->state;
     }
 
 private:
@@ -118,8 +125,8 @@ private:
     /** A pattern of the filled accumulator, which indicates that the hole element is ready. */
     AccumulatorType filledAccumulator;
     std::function<void()> releaseFunction;
-    bool isInvalid{false};
     size_t position;
+    State state{State::FREE};
 };
 
 /**
@@ -306,8 +313,33 @@ public:
         return this->stopOnOverflow;
     }
 
+    size_t getNumberOfElementsInState(BufferElement::State s) const override {
+        size_t result = 0;
+        for(size_t i = 0; i < getNumberOfElements(); ++i) {
+            if(elements[i]->getState() == s) {
+                ++result;
+            }
+        }
+        return result;
+    }
 
 private:
+    /**
+     * Throws IllegalStateException when the buffer is in invalid state.
+     *
+     * @return true if the queue execution should continue, false otherwise.
+     */
+    void validateState() {
+        if(this->state == State::INVALID) {
+            throw ::arrus::IllegalStateException(
+                "The buffer is in invalid state "
+                "(probably some data transfer overflow happened).");
+        } else if(this->state == State::SHUTDOWN) {
+            throw ::arrus::IllegalStateException(
+                "The data buffer has been turned off.");
+        }
+    }
+
     std::mutex mutex;
     /** A size of a single element IN number of BYTES. */
     size_t elementSize;
@@ -328,22 +360,6 @@ private:
     };
     State state{State::RUNNING};
     bool stopOnOverflow{true};
-
-    /**
-     * Throws IllegalStateException when the buffer is in invalid state.
-     *
-     * @return true if the queue execution should continue, false otherwise.
-     */
-    void validateState() {
-        if(this->state == State::INVALID) {
-            throw ::arrus::IllegalStateException(
-                "The buffer is in invalid state "
-                "(probably some data transfer overflow happened).");
-        } else if(this->state == State::SHUTDOWN) {
-            throw ::arrus::IllegalStateException(
-                "The data buffer has been turned off.");
-        }
-    }
 };
 
 }

@@ -12,6 +12,9 @@ namespace arrus::framework {
  */
 class BufferElement {
 public:
+    enum class State {
+        FREE, READY, INVALID
+    };
     using SharedHandle = std::shared_ptr<BufferElement>;
 
     virtual ~BufferElement() = default;
@@ -35,6 +38,8 @@ public:
      * Returns position of the element in the data buffer.
      */
     virtual size_t getPosition() = 0;
+
+    virtual State getState() const = 0;
 };
 
 /**
@@ -65,6 +70,7 @@ public:
      */
     virtual size_t getElementSize() const = 0;
 
+    virtual size_t getNumberOfElementsInState(BufferElement::State state) const = 0;
 
 };
 
