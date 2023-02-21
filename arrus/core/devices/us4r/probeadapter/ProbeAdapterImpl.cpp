@@ -334,7 +334,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             std::function<void()> releaseFunc;
             if(isTriggerRequired) {
                 releaseFunc = [this, startFiring, endFiring]() {
-                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                         us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                     }
@@ -343,7 +343,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
             }
             else {
                 releaseFunc = [this, startFiring, endFiring]() {
-                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                         us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
                     }
@@ -365,7 +365,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
                     std::this_thread::sleep_for(1ms);
                 }
                 if(isMaster) {
-                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->SyncReceive();
                     }
                 }
@@ -391,7 +391,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
                     std::this_thread::sleep_for(1ms);
                 }
                 if(isMaster) {
-                    for(size_t i = us4oems.size()-1; i >= 0; --i) {
+                    for(int i = us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->SyncTransfer();
                     }
                 }
