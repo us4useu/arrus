@@ -253,42 +253,30 @@ public:
      *  @return true if the buffer signal was successful, false otherwise (e.g. the queue was shut down).
      */
     bool signal(Ordinal n, uint16 elementNr) {
-        std::cout << "Debug 1, ordinal = " << n <<  std::endl;
         std::unique_lock<std::mutex> guard(mutex);
-        std::cout << "Debug 2, ordinal = " << n <<  std::endl;
         if(this->state != State::RUNNING) {
-            std::cout << "Debug 3, ordinal = " << n <<  std::endl;
             getDefaultLogger()->log(LogSeverity::DEBUG, "Signal queue shutdown.");
             return false;
         }
-        std::cout << "Debug 4, ordinal = " << n <<  std::endl;
         this->validateState();
-        std::cout << "Debug 5, ordinal = " << n <<  std::endl;
         auto &element = this->elements[elementNr];
         try {
-            std::cout << "Debug 6, ordinal = " << n <<  std::endl;
             element->signal(n);
-            std::cout << "Debug 7, ordinal = " << n <<  std::endl;
         } catch(const IllegalArgumentException &e) {
-            std::cout << "Debug 8, ordinal = " << n <<  std::endl;
             this->markAsInvalid();
             throw e;
         }
         if(element->isElementReady()) {
-            std::cout << "Debug 9, ordinal = " << n <<  std::endl;
             guard.unlock();
-            std::cout << "Debug 10, ordinal = " << n <<  std::endl;
             onNewDataCallback(elements[elementNr]);
         } else {
-            std::cout << "Debug 11, ordinal = " << n <<  std::endl;
             guard.unlock();
         }
-        std::cout << "Debug 12, ordinal = " << n <<  std::endl;
         return true;
     }
 
     void markAsInvalid() {
-        //std::unique_lock<std::mutex> guard(mutex);
+        std::unique_lock<std::mutex> guard(mutex);
         if(this->state != State::INVALID) {
             this->state = State::INVALID;
             for(auto &element: elements) {
