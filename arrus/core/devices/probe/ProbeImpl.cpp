@@ -8,45 +8,37 @@
 
 namespace arrus::devices {
 
-ProbeImpl::ProbeImpl(const DeviceId &id, ProbeModel model,
-                     ProbeAdapterImplBase::RawHandle adapter,
+ProbeImpl::ProbeImpl(const DeviceId &id, ProbeModel model, ProbeAdapterImplBase::RawHandle adapter,
                      std::vector<ChannelIdx> channelMapping)
-    : ProbeImplBase(id), logger{getLoggerFactory()->getLogger()},
-      model(std::move(model)), adapter(adapter),
+    : ProbeImplBase(id), logger{getLoggerFactory()->getLogger()}, model(std::move(model)), adapter(adapter),
       channelMapping(std::move(channelMapping)) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
 class ProbeTxRxValidator : public Validator<TxRxParamsSequence> {
- public:
-  ProbeTxRxValidator(const std::string &componentName,
-                     const ProbeModel &modelRef)
-      : Validator(componentName), modelRef(modelRef) {}
+public:
+    ProbeTxRxValidator(const std::string &componentName, const ProbeModel &modelRef)
+        : Validator(componentName), modelRef(modelRef) {}
 
-  void validate(const TxRxParamsSequence &txRxs) override {
+    void validate(const TxRxParamsSequence &txRxs) override {
 
-      auto numberOfChannels = modelRef.getNumberOfElements().product();
-      auto &txFrequencyRange = modelRef.getTxFrequencyRange();
+        auto numberOfChannels = modelRef.getNumberOfElements().product();
+        auto &txFrequencyRange = modelRef.getTxFrequencyRange();
 
-      for (size_t firing = 0; firing < txRxs.size(); ++firing) {
-          const auto &op = txRxs[firing];
-          auto firingStr = ::arrus::format(" (firing {})", firing);
-          ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-              op.getTxAperture().size(), numberOfChannels, firingStr);
-          ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-              op.getRxAperture().size(), numberOfChannels, firingStr);
-          ARRUS_VALIDATOR_EXPECT_EQUAL_M(
-              op.getTxDelays().size(), numberOfChannels, firingStr);
-          ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-              op.getTxPulse().getCenterFrequency(),
-              txFrequencyRange.start(), txFrequencyRange.end(),
-              firingStr);
-      }
-  }
+        for (size_t firing = 0; firing < txRxs.size(); ++firing) {
+            const auto &op = txRxs[firing];
+            auto firingStr = ::arrus::format(" (firing {})", firing);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), numberOfChannels, firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), numberOfChannels, firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), numberOfChannels, firingStr);
+            ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getCenterFrequency(), txFrequencyRange.start(),
+                                              txFrequencyRange.end(), firingStr);
+        }
+    }
 
- private:
-  const ProbeModel &modelRef;
+private:
+    const ProbeModel &modelRef;
 };
 
 std::tuple<Us4RBuffer::Handle, EchoDataDescription::Handle>
@@ -72,7 +64,7 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
     std::vector<ChannelIdx> rxPaddingLeft;
     std::vector<ChannelIdx> rxPaddingRight;
 
-    for (const auto &op: seq) {
+    for (const auto &op : seq) {
         logger->log(LogSeverity::TRACE, format("Setting tx/rx {}", ::arrus::toString(op)));
         std::vector<ChannelIdx> rxApertureChannelMapping;
 
@@ -80,12 +72,11 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
         BitMask rxAperture(adapter->getNumberOfChannels());
         std::vector<float> txDelays(adapter->getNumberOfChannels());
 
-        ARRUS_REQUIRES_TRUE(
-            op.getTxAperture().size() == op.getRxAperture().size()
-         && op.getTxAperture().size() == op.getTxDelays().size()
-         && op.getTxAperture().size() == probeNumberOfElements,
-            format("Probe's tx, rx apertures and tx delays array should have the same size: {}",
-                   model.getNumberOfElements().product()));
+        ARRUS_REQUIRES_TRUE(op.getTxAperture().size() == op.getRxAperture().size()
+                                && op.getTxAperture().size() == op.getTxDelays().size()
+                                && op.getTxAperture().size() == probeNumberOfElements,
+                            format("Probe's tx, rx apertures and tx delays array should have the same size: {}",
+                                   model.getNumberOfElements().product()));
 
         for (size_t pch = 0; pch < op.getTxAperture().size(); ++pch) {
             auto ach = channelMapping[pch];
@@ -105,39 +96,29 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
         rxPaddingRight.push_back(op.getRxPadding()[1]);
     }
 
-    auto[buffer, edd] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
-                                                 ddc);  
-    FrameChannelMapping::Handle fcm = std::unique_ptr<FrameChannelMapping>(edd -> getFrameChannelMapping().get());
-    edd-> setFrameChannelMapping(nullptr);
-    FrameChannelMapping::Handle actualFcm = remapFcm(std::move(fcm), rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
+    auto [buffer, edd] =
+        adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync, ddc);
+    FrameChannelMapping::Handle fcm = std::unique_ptr<FrameChannelMapping>(edd->getFrameChannelMapping().get());
+    FrameChannelMapping::Handle actualFcm =
+        remapFcm(std::move(fcm), rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
     auto outEdd = std::make_unique<EchoDataDescription>(std::move(actualFcm), edd->getRxOffset());
     return std::make_tuple(std::move(buffer), std::move(outEdd));
 }
 
-Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() {
-    return model.getVoltageRange();
-}
+Interval<Voltage> ProbeImpl::getAcceptedVoltageRange() { return model.getVoltageRange(); }
 
-void ProbeImpl::start() {
-    adapter->start();
-}
+void ProbeImpl::start() { adapter->start(); }
 
-void ProbeImpl::stop() {
-    adapter->stop();
-}
+void ProbeImpl::stop() { adapter->stop(); }
 
-void ProbeImpl::syncTrigger() {
-    adapter->syncTrigger();
-}
+void ProbeImpl::syncTrigger() { adapter->syncTrigger(); }
 
 void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                                      ::arrus::ops::us4r::Scheme::WorkMode workMode) {
     adapter->registerOutputBuffer(buffer, us4rBuffer, workMode);
 }
 
-void ProbeImpl::unregisterOutputBuffer() {
-    adapter->unregisterOutputBuffer();
-}
+void ProbeImpl::unregisterOutputBuffer() { adapter->unregisterOutputBuffer(); }
 
 // Remaps FCM according to given rx aperture active channels mappings.
 
@@ -146,7 +127,7 @@ void ProbeImpl::unregisterOutputBuffer() {
  * is correct even in case of some permutation between probe and adapter channels (e.g. like
  * for ALS probes - esaote adapters).
  *
- * Basically, this function reads adapter FCM and sets the order channels according to the mapping
+ * Basically, this function reads adapter FCM and sets the order of channels according to the mapping
  * probe2AdpaterMap, which is
  * probe's aperture channel number -> adapter's aperture channel number
  *
@@ -157,7 +138,9 @@ void ProbeImpl::unregisterOutputBuffer() {
 FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handle &adapterFcm,
                                                 const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels,
                                                 const std::vector<ChannelIdx> &rxPaddingLeft,
-                                                const std::vector<ChannelIdx> &rxPaddingRight) {
+
+
+                         const std::vector<ChannelIdx> &rxPaddingRight) {
     auto nOps = adapterActiveChannels.size();
     if (adapterFcm->getNumberOfLogicalFrames() != nOps) {
         throw std::runtime_error("Inconsistent mapping and op number of probe's Rx apertures");
@@ -179,10 +162,9 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
         // probe2AdapterMap[i] = dst adapter aperture channel number (e.g. from 0 to 64 (aperture size)).
         std::vector<ChannelIdx> probe2AdapterMap(nRxChannels, 0);
 
-        std::transform(std::begin(mapping), std::end(mapping), std::back_insert_iterator(posChannel),
-                       [i = 0](ChannelIdx channel) mutable {
-                         return std::make_pair(static_cast<ChannelIdx>(i++), channel);
-                       });
+        std::transform(
+            std::begin(mapping), std::end(mapping), std::back_insert_iterator(posChannel),
+            [i = 0](ChannelIdx channel) mutable { return std::make_pair(static_cast<ChannelIdx>(i++), channel); });
         // EXAMPLE: posChannel = {{0, 3}, {1, 1}, {2, 10}}
         std::sort(std::begin(posChannel), std::end(posChannel),
                   [](const auto &a, const auto &b) { return a.second < b.second; });
@@ -192,24 +174,23 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
 
         // probe aperture channel -> adapter aperture channel
         // EXAMPLE: probe2AdapterMap = {1, 0, 2}
-        for (const auto& posCh: posChannel) {
+        for (const auto &posCh : posChannel) {
             probe2AdapterMap[std::get<0>(posCh)] = i++;
         }
         // probe aperture rx number -> adapter aperture rx number -> physical channel
         auto nChannels = adapterFcm->getNumberOfLogicalChannels();
         for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
-            if(pch >= paddingLeft && pch < (nChannels-paddingRight)) {
-                auto address = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
+            if (pch >= paddingLeft && pch < (nChannels - paddingRight)) {
+                auto address = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch - paddingLeft] + paddingLeft);
                 auto us4oem = address.getUs4oem();
                 auto physicalFrame = address.getFrame();
                 auto physicalChannel = address.getChannel();
                 builder.setChannelMapping(frameNumber, pch, us4oem, physicalFrame, physicalChannel);
             }
-
         }
         ++frameNumber;
     }
     return builder.build();
 }
 
-}
+}// namespace arrus::devices

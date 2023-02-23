@@ -14,26 +14,16 @@ public:
     using SharedHandle = std::shared_ptr<EchoDataDescription>;
 
     EchoDataDescription(FrameChannelMapping::SharedHandle fcm, int32_t rxOffset)
-    : fcm_(std::move(fcm)), rxOffset_(rxOffset) {}
+        : fcm(std::move(fcm)), rxOffset(rxOffset) {}
 
-    // TODO getters
-    int32_t getRxOffset() {
-        return rxOffset_;
-    }
+    int32_t getRxOffset() const { return rxOffset; }
 
-    FrameChannelMapping::SharedHandle getFrameChannelMapping() {
-        return fcm_;
-    }
-
-    void setFrameChannelMapping(FrameChannelMapping::SharedHandle fcm) { 
-        fcm_ = std::move(fcm); 
-    }
-
+    FrameChannelMapping::SharedHandle getFrameChannelMapping() { return fcm; }
 private:
-    FrameChannelMapping::SharedHandle fcm_;
-    int32_t rxOffset_;
+    FrameChannelMapping::SharedHandle fcm;
+    int32_t rxOffset;
 };
 
-}
+}// namespace arrus::devices
 
-#endif //ARRUS_CORE_API_DEVICES_US4R_ECHODATADESCRIPTION_H
+#endif//ARRUS_CORE_API_DEVICES_US4R_ECHODATADESCRIPTION_H

@@ -113,9 +113,9 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     ASSERT_STATE(State::STOPPED);
 
     auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
-    auto[buffer, edd] = us4r->upload(scheme);
+    auto [buffer, edd] = us4r->upload(scheme);
     std::unordered_map<std::string, std::shared_ptr<void>> metadataMap;
-    std::shared_ptr<FrameChannelMapping> sharedFCM = std::move(edd -> getFrameChannelMapping());
+    std::shared_ptr<FrameChannelMapping> sharedFCM = std::move(edd->getFrameChannelMapping());
     metadataMap.emplace("frameChannelMapping", std::move(sharedFCM));
     metadataMap.emplace("dataDescription", std::move(edd));
     auto constMetadata = std::make_shared<UploadConstMetadata>(metadataMap);

@@ -159,7 +159,6 @@ void Us4RImpl::disableHV() {
 }
 
 std::pair<Buffer::SharedHandle, EchoDataDescription::SharedHandle>
-//std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
 Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferNElements = scheme.getRxBufferSize();
@@ -206,13 +205,9 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     this->buffer =
         std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
     getProbeImpl()->registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
-
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
     // TODO implement Us4RBuffer move constructor.
     this->us4rBuffer = std::move(rxBuffer);
-
-   // auto edds = std::make_shared<EchoDataDescription>(edd->getFrameChannelMapping(), edd->getRxOffset());
-
     return {this->buffer, std::move(edd)};
 }
 
