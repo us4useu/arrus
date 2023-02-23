@@ -946,7 +946,7 @@ probe_models: [
             name: "10l128"
         }
         n_elements: 128,
-        pitch: 0.6e-3,
+        pitch: 0.5e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 20e6
@@ -962,7 +962,7 @@ probe_models: [
             name: "5l128"
         }
         n_elements: 128,
-        pitch: 0.6e-3,
+        pitch: 0.5e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
