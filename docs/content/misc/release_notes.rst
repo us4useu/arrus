@@ -4,6 +4,12 @@ Release notes
 0.7.x
 -----
 
+0.7.7
+.....
+
+- Python API: Fixed classical beamforming RF data reordering for rx aperture < 64 elements, n_repeats > 1.
+
+
 0.7.6
 .....
 
