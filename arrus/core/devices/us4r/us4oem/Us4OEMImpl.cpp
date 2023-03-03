@@ -712,6 +712,10 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
 
 float Us4OEMImpl::getFPGATemperature() { return ius4oem->GetFPGATemp(); }
 
+float Us4OEMImpl::getUCDTemperature() { return ius4oem->GetUCDTemp(); }
+
+float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->GetUCDExtTemp(); }
+
 float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
 
 void Us4OEMImpl::checkFirmwareVersion() {
