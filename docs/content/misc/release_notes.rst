@@ -17,6 +17,7 @@ Release notes
 
 - Python API:
 
+    - Exposed Us4OEM FPGA, UCD, UCD external temperature.
     - Implemented new module `arrus.utils.probe_check` for probe checking and automatic channel health, see example: examples/check_probe.py
     - exposed hardware Digital Down Conversion
     - us4R: exposed the possibility to change hardware high-pass filter cutoff frequency

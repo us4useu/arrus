@@ -118,6 +118,8 @@ public:
     MOCK_METHOD(float, getFPGAWallclock, (), (override));
     MOCK_METHOD(void, setHpfCornerFrequency, (uint32_t), (override));
     MOCK_METHOD(void, disableHpf, (), (override));
+    MOCK_METHOD(float, getUCDTemperature, (), (override));
+    MOCK_METHOD(float, getUCDExternalTemperature, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
