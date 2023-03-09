@@ -31,7 +31,8 @@ RUN apt-get update \
     doxygen \
     latexmk \
     texlive-latex-extra \
-    texlive-fonts-recommended
+    texlive-fonts-recommended \
+    texlive-font-utils
 
 
 RUN echo "alias python=python3" >> /root/.bashrc
