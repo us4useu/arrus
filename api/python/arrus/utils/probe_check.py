@@ -19,8 +19,13 @@ from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
 from arrus.metadata import Metadata
 
 
-# number of samples skipped at the beggining - not used in further analysis
-_N_SKIPPED_SAMPLES = 100
+# Don't use first 80 samples.
+# On us4R/us4R-lite, around the sample 65 there is a switch from
+# The 1us after the last transmission is the moment when RX on AFE turns on.
+# At the time of switching to RX, the acquired signal can contain a noise,
+# the amplitude of which increases with the decrease in receiving aperture.
+# The Max sample number = 80 was selected experimentally.
+_N_SKIPPED_SAMPLES = 80
 # number of frames skipped at the beggining - when need to 'warm up' the system
 _N_SKIPPED_SEQUENCES = 1
 # pulse excitation amplitude - should be int, and not exceed 15V
@@ -68,6 +73,7 @@ def _normalize(x: np.ndarray) -> np.ndarray:
     :param x: np.ndarray
     :return: normalized np.ndarray
     """
+
     mx = np.nanmax(x)
     if np.isfinite(mx):
         mn = np.nanmin(x)
@@ -92,7 +98,6 @@ def _envelope(rf: np.ndarray) -> np.ndarray:
 
 
 class StdoutLogger:
-
     def __init__(self):
         for func in ("debug", "info", "error", "warning", "warn"):
             setattr(self, func, self.log)
@@ -443,6 +448,7 @@ class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
     Feature exctractor for extraction Pearson Correlation Coefficient (PCC)
     between given rf array and footprint rf array.
     """
+    name: str
 
     feature = "footprint_pcc"
     def extract(
@@ -492,6 +498,7 @@ class ByThresholdValidator(ProbeElementValidator):
     given value range. When the value of the feature is within the given
     range the element is marked as VALID, otherwise it is marked as TOO_HIGH
     or TOO_LOW.
+
     """
     name = "threshold"
 
@@ -533,28 +540,32 @@ class ByNeighborhoodValidator(ProbeElementValidator):
     Validator that compares each element with its neighborhood.
 
     The invalid elements are determined in the following way:
-    For each probe element `i`:
-      - if element `i` is masked: check if it's feature is within proper range.
-        If it's not, mark the element with state TOO_HIGH or TOO_LOW.
-      - if element `i` is not masked: first, determine the neighborhood of the
-        element `i`. The neighborhood is determined by the `group_size`
-        parameter, and consists of a given number of adjacent probe elements.
-      - Then, estimate the expected feature value: exclude from the neighborhood
-        all  elements which have an amplitude outside the active_range
-        (see FeatureDescriptor class), that is they seem to be inactive
-        e.g. they were turned off using channels mask in the system
-        configuration. If the number of active elements is less than the
-        min_num_of_neighbors, set verdict for the element to INDEFINITE,
-      - otherwise: compute the median in the neighborhood - this is our estimate
-        of the expected feature value,
-      - Then determine if the element is valid, based on its feature
-        value and the `feature_range_in_neighborhood` param, which
-        should be equal to `(feature_min, feature_max)`:
-        - if the value is out of the range
-          [feature_min*median, feature_max*median]:
-          mark this element with state TOO_LOW, TOO_HIGH,
-          - if its amplitude is above amplitude_max*center_amplitude:
-            otherwise mark the element with state "VALID".
+        - for each probe element `i`:
+          - if element `i` is masked: check if it's feature is within proper
+            range. If it's not, mark the element with state TOO_HIGH or TOO_LOW.
+          - if element `i` is not masked:
+            - first, determine the neighborhood of the element `i`.
+              The neighborhood is determined by the `group_size` parameter,
+              and consists of a given number of adjacent probe elements.
+            - Then, estimate the expected feature value:
+              - exclude from the neighborhood all elements which have an
+                amplitude outside the active_range
+                (see FeatureDescriptor class), that is they seem to be inactive
+                e.g. they were turned off using channels mask in the system
+                configuration,
+              - if the number of active elements is less than the
+                min_num_of_neighbors, set verdict for the element to
+                INDEFINITE,
+              - otherwise: compute the median in the neighborhood - this is our
+                estimate of the expected feature value,
+              - Then determine if the element is valid, based on its feature
+                value and the `feature_range_in_neighborhood` param, which
+                should be equal to `(feature_min, feature_max)`:
+                - if the value is out of the range
+                  [feature_min*median, feature_max*median]:
+                  mark this element with state TOO_LOW, TOO_HIGH,
+                - if its amplitude is above amplitude_max*center_amplitude:
+                  otherwise mark the element with state "VALID".
 
     :param group_size: number of elements in the group
     :param feature_range_in_neighborhood: pair (feature_min, feature_max)
@@ -635,11 +646,6 @@ class ByNeighborhoodValidator(ProbeElementValidator):
                     center = np.median(near)
                     lower_bound = center * mn
                     upper_bound = center * mx
-                    # # lines below are for test
-                    # center = np.mean(near)
-                    # s = np.std(near)
-                    # lower_bound = center - 3*s
-                    # upper_bound = center + 3*s
                     assert lower_bound <= upper_bound
 
                     if value > upper_bound:
@@ -786,16 +792,14 @@ class ProbeHealthVerifier:
                 active_range=feature.active_range,
                 masked_range=feature.masked_elements_range
             )
-
             results[feature.name] = (extractor_result, validator_result)
-            # print(extractor_result)
 
-        masked_elements_set = set(masked_elements)
         # Prepare descriptor for examined element.
+        masked_elements_set = set(masked_elements)
         elements_descriptors = []
 
         # For each examined channel
-        for i in range(ntx):
+        for i in range(n_tx_channels):
             # For each examined feature
             feature_descriptors = {}
             for feature in features:

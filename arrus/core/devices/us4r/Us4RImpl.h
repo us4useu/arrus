@@ -117,7 +117,8 @@ public:
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
     std::vector<unsigned short> getChannelsMask() override;
-    void checkVoltage(Voltage voltage, float tolerance, const std::function<float()> &func, const std::string &name, int retries);
+    std::vector<std::pair <std::string,float>> logVoltages(bool isUS4PSC);
+    void checkVoltage(Voltage voltage, float tolerance, int retries, bool isUS4PSC);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;

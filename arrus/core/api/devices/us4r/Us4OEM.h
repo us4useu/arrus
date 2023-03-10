@@ -40,6 +40,16 @@ public:
     virtual float getFPGATemperature() = 0;
 
     /**
+     * Returns temperature measured by Us4OEM's UCD [Celsius]
+     */
+    virtual float getUCDTemperature() = 0;
+
+    /**
+     * Returns external temperature measured by Us4OEM's UCD [Celsius]
+     */
+    virtual float getUCDExternalTemperature() = 0;
+
+    /**
      * Returns rail voltage measured by Us4OEM's UCD [V].
      *
      * @param rail UCD rail number

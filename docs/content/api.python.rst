@@ -82,6 +82,10 @@ Devices
     :exclude-members: start, stop, get_probe_model
     :show-inheritance:
 
+.. autoclass:: arrus.devices.us4oem.Us4OEM
+    :members:
+    :show-inheritance:
+
 .. autoclass:: arrus.devices.gpu.GPU
     :show-inheritance:
 

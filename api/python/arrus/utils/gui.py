@@ -73,6 +73,12 @@ class Display2D:
             raise ValueError("Exactly one of the following parameter "
                              "combinations should be provided: "
                              f"{accepted_params}")
+
+        if "value_range" not in kwargs:
+            kwargs["value_range"] = None
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = None
+
         if kwargs_params == accepted_params[0]:
             views = [View2D(layers=[Layer2D(**kwargs)],
                            xlabel=xlabel, ylabel=ylabel,

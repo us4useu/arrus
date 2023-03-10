@@ -334,6 +334,23 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
     }
     return pitch[0];
 }
+// GIL free methods
+
+float arrusUs4OEMGetFPGATemperature(::arrus::devices::Us4OEM *us4oem) {
+    ArrusPythonGILUnlock unlock;
+    return us4oem->getFPGATemperature();
+}
+
+float arrusUs4OEMGetUCDTemperature(::arrus::devices::Us4OEM *us4oem) {
+    ArrusPythonGILUnlock unlock;
+    return us4oem->getUCDTemperature();
+}
+
+float arrusUs4OEMGetUCDExternalTemperature(::arrus::devices::Us4OEM *us4oem) {
+    ArrusPythonGILUnlock unlock;
+    return us4oem->getUCDExternalTemperature();
+}
+
 %};
 
 // ------------------------------------------ OPERATIONS
