@@ -22,7 +22,7 @@ For `linux_aarch64` remember to change `TARGETPLATFORM` to `linux/arm64`.
 All platforms and languages:
 - [CMake](https://cmake.org) 3.17 at least
 - [Python](https://python.org) 3.8 at least ([conda](https://docs.conda.io/en/latest/miniconda.html) is recommended)
-- the following Python packages: `pip install conan pydevops-us4us==0.1.0`
+- the following Python packages: `pip install conan==1.59.0 pydevops-us4us==0.1.0`
 - us4r drivers API headers and binaries (ask us4us developers for access)
 
 `windows_x86_64`:
