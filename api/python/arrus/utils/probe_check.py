@@ -109,7 +109,7 @@ class Footprint:
 
     :param rf: np.ndarray of rf signals
     :param metadata: arrus metadata
-    :param masked channels: list of channels masked during footprint acquisition
+    :param masked elements: list of channels masked during footprint acquisition
     :param timestamp: time of footprint creation in nanoseconds since epoch
                   (see time.time_ns() description)
     """
@@ -490,8 +490,8 @@ class ByThresholdValidator(ProbeElementValidator):
     """
     Validator that check the value of the feature and compares it with
     given value range. When the value of the feature is within the given
-    or TOO_LOW.
     range the element is marked as VALID, otherwise it is marked as TOO_HIGH
+    or TOO_LOW.
     """
     name = "threshold"
 
