@@ -110,7 +110,7 @@ class AbstractExtractorTest(unittest.TestCase):
 
     def _put_fast_sine_into_signal_array(self, signal, value, nvalues):
         nframe, ntx, nsamp, nrx = signal.shape
-        sample0 = 64
+        sample0 = 128
         for iframe in range(nframe):
             for itx in range(ntx):
                 for isamp in range(nvalues):
@@ -208,7 +208,7 @@ class EnergyExtractorTest(AbstractExtractorTest):
         signal = self._generate_zeros_signal()
         signal_short = self._put_fast_sine_into_signal_array(
             signal, value=1, nvalues=32)
-        signal = self._generate_zeros_signal()            
+        signal = self._generate_zeros_signal()
         signal_long = self._put_fast_sine_into_signal_array(
             signal, value=1, nvalues=64)
         extracted_short = self.extractor.extract(signal_short)
@@ -224,7 +224,7 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
     nframe = 1
     nsamp = 256
     extractor = SignalDurationTimeExtractor()
-    
+
     def test_extract(self):
         """
         This test is written when sampling frequency is equal 65e6 [Hz].
@@ -249,7 +249,7 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
         signal = self._generate_zeros_signal()
         signal_short = self._put_fast_sine_into_signal_array(
             signal, value=1, nvalues=8)
-        signal = self._generate_zeros_signal()            
+        signal = self._generate_zeros_signal()
         signal_long = self._put_fast_sine_into_signal_array(
             signal, value=1, nvalues=16)
         extracted_short = self.extractor.extract(signal_short)
@@ -257,6 +257,13 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
         self.assertAlmostEqual(
             2*np.sum(extracted_short), np.sum(extracted_long), 3
         )
+
+
+class FootprintSimilarityPCCExtractorTest(AbstractExtractorTest):
+
+    def test_dummy(self):
+        self.assertAlmostEqual(1,1)
+
 
 # TODO: test_check_probe_data() ?
 class ProbeHealthVerifierTest(unittest.TestCase):
