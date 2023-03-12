@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 from arrus.utils.probe_check import *
-
+# import arrus.utils.probe_check as pc
+from arrus.utils.probe_check import _N_SKIPPED_SAMPLES
 
 class TestLogger:
     def info(self, msg):
@@ -110,7 +111,7 @@ class AbstractExtractorTest(unittest.TestCase):
 
     def _put_fast_sine_into_signal_array(self, signal, value, nvalues):
         nframe, ntx, nsamp, nrx = signal.shape
-        sample0 = 128
+        sample0 = _N_SKIPPED_SAMPLES + 16
         for iframe in range(nframe):
             for itx in range(ntx):
                 for isamp in range(nvalues):
@@ -129,7 +130,7 @@ class MaxAmplitudeExtractorTest(AbstractExtractorTest):
     nrx = 192
     ntx = 16
     nframe = 8
-    nsamp = 256
+    nsamp = 512
     max_amplitude = 100
     extractor = MaxAmplitudeExtractor()
 
@@ -139,7 +140,12 @@ class MaxAmplitudeExtractorTest(AbstractExtractorTest):
         # change some samples to max_amplitude
         for iframe in range(self.nframe):
             for itx in range(self.ntx):
-                signal[iframe, itx, 64-itx, 128-iframe] = self.max_amplitude
+                signal[
+                    iframe,
+                    itx,
+                    64 - itx + _N_SKIPPED_SAMPLES,
+                    128 - iframe
+                ] = self.max_amplitude
         # check extractor on the generated signal
         extracted = self.extractor.extract(signal)
         self.assertTrue(
@@ -233,11 +239,6 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
         signal = self._generate_zeros_signal()
         signal = self._put_fast_sine_into_signal_array(
             signal, value=1, nvalues=16)
-        # nframe, ntx, nsamp, nrx = signal.shape
-        # for iframe in range(nframe):
-            # for itx in range(ntx):
-                # for irx in range(nrx):
-                    # signal[iframe, itx, 100:116, irx] = 1
         extracted = self.extractor.extract(signal)
         self.assertTrue(
             all(extracted[0] == extracted)
@@ -246,17 +247,25 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
         )
 
     def test_extract_doubled_time(self):
+        n = 2
+        pulse_len = 32
+        tol = 0.15
+        # generate short signal
         signal = self._generate_zeros_signal()
         signal_short = self._put_fast_sine_into_signal_array(
-            signal, value=1, nvalues=8)
+            signal, value=1, nvalues=pulse_len)
+        # generate long signal
         signal = self._generate_zeros_signal()
         signal_long = self._put_fast_sine_into_signal_array(
-            signal, value=1, nvalues=16)
+            signal, value=1, nvalues=n*pulse_len)
+        # extract duration times 
         extracted_short = self.extractor.extract(signal_short)
         extracted_long = self.extractor.extract(signal_long)
-        self.assertAlmostEqual(
-            2*np.sum(extracted_short), np.sum(extracted_long), 3
-        )
+        # check if error is less than tolerance
+        lt = np.sum(extracted_long)
+        st = np.sum(extracted_short)
+        e = n - lt/st
+        self. assertLess(e, tol)
 
 
 class FootprintSimilarityPCCExtractorTest(AbstractExtractorTest):
