@@ -818,4 +818,8 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
                       static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
 
+const char* Us4OEMImpl::getSerialNumber() const { return Us4OEMImpl::SERIAL_NUMBER_MOCK_UP; }
+
+const char* Us4OEMImpl::getRevision() const { return Us4OEMImpl::REVISION_MOCK_UP; }
+
 }// namespace arrus::devices

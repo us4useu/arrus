@@ -41,6 +41,24 @@ class FrameChannelMapping:
     batch_size: int = 1
 
 
+class Backplane:
+    """
+    Digital backplane of the us4R device.
+    """
+
+    def get_serial_number(self):
+        """
+        Returns serial number of the digital backplane.
+        """
+        return ""
+
+    def get_revision(self):
+        """
+        Returns revision number of the digital backplane.
+        """
+        return ""
+
+
 class Us4R(Device):
     """
     A handle to Us4R device.
@@ -56,6 +74,7 @@ class Us4R(Device):
                                    self._handle.getDeviceId().getOrdinal())
         # Context for the currently running sequence.
         self._current_sequence_context = None
+        self._backplane = Backplane()
 
     def get_device_id(self):
         return self._device_id
@@ -136,6 +155,9 @@ class Us4R(Device):
 
     def get_us4oem(self, ordinal: int):
         return Us4OEM(self._handle.getUs4OEM(ordinal))
+
+    def get_backplane(self):
+        return self._backplane
 
     @property
     def firmware_version(self):

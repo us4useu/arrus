@@ -26,6 +26,8 @@ namespace arrus::devices {
 /**
  * Us4OEM wrapper implementation.
  *
+ * Note: the current implementation assumes the first revision of us4OEM.
+ *
  * This class stores reordered channels, as it is required in IUs4OEM docs.
  */
 class Us4OEMImpl : public Us4OEMImplBase {
@@ -148,7 +150,15 @@ public:
 
     float getFPGAWallclock() override;
 
+    const char *getSerialNumber() const override;
+
+    const char *getRevision() const override;
+
 private:
+    // SN and REVISION mockups for the legacy us4OEM model.
+    const char* SERIAL_NUMBER_MOCK_UP = "";
+    const char* REVISION_MOCK_UP = "";
+
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
