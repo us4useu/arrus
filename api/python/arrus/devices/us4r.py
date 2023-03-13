@@ -14,6 +14,7 @@ import arrus.kernels.kernel
 import arrus.kernels.tgc
 import arrus.ops.tgc
 from collections.abc import Iterable
+from typing import Optional
 
 
 DEVICE_TYPE = DeviceType("Us4R")
@@ -179,6 +180,38 @@ class Us4R(Device):
         :param frequency: corner high-pass filter frequency to set
         """
         self._handle.setHpfCornerFrequency(frequency)
+
+    def set_lna_gain(self, gain: int):
+        """
+        Sets LNA gain.
+
+        Available: 12, 18, 24 [dB].
+
+        :param gain: gain value to set
+        """
+        self._handle.setLnaGain(gain)
+
+    def set_pga_gain(self, gain: int):
+        """
+        Sets PGA gain.
+
+        Available: 24, 30 [dB].
+
+        :param gain: gain value to set
+        """
+        self._handle.setPgaGain(gain)
+
+    def set_dtgc_attenuation(self, attenuation: Optional[int]):
+        """
+        Sets DTGC attenuation.
+
+        Available: 0, 6, 12, 18, 24, 30, 36, 42 [dB] or None;
+        None turns off DTGC.
+
+        :param attenuation: attenuation value to set
+        :return:
+        """
+        self._handle.setDtgcAttenuation(attenuation)
 
     def disable_hpf(self):
         """
