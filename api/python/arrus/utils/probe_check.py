@@ -799,7 +799,7 @@ class ProbeHealthVerifier:
         elements_descriptors = []
 
         # For each examined channel
-        for i in range(n_tx_channels):
+        for i in range(ntx):
             # For each examined feature
             feature_descriptors = {}
             for feature in features:

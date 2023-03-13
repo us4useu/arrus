@@ -271,8 +271,8 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
 class FootprintSimilarityPCCExtractorTest(AbstractExtractorTest):
 
     def test_dummy(self):
-        self.assertAlmostEqual(1,1)
 
+        self.assertAlmostEqual(1,1)
 
 # TODO: test_check_probe_data() ?
 class ProbeHealthVerifierTest(unittest.TestCase):

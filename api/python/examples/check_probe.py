@@ -407,8 +407,8 @@ def main():
             features.append(
                 FeatureDescriptor(
                     name=MaxAmplitudeExtractor.feature,
-                    active_range=(0, 2000),  # [a.u.]
-                    masked_elements_range=(0, 2000)  # [a.u.]
+                    active_range=(0, 3000),  # [a.u.]
+                    masked_elements_range=(0, 3000)  # [a.u.]
                 )
             )
         elif feat == "duration":
