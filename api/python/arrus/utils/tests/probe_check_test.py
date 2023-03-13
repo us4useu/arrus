@@ -97,9 +97,12 @@ class ByThresholdValidatorTest(AbstractElementValidatorTest):
 
 class AbstractExtractorTest(unittest.TestCase):
 
-    def _generate_random_signal(self):
-        return np.random.random(
-            (self.nframe, self.ntx, self.nsamp, self.nrx))
+    def _generate_random_signal(self, seed=0):
+        rng = np.random.default_rng(seed=seed)
+        rnd = 2*rng.random(
+            (self.nframe, self.ntx, self.nsamp, self.nrx)
+        ) - 1
+        return rnd
 
     def _generate_zeros_signal(self):
         return np.zeros(
@@ -109,12 +112,12 @@ class AbstractExtractorTest(unittest.TestCase):
         return np.ones(
             (self.nframe, self.ntx, self.nsamp, self.nrx))
 
-    def _put_fast_sine_into_signal_array(self, signal, value, nvalues):
+    def _put_fast_sine_into_signal_array(self, signal, value, pulse_len):
         nframe, ntx, nsamp, nrx = signal.shape
         sample0 = _N_SKIPPED_SAMPLES + 16
         for iframe in range(nframe):
             for itx in range(ntx):
-                for isamp in range(nvalues):
+                for isamp in range(2*pulse_len):
                     for irx in range(nrx):
                         if np.mod(isamp, 2) == 0:
                             signal[iframe, itx, sample0+isamp, irx] = \
@@ -123,6 +126,25 @@ class AbstractExtractorTest(unittest.TestCase):
                             signal[iframe, itx, sample0+isamp, irx] = \
                                 -value
         return signal
+
+    def _generate_fast_sin_signal(self, pulse_len=16, value=1):
+        signal = self._generate_zeros_signal()
+        signal = self._put_fast_sine_into_signal_array(
+            signal,
+            value=value,
+            pulse_len=pulse_len,
+        )
+        return signal
+
+    def _generate_dummy_footprint(self, pulse_len=16):
+        rf = self._generate_fast_sin_signal(pulse_len=pulse_len)
+        footprint = Footprint(
+            rf=rf,
+            metadata=[],
+            masked_elements=[],
+            timestamp=[],
+        )
+        return footprint
 
 
 class MaxAmplitudeExtractorTest(AbstractExtractorTest):
@@ -211,12 +233,13 @@ class EnergyExtractorTest(AbstractExtractorTest):
         )
 
     def test_extract_doubled_energy(self):
+        pulse_len = 16
         signal = self._generate_zeros_signal()
         signal_short = self._put_fast_sine_into_signal_array(
-            signal, value=1, nvalues=32)
+            signal, value=1, pulse_len=pulse_len)
         signal = self._generate_zeros_signal()
         signal_long = self._put_fast_sine_into_signal_array(
-            signal, value=1, nvalues=64)
+            signal, value=1, pulse_len=2*pulse_len)
         extracted_short = self.extractor.extract(signal_short)
         extracted_long = self.extractor.extract(signal_long)
         self.assertAlmostEqual(
@@ -238,7 +261,7 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
         """
         signal = self._generate_zeros_signal()
         signal = self._put_fast_sine_into_signal_array(
-            signal, value=1, nvalues=16)
+            signal, value=1, pulse_len=8)
         extracted = self.extractor.extract(signal)
         self.assertTrue(
             all(extracted[0] == extracted)
@@ -248,16 +271,16 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
 
     def test_extract_doubled_time(self):
         n = 2
-        pulse_len = 32
+        pulse_len = 16
         tol = 0.15
         # generate short signal
         signal = self._generate_zeros_signal()
         signal_short = self._put_fast_sine_into_signal_array(
-            signal, value=1, nvalues=pulse_len)
+            signal, value=1, pulse_len=pulse_len)
         # generate long signal
         signal = self._generate_zeros_signal()
         signal_long = self._put_fast_sine_into_signal_array(
-            signal, value=1, nvalues=n*pulse_len)
+            signal, value=1, pulse_len=n*pulse_len)
         # extract duration times 
         extracted_short = self.extractor.extract(signal_short)
         extracted_long = self.extractor.extract(signal_long)
@@ -270,11 +293,45 @@ class SignalDurationTimeExtractorTest(AbstractExtractorTest):
 
 class FootprintSimilarityPCCExtractorTest(AbstractExtractorTest):
 
-    def test_dummy(self):
+    nrx = 192
+    ntx = 1
+    nframe = 1
+    nsamp = 256
+    extractor = FootprintSimilarityPCCExtractor()
 
-        self.assertAlmostEqual(1,1)
+    def test_identical(self):
+        pulse_len = 32
+        footprint = self._generate_dummy_footprint(pulse_len=pulse_len)
+        extracted = self.extractor.extract(
+            footprint.rf,
+            footprint.rf,
+        )
+        self.assertEqual(extracted, 1)
 
-# TODO: test_check_probe_data() ?
+    def test_const(self):
+        pulse_len = 32
+        footprint = self._generate_dummy_footprint(pulse_len=pulse_len)
+        extracted = self.extractor.extract(
+            np.ones(footprint.rf.shape),
+            footprint.rf
+        )
+        self.assertEqual(extracted, 0)
+
+    def test_noise(self):
+        pulse_len = 32
+        footprint = self._generate_dummy_footprint(pulse_len=pulse_len)
+        noise = self._generate_random_signal()
+        extracted = self.extractor.extract(noise, footprint.rf)
+        self.assertLess(extracted, 0.3)
+
+    def test_noised(self):
+        pulse_len = 32
+        footprint = self._generate_dummy_footprint(pulse_len=pulse_len)
+        noised = self._generate_random_signal() + footprint.rf
+        extracted = self.extractor.extract(noised, footprint.rf)
+        self.assertLess(extracted, 0.5)
+
+
 class ProbeHealthVerifierTest(unittest.TestCase):
     pass
 
