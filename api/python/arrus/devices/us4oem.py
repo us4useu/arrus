@@ -45,13 +45,13 @@ class Us4OEM(Device):
         """
         return arrus.core.arrusUs4OEMGetUCDExternalTemperature(self._handle)
 
-    def get_serial_number(self):
+    def get_serial_number(self) -> str:
         """
         Returns serial number of the device.
         """
         return self._handle.getSerialNumber()
 
-    def get_revision(self):
+    def get_revision(self) -> str:
         """
         Returns revision number of the device.
         """

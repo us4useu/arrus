@@ -46,13 +46,13 @@ class Backplane:
     Digital backplane of the us4R device.
     """
 
-    def get_serial_number(self):
+    def get_serial_number(self) -> str:
         """
         Returns serial number of the digital backplane.
         """
         return ""
 
-    def get_revision(self):
+    def get_revision(self) -> str:
         """
         Returns revision number of the digital backplane.
         """
@@ -121,17 +121,17 @@ class Us4R(Device):
         """
         self._handle.disableHV()
 
-    def start(self):
+    def get_us4oem(self, ordinal: int) -> Us4OEM:
         """
-        Starts uploaded tx/rx sequence execution.
+        Returns a handle to us4OEM with the given number.
         """
-        self._handle.start()
+        return Us4OEM(self._handle.getUs4OEM(ordinal))
 
-    def stop(self):
+    def get_backplane(self) -> Backplane:
         """
-        Stops tx/rx sequence execution.
+        Returns a handle to us4R digital backplane.
         """
-        self._handle.stop()
+        return self._backplane
 
     @property
     def sampling_frequency(self):
@@ -153,12 +153,6 @@ class Us4R(Device):
     def n_us4oems(self):
         return self._handle.getNumberOfUs4OEMs()
 
-    def get_us4oem(self, ordinal: int):
-        return Us4OEM(self._handle.getUs4OEM(ordinal))
-
-    def get_backplane(self):
-        return self._backplane
-
     @property
     def firmware_version(self):
         result = {}
@@ -173,6 +167,18 @@ class Us4R(Device):
             us4oem_ver.append(ver)
         result["Us4OEM"] = us4oem_ver
         return result
+
+    def start(self):
+        """
+        Starts uploaded tx/rx sequence execution.
+        """
+        self._handle.start()
+
+    def stop(self):
+        """
+        Stops tx/rx sequence execution.
+        """
+        self._handle.stop()
 
     def set_kernel_context(self, kernel_context):
         self._current_sequence_context = kernel_context
