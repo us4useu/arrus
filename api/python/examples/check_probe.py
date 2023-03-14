@@ -2,6 +2,8 @@
 This is a python script for evaluating transducers in ultrasound probe.
 The evaluation is made on the basis of values of features
 estimated from signals acquired by each transducer.
+The probe should be 'in the air' - the analysed signal is assumed
+to be reflection from the lens surface.
 The transmit-receive scheme includes transmitting by single transducer
 and receiving by transducers in aperture centered on the transmitter.
 
@@ -12,7 +14,6 @@ Current features are
 4. pearson correlation coefficient (PCC) with 'footprint' signal.
 PCC require a footprint (i.e. object containing reference rf signal array).
 The footprint should be acquired earlier using the same setup.
-The probe should be 'in the air' - the analysed signal is assumed to be reflection from the lens surface.
 This feature measure how much the signals changed comparing to footprint.
 When transducer is broken, the acquired signal should be different comparing
 to signal acquired before damage.
@@ -51,16 +52,17 @@ Following options are accepted:
 --method : determines which method will be used ('threshold' (default)
   or 'neighborhood'),
 --rf_file : determines the name of optional output file with rf data,
---display_frame : determines if script will display figures,
+--create_footprint : creates footprint and store it in given file,
+--use_footprint : determines which footprint file to use,
 --n : the number of full Tx cycles to run (default 8),
 --tx_frequency : determines transmit frequency in [Hz] (default 8e6),
 --nrx : determines the size of receiving aperture (default 32),
---create_footprint : creates footprint and store it in given file,
---use_footprint : determines which footprint file to use,
---display_summary : displays features values on figure,
+--display_tx_channel : displays signals received by transmision of a given channel,
 --show_pulse_comparison : displays acquired pulse and corresponding
     footprint signal,
 --features: features to evaluation (amplitude, energy, duration, pcc)
+--display_summary : (flag) displays features values on figure,
+--visual_eval : (flag) displays pulses from all channels in single figure,
 
 Examples:
 python check_probe.py --help
@@ -69,6 +71,8 @@ python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --create_footprint footprint.pkl --n=16
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl --features amplitude pcc
+python check_probe.py --cfg_path ~/us4r.prototxt --display_tx_channel 64
+python check_probe.py --cfg_path ~/us4r.prototxt --display_summary
 
 Additional notes:
 1. This script tries to identify channels it considers suspicious.
@@ -151,11 +155,11 @@ def init_rf_display(width, height):
     return fig, ax, canvas
 
 
-def display_rf_frame(frame_number, data, figure, ax, canvas):
-    canvas.set_data(data[frame_number, :, :])
+def display_rf(rf, figure, ax, canvas):
+    canvas.set_data(rf)
     ax.set_aspect("auto")
-    figure.canvas.flush_events()
-    plt.draw()
+    # figure.canvas.flush_events()
+    # plt.draw()
 
 
 def display_summary(n_elements: int, report: ProbeHealthReport):
@@ -277,9 +281,8 @@ def main():
         required=True,
     )
     parser.add_argument(
-        "--display_frame", dest="display_frame",
-        help="Select a frame to be displayed. Optional, if not "
-             "chosen, summary of features will be displayed.",
+        "--display_tx_channel", dest="display_tx_channel",
+        help="Display received signals after transmitting by given channel.",
         required=False,
         type=int,
         default=None,
@@ -326,14 +329,6 @@ def main():
         default=None,
     )
     parser.add_argument(
-        "--display_summary", dest="display_summary",
-        help="Select a frame to be displayed. Optional, if not "
-             "chosen, summary of features will be displayed.",
-        required=False,
-        type=bool,
-        default=False,
-    )
-    parser.add_argument(
         "--show_pulse_comparison", dest="show_pulse_comparison",
         help="Shows pulses (acquired and footprint) from selected channel.",
         required=False,
@@ -352,6 +347,18 @@ def main():
         required=False,
         default="all",
         nargs="+",
+    )
+    parser.add_argument(
+        "--display_summary", dest="display_summary",
+        help="Display features values in all channels.",
+        required=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--visual_eval", dest="visual_eval",
+        help="Show pulses from all channels on single figure.",
+        required=False,
+        action="store_true",
     )
     args = parser.parse_args()
 
@@ -452,18 +459,23 @@ def main():
 
     # show results
     print_health_info(report)
-    n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
     print("----------------------------------------------")
-    print("Close the window to exit")
 
-    if args.display_frame is not None:
-        # Display the sequence of RF frames
+    n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
+
+    if args.display_tx_channel is not None:
         fig, ax, canvas = init_rf_display(n_elements, n_samples)
-        for frame in report.data:
-            display_rf_frame(args.display_frame, frame, fig, ax, canvas)
-            time.sleep(0.3)
+        ax.set_title(f"tx channel: {args.display_tx_channel}")
+        display_rf(
+            report.data[0, args.display_tx_channel, :, :],
+            fig,
+            ax,
+            canvas
+        )
         plt.show()
-        #  Display all waveforms in a single window.
+
+    #  Display all waveforms in a single window.
+    if args.visual_eval:
         visual_evaluation(report)
 
     if args.display_summary:
