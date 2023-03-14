@@ -331,6 +331,13 @@ class FootprintSimilarityPCCExtractorTest(AbstractExtractorTest):
         extracted = self.extractor.extract(noised, footprint.rf)
         self.assertLess(extracted, 0.5)
 
+    def test_flipped(self):
+        pulse_len = 32
+        footprint = self._generate_dummy_footprint(pulse_len=pulse_len)
+        flipped = footprint.rf*(-1)
+        extracted = self.extractor.extract(flipped, footprint.rf)
+        self.assertEqual(extracted, -1)
+
 
 class ProbeHealthVerifierTest(unittest.TestCase):
     pass
