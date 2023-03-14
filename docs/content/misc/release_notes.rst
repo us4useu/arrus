@@ -19,6 +19,7 @@ Release notes
 
     - Exposed Us4OEM FPGA, UCD, UCD external temperature.
     - Implemented new module `arrus.utils.probe_check` for probe checking and automatic channel health, see example: examples/check_probe.py
+    - implemented following features for probe checking: amplitude, signal duration, normalized energy and Pearson correlation coefficient (for comparing acquired signal with previous acquired 'footprint' of a probe)
     - exposed hardware Digital Down Conversion
     - us4R: exposed the possibility to change hardware high-pass filter cutoff frequency
     - arrus.utils.imaging: changed the default filter type for BandpassFilter to hamming windows (firwin)
