@@ -23,7 +23,7 @@ All platforms and languages:
 - [CMake](https://cmake.org) 3.17 at least
 - [Python](https://python.org) 3.8 at least ([conda](https://docs.conda.io/en/latest/miniconda.html) is recommended)
 - the following Python packages: `pip install conan==1.59.0 pydevops-us4us==0.1.0`
-- us4r drivers API headers and binaries (ask us4us developers for access)
+- us4r drivers API headers and binaries from [separate github repository](https://github.com/us4useu/us4r-drivers/releases)
 
 `windows_x86_64`:
 - the latest Windows 10
