@@ -80,4 +80,7 @@ which show how to construct custom sequences and callbacks.
 
 .. Custom Callback
 
+.. include:: examples/check_probe.rst
+
+
 
