@@ -137,6 +137,16 @@ public:
     virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
 
     /**
+     * Returns serial number of this us4OEM (a null-terminated string).
+     */
+    virtual const char* getSerialNumber() const = 0;
+
+    /**
+     * Returns revision number of this us4OEM (a null-terminated string).
+     */
+    virtual const char* getRevision() const = 0;
+
+    /**
      * Disables digital high-pass filter.
      */
     virtual void disableHpf() = 0;

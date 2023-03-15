@@ -44,3 +44,15 @@ class Us4OEM(Device):
         Returns Us4OEM UCD external temperature [Celsius]
         """
         return arrus.core.arrusUs4OEMGetUCDExternalTemperature(self._handle)
+
+    def get_serial_number(self) -> str:
+        """
+        Returns serial number of the device.
+        """
+        return self._handle.getSerialNumber()
+
+    def get_revision(self) -> str:
+        """
+        Returns revision number of the device.
+        """
+        return self._handle.getRevision()

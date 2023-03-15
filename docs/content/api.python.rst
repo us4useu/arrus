@@ -86,6 +86,10 @@ Devices
     :members:
     :show-inheritance:
 
+.. autoclass:: arrus.devices.us4r.Backplane
+    :members:
+    :show-inheritance:
+
 .. autoclass:: arrus.devices.gpu.GPU
     :show-inheritance:
 
