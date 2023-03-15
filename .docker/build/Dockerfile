@@ -37,7 +37,7 @@ RUN apt-get update \
 RUN echo "alias python=python3" >> /root/.bashrc
 
 # Cmake
-COPY .docker/build/install_cmake.sh .
+COPY install_cmake.sh .
 RUN chmod +x install_cmake.sh && ./install_cmake.sh $TARGETPLATFORM
 
 # Swig
