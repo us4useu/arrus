@@ -63,7 +63,8 @@ aliases = {
     "matlab": "/cfg/cmake/DARRUS_BUILD_MATLAB",
     "docs": "/cfg/cmake/DARRUS_BUILD_DOCS",
     "tests": "/cfg/cmake/DARRUS_RUN_TESTS",
-    "j": "/build/j"
+    "j": "/build/j",
+    "py-version": "/cfg/cmake/DARRUS_PY_VERSION"
 }
 
 defaults = {
