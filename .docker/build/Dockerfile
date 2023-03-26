@@ -32,7 +32,8 @@ RUN apt-get update \
     latexmk \
     texlive-latex-extra \
     texlive-fonts-recommended \
-    texlive-font-utils
+    texlive-font-utils \
+    ghostscript
 
 
 RUN echo "alias python=python3" >> /root/.bashrc
