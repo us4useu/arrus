@@ -226,10 +226,6 @@ Probe check functionality
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.utils.probe_check.ProbeElementFeatureExtractor
-    :members:
-    :show-inheritance:
-
 .. autoclass:: arrus.utils.probe_check.MaxAmplitudeExtractor
     :members:
     :show-inheritance:
