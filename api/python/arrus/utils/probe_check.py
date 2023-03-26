@@ -539,34 +539,6 @@ class ByNeighborhoodValidator(ProbeElementValidator):
     """
     Validator that compares each element with its neighborhood.
 
-    The invalid elements are determined in the following way:
-        - for each probe element `i`:
-          - if element `i` is masked: check if it's feature is within proper
-            range. If it's not, mark the element with state TOO_HIGH or TOO_LOW.
-          - if element `i` is not masked:
-            - first, determine the neighborhood of the element `i`.
-              The neighborhood is determined by the `group_size` parameter,
-              and consists of a given number of adjacent probe elements.
-            - Then, estimate the expected feature value:
-              - exclude from the neighborhood all elements which have an
-                amplitude outside the active_range
-                (see FeatureDescriptor class), that is they seem to be inactive
-                e.g. they were turned off using channels mask in the system
-                configuration,
-              - if the number of active elements is less than the
-                min_num_of_neighbors, set verdict for the element to
-                INDEFINITE,
-              - otherwise: compute the median in the neighborhood - this is our
-                estimate of the expected feature value,
-              - Then determine if the element is valid, based on its feature
-                value and the `feature_range_in_neighborhood` param, which
-                should be equal to `(feature_min, feature_max)`:
-                - if the value is out of the range
-                  [feature_min*median, feature_max*median]:
-                  mark this element with state TOO_LOW, TOO_HIGH,
-                - if its amplitude is above amplitude_max*center_amplitude:
-                  otherwise mark the element with state "VALID".
-
     :param group_size: number of elements in the group
     :param feature_range_in_neighborhood: pair (feature_min, feature_max)
       (see the description above)
