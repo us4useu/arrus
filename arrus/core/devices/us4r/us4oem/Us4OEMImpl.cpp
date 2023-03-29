@@ -780,6 +780,9 @@ void Us4OEMImpl::setAfeDemod(const std::optional<ops::us4r::DigitalDownConversio
         setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(), value.getFirCoefficients().data(),
                     value.getFirCoefficients().size());
     }
+    else {
+        disableAfeDemod();
+    }
 }
 
 void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
