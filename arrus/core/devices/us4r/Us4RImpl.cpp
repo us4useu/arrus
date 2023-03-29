@@ -85,12 +85,12 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
     std::vector<std::pair <std::string,float>> voltages;
     bool fail = true;
     while(retries-- && fail) {
+        fail = false;
         voltages = logVoltages(isUS4PSC);
         for(size_t i = 0; i < voltages.size(); i++) {
             if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) { 
                 fail = true; 
             }
-            else { fail = false; }
         }
         if(!fail) { break; }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
