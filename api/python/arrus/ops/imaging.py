@@ -60,6 +60,12 @@ class SimpleTxRxSequence:
     :param sri: sequence repetition interval - the time between consecutive RF \
       frames. When None, the time between consecutive RF frames is determined \
       by the total pri only. [s]
+    :param n_repeats: size of a single batch -- how many times this sequence should be \
+      repeated before data is transferred to computer (integer)
+    :param init_delay: when the recording should start, \
+      available options: 'tx_start' - the first recorded sample is when the  \
+      transmit starts, 'tx_center' - the first recorded sample is delayed by \
+      tx aperture center delay and burst factor.
     """
     pulse: arrus.ops.us4r.Pulse
     rx_sample_range: tuple
@@ -71,13 +77,15 @@ class SimpleTxRxSequence:
     downsampling_factor: int = 1
     tx_aperture_center_element: list = None
     tx_aperture_center: list = None
-    tx_aperture_size: list = None
+    tx_aperture_size: int = None
     rx_aperture_center_element: list = None
     rx_aperture_center: list = None
-    rx_aperture_size: list = None
+    rx_aperture_size: int = None
     tgc_start: float = None
     tgc_slope: float = None
     tgc_curve: list = None
+    n_repeats: int = 1
+    init_delay: str = "tx_start"
 
     def __post_init__(self):
         # Validation
@@ -155,19 +163,12 @@ class LinSequence(SimpleTxRxSequence):
 
     - tx_focus must be finite positive and scalar,
     - tx angle must be a scalar.
-
-    :param init_delay: when the record should start, \
-      available options: 'tx_start' - the first recorded sample is when the  \
-      transmit starts, 'tx_center' - the first recorded sample is delayed by \
-      tx aperture center delay and burst factor.
     """
-    init_delay: str = "tx_start"
 
     def __post_init__(self):
         super().__post_init__()
         if self.tx_focus <= 0 or np.isinf(self.tx_focus):
             raise ValueError("TX focus has to be a positive value.")
-        assert_is_scalar("angles", self.angles)
 
 
 @dataclasses.dataclass(frozen=True)

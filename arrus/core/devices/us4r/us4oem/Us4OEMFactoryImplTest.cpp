@@ -8,7 +8,7 @@
 
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 #include "arrus/core/devices/us4r/tests/MockIUs4OEM.h"
-#include "arrus/common/logging/impl/Logging.h"
+#include "arrus/core/common/logging.h"
 
 namespace {
 
@@ -51,7 +51,7 @@ TEST_P(Us4OEMFactorySimpleParametersTest, VerifyUs4OEMFactorySimpleParameters) {
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(us4rParameters.activeTerminationEnabled,
                                        us4rParameters.activeTerminationValue));
     Us4OEMFactoryImpl factory;
-    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings());
+    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false);
 }
 
 INSTANTIATE_TEST_CASE_P
@@ -94,11 +94,11 @@ TEST_P(Us4OEMFactoryOptionalParametersTest, VerifyUs4OEMFactoryOptionalParameter
                                            us4rParameters.activeTerminationValue));
     } else {
         // NO enable
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN, _)).Times(0);
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS, _));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN, testing::Matcher<us4r::afe58jd18::GBL_ACTIVE_TERM>(_))).Times(0);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS, testing::Matcher<us4r::afe58jd18::GBL_ACTIVE_TERM>(_)));
     }
     Us4OEMFactoryImpl factory;
-    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings());
+    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false);
 }
 
 INSTANTIATE_TEST_CASE_P
@@ -138,7 +138,7 @@ TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
 
     Us4OEMFactoryImpl factory;
 
-    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings());
+    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false);
 }
 
 INSTANTIATE_TEST_CASE_P
@@ -183,7 +183,7 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
                                 std::begin(channelMapping) + 32), 0))
             .Times(1);
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings());
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false);
 }
 
 TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
@@ -208,7 +208,7 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
     // Expect
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings());
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false);
 }
 
 // Tx channel mapping
@@ -235,7 +235,7 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
             .Times(0);
 
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings());
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false);
 }
 }
 

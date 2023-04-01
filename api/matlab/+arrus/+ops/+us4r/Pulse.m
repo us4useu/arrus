@@ -1,32 +1,25 @@
 classdef Pulse
     % A description of a transmitted pulse.
     %
-    % :param centerFrequency: pulse transmit center frequency in [Hz]
+    % :param centerFrequency: pulse transmit center frequency in [Hz]. Required.
     % :param nPeriods: number of sine burst periods, should be full and half cycles
-    %   are supported (e.g. 1, 1.5, etc.)
+    %   are supported (e.g. 1, 1.5, etc.) Required.
     % :param inverse: true if the polarity of the generated signal should be inverted,
-    %   optional, default value: false
+    %   Optional, default value: false
+    properties(Constant, Hidden=true)
+        REQUIRED_PARAMS = {'centerFrequency', 'nPeriods'};
+    end
 
     properties
-        centerFrequency
-        nPeriods
-        inverse
+        centerFrequency (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 1e6
+        nPeriods (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 1
+        inverse (1, 1) {arrus.validators.mustBeLogical} = false
     end
 
     methods
         function obj = Pulse(varargin)
-            p = inputParser;
-%             addRequired(p, 'centerFrequency', @(x) isscalar(x) && isnumeric(x) && isfinite(x) && (x > 0) && isreal(x));
-%             addRequired(p, 'nPeriods', @(x) isscalar(x) && isinteger(x) && (x > 0));
-            addRequired(p, 'centerFrequency',@(x) 1);
-            addRequired(p, 'nPeriods', @(x) isscalar(x) && mod(x,1)==0 && (x > 0));
-            addOptional(p, 'inverse', false, @(x) isscalar(x) && islogical(x));
-            parse(p,varargin{:})
-
-            obj.centerFrequency = p.Results.centerFrequency;
-            obj.nPeriods = p.Results.nPeriods;
-            obj.inverse = p.Results.inverse;
+            obj = arrus.utils.setArgs(obj, varargin, obj.REQUIRED_PARAMS);
         end
     end
-    
+
 end

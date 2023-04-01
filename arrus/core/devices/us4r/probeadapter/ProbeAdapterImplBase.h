@@ -4,6 +4,7 @@
 #include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/us4r/DataTransfer.h"
 #include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
@@ -23,12 +24,13 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri,
-                    bool triggerSync) = 0;
+                    bool triggerSync, const std::optional<ops::us4r::DigitalDownConversion> &ddc) = 0;
 
     virtual
-    void registerOutputBuffer(Us4ROutputBuffer *buffer,
-                              const Us4RBuffer::Handle &transfers,
-                              bool isTriggerSync) = 0;
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers,
+                              ::arrus::ops::us4r::Scheme::WorkMode workMode) = 0;
+
+    virtual void unregisterOutputBuffer() = 0;
 
     virtual Ordinal getNumberOfUs4OEMs() = 0;
 

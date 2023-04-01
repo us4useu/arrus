@@ -9,7 +9,7 @@ __constant__ float xElemConst[256];
 __constant__ float tangElemConst[256];
 
 texture <float2, cudaTextureType1DLayered, cudaReadModeElementType> iqRawTex;
-
+texture <float, cudaTextureType1D, cudaReadModeElementType> rxApodTex;
 
 __forceinline__ __device__ float ownHypotf(float x, float y)
 {
@@ -17,16 +17,27 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 }
 
 
-__global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xPix, 
-                            float const * txFoc, float const * txAngZX, 
-                            float const * txApCentZ, float const * txApCentX, 
-                            int const * txApFstElem, int const * txApLstElem, 
+__global__ void iqRaw2Lri(  float2 * iqLri, 
+                            float const * zPix, 
+                            float const * xPix, 
+                            float const * txFoc, 
+                            float const * txAngZX, 
+                            float const * txApCentZ, 
+                            float const * txApCentX, 
+                            float const * fn, 
+                            float const * initDel, 
+                            int const * txApFstElem, 
+                            int const * txApLstElem, 
                             int const * rxApOrigElem, 
-                            float const minRxTang, float const maxRxTang, 
-                            float const fs, float const fn, 
-                            float const sos, float const initDel, 
-                            int const nZPix, int const nXPix, 
-                            int const nSamp, int const nElem, 
+                            int const * nSampOmit, 
+                            float const * minRxTang, 
+                            float const * maxRxTang, 
+                            float const fs, 
+                            float const sos, 
+                            int const nZPix, 
+                            int const nXPix, 
+                            int const nSamp, 
+                            int const nElem, 
                             int const nRx, 
                             int const nTx)
 {
@@ -40,15 +51,13 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
     int iElem;
     float txDist, rxDist, rxTang, txApod, rxApod, time, iSamp;
     float modSin, modCos, sampRe, sampIm, pixRe, pixIm, pixWgh;
-    float const omega = 2 * M_PI * fn;
     float const sosInv = 1 / sos;
 //     float const zDistInv = 1 / zPix[z];
-    float const nSigma = 3; // number of sigmas in half of the apodization Gaussian curve
-    float const twoSigSqrInv = nSigma * nSigma * 0.5f;
-    float const rngRxTangInv = 2 / (maxRxTang - minRxTang); // inverted half range
-    float const centRxTang = (maxRxTang + minRxTang) * 0.5f;
     
     for (int iTx=0; iTx<nTx; iTx++) {
+        
+        float const rngRxTangInv = 1 / (maxRxTang[iTx] - minRxTang[iTx]); // inverted tangent range
+        float omega = 2 * M_PI * fn[iTx];
         
         if (!isinf(txFoc[iTx])) {
             /* STA */
@@ -108,13 +117,13 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
 //                 rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
                 rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
                 rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
-                if (rxTang < minRxTang || rxTang > maxRxTang) continue;
-                rxApod = (rxTang-centRxTang)*rngRxTangInv;
-                rxApod = __expf(-rxApod*rxApod*twoSigSqrInv);
+                if (rxTang < minRxTang[iTx] || rxTang > maxRxTang[iTx]) continue;
+                rxApod = (rxTang-minRxTang[iTx])*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
+                rxApod = tex1D(rxApodTex, rxApod);
                 
-                time = (txDist + rxDist) * sosInv + initDel;
+                time = (txDist + rxDist) * sosInv + initDel[iTx];
                 iSamp = time * fs;
-                if (iSamp<0.f || iSamp>static_cast<float>(nSamp-1)) continue;
+                if (iSamp<static_cast<float>(nSampOmit[iTx]) || iSamp>static_cast<float>(nSamp-1)) continue;
                 
                 float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iRx + iTx*nRx);
                 sampRe = iqSamp.x;
@@ -133,27 +142,36 @@ __global__ void iqRaw2Lri(  float2 * iqLri, float const * zPix, float const * xP
     }
 }
 
-__host__ void checkData(mxGPUArray const * const data, char const * const name, bool const isComplex, int const nDims, char const * const invalidInputMsgId)
+__host__ void checkData(mxGPUArray const * const data, 
+                        char const * const name, 
+                        bool const mustBeInt, 
+                        bool const mustBeComplex, 
+                        int const mustBeNDim, 
+                        char const * const invalidInputMsgId)
 {
     std::string invalidInputMsgTxt(name);
     
-    if (mxGPUGetClassID(data) != mxSINGLE_CLASS) 
+    if (mustBeInt && mxGPUGetClassID(data) != mxINT32_CLASS) 
+        invalidInputMsgTxt += std::string(" must be int32.");
+    
+    else if (!mustBeInt && mxGPUGetClassID(data) != mxSINGLE_CLASS) 
         invalidInputMsgTxt += std::string(" must be single.");
     
-    else if (!isComplex && mxGPUGetComplexity(data)) 
+    else if (!mustBeComplex && mxGPUGetComplexity(data)) 
         invalidInputMsgTxt += std::string(" must be real.");
     
-    else if (isComplex && !mxGPUGetComplexity(data)) 
+    else if (mustBeComplex && !mxGPUGetComplexity(data)) 
         invalidInputMsgTxt += std::string(" must be complex.");
     
-    else if (nDims==1 && !( mxGPUGetNumberOfDimensions(data) == 1 || 
-                           (mxGPUGetNumberOfDimensions(data) == 2 && mxGPUGetDimensions(data)[0] == 1))) 
+    else if (mustBeNDim==1 && !( mxGPUGetNumberOfDimensions(data) == 1 || 
+                                (mxGPUGetNumberOfDimensions(data) == 2 && 
+                                 mxGPUGetDimensions(data)[0] == 1))) 
         invalidInputMsgTxt += std::string(" must be at most 1D vector.");
     
-    else if (nDims==2 && !(mxGPUGetNumberOfDimensions(data) <= 2)) 
+    else if (mustBeNDim==2 && !(mxGPUGetNumberOfDimensions(data) <= 2)) 
         invalidInputMsgTxt += std::string(" must be at most 2D array.");
     
-    else if (nDims==3 && !(mxGPUGetNumberOfDimensions(data) <= 3)) 
+    else if (mustBeNDim==3 && !(mxGPUGetNumberOfDimensions(data) <= 3)) 
         invalidInputMsgTxt += std::string(" must be at most 3D array.");
     
     else
@@ -177,13 +195,19 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * tangElem;
     mxGPUArray const * zPix;
     mxGPUArray const * xPix;
+    mxGPUArray const * rxApod;
     mxGPUArray const * foc;
     mxGPUArray const * ang;
     mxGPUArray const * centZ;
     mxGPUArray const * centX;
+    mxGPUArray const * fn;
+    mxGPUArray const * initDel;
     mxGPUArray const * elemFst;
     mxGPUArray const * elemLst;
     mxGPUArray const * rxElemOrig;
+    mxGPUArray const * nSampOmit;
+    mxGPUArray const * minRxTang;
+    mxGPUArray const * maxRxTang;
     
     float2 * dev_iqLri;
     float2 const * dev_iqRaw;
@@ -192,20 +216,22 @@ void mexFunction(int nlhs, mxArray * plhs[],
     float const * dev_tangElem;
     float const * dev_zPix;
     float const * dev_xPix;
+    float const * dev_rxApod;
     float const * dev_foc;
     float const * dev_ang;
     float const * dev_centZ;
     float const * dev_centX;
+    float const * dev_fn;
+    float const * dev_initDel;
     int const * dev_elemFst;
     int const * dev_elemLst;
     int const * dev_rxElemOrig;
+    int const * dev_nSampOmit;
+    float const * dev_minRxTang;
+    float const * dev_maxRxTang;
     
-    float minRxTang;
-    float maxRxTang;
     float fs;
-    float fn;
     float sos;
-    float initDel;
     
     int nSamp;
     int nElem;
@@ -213,6 +239,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     int nXPix;
     int nRx;
     int nTx;
+    int nRxApodSamp;
     
     dim3 const threadsPerBlock = {16, 16, 1};
     dim3 blocksPerGrid;
@@ -222,17 +249,17 @@ void mexFunction(int nlhs, mxArray * plhs[],
     char const * const invalidOutputMsgId = "iqRaw2Lri:InvalidOutput";
     
     /* Validate mex inputs/outputs */
-    if (nrhs!=19) {
-        mexErrMsgIdAndTxt( invalidInputMsgId, "19 inputs required");
+    if (nrhs!=21) {
+        mexErrMsgIdAndTxt( invalidInputMsgId, "21 inputs required");
     }
     
     if (nlhs>1) {
         mexErrMsgIdAndTxt( invalidOutputMsgId, "One output allowed");
     }
     
-//     for (int i=13; i<19; i++) {
+//     for (int i=19; i<21; i++) {
 //         if (!mxIsSingle(prhs[i]) || mxIsComplex(prhs[i]) || mxGetNumberOfElements(prhs[i]) != 1) {
-//             mexErrMsgIdAndTxt( invalidInputMsgId, "Last 6 inputs must be single, real scalars");
+//             mexErrMsgIdAndTxt( invalidInputMsgId, "Last 2 inputs must be single, real scalars");
 //         }
 //     }
     
@@ -244,35 +271,43 @@ void mexFunction(int nlhs, mxArray * plhs[],
     tangElem  = mxGPUCreateFromMxArray(prhs[3]);
     zPix      = mxGPUCreateFromMxArray(prhs[4]);
     xPix      = mxGPUCreateFromMxArray(prhs[5]);
-    foc       = mxGPUCreateFromMxArray(prhs[6]);
-    ang       = mxGPUCreateFromMxArray(prhs[7]);
-    centZ     = mxGPUCreateFromMxArray(prhs[8]);
-    centX     = mxGPUCreateFromMxArray(prhs[9]);
-    elemFst   = mxGPUCreateFromMxArray(prhs[10]);
-    elemLst   = mxGPUCreateFromMxArray(prhs[11]);
-    rxElemOrig  = mxGPUCreateFromMxArray(prhs[12]);
-    
-    minRxTang = mxGetScalar(prhs[13]);
-    maxRxTang = mxGetScalar(prhs[14]);
-    fs        = mxGetScalar(prhs[15]);
-    fn        = mxGetScalar(prhs[16]);
-    sos       = mxGetScalar(prhs[17]);
-    initDel   = mxGetScalar(prhs[18]);
+    rxApod    = mxGPUCreateFromMxArray(prhs[6]);
+    foc       = mxGPUCreateFromMxArray(prhs[7]);
+    ang       = mxGPUCreateFromMxArray(prhs[8]);
+    centZ     = mxGPUCreateFromMxArray(prhs[9]);
+    centX     = mxGPUCreateFromMxArray(prhs[10]);
+    fn        = mxGPUCreateFromMxArray(prhs[11]);
+    initDel   = mxGPUCreateFromMxArray(prhs[12]);
+    elemFst   = mxGPUCreateFromMxArray(prhs[13]);
+    elemLst   = mxGPUCreateFromMxArray(prhs[14]);
+    rxElemOrig= mxGPUCreateFromMxArray(prhs[15]);
+    nSampOmit = mxGPUCreateFromMxArray(prhs[16]);
+    minRxTang = mxGPUCreateFromMxArray(prhs[17]);
+    maxRxTang = mxGPUCreateFromMxArray(prhs[18]);
+
+    fs        = mxGetScalar(prhs[19]);
+    sos       = mxGetScalar(prhs[20]);
     
     /* Validate inputs */
-    checkData(iqRaw,     "iqRaw",     true,  3, invalidInputMsgId);
-    checkData(zElem,     "zElem",     false, 1, invalidInputMsgId);
-    checkData(xElem,     "xElem",     false, 1, invalidInputMsgId);
-    checkData(tangElem,  "tangElem",  false, 1, invalidInputMsgId);
-    checkData(zPix,      "zPix",      false, 1, invalidInputMsgId);
-    checkData(xPix,      "xPix",      false, 1, invalidInputMsgId);
-    checkData(foc,       "foc",       false, 1, invalidInputMsgId);
-    checkData(ang,       "ang",       false, 1, invalidInputMsgId);
-    checkData(centZ,     "centZ",     false, 1, invalidInputMsgId);
-    checkData(centX,     "centX",     false, 1, invalidInputMsgId);
-//     checkData(elemFst,   "elemFst",   false, 1, invalidInputMsgId); //int
-//     checkData(elemLst,   "elemLst",   false, 1, invalidInputMsgId); //int
-//     checkData(rxElemOrig,"rxElemOrig",false, 1, invalidInputMsgId); //int
+    checkData(iqRaw,     "iqRaw",     false, true,  3, invalidInputMsgId);
+    checkData(zElem,     "zElem",     false, false, 1, invalidInputMsgId);
+    checkData(xElem,     "xElem",     false, false, 1, invalidInputMsgId);
+    checkData(tangElem,  "tangElem",  false, false, 1, invalidInputMsgId);
+    checkData(zPix,      "zPix",      false, false, 1, invalidInputMsgId);
+    checkData(xPix,      "xPix",      false, false, 1, invalidInputMsgId);
+    checkData(rxApod,    "rxApod",    false, false, 1, invalidInputMsgId);
+    checkData(foc,       "foc",       false, false, 1, invalidInputMsgId);
+    checkData(ang,       "ang",       false, false, 1, invalidInputMsgId);
+    checkData(centZ,     "centZ",     false, false, 1, invalidInputMsgId);
+    checkData(centX,     "centX",     false, false, 1, invalidInputMsgId);
+    checkData(fn,        "fn",        false, false, 1, invalidInputMsgId);
+    checkData(initDel,   "initDel",   false, false, 1, invalidInputMsgId);
+    checkData(elemFst,   "elemFst",   true,  false, 1, invalidInputMsgId);
+    checkData(elemLst,   "elemLst",   true,  false, 1, invalidInputMsgId);
+    checkData(rxElemOrig,"rxElemOrig",true,  false, 1, invalidInputMsgId);
+    checkData(nSampOmit, "nSampOmit", true,  false, 1, invalidInputMsgId);
+    checkData(minRxTang, "minRxTang", false, false, 1, invalidInputMsgId);
+    checkData(maxRxTang, "maxRxTang", false, false, 1, invalidInputMsgId);
     
     /* Get some additional information */
     nSamp = mxGPUGetDimensions(iqRaw)[0];
@@ -280,6 +315,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     nElem = mxGPUGetNumberOfElements(xElem);
     nZPix = mxGPUGetNumberOfElements(zPix);
     nXPix = mxGPUGetNumberOfElements(xPix);
+    nRxApodSamp = mxGPUGetNumberOfElements(rxApod);
     if (mxGPUGetNumberOfDimensions(iqRaw)<3) {
         nTx = 1;
     }
@@ -309,13 +345,19 @@ void mexFunction(int nlhs, mxArray * plhs[],
     dev_tangElem = static_cast<float const *>(mxGPUGetDataReadOnly(tangElem));
     dev_zPix     = static_cast<float const *>(mxGPUGetDataReadOnly(zPix));
     dev_xPix     = static_cast<float const *>(mxGPUGetDataReadOnly(xPix));
+    dev_rxApod   = static_cast<float const *>(mxGPUGetDataReadOnly(rxApod));
     dev_foc      = static_cast<float const *>(mxGPUGetDataReadOnly(foc));
     dev_ang      = static_cast<float const *>(mxGPUGetDataReadOnly(ang));
     dev_centZ    = static_cast<float const *>(mxGPUGetDataReadOnly(centZ));
     dev_centX    = static_cast<float const *>(mxGPUGetDataReadOnly(centX));
+    dev_fn       = static_cast<float const *>(mxGPUGetDataReadOnly(fn));
+    dev_initDel  = static_cast<float const *>(mxGPUGetDataReadOnly(initDel));
     dev_elemFst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemFst));
     dev_elemLst  = static_cast<int const *>(mxGPUGetDataReadOnly(elemLst));
-    dev_rxElemOrig  = static_cast<int const *>(mxGPUGetDataReadOnly(rxElemOrig));
+    dev_rxElemOrig = static_cast<int const *>(mxGPUGetDataReadOnly(rxElemOrig));
+    dev_nSampOmit  = static_cast<int const *>(mxGPUGetDataReadOnly(nSampOmit));
+    dev_minRxTang  = static_cast<float const *>(mxGPUGetDataReadOnly(minRxTang));
+    dev_maxRxTang  = static_cast<float const *>(mxGPUGetDataReadOnly(maxRxTang));
     
     /* set constant memory */
     if(nElem > 256) {
@@ -324,6 +366,17 @@ void mexFunction(int nlhs, mxArray * plhs[],
     cudaMemcpyToSymbol(   zElemConst, dev_zElem,    nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     cudaMemcpyToSymbol(   xElemConst, dev_xElem,    nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     cudaMemcpyToSymbol(tangElemConst, dev_tangElem, nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    
+    /* configure texture reference (apodization) */
+    rxApodTex.normalized = true;
+    rxApodTex.addressMode[0] = cudaAddressModeBorder;
+    rxApodTex.filterMode = cudaFilterModeLinear;
+    
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
+    cudaArray* cuArrayApod;
+    cudaMallocArray(&cuArrayApod, &channelDesc, nRxApodSamp, 0);
+    cudaMemcpyToArray(cuArrayApod, 0, 0, dev_rxApod, nRxApodSamp*sizeof(float), cudaMemcpyDeviceToDevice);
+    cudaBindTextureToArray(rxApodTex, cuArrayApod, channelDesc);
     
     /* configure texture reference */
     iqRawTex.normalized  = false;
@@ -352,25 +405,23 @@ void mexFunction(int nlhs, mxArray * plhs[],
         cudaMemcpy3D(&cuArrayCopy);
         
         /* Execute CUDA kernel */
-//         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
-//                                                                       dev_zPix, dev_xPix, 
-//                                                                       dev_foc       + iPart*nTxPerPart, 
-//                                                                       dev_ang       + iPart*nTxPerPart, 
-//                                                                       dev_centX     + iPart*nTxPerPart, 
-//                                                                       minRxTang, maxRxTang, fs, fn, sos, initDel, 
-//                                                                       nZPix, nXPix, nSamp, nElem, nTxInThisPart);
         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
-                                                                      dev_zPix, dev_xPix, 
+                                                                      dev_zPix, 
+                                                                      dev_xPix, 
                                                                       dev_foc       + iPart*nTxPerPart, 
                                                                       dev_ang       + iPart*nTxPerPart, 
                                                                       dev_centZ     + iPart*nTxPerPart, 
                                                                       dev_centX     + iPart*nTxPerPart, 
+                                                                      dev_fn        + iPart*nTxPerPart, 
+                                                                      dev_initDel   + iPart*nTxPerPart, 
                                                                       dev_elemFst   + iPart*nTxPerPart, 
                                                                       dev_elemLst   + iPart*nTxPerPart, 
                                                                       dev_rxElemOrig + iPart*nTxPerPart, 
-                                                                      minRxTang, maxRxTang, fs, fn, sos, initDel, 
+                                                                      dev_nSampOmit + iPart*nTxPerPart, 
+                                                                      dev_minRxTang + iPart*nTxPerPart, 
+                                                                      dev_maxRxTang + iPart*nTxPerPart, 
+                                                                      fs, sos, 
                                                                       nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
-        
     }
     
     /* Wrap the output */
@@ -380,6 +431,9 @@ void mexFunction(int nlhs, mxArray * plhs[],
     cudaUnbindTexture(iqRawTex);
     cudaFreeArray(cuArray);
     
+    cudaUnbindTexture(rxApodTex);
+    cudaFreeArray(cuArrayApod);
+    
     mxGPUDestroyGPUArray(iqLri);
     mxGPUDestroyGPUArray(iqRaw);
     mxGPUDestroyGPUArray(zElem);
@@ -387,13 +441,19 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUDestroyGPUArray(tangElem);
     mxGPUDestroyGPUArray(zPix);
     mxGPUDestroyGPUArray(xPix);
+    mxGPUDestroyGPUArray(rxApod);
     mxGPUDestroyGPUArray(foc);
     mxGPUDestroyGPUArray(ang);
     mxGPUDestroyGPUArray(centZ);
     mxGPUDestroyGPUArray(centX);
+    mxGPUDestroyGPUArray(fn);
+    mxGPUDestroyGPUArray(initDel);
     mxGPUDestroyGPUArray(elemFst);
     mxGPUDestroyGPUArray(elemLst);
     mxGPUDestroyGPUArray(rxElemOrig);
+    mxGPUDestroyGPUArray(nSampOmit);
+    mxGPUDestroyGPUArray(minRxTang);
+    mxGPUDestroyGPUArray(maxRxTang);
     
     //cudaDeviceReset();
 }

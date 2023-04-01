@@ -26,7 +26,8 @@ public:
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false) override;
+                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false,
+                    const std::optional<ops::us4r::DigitalDownConversion> &ddc = std::nullopt) override;
 
     Interval<Voltage> getAcceptedVoltageRange() override;
 
@@ -36,7 +37,10 @@ public:
 
     void syncTrigger() override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer, bool isTriggerSync) override;
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
+                              ::arrus::ops::us4r::Scheme::WorkMode workMode) override;
+
+    void unregisterOutputBuffer() override;
 
     static FrameChannelMapping::Handle remapFcm(const FrameChannelMapping::Handle &adapterFcm,
                                                 const std::vector<std::vector<ChannelIdx>> &adapterActiveChannels,

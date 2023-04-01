@@ -12,8 +12,8 @@ namespace arrus::devices {
 class ProbeAdapterFactory {
 public:
     virtual ProbeAdapterImplBase::Handle
-    getProbeAdapter(const ProbeAdapterSettings &settings,
-                    const std::vector<Us4OEMImplBase::RawHandle> &us4oems) = 0;
+    getProbeAdapter(const ProbeAdapterSettings &settings, const std::vector<Us4OEMImplBase::RawHandle> &us4oems) = 0;
+    virtual ~ProbeAdapterFactory() = default;
 };
 }
 

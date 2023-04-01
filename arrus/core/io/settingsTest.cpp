@@ -2,7 +2,6 @@
 #include <csignal>
 #include <boost/filesystem.hpp>
 
-#include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/common/collections.h"
@@ -29,6 +28,10 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
+
+    EXPECT_EQ(us4rSettings.getNumberOfUs4oems(), 2);
+    std::vector<Ordinal> expectedAdapterToUs4RMapping = {1, 0};
+    EXPECT_EQ(us4rSettings.getAdapterToUs4RModuleNumber(), expectedAdapterToUs4RMapping);
 
     EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({}));
     EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<uint8>>({{}, {}}));

@@ -6,7 +6,7 @@
 
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
-#include "arrus/api/matlab/wrappers/common.h"
+#include "api/matlab/wrappers/common.h"
 
 #define ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, n, methodName) \
     ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
@@ -15,12 +15,31 @@
                 (methodName), (n), (inputs).size())))
 
 
-#define ARRUS_MATLAB_REQUIRES_SCALAR(array, msg)          \
+#define ARRUS_MATLAB_REQUIRES_N_PARAMETERS_CLASS_METHOD(inputs, n, className, methodName) \
+    ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
+        arrus::IllegalArgumentException(arrus::format( \
+            "Function '{}::{}' requires exactly {} parameters (got {})", \
+                (className), (methodName), (n), (inputs).size())))
+
+#define ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(array, arrayName)          \
 do {                                                      \
     if (!::arrus::matlab::isArrayScalar(array)) {         \
-        throw arrus::IllegalArgumentException(msg);       \
+        throw arrus::IllegalArgumentException(arrayName + " should be scalar.");       \
     }                                                     \
 } while(0)
+
+#define ARRUS_MATLAB_REQUIRES_SCALAR(array) ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(array, std::string("Value"))
+
+#define ARRUS_MATLAB_REQUIRES_TYPE_NAMED(array, arrayType, arrayName)          \
+do {                                                      \
+    if (!::arrus::matlab::isArrayOfType(array, arrayType)) {         \
+        throw arrus::IllegalArgumentException(                                 \
+                std::string(arrayName) + " should be of type: " + ::arrus::matlab::toString(arrayType) \
+                + " but is: " + ::arrus::matlab::toString(array.getType()));       \
+    }                                                     \
+} while(0)
+
+#define ARRUS_MATLAB_REQUIRES_TYPE(array, arrayType) ARRUS_MATLAB_REQUIRES_TYPE_NAMED(array, arrayType, "Array")
 
 #define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(value, dataType, e)          \
 do {                                                                    \

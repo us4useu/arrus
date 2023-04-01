@@ -4,6 +4,8 @@ import os
 # use arrus-core.dll from the python package
 os.environ["PATH"] += os.pathsep + os.path.dirname(os.path.join(os.path.abspath(__file__)))
 
+__version__ = "${ARRUS_PROJECT_VERSION}"
+
 # Exceptions
 from arrus.exceptions import *
 

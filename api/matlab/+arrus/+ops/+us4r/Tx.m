@@ -1,5 +1,5 @@
 classdef Tx
-    % A 'transmit' pulse operation.
+    % Ultrasound pulse transmission.
     %
     % Example usage:
     %
@@ -16,23 +16,19 @@ classdef Tx
     %   aperture; delays[i] will be applied to the i-th active tx channel
     % :param pulse: a pulse to transmit, object of type `arrus.ops.us4r.Pulse`
 
-    properties
-        aperture
-        delays
-        pulse 
+    properties(Constant, Hidden=true)
+        REQUIRED_PARAMS = {'aperture', 'delays', 'pulse'};
     end
-    
+
+    properties
+        aperture (1, :) {arrus.validators.mustBeLogical}
+        delays (1, :) {mustBeNonnegative, mustBeFinite, mustBeReal}
+        pulse arrus.ops.us4r.Pulse {arrus.validators.mustBeSingleObject}
+    end
+
     methods
         function obj = Tx(varargin)
-            p = inputParser;
-            addRequired(p, 'aperture', @(x) isvector(x) && islogical(x));
-            addRequired(p, 'delays', @(x) isvector(x) && isreal(x));
-            addRequired(p, 'pulse', @(x) isscalar(x) && isa(x, 'arrus.ops.us4r.Pulse'));
-            parse(p,varargin{:});
-            obj.aperture = p.Results.aperture;
-            obj.delays = p.Results.delays;
-            obj.pulse = p.Results.pulse;
+            obj = arrus.utils.setArgs(obj, varargin, obj.REQUIRED_PARAMS);
         end
     end
-    
 end

@@ -57,12 +57,14 @@ class ConstMetadata:
     """
     def __init__(self, context: FrameAcquisitionContext,
                  data_desc: DataDescription,
-                 input_shape, is_iq_data, dtype):
+                 input_shape, is_iq_data, dtype,
+                 version=None):
         self._context = context
         self._data_char = data_desc
         self._input_shape = input_shape
         self._is_iq_data = is_iq_data
         self._dtype = dtype
+        self._version = version
 
     @property
     def context(self) -> FrameAcquisitionContext:
@@ -83,6 +85,16 @@ class ConstMetadata:
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def version(self):
+        return self._version
+
+    def __setstate__(self, data):
+        self.__dict__ = data
+        # Default version is None for packages < 0.7.0
+        if "_version" not in data:
+            self._version = None
 
     def copy(self, **kwargs):
         kw = dict(context=self.context, data_desc=self.data_description,

@@ -1,8 +1,108 @@
 Release notes
 =============
 
+0.8.x
+-----
+
+0.8.0
+.....
+
+- core (C++):
+
+    - us4R: exposed hardware Digital Down Conversion,
+    - us4R: scheme stopping procedure was improved (should take less time)
+    - us4R: exposed a function that allows to read us4OEM FPGA Wallclock
+    - us4R: enabled hardware high-pass filter, by default us4OEMs will be initialized with 300 kHz cutoff frequency
+    - us4R: exposed the possibility to change hardware high-pass filter (HPF) cutoff frequency or to disable HPF
+    - us4R: exposed methods to read us4OEM serial and revision number (currently mocked up)
+
+- Python API:
+
+    - Exposed Us4OEM FPGA, UCD, UCD external temperature.
+    - Implemented new module `arrus.utils.probe_check` for probe checking and automatic channel health, see example: examples/check_probe.py
+    - implemented following features for probe checking: amplitude, signal duration, normalized energy and Pearson correlation coefficient (for comparing acquired signal with previous acquired 'footprint' of a probe)
+    - exposed hardware Digital Down Conversion
+    - us4R: exposed the possibility to change hardware high-pass filter cutoff frequency
+    - arrus.utils.imaging: changed the default filter type for BandpassFilter to hamming windows (firwin)
+    - Implemented a general delay and sum look up table beamformer for 3D output volume reconstruction
+    - From now on TGC curve gain values will be clipped to the [min hardware gain, max hardware gain] range by default. Change arrus.ops.tgc.LinearTGC.clip to False to restore the previous behavior.
+    - Changed stop_scheme behavior to close processing runner (fixes the issue with closing arrus.utils processing on session close).
+    - Exposed the possibility to change LNA/PGA gain and DTGC attenuation.
+
+
+- MATLAB API:
+
+    - Exposed ARRUS core API to MATLAB interface.
+
+0.7.x
+-----
+
+0.7.1
+.....
+
+- core (C++):
+
+    - us4R: Limited the range of available voltage to [5, 90] V.
+
+0.7.0
+.....
+
+- core (C++):
+
+    - Now it is possible to set how many times the TxRxSequence should be repeated: check TxRxSequence's nRepeats parameter. By default nRepeats is set to 1.
+    - Because now it is possible to acquire batch of RF frame sequences (the nRepeats parameter was added), there were some breaking changes in the implementation of the FrameChannelMapping class. The getLogical method now returns three values: us4oem number, frame number and channel number. For each us4OEM module each frame number is counted from 0 (previously the each physical frame had consecutive numbers from 0 to n, where n is the total number of physical frames acquired by all us4OEM modules). To get the number of frames preceding a given us4OEM frame, use getFirstFrame method.
+    - Now it is possible to turn on test AFE patterns, see Us4R::setTestPattern.
+    - Now it is possible to remap the order of us4OEM modules numbering in the system configuration, see Us4RSettings, adapterToUs4RModuleNumber. By deafult identity mapping is used. 
+    - Now it is possible to specify number of us4OEM modules the system is using, check Us4RSettings, nUs4OEMs parameter.
+    - Implemented MANUAL scheme work mode, i.e. it is possible to trigger TX/RX sequence programatically, see Session::run method.
+    - Added Us4R::{is,set}StopOnOverflow method, which gives the possibility to continue data acquisition even if the system has detected buffer overflow. By default this property is set to true, i.e. the system will stop on buffer overflow.
+    - Added possibility to measure HV P and M voltage (see Us4R::{getVoltage, getMeasuredPVoltage, getMeasuredMVoltage). Supported only by the system with us4us HV hardware (e.g. HV256 or Us4RPSC). 
+
+- Python API:
+
+    - added n_repeats parameter to the simple TX/RX sequences available in ARRUS, the parameter allows to specify the number of times the sequence should be repeated ("batch size"),
+    - arrus.utils.imaging reconstruction operators now requires that the input data are in the format (batch size, n TX, n RX, n samples),
+    - arrus.utils.imaging.RxBeamformingImg is no longer available. Please use ReconstructLri + some form of compouding (e.g. Mean(axis=1)),
+
 0.6.x
 -----
+
+
+0.6.6
+.....
+
+- core (C++):
+    - implemented Us4R::checkState and Us4OEM::checkState methods to verify if the us4OEM module is still available (currently by checking us4OEM module firmware version)
+    - implemented Us4OEM::getFirmwareVersion and Us4OEM::getTxFirmwareVersion() to get us4OEM device firmware version
+    - implemented Us4OEM::getFPGATemperature() to get the temperature measured by Us4OEM's FPGA
+
+
+0.6.5
+.....
+
+- core (C++ API):
+
+    - fixed memory leak on subsequent re-uploads
+    - some improvements in the us4R-lite driver compatibility with the us4R-lite system
+
+
+0.6.4
+.....
+
+- Python API:
+
+    - Fixed linear scanning for tx apertures starting from channels > 0.
+    - Added phased array scanning example.  
+
+0.6.3
+.....
+
+- Python API: 
+
+    - Added phased array scanning.
+    - Added definition for the probe adapter atl/philips-us4r4.
+    - Improved IQ raw to LRI CUDA kernel performance.
+    - Increased the maximum allowable voltage for Esaote probes to 90 V.
 
 0.6.2
 `````

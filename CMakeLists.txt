@@ -3,18 +3,8 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.7.0)
+set(PROJECT_VERSION 0.8.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
-
-option(ARRUS_DEVELOP_VERSION "Build develop version." ON)
-
-# TODO remove ARRUS_DEVELOP_VERSION, use ARRUS_APPEND_VERSION_SUFFIX_DATE
-if(ARRUS_DEVELOP_VERSION)
-    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}-dev")
-else()
-    set(PROJECT_FULL_VERSION "${PROJECT_VERSION}")
-endif()
-
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
 ################################################################################
@@ -28,8 +18,6 @@ set(CMAKE_MODULE_PATH
 ################################################################################
 # Global options and settings
 ################################################################################
-include(common)
-
 set(ARRUS_ROOT_DIR ${CMAKE_SOURCE_DIR})
 set(ARRUS_DOCS_INSTALL_DIR docs)
 set(ARRUS_MATLAB_INSTALL_DIR matlab)
@@ -38,6 +26,7 @@ set(ARRUS_PYTHON_INSTALL_DIR python)
 set(Us4_LIB_DIR ${Us4_ROOT_DIR}/lib64)
 
 option(ARRUS_BUILD_PY "Build python API." OFF)
+set(ARRUS_PY_VERSION "3.8" CACHE STRING "Python version for which the ARRUS package should be built.")
 option(ARRUS_BUILD_MATLAB "Build MATLAB API." OFF)
 option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)
@@ -47,7 +36,7 @@ option(ARRUS_CUDA "Build with CUDA GPU support" OFF)
 
 if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
     string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")
-    set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}-${ARRUS_PROJECT_VERSION_SUFFIX}")
+    set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}-dev${ARRUS_PROJECT_VERSION_SUFFIX}")
 endif()
 
 # Determining host platform.
@@ -87,7 +76,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.6.8 EXACT REQUIRED US4OEM HV256 DBARLite)
+find_package(Us4 0.9.0 EXACT REQUIRED US4OEM HV256 DBARLite)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
@@ -101,8 +90,7 @@ find_package(Eigen3 REQUIRED)
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     set(ARRUS_OS_DEPS "")
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
-    find_package(TBB REQUIRED)
-    set(ARRUS_OS_DEPS tbb)
+    set(ARRUS_OS_DEPS "")
 endif()
 ################################################################################
 # Sub-projects
@@ -159,24 +147,6 @@ if(ARRUS_EMBED_DEPS)
         DIRECTORY
             ${Us4_ROOT_DIR_SANITIZED}/lib64/
         DESTINATION
-            ${ARRUS_LIB_INSTALL_DIR}
-    )
-if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
-    install(
-       FILES
-            # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR_SANITIZED}/matlab/Us4MEX.mexw64
-       DESTINATION
-            matlab/arrus
-    )
-    install(
-        FILES
-            # TODO(pjarosik) make it more general (will not work for OS!=win)
-            ${Us4_ROOT_DIR_SANITIZED}/bin/us4OEMFirmwareUpdate.exe
-            ${Us4_ROOT_DIR_SANITIZED}/bin/Us4OEMStatus.exe
-        DESTINATION
-            ${ARRUS_BIN_INSTALL_DIR}
-    )
-endif()
+            ${ARRUS_LIB_INSTALL_DIR})
 endif()
 

@@ -39,6 +39,18 @@ public:
         }
     }
 
+    unsigned char getVoltage() {
+        return hv->GetHVVoltage();
+    }
+
+    float getMeasuredPVoltage() {
+        return hv->GetMeasuredHVPVoltage();
+    }
+
+    float getMeasuredMVoltage() {
+        return hv->GetMeasuredHVMVoltage();
+    }
+
     void disable() {
         try {
             hv->DisableHV();
@@ -50,6 +62,10 @@ public:
                             e.what()));
             hv->DisableHV();
         }
+    }
+
+    const HVModelId &getModelId() const {
+        return modelId;
     }
 
 private:

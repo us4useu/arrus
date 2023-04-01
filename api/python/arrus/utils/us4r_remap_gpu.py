@@ -1,47 +1,45 @@
 import cupy as cp
-
-_arrus_remap_str = r'''
-    // Naive implementation of data remapping (physical -> logical order).
-    extern "C" 
-    __global__ void arrus_remap(short* out, short* in, 
-                                const short* fcmFrames, 
-                                const char* fcmChannels, 
-                                const unsigned nFrames, const unsigned nSamples, const unsigned nChannels)
-    {
-        int x = blockIdx.x * 32 + threadIdx.x; // logical channel
-        int y = blockIdx.y * 32 + threadIdx.y; // logical sample
-        int z = blockIdx.z; // logical frame
-        if(x >= nChannels || y >= nSamples || z >= nFrames) {
-            // outside the range
-            return;
-        }
-        int indexOut = x + y*nChannels + z*nChannels*nSamples;
-        int physicalChannel = fcmChannels[x + nChannels*z];
-        if(physicalChannel < 0) {
-            // channel is turned off
-            return;
-        }
-        int physicalFrame = fcmFrames[x + nChannels*z];
-        // 32 - number of channels in the physical mapping
-        int indexIn = physicalChannel + y*32 + physicalFrame*32*nSamples; 
-        out[indexOut] = in[indexIn];
-    }'''
+import os
+from pathlib import Path
 
 
-remap_kernel = cp.RawKernel(_arrus_remap_str, "arrus_remap")
+current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+_kernel_source = Path(os.path.join(current_dir, "us4r_remap_gpu.cu")).read_text()
+remap_module = cp.RawModule(code=_kernel_source)
+
+remap_v1_kernel = remap_module.get_function("arrusRemap")
+remap_v2_kernel = remap_module.get_function("arrusRemapV2")
 
 
-def get_default_grid_block_size(fcm_frames, n_samples):
+def get_default_grid_block_size(fcm_frames, n_samples, batch_size):
     # Note the kernel implementation
     block_size = (32, 32)
     n_frames, n_channels = fcm_frames.shape
-    grid_size = (int((n_channels - 1) // block_size[0] + 1), int((n_samples - 1) // block_size[1] + 1), n_frames)
-    return (grid_size, block_size)
+    grid_size = (
+        (n_channels - 1) // block_size[0] + 1,
+        (n_samples - 1) // block_size[1] + 1,
+        n_frames*batch_size
+    )
+    return grid_size, block_size
 
 
-def run_remap(grid_size, block_size, params):
+def run_remap_v1(grid_size, block_size, params):
     """
-    :param params: a list: data_out, data_in, fcm_frames, fcm_channels, n_frames, n_samples, n_channels
+    :param params: a list: data_out, data_in, fcm_frames, fcm_channels,
+       n_frames, n_samples, n_channels
+    :return: data with shape (n_sequences, n_frames, n_samples, n_elements)
     """
-    return remap_kernel(grid_size, block_size, params)
+    return remap_v1_kernel(grid_size, block_size, params)
+
+
+def run_remap_v2(grid_size, block_size, params):
+    """
+    :param params: a list: data_out, data_in, fcm_frames,
+      fcm_channels, n_frames, n_samples, n_channels
+    :return: array (n_sequences, n_frames, n_samples, n_elements, n_values),
+      where n_values is equal 1 for raw channel data, and 2 for I/Q data
+    """
+    return remap_v2_kernel(grid_size, block_size, params)
+
+
 

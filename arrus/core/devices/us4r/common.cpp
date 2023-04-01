@@ -191,14 +191,23 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                        [](auto &v) { return v.size(); });
         size_t maxSize = *std::max_element(std::begin(currentSeqSizes),
                                            std::end(currentSeqSizes));
-
+        int us4oemOrdinal = 0;
         for(auto& resSeq : result) {
             if(resSeq.size() < maxSize) {
                 // create rxnop copy from the last element of this sequence
                 // note, that even if the last element is rx nop it should be added
                 // in this method in some of the code above.
+                if(us4oemOrdinal == 0) {
+                    // NOTE: for us4OEM:0, even if it is RX nop, the results of this
+                    // rx NOP will be transferred from us4OEM to host memory,
+                    // to get the frame metadata. Therefore we need to increase
+                    // the number of frames a given element contains.
+                    currentFrameIdx[us4oemOrdinal] += FrameNumber(maxSize-resSeq.size());
+                }
                 resSeq.resize(maxSize, TxRxParameters::createRxNOPCopy(resSeq[resSeq.size()-1]));
+
             }
+            us4oemOrdinal++;
         }
     }
     return std::make_tuple(result, opDestOp, opDestChannel);

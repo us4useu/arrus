@@ -20,7 +20,6 @@ _interp1d_kernel_str = r'''
         if(xt >= outputWidth) {
             return;
         }
-
         float samplePos = samples[xt]; 
         int sampleNr = floorf(samplePos);
         float ratio = samplePos - sampleNr; 
@@ -29,16 +28,14 @@ _interp1d_kernel_str = r'''
             size_t outputOffset = i*outputWidth;
             size_t dataOffset = i*dataWidth;
 
-            if(   (sampleNr < 0) 
-               || (sampleNr >= dataWidth) 
-               || (sampleNr == dataWidth-1 && ratio != 0.0f)) { // right border + epsilon
+            if((sampleNr < 0) || (sampleNr >= dataWidth-1)) {
                 // extrapolation
                 output[xt+outputOffset] = 0;
             }
             else {
                 // interpolation
-                output[xt+outputOffset] = (1-ratio)*data[sampleNr+dataOffset] 
-                                     + ratio*data[sampleNr+1+dataOffset];
+                output[xt+outputOffset] = (1-ratio)*data[sampleNr+dataOffset]
+                                      + ratio*data[sampleNr+1+dataOffset];
             }
         }
     }'''

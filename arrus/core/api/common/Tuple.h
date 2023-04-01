@@ -9,10 +9,14 @@ namespace arrus {
 
 /**
  * A tuple of values.
+ *
+ * Note: this class is immutable.
  */
 template<typename T>
 class Tuple {
 public:
+    Tuple() = default;
+
     Tuple(const std::initializer_list<T> &values) : values(values) {}
 
     explicit Tuple(const std::vector<T> &values) : values(values) {}
@@ -33,7 +37,6 @@ public:
 
     /**
      * Returns the tuple size (number of values it consists of).
-     * @return
      */
     size_t size() const {
         return values.size();
