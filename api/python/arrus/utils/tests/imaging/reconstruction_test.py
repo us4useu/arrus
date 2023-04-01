@@ -22,11 +22,11 @@ class ReconstructionTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
         device = self.get_device()
-        n_elements = self.get_system_parameter('n_elements')
-        pitch = self.get_system_parameter('pitch')
+        n_elements = self.get_system_parameter("n_elements")
+        pitch = self.get_system_parameter("pitch")
         probe_width = (n_elements-1)*pitch
-        fs = self.get_system_parameter('sampling_frequency')
-        c = self. get_system_parameter('speed_of_sound')
+        fs = self.get_system_parameter("sampling_frequency")
+        c = self. get_system_parameter("speed_of_sound")
         ds = c/fs
 
         # define x_grid vector
@@ -55,14 +55,16 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         self.verbose = False
 
     def run_op(self, **kwargs):
-        data = kwargs['data']
+        data = kwargs["data"]
         data = np.array(data).astype(np.complex64)
-        if len(data.shape) > 3:
+        if len(data.shape) > 4:
             raise ValueError("Currently data supports at most 3 dimensions.")
         if len(data.shape) < 3:
             dim_diff = 3-len(data.shape)
             data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
-            kwargs["data"] = data
+        if len(data.shape) < 4:
+            data = data[np.newaxis, ...]
+        kwargs["data"] = data
         result = super().run_op(**kwargs)
         return np.squeeze(result)
 
@@ -83,16 +85,16 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         return device
 
     def get_pulse_length(self):
-       fs = self.get_system_parameter('sampling_frequency')
-       fc = self.get_system_parameter('center_frequency')
-       c = self.get_system_parameter('speed_of_sound')
-       n_periods = self.get_system_parameter('n_periods')
+       fs = self.get_system_parameter("sampling_frequency")
+       fc = self.get_system_parameter("center_frequency")
+       c = self.get_system_parameter("speed_of_sound")
+       n_periods = self.get_system_parameter("n_periods")
        pulse_length = np.round(fs/fc*n_periods).astype(int)
        return pulse_length
 
     def get_pulse_waveform(self):
-       fs = self.get_system_parameter('sampling_frequency')
-       fc = self.get_system_parameter('center_frequency')
+       fs = self.get_system_parameter("sampling_frequency")
+       fc = self.get_system_parameter("center_frequency")
        pulse_length = self.get_pulse_length()
        t = np.linspace(0, (pulse_length-1)/fs, pulse_length)
        pulse = np.sin(2*np.pi*fc*t)*np.hanning(pulse_length)
@@ -106,17 +108,17 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         return xi, zi
 
     def get_lin_el_coords(self, n_elements=None):
-        '''
+        """
         Auxiliary tool for generating array transducer elements coordinates for linear array.
 
         :param nel: number of elements,
         :param pitch: distance between elements,
         :return: numpy array with elements coordinates (x,z)
-        '''
-        fs = self.get_system_parameter('sampling_frequency')
-        pitch = self.get_system_parameter('pitch')
+        """
+        fs = self.get_system_parameter("sampling_frequency")
+        pitch = self.get_system_parameter("pitch")
         if n_elements is None:
-            n_elements = self.get_system_parameter('n_elements')
+            n_elements = self.get_system_parameter("n_elements")
 
         elx = np.linspace(-(n_elements-1)*pitch/2, (n_elements-1)*pitch/2, n_elements)
         elz = np.zeros(n_elements)
@@ -127,27 +129,27 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         """
         The function returns selected system parameter.
         """
-        if parameter == 'sampling_frequency':
+        if parameter == "sampling_frequency":
             return self.context.device.sampling_frequency
-        if parameter == 'center_frequency':
+        if parameter == "center_frequency":
             return self.context.sequence.pulse.center_frequency
-        if parameter == 'n_elements':
+        if parameter == "n_elements":
             return self.context.device.probe.model.n_elements
-        if parameter == 'pitch':
+        if parameter == "pitch":
             return self.context.device.probe.model.pitch
-        if parameter == 'curvature_radius':
+        if parameter == "curvature_radius":
             return self.context.device.probe.model.curvature_radius
-        if parameter == 'speed_of_sound':
+        if parameter == "speed_of_sound":
             return self.context.sequence.speed_of_sound
-        if parameter == 'rx_sample_range':
+        if parameter == "rx_sample_range":
             return self.context.sequence.rx_sample_range
-        if parameter == 'n_periods':
+        if parameter == "n_periods":
             return self.context.sequence.pulse.n_periods
-        if parameter == 'tx_focus':
+        if parameter == "tx_focus":
             return self.context.sequence.tx_focus
-        if parameter == 'angles':
+        if parameter == "angles":
             return self.context.sequence.angles
-        if parameter == 'tx_aperture_size':
+        if parameter == "tx_aperture_size":
             return self.context.sequence.tx_aperture_size
 
     def get_syntetic_data(self, aperture=None, txdelays=None):
@@ -165,9 +167,9 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         wire_coords = self.wire_coords
         wire_amp = self.wire_amp
         wire_radius = self.wire_radius
-        c = self.get_system_parameter('speed_of_sound')
-        fs = self.get_system_parameter('sampling_frequency')
-        nmax = 2*self.get_system_parameter('rx_sample_range')[1]
+        c = self.get_system_parameter("speed_of_sound")
+        fs = self.get_system_parameter("sampling_frequency")
+        nmax = 2*self.get_system_parameter("rx_sample_range")[1]
         pulse_length = self.get_pulse_length()
         el_coords = self.get_lin_el_coords()
         nel, _  = np.shape(el_coords)
@@ -204,7 +206,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
                 start = nsamp - wire_radius
                 stop = nsamp + wire_radius
                 dataline[start:stop+1] +=  wire_amp*weight
-            dataline = np.convolve(dataline, pulse, mode='same')
+            dataline = np.convolve(dataline, pulse, mode="same")
             data[i, :] = dataline
         return data
 
@@ -219,7 +221,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         of the assumed wire and max value in resulted amplitude image.
         If verbose = True, function prints some info on the differences.
         """
-        angle = self.get_system_parameter('angles')
+        angle = self.get_system_parameter("angles")
         x, z = self.wire_coords
         x = np.round(x*1e3, 1)
         z = np.round(z*1e3, 1)
@@ -240,22 +242,22 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         zdiff = np.round((jdiff-1)*dz*1e3, 2)
 
         if verbose:
-            print('----------------------------------------------')
-            print(f'current angle [deg]: {angle*180/np.pi}')
-            print(f'current wire coordinates [mm]: ({x},{z})')
-            print(f'max value in result array: {np.round(maxval)}')
-            print('------')
-            print(f'expected wire row index value (x): {iwire}')
-            print(f'obtained wire row index value (x): {i}')
-            print(f'difference in x axis [samples]: {idiff}')
-            print(f'difference in x axis [mm]: {xdiff}')
-            print('------')
-            print(f'expected wire column index value (z): {jwire}')
-            print(f'obtained wire column index valuej (z): {j}')
-            print(f'difference in z axis [samples]: {jdiff}')
-            print(f'difference in z axis [mm]: {zdiff}')
-            print('')
-            print('')
+            print("----------------------------------------------")
+            print(f"current angle [deg]: {angle*180/np.pi}")
+            print(f"current wire coordinates [mm]: ({x},{z})")
+            print(f"max value in result array: {np.round(maxval)}")
+            print("------")
+            print(f"expected wire row index value (x): {iwire}")
+            print(f"obtained wire row index value (x): {i}")
+            print(f"difference in x axis [samples]: {idiff}")
+            print(f"difference in x axis [mm]: {xdiff}")
+            print("------")
+            print(f"expected wire column index value (z): {jwire}")
+            print(f"obtained wire column index valuej (z): {j}")
+            print(f"difference in z axis [samples]: {jdiff}")
+            print(f"difference in z axis [mm]: {zdiff}")
+            print("")
+            print("")
 
         return idiff, jdiff
 
@@ -354,9 +356,9 @@ class PwiReconstructionTestCase(ReconstructionTestCase):
         """
         The function generate transmit delays of PWI scheme for linear array.
         """
-        speed_of_sound = self.get_system_parameter('speed_of_sound')
+        speed_of_sound = self.get_system_parameter("speed_of_sound")
         el_coords = self.get_lin_el_coords()
-        angle = self.get_system_parameter('angles')
+        angle = self.get_system_parameter("angles")
         delays = el_coords[:,0]*np.tan(angle)/speed_of_sound
         return delays
 
@@ -368,13 +370,13 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
         self.op = RxBeamforming
         super().setUp()
 
-        tx_aperture_size = self.get_system_parameter('tx_aperture_size')
-        n_elements = self.get_system_parameter('n_elements')
+        tx_aperture_size = self.get_system_parameter("tx_aperture_size")
+        n_elements = self.get_system_parameter("n_elements")
         n_emissions = n_elements - tx_aperture_size + 1
-        pitch = self.get_system_parameter('pitch')
+        pitch = self.get_system_parameter("pitch")
         roi_width = (n_emissions-1)*pitch
-        fs = self.get_system_parameter('sampling_frequency')
-        c = self. get_system_parameter('speed_of_sound')
+        fs = self.get_system_parameter("sampling_frequency")
+        c = self. get_system_parameter("speed_of_sound")
         ds = c/fs/2 # dlaczego musi być /2 ? (bez tego róznice są ok 2x)
 
         # define x_grid vector
@@ -458,11 +460,11 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
         """
         The function generate transmit delays of BFR  scheme for linear array.
         """
-        speed_of_sound = self.get_system_parameter('speed_of_sound')
-        tx_aperture_size = self.get_system_parameter('tx_aperture_size')
+        speed_of_sound = self.get_system_parameter("speed_of_sound")
+        tx_aperture_size = self.get_system_parameter("tx_aperture_size")
         el_coords = self.get_lin_el_coords(tx_aperture_size)
-        angle = self.get_system_parameter('angles')
-        tx_focus = self.get_system_parameter('tx_focus')
+        angle = self.get_system_parameter("angles")
+        tx_focus = self.get_system_parameter("tx_focus")
 
         delays_angle = el_coords[:,0]*np.tan(angle)/speed_of_sound
         delays_focus = (np.sqrt(el_coords[:,0]**2 + tx_focus**2) - tx_focus)/speed_of_sound
@@ -477,11 +479,11 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
         """
         The function generate syntetic  data for  BFR  scheme on the linear array.
         """
-        tx_aperture_size = self.get_system_parameter('tx_aperture_size')
+        tx_aperture_size = self.get_system_parameter("tx_aperture_size")
         txdelays = self.get_bfr_txdelays()
         data0 = self.get_syntetic_data(aperture=np.arange(0, tx_aperture_size), txdelays=txdelays)
         _, nsamp = data0.shape
-        n_elements = self.get_system_parameter('n_elements')
+        n_elements = self.get_system_parameter("n_elements")
         n_emissions = n_elements - tx_aperture_size + 1
         data = np.zeros((n_emissions, tx_aperture_size, nsamp))
         data[0,:,:] = data0
