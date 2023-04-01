@@ -23,7 +23,6 @@ class ProbeModelMock:
         super().__setattr__("element_pos_z", element_pos_z)
         super().__setattr__("element_angle", element_angle)
 
-
     # TODO move the below functions to some other package
     # (it should be part of image reconstruction implementation)
     def _compute_element_position(self):
@@ -41,7 +40,7 @@ class ProbeModelMock:
             x_pos = self.curvature_radius * np.sin(angle)
             z_pos = self.curvature_radius * np.cos(angle)
             z_pos = z_pos - np.min(z_pos)
-        return (x_pos, z_pos, angle)
+        return x_pos, z_pos, angle
 
     def is_convex_array(self):
         return not (math.isnan(self.curvature_radius)
@@ -88,7 +87,7 @@ class ArrusImagingTestCase(ArrusTestCase):
         required. If the parameters `xyz` is None, TestCase.xyz will be used.
         All the parameters not listed below will be passed to the operator constructor.
 
-        Currently only GPU implementation can only be tested.
+        Currently GPU implementation can only be tested.
 
         Currently the function assumes, that the op is an Operation from
         the arrus.utils.imaging module.

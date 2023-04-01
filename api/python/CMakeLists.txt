@@ -100,7 +100,13 @@ set(SOURCE_FILES
         )
 
 set(TEST_FILES
-#    arrus/kernels/tests/simple_tx_rx_sequence_test.py
+    # Computing TX/RX delays (obsolete).
+    arrus/kernels/tests/simple_tx_rx_sequence_test.py
+    arrus/kernels/tests/tx_rx_sequence_test.py
+    # Image reconstruction tests.
+    arrus/utils/tests/imaging/filters_test.py
+    arrus/utils/tests/imaging/preprocessing_test.py
+
 )
 
 if(ARRUS_CUDA)
