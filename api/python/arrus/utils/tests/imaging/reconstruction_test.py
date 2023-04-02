@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import unittest
 import numpy as np
 import cupy as cp
