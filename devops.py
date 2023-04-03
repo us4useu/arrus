@@ -71,5 +71,6 @@ defaults = {
     "us4r_api_dir": get_default_us4r_api_dir,
     "/cfg/cmake/generator": get_default_generator_for_current_os(),
     "/cfg/cmake/DARRUS_EMBED_DEPS": "ON",
-    "/install/prefix": "./install"
+    "/install/prefix": "./install",
+    "/test/verbose": 1
 }
