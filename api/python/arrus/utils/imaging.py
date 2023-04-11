@@ -1,3 +1,6 @@
+import abc
+from abc import abstractmethod
+
 import numpy as np
 import math
 import scipy
@@ -7,8 +10,9 @@ import arrus.metadata
 import arrus.devices.device
 import arrus.devices.cpu
 import arrus.devices.gpu
-import arrus.kernels.imaging
 import arrus.utils.us4r
+import arrus.ops.imaging
+import arrus.ops.us4r
 import queue
 import dataclasses
 import threading
@@ -16,19 +20,33 @@ from collections import deque
 from collections.abc import Iterable
 from pathlib import Path
 import os
+import importlib.util
+from enum import Enum
+import arrus.kernels.simple_tx_rx_sequence
+import arrus.kernels.tx_rx_sequence
+from numbers import Number
+from typing import Sequence, Dict, Callable, Union, Tuple
+from arrus.params import ParameterDef, Unit, Box
+from collections import defaultdict
 
-import cupy
-import re
+
+def is_package_available(package_name):
+    return importlib.util.find_spec(package_name) is not None
 
 
-if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
-    raise ValueError(f"Unrecognized pattern "
-                     f"of the cupy version: {cupy.__version__}")
+if is_package_available("cupy"):
+    import cupy
+    import re
 
-
-if tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
-    raise Exception(f"The version of cupy module is too low. "
-                    f"Use version ''9.0.0'' or higher.")
+    if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
+        raise ValueError(f"Unrecognized pattern "
+                         f"of the cupy version: {cupy.__version__}")
+    if tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
+        raise Exception(f"The version of cupy module is too low. "
+                        f"Use version ''9.0.0'' or higher.")
+else:
+    print("Cupy package is not available, some of the arrus.utils.imaging "
+          "operators may not be available.")
 
 
 def get_extent(x_grid, z_grid):
@@ -73,11 +91,12 @@ def get_bmode_imaging(sequence, grid, placement="/GPU:0",
                 EnvelopeDetection(),
                 Transpose(axes=(0, 2, 1)),
                 ScanConversion(x_grid, z_grid),
-                LogCompression()
+                Mean(axis=0),
+                LogCompression(),
             ),
             placement=placement)
     elif isinstance(sequence, arrus.ops.imaging.PwiSequence) \
-      or isinstance(sequence, arrus.ops.imaging.StaSequence):
+            or isinstance(sequence, arrus.ops.imaging.StaSequence):
         # Synthetic aperture imaging.
         return Pipeline(
             steps=(
@@ -135,6 +154,7 @@ class BufferElementLockBased:
     Acquiring the element when it's not released will block the caller
     until the element is released.
     """
+
     def __init__(self, pos, data):
         self.pos = pos
         self.data = data
@@ -175,31 +195,48 @@ class Buffer:
 
 class ProcessingRunner:
     """
+    Runs processing on a specified processing device (GPU in particular).
+
+    Currently only GPU:0 is supported.
+
     Currently, the input buffer should be located in CPU device,
     output buffer should be located on GPU.
     """
+
+    class State(Enum):
+        READY = 1
+        CLOSED = 2
 
     def __init__(self, input_buffer, const_metadata, processing):
         import cupy as cp
         # Initialize pipeline.
         self.cp = cp
+        # Pin input buffer.
         self.input_buffer = self.__register_buffer(input_buffer)
-        self.gpu_buffer = Buffer(n_elements=2, shape=const_metadata.input_shape,
+        default_buffer = ProcessingBuffer(size=2, type="locked")
+
+        in_buffer_spec = processing.input_buffer
+        out_buffer_spec = processing.output_buffer
+        in_buffer_spec = in_buffer_spec if in_buffer_spec is not None else default_buffer
+        out_buffer_spec = out_buffer_spec if out_buffer_spec is not None else default_buffer
+        self.gpu_buffer = Buffer(n_elements=in_buffer_spec.size,
+                                 shape=const_metadata.input_shape,
                                  dtype=const_metadata.dtype, math_pkg=cp,
-                                 type="locked")
+                                 type=in_buffer_spec.type)
         self.pipeline = processing.pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
         self.out_metadata = processing.pipeline.prepare(const_metadata)
-        self.out_buffers = [Buffer(n_elements=2, shape=m.input_shape,
-                                  dtype=m.dtype, math_pkg=np,
-                                  type="locked")
-                           for m in self.out_metadata]
+        self.out_buffers = [Buffer(n_elements=out_buffer_spec.size, shape=m.input_shape,
+                                   dtype=m.dtype, math_pkg=np,
+                                   type=out_buffer_spec.type)
+                            for m in self.out_metadata]
         # Wait for all the initialization done in by the Pipeline.
         cp.cuda.Stream.null.synchronize()
+        # Pin output buffers.
         self.out_buffers = self.__register_buffer(self.out_buffers)
         if not isinstance(self.out_buffers, Iterable):
-            self.out_buffers = (self.out_buffers, )
+            self.out_buffers = (self.out_buffers,)
         self._process_lock = threading.Lock()
         if processing.callback is not None:
             self.user_out_buffer = None
@@ -208,7 +245,7 @@ class ProcessingRunner:
             self.user_out_buffer = queue.Queue(maxsize=1)
             self.callback = self.default_callback
         self._gpu_i = 0
-        self._out_i = [0]*len(self.out_buffers)
+        self._out_i = [0] * len(self.out_buffers)
         self.i = 0
         # Metadata extraction.
         self.is_extract_metadata = processing.extract_metadata
@@ -216,6 +253,11 @@ class ProcessingRunner:
             self.metadata_extractor = ExtractMetadata()
             self.metadata_extractor.prepare(const_metadata)
         self.input_buffer.append_on_new_data_callback(self.process)
+        if processing.on_buffer_overflow_callback is not None:
+            self.input_buffer.append_on_buffer_overflow_callback(
+                processing.on_buffer_overflow_callback)
+        self._state = ProcessingRunner.State.READY
+        self._state_lock = threading.Lock()
 
     @property
     def outputs(self):
@@ -231,7 +273,7 @@ class ProcessingRunner:
 
     def default_callback(self, elements):
         try:
-            user_elements = [None]*len(elements)
+            user_elements = [None] * len(elements)
             for i, element in enumerate(elements):
                 user_elements[i] = element.data.copy()
                 element.release()
@@ -250,7 +292,7 @@ class ProcessingRunner:
                 metadata = self.metadata_extractor.process(input_element.data)
             gpu_element = self.gpu_buffer.acquire(self._gpu_i)
             gpu_array = gpu_element.data
-            self._gpu_i = (self._gpu_i+1) % self.gpu_buffer.n_elements
+            self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
             gpu_array.set(input_element.data, stream=self.data_stream)
             self.data_stream.launch_host_func(self.__release, input_element)
 
@@ -264,20 +306,24 @@ class ProcessingRunner:
                 for i, (result, out_buffer) in enumerate(zip(results, self.out_buffers)):
                     out_i = self._out_i[i]
                     out_element = out_buffer.elements[out_i]
-                    self._out_i[i] = (out_i+1) % out_buffer.n_elements
-                    self.processing_stream.launch_host_func(
-                        lambda element: element.acquire(), out_element)
-                    result.get(self.processing_stream, out=out_element.data)
+                    self._out_i[i] = (out_i + 1) % out_buffer.n_elements
+                    out_element.acquire()
+                    # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
+                    out_element.data[:] = result.get()  
                     out_elements.append(out_element)
             if self.is_extract_metadata:
                 out_elements.insert(0, metadata)
-            self.processing_stream.launch_host_func(self.__release, gpu_element)
-            self.processing_stream.launch_host_func(self.callback, out_elements)
+            self.__release(gpu_element)
+            self.callback(out_elements)
 
-    def stop(self):
-        # cleanup
-        self.__unregister_buffer(self.input_buffer)
-        self.__unregister_buffer(self.out_buffers)
+    def close(self):
+        with self._state_lock:
+            if self._state == ProcessingRunner.State.CLOSED:
+                # Already closed.
+                return
+            self.__unregister_buffer(self.input_buffer)
+            self.__unregister_buffer(self.out_buffers)
+            self._state = ProcessingRunner.State.CLOSED
 
     def sync(self):
         self.data_stream.synchronize()
@@ -289,7 +335,7 @@ class ProcessingRunner:
     def __register_buffer(self, buffers):
         import cupy as cp
         if not isinstance(buffers, Iterable):
-            buffers = (buffers, )
+            buffers = (buffers,)
         for buffer in buffers:
             for element in buffer.elements:
                 cp.cuda.runtime.hostRegister(element.data.ctypes.data,
@@ -301,7 +347,7 @@ class ProcessingRunner:
     def __unregister_buffer(self, buffers):
         import cupy as cp
         if not isinstance(buffers, Iterable):
-            buffers = (buffers, )
+            buffers = (buffers,)
         for buffer in buffers:
             for element in buffer.elements:
                 cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
@@ -311,7 +357,13 @@ class Operation:
     """
     An operation to perform in the imaging pipeline -- one data processing
     stage.
+
+    :param name: operation name, should be unique in a given context.
+        None means that a unique name should be automatically generated.
     """
+
+    def __init__(self, name=None):
+        self.name = name
 
     def prepare(self, const_metadata):
         """
@@ -359,6 +411,39 @@ class Operation:
         """
         pass
 
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        """
+        Sets the value for parameter with a given name.
+        :param key:
+        :param value:
+        :return:
+        """
+        raise ValueError(f"Unknown parameter: {key}")
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        """
+        Returns the current value for parameter with the given name.
+        """
+        raise ValueError(f"Unknown parameter: {key}")
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        """
+        Returns description of parameters that can be set
+        for this operation.
+        """
+        return dict()
+
+
+def _get_default_op_name(op: Operation, ordinal: int):
+    return f"{type(op).__name__}:{ordinal}"
+
+
+def _get_op_context_param_name(op_name: str, param_name: str):
+    param_name = param_name.strip()
+    if not param_name.startswith("/"):
+        param_name = f"/{param_name}"
+    return f"/{op_name}{param_name}"
+
 
 class Output(Operation):
     """
@@ -383,7 +468,7 @@ class Output(Operation):
         return const_metadata
 
     def process(self, data):
-        return (data, )
+        return data,
 
 
 class Pipeline:
@@ -395,15 +480,38 @@ class Pipeline:
     :param steps: processing steps to run
     :param placement: device on which the processing should take place,
       default: GPU:0
-    :param callback: callback to run when output data is ready. By default
     """
-    def __init__(self, steps, placement=None):
-        self.steps = steps
+
+    def __init__(self, steps, placement=None, name=None):
+        self.steps: Sequence[Operation] = steps
+        self.name = name
         self._placement = None
         self._processing_stream = None
         self._input_buffer = None
         if placement is not None:
             self.set_placement(placement)
+        self._set_names()
+        self._param_ops: Dict[str, Tuple[Operation, str]] = {}
+        self._param_defs: Dict[str, ParameterDef] = {}
+        self._determine_params()
+
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        """
+        Sets the value for parameter with the given name.
+        TODO: note: this method currently is not thread-safe
+        """
+        op, op_param_name = self._param_ops[key]
+        op.set_parameter(op_param_name, value)
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        """
+        Returns the current value for parameter with the given name.
+        """
+        op, op_param_name = self._param_ops[key]
+        return op.get_parameter(op_param_name)
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        return self._param_defs
 
     def __call__(self, data):
         return self.process(data)
@@ -413,7 +521,9 @@ class Pipeline:
         for step in self.steps:
             if step.endpoint:
                 step_outputs = step.process(data)
-                for output in step_outputs:
+                # To keep the order of step_outputs, appendleft
+                # collection in reversed order.
+                for output in reversed(step_outputs):
                     outputs.appendleft(output)
             else:
                 data = step.process(data)
@@ -422,10 +532,21 @@ class Pipeline:
         return outputs
 
     def __initialize(self, const_metadata):
-        input_shape = const_metadata.input_shape
-        input_dtype = const_metadata.dtype
-        self._input_buffer = self.num_pkg.zeros(
-            input_shape, dtype=input_dtype)+1000
+        if not isinstance(const_metadata, Iterable):
+            const_metadata = [const_metadata]
+        buffers = []
+        for cm in const_metadata:
+            input_shape = cm.input_shape
+            input_dtype = cm.dtype
+            b = self.num_pkg.zeros(input_shape, dtype=input_dtype)
+            b = b + 1000
+            buffers.append(b)
+        if len(buffers) == 1:
+            # Backward compatibility
+            self._input_buffer = buffers[0]
+        else:
+            self._input_buffer = buffers
+
         data = self._input_buffer
         for step in self.steps:
             if not isinstance(step, (Pipeline, Output)):
@@ -438,8 +559,10 @@ class Pipeline:
             if isinstance(step, (Pipeline, Output)):
                 child_metadatas = step.prepare(current_metadata)
                 if not isinstance(child_metadatas, Iterable):
-                    child_metadatas = (child_metadatas, )
-                for metadata in child_metadatas:
+                    child_metadatas = (child_metadatas,)
+                # To keep the order of child_metadatas, appendleft
+                # collection in reversed order.
+                for metadata in reversed(child_metadatas):
                     metadatas.appendleft(metadata)
                 step.endpoint = True
             else:
@@ -499,16 +622,84 @@ class Pipeline:
         self.num_pkg = pkgs['num_pkg']
         self.filter_pkg = pkgs['filter_pkg']
 
+    def _set_names(self):
+        """
+        Names all the children.
+        """
+        type_counter = defaultdict(int)
+        for step in self.steps:
+            if not hasattr(step, "name") or step.name is None:
+                t = type(step)
+                step.name = _get_default_op_name(step, type_counter[t])
+                type_counter[t] += 1
+
+    def _determine_params(self):
+        """
+        Creates an internal hashmap for all parameters available
+        in the pipeline.
+        """
+        self._param_ops = {}
+        self._param_defs = {}
+        for step in self.steps:
+            name = step.name
+            params = step.get_parameters()
+            for k, param_def in params.items():
+                prefixed_k = _get_op_context_param_name(name, k)
+                self._param_ops[prefixed_k] = step, k
+                self._param_defs[prefixed_k] = param_def
+
+
+@dataclasses.dataclass(frozen=True)
+class ProcessingBuffer:
+    size: int
+    type: str
+    # TODO: placement
+
 
 class Processing:
     """
     A description of complete data processing run in the arrus.utils.imaging.
     """
 
-    def __init__(self, pipeline, callback=None, extract_metadata=False):
+    def __init__(
+            self, pipeline: Pipeline,
+            callback: Callable[[Sequence[Union[BufferElement, BufferElementLockBased]]], None] = None,
+            extract_metadata: bool = False,
+            input_buffer: ProcessingBuffer = None,
+            output_buffer: ProcessingBuffer = None,
+            on_buffer_overflow_callback=None):
         self.pipeline = pipeline
+        self._pipeline_name = _get_default_op_name(self.pipeline, 0)
+        self._pipeline_params = self._determine_params()
         self.callback = callback
         self.extract_metadata = extract_metadata
+        self.input_buffer = input_buffer
+        self.output_buffer = output_buffer
+        self.on_buffer_overflow_callback = on_buffer_overflow_callback
+
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        """
+        Sets the value for parameter with the given name.
+        """
+        pipeline_param_name = self._pipeline_params[key]
+        self.pipeline.set_parameter(pipeline_param_name, value)
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        """
+        Returns the current value for parameter with the given name.
+        """
+        pipeline_param_name = self._pipeline_params[key]
+        return self.get_parameter(pipeline_param_name)
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        return self._pipeline_params
+
+    def _determine_params(self):
+        _pipeline_param_name = {}
+        for k, param_def in self.pipeline.get_parameters().items():
+            prefixed_k = _get_op_context_param_name(self._pipeline_name, k)
+            _pipeline_param_name[prefixed_k] = k
+        return _pipeline_param_name
 
 
 class Lambda(Operation):
@@ -516,7 +707,7 @@ class Lambda(Operation):
     Custom function to perform on data from a given step.
     """
 
-    def __init__(self, function, prepare=None):
+    def __init__(self, function, prepare_func=None):
         """
         Lambda op constructor.
 
@@ -524,7 +715,7 @@ class Lambda(Operation):
           with the data)
         """
         self.func = function
-        self.prepare = prepare
+        self.prepare_func = prepare_func
         pass
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
@@ -535,13 +726,24 @@ class Lambda(Operation):
         return data
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        if self.prepare is not None:
-            return self.prepare(const_metadata)
+        if self.prepare_func is not None:
+            return self.prepare_func(const_metadata)
         else:
             return const_metadata
 
     def process(self, data):
         return self.func(data)
+
+
+def _get_unique_pulse(sequence):
+    if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
+        return sequence.pulse
+    elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
+        pulses = {tx_rx.tx.excitation for tx_rx in sequence.ops}
+        if len(pulses) > 1:
+            raise ValueError("Each TX/RX should have exactly the same "
+                             "definition of transmit pulse.")
+        return next(iter(pulses))
 
 
 class BandpassFilter(Operation):
@@ -558,21 +760,29 @@ class BandpassFilter(Operation):
     define what kind of filter is used (e.g. by providing filter coefficients).
     """
 
-    def __init__(self, numtaps=7, bounds=(0.5, 1.5), filter_type="butter",
-                 num_pkg=None, filter_pkg=None):
+    def __init__(self, order=63, bounds=(0.5, 1.5), filter_type="hamming",
+                 num_pkg=None, filter_pkg=None, **kwargs):
         """
         Bandpass filter constructor.
 
+        Currently, the filtering is performed simply by convolving input signal
+        with given type of filter. The band of frequencies is automatically
+        determined basing on the TX frequency.
+
+        :param order: filter order
         :param bounds: determines filter's frequency boundaries,
             e.g. setting 0.5 will give a bandpass filter
             [0.5*center_frequency, 1.5*center_frequency].
+        :param filter_type: one of "butter" (for Butterworth coefficients)
+            or one of windows provided by scipy.signal.get_window
         """
         self.taps = None
-        self.numtaps = numtaps
+        self.order = order
         self.bound_l, self.bound_r = bounds
         self.filter_type = filter_type
         self.xp = num_pkg
         self.filter_pkg = filter_pkg
+        self.kwargs = kwargs
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
@@ -580,12 +790,22 @@ class BandpassFilter(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
-        center_frequency = const_metadata.context.sequence.pulse.center_frequency
+        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         sampling_frequency = const_metadata.data_description.sampling_frequency
-        taps, _ = scipy.signal.butter(
-                2,
-                [l * center_frequency, r * center_frequency],
+        band = [l * center_frequency, r * center_frequency]
+        if self.filter_type == "butter":
+            taps, _ = scipy.signal.butter(
+                self.order, band,
                 btype='bandpass', fs=sampling_frequency)
+        else:
+            taps = scipy.signal.firwin(
+                numtaps=self.order,
+                cutoff=band,
+                pass_zero=False,
+                window=self.filter_type,
+                fs=sampling_frequency,
+                **self.kwargs
+            )
         self.taps = self.xp.asarray(taps).astype(self.xp.float32)
         return const_metadata
 
@@ -645,11 +865,12 @@ class FirFilter(Operation):
             run_fir_int16(
                 grid_size, block_size,
                 (fir_output_buffer, data, n_samples,
-                total_n_samples, self.taps, n_taps),
+                 total_n_samples, self.taps, n_taps),
                 shared_memory_size)
             return fir_output_buffer
+
         self.convolve1d_func = gpu_convolve1d
-        return const_metadata
+        return const_metadata.copy(dtype=self.xp.float32)
 
     def process(self, data):
         return self.convolve1d_func(data)
@@ -692,6 +913,7 @@ class QuadratureDemodulation(Operation):
     """
     Quadrature demodulation (I/Q decomposition).
     """
+
     def __init__(self, num_pkg=None):
         self.mod_factor = None
         self.xp = num_pkg
@@ -705,7 +927,7 @@ class QuadratureDemodulation(Operation):
     def prepare(self, const_metadata):
         xp = self.xp
         fs = const_metadata.data_description.sampling_frequency
-        fc = const_metadata.context.sequence.pulse.center_frequency
+        fc = _get_unique_pulse(const_metadata.context.sequence).center_frequency
         input_shape = const_metadata.input_shape
         n_samples = input_shape[-1]
         if n_samples == 0:
@@ -720,104 +942,107 @@ class QuadratureDemodulation(Operation):
         return self.mod_factor * data
 
 
-class Decimation(Operation):
+class DigitalDownConversion(Operation):
     """
-    Decimation + CIC (Cascade Integrator-Comb) filter.
-
-    See: https://en.wikipedia.org/wiki/Cascaded_integrator%E2%80%93comb_filter
+    IQ demodulation, decimation.
     """
 
-    def __init__(self, decimation_factor, cic_order, num_pkg=None, impl="legacy"):
-        """
-        Decimation op constructor.
-
-        :param decimation_factor: decimation factor to apply
-        :param cic_order: CIC filter order
-        """
+    def __init__(self, decimation_factor, fir_params=None,
+                 fir_cutoff_relative=1.0, fir_order=15, fir_type="hamming"):
         self.decimation_factor = decimation_factor
-        self.cic_order = cic_order
-        self.xp = num_pkg
-        self.impl = impl
-        if self.impl == "legacy":
-            self._decimate = self._legacy_decimate
-        elif self.impl == "fir":
-            self._decimate = self._fir_decimate
+        self.fir_cutoff_relative = fir_cutoff_relative
+        self.fir_order = fir_order
+        self.fir_type = fir_type
+        self.fir_params = fir_params if fir_params is not None else {}
 
     def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
         self.xp = num_pkg
-        self.filter_pkg = filter_pkg # not used by the GPU implementation (custom kernel for complex input data)
+        self.filter_pkg = filter_pkg
+
+    def prepare(self, const_metadata):
+        self.demodulator = QuadratureDemodulation()
+        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        sampling_frequency = const_metadata.data_description.sampling_frequency
+        cutoff_freq = center_frequency * self.fir_cutoff_relative
+        fir_coefficients = scipy.signal.firwin(
+            numtaps=self.fir_order,
+            cutoff=cutoff_freq,
+            window=self.fir_type,
+            fs=sampling_frequency,
+            pass_zero="lowpass",
+            **self.fir_params
+        )
+        self.decimator = Decimation(
+            self.decimation_factor,
+            filter_coeffs=fir_coefficients, filter_type="fir")
+        self.demodulator.set_pkgs(num_pkg=self.xp, filter_pkg=self.filter_pkg)
+        self.decimator.set_pkgs(num_pkg=self.xp, filter_pkg=self.filter_pkg)
+        const_metadata = self.demodulator.prepare(const_metadata)
+        return self.decimator.prepare(const_metadata)
+
+    def process(self, data):
+        data = self.demodulator.process(data)
+        return self.decimator.process(data)
+
+
+class Decimation(Operation):
+    """
+    Downsampling + Low-pass filter.
+
+    By default CIC filter is used.
+    """
+
+    def __init__(self, decimation_factor, filter_type="cic",
+                 filter_coeffs=None, cic_order=2, num_pkg=None):
+        """
+        Decimation.
+
+        :param decimation_factor: decimation factor to apply
+        """
+        self.decimation_factor = decimation_factor
+        self.xp = num_pkg
+        if filter_type == "cic":
+            self.filter_coeffs = self._get_cic_filter_coeffs(
+                decimation_factor=self.decimation_factor,
+                order=cic_order
+            )
+        elif filter_type == "fir":
+            if filter_coeffs is None:
+                raise ValueError("Decimation: FIR filter requires "
+                                 "manually specified filter coefficients.")
+            self.filter_coeffs = filter_coeffs
+        else:
+            raise ValueError(f"Unsupported filter type: {filter_type}")
+
+    def set_pkgs(self, num_pkg, filter_pkg, **kwargs):
+        self.xp = num_pkg
+        self.filter_pkg = filter_pkg
+
+    def _get_cic_filter_coeffs(self, decimation_factor, order):
+        cicFir = np.array([1], dtype=np.float32)
+        cicFir1 = np.ones(decimation_factor, dtype=np.float32)
+        for _ in range(order):
+            cicFir = np.convolve(cicFir, cicFir1, 'full')
+        return cicFir
 
     def prepare(self, const_metadata):
         new_fs = (const_metadata.data_description.sampling_frequency
                   / self.decimation_factor)
-        new_signal_description = arrus.metadata.EchoDataDescription(
-            sampling_frequency=new_fs, custom=
-            const_metadata.data_description.custom)
-
+        new_signal_description = dataclasses.replace(
+            const_metadata.data_description,
+            sampling_frequency=new_fs)
         input_shape = const_metadata.input_shape
         n_samples = input_shape[-1]
-        total_n_samples = math.prod(input_shape)
-        output_shape = input_shape[:-1] + (math.ceil(n_samples/self.decimation_factor), )
-
-        # CIC FIR coefficients
-        if self.impl == "fir":
-            cicFir = self.xp.array([1], dtype=self.xp.float32)
-            cicFir1 = self.xp.ones(self.decimation_factor, dtype=self.xp.float32)
-            for i in range(self.cic_order):
-                cicFir = self.xp.convolve(cicFir, cicFir1, 'full')
-            fir_taps = cicFir
-            n_fir_taps = len(fir_taps)
-            if self.xp == np:
-                def _cpu_fir_filter(data):
-                    return self.filter_pkg.convolve1d(
-                        np.real(data), fir_taps,
-                        axis=-1, mode='constant',
-                        cval=0, origin=-1) \
-                        + self.filter_pkg.convolve1d(np.imag(data),
-                                          fir_taps, axis=-1,
-                                          mode='constant', cval=0,
-                                          origin=-1)*1j
-                # CPU
-                self._fir_filter = _cpu_fir_filter
-            else:
-                # GPU
-                import cupy as cp
-                _fir_output_buffer = cp.zeros(const_metadata.input_shape,
-                                                dtype=cp.complex64)
-                # Kernel settings
-                from arrus.utils.fir import (
-                    get_default_grid_block_size,
-                    get_default_shared_mem_size,
-                    run_fir)
-                grid_size, block_size = get_default_grid_block_size(n_samples, total_n_samples)
-                shared_memory_size = get_default_shared_mem_size(n_samples, n_fir_taps)
-
-                def _gpu_fir_filter(data):
-                    run_fir(grid_size, block_size,
-                        (_fir_output_buffer, data, n_samples,
-                         total_n_samples, fir_taps, n_fir_taps),
-                            shared_memory_size)
-                    return _fir_output_buffer
-
-                self._fir_filter = _gpu_fir_filter
+        self.filter_coeffs = self.xp.asarray(self.filter_coeffs)
+        self.filter_coeffs = self.filter_coeffs.astype(self.xp.float32)
+        output_shape = input_shape[:-1] + (math.ceil(n_samples / self.decimation_factor),)
         return const_metadata.copy(data_desc=new_signal_description,
                                    input_shape=output_shape)
 
     def process(self, data):
-        return self._decimate(data)
-
-    def _fir_decimate(self, data):
-        fir_output = self._fir_filter(data)
+        fir_output = self.filter_pkg.convolve1d(
+            data, self.filter_coeffs, axis=-1, mode='constant')
         data_out = fir_output[..., 0::self.decimation_factor]
-        return data_out
-
-    def _legacy_decimate(self, data):
-        data_out = data
-        for i in range(self.cic_order):
-            data_out = self.xp.cumsum(data_out, axis=-1)
-        data_out = data_out[..., 0::self.decimation_factor]
-        for i in range(self.cic_order):
-            data_out[..., 1:] = self.xp.diff(data_out, axis=-1)
         return data_out
 
 
@@ -827,6 +1052,7 @@ class RxBeamforming(Operation):
     This operator implements beamforming for linear scanning (element by element)
     and phased scanning (angle by angle).
     """
+
     def __init__(self, num_pkg=None):
         # Actual implementation of the operator.
         self._op = None
@@ -890,7 +1116,7 @@ class RxBeamformingPhasedScanning(Operation):
         self.tx_angles = cp.asarray(seq.angles, dtype=cp.float32)
 
         device_fs = const_metadata.context.device.sampling_frequency
-        acq_fs = (device_fs/seq.downsampling_factor)
+        acq_fs = (device_fs / seq.downsampling_factor)
         fs = const_metadata.data_description.sampling_frequency
         fc = seq.pulse.center_frequency
         n_periods = seq.pulse.n_periods
@@ -903,9 +1129,8 @@ class RxBeamformingPhasedScanning(Operation):
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
-            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-                probe_model, seq, c)
-            tx_center_delay = tx_rx_params["tx_center_delay"]
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=c, probe_model=probe_model)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -918,25 +1143,25 @@ class RxBeamformingPhasedScanning(Operation):
         self.c = cp.float32(c)
         # Note: start sample has to be appropriately adjusted for
         # the ACQ sampling frequency.
-        self.start_time = cp.float32(start_sample/acq_fs)
+        self.start_time = cp.float32(start_sample / acq_fs)
         self.init_delay = cp.float32(initial_delay)
         self.max_tang = cp.float32(max_tang)
         sample_block_size = min(self.n_samples, 16)
         scanline_block_size = min(self.n_tx, 16)
         n_seq_block_size = min(self.n_seq, 4)
         self.block_size = (sample_block_size, scanline_block_size, n_seq_block_size)
-        self.grid_size = (int((self.n_samples-1)//sample_block_size + 1),
-                          int((self.n_tx-1)//scanline_block_size + 1),
-                          int((self.n_seq-1)//n_seq_block_size + 1))
+        self.grid_size = (int((self.n_samples - 1) // sample_block_size + 1),
+                          int((self.n_tx - 1) // scanline_block_size + 1),
+                          int((self.n_seq - 1) // n_seq_block_size + 1))
         # xElemConst
         # Get aperture origin (for the given aperture center element/aperture center)
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
         # There is a single TX and RX aperture center for all TX/RXs
         rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
         rx_aperture_origin = _get_rx_aperture_origin(
             rx_aperture_center_element, seq.rx_aperture_size)
-        rx_aperture_offset = rx_aperture_center_element-rx_aperture_origin
-        x_elem = (np.arange(0, self.n_rx)-rx_aperture_offset) * probe_model.pitch
+        rx_aperture_offset = rx_aperture_center_element - rx_aperture_origin
+        x_elem = (np.arange(0, self.n_rx) - rx_aperture_offset) * probe_model.pitch
         x_elem = x_elem.astype(np.float32)
         self.x_elem_const = _get_const_memory_array(
             self._kernel_module, "xElemConst", x_elem)
@@ -993,7 +1218,7 @@ class RxBeamformingLin(Operation):
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         medium = const_metadata.context.medium
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe_model, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
         rx_aperture_center_element = np.array(tx_rx_params["tx_ap_cent"])
 
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
@@ -1005,7 +1230,7 @@ class RxBeamformingLin(Operation):
 
         # -- Output buffer
         self.buffer = self.xp.zeros(
-            (self.n_seq*self.n_tx, self.n_rx * self.n_samples),
+            (self.n_seq * self.n_tx, self.n_rx * self.n_samples),
             dtype=buffer_dtype)
 
         # -- Delays
@@ -1026,14 +1251,13 @@ class RxBeamformingLin(Operation):
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
-            tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
-                probe_model, seq, c)
-            tx_center_delay = tx_rx_params["tx_center_delay"]
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=c, probe_model=probe_model)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
         radial_distance = (
-                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs) * c/2
+                (start_sample / acq_fs + np.arange(0, self.n_samples) / fs) * c / 2
         )
         x_distance = (radial_distance * np.sin(tx_angle)).reshape(1, -1)
         z_distance = radial_distance * np.cos(tx_angle).reshape(1, -1)
@@ -1062,8 +1286,8 @@ class RxBeamformingLin(Operation):
         self.delays = self.t * fs  # in number of samples
         total_n_samples = self.n_rx * self.n_samples
         # Move samples outside the available area
-        self.delays[np.isclose(self.delays, self.n_samples-1)] = self.n_samples-1
-        self.delays[self.delays > self.n_samples-1] = total_n_samples + 1
+        self.delays[np.isclose(self.delays, self.n_samples - 1)] = self.n_samples - 1
+        self.delays[self.delays > self.n_samples - 1] = total_n_samples + 1
         # (RF data will also be unrolled to a vect. n_rx*n_samples elements,
         #  row-wise major order).
         self.delays = self.xp.asarray(self.delays)
@@ -1080,7 +1304,7 @@ class RxBeamformingLin(Operation):
         rx_apodization = (rx_tang < max_tang).astype(np.float32)
         rx_apod_sum = np.sum(rx_apodization, axis=0)
         rx_apod_sum[rx_apod_sum == 0] = 1
-        rx_apodization = rx_apodization/(rx_apod_sum.reshape(1, self.n_samples))
+        rx_apodization = rx_apodization / (rx_apod_sum.reshape(1, self.n_samples))
         self.rx_apodization = self.xp.asarray(rx_apodization)
         # IQ correction
         self.t = self.xp.asarray(self.t)
@@ -1090,7 +1314,7 @@ class RxBeamformingLin(Operation):
         return const_metadata.copy(input_shape=(self.n_seq, self.n_tx, self.n_samples))
 
     def process(self, data):
-        data = data.copy().reshape(self.n_seq*self.n_tx, self.n_rx * self.n_samples)
+        data = data.copy().reshape(self.n_seq * self.n_tx, self.n_rx * self.n_samples)
 
         self.interp1d_func(data, self.delays, self.buffer)
         out = self.buffer.reshape((self.n_seq, self.n_tx, self.n_rx, self.n_samples))
@@ -1137,6 +1361,7 @@ class Transpose(Operation):
         """
         :param axes: permutation of axes to apply
         """
+        super().__init__()
         self.axes = axes
         self.xp = None
 
@@ -1183,8 +1408,6 @@ class ScanConversion(Operation):
         if num_pkg != np:
             self.is_gpu = True
         self.num_pkg = num_pkg
-        # Ignoring provided num. package - currently CPU implementation is
-        # available only.
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
@@ -1230,7 +1453,7 @@ class ScanConversion(Operation):
             raise ValueError("Scan conversion works only with LinSequence.")
         medium = const_metadata.context.medium
         probe = const_metadata.context.device.probe.model
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
         n_elements = probe.n_elements
         if n_elements % 2 != 0:
@@ -1240,23 +1463,23 @@ class ScanConversion(Operation):
         c = _get_speed_of_sound(const_metadata.context)
         tx_center_diff = np.diff(tx_aperture_center_element)
         # Check if tx aperture centers are evenly spaced.
-        if not np.allclose(tx_center_diff, [tx_center_diff[0]]*len(tx_center_diff)):
+        if not np.allclose(tx_center_diff, [tx_center_diff[0]] * len(tx_center_diff)):
             raise ValueError("Transmits should be done by consecutive "
                              "center elements (got tx center elements: "
                              f"{tx_aperture_center_element}")
         tx_center_diff = tx_center_diff[0]
         # Determine input grid.
-        input_x_grid_diff = tx_center_diff*pitch
-        input_x_grid_origin = (tx_aperture_center_element[0]-(n_elements-1)/2)*pitch
+        input_x_grid_diff = tx_center_diff * pitch
+        input_x_grid_origin = (tx_aperture_center_element[0] - (n_elements - 1) / 2) * pitch
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
         start_sample = seq.rx_sample_range[0]
-        input_z_grid_origin = start_sample/acq_fs*c/2
-        input_z_grid_diff = c/(fs*2)
+        input_z_grid_origin = start_sample / acq_fs * c / 2
+        input_z_grid_diff = c / (fs * 2)
         # Map x_grid and z_grid to the RF frame coordinates.
-        interp_x_grid = (self.x_grid-input_x_grid_origin)/input_x_grid_diff
-        interp_z_grid = (self.z_grid-input_z_grid_origin)/input_z_grid_diff
+        interp_x_grid = (self.x_grid - input_x_grid_origin) / input_x_grid_diff
+        interp_z_grid = (self.z_grid - input_z_grid_origin) / input_z_grid_diff
         self._interp_mesh = cp.asarray(np.meshgrid(interp_z_grid, interp_x_grid, indexing="ij"))
 
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
@@ -1269,9 +1492,19 @@ class ScanConversion(Operation):
         return self.buffer
 
     def _prepare_convex(self, const_metadata: arrus.metadata.ConstMetadata):
+        if self.num_pkg is np:
+            self.interpolator = scipy.ndimage.map_coordinates
+        else:
+            import cupyx.scipy.ndimage
+            self.interpolator = cupyx.scipy.ndimage.map_coordinates
         probe = const_metadata.context.device.probe.model
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
+
+        if not self.num_pkg == np:
+            import cupy as cp
+            self.x_grid = self.num_pkg.asarray(self.x_grid).astype(cp.float32)
+            self.z_grid = self.num_pkg.asarray(self.z_grid).astype(cp.float32)
 
         self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
         seq = const_metadata.context.sequence
@@ -1287,38 +1520,53 @@ class ScanConversion(Operation):
         else:
             c = medium.speed_of_sound
 
-        tx_ap_cent_ang, _, _ = arrus.kernels.imaging.get_aperture_center(
+        tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
 
-        z_grid_moved = self.z_grid.T + probe.curvature_radius - np.max(
-             probe.element_pos_z)
+        z_grid_moved = self.z_grid.T + probe.curvature_radius \
+                       - self.num_pkg.max(probe.element_pos_z)
 
         self.radGridIn = (
-                (start_sample / acq_fs + np.arange(0, n_samples) / fs)
+                (start_sample / acq_fs + self.num_pkg.arange(0, n_samples) / fs)
                 * c / 2)
 
         self.azimuthGridIn = tx_ap_cent_ang
-        azimuthGridOut = np.arctan2(self.x_grid, z_grid_moved)
-        radGridOut = (np.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
+        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, z_grid_moved)
+        radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
                       - probe.curvature_radius)
 
-        dst_points = np.dstack((radGridOut, azimuthGridOut))
-        w, h, d = dst_points.shape
-        self.dst_points = dst_points.reshape((w * h, d))
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
-        self.output_buffer = np.zeros(self.dst_shape, dtype=np.float32)
+
+        dst_points = self.num_pkg.dstack((radGridOut, azimuthGridOut))
+        dst_points = self.num_pkg.transpose(dst_points, axes=(2, 0, 1))
+
+        def get_equalized_diff(values, param_name):
+            diffs = np.diff(values)
+            # Check if all values are evenly spaced
+            if not np.allclose(diffs, [diffs[0]] * len(diffs)):
+                raise ValueError(f"{param_name} should be evenly spaced, "
+                                 f"got {values}")
+            return diffs[0]
+
+        dst_points[0] -= self.radGridIn[0]
+        dst_points[0] /= get_equalized_diff(self.radGridIn,
+                                            "Input radial distance")
+        dst_points[1] -= self.azimuthGridIn[0]
+        dst_points[1] /= get_equalized_diff(self.azimuthGridIn,
+                                            "Azimuth angle")
+        self.dst_points = self.num_pkg.asarray(dst_points,
+                                               dtype=self.num_pkg.float32)
+        self.output_buffer = self.num_pkg.zeros(self.dst_shape, dtype=np.float32)
         return const_metadata.copy(input_shape=self.dst_shape)
 
     def _process_convex(self, data):
-        if self.is_gpu:
-            data = data.get()
         data[np.isnan(data)] = 0.0
+        # TODO do batch-wise processing here
         for i in range(self.n_frames):
-            self.interpolator = scipy.interpolate.RegularGridInterpolator(
-                (self.radGridIn, self.azimuthGridIn), data[i], method="linear",
-                bounds_error=False, fill_value=0)
-            self.output_buffer[i] = self.interpolator(self.dst_points).reshape(self.dst_shape[1:])
-        return self.num_pkg.asarray(self.output_buffer).astype(np.float32)
+            self.output_buffer[i] = self.interpolator(data[i],
+                                                      self.dst_points,
+                                                      order=1)
+        return self.output_buffer
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
@@ -1330,11 +1578,11 @@ class ScanConversion(Operation):
         acq_fs = fs / seq.downsampling_factor
         fs = data_desc.sampling_frequency
         start_sample, _ = seq.rx_sample_range
-        start_time = start_sample/acq_fs
+        start_time = start_sample / acq_fs
         c = _get_speed_of_sound(const_metadata.context)
-        tx_rx_params = arrus.kernels.imaging.preprocess_sequence_parameters(probe, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
-        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.imaging.get_aperture_center(
+        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_ap_cent_elem, probe)
 
         # There is a single position of TX aperture.
@@ -1342,10 +1590,10 @@ class ScanConversion(Operation):
         tx_ap_cent_z = tx_ap_cent_z.squeeze().item()
         tx_ap_cent_ang = tx_ap_cent_ang.squeeze().item()
 
-        self.radGridIn = (start_time + np.arange(0, n_samples)/fs)*c/2
+        self.radGridIn = (start_time + np.arange(0, n_samples) / fs) * c / 2
         self.azimuthGridIn = seq.angles + tx_ap_cent_ang
-        azimuthGridOut = np.arctan2((self.x_grid-tx_ap_cent_x), (self.z_grid.T-tx_ap_cent_z))
-        radGridOut = np.sqrt((self.x_grid-tx_ap_cent_x)**2 + (self.z_grid.T-tx_ap_cent_z)**2)
+        azimuthGridOut = np.arctan2((self.x_grid - tx_ap_cent_x), (self.z_grid.T - tx_ap_cent_z))
+        radGridOut = np.sqrt((self.x_grid - tx_ap_cent_x) ** 2 + (self.z_grid.T - tx_ap_cent_z) ** 2)
         dst_points = np.dstack((radGridOut, azimuthGridOut))
         w, h, d = dst_points.shape
         self.dst_points = dst_points.reshape((w * h, d))
@@ -1370,6 +1618,7 @@ class LogCompression(Operation):
     """
     Converts data to decibel scale.
     """
+
     def __init__(self):
         self.num_pkg = None
         self.is_gpu = False
@@ -1387,7 +1636,7 @@ class LogCompression(Operation):
 
     def process(self, data):
         data[data <= 0] = 1e-9
-        return 20*self.num_pkg.log10(data)
+        return 20 * self.num_pkg.log10(data)
 
 
 class DynamicRangeAdjustment(Operation):
@@ -1395,16 +1644,51 @@ class DynamicRangeAdjustment(Operation):
     Clips data values to given range.
     """
 
-    def __init__(self, min=20, max=80):
+    def __init__(self, min=20, max=80, name=None):
         """
         Constructor.
 
         :param min: minimum value to clamp
         :param max: maximum value to clamp
         """
+        super().__init__(name=name)
         self.min = min
         self.max = max
         self.xp = None
+
+    def set_parameter(self, key: str, value: Sequence[Number]):
+        if not hasattr(self, key):
+            raise ValueError(f"{type(self).__name__} has no {key} parameter.")
+        setattr(self, key, value)
+
+    def get_parameter(self, key: str) -> Sequence[Number]:
+        if not hasattr(self, key):
+            raise ValueError(f"{type(self).__name__} has no {key} parameter.")
+        return getattr(self, key)
+
+    def get_parameters(self) -> Dict[str, ParameterDef]:
+        return {
+            "min": ParameterDef(
+                name="min",
+                space=Box(
+                    shape=(1, ),
+                    dtype=np.float32,
+                    unit=Unit.dB,
+                    low=-np.inf,
+                    high=np.inf
+                ),
+            ),
+            "max": ParameterDef(
+                name="max",
+                space=Box(
+                    shape=(1, ),
+                    dtype=np.float32,
+                    unit=Unit.dB,
+                    low=-np.inf,
+                    high=np.inf
+                ),
+            )
+        }
 
     def set_pkgs(self, num_pkg, **kwargs):
         self.xp = num_pkg
@@ -1428,11 +1712,11 @@ class ToGrayscaleImg(Operation):
         self.xp = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        return const_metadata
+        return const_metadata.copy(dtype=np.uint8)
 
     def process(self, data):
         data = data - self.xp.min(data)
-        data = data/self.xp.max(data)*255
+        data = data / self.xp.max(data) * 255
         return data.astype(self.xp.uint8)
 
 
@@ -1536,12 +1820,12 @@ class SelectSequenceRaw(Operation):
         frame_offsets = []
         current_frame = 0  # Current physical frame.
         for us4oem in us4oems:
-            n_frames = self.num_pkg.max(fcm_frames[fcm_us4oems == us4oem])+1
+            n_frames = self.num_pkg.max(fcm_frames[fcm_us4oems == us4oem]) + 1
             us4oem_offset = fcm.frame_offsets[us4oem]
             # NOTE: below we use only a single sequence
-            src_start = us4oem_offset*n_samples+self.sequence[0]*n_frames*n_samples
-            src_end = src_start+n_frames*n_samples
-            dst_end = dst_start+n_frames*n_samples
+            src_start = us4oem_offset * n_samples + self.sequence[0] * n_frames * n_samples
+            src_end = src_start + n_frames * n_samples
+            dst_end = dst_start + n_frames * n_samples
             self.positions.append((src_start, dst_start, src_end, dst_end))
             frame_offsets.append(current_frame)
             current_frame += n_frames
@@ -1605,7 +1889,7 @@ class SelectSequence(Operation):
         n_seq = len(self.sequence)
 
         output_shape = input_shape[1:]
-        output_shape = (n_seq, ) + output_shape
+        output_shape = (n_seq,) + output_shape
         new_seq = dataclasses.replace(seq, n_repeats=n_seq)
         new_raw_seq = dataclasses.replace(raw_seq, n_repeats=n_seq)
         new_context = arrus.metadata.FrameAcquisitionContext(
@@ -1695,6 +1979,7 @@ class Squeeze(Operation):
     """
     Squeezes input array (removes axes = 1).
     """
+
     def __init__(self):
         pass
 
@@ -1725,7 +2010,7 @@ class ReconstructLri(Operation):
         self.z_grid = z_grid
         import cupy as cp
         self.num_pkg = cp
-        self.rx_tang_limits = rx_tang_limits # Currently used only by Convex PWI implementation
+        self.rx_tang_limits = rx_tang_limits  # Currently used only by Convex PWI implementation
 
     def set_pkgs(self, num_pkg, **kwargs):
         if num_pkg is np:
@@ -1758,9 +2043,9 @@ class ReconstructLri(Operation):
         z_block_size = min(self.z_size, 16)
         tx_block_size = min(self.n_tx, 4)
         self.block_size = (z_block_size, x_block_size, tx_block_size)
-        self.grid_size = (int((self.z_size-1)//z_block_size + 1),
-                          int((self.x_size-1)//x_block_size + 1),
-                          int((self.n_seq*self.n_tx-1)//tx_block_size + 1))
+        self.grid_size = (int((self.z_size - 1) // z_block_size + 1),
+                          int((self.x_size - 1) // x_block_size + 1),
+                          int((self.n_seq * self.n_tx - 1) // tx_block_size + 1))
         self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
         self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
 
@@ -1778,7 +2063,7 @@ class ReconstructLri(Operation):
         self.n_elements = probe_model.n_elements
 
         device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < 256*3*4:  # 3 float32 arrays, 256 elements max
+        if device_props["totalConstMem"] < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
             raise ValueError("There is not enough constant memory available!")
 
         x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
@@ -1793,25 +2078,27 @@ class ReconstructLri(Operation):
 
         # TX aperture description
         # Convert the sequence to the positions of the aperture centers
-        tx_rx_params = arrus.kernels.imaging.compute_tx_rx_params(
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
             probe_model,
-            seq,
-            seq.speed_of_sound)
+            seq)
         tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
         rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
-        tx_center_delay = tx_rx_params["tx_center_delay"]
 
-        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.imaging.get_aperture_center(tx_centers, probe_model)
+        tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model)
+
+        tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
+            tx_centers, probe_model)
         tx_center_angles = tx_center_angles + seq.angles
         self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
         self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
         self.tx_ap_cent_z = self.num_pkg.asarray(tx_center_z, dtype=self.num_pkg.float32)
 
         # first/last probe element in TX aperture
-        tx_ap_origin = np.round(tx_centers-(tx_sizes-1)/2 + 1e-9).astype(np.int32)
-        rx_ap_origin = np.round(rx_centers-(rx_sizes-1)/2 + 1e-9).astype(np.int32)
+        tx_ap_origin = np.round(tx_centers - (tx_sizes - 1) / 2 + 1e-9).astype(np.int32)
+        rx_ap_origin = np.round(rx_centers - (rx_sizes - 1) / 2 + 1e-9).astype(np.int32)
         tx_ap_first_elem = np.maximum(tx_ap_origin, 0)
-        tx_ap_last_elem = np.minimum(tx_ap_origin+tx_sizes-1, probe_model.n_elements-1)
+        tx_ap_last_elem = np.minimum(tx_ap_origin + tx_sizes - 1, probe_model.n_elements - 1)
         self.tx_ap_first_elem = self.num_pkg.asarray(tx_ap_first_elem, dtype=self.num_pkg.int32)
         self.tx_ap_last_elem = self.num_pkg.asarray(tx_ap_last_elem, dtype=self.num_pkg.int32)
         self.rx_ap_origin = self.num_pkg.asarray(rx_ap_origin, dtype=self.num_pkg.int32)
@@ -1825,9 +2112,9 @@ class ReconstructLri(Operation):
 
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
-        self.tx_foc = self.num_pkg.asarray([seq.tx_focus]*self.n_tx, dtype=self.num_pkg.float32)
-        burst_factor = seq.pulse.n_periods / (2*self.fn)
-        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
+        self.tx_foc = self.num_pkg.asarray([seq.tx_focus] * self.n_tx, dtype=self.num_pkg.float32)
+        burst_factor = seq.pulse.n_periods / (2 * self.fn)
+        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         return const_metadata.copy(input_shape=output_shape)
 
@@ -1867,7 +2154,7 @@ class Sum(Operation):
 
     def prepare(self, const_metadata):
         output_shape = list(const_metadata.input_shape)
-        actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
+        actual_axis = len(output_shape) - 1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
         return const_metadata.copy(input_shape=tuple(output_shape))
 
@@ -1891,7 +2178,7 @@ class Mean(Operation):
 
     def prepare(self, const_metadata):
         output_shape = list(const_metadata.input_shape)
-        actual_axis = len(output_shape)-1 if self.axis == -1 else self.axis
+        actual_axis = len(output_shape) - 1 if self.axis == -1 else self.axis
         del output_shape[actual_axis]
         return const_metadata.copy(input_shape=tuple(output_shape))
 
@@ -1900,7 +2187,7 @@ class Mean(Operation):
 
 
 def _get_rx_aperture_origin(aperture_center_element, aperture_size):
-    return np.round(aperture_center_element-(aperture_size-1)/2+1e-9)
+    return np.round(aperture_center_element - (aperture_size - 1) / 2 + 1e-9)
 
 
 # -------------------------------------------- RF frame remapping.
@@ -1939,7 +2226,7 @@ def __group_transfers(frame_channel_mapping):
                     # new src frame
                     or src_frame != prev_src_frame
                     # a gap in current frame
-                    or src_channel != prev_src_channel+1):
+                    or src_channel != prev_src_channel + 1):
                 # Close current source range
                 if current_src_frame is not None:
                     transfer = Transfer(
@@ -2031,7 +2318,7 @@ class RemapToLogicalOrder(Operation):
         else:
             # GPU
             import cupy as cp
-            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap_v1
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
@@ -2040,7 +2327,7 @@ class RemapToLogicalOrder(Operation):
             self._frame_offsets = cp.asarray(frame_offsets)
             # For each us4OEM, get number of physical frames this us4OEM gathers.
             # Note: this is the max number of us4OEMs IN USE.
-            n_us4oems = cp.max(self._fcm_us4oems).get()+1
+            n_us4oems = cp.max(self._fcm_us4oems).get() + 1
             n_frames_us4oems = []
             for us4oem in range(n_us4oems):
                 us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
@@ -2051,18 +2338,19 @@ class RemapToLogicalOrder(Operation):
                     n_frames_us4oems.append(n_frames_us4oem)
 
             #  TODO constant memory
-            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)+1
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size
             )
+
             def gpu_remap_fn(data):
-                run_remap(self.grid_size, self.block_size,
-                    [self._output_buffer, data,
-                     self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
-                     self._frame_offsets,
-                     self._n_frames_us4oems,
-                     batch_size, n_frames, n_samples, n_channels])
+                run_remap_v1(self.grid_size, self.block_size,
+                             [self._output_buffer, data,
+                              self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
+                              self._frame_offsets,
+                              self._n_frames_us4oems,
+                              batch_size, n_frames, n_samples, n_channels])
 
             self._remap_fn = gpu_remap_fn
         return const_metadata.copy(input_shape=self.output_shape)
@@ -2070,6 +2358,163 @@ class RemapToLogicalOrder(Operation):
     def process(self, data):
         self._remap_fn(data)
         return self._output_buffer
+
+
+class RemapToLogicalOrderV2(Operation):
+    """
+    Remaps the order of the data to logical order defined by the us4r device.
+
+    If the batch size was equal 1, the raw ultrasound RF data with shape.
+    (1, n_frames, n_channels, n_samples, n_components).
+    A single metadata object will be returned.
+
+    If the batch size was > 1, the raw ultrasound RF data with shape
+    (n_us4oems*n_samples*n_frames*n_batches, n_components, 32) will be reordered
+    to (batch_size, n_frames, n_channels, n_samples, n_components).
+    A list of metadata objects will be returned.
+    """
+
+    def __init__(self, num_pkg=None):
+        self._output_buffer = None
+        self.xp = num_pkg
+        self.remap = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def _is_prepared(self):
+        return self._output_buffer is not None
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        xp = self.xp
+        # get shape, create an array with given shape
+        # create required transfers
+        # perform the transfers
+        fcm = const_metadata.data_description.custom["frame_channel_mapping"]
+        n_frames, n_channels = fcm.frames.shape
+        n_samples_set = {op.rx.get_n_samples()
+                         for op in const_metadata.context.raw_sequence.ops}
+
+        # get (unique) number of samples in a frame
+        if len(n_samples_set) > 1:
+            raise arrus.exceptions.IllegalArgumentError(
+                f"Each tx/rx in the sequence should acquire the same number of "
+                f"samples (actual: {n_samples_set})")
+        n_samples = next(iter(n_samples_set))
+        batch_size = fcm.batch_size
+
+        input_order = len(const_metadata.input_shape)
+        # Input: RF data: (total_n_samples, 32),
+        # IQ data: (total_n_samples, 2, 32)
+        n_components = 1 if input_order == 2 else 2
+        self.output_shape = (batch_size, n_frames, n_channels, n_samples, n_components)
+        self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
+        if xp == np:
+            # CPU
+            raise ValueError(f"'{type(self).__name__}' is not implemented for CPU")
+        else:
+            # GPU
+            import cupy as cp
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap_v2
+            self._fcm_frames = cp.asarray(fcm.frames)
+            self._fcm_channels = cp.asarray(fcm.channels)
+            self._fcm_us4oems = cp.asarray(fcm.us4oems)
+            frame_offsets = fcm.frame_offsets
+            #  TODO constant memory
+            self._frame_offsets = cp.asarray(frame_offsets)
+            # For each us4OEM, get number of physical frames this us4OEM gathers.
+            # Note: this is the maximum id of us4OEM IN USE.
+            n_us4oems = cp.max(self._fcm_us4oems).get() + 1
+            n_frames_us4oems = []
+            for us4oem in range(n_us4oems):
+                us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
+                if us4oem_frames.size == 0:
+                    n_frames_us4oems.append(0)
+                else:
+                    n_frames_us4oem = cp.max(us4oem_frames).get().item()
+                    n_frames_us4oems.append(n_frames_us4oem)
+            #  TODO constant memory
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
+            self.grid_size, self.block_size = get_default_grid_block_size(
+                self._fcm_frames, n_samples,
+                batch_size
+            )
+
+            def gpu_remap_fn(data):
+                run_remap_v2(self.grid_size, self.block_size,
+                             [self._output_buffer, data,
+                              self._fcm_frames, self._fcm_channels,
+                              self._fcm_us4oems, self._frame_offsets,
+                              self._n_frames_us4oems,
+                              batch_size, n_frames, n_samples, n_channels,
+                              n_components])
+
+            self._remap_fn = gpu_remap_fn
+        return const_metadata.copy(input_shape=self.output_shape)
+
+    def process(self, data):
+        self._remap_fn(data)
+        return self._output_buffer
+
+
+class ToRealOrComplex(Operation):
+    """
+    Converts the input array with shape
+    (..., n_components), a particular dtype, to:
+    - complex64 with shape (...) if n_components == 2 (regardles of dtype)
+    - dtype with shape (...) if n_components == 1 (simply, removes the last
+      axis).
+    """
+
+    def __init__(self, num_pkg=None):
+        self._output_buffer = None
+        self.xp = num_pkg
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        input_shape = const_metadata.input_shape
+        n_components = input_shape[-1]
+
+        output_shape = input_shape[:-1]
+        if n_components == 2:
+            output_dtype = self.xp.complex64
+            self.process = self._process_to_complex
+        elif n_components == 1:
+            output_dtype = const_metadata.dtype
+            self.process = self._process_to_real
+        else:
+            raise ValueError(f"Unhandled number of components: {n_components},"
+                             f"should be 1 (real) or 2 (complex).")
+
+        # get shape, create an array with given shape
+        # create required transfers
+        return const_metadata.copy(input_shape=output_shape,
+                                   dtype=output_dtype)
+
+    def _process_to_complex(self, data):
+        output = data.astype(self.xp.float32)
+        return output[..., 0] + 1j * output[..., 1]
+
+    def _process_to_real(self, data):
+        return data[..., 0]
+
+
+class Reshape(Operation):
+    """
+    Reshapes input data to a given shape.
+    """
+
+    def __init__(self, *shape):
+        super().__init__()
+        self.shape = shape
+
+    def prepare(self, const_metadata):
+        return const_metadata.copy(input_shape=self.shape)
+
+    def process(self, data):
+        return data.reshape(*self.shape)
 
 
 def _get_const_memory_array(module, name, input_array):
@@ -2115,10 +2560,376 @@ class ExtractMetadata(Operation):
         # Metadata is saved by us4OEM:0 module only.
         self._n_frames = fcm.n_frames[0]
         self._n_repeats = const_metadata.context.raw_sequence.n_repeats
+
+        input_shape = const_metadata.input_shape
+        is_ddc = len(input_shape) == 3
+        self._slices = (slice(0, self._n_samples * self._n_frames, self._n_samples),)
+        if is_ddc:
+            self._slices = self._slices + (0,)  # Select "I" value.
         return const_metadata
 
     def process(self, data):
-        return data[:self._n_samples*self._n_frames:self._n_samples]\
+        return data[self._slices] \
             .reshape(self._n_frames, -1) \
             .copy()
 
+
+class ReconstructLri3D(Operation):
+    """
+    Rx beamforming for synthetic aperture imaging for matrix array.
+
+    tx_foc, tx_ang_zx, tx_ang_zy: arrays
+
+    Expected input data shape: batch_size, n_emissions, n_rx_x, n_rx_y, n_samples
+    :param x_grid: output image grid points (OX coordinates)
+    :param y_grid: output image grid points (OY coordinates)
+    :param z_grid: output image grid points  (OZ coordinates)
+    :param rx_tang_limits: RX apodization angle limits (given as the tangent of the angle), \
+      a pair of values (min, max). If not provided or None, [-0.5, 0.5] range will be used
+    """
+
+    def __init__(self, x_grid, y_grid, z_grid, tx_foc, tx_ang_zx, tx_ang_zy,
+                 speed_of_sound, rx_tang_limits=None):
+        self.tx_ang_zy = tx_ang_zy
+        self.tx_ang_zx = tx_ang_zx
+        self.tx_foc = tx_foc
+        self.x_grid = x_grid
+        self.y_grid = y_grid
+        self.z_grid = z_grid
+        self.speed_of_sound = speed_of_sound
+        import cupy as cp
+        self.num_pkg = cp
+        self.rx_tang_limits = rx_tang_limits
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg is np:
+            raise ValueError("ReconstructLri3D operation is implemented for GPU only.")
+
+    def _get_aperture_boundaries(self, apertures):
+        def get_min_max_x_y(ap):
+            cords = np.argwhere(ap)
+            y, x = zip(*cords)
+            return np.min(x), np.max(x), np.min(y), np.max(y)
+
+        min_max_x_y = (get_min_max_x_y(aperture) for aperture in apertures)
+        min_x, max_x, min_y, max_y = zip(*min_max_x_y)
+        min_x, max_x = np.atleast_1d(min_x), np.atleast_1d(max_x)
+        min_y, max_y = np.atleast_1d(min_y), np.atleast_1d(max_y)
+        return min_x, max_x, min_y, max_y
+
+    def prepare(self, const_metadata):
+        import cupy as cp
+
+        current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+        _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri_3d.cu")).read_text()
+        self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
+        self._kernel_module.compile()
+        self._kernel = self._kernel_module.get_function("iqRaw2Lri3D")
+
+        # INPUT PARAMETERS.
+        # Input data shape.
+        self.n_seq, self.n_tx, self.n_rx_y, self.n_rx_x, self.n_samples = const_metadata.input_shape
+
+        seq = const_metadata.context.raw_sequence
+        # TODO note: we assume here that a single TX/RX has the below properties
+        # the same for each TX/RX. Validation is missing here.
+        ref_tx_rx = seq.ops[0]
+        ref_tx = ref_tx_rx.tx
+        ref_rx = ref_tx_rx.rx
+        probe_model = const_metadata.context.device.probe.model
+        acq_fs = (const_metadata.context.device.sampling_frequency / ref_rx.downsampling_factor)
+        start_sample = ref_rx.sample_range[0]
+
+        self.y_size = len(self.y_grid)
+        self.x_size = len(self.x_grid)
+        self.z_size = len(self.z_grid)
+        output_shape = (self.n_seq, self.y_size, self.x_size, self.z_size)
+        self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
+        x_block_size = min(self.z_size, 8)
+        y_block_size = min(self.x_size, 8)
+        z_block_size = min(self.y_size, 8)
+        self.block_size = (x_block_size, y_block_size, z_block_size)
+        self.grid_size = (int((self.z_size - 1) // z_block_size + 1),
+                          int((self.x_size - 1) // x_block_size + 1),
+                          int((self.y_size - 1) // y_block_size + 1))
+
+        self.y_pix = self.num_pkg.asarray(self.y_grid, dtype=self.num_pkg.float32)
+        self.x_pix = self.num_pkg.asarray(self.x_grid, dtype=self.num_pkg.float32)
+        self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
+
+        # System and transmit properties.
+        self.sos = self.num_pkg.float32(self.speed_of_sound)
+        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
+        self.fn = self.num_pkg.float32(ref_tx.excitation.center_frequency)
+        self.tx_foc = self.num_pkg.asarray(self.tx_foc).astype(np.float32)
+        self.tx_ang_zx = self.num_pkg.asarray(self.tx_ang_zx).astype(np.float32)
+        self.tx_ang_zy = self.num_pkg.asarray(self.tx_ang_zy).astype(np.float32)
+
+        # Probe description
+        # TODO specific for Vermon mat-3d probe.
+        probe_model = const_metadata.context.device.probe.model
+        pitch = probe_model.pitch
+        self.n_elements = 32
+        n_rows_x = self.n_elements
+        n_rows_y = self.n_elements + 3
+        # General regular position of elements
+        element_pos_x = np.linspace(-(n_rows_x - 1) / 2, (n_rows_x - 1) / 2, num=n_rows_x)
+        element_pos_x = element_pos_x * pitch
+
+        element_pos_y = np.linspace(-(n_rows_y - 1) / 2, (n_rows_y - 1) / 2, num=n_rows_y)
+        element_pos_y = element_pos_y * pitch
+        element_pos_y = np.delete(element_pos_y, (8, 17, 26))
+
+        element_pos_x = element_pos_x.astype(np.float32)
+        element_pos_y = element_pos_y.astype(np.float32)
+        # Put the data into GPU constant memory.
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < 256 * 2 * 4:  # 2 float32 arrays, 256 elements max
+            raise ValueError("There is not enough constant memory available!")
+        x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
+        self._x_elem_const = _get_const_memory_array(
+            self._kernel_module, name="xElemConst", input_array=x_elem)
+        y_elem = np.asarray(element_pos_y, dtype=self.num_pkg.float32)
+        self._y_elem_const = _get_const_memory_array(
+            self._kernel_module, name="yElemConst", input_array=y_elem)
+
+        def get_min_max_x_y(aperture):
+            cords = np.argwhere(aperture)
+            y, x = zip(*cords)
+            return np.min(x), np.max(x), np.min(y), np.max(y)
+
+        # TODO assumption, that probe has the same number elements in both dimensions
+        tx_apertures = (tx_rx.tx.aperture.reshape((self.n_elements, self.n_elements)) for tx_rx in seq.ops)
+        rx_apertures = (tx_rx.rx.aperture.reshape((self.n_elements, self.n_elements)) for tx_rx in seq.ops)
+        tx_bounds = self._get_aperture_boundaries(tx_apertures)
+        rx_bounds = self._get_aperture_boundaries(rx_apertures)
+        txap_min_x, txap_max_x, txap_min_y, txap_max_y = tx_bounds
+        rxap_min_x, rxap_max_x, rxap_min_y, rxap_max_y = rx_bounds
+        rxap_size_x = set((rxap_max_x - rxap_min_x).tolist())
+        rxap_size_y = set((rxap_max_y - rxap_min_y).tolist())
+        if len(rxap_size_x) > 1 or len(rxap_size_y) > 1:
+            raise ValueError("Each TX/RX aperture should have the same square aperture size.")
+        rxap_size_x = next(iter(rxap_size_x))
+        rxap_size_y = next(iter(rxap_size_y))
+        # The above can be also compared with the size of data, but right we are not doing it here
+
+        self.tx_ap_first_elem_x = self.num_pkg.asarray(txap_min_x, dtype=self.num_pkg.int32)
+        self.tx_ap_last_elem_x = self.num_pkg.asarray(txap_max_x, dtype=self.num_pkg.int32)
+        self.tx_ap_first_elem_y = self.num_pkg.asarray(txap_min_y, dtype=self.num_pkg.int32)
+        self.tx_ap_last_elem_y = self.num_pkg.asarray(txap_max_y, dtype=self.num_pkg.int32)
+        # RX AP
+        self.rx_ap_first_elem_x = self.num_pkg.asarray(rxap_min_x, dtype=self.num_pkg.int32)
+        self.rx_ap_first_elem_y = self.num_pkg.asarray(rxap_min_y, dtype=self.num_pkg.int32)
+
+        # Find the center of TX aperture.
+        # TODO note: this method assumes that all TX/RXs have a rectangle TX aperture
+        # 1. Find the position of the center.
+        tx_ap_center_x = (element_pos_x[txap_min_x] + element_pos_x[txap_max_x]) / 2
+        tx_ap_center_y = (element_pos_y[txap_min_y] + element_pos_y[txap_max_y]) / 2
+        # element index -> element position
+        ap_center_elem_x = np.interp(tx_ap_center_x, element_pos_x, np.arange(len(element_pos_x)))
+        ap_center_elem_y = np.interp(tx_ap_center_y, element_pos_y, np.arange(len(element_pos_y)))
+        # TODO Currently 'floor' NN, consider interpolating into
+        #  the center delay
+        ap_center_elem_x = np.floor(ap_center_elem_x).astype(np.int32)
+        ap_center_elem_y = np.floor(ap_center_elem_y).astype(np.int32)
+        self.tx_ap_cent_x = self.num_pkg.asarray(tx_ap_center_x).astype(np.float32)
+        self.tx_ap_cent_y = self.num_pkg.asarray(tx_ap_center_y).astype(np.float32)
+
+        # FIND THE TX_CENTER_DELAY
+        # Make sure, that for all TX/RXs:
+        # The center element is in the aperture
+        # All TX/RX have (almost) the same delay in the aperture's center
+        tx_center_delay = None
+        for i, tx_rx in enumerate(seq.ops):
+            tx = tx_rx.tx
+            tx_center_x = ap_center_elem_x[i]
+            tx_center_y = ap_center_elem_y[i]
+            aperture = tx.aperture.reshape((self.n_elements, self.n_elements))
+            delays = np.zeros(aperture.shape)
+            delays[:] = np.nan
+            delays[np.where(aperture)] = tx.delays.flatten()
+            if not aperture[tx_center_y, tx_center_x]:
+                # The aperture's center should transmit signal
+                raise ValueError("TX aperture center should be turned on.")
+            if tx_center_delay is None:
+                tx_center_delay = delays[tx_center_y, tx_center_x]
+            else:
+                # Make sure that the center' delays is the same position for all TX/RXs
+                current_center_delay = delays[tx_center_y, tx_center_x]
+                if not np.isclose(tx_center_delay, current_center_delay):
+                    raise ValueError(f"TX/RX {i}: center delay is not close "
+                                     f"to the center delay of other TX/RXs."
+                                     f"Assumed that the center element is:"
+                                     f"({tx_center_y, tx_center_x}). "
+                                     f"Center delays should be equalized "
+                                     f"for all TX/RXs. ")
+
+        # MIN/MAX TANG
+        if self.rx_tang_limits is not None:
+            self.min_tang, self.max_tang = self.rx_tang_limits
+        else:
+            # Default:
+            self.min_tang, self.max_tang = -0.5, 0.5
+        self.min_tang = self.num_pkg.float32(self.min_tang)
+        self.max_tang = self.num_pkg.float32(self.max_tang)
+        burst_factor = ref_tx.excitation.n_periods / (2 * self.fn)
+        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
+        self.initial_delay = self.num_pkg.float32(self.initial_delay)
+        self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
+        self.rx_apod = self.num_pkg.asarray(self.rx_apod)
+        self.n_rx_apod = self.num_pkg.int32(len(self.rx_apod))
+
+        return const_metadata.copy(input_shape=output_shape)
+
+    def process(self, data):
+        data = self.num_pkg.ascontiguousarray(data)
+        params = (
+            self.output_buffer, data,
+            self.n_seq, self.n_tx, self.n_rx_y, self.n_rx_x, self.n_samples,
+            self.z_pix, self.z_size,
+            self.x_pix, self.x_size,
+            self.y_pix, self.y_size,
+            self.sos, self.fs, self.fn,
+            self.tx_foc, self.tx_ang_zx, self.tx_ang_zy,
+            self.tx_ap_cent_x, self.tx_ap_cent_y,
+            self.tx_ap_first_elem_x, self.tx_ap_last_elem_x,
+            self.tx_ap_first_elem_y, self.tx_ap_last_elem_y,
+            self.min_tang, self.max_tang,
+            self.min_tang, self.max_tang,
+            self.initial_delay,
+            self.rx_apod, self.n_rx_apod,
+            self.rx_ap_first_elem_x, self.rx_ap_first_elem_y
+        )
+        self._kernel(self.grid_size, self.block_size, params)
+        return self.output_buffer
+
+
+class Equalize(Operation):
+    """
+    Equalize means values along a specific axis.
+    """
+
+    def __init__(self, axis=0, axis_offset=0, num_pkg=None):
+        self.axis = axis
+        self.axis_offset = axis_offset
+        self.xp = num_pkg
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        self.input_dtype = const_metadata.dtype
+        self.input_shape = const_metadata.input_shape
+        if self.axis >= len(self.input_shape):
+            raise ValueError(f"Equalize: axis out of bounds: {self.axis}, "
+                             f"for shape: {self.input_shape}.")
+        self.slice = [slice(None)] * len(self.input_shape)
+        self.slice[self.axis] = slice(self.axis_offset, None)
+        self.slice = tuple(self.slice)
+        return const_metadata.copy()
+
+    def process(self, data):
+        d = data[self.slice]
+        m = d.mean(axis=self.axis).astype(self.input_dtype)
+        m = self.xp.expand_dims(m, axis=self.axis)
+        return data - m
+
+
+class DelayAndSumLUT(Operation):
+    """
+    Delay and sum using look-up tables.
+
+    This operator requires GPU and cupy package installed.
+    TODO Note:: the below operator will not work correctly for:
+    - start_sample != 0,
+    - downsampling_factor != 1.
+    """
+
+    def __init__(self,
+                 tx_delays, tx_apodization,
+                 rx_apodization, rx_delays,
+                 output_type=None):
+        self.tx_delays = tx_delays
+        self.rx_delays = rx_delays
+        self.tx_apodization = tx_apodization
+        self.rx_apodization = rx_apodization
+        import cupy as cp
+        self.num_pkg = cp
+        self.output_type = output_type if output_type is not None else "hri"
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg is np:
+            raise ValueError("ReconstructLri operation is implemented for GPU only.")
+
+    def prepare(self, const_metadata):
+        import cupy as cp
+        current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+        _kernel_source = Path(os.path.join(current_dir, "das_lut.cu")).read_text()
+        self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
+
+        # INPUT PARAMETERS.
+        # Input data shape.
+        self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
+        self.n_tx, self.y_size, self.x_size, self.z_size = self.tx_delays.shape
+        self.n_rx, _, _, _ = self.rx_delays.shape
+
+        seq = const_metadata.context.sequence
+        raw_seq = const_metadata.context.raw_sequence
+        probe_model = const_metadata.context.device.probe.model
+
+        if self.output_type == "hri":
+            self._kernel = self._kernel_module.get_function("delayAndSumLutHri")
+            output_shape = (self.n_seq, self.y_size, self.x_size, self.z_size)
+        elif self.output_type == "lri":
+            self._kernel = self._kernel_module.get_function("delayAndSumLutLri")
+            output_shape = (self.n_seq, self.n_tx, self.y_size, self.x_size, self.z_size)
+        else:
+            raise ValueError(f"Unsupported output type: {self.output_type}")
+
+        downsampling_factor = raw_seq.ops[0].rx.downsampling_factor
+        start_sample = raw_seq.ops[0].rx.sample_range[0]
+
+        if downsampling_factor != 1:
+            raise ValueError("Currently only downsampling factor == 1 "
+                             f"is supported (got: {downsampling_factor})")
+        if start_sample != 0:
+            raise ValueError("Currently only start sample == 0 "
+                             f"is supported (got: {start_sample})")
+        acq_fs = (const_metadata.context.device.sampling_frequency / downsampling_factor)
+        self.output_buffer = self.num_pkg.zeros(output_shape, dtype=self.num_pkg.complex64)
+        y_block_size = min(self.y_size, 8)
+        x_block_size = min(self.x_size, 8)
+        z_block_size = min(self.z_size, 8)
+        self.block_size = (z_block_size, x_block_size, y_block_size)
+        self.grid_size = (int((self.z_size - 1) // z_block_size + 1),
+                          int((self.x_size - 1) // x_block_size + 1),
+                          int((self.y_size - 1) // y_block_size + 1))
+        self.tx_delays = self.num_pkg.asarray(self.tx_delays, dtype=self.num_pkg.float32)
+        self.rx_delays = self.num_pkg.asarray(self.rx_delays, dtype=self.num_pkg.float32)
+        self.tx_apodization = self.num_pkg.asarray(self.tx_apodization, dtype=self.num_pkg.uint8)
+        self.rx_apodization = self.num_pkg.asarray(self.rx_apodization, dtype=self.num_pkg.float32)
+        # System and transmit properties.
+        pulse = raw_seq.ops[0].tx.excitation
+        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
+        self.fn = self.num_pkg.float32(pulse.center_frequency)
+
+        self.n_elements = probe_model.n_elements
+        burst_factor = pulse.n_periods / (2 * self.fn)
+        self.initial_delay = -start_sample / 65e6 + burst_factor
+        self.initial_delay = self.num_pkg.float32(self.initial_delay)
+        return const_metadata.copy(input_shape=output_shape)
+
+    def process(self, data):
+        data = self.num_pkg.ascontiguousarray(data)
+        params = (
+            self.output_buffer,
+            data,
+            self.tx_delays, self.rx_delays,
+            self.tx_apodization, self.rx_apodization,
+            self.initial_delay,
+            self.n_tx, self.n_samples, self.n_rx,
+            self.y_size, self.x_size, self.z_size,
+            self.fs, self.fn)
+        self._kernel(self.grid_size, self.block_size, params)
+        return self.output_buffer

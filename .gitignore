@@ -78,7 +78,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+/build/
 develop-eggs/
 dist/
 downloads/
@@ -201,3 +201,14 @@ CMakeFiles
 
 # vs code
 .vscode
+.vs/VSWorkspaceState.json
+.vs/slnx.sqlite
+.vs/arrus/v15/ipch/AutoPCH/ccf2eed0538b8880/AFEDDCEXAMPLE.ipch
+.vs/arrus/v15/Browse.VC.db
+.vs/arrus/v15/.suo
+.vs/
+
+install
+
+# vim swap files
+*.swp

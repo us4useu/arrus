@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <iostream>
 
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 
@@ -13,24 +14,31 @@ class Us4RBufferElement {
 public:
     explicit Us4RBufferElement(std::vector<Us4OEMBufferElement> us4oemComponents)
     : us4oemComponents(std::move(us4oemComponents)) {
+        // Intentionally copying input shape.
+        std::vector<size_t> shapeInternal = this->us4oemComponents[0].getElementShape().getValues();
+        // It's always the last axis, regardless IQ vs RF data.
+        size_t channelAxis = shapeInternal.size()-1;
 
-        // Sum buffer us4oem component number of samples to determine buffer element shape.
-        unsigned nChannels = this->us4oemComponents[0].getElementShape().get(1);
+        auto nChannels = static_cast<unsigned>(shapeInternal[channelAxis]);
         unsigned nSamples = 0;
         framework::NdArray::DataType dataType = this->us4oemComponents[0].getDataType();
 
+        // Sum buffer us4oem component number of samples to determine buffer element shape.
         for(auto& component: this->us4oemComponents) {
             auto &componentShape = component.getElementShape();
             // Verify if we have the same number of channels for each component
-            if(nChannels != componentShape.get(1)) {
+            if(nChannels != componentShape.get(channelAxis)) {
                 throw IllegalArgumentException("Each Us4R buffer component should have the same number of channels.");
             }
             if(dataType != component.getDataType()) {
                 throw IllegalArgumentException("Each Us4R buffer element component should have the same data type.");
             }
-            nSamples += componentShape.get(0);
+            nSamples += static_cast<unsigned>(componentShape.get(0));
         }
-        elementShape = framework::NdArray::Shape{nSamples, nChannels};
+        shapeInternal[0] = nSamples;
+        // Possibly another dimension: 2 (DDC I/Q)
+        shapeInternal[channelAxis] = nChannels;
+        elementShape = framework::NdArray::Shape{shapeInternal};
         elementDataType = dataType;
     }
 

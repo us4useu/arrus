@@ -39,7 +39,7 @@ def main():
     # Here starts communication with the device.
     with arrus.Session() as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(20)
+        us4r.set_hv_voltage(5)
 
         n_elements = us4r.get_probe_model().n_elements
         # Full transmit aperture, full receive aperture.
@@ -52,8 +52,8 @@ def main():
                        # Custom delays 1.
                        delays=[0]*n_elements),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 2048),
-                       downsampling_factor=2),
+                       sample_range=(0, 4096),
+                       downsampling_factor=1),
                     pri=200e-6
                 ),
                 TxRx(
@@ -63,13 +63,13 @@ def main():
                        # Custom delays 2.
                        delays=np.linspace(0, 1e-6, n_elements)),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 2048),
-                       downsampling_factor=2),
+                       sample_range=(0, 4096),
+                       downsampling_factor=1),
                     pri=200e-6
                 ),
             ],
             # Turn off TGC.
-            tgc_curve=[14]*200,  # [dB]
+            tgc_curve=[24]*200,  # [dB]
             # Time between consecutive acquisitions, i.e. 1/frame rate.
             sri=50e-3
         )
@@ -81,9 +81,9 @@ def main():
             processing=Pipeline(
                 steps=(
                     RemapToLogicalOrder(),
+                    Squeeze(),
                     SelectFrames([0]),
                     Squeeze(),
-                    Lambda(lambda data: data-(data.mean(axis=0).astype(np.int16)))
                 ),
                 placement="/GPU:0"
             )
@@ -91,7 +91,7 @@ def main():
         # Upload the scheme on the us4r-lite device.
         buffer, metadata = sess.upload(scheme)
         # Created 2D image display.
-        display = Display2D(metadata=metadata, value_range=(-1000, 1000))
+        display = Display2D(metadata=metadata, value_range=(-100, 100))
         # Start the scheme.
         sess.start_scheme()
         # Start the 2D display.

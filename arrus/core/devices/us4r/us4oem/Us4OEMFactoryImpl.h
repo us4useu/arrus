@@ -14,7 +14,8 @@ class Us4OEMFactoryImpl : public Us4OEMFactory {
 public:
     Us4OEMFactoryImpl() = default;
 
-    Us4OEMImplBase::Handle getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem, const Us4OEMSettings &cfg) override {
+    Us4OEMImplBase::Handle getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem, const Us4OEMSettings &cfg,
+                                     bool isExternalTrigger) override {
         // Validate settings.
         Us4OEMSettingsValidator validator(ordinal);
         validator.validate(cfg);
@@ -64,11 +65,11 @@ public:
         // Other parameters
         // TGC
         // TODO replace the below calls with calls to the Us4OEM methods, i.e. remove the below code duplicate
-
         return std::make_unique<Us4OEMImpl>(DeviceId(DeviceType::Us4OEM, ordinal),
                                             std::move(ius4oem), cfg.getActiveChannelGroups(),
                                             channelMapping, cfg.getRxSettings(),
-                                            cfg.getChannelsMask(), cfg.getReprogrammingMode());
+                                            cfg.getChannelsMask(), cfg.getReprogrammingMode(),
+                                            isExternalTrigger);
     }
 
 private:

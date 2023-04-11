@@ -27,7 +27,7 @@ public:
     };
 
     /** Array shape. */
-    typedef Tuple<unsigned int> Shape;
+    typedef Tuple<size_t> Shape;
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
         ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement) {}
@@ -44,6 +44,18 @@ public:
     }
 
     /**
+    * Returns a pointer to data.
+    *
+    * @tparam T data type
+    * @return a pointer to data
+    */
+    template<typename T>
+    const T *get() const {
+        return (T *) ptr;
+    }
+
+
+    /**
      * Returns a pointer to the memory data (assuming the data type is int16).
      * @return
      */
@@ -56,6 +68,10 @@ public:
      */
     const Shape &getShape() const {
         return shape;
+    }
+
+    size_t getNumberOfElements() const {
+        return shape.product();
     }
 
     /**

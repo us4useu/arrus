@@ -1,10 +1,11 @@
 [requires]
-boost/1.70.0#4fc6b458f2dbbe748a3f7ca8742b997e
+boost/1.70.0
 protobuf/3.11.4
 gtest/1.10.0
 fmt/7.0.1
 ms-gsl/2.1.0
 eigen/3.3.7
+zlib/1.2.12
 
 
 [options]

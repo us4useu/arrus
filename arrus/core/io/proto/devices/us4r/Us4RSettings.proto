@@ -41,8 +41,9 @@ message Us4RSettings {
   oneof optional_nus4ems {
     uint32 nus4oems = 12;
   }
-  repeated uint32 adapterToUs4RModuleNr = 13;
+  repeated uint32 adapter_to_us4r_module_nr = 13;
+  bool external_trigger = 14;
   oneof optional_tx_frequency_range {
-    uint32 tx_frequency_range = 14;
+    uint32 tx_frequency_range = 15;
   }
 }

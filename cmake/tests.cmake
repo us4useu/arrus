@@ -22,8 +22,7 @@ function(create_core_test test_src)
 
     add_executable(${target_name}
         ${test_src}
-        ../common/logging/impl/Logging.cpp
-        ../common/logging/impl/LogSeverity.cpp
+        common/LogSeverity.cpp
         ${other_srcs}
     )
     target_link_libraries(${target_name}
@@ -48,6 +47,26 @@ function(create_core_test test_src)
         ${compile_definitions})
     add_test(NAME ${test_src} COMMAND ${target_name})
 
-    prepend_env_path(ARRUS_TESTS_ENV_PATH ${Us4_LIB_DIR})
-    set_tests_properties(${test_src} PROPERTIES ENVIRONMENT "PATH=${ARRUS_TESTS_ENV_PATH}")
+    # Prepend PATH and LD_LIBRARY_PATH with dependencies.
+    if(WIN32)
+        target_compile_options(
+                ${target_name} PRIVATE
+                ${ARRUS_CPP_COMMON_COMPILE_OPTIONS}
+                # Increase generated obj max limit size, to potentially avoid MSVC error C1128.
+                # (currently we use boost log headers heavily in tests).
+                $<$<CONFIG:Debug>:
+                    /bigobj
+                >
+        )
+        set_tests_properties(${test_src}
+            PROPERTIES ENVIRONMENT
+            "PATH=${Boost_LIB_DIRS}\;${Us4_LIB_DIR}\;$ENV{PATH}"
+        )
+    elseif(UNIX)
+        set_tests_properties(${test_src}
+            PROPERTIES ENVIRONMENT
+            "LD_LIBRARY_PATH=${Boost_LIB_DIRS}:${Us4_LIB_DIR}:$ENV{LD_LIBRARY_PATH}"
+            )
+    endif()
+
 endfunction()

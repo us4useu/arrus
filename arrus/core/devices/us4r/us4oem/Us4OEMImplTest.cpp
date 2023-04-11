@@ -6,7 +6,7 @@
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/us4r/tests/MockIUs4OEM.h"
-#include "arrus/common/logging/impl/Logging.h"
+#include "arrus/core/common/logging.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 
@@ -70,7 +70,8 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false
         );
     }
 
@@ -354,7 +355,8 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false
         );
     }
 
@@ -426,7 +428,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::SAMPLE_DELAY + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::TX_SAMPLE_DELAY_RAW_DATA + sampleRange.start(), _, _, _));
     // ScheduleReceive: starting sample
     SET_TX_RX_SEQUENCE(us4oem, seq);
 }
@@ -446,7 +448,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::SAMPLE_DELAY + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::TX_SAMPLE_DELAY_RAW_DATA + sampleRange.start(), _, _, _));
     // ScheduleReceive: starting sample
     SET_TX_RX_SEQUENCE(us4oem, seq);
 }
@@ -694,7 +696,8 @@ protected:
             // NOTE: due to the below move this function can be called only once
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings, channelsMask,
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false);
 
     }
 
@@ -976,7 +979,8 @@ protected:
                 std::move(ius4oem), activeChannelGroups,
                 channelMapping, rxSettings,
                 std::unordered_set<uint8>({}),
-                reprogrammingMode
+                reprogrammingMode,
+                false
         );
 
     }

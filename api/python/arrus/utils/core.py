@@ -95,19 +95,29 @@ def convert_fcm_to_np_arrays(fcm, n_us4oems):
     return fcm_us4oem, fcm_frame, fcm_channel, frame_offsets, n_frames
 
 
-
 def convert_to_py_probe_model(core_model):
     n_elements = arrus.core.getNumberOfElements(core_model)
     pitch = arrus.core.getPitch(core_model)
     curvature_radius = core_model.getCurvatureRadius()
     model_id = core_model.getModelId()
+    core_fr = core_model.getTxFrequencyRange()
+    tx_frequency_range = (core_fr.start(), core_fr.end())
     return arrus.devices.probe.ProbeModel(
         model_id=arrus.devices.probe.ProbeModelId(
             manufacturer=model_id.getManufacturer(),
             name=model_id.getName()),
         n_elements=n_elements,
         pitch=pitch,
-        curvature_radius=curvature_radius)
+        curvature_radius=curvature_radius,
+        tx_frequency_range=tx_frequency_range
+    )
+
+
+def convert_array_to_vector_float(array):
+    result = arrus.core.VectorFloat()
+    for v in array:
+        arrus.core.VectorFloatPushBack(result, float(v))
+    return result
 
 
 def convert_to_core_scheme(scheme):
@@ -130,9 +140,18 @@ def convert_to_core_scheme(scheme):
         "HOST": arrus.core.Scheme.WorkMode_HOST,
         "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
     }[scheme.work_mode]
-
-    return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                             workMode=core_work_mode)
+    ddc = scheme.digital_down_conversion
+    if scheme.digital_down_conversion is not None:
+        ddc = arrus.core.DigitalDownConversion(
+            ddc.demodulation_frequency,
+            convert_array_to_vector_float(ddc.fir_coefficients),
+            ddc.decimation_factor
+        )
+        return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
+                                 core_work_mode, ddc)
+    else:
+        return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
+                                 core_work_mode)
 
 
 def convert_to_test_pattern(test_pattern_str):

@@ -60,7 +60,8 @@ private:
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                                  uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync) {
+                                  uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync,
+                                  const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(::arrus::format("{} tx rx sequence", getDeviceId().toString()), numberOfChannels);
     validator.validate(seq);
@@ -199,7 +200,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
         auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
-                                                          batchSize, sri, triggerSync);
+                                                          batchSize, sri, triggerSync, ddc);
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
         currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
         numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames()*batchSize;
@@ -244,9 +245,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                     int8 dstFrameChannel = -1;
                     if(!FrameChannelMapping::isChannelUnavailable(dstChannel)) {
                         auto res = fcMappings[dstModule]->getLogical(dstOp, dstChannel);
-                        us4oem = std::get<0>(res);
-                        dstFrame = std::get<1>(res);
-                        dstFrameChannel = std::get<2>(res);
+                        us4oem = arrus::devices::get<0>(res);
+                        dstFrame = arrus::devices::get<1>(res);
+                        dstFrameChannel = arrus::devices::get<2>(res);
                     }
                     outFcBuilder.setChannelMapping(frameIdx, activeRxChIdx + op.getRxPadding()[0],
                                                    us4oem, dstFrame, dstFrameChannel);
@@ -268,6 +269,8 @@ Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() {
 void ProbeAdapterImpl::start() {
 //  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
+        us4oem->getIUs4oem()->DisableWaitOnReceiveOverflow();
+        us4oem->getIUs4oem()->DisableWaitOnTransferOverflow();
         us4oem->enableSequencer();
     }
     this->us4oems[0]->startTrigger();
@@ -312,13 +315,17 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     if (elementSize == 0) {
         return;
     }
-    transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, &bufferSrc, us4oem);
+    if(transferRegistrar[us4oemOrdinal]) {
+        transferRegistrar[us4oemOrdinal].reset();
+    }
+    transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, bufferSrc, us4oem);
     transferRegistrar[us4oemOrdinal]->registerTransfers();
 
     // Register buffer element release functions.
     bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
+
     for(size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getFiring();
@@ -347,9 +354,13 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     // Overflow handling
     ius4oem->RegisterReceiveOverflowCallback([this, bufferDst]() {
         try {
-            this->logger->log(LogSeverity::ERROR, "Rx overflow, stopping the device.");
-            this->getMasterUs4oem()->stop();
-            bufferDst->markAsInvalid();
+            if(bufferDst->isStopOnOverflow()) {
+                this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
+                this->getMasterUs4oem()->stop();
+                bufferDst->markAsInvalid();
+            } else {
+                this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+            }
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
         } catch (...) {
@@ -359,9 +370,14 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
 
     ius4oem->RegisterTransferOverflowCallback([this, bufferDst]() {
         try {
-            this->logger->log(LogSeverity::ERROR, "Host overflow, stopping the device.");
-            this->getMasterUs4oem()->stop();
-            bufferDst->markAsInvalid();
+            if(bufferDst->isStopOnOverflow()) {
+                this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
+                this->getMasterUs4oem()->stop();
+                bufferDst->markAsInvalid();
+            }
+            else {
+                this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
+            }
         } catch (const std::exception &e) {
             logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
         } catch (...) {

@@ -69,6 +69,10 @@ Custom Tx/Rx sequences
     :project: arrus
     :members:
 
+.. doxygenclass:: arrus::ops::us4r::DigitalDownConversion
+    :project: arrus
+    :members:
+
 .. doxygentypedef:: arrus::ops::us4r::TGCCurve
 
 Devices
@@ -76,7 +80,7 @@ Devices
 
 .. doxygenclass:: arrus::devices::Us4R
     :project: arrus
-    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings
+    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision
 
 .. doxygenclass:: arrus::devices::RxSettings
     :members:

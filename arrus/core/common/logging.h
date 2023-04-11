@@ -25,13 +25,12 @@ Logger::SharedHandle getDefaultLogger();
 #define ARRUS_LOG_DEFAULT(severity, msg) \
     getDefaultLogger()->log(severity, msg)
 
-#define DEFAULT_TEST_LOG_LEVEL arrus::LogSeverity::DEBUG
+#define DEFAULT_TEST_LOG_LEVEL arrus::LogSeverity::TRACE
 
 #define ARRUS_INIT_TEST_LOG_LEVEL(ComponentType, level) \
 do{                       \
-    auto loggingMechanism = std::make_shared<ComponentType>(); \
+    auto loggingMechanism = ::arrus::useDefaultLoggerFactory(); \
     loggingMechanism->addClog(level); \
-    arrus::setLoggerFactory(loggingMechanism); \
 } while(0)
 }
 

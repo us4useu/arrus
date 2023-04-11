@@ -329,8 +329,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
     if(us4r.optional_tx_frequency_range_case() != proto::Us4RSettings::OPTIONAL_TX_FREQUENCY_RANGE_NOT_SET) {
         txFrequencyRange = static_cast<int>(us4r.tx_frequency_range());
     }
-    if(!us4r.adaptertous4rmodulenr().empty()) {
-        auto &adapter2Us4RModule = us4r.adaptertous4rmodulenr();
+    if(!us4r.adapter_to_us4r_module_nr().empty()) {
+        auto &adapter2Us4RModule = us4r.adapter_to_us4r_module_nr();
         for(auto &nr: adapter2Us4RModule) {
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
@@ -396,11 +396,11 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
         }
         auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
 
-        return Us4RSettings{
-            adapterSettings, probeSettings, rxSettings,
-            hvSettings, channelsMask, us4oemChannelsMask,
-            reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr,
-            txFrequencyRange};
+        return {adapterSettings, probeSettings, rxSettings,
+                hvSettings, channelsMask, us4oemChannelsMask,
+                reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr, us4r.external_trigger(),
+                txFrequencyRange
+        };
     }
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

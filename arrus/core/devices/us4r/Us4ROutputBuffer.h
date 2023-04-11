@@ -48,6 +48,16 @@ public:
         return data.get<int16>();
     }
 
+    /**
+     * This method allows to read element's address regardless of it's state.
+     * This method can be used e.g. in a clean-up procedures, that may
+     * be called even after some buffer overflow.
+     * @return
+     */
+    int16 *getAddressUnsafe() {
+        return data.get<int16>();
+    }
+
     framework::NdArray &getData() override {
         validateState();
         return data;
@@ -144,7 +154,8 @@ public:
     Us4ROutputBuffer(const std::vector<size_t> &us4oemOutputSizes,
                      const framework::NdArray::Shape &elementShape,
                      const framework::NdArray::DataType elementDataType,
-                     const unsigned nElements)
+                     const unsigned nElements,
+                     bool stopOnOverflow)
         : elementSize(0) {
         ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
                             "Currently Us4R data buffer supports up to 16 us4oem modules.");
@@ -178,10 +189,11 @@ public:
                     elementAddress, elementSize, elementShape, elementDataType, filledAccumulator, i));
         }
         this->initialize();
+        this->stopOnOverflow = stopOnOverflow;
     }
 
     ~Us4ROutputBuffer() override {
-        ::operator delete(dataBuffer, std::align_val_t(DATA_ALIGNMENT));
+        ::operator delete[](dataBuffer, std::align_val_t(DATA_ALIGNMENT));
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
@@ -211,6 +223,10 @@ public:
 
     uint8 *getAddress(uint16 elementNumber, Ordinal us4oem) {
         return reinterpret_cast<uint8 *>(this->elements[elementNumber]->getAddress()) + us4oemOffsets[us4oem];
+    }
+
+    uint8 *getAddressUnsafe(uint16 elementNumber, Ordinal us4oem) {
+        return reinterpret_cast<uint8 *>(this->elements[elementNumber]->getAddressUnsafe()) + us4oemOffsets[us4oem];
     }
 
     /**
@@ -286,6 +302,10 @@ public:
         this->elements[element]->registerReleaseFunction(releaseFunction);
     }
 
+    bool isStopOnOverflow() {
+        return this->stopOnOverflow;
+    }
+
 
 private:
     std::mutex mutex;
@@ -307,6 +327,7 @@ private:
         RUNNING, SHUTDOWN, INVALID
     };
     State state{State::RUNNING};
+    bool stopOnOverflow{true};
 
     /**
      * Throws IllegalStateException when the buffer is in invalid state.

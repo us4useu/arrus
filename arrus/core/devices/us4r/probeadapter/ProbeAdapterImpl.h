@@ -12,6 +12,7 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 #include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
+#include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 
 namespace arrus::devices {
 
@@ -34,7 +35,8 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize=2,
                     uint16 rxBatchSize=1, std::optional<float> sri=std::nullopt,
-                    bool triggerSync = false) override;
+                    bool triggerSync = false,
+                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 

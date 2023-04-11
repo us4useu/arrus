@@ -21,10 +21,7 @@ swig_add_library(py_core
         OUTPUT_DIR arrus
         OUTFILE_DIR wrappers
         SOURCES
-        wrappers/core.i
-        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/Logging.cpp
-        ${ARRUS_ROOT_DIR}/arrus/common/logging/impl/LogSeverity.cpp
-        )
+        wrappers/core.i)
 
 if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     set_target_properties(py_core
@@ -88,7 +85,8 @@ set(SOURCE_FILES
         arrus/devices/device.py
         arrus/kernels/__init__.py
         arrus/kernels/kernel.py
-        arrus/kernels/imaging.py
+        arrus/kernels/simple_tx_rx_sequence.py
+        arrus/kernels/tx_rx_sequence.py
         arrus/kernels/tgc.py
         arrus/utils/__init__.py
         arrus/utils/imaging.py
@@ -98,10 +96,11 @@ set(SOURCE_FILES
         arrus/utils/interpolate.py
         arrus/utils/core.py
         arrus/utils/gui.py
+        arrus/utils/probe_check.py
         )
 
 set(TEST_FILES
-#    arrus/kernels/tests/imaging_test.py
+#    arrus/kernels/tests/simple_tx_rx_sequence_test.py
 )
 
 if(ARRUS_CUDA)
@@ -205,16 +204,17 @@ install(
 )
 
 install(
-        FILES
+    FILES
         examples/plane_wave_imaging.py
         examples/classical_beamforming.py
         examples/diverging_beams.py
         examples/custom_tx_rx_sequence.py
         examples/custom_callback.py
-	examples/phased_array_scanning.py
+	    examples/phased_array_scanning.py
+        examples/check_probe.py
         examples/requirements.txt
-    examples/requirements.txt
-        DESTINATION
+        examples/requirements.txt
+    DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
 ################################################################################

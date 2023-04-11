@@ -759,6 +759,71 @@ probe_adapter_models: [
                 ]
             }
         ]
+    },
+    {
+        id: {
+            manufacturer: "us4us"
+            name: "dlp408r"
+        }
+        n_channels: 256
+        channel_mapping_regions: [
+            {
+                us4oem: 0
+                channels: [31, 30, 29, 28, 27, 26, 25, 24,
+                           23, 22, 21, 20, 19, 18, 17, 16,
+                           15, 14, 13, 12, 11, 10,  9,  8,
+                            7,  6,  5,  4,  3,  2,  1,  0]
+            },
+            {
+                us4oem: 1
+                region: {
+                    begin: 0,
+                    end: 31
+                }
+            },
+            {
+                us4oem: 0
+                channels: [63, 62, 61, 60, 59, 58, 57, 56,
+                           55, 54, 53, 52, 51, 50, 49, 48,
+                           47, 46, 45, 44, 43, 42, 41, 40,
+                           39, 38, 37, 36, 35, 34, 33, 32]
+            },
+            {
+                us4oem: 1
+                region: {
+                    begin: 32,
+                    end: 63
+                }
+            },
+            {
+                us4oem: 0
+                channels: [95, 94, 93, 92, 91, 90, 89, 88,
+                           87, 86, 85, 84, 83, 82, 81, 80,
+                           79, 78, 77, 76, 75, 74, 73, 72,
+                           71, 70, 69, 68, 67, 66, 65, 64]
+            },
+            {
+                us4oem: 1
+                region: {
+                    begin: 64,
+                    end: 95
+                }
+            },
+            {
+                us4oem: 0
+                channels: [127, 126, 125, 124, 123, 122, 121, 120,
+                           119, 118, 117, 116, 115, 114, 113, 112,
+                           111, 110, 109, 108, 107, 106, 105, 104,
+                           103, 102, 101, 100,  99,  98,  97,  96]
+            },
+            {
+                us4oem: 1
+                region: {
+                    begin: 96,
+                    end: 127
+                }
+            }
+        ]
     }
 ]
 probe_models: [
@@ -803,7 +868,7 @@ probe_models: [
         pitch: 0.245e-3,
         tx_frequency_range: {
             begin: 1e6,
-            end: 10e6
+            end: 12e6
         },
         voltage_range: {
 			begin: 0,
@@ -871,18 +936,97 @@ probe_models: [
             end: 10e6
         },
         voltage_range: {
-			begin: 0,
-			end: 75
-		}
+	    begin: 0,
+	    end: 90
+	}
     },
-    
     {
         id: {
             manufacturer: "olympus"
-            name: "5L128"
+            name: "10l128"
         }
         n_elements: 128,
+        pitch: 0.5e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 20e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "5l128"
+        }
+        n_elements: 128,
+        pitch: 0.5e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "5l64"
+        }
+        n_elements: 64,
         pitch: 0.6e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "10l32"
+        }
+        n_elements: 32,
+        pitch: 0.31e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 20e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "5l32"
+        }
+        n_elements: 32,
+        pitch: 0.6e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+			begin: 0,
+			end: 115
+		}
+    },
+    {
+        id: {
+            manufacturer: "olympus"
+            name: "225l32"
+        }
+        n_elements: 32,
+        pitch: 1.0e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
@@ -914,14 +1058,14 @@ probe_models: [
             name: "mat-3d"
         }
         n_elements: 1024,
-        pitch: 0.1e-3,
+        pitch: 0.3e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
         },
         voltage_range: {
     	    begin: 0,
-    		end: 10
+    	    end: 20
     	}
     },
     {
@@ -937,8 +1081,25 @@ probe_models: [
         },
         voltage_range: {
 	    begin: 0,
-	    end: 75
+	    end: 90
 	}
+    },
+    {
+        id: {
+            manufacturer: "atl/philips"
+            name: "c4-2"
+        }
+        n_elements: 128,
+        pitch: 0.421e-3,
+        curvature_radius: 41.219e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+    	    begin: 0,
+    		end: 90
+    	}
     }
 ]
 
@@ -1164,9 +1325,13 @@ probe_to_adapter_connections: [
     {
         probe_model_id: {
             manufacturer: "olympus"
-            name: "5L128"
+            name: "10l128"
         }
         probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
             {
                 manufacturer: "us4us"
                 name: "esaote3"
@@ -1175,6 +1340,106 @@ probe_to_adapter_connections: [
         channel_mapping_ranges: {
             begin: 0
             end: 127
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "5l128"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 127
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "5l64"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 63
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "10l32"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 31
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "5l32"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 31
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "olympus"
+            name: "225l32"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "esaote2"
+            },
+            {
+                manufacturer: "us4us"
+                name: "esaote3"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 31
         }
     },
     {
@@ -1232,6 +1497,21 @@ probe_to_adapter_connections: [
             begin: 0
             end: 127
         }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "atl/philips"
+            name: "c4-2"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "atl/philips"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 127
+        }
     }
-   
 ]

@@ -1,4 +1,4 @@
-% Digital Down Converter - quadrature demodulation, decimation & CIC filtration
+% Digital Down Converter - quadrature demodulation, filtration & decimation
 function[rfOut] = downConversion(rfIn,acq,proc)
 % Outputs:
 % 
@@ -14,36 +14,17 @@ function[rfOut] = downConversion(rfIn,acq,proc)
 % acq.txFreq                - [Hz] carrier (nominal) frequency
 % 
 % proc                      - processing-related parameters
-% proc.iqEnable             - [logical] enables the quadrature demodulation
-% proc.cicOrd               - [] order of the CIC filter
+% proc.ddcFirCoeff          - [] FIR filter coefficients (full set)
 % proc.dec                  - [] decimation factor
 
 %% Quadrature demodulation
-if proc.iqEnable
-    nSample = size(rfIn,1);
-    t = (0:nSample-1)'/acq.rxSampFreq;
-    
-    rfOut = 2*rfIn.*cos(-2*pi*acq.txFreq*t) ...
-          + 2*rfIn.*sin(-2*pi*acq.txFreq*t)*1i;
-else
-    rfOut = rfIn;
-end
+nSample = size(rfIn,1);
+t = (0:nSample-1)'/acq.rxSampFreq;
 
-%% Downsampling (CIC filtration + decimation)
-% Integrator
-for ord=1:proc.cicOrd
-    rfOut = cumsum(rfOut);
-end
+rfOut = 2*rfIn.*exp(-2i*pi*reshape(acq.txFreq,1,1,[]).*t);
 
-% Decimator
-rfOut = rfOut(proc.dec:proc.dec:end,:,:);
-
-% Comb
-for ord=1:proc.cicOrd
-    rfOut = [rfOut(1,:,:); diff(rfOut)];
-end
-
-% Keep dynamic scale unaffected
-rfOut = rfOut / (proc.dec.^proc.cicOrd);
+%% Downsampling (filtration + decimation)
+rfOut = convn(rfOut,proc.ddcFirCoeff(:),'same');
+rfOut = rfOut(proc.dec:proc.dec:end,:,:,:);
 
 end

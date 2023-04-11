@@ -5,9 +5,29 @@
 %include std_unordered_set.i
 %include std_vector.i
 %include std_pair.i
-%include std_optional.i
+
+%inline %{
+/**
+ * A class that keeps "unlocked" GIL state in the RAII style.
+ * That is, you will release the GIL when this object is created,
+ * and obtain the GIL again when the object is deleted.
+*/
+class ArrusPythonGILUnlock {
+public:
+    ArrusPythonGILUnlock()
+        :state(PyEval_SaveThread()) {}
+
+    ~ArrusPythonGILUnlock() {
+        PyEval_RestoreThread(state);
+    }
+private:
+    PyThreadState* state;
+};
+%}
 
 %{
+#include <string>
+#include <optional>
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
@@ -51,6 +71,37 @@ namespace std {
     }
 }
 
+
+// std typemaps
+// std::optional
+%typemap(in) std::optional<arrus::uint16> %{
+    if($input == Py_None) {
+        $1 = std::optional<arrus::uint16>();
+    }
+    else {
+        long value = PyLong_AsLong($input);
+        // TODO(refactor) extract safe cast macro
+        if(value > std::numeric_limits<arrus::uint16>::max() || value < std::numeric_limits<arrus::uint16>::min()) {
+            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
+                + std::to_string(std::numeric_limits<arrus::uint16>::min())
+                + ", " + std::to_string(std::numeric_limits<arrus::uint16>::max()) + "]";
+            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
+            return NULL;
+        }
+        $1 = std::optional<arrus::uint16>(value);
+    }
+%}
+%typemap(out) boost::optional<arrus::uint16> %{
+    if($1) {
+        $result = PyLong_FromLong(*$1);
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
+
+
 %module(directors="1") core
 
 %{
@@ -59,10 +110,10 @@ namespace std {
 #include <iostream>
 
 #include "arrus/core/api/common/types.h"
-#include "arrus/common/logging/impl/Logging.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/common/logging.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 
@@ -77,6 +128,8 @@ using namespace ::arrus;
 %nodefaultctor;
 
 // TO let know swig about any DLL export macros.
+#define __attribute__(x)
+
 %include "arrus/core/api/common/macros.h"
 %include "arrus/core/api/common/types.h"
 
@@ -87,20 +140,19 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Logger.h"
 
 %inline %{
-    std::shared_ptr<::arrus::Logging> LOGGING_FACTORY;
+    ::arrus::Logging* LOGGING_FACTORY;
 
     // TODO consider moving the below function to %init
     void initLoggingMechanism(const ::arrus::LogSeverity level) {
-        LOGGING_FACTORY = std::make_shared<::arrus::Logging>();
+        LOGGING_FACTORY = ::arrus::useDefaultLoggerFactory();
         LOGGING_FACTORY->addClog(level);
-        ::arrus::setLoggerFactory(LOGGING_FACTORY);
     }
 
     void addLogFile(const std::string &filepath, const ::arrus::LogSeverity level) {
         std::shared_ptr<std::ostream> logFileStream =
             // append to the end of the file
             std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
-        LOGGING_FACTORY->addTextSink(logFileStream, level);
+        LOGGING_FACTORY->addOutputStream(logFileStream, level);
     }
 
     void setClogLevel(const ::arrus::LogSeverity level) {
@@ -121,6 +173,8 @@ using namespace ::arrus;
 
 %include "arrus/core/api/common/Tuple.h"
 %include "arrus/core/api/common/Interval.h"
+%include "arrus/core/api/common/Span.h"
+%include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 
 %feature("valuewrapper", "0");
 
@@ -148,6 +202,8 @@ using namespace arrus::devices;
 
 namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
+    %template(TupleSizeT) Tuple<size_t>;
+    %template(IntervalFloat) Interval<float>;
 };
 
 %include "arrus/core/api/framework/NdArray.h"
@@ -157,6 +213,7 @@ namespace arrus {
 %include "arrus/core/api/framework/DataBuffer.h"
 
 %feature("director") OnNewDataCallbackWrapper;
+%feature("director") OnBufferOverflowCallbackWrapper;
 
 %inline %{
 class OnNewDataCallbackWrapper {
@@ -181,6 +238,29 @@ void registerOnNewDataCallbackFifoLockFreeBuffer(const std::shared_ptr<arrus::fr
             PyGILState_Release(gstate);
     };
     fifolockfreeBuffer->registerOnNewDataCallback(actualCallback);
+}
+
+class OnBufferOverflowCallbackWrapper {
+public:
+    OnBufferOverflowCallbackWrapper() {}
+    virtual void run() const {}
+    virtual ~OnBufferOverflowCallbackWrapper() {}
+};
+
+void registerOnBufferOverflowCallback(const std::shared_ptr<arrus::framework::Buffer> &buffer, OnBufferOverflowCallbackWrapper& callback) {
+    auto fifolockfreeBuffer = std::static_pointer_cast<DataBuffer>(buffer);
+    ::arrus::framework::OnOverflowCallback actualCallback = [&]() {
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        try {
+            callback.run();
+        } catch(const std::exception &e) {
+            std::cerr << "Exception: " << e.what() << std::endl;
+        } catch(...) {
+            std::cerr << "Unhandled exception" << std::endl;
+        }
+        PyGILState_Release(gstate);
+    };
+    fifolockfreeBuffer->registerOnOverflowCallback(actualCallback);
 }
 %};
 
@@ -218,6 +298,21 @@ std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::sessi
     auto buffer = std::static_pointer_cast<DataBuffer>(uploadResult->getBuffer());
     return buffer;
 }
+
+// GIL-free methods.
+// TODO consider using -threads parameter, or finding a SWIG feature that allows to turn off GIL
+// for a particular method (%thread arrus::session::Session::stopScheme() seems to not work).
+void arrusSessionStartScheme(std::shared_ptr<arrus::session::Session> session) {
+    ArrusPythonGILUnlock unlock;
+    session->startScheme();
+}
+
+void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
+    ArrusPythonGILUnlock unlock;
+    session->stopScheme();
+}
+
+
 %};
 // ------------------------------------------ DEVICES
 // Us4R
@@ -225,6 +320,7 @@ std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::sessi
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
@@ -244,8 +340,6 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/probe/Probe.h"
 
 
-
-
 %inline %{
 arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     auto ptr = dynamic_cast<Us4R*>(device);
@@ -254,7 +348,7 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     }
     return ptr;
 }
-// TODO(pjarosik) remote the bellow functions when possible
+// TODO(pjarosik) remove the bellow functions when possible
 
 unsigned short getNumberOfElements(const arrus::devices::ProbeModel &probe) {
     const auto &nElements = probe.getNumberOfElements();
@@ -271,13 +365,26 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
     }
     return pitch[0];
 }
+// GIL free methods
+
+float arrusUs4OEMGetFPGATemperature(::arrus::devices::Us4OEM *us4oem) {
+    ArrusPythonGILUnlock unlock;
+    return us4oem->getFPGATemperature();
+}
+
+float arrusUs4OEMGetUCDTemperature(::arrus::devices::Us4OEM *us4oem) {
+    ArrusPythonGILUnlock unlock;
+    return us4oem->getUCDTemperature();
+}
+
+float arrusUs4OEMGetUCDExternalTemperature(::arrus::devices::Us4OEM *us4oem) {
+    ArrusPythonGILUnlock unlock;
+    return us4oem->getUCDExternalTemperature();
+}
+
 %};
 
-
-
 // ------------------------------------------ OPERATIONS
-
-
 // Us4R
 %feature("valuewrapper");
 %{
@@ -287,6 +394,7 @@ double getPitch(const arrus::devices::ProbeModel &probe) {
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 #include <vector>
 using namespace arrus::ops::us4r;
 %};
@@ -299,6 +407,7 @@ using namespace arrus::ops::us4r;
 %include "arrus/core/api/ops/us4r/Tx.h"
 %include "arrus/core/api/ops/us4r/TxRxSequence.h"
 %include "arrus/core/api/ops/us4r/Scheme.h"
+%include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 
 
 %include "std_vector.i"
@@ -310,9 +419,12 @@ namespace std {
 
 %inline %{
 
-void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs,
-                        arrus::ops::us4r::TxRx &txrx) {
+void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs, arrus::ops::us4r::TxRx &txrx) {
     txrxs.push_back(txrx);
+}
+
+void VectorFloatPushBack(std::vector<float> &vector, double value) {
+    vector.push_back(float(value));
 }
 
 %};

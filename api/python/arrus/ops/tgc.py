@@ -11,3 +11,4 @@ class LinearTgc:
     """
     start: float
     slope: float
+    clip: bool = True

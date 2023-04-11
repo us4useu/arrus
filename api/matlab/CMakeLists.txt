@@ -8,36 +8,31 @@ add_subdirectory(wrappers)
 ################################################################################
 set(SOURCE_FILES
     arrus/BModeDisplay.m
+    arrus/CustomTxRxSequence.m
     arrus/dopplerColorImaging.m
     arrus/downConversion.m
     arrus/DuplexDisplay.m
-    arrus/LINSequence.m
     arrus/mustBeDivisible.m
-    arrus/Operation.m
-    arrus/probeParams.m
-    arrus/PWISequence.m
-    arrus/reconstructBModeImageLIN.m
     arrus/Reconstruction.m
     arrus/reconstructRfImg.m
     arrus/reconstructRfLin.m
     arrus/scanConversion.m
-    arrus/SimpleTxRxSequence.m
-    arrus/STASequence.m
     arrus/Us4R.m
-    arrus/Us4RSystem.m
+    arrus/wedgeParams.m
 
-    examples/Us4R_control.m
-    examples/Us4R_duplex.m
-    examples/Us4R_maxSequence.m
-    examples/Us4R_Olympus_control.m
-    examples/Us4R_Vermon_control.m
-    examples/Us4R_ATL_control.m
-    examples/Us4R_Ultrasonix_control.m
+
+
+    examples/Us4R_control_rfPwi.m
+    examples/Us4R_control_bmodePwi.m
+    examples/Us4R_control_bmodeDwi.m
+    examples/Us4R_control_bmodeLin.m
+    examples/Us4R_control_colorPwi.m
 )
 
 set(ARRUS_CUDA_MEX_SRC_FILES
     arrus/mexcuda/dopplerColor.cu
     arrus/mexcuda/iqRaw2Lri.cu
+    arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu
 )
 
 ################################################################################
@@ -46,19 +41,36 @@ set(ARRUS_CUDA_MEX_SRC_FILES
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 set(TOOLBOX_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arrus)
+set(PACKAGE_OUTPUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/+arrus)
 
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+# Note: the below mexcuda is supported only on Windows.
+# For linux, use arrus framework kernels implementation.
 # Generate mexcuda matlab command
+
+# TODO remove it when mexcuda is not needed anymore
 set(ARRUS_MATLAB_MEXCUDA_COMMAND "")
 foreach(MEX_SRC_FILE ${ARRUS_CUDA_MEX_SRC_FILES})
     set(ARRUS_MATLAB_MEXCUDA_COMMAND
         "${ARRUS_MATLAB_MEXCUDA_COMMAND} mexcuda -outdir '${CMAKE_CURRENT_BINARY_DIR}/arrus/mexcuda' '${CMAKE_CURRENT_SOURCE_DIR}/${MEX_SRC_FILE}';")
 endforeach()
 
+set(ARRUS_MATLAB_CORE_SO_FILE "$<TARGET_FILE:arrus-core>")
 
 add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
     ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
+    # Copy binaries to the same folder where the mex fill produced
+    COMMAND
+    ${CMAKE_COMMAND} -E copy_directory
+    ${Us4_ROOT_DIR}/lib64 ${TOOLBOX_OUTPUT_DIR}
+    COMMAND
+    ${CMAKE_COMMAND} -E copy
+    ${ARRUS_MATLAB_CORE_SO_FILE} ${TOOLBOX_OUTPUT_DIR}
+    COMMAND
+    ${CMAKE_COMMAND} -E copy
+    ${Us4_ROOT_DIR}/matlab/Us4MEX.mexw64 ${TOOLBOX_OUTPUT_DIR}
     # Excluded directories/files
     COMMAND
     ${CMAKE_COMMAND} -E rm -rf "${TOOLBOX_OUTPUT_DIR}/mexcuda"
@@ -71,6 +83,16 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     DEPENDS ${SOURCE_FILES}
 )
+else()
+    add_custom_command(OUTPUT ${TIMESTAMP}
+        COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
+        COMMAND
+        ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
+        DEPENDS ${SOURCE_FILES}
+        )
+endif()
 
 
 add_custom_target(matlab_toolbox ALL DEPENDS ${TIMESTAMP})
@@ -82,9 +104,16 @@ set_target_properties(
     MATLAB_TOOLBOX_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+# The old Matlab files.
 install(
     DIRECTORY
     ${TOOLBOX_OUTPUT_DIR}
+    DESTINATION
+    ${ARRUS_MATLAB_INSTALL_DIR}
+)
+install(
+    DIRECTORY
+    ${PACKAGE_OUTPUT_DIR}
     DESTINATION
     ${ARRUS_MATLAB_INSTALL_DIR}
 )

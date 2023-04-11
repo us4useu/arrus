@@ -13,7 +13,8 @@
 // Make the FrameChannelMappingAddress available for structure binding
 namespace std {
 
-template<> struct tuple_size<::arrus::devices::FrameChannelMappingAddress>: integral_constant<size_t, 3> {};
+template<>
+struct tuple_size<::arrus::devices::FrameChannelMappingAddress> : integral_constant<size_t, 3> {};
 
 template<>
 struct tuple_element<0, ::arrus::devices::FrameChannelMappingAddress> {
@@ -29,7 +30,9 @@ template<>
 struct tuple_element<2, ::arrus::devices::FrameChannelMappingAddress> {
     using type = int8_t;
 };
+}
 
+namespace arrus::devices {
 template<std::size_t Index>
 std::tuple_element_t<Index, ::arrus::devices::FrameChannelMappingAddress> get(
     const ::arrus::devices::FrameChannelMappingAddress& address)

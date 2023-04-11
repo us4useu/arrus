@@ -7,7 +7,7 @@
 
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "RxSettings.h"
 #include "arrus/core/api/devices/us4r/HVSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -37,6 +37,7 @@ public:
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
+        bool externalTrigger = false,
         std::optional<int> txFrequencyRange = std::nullopt
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
@@ -47,6 +48,7 @@ public:
           reprogrammingMode(reprogrammingMode),
           nUs4OEMs(nUs4OEMs),
           adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
+          externalTrigger(externalTrigger),
           txFrequencyRange(txFrequencyRange)
     {}
 
@@ -91,6 +93,10 @@ public:
         return adapterToUs4RModuleNumber;
     }
 
+    bool isExternalTrigger() const {
+        return externalTrigger;
+    }
+
     std::optional<int> getTxFrequencyRange() const {
         return txFrequencyRange;
     }
@@ -131,6 +137,7 @@ private:
      * and the actual ordinal number of us4OEM. Optional, empty vector means that
      * no mapping should be applied (identity mapping). */
     std::vector<Ordinal> adapterToUs4RModuleNumber = {};
+    bool externalTrigger{false};
     /** Transmit frequency range to set on us4OEM devices. */
     std::optional<int> txFrequencyRange = std::nullopt;
 };
