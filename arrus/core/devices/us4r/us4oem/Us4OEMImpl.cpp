@@ -173,22 +173,12 @@ public:
                                                        Us4OEMImpl::MAX_TX_DELAY, firingStr);
 
                 // Tx - pulse
-                if(this->txFrequencyRange == 1) {
-                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                        op.getTxPulse().getCenterFrequency(),
-                        Us4OEMImpl::MIN_TX_FREQUENCY_1, Us4OEMImpl::MAX_TX_FREQUENCY_1,
-                        firingStr);
-                }
-                else if(this->txFrequencyRange == 2) {
-                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                        op.getTxPulse().getCenterFrequency(),
-                        Us4OEMImpl::MIN_TX_FREQUENCY_2, Us4OEMImpl::MAX_TX_FREQUENCY_2,
-                        firingStr);
-                }
-                else {
-                    throw std::runtime_error("Unsupported tx frequency range: "
-                                             + std::to_string(this->txFrequencyRange));
-                }
+                ARRUS_VALIDATOR_EXPECT_TRUE_M((txFrequencyRange == 1 || txFrequencyRange == 4), ("tx frequency range"));
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
+                    op.getTxPulse().getCenterFrequency(),
+                    Us4OEMImpl::MIN_TX_FREQUENCY/this->txFrequencyRange,
+                    Us4OEMImpl::MAX_TX_FREQUENCY/this->txFrequencyRange,
+                    firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);

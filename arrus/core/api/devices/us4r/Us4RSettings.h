@@ -21,7 +21,7 @@ public:
     explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
                           std::optional<Ordinal> nUs4OEMs = std::nullopt,
                           std::vector<Ordinal> adapterToUs4RModuleNumber = {},
-                          std::optional<int> txFrequencyRange = std::nullopt)
+                          int txFrequencyRange = 1)
         : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)),
           nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
           txFrequencyRange(txFrequencyRange)
@@ -38,7 +38,7 @@ public:
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
         bool externalTrigger = false,
-        std::optional<int> txFrequencyRange = std::nullopt
+        int txFrequencyRange = 1
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -97,7 +97,7 @@ public:
         return externalTrigger;
     }
 
-    std::optional<int> getTxFrequencyRange() const {
+    int getTxFrequencyRange() const {
         return txFrequencyRange;
     }
 
@@ -138,8 +138,9 @@ private:
      * no mapping should be applied (identity mapping). */
     std::vector<Ordinal> adapterToUs4RModuleNumber = {};
     bool externalTrigger{false};
-    /** Transmit frequency range to set on us4OEM devices. */
-    std::optional<int> txFrequencyRange = std::nullopt;
+    /** Transmit frequency range to set on us4OEM devices. Actually, TX frequency divider.
+     *  Default value: 1.*/
+    int txFrequencyRange = 1;
 };
 
 }

@@ -59,10 +59,8 @@ public:
     static constexpr float MAX_TX_DELAY = 16.96e-6f;
 
     static constexpr int DEFAULT_TX_FREQUENCY_RANGE = 2;
-    static constexpr float MIN_TX_FREQUENCY_1 = 0.5e6f;
-    static constexpr float MAX_TX_FREQUENCY_1 = 32.5e6f;
-    static constexpr float MIN_TX_FREQUENCY_2 = 1e6f;
-    static constexpr float MAX_TX_FREQUENCY_2 = 65e6f;
+    static constexpr float MIN_TX_FREQUENCY = 1e6f;
+    static constexpr float MAX_TX_FREQUENCY = 65e6f;
 
     static constexpr float MIN_RX_TIME = 20e-6f;
 

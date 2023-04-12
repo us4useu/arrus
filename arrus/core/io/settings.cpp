@@ -314,7 +314,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
     std::optional<HVSettings> hvSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
-    std::optional<int> txFrequencyRange;
+    int txFrequencyRange = 1;
 
     if(us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();

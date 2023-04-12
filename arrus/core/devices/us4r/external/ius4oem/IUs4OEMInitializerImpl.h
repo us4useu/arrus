@@ -14,7 +14,7 @@ class IUs4OEMInitializerImpl : public IUs4OEMInitializer {
 public:
 
     void sortModulesById(std::vector<IUs4OEMHandle> &ius4oems) override {
-        // Reorder us4oems according to ids (us4oem with the lowest id is the
+        // Sort us4oems according to ids (us4oem with the lowest id is the
         // first one, with the highest id - the last one).
         // TODO(pjarosik) make the below sorting exception safe
         // (currently will std::terminate on an exception).
@@ -24,8 +24,15 @@ public:
                   });
     }
 
-
-    void initModules(const std::vector<IUs4OEMHandle> &ius4oems) override {
+    void initModules(std::vector<IUs4OEMHandle> &ius4oems, const std::vector<Us4OEMSettings> &) override {// us4oemCfgs) override {
+        std::sort(std::begin(ius4oems), std::end(ius4oems),
+                  [](const IUs4OEMHandle &x, const IUs4OEMHandle &y) {
+                      return x->GetID() < y->GetID();
+                  });
+        // Set TX frequency range.
+        // for(size_t i = 0; i < us4oemCfgs.size(); ++i) {
+        //    ius4oems[i]->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
+        //}
         initializeUs4oems(ius4oems, 1);
         // Perform successive initialization levels.
         for(int level = 2; level <= 4; level++) {
