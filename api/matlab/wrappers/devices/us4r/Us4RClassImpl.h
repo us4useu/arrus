@@ -29,6 +29,8 @@ public:
         ARRUS_MATLAB_ADD_METHOD("getSamplingFrequency", getSamplingFrequency);
         ARRUS_MATLAB_ADD_METHOD("getProbeModel", getProbeModel);
         ARRUS_MATLAB_ADD_METHOD("getChannelsMask", getChannelsMask);
+        ARRUS_MATLAB_ADD_METHOD("setTgcCurveValue", setTgcCurveValue);
+        ARRUS_MATLAB_ADD_METHOD("setTgcCurveTimeValue", setTgcCurveTimeValue);
     }
 
     void disableHV(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -55,6 +57,26 @@ public:
     void getChannelsMask(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         auto channelsMask = get(obj)->getChannelsMask();
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, unsigned short, channelsMask);
+    }
+
+    void setTgcCurveValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        std::vector<float> value = convertToCppVector<float>(inputs[0], "tgc values");
+        bool applyCharacteristic = inputs[1][0];
+        ctx->logInfo(format("Us4R: setting TGC curve, value {}, apply characteristic {}",
+                            fmt::join(value, ", "),
+                            applyCharacteristic));
+        get(obj)->setTgcCurve(value, applyCharacteristic);
+    }
+
+    void setTgcCurveTimeValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        std::vector<float> time = convertToCppVector<float>(inputs[0], "tgc time");
+        std::vector<float> value = convertToCppVector<float>(inputs[1], "tgc values");
+        bool applyCharacteristic = inputs[2][0];
+        ctx->logInfo(format("Us4R: setting TGC curve time {}, value {}, apply characteristic {}",
+                            fmt::join(time, ", "),
+                            fmt::join(value, ", "),
+                            applyCharacteristic));
+        get(obj)->setTgcCurve(time, value, applyCharacteristic);
     }
 
 };

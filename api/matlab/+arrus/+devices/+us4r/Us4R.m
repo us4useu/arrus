@@ -54,5 +54,35 @@ classdef Us4R < handle
             res = obj.ptr.callMethod("getChannelsMask", 1);
             channelsMask = res{1, 1};
         end
+
+        function setTgcCurve(varargin)
+            %
+            % Sets TGC curve points asynchronously.
+            % Setting empty vectors t and y turns off analog TGC. Setting non-empty vector turns off DTGC
+            %  and turns on analog TGC.
+            % Vectors t and y should have exactly the same size. The input t and y values will be interpolated
+            % into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
+            % Linear interpolation will be performed, the TGC curve will be extrapolated with the first
+            % (left-side of the cure) and the last sample (right side of the curve).
+            %
+            % :param time: sampling time, relative to the "sample 0" (optional, hardware sampling time will be used
+            % if not provided)
+            % :param value: values to apply at given sampling time
+            % :param applyCharacteristic: set it to true if you want to compensate response characteristic
+            % (pre-computed by us4us).
+            obj = varargin{1};
+            if nargin == 4
+                time = varargin{2};
+                value = varargin{3};
+                applyCharacteristic = varargin{4};
+                obj.ptr.callMethod("setTgcCurveTimeValue", 0, time, value, logical(applyCharacteristic));
+            elseif nargin == 3
+                value = varargin{2};
+                applyCharacteristic = varargin{3};
+                obj.ptr.callMethod("setTgcCurveValue", 0, value, logical(applyCharacteristic));
+            else
+                error("Unsupported number of parameters.");
+            end
+        end
     end
 end

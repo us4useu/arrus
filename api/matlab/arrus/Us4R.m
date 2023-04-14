@@ -103,6 +103,11 @@ classdef Us4R < handle
             nProbeElem = obj.sys.nElem;
         end
 
+        function setTgcCurve(varargin)
+            obj = varargin{1};
+            obj.us4r.setTgcCurve(varargin{2:end});
+        end
+
         function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
             % Uploads operations to the us4R system.
             %
