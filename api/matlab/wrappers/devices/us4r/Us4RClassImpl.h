@@ -31,6 +31,8 @@ public:
         ARRUS_MATLAB_ADD_METHOD("getChannelsMask", getChannelsMask);
         ARRUS_MATLAB_ADD_METHOD("setTgcCurveValue", setTgcCurveValue);
         ARRUS_MATLAB_ADD_METHOD("setTgcCurveTimeValue", setTgcCurveTimeValue);
+        ARRUS_MATLAB_ADD_METHOD("setLnaGain", setLnaGain);
+        ARRUS_MATLAB_ADD_METHOD("getLnaGain", getLnaGain);
     }
 
     void disableHV(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -77,6 +79,16 @@ public:
                             fmt::join(value, ", "),
                             applyCharacteristic));
         get(obj)->setTgcCurve(time, value, applyCharacteristic);
+    }
+
+    void setLnaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint16 gain = inputs[0][0];
+        get(obj)->setLnaGain(gain);
+    }
+
+    void getLnaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        float gain = get(obj)->getLnaGain();
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint16, gain);
     }
 
 };

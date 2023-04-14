@@ -84,5 +84,22 @@ classdef Us4R < handle
                 error("Unsupported number of parameters.");
             end
         end
+
+        function [gain] = getLnaGain(obj)
+            %
+            % Returns current LNA gain value.
+            %
+            % :return: LNA gain value [dB]
+            res = obj.ptr.callMethod("getLnaGain", 1);
+            gain = res{1, 1};
+        end
+
+        function setLnaGain(obj, gain)
+            %
+            % Sets the LNA gain to the given value.
+            %
+            % :param gain: gain value to set [dB]
+            obj.ptr.callMethod("setLnaGain", 0, gain);
+        end
     end
 end
