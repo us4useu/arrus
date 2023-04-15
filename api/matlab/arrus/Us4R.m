@@ -377,7 +377,7 @@ classdef Us4R < handle
             end
             
             %% TGC
-            obj.seq.tgcLim = obj.us4r.getLnaGain + obj.us4r.getPgaGain + [-40 0];
+            obj.seq.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-40 0];
 
             % Default TGC start level
             if isempty(obj.seq.tgcStart)
