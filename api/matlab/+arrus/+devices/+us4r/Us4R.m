@@ -101,5 +101,22 @@ classdef Us4R < handle
             % :param gain: gain value to set [dB]
             obj.ptr.callMethod("setLnaGain", 0, gain);
         end
+
+        function [gain] = getPgaGain(obj)
+            %
+            % Returns current PGA gain value.
+            %
+            % :return: PGA gain value [dB]
+            res = obj.ptr.callMethod("getPgaGain", 1);
+            gain = res{1, 1};
+        end
+
+        function setPgaGain(obj, gain)
+            %
+            % Sets the PGA gain to the given value.
+            %
+            % :param gain: gain value to set [dB]
+            obj.ptr.callMethod("setPgaGain", 0, gain);
+        end
     end
 end

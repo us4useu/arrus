@@ -33,6 +33,8 @@ public:
         ARRUS_MATLAB_ADD_METHOD("setTgcCurveTimeValue", setTgcCurveTimeValue);
         ARRUS_MATLAB_ADD_METHOD("setLnaGain", setLnaGain);
         ARRUS_MATLAB_ADD_METHOD("getLnaGain", getLnaGain);
+        ARRUS_MATLAB_ADD_METHOD("setPgaGain", setPgaGain);
+        ARRUS_MATLAB_ADD_METHOD("getPgaGain", getPgaGain);
     }
 
     void disableHV(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -88,6 +90,16 @@ public:
 
     void getLnaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         float gain = get(obj)->getLnaGain();
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint16, gain);
+    }
+
+    void setPgaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint16 gain = inputs[0][0];
+        get(obj)->setPgaGain(gain);
+    }
+
+    void getPgaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        float gain = get(obj)->getPgaGain();
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint16, gain);
     }
 
