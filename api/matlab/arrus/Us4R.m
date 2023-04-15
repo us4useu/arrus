@@ -103,6 +103,14 @@ classdef Us4R < handle
             nProbeElem = obj.sys.nElem;
         end
 
+        function setLnaGain(obj,gain)
+            obj.us4r.setLnaGain(gain);
+        end
+
+        function setPgaGain(obj,gain)
+            obj.us4r.setPgaGain(gain);
+        end
+
         function setTgcCurve(varargin)
             obj = varargin{1};
             obj.us4r.setTgcCurve(varargin{2:end});
