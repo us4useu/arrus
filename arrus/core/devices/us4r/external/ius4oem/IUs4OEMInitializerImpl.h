@@ -24,15 +24,7 @@ public:
                   });
     }
 
-    void initModules(std::vector<IUs4OEMHandle> &ius4oems, const std::vector<Us4OEMSettings> &) override {// us4oemCfgs) override {
-        std::sort(std::begin(ius4oems), std::end(ius4oems),
-                  [](const IUs4OEMHandle &x, const IUs4OEMHandle &y) {
-                      return x->GetID() < y->GetID();
-                  });
-        // Set TX frequency range.
-        // for(size_t i = 0; i < us4oemCfgs.size(); ++i) {
-        //    ius4oems[i]->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
-        //}
+    void initModules(std::vector<IUs4OEMHandle> &ius4oems) override {
         initializeUs4oems(ius4oems, 1);
         // Perform successive initialization levels.
         for(int level = 2; level <= 4; level++) {

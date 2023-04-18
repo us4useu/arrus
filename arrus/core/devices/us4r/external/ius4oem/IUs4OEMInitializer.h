@@ -17,7 +17,7 @@ public:
      * Initialize list of us4oem modules. Note: the list handles
      * should be already sorted by us4oem ID.
      */
-    virtual void initModules(std::vector<IUs4OEMHandle> &ius4oems, const std::vector<Us4OEMSettings> &us4oemCfgs) = 0;
+    virtual void initModules(std::vector<IUs4OEMHandle> &ius4oems) = 0;
     virtual ~IUs4OEMInitializer() = default;
 };
 
