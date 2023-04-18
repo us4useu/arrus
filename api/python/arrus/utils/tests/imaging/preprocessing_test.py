@@ -65,7 +65,7 @@ class QuadratureDemodulationTestCase(ArrusImagingTestCase):
         np.testing.assert_equal(result, expected)
 
     def test_1D(self):
-        ''' Test uses vector data.'''
+        """ Test uses vector data."""
 
         # Given
         data = np.array([-1., 10, 0, -20, 1]).astype(np.float32)
@@ -85,7 +85,7 @@ class QuadratureDemodulationTestCase(ArrusImagingTestCase):
         np.testing.assert_equal(result, expected)
 
     def test_2D(self):
-        ''' Test uses 2D array data.'''
+        """ Test uses 2D array data."""
 
         # Given
         data = np.array([-1., 10, 0, -20, 1]).astype(np.float32)
@@ -171,7 +171,7 @@ class EnvelopeDetectionTestCase(ArrusImagingTestCase):
         self.assertTrue(np.all(result >= 0))
 
     def test_envelope(self):
-        ''' Test uses 3D array data.'''
+        """ Test uses 3D array data."""
 
         # Given
         fs = self.context.device.sampling_frequency
@@ -297,52 +297,22 @@ class ToGrayscaleImgTestCase(ArrusImagingTestCase):
 class AbstractScanConversionTestCase(ArrusImagingTestCase):
 
     def setUp(self) -> None:
-        sequence = LinSequence(
-            tx_aperture_center_element=np.arange(0, 65, 8),
-            tx_aperture_size=32,
-            rx_aperture_center_element=np.arange(0, 65, 8),
-            rx_aperture_size=32,
-            tx_focus=50e-6,
-            pulse=Pulse(center_frequency=6e6, n_periods=2,
-                        inverse=False),
-            rx_sample_range=(0, 2048),
-            downsampling_factor=1,
-            speed_of_sound=1490,
-            pri=100e-6,
-            sri=50e-3,
-            tgc_start=0,
-            tgc_slope=12,
-        )
-        self.op = ScanConversion
-        self.context = self.get_default_context(sequence=sequence)
+        # Can be overridden by subclass.
+        self.context = self.get_default_context()
 
     def run_op(self, **kwargs):
-        data = kwargs['data']
+        data = kwargs["data"]
         data = np.array(data)
-        if len(data.shape) > 2:
-            raise ValueError("Currently data supports at most 2 dimensions.")
+        if len(data.shape) > 3:
+            raise ValueError("Currently data supports at most 3 dimensions.")
         if len(data.shape) < 2:
             dim_diff = 2-len(data.shape)
             data = np.expand_dims(data, axis=tuple(np.arange(dim_diff)))
-            kwargs["data"] = data
+        if len(data.shape) < 3:
+            data = data[np.newaxis, ...]
+        kwargs["data"] = data
         result = super().run_op(**kwargs)
         return np.squeeze(result)
-
-    def change_probe_radius(self, radius):
-        sequence = self.context.sequence
-        change_in_model = {'curvature_radius': radius}
-        model = replace(self.context.device.probe.model, **change_in_model)
-        change_in_probe = {'model': model}
-        probe = replace(self.context.device.probe, **change_in_probe)
-        change_in_device = {'probe': probe}
-        device = replace(self.context.device, **change_in_device)
-        self.context = self.get_default_context(sequence=sequence, device=device)
-
-    def change_rx_sample_range(self, rxrange):
-        change_in_sequence = {'rx_sample_range': rxrange}
-        sequence = replace(self.context.sequence, **change_in_sequence)
-        device = self.context.device
-        self.context = self.get_default_context(sequence=sequence, device=device)
 
     def get_n_scanlines(self):
         txapcel = self.context.sequence.tx_aperture_center_element
@@ -363,10 +333,7 @@ class AbstractScanConversionTestCase(ArrusImagingTestCase):
         n_elements = self.context.device.probe.model.n_elements
         probe_width = (n_elements - 1) * pitch
         c = self.context.sequence.speed_of_sound
-        txapcel = self.context.sequence.tx_aperture_center_element
-        n_scanlines = self.get_n_scanlines()
         sample_range = self.get_sample_range()
-        n_samples = self.get_n_samples()
         dz = c / fs / 2
         zmax = (sample_range[1] - 1) * dz
         zmin = sample_range[0] * dz
@@ -376,6 +343,26 @@ class AbstractScanConversionTestCase(ArrusImagingTestCase):
     
 
 class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
+
+    def setUp(self) -> None:
+        sequence = LinSequence(
+            tx_aperture_center_element=np.arange(0, 65, 8),
+            tx_aperture_size=32,
+            rx_aperture_center_element=np.arange(0, 65, 8),
+            rx_aperture_size=32,
+            tx_focus=50e-6,
+            pulse=Pulse(center_frequency=6e6, n_periods=2,
+                        inverse=False),
+            rx_sample_range=(0, 2048),
+            downsampling_factor=1,
+            speed_of_sound=1490,
+            pri=100e-6,
+            sri=50e-3,
+            tgc_start=0,
+            tgc_slope=12,
+        )
+        self.op = ScanConversion
+        self.context = self.get_default_context(sequence=sequence)
 
     def test_identity(self):
         # Given
@@ -558,9 +545,36 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
 class ScanConversionConvexArrayTestCase(AbstractScanConversionTestCase):
 
     def setUp(self) -> None:
-        super().setUp()
-        self.change_rx_sample_range((32, 64))
-        self.change_probe_radius(0.1)
+        self.op = ScanConversion
+
+        sequence = LinSequence(
+            tx_aperture_center_element=np.arange(0, 65, 8),
+            tx_aperture_size=32,
+            rx_aperture_center_element=np.arange(0, 65, 8),
+            rx_aperture_size=32,
+            tx_focus=50e-6,
+            pulse=Pulse(center_frequency=6e6, n_periods=2,
+                        inverse=False),
+            rx_sample_range=(32, 64),
+            downsampling_factor=1,
+            speed_of_sound=1490,
+            pri=100e-6,
+            sri=50e-3,
+            tgc_start=0,
+            tgc_slope=12,
+        )
+        device = self.get_ultrasound_device(
+            probe=self.get_probe_model_instance(
+                n_elements=65,
+                pitch=0.2e-3,
+                curvature_radius=0.1
+            ),
+            sampling_frequency=65e6
+        )
+        self.context = self.get_default_context(
+            sequence=sequence,
+            device=device
+        )
 
     def test_zeros(self):
         # Given
@@ -591,28 +605,32 @@ class ScanConversionConvexArrayTestCase(AbstractScanConversionTestCase):
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
         x_grid, z_grid = self.get_grid_data(
-                                   nx_grid_samples,
-                                   nz_grid_samples)
+            nx_grid_samples,
+            nz_grid_samples
+        )
         data = np.zeros(n_scanlines)
         data = np.tile(data, (n_samples, 1))
         data[0:8, :] = np.ones(n_scanlines)
 
         # Run
-        result = self.run_op(data=data,
-                             x_grid=x_grid,
-                             z_grid=z_grid)
+        result = self.run_op(
+            data=data,
+            x_grid=x_grid,
+            z_grid=z_grid
+        )
+        result = result.squeeze()
 
         # Expect
-        expected = np.zeros(n_scanlines)
-        expected = np.tile(expected, (nz_grid_samples,1))
-        expected[1, 0] = 1
-        expected[1, 8] = 1
-        expected[2, 1] = 1
-        expected[2, 7] = 1
-        expected[3, 1:3] = 1
-        expected[3, 6:8] = 1
-        expected[4, 2:7] = 1
-        expected[5, 3:6] = 1
+        expected = np.asarray(
+            [[0., 0., 0., 0., 0., 0., 0., 0., 0.],
+             [1., 0., 0., 0., 0., 0., 0., 0., 1.],
+             [0., 1., 0., 0., 0., 0., 0., 1., 0.],
+             [0., 1., 0., 0., 0., 0., 0., 1., 0.],
+             [0., 0., 1., 1., 0., 1., 1., 0., 0.],
+             [0., 0., 0., 1., 1., 1., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0., 0., 0., 0.]])
+
         np.testing.assert_equal(expected, result)
 
 
