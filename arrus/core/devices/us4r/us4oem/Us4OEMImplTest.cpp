@@ -25,6 +25,8 @@ MATCHER_P(FloatNearPointwise, tol, "") {
 
 constexpr uint16 DEFAULT_PGA_GAIN = 30;
 constexpr uint16 DEFAULT_LNA_GAIN = 24;
+constexpr float MAX_TX_FREQUENCY = 65e6f;
+constexpr float MIN_TX_FREQUENCY = 1e6f;
 
 struct TestTxRxParams {
 
@@ -56,8 +58,8 @@ protected:
         std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
         // Default values returned by us4oem.
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
 
         BitMask activeChannelGroups = {true, true, true, true,
                                        true, true, true, true,
@@ -191,7 +193,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsOnly) {
 
 TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
     // Tx delays
-    const auto maxFreq = Us4OEMImpl::MAX_TX_FREQUENCY_2;
+    const auto maxFreq = MAX_TX_FREQUENCY;
+    const auto minFreq = MIN_TX_FREQUENCY;
 
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
@@ -204,7 +207,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
     seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse = Pulse(Us4OEMImpl::MIN_TX_FREQUENCY_1 - 0.5e6f, 1.0f, false)))
+            (x.pulse = Pulse(minFreq - 0.5e6f, 1.0f, false)))
             .getTxRxParameters()
     };
     EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
@@ -327,8 +330,8 @@ protected:
     void SetUp() override {
         std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
         BitMask activeChannelGroups = {true, true, true, true,
                                        true, true, true, true,
                                        true, true, true, true,
@@ -679,8 +682,8 @@ protected:
     void SetUp() override {
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
     }
 
     Us4OEMImpl::Handle createHandle(const std::unordered_set<uint8> &channelsMask) {
@@ -961,8 +964,8 @@ protected:
     void SetUp() override {
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
     }
 
     Us4OEMImpl::Handle createHandle(Us4OEMSettings::ReprogrammingMode reprogrammingMode) {
