@@ -56,7 +56,8 @@ protected:
         std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
         // Default values returned by us4oem.
-        ON_CALL(*ius4oemPtr, GetTxFrequencyRange).WillByDefault(testing::Return(2));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
 
         BitMask activeChannelGroups = {true, true, true, true,
                                        true, true, true, true,
@@ -326,7 +327,8 @@ protected:
     void SetUp() override {
         std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetTxFrequencyRange).WillByDefault(testing::Return(2));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
         BitMask activeChannelGroups = {true, true, true, true,
                                        true, true, true, true,
                                        true, true, true, true,
@@ -677,7 +679,8 @@ protected:
     void SetUp() override {
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetTxFrequencyRange).WillByDefault(testing::Return(2));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
     }
 
     Us4OEMImpl::Handle createHandle(const std::unordered_set<uint8> &channelsMask) {
@@ -958,7 +961,8 @@ protected:
     void SetUp() override {
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetTxFrequencyRange).WillByDefault(testing::Return(2));
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(1e6));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(65e6));
     }
 
     Us4OEMImpl::Handle createHandle(Us4OEMSettings::ReprogrammingMode reprogrammingMode) {

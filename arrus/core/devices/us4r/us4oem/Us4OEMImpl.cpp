@@ -154,8 +154,8 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    Us4OEMTxRxValidator(const std::string &componentName, int txFrequencyRange)
-    : Validator(componentName), txFrequencyRange(txFrequencyRange) {}
+    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax)
+    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -173,12 +173,8 @@ public:
                                                        Us4OEMImpl::MAX_TX_DELAY, firingStr);
 
                 // Tx - pulse
-                ARRUS_VALIDATOR_EXPECT_TRUE_M((txFrequencyRange == 1 || txFrequencyRange == 4), ("tx frequency range"));
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                    op.getTxPulse().getCenterFrequency(),
-                    Us4OEMImpl::MIN_TX_FREQUENCY/this->txFrequencyRange,
-                    Us4OEMImpl::MAX_TX_FREQUENCY/this->txFrequencyRange,
-                    firingStr);
+                    op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
@@ -207,7 +203,8 @@ public:
         }
     }
 private:
-    int txFrequencyRange;
+    float txFrequencyMin;
+    float txFrequencyMax;
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
@@ -218,7 +215,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
     bool isDDCOn = ddc.has_value();
-    Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr), ius4oem->GetTxFrequencyRange());
+    Us4OEMTxRxValidator seqValidator(
+        format("{} tx rx sequence", deviceIdStr),
+        ius4oem->GetMinTxFrequency(),
+        ius4oem->GetMaxTxFrequency());
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
