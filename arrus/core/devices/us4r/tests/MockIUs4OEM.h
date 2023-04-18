@@ -200,6 +200,7 @@ public:
     MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, uint8_t, const float*, uint16_t, float), (override));
     MOCK_METHOD(void, DisableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, DisableWaitOnTransferOverflow, (), (override));
+    MOCK_METHOD(void, VerifyFirmware, (const char*), (override));
     MOCK_METHOD(void, SetTxFrequencyRange, (int range), (override));
     MOCK_METHOD(float, GetMinTxFrequency, (), (const override));
     MOCK_METHOD(float, GetMaxTxFrequency, (), (const override));
