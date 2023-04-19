@@ -100,7 +100,13 @@ set(SOURCE_FILES
         )
 
 set(TEST_FILES
-#    arrus/kernels/tests/simple_tx_rx_sequence_test.py
+    # Computing TX/RX delays (obsolete).
+    arrus/kernels/tests/simple_tx_rx_sequence_test.py
+    arrus/kernels/tests/tx_rx_sequence_test.py
+    # Image reconstruction tests.
+    arrus/utils/tests/imaging/filters_test.py
+    arrus/utils/tests/imaging/preprocessing_test.py
+    arrus/utils/tests/imaging/reconstruction_test.py
 )
 
 if(ARRUS_CUDA)
@@ -213,7 +219,6 @@ install(
 	    examples/phased_array_scanning.py
         examples/check_probe.py
         examples/requirements.txt
-        examples/requirements.txt
     DESTINATION
         ${ARRUS_PYTHON_INSTALL_DIR}/examples/
 )
@@ -221,8 +226,12 @@ install(
 # Tests
 ################################################################################
 if(ARRUS_RUN_TESTS)
+    if(NOT CUDAToolkit_FOUND)
+        message(FATAL_ERROR, "CUDA Toolkit is required to run GPU Python unit tests.")
+    endif()
     create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
     install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+    install_cupy_package(py_tests_venv_cupy py_tests_venv ${CUDAToolkit_VERSION})
     get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
     foreach(TEST_FILE IN LISTS TEST_FILES)
         add_test(

@@ -119,3 +119,32 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
             SPHINX_EXECUTABLE ${VENV_SPHINX_EXECUTABLE}
     )
 endfunction()
+
+
+function(install_cupy_package TARGET_NAME VENV_TARGET CUDA_VERSION)
+    get_target_property(INSTALL_VENV_EXECUTABLE ${VENV_TARGET} VENV_EXECUTABLE)
+    get_target_property(INSTALL_VENV_DIR ${VENV_TARGET} VENV_DIR)
+    set(INSTALL_TIMESTAMP ${INSTALL_VENV_DIR}/${TARGET_NAME}_timestamp)
+
+    # Get MAJOR.MINOR CUDA version
+    string(REPLACE "." ";" CUDA_VERSION_LIST "${CUDA_VERSION}")
+    list(GET CUDA_VERSION_LIST 0 CUDA_VERSION_MAJOR)
+    list(GET CUDA_VERSION_LIST 1 CUDA_VERSION_MINOR)
+    set(CUDA_CUPY_VERSION "${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}")
+
+    add_custom_command(OUTPUT ${INSTALL_TIMESTAMP}
+        COMMAND
+            ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
+        COMMAND
+            ${INSTALL_VENV_EXECUTABLE} -m pip install cupy-cuda${CUDA_CUPY_VERSION}==9.6.0
+        DEPENDS
+            ${VENV_TARGET}
+        WORKING_DIRECTORY
+            ${CURRENT_BINARY_DIR}
+        )
+    add_custom_target(${TARGET_NAME} ALL DEPENDS ${INSTALL_TIMESTAMP})
+    set_target_properties(${TARGET_NAME}
+        PROPERTIES
+        ARRUS_TIMESTAMP ${INSTALL_TIMESTAMP}
+    )
+endfunction()

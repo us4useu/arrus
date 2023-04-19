@@ -32,7 +32,7 @@ option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)
 option(ARRUS_EMBED_DEPS "Embed dependencies (like us4r dlls) into the output package." OFF)
 option(ARRUS_APPEND_VERSION_SUFFIX_DATE "Append current timestamp to the ARRUS_PROJECT_VERSION." OFF)
-option(ARRUS_CUDA "Build with CUDA GPU support" OFF)
+option(ARRUS_CUDA "Build with CUDA GPU support" ON)
 
 if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
     string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")
@@ -46,6 +46,12 @@ elseif(UNIX AND NOT APPLE)
     set(ARRUS_BUILD_PLATFORM linux)
 else()
     message(FATAL_ERROR "Unsupported platform.")
+endif()
+
+# Determine CUDA version.
+if(ARRUS_CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    message("Using CUDA ${CUDAToolkit_VERSION}")
 endif()
 
 # Common C++ compile options
