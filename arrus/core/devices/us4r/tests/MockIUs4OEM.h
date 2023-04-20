@@ -138,8 +138,6 @@ public:
     MOCK_METHOD(void, ClearUCDLog, (), (override));
     MOCK_METHOD(bool, CheckUCDLogNotEmpty, (), (override));
     MOCK_METHOD(void, ClearUCDBlackBox, (), (override));
-    MOCK_METHOD(void, SetTxFrequencyRange, (int), (override));
-    MOCK_METHOD(int, GetTxFrequencyRange, (), (override));
     MOCK_METHOD(void, EnableInterrupts, (), (override));
     MOCK_METHOD(void, DisableInterrupts, (), (override));
 
@@ -203,6 +201,9 @@ public:
     MOCK_METHOD(void, DisableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, DisableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, VerifyFirmware, (const char*), (override));
+    MOCK_METHOD(void, SetTxFrequencyRange, (int range), (override));
+    MOCK_METHOD(float, GetMinTxFrequency, (), (const override));
+    MOCK_METHOD(float, GetMaxTxFrequency, (), (const override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

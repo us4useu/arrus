@@ -26,6 +26,7 @@ TEST(IUs4OEMInitializerImplTest, Us4OEMsSortedApproprietaly) {
             .WillByDefault(Return(2));
 
     IUs4OEMInitializerImpl initializer;
+    initializer.sortModulesById(ius4oems);
     initializer.initModules(ius4oems);
 
     EXPECT_EQ(ius4oems[0]->GetID(), 0);
@@ -67,6 +68,7 @@ TEST(IUs4OEMInitializerImplTest, Us4OEMsInitializedProperly) {
     }
 
     IUs4OEMInitializerImpl initializer;
+    initializer.sortModulesById(ius4oems);
     initializer.initModules(ius4oems);
 }
 

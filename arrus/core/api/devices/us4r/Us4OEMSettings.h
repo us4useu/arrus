@@ -62,17 +62,20 @@ public:
      * @param channelMask channels that should be always turned off,
      *   CHANNEL NUMBERS STARTS FROM 0
      * @param reprogrammingMode us4OEM reprogramming mode
+     * @param txFrequencyRange tx frequency range, actually: tx frequency divider, by default 1 is used.
      */
     Us4OEMSettings(ChannelMapping channelMapping,
                    BitMask activeChannelGroups,
                    RxSettings rxSettings,
                    std::unordered_set<uint8> channelsMask,
-                   ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL)
+                   ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
+                   int txFrequencyRange = 1)
             : channelMapping(std::move(channelMapping)),
               activeChannelGroups(std::move(activeChannelGroups)),
               rxSettings(std::move(rxSettings)),
               channelsMask(std::move(channelsMask)),
-              reprogrammingMode(reprogrammingMode)
+              reprogrammingMode(reprogrammingMode),
+              txFrequencyRange(txFrequencyRange)
               {}
 
 
@@ -96,12 +99,17 @@ public:
         return reprogrammingMode;
     }
 
+    int getTxFrequencyRange() const {
+        return txFrequencyRange;
+    }
+
 private:
     std::vector<ChannelIdx> channelMapping;
     BitMask activeChannelGroups;
     RxSettings rxSettings;
     std::unordered_set<uint8> channelsMask;
     ReprogrammingMode reprogrammingMode;
+    int txFrequencyRange = 1;
 };
 
 }

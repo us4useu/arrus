@@ -13,8 +13,8 @@ namespace arrus::devices {
 class IUs4OEMInitializerImpl : public IUs4OEMInitializer {
 public:
 
-    void initModules(std::vector<IUs4OEMHandle> &ius4oems) override {
-        // Reorder us4oems according to ids (us4oem with the lowest id is the
+    void sortModulesById(std::vector<IUs4OEMHandle> &ius4oems) override {
+        // Sort us4oems according to ids (us4oem with the lowest id is the
         // first one, with the highest id - the last one).
         // TODO(pjarosik) make the below sorting exception safe
         // (currently will std::terminate on an exception).
@@ -22,7 +22,9 @@ public:
                   [](const IUs4OEMHandle &x, const IUs4OEMHandle &y) {
                       return x->GetID() < y->GetID();
                   });
+    }
 
+    void initModules(std::vector<IUs4OEMHandle> &ius4oems) override {
         initializeUs4oems(ius4oems, 1);
         // Perform successive initialization levels.
         for(int level = 2; level <= 4; level++) {
@@ -33,10 +35,10 @@ public:
     }
 private:
 
-    void initializeUs4oems(std::vector<IUs4OEMHandle> &ius4oems, int level) {
+    void initializeUs4oems(const std::vector<IUs4OEMHandle> &ius4oems, int level) {
         std::vector<std::future<void>> results;
 
-        for(IUs4OEMHandle &ius4oem : ius4oems) {
+        for(const IUs4OEMHandle &ius4oem : ius4oems) {
             std::future<void> result = std::async(std::launch::async, [&ius4oem, level]() {ius4oem->Initialize(level);});
             results.push_back(std::move(result));
         }

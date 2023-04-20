@@ -184,6 +184,10 @@ float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
 }
 
 void Us4RImpl::disableHV() {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if(this->state == State::STARTED) {
+        throw IllegalStateException("You cannot disable HV while the system is running.");
+    }
     logger->log(LogSeverity::INFO, "Disabling HV");
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
     hv.value()->disable();
