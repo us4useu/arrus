@@ -637,23 +637,36 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
     if (tgc.empty()) {
         ius4oem->TGCDisable();
     } else {
-        ius4oem->TGCEnable();
-        std::vector<float> actualTgc;
-
-        if (applyCharacteristic) {
-            static const std::vector<float> tgcChar = {
-                14.000f, 14.001f, 14.002f, 14.003f, 14.024f, 14.168f, 14.480f, 14.825f, 15.234f, 15.770f, 16.508f,
-                17.382f, 18.469f, 19.796f, 20.933f, 21.862f, 22.891f, 24.099f, 25.543f, 26.596f, 27.651f, 28.837f,
-                30.265f, 31.690f, 32.843f, 34.045f, 35.543f, 37.184f, 38.460f, 39.680f, 41.083f, 42.740f, 44.269f,
-                45.540f, 46.936f, 48.474f, 49.895f, 50.966f, 52.083f, 53.256f, 54.0f};
-            // observed -> applied (e.g. when applying 15 dB actually 14.01 gain was observed)
-            actualTgc = ::arrus::interpolate1d(tgcChar, ::arrus::getRange<float>(14, 55, 1.0), tgc);
-        } else {
-            actualTgc = tgc;
-        }
+        std::vector<float> actualTgc = tgc;
+        // Normalize to [0, 1].
         for (auto &val : actualTgc) {
             val = (val - tgcMin) / TGC_ATTENUATION_RANGE;
         }
+        if (applyCharacteristic) {
+            // TGC characteristic, experimentally verified.
+            static const std::vector<float> tgcChar = {
+                0.0f, 2.4999999999986144e-05f, 5.00000000000167e-05f, 7.500000000000284e-05f,
+                0.0005999999999999784f, 0.0041999999999999815f, 0.01200000000000001f, 0.020624999999999984f,
+                0.03085f, 0.04424999999999999f, 0.06269999999999998f, 0.08455000000000004f,
+                0.11172500000000003f, 0.14489999999999997f, 0.173325f, 0.19654999999999995f,
+                0.22227499999999994f, 0.252475f, 0.28857499999999997f, 0.3149f,
+                0.341275f, 0.370925f, 0.406625f, 0.44225000000000003f,
+                0.4710750000000001f, 0.501125f, 0.538575f, 0.5795999999999999f,
+                0.6115f, 0.642f, 0.677075f, 0.7185f,
+                0.756725f, 0.7885f, 0.8234f, 0.8618499999999999f,
+                0.897375f, 0.92415f, 0.952075f, 0.9814f, 1.0f
+            };
+            // the below is simply linspace(0, 1, 41)
+            static const std::vector<float> tgcCharPoints = {
+                0.0f   , 0.025f, 0.05f, 0.075f, 0.1f, 0.125f, 0.15f, 0.175f, 0.2f  ,
+                0.225f, 0.25f , 0.275f, 0.3f  , 0.325f, 0.35f , 0.375f, 0.4f  , 0.425f,
+                0.45f , 0.475f, 0.5f  , 0.525f, 0.55f , 0.575f, 0.6f  , 0.625f, 0.65f ,
+                0.675f, 0.7f  , 0.725f, 0.75f , 0.775f, 0.8f  , 0.825f, 0.85f , 0.875f,
+                0.9f  , 0.925f, 0.95f , 0.975f, 1.0f
+            };
+            actualTgc = ::arrus::interpolate1d(tgcChar, tgcCharPoints, actualTgc);
+        }
+        ius4oem->TGCEnable();
         // Currently setting firing parameter has no impact on the result
         // because TGC can be set only once for the whole sequence.
         ius4oem->TGCSetSamples(actualTgc, 0);
