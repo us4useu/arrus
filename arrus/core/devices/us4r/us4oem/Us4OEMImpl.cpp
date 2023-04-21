@@ -635,8 +635,6 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
         for (auto &val : actualTgc) {
             val = (val - tgcMin) / TGC_ATTENUATION_RANGE;
         }
-        std::cout << std::endl;
-
         if (applyCharacteristic) {
             // TGC characteristic, experimentally verified.
             static const std::vector<float> tgcChar = {
