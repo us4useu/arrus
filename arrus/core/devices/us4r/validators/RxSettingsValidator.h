@@ -36,7 +36,7 @@ public:
         if(!settings.getTgcSamples().empty()) {
             expectInRange("tgc samples", settings.getTgcSamples().size(), size_t(0), size_t(Us4OEMImpl::TGC_N_SAMPLES));
             auto[min, max] = RxSettings::getTgcMinMax(settings.getPgaGain(), settings.getLnaGain());
-            expectAllInRange("tgc samples", settings.getTgcSamples(), std::max(min, 0.0f), max);
+            expectAllInRange("tgc samples", settings.getTgcSamples(), min, max);
         }
     }
 };

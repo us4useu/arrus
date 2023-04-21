@@ -658,8 +658,6 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
                 0.9f  , 0.925f, 0.95f , 0.975f, 1.0f
             };
             actualTgc = ::arrus::interpolate1d(tgcChar, tgcCharPoints, actualTgc);
-        } else {
-            actualTgc = tgc;
         }
         ius4oem->TGCEnable();
         // Currently setting firing parameter has no impact on the result
