@@ -66,9 +66,6 @@ public:
     void setTgcCurveValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         std::vector<float> value = convertToCppVector<float>(inputs[0], "tgc values");
         bool applyCharacteristic = inputs[1][0];
-        ctx->logInfo(format("Us4R: setting TGC curve, value {}, apply characteristic {}",
-                            fmt::join(value, ", "),
-                            applyCharacteristic));
         get(obj)->setTgcCurve(value, applyCharacteristic);
     }
 
@@ -76,10 +73,6 @@ public:
         std::vector<float> time = convertToCppVector<float>(inputs[0], "tgc time");
         std::vector<float> value = convertToCppVector<float>(inputs[1], "tgc values");
         bool applyCharacteristic = inputs[2][0];
-        ctx->logInfo(format("Us4R: setting TGC curve time {}, value {}, apply characteristic {}",
-                            fmt::join(time, ", "),
-                            fmt::join(value, ", "),
-                            applyCharacteristic));
         get(obj)->setTgcCurve(time, value, applyCharacteristic);
     }
 
