@@ -29,6 +29,7 @@ class ContextMock:
     device: DeviceMock
     medium: arrus.medium.MediumDTO
     op: object
+    hardware_ddc: object = None
 
 
 class SimpleTxRxSequenceTest(unittest.TestCase):
