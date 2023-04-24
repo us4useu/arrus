@@ -12,64 +12,22 @@ API Reference
 
 .. _arrus-Us4R:
 
-Handle to the Us4R System
+High-level MATLAB scripts
 =========================
 
 .. mat:autoclass:: arrus.Us4R
     :show-inheritance:
     :members:
 
-Operations
-==========
-
-Each operation derives from the Operation class.
-
-.. _arrus.Operation:
-
-.. mat:autoclass:: arrus.Operation
-    :show-inheritance:
-    :members:
-
 .. _arrus-api-sequences:
 
-TX/RX sequences
-~~~~~~~~~~~~~~~
+.. _arrus.CustomTxRxSequence:
 
-All TX/RX sequences derive parameters from the :class:`SimpleTxRxSequence` class.
-
-.. _arrus.SimpleTxRxSequence:
-
-.. mat:autoclass:: arrus.SimpleTxRxSequence
+.. mat:autoclass:: arrus.CustomTxRxSequence
     :show-inheritance:
     :members:
-
-
-Specific sequences currently available in the system are as follows:
-
-.. _arrus.PWISequence:
-
-.. mat:autoclass:: arrus.PWISequence
-    :show-inheritance:
-    :members:
-Some details on the Plane Wave Imaging method (PWI) can be found in https://www.researchgate.net/publication/24397777_Coherent_Plane-Wave_Compounding_for_Very_High_Frame_Rate_Ultrasonography_and_Transient_Elastography
-
-.. _arrus.STASequence:
-
-.. mat:autoclass:: arrus.STASequence
-    :show-inheritance:
-    :members:
-	
-.. _arrus.LINSequence:
-
-.. mat:autoclass:: arrus.LINSequence
-    :show-inheritance:
-    :members:
-
 
 .. _arrus.Reconstruction:
-
-B-mode Image Reconstruction
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. mat:autoclass:: arrus.Reconstruction
     :show-inheritance:

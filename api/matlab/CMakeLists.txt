@@ -19,9 +19,6 @@ set(SOURCE_FILES
     arrus/scanConversion.m
     arrus/Us4R.m
     arrus/wedgeParams.m
-
-
-
     examples/Us4R_control_rfPwi.m
     examples/Us4R_control_bmodePwi.m
     examples/Us4R_control_bmodeDwi.m
@@ -41,7 +38,7 @@ set(ARRUS_CUDA_MEX_SRC_FILES
 set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 
 set(TOOLBOX_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arrus)
-set(PACKAGE_OUTPUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/+arrus)
+set(PACKAGE_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/+arrus)
 
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
 # Note: the below mexcuda is supported only on Windows.
@@ -61,7 +58,9 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
     ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
-    # Copy binaries to the same folder where the mex fill produced
+    COMMAND
+    ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/+arrus ${PACKAGE_OUTPUT_DIR}
     COMMAND
     ${CMAKE_COMMAND} -E copy_directory
     ${Us4_ROOT_DIR}/lib64 ${TOOLBOX_OUTPUT_DIR}
@@ -124,12 +123,3 @@ install(
     DESTINATION
     ${ARRUS_MATLAB_INSTALL_DIR}
 )
-
-# New API
-# install(
-#        DIRECTORY
-#        ${CMAKE_CURRENT_SOURCE_DIR}/+arrus
-#        DESTINATION
-#        ${ARRUS_MATLAB_INSTALL_DIR}
-#)
-
