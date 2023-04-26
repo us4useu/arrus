@@ -11,6 +11,7 @@ import arrus.utils.imaging
 import arrus.utils.us4r
 import queue
 import numpy as np
+import time
 
 from arrus.ops.us4r import (
     Scheme,
@@ -37,9 +38,9 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 
 def main():
     # Here starts communication with the device.
-    with arrus.Session() as sess:
+    with arrus.Session("C:/Users/public/ate.prototxt") as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(5)
+        #us4r.set_hv_voltage(5)
 
         n_elements = us4r.get_probe_model().n_elements
         # Full transmit aperture, full receive aperture.
@@ -52,9 +53,9 @@ def main():
                        # Custom delays 1.
                        delays=[0]*n_elements),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 4096),
+                       sample_range=(0, 2048),
                        downsampling_factor=1),
-                    pri=200e-6
+                    pri=200e-5
                 ),
                 TxRx(
                     Tx(aperture=[True]*n_elements,
@@ -65,11 +66,11 @@ def main():
                     Rx(aperture=[True]*n_elements,
                        sample_range=(0, 4096),
                        downsampling_factor=1),
-                    pri=200e-6
+                    pri=200e-5
                 ),
             ],
             # Turn off TGC.
-            tgc_curve=[24]*200,  # [dB]
+            tgc_curve=[24]*0,  # [dB]
             # Time between consecutive acquisitions, i.e. 1/frame rate.
             sri=50e-3
         )
@@ -90,16 +91,13 @@ def main():
         )
         # Upload the scheme on the us4r-lite device.
         buffer, metadata = sess.upload(scheme)
-        # Created 2D image display.
-        display = Display2D(metadata=metadata, value_range=(-100, 100))
-        # Start the scheme.
-        sess.start_scheme()
-        # Start the 2D display.
-        # The 2D display will consume data put the the input queue.
-        # The below function blocks current thread until the window is closed.
-        display.start(buffer)
 
-        print("Display closed, stopping the script.")
+        for n in range (8):
+            temp = us4r.read_sequencer(n)
+            print("register " + n + " = " + temp)
+        #while(1):
+        #    print("Display closed, stopping the script.")
+        time.sleep(1)
 
     # When we exit the above scope, the session and scheme is properly closed.
     print("Stopping the example.")

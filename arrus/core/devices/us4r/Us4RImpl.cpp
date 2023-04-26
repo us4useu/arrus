@@ -505,6 +505,26 @@ void Us4RImpl::disableHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
 }
 
+void Us4RImpl::sequencerWriteRegister(uint32_t addr, uint32_t value) {
+    us4oems[0]->sequencerWriteRegister(addr, value);
+}
+
+uint32_t Us4RImpl::sequencerReadRegister(uint32_t addr) { 
+    return us4oems[0]->sequencerReadRegister(addr);
+}
+
+uint16_t Us4RImpl::pulserReadRegister(uint8_t sthv, uint16_t addr) {
+    return us4oems[0]->pulserReadRegister(sthv, addr);
+}
+
+void Us4RImpl::pulserWriteRegister(uint8_t sthv, uint16_t addr, uint16_t reg) {
+    us4oems[0]->pulserWriteRegister(sthv, addr, reg);
+}
+
+void Us4RImpl::allPulsersWriteRegister(uint16_t addr, uint16_t reg) {
+    us4oems[0]->allPulsersWriteRegister(addr, reg);
+}
+
 uint16_t Us4RImpl::getAfe(uint8_t reg) {
     return us4oems[0]->getAfe(reg);
 }
