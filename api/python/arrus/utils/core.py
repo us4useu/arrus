@@ -137,6 +137,7 @@ def convert_to_core_scheme(scheme):
 
     core_work_mode = {
         "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
+        "SYNC": arrus.core.Scheme.WorkMode_SYNC,
         "HOST": arrus.core.Scheme.WorkMode_HOST,
         "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
     }[scheme.work_mode]
