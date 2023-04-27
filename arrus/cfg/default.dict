@@ -946,7 +946,7 @@ probe_models: [
             name: "10l128"
         }
         n_elements: 128,
-        pitch: 0.6e-3,
+        pitch: 0.5e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 20e6
@@ -962,7 +962,7 @@ probe_models: [
             name: "5l128"
         }
         n_elements: 128,
-        pitch: 0.6e-3,
+        pitch: 0.5e-3,
         tx_frequency_range: {
             begin: 1e6,
             end: 10e6
@@ -1083,6 +1083,23 @@ probe_models: [
 	    begin: 0,
 	    end: 90
 	}
+    },
+    {
+        id: {
+            manufacturer: "atl/philips"
+            name: "c4-2"
+        }
+        n_elements: 128,
+        pitch: 0.421e-3,
+        curvature_radius: 41.219e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+    	    begin: 0,
+    		end: 90
+    	}
     }
 ]
 
@@ -1480,6 +1497,21 @@ probe_to_adapter_connections: [
             begin: 0
             end: 127
         }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "atl/philips"
+            name: "c4-2"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "atl/philips"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 127
+        }
     }
-   
 ]

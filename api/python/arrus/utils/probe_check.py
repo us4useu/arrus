@@ -16,19 +16,38 @@ import arrus.utils.us4r
 from arrus.ops.imaging import LinSequence
 from arrus.ops.us4r import Pulse, Scheme
 from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
+from arrus.metadata import Metadata
+
+
+# Don't use first 80 samples.
+# On us4R/us4R-lite, around the sample 65 there is a switch from
+# The 1us after the last transmission is the moment when RX on AFE turns on.
+# At the time of switching to RX, the acquired signal can contain a noise,
+# the amplitude of which increases with the decrease in receiving aperture.
+# The Max sample number = 80 was selected experimentally.
+_N_SKIPPED_SAMPLES = 80
+# number of frames skipped at the beggining - when need to 'warm up' the system
+_N_SKIPPED_SEQUENCES = 1
+# pulse excitation amplitude - should be int, and not exceed 15V
+_VOLTAGE = 10
 
 LOGGER = arrus.logging.get_logger()
 
-_N_SKIPPED_SAMPLES = 10
-_NRX = 64
-_MID_RX = int(np.ceil(_NRX / 2) - 1)
+
+def _get_mid_rx(nrx):
+    """
+    Returns channel in the receiving aperture
+    corresponding to the transmit one.
+    """
+    return int(np.ceil(nrx/2) - 1)
 
 
 def _hpfilter(
         rf: np.ndarray,
         n: int = 4,
         wn: float = 1e5,
-        fs: float = 65e6
+        fs: float = 65e6,
+        axis: int = -1,
 ) -> np.ndarray:
     """
     Returns rf signals high-pass filtered using the Butterworth filter.
@@ -42,14 +61,14 @@ def _hpfilter(
     btype = "highpass"
     output = "sos"
     iir = butter(n, wn, btype=btype, output=output, fs=fs)
-    return sosfilt(iir, rf)
+    return sosfilt(iir, rf, axis=axis)
 
 
 def _normalize(x: np.ndarray) -> np.ndarray:
     """
     Normalizes input np.ndarray (i.e. moves values into [0, 1] range.
     If x contains some np.nans, they are ignored.
-    If x contains only np.nans, non-modified x is returned. 
+    If x contains only np.nans, non-modified x is returned.
 
     :param x: np.ndarray
     :return: normalized np.ndarray
@@ -64,7 +83,7 @@ def _normalize(x: np.ndarray) -> np.ndarray:
             normalized = 0
     else:
         normalized = x
-        
+
     return normalized
 
 
@@ -85,6 +104,33 @@ class StdoutLogger:
 
     def log(self, msg):
         print(msg)
+
+
+@dataclasses.dataclass(frozen=True)
+class Footprint:
+    """
+    Contains footprint data - a reference signals and
+    corresponding metadata.
+
+    :param rf: np.ndarray of rf signals
+    :param metadata: arrus metadata
+    :param masked elements: list of channels masked during footprint acquisition
+    :param timestamp: time of footprint creation in nanoseconds since epoch
+                  (see time.time_ns() description)
+    """
+    rf: np.ndarray
+    metadata: Metadata
+    masked_elements: tuple
+    timestamp: int
+
+    def get_number_of_frames(self):
+        return self.rf.shape[0]
+
+    def get_tx_frequency(self):
+        return self.metadata.context.sequence.pulse.center_frequency
+
+    def get_sequence(self):
+        return self.metadata.context.sequence
 
 
 @dataclasses.dataclass(frozen=True)
@@ -117,11 +163,39 @@ class ElementValidationVerdict(enum.Enum):
 class ProbeElementValidatorResult:
     """
     Contains single element validation result.
+
     :param verdict: ElementValidationVerdict object
     :param valid_range: tuple contained valid range for examined feature
     """
     verdict: ElementValidationVerdict
     valid_range: tuple
+
+
+class ProbeElementValidator(ABC):
+    """
+    Probe Element validator.
+
+    Note: each probe element validator should store its public parameters
+    as attributes with names that DOES NOT start with single underscore ("_").
+    All private members should start with a single underscore.
+    See the implementation of the "params" property for more details.
+    """
+    name: str
+
+    @abstractmethod
+    def validate(
+            self,
+            values: Iterable[float],
+            masked: Iterable[int],
+            active_range: Tuple[float, float],
+            masked_range: Tuple[float, float]
+    ) -> List[ProbeElementValidatorResult]:
+        raise ValueError("Abstract method")
+
+    @property
+    def params(self) -> dict:
+        return dict((k, v) for k, v in vars(self).items()
+                    if not k.startswith("_"))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -183,6 +257,8 @@ class ProbeHealthReport:
     # Report results
     elements: Iterable[ProbeElementHealthReport]
     data: np.ndarray
+    footprint: np.ndarray
+    validator: ProbeElementValidator
 
     @property
     def characteristics(self) -> Dict[str, np.ndarray]:
@@ -204,7 +280,7 @@ class ProbeElementFeatureExtractor(ABC):
     feature: str
 
     @abstractmethod
-    def extract(self, rf: np.ndarray) -> np.ndarray:
+    def extract(self, rf: np.ndarray, *args) -> np.ndarray:
         raise ValueError("Abstract class")
 
 
@@ -221,10 +297,11 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     def extract(self, rf: np.ndarray) -> np.ndarray:
         # TODO(zklog) perhaps it might be a good idea to also remove the DC component here?
         rf = rf.copy()
-        rf = np.abs(rf[:, :, _N_SKIPPED_SAMPLES:, :])
+        # rf = _hpfilter(rf, axis=-2)
+        rf = np.abs(rf[:, :, :, :])
         # Reduce each RF frame into a vector of n elements
         # (where n is the number of probe elements).
-        frame_max = np.max(rf[:, :, :, :], axis=(2, 3))
+        frame_max = np.max(rf[:, :, _N_SKIPPED_SAMPLES:, :], axis=(2, 3))
         # Choose median of a list of Tx/Rxs sequences.
         frame_max = np.median(frame_max, axis=0)
         return frame_max
@@ -255,7 +332,7 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         for itx in range(ntx):
             frames_energies = []
             for frame in range(n_frames):
-                rf = data[frame, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
+                rf = data[frame, itx, _N_SKIPPED_SAMPLES:, _get_mid_rx(nrx)]
                 rf = rf.astype(float)
                 e = self.__get_signal_energy(np.squeeze(rf))
                 frames_energies.append(e)
@@ -264,11 +341,12 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
         return np.array(energies)
 
 
-    def __get_signal_energy(self, rf: np.ndarray) -> np.float:
+    def __get_signal_energy(self, rf: np.ndarray) -> float:
         """
         Returns normalized and high-pass filtered signal energy.
+
         :param rf: signal
-        :return: signal energy (np.float)
+        :return: signal energy (float)
         """
         rf = _hpfilter(rf)
         rf = rf ** 2
@@ -303,7 +381,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         for itx in range(ntx):
             frames_times = []
             for iframe in range(n_frames):
-                rf = data[iframe, itx, _N_SKIPPED_SAMPLES:, _MID_RX]
+                rf = data[iframe, itx, _N_SKIPPED_SAMPLES:, _get_mid_rx(nrx)]
                 rf = rf.copy()
                 rf = rf.astype(float)
                 t = self.__get_signal_duration(np.squeeze(rf))
@@ -318,6 +396,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         Returns the value of a gaussian function
             f(x)=a*exp(-(x-x0)**2/(2*sigma**2)
         at given argument x.
+
         :param x: argument
         :param a: height of the peak
         :param x0: expected value
@@ -353,6 +432,7 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
     def __get_signal_duration(self, rf: np.ndarray) -> float:
         """
         Returns signal duration estimate.
+
         :param rf: signal vector
         :return: signal duration estimate in samples
         """
@@ -363,31 +443,53 @@ class SignalDurationTimeExtractor(ProbeElementFeatureExtractor):
         return round(3 * sigma)
 
 
-class ProbeElementValidator(ABC):
+class FootprintSimilarityPCCExtractor(ProbeElementFeatureExtractor):
     """
-    Probe Element validator.
-
-    Note: each probe element validator should store its public parameters
-    as attributes with names that DOES NOT start with single underscore ("_").
-    All private members should start with a single underscore.
-    See the implementation of the "params" property for more details.
+    Feature exctractor for extraction Pearson Correlation Coefficient (PCC)
+    between given rf array and footprint rf array.
     """
     name: str
 
-    @abstractmethod
-    def validate(
+    feature = "footprint_pcc"
+    def extract(
             self,
-            values: Iterable[float],
-            masked: Iterable[int],
-            active_range: Tuple[float, float],
-            masked_range: Tuple[float, float]
-    ) -> List[ProbeElementValidatorResult]:
-        raise ValueError("Abstract method")
+            rf: np.ndarray,
+            footprint_rf: np.ndarray
+    )-> np.ndarray:
 
-    @property
-    def params(self) -> dict:
-        return dict((k, v) for k, v in vars(self).items()
-                    if not k.startswith("_"))
+        gate_length = 128
+        smp = slice(_N_SKIPPED_SAMPLES, _N_SKIPPED_SAMPLES + gate_length)
+        crs = self.__get_corrcoefs(
+            rf,
+            footprint_rf,
+            smp=smp,
+        )
+        return crs
+
+    def __get_corrcoefs(
+            self,
+            rf,
+            footprint_rf,
+            smp=None,
+            nround=3,
+    ):
+        if rf.shape != footprint_rf.shape:
+            raise ValueError(
+                "rf and footprint.rf arrays must have the same shape"
+            )
+        nframe, ntx, nsmp, nrx = rf.shape
+        mid_rx = int(np.ceil(nrx/2) - 1)
+        # average frames
+        avdat = _hpfilter(rf.mean(axis=0))
+        avref = _hpfilter(footprint_rf.mean(axis=0))
+        crs = np.full(ntx, 0).astype(float)
+        if smp is None:
+            smp = slice(0, nsmp)
+        for itx in range(ntx):
+            dline = avdat[itx, smp, mid_rx]
+            rline = avref[itx, smp, mid_rx]
+            crs[itx] = np.corrcoef(dline, rline)[0,1].round(nround)
+        return crs
 
 
 class ByThresholdValidator(ProbeElementValidator):
@@ -437,34 +539,6 @@ class ByNeighborhoodValidator(ProbeElementValidator):
     """
     Validator that compares each element with its neighborhood.
 
-    The invalid elements are determined in the following way:
-        - for each probe element `i`:
-          - if element `i` is masked: check if it's feature is within proper
-            range. If it's not, mark the element with state TOO_HIGH or TOO_LOW.
-          - if element `i` is not masked:
-            - first, determine the neighborhood of the element `i`.
-              The neighborhood is determined by the `group_size` parameter,
-              and consists of a given number of adjacent probe elements.
-            - Then, estimate the expected feature value:
-              - exclude from the neighborhood all elements which have an
-                amplitude outside the active_range
-                (see FeatureDescriptor class), that is they seem to be inactive
-                e.g. they were turned off using channels mask in the system
-                configuration,
-              - if the number of active elements is less than the
-                min_num_of_neighbors, set verdict for the element to
-                INDEFINITE,
-              - otherwise: compute the median in the neighborhood - this is our
-                estimate of the expected feature value,
-              - Then determine if the element is valid, based on its feature
-                value and the `feature_range_in_neighborhood` param, which
-                should be equal to `(feature_min, feature_max)`:
-                - if the value is out of the range
-                  [feature_min*median, feature_max*median]:
-                  mark this element with state TOO_LOW, TOO_HIGH,
-                - if its amplitude is above amplitude_max*center_amplitude:
-                  otherwise mark the element with state "VALID".
-
     :param group_size: number of elements in the group
     :param feature_range_in_neighborhood: pair (feature_min, feature_max)
       (see the description above)
@@ -475,8 +549,12 @@ class ByNeighborhoodValidator(ProbeElementValidator):
     """
     name = "neighborhood"
 
-    def __init__(self, group_size=32, feature_range_in_neighborhood=(0.5, 2),
-                 min_num_of_neighbors=5):
+    def __init__(
+            self,
+            group_size=32,
+            feature_range_in_neighborhood=(0.5, 2),
+            min_num_of_neighbors=5,
+    ):
         self.group_size = group_size
         self.feature_range_in_neighborhood = feature_range_in_neighborhood
         self.min_num_of_neighbors = min_num_of_neighbors
@@ -551,63 +629,135 @@ class ByNeighborhoodValidator(ProbeElementValidator):
             results.append(
                 ProbeElementValidatorResult(
                     verdict=verdict,
-                    valid_range=(lower_bound, upper_bound)))
+                    valid_range=(lower_bound, upper_bound)
+                )
+            )
         return results
 
 
 EXTRACTORS = dict([(e.feature, e) for e in
                    [MaxAmplitudeExtractor,
                     SignalDurationTimeExtractor,
-                    EnergyExtractor]])
+                    EnergyExtractor,
+                    FootprintSimilarityPCCExtractor]])
 
 
 class ProbeHealthVerifier:
     """
     Probe health verifier class.
     """
+    def get_footprint(
+            self,
+            cfg_path: str,
+            n: int,
+            tx_frequency: float,
+            nrx: int=32,
+            voltage: int=_VOLTAGE,
+    )-> Footprint:
+        """
+        Creates and returns Footprint object.
+        """
+        rfs, metadata, masked_elements = self._acquire_rf_data(
+            cfg_path,
+            n,
+            tx_frequency,
+            nrx,
+            voltage,
+        )
+        footprint = Footprint(
+            rf=rfs,
+            metadata=metadata,
+            masked_elements=masked_elements,
+            timestamp=time.time_ns(),
+        )
+        return footprint
 
     def check_probe(
             self,
-            cfg_path: str, n: int,
+            cfg_path: str,
+            n: int,
+            tx_frequency: float,
             features: List[FeatureDescriptor],
-            validator: ProbeElementValidator) -> ProbeHealthReport:
+            validator: ProbeElementValidator,
+            nrx: int=32,
+            voltage: int=_VOLTAGE,
+            footprint: Footprint=None,
+    )-> ProbeHealthReport:
         """
-        Checks probe elements by validating selected features of the acquired
-        data.
-
+        Checks probe elements by validating selected features
+        of the acquired data.
         This method:
         - runs data acquisition,
         - computes signal features,
         - tries to determine which elements are valid or not.
+        Available features are:
+            1. amplitude
+            2. energy
+            3. signal_duration_time
+            4. footprint_pcc
 
-        :param cfg_path: a path to the system configuration file,
+        :param cfg_path: a path to the system configuration file
         :param n: number of TX/RX sequences to execute (this may improve
-          feature value estimation),
-        :param features: a list of features to check,
-        :param validator: ProbeElementValidator instance, i.e. a validator
-          that should be used to determine
+                  feature value estimation)
+        :param tx_frequency: pulse transmit frequency to be used in tx/rx scheme
+        :param features: a list of features to check
+        :param validator: ProbeElementValidator object, i.e. a validator
+                          that should be used to determine if given parameter
+                          have value within valid range
+        :param nrx: size of the receiving aperture
+        :param voltage: voltage to be used in tx/rx scheme
+        :param footprint: object of the Footprint class;
+                          if given, footprint tx/rx scheme will be used
         :return: an instance of the ProbeHealthReport
         """
-        rfs, metadata, masked_elements = self._acquire_rf_data(cfg_path, n)
-        return self.check_probe_data(
-            rfs=rfs, metadata=metadata,
+        rfs, metadata, masked_elements = self._acquire_rf_data(
+            cfg_path=cfg_path,
+            n=n,
+            tx_frequency=tx_frequency,
+            nrx=nrx,
+            voltage=voltage,
+            footprint=footprint,
+        )
+        health_report = self._check_probe_data(
+            rfs=rfs,
+            footprint=footprint,
+            metadata=metadata,
             masked_elements=masked_elements,
-            features=features, validator=validator)
+            features=features,
+            validator=validator
+        )
+        return health_report
 
-    def check_probe_data(
+    def _check_probe_data(
             self,
-            rfs: np.ndarray, metadata: arrus.metadata.ConstMetadata,
+            rfs: np.ndarray,
+            metadata: arrus.metadata.ConstMetadata,
+            footprint: Footprint,
             masked_elements: Set[int],
             features: List[FeatureDescriptor],
-            validator: ProbeElementValidator) -> ProbeHealthReport:
-        n_seq, n_tx_channels, n_samples, n_rx = rfs.shape
+            validator: ProbeElementValidator
+    ) -> ProbeHealthReport:
+        """
+        Creates probe health report.
+        """
+        _, ntx, _, _ = rfs.shape
 
         # Compute feature values, verify the values according to given
         # validator.
         results = {}
         for feature in features:
             extractor = EXTRACTORS[feature.name]()
-            extractor_result = extractor.extract(rfs)
+            if feature.name == "footprint_pcc":
+                try:
+                    extractor_result = extractor.extract(rfs, footprint.rf)
+                except:
+                    raise ValueError(
+                        "The footprint must by of a class Footprint. "
+                        "Check if appropriate footprint is given."
+                    )
+            else:
+                extractor_result = extractor.extract(rfs)
+
             validator_result = validator.validate(
                 values=extractor_result,
                 masked=masked_elements,
@@ -621,7 +771,7 @@ class ProbeHealthVerifier:
         elements_descriptors = []
 
         # For each examined channel
-        for i in range(n_tx_channels):
+        for i in range(ntx):
             # For each examined feature
             feature_descriptors = {}
             for feature in features:
@@ -646,14 +796,28 @@ class ProbeHealthVerifier:
             params=dict(
                 method=validator.name,
                 method_params=validator.params,
-                features=features),
-            sequence_metadata=metadata,
+                features=features
+            ),
             elements=elements_descriptors,
-            data=rfs
+            sequence_metadata=metadata,
+            data=rfs,
+            footprint=footprint,
+            validator=validator,
         )
         return report
 
-    def _acquire_rf_data(self, cfg_path, n):
+    def _acquire_rf_data(
+            self,
+            cfg_path,
+            n,
+            tx_frequency,
+            nrx,
+            voltage,
+            footprint=None,
+    ):
+        """
+        Acquires rf data. If footprint is given the footprint sequence is used,
+        """
         with arrus.session.Session(cfg_path) as sess:
             rf_reorder = Pipeline(
                 steps=(
@@ -664,32 +828,52 @@ class ProbeHealthVerifier:
             us4r = sess.get_device("/Us4R:0")
             n_elements = us4r.get_probe_model().n_elements
             masked_elements = us4r.channels_mask
-            seq = LinSequence(
-                tx_aperture_center_element=np.arange(0, n_elements),
-                tx_aperture_size=1,
-                tx_focus=30e-3,
-                pulse=Pulse(center_frequency=8e6, n_periods=0.5,
-                            inverse=False),
-                rx_aperture_center_element=np.arange(0, n_elements),
-                rx_aperture_size=_NRX,
-                rx_sample_range=(0, 1024),
-                pri=1000e-6,
-                tgc_start=14,
-                tgc_slope=0,
-                downsampling_factor=1,
-                speed_of_sound=1490,
-                sri=800e-3)
-            scheme = Scheme(tx_rx_sequence=seq, processing=rf_reorder,
-                            work_mode="MANUAL")
+            if footprint is None:
+                seq = LinSequence(
+                    tx_aperture_center_element=np.arange(0, n_elements),
+                    tx_aperture_size=1,
+                    tx_focus=30e-3,
+                    pulse=Pulse(
+                        center_frequency=tx_frequency,
+                        n_periods=1,
+                        inverse=False,
+                    ),
+                    rx_aperture_center_element=np.arange(0, n_elements),
+                    rx_aperture_size=nrx,
+                    rx_sample_range=(0, 512),
+                    pri=1000e-6,
+                    tgc_start=14,
+                    tgc_slope=0,
+                    downsampling_factor=1,
+                    speed_of_sound=1490,
+                )
+            else:
+                seq = footprint.get_sequence()
+                n = footprint.get_number_of_frames()
+                print("Sequence loaded from footprint.")
+
+            scheme = Scheme(
+                tx_rx_sequence=seq,
+                processing=rf_reorder,
+                work_mode="MANUAL",
+            )
             buffer, const_metadata = sess.upload(scheme)
             rfs = []
-            us4r.set_hv_voltage(5)
+            if voltage > 15:
+                raise ValueError("The voltage can not be higher "
+                                 "than 15V for probe check")
+            us4r.set_hv_voltage(voltage)
             # Wait for the voltage to stabilize.
             time.sleep(1)
             # Start the device.
             LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
             # Record RF frames.
             # Acquire n consecutive frames
+            # Skip n first sequences
+            for i in range(_N_SKIPPED_SEQUENCES):
+                sess.run()
+                buffer.get()[0]
+            # Now do the actual acquisition.    
             for i in range(n):
                 LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX: {i}")
                 sess.run()
@@ -697,3 +881,4 @@ class ProbeHealthVerifier:
                 rfs.append(np.squeeze(data.copy()))
             rfs = np.stack(rfs)
         return rfs, const_metadata, masked_elements
+

@@ -7,7 +7,7 @@ fs          = acq.rxSampFreq/proc.dec;
 radGridIn	= ( (acq.startSample - 1)/acq.rxSampFreq ...
               + (0:(nSamp-1))'/fs ) * proc.sos/2;
 
-if isnan(sys.curvRadius) && ...                 % linear/phased array
+if sys.curvRadius == 0 && ...                   % linear/phased array
    all(diff(acq.txAng) == 0) && ...             % txAng = const
    all(diff(acq.txApCentX) > 0)                 % txApCentX increasing
     % Linear array, linear scanning, (interpolation error ~ |txAngle|)
@@ -16,7 +16,7 @@ if isnan(sys.curvRadius) && ...                 % linear/phased array
     azimGridOut = proc.xGrid - proc.zGrid.' * tan(acq.txAng(1));
     radGridOut = repmat(proc.zGrid.' / cos(acq.txAng(1)), [1 proc.xSize]);
     
-elseif isnan(sys.curvRadius) || ...             % linear/phased array ...
+elseif sys.curvRadius == 0 || ...               % linear/phased array ...
        sys.curvRadius < 0 && ...                % or convex array
        all(diff(acq.txApCentX) == 0) && ...     % txApCent = const
        all(diff(acq.txApCentZ) == 0) && ...     % txApCent = const

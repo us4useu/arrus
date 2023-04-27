@@ -24,16 +24,17 @@ public:
         return TxRxSequenceConverter{ctx,
                                      ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, TxRx, TxRxConverter, ops, object),
                                      ARRUS_MATLAB_GET_CPP_VECTOR(ctx, float, tgcCurve, object),
-                                     ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, sri, object)};
+                                     ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, sri, object),
+                                     ARRUS_MATLAB_GET_CPP_SCALAR(ctx, int16, nRepeats, object)};
     }
 
     static TxRxSequenceConverter from(const MexContext::SharedHandle &ctx, const TxRxSequence &object) {
         std::cout << "Reading from core object" << std::endl;
-        return TxRxSequenceConverter{ctx, object.getOps(), object.getTgcCurve(), object.getSri().value_or(NO_SRI)};
+        return TxRxSequenceConverter{ctx, object.getOps(), object.getTgcCurve(), object.getSri().value_or(NO_SRI), object.getNRepeats()};
     }
 
-    TxRxSequenceConverter(MexContext::SharedHandle ctx, std::vector<TxRx> ops, TGCCurve tgcCurve, float sri)
-        : ctx(std::move(ctx)), ops(std::move(ops)), tgcCurve(std::move(tgcCurve)), sri(sri) {}
+    TxRxSequenceConverter(MexContext::SharedHandle ctx, std::vector<TxRx> ops, TGCCurve tgcCurve, float sri, int16 nRepeats)
+        : ctx(std::move(ctx)), ops(std::move(ops)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats) {}
 
     [[nodiscard]] ::arrus::ops::us4r::TxRxSequence toCore() const {
         float actualSri = TxRxSequence::NO_SRI;
@@ -41,7 +42,7 @@ public:
             // In matlab SRI == 0 is the default value, to not use the SRI.
             actualSri = sri;
         }
-        return ::arrus::ops::us4r::TxRxSequence{ops, tgcCurve, actualSri};
+        return ::arrus::ops::us4r::TxRxSequence{ops, tgcCurve, actualSri, nRepeats};
     }
 
     [[nodiscard]] ::matlab::data::Array toMatlab() const {
@@ -50,7 +51,8 @@ public:
                                  {
                                      ARRUS_MATLAB_GET_MATLAB_OBJECT_VECTOR_KV(ctx, TxRx, TxRxConverter, ops),
                                      ARRUS_MATLAB_GET_MATLAB_VECTOR_KV(ctx, float, tgcCurve),
-                                     ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, sri)
+                                     ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, sri),
+                                     ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, int16, nRepeats)
                                  });
     }
 
@@ -59,6 +61,7 @@ private:
     std::vector<TxRx> ops;
     TGCCurve tgcCurve;
     float sri;
+    int16 nRepeats;
 };
 
 }

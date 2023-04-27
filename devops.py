@@ -5,12 +5,12 @@ import pydevops.us4us as us4us
 
 
 # pydevops version
-version = "0.1.0"
+version = "0.2.0"
 # Default branch or tag, which we will be looking for in the
 # US4R_API_RELEASE_DIR, if the us4r_api_dir parameters is not provided
 # explicitly. Note: the below tag/branch should conform with the us4R required
 # version.
-us4r_api_default_branch_tag = "v0.9.0-dev"
+us4r_api_default_branch_tag = "v0.10.0-dev"
 
 
 def get_default_generator_for_current_os():

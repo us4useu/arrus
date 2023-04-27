@@ -85,12 +85,12 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
     std::vector<std::pair <std::string,float>> voltages;
     bool fail = true;
     while(retries-- && fail) {
+        fail = false;
         voltages = logVoltages(isUS4PSC);
         for(size_t i = 0; i < voltages.size(); i++) {
             if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) { 
                 fail = true; 
             }
-            else { fail = false; }
         }
         if(!fail) { break; }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -184,6 +184,10 @@ float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
 }
 
 void Us4RImpl::disableHV() {
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if(this->state == State::STARTED) {
+        throw IllegalStateException("You cannot disable HV while the system is running.");
+    }
     logger->log(LogSeverity::INFO, "Disabling HV");
     ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
     hv.value()->disable();
@@ -409,10 +413,18 @@ void Us4RImpl::setPgaGain(uint16 value) {
     auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value)->build();
     setRxSettings(newRxSettings);
 }
+uint16 Us4RImpl::getPgaGain() {
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    return this->rxSettings.value().getPgaGain();
+}
 void Us4RImpl::setLnaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value)->build();
     setRxSettings(newRxSettings);
+}
+uint16 Us4RImpl::getLnaGain() {
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    return this->rxSettings.value().getLnaGain();
 }
 void Us4RImpl::setLpfCutoff(uint32 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();

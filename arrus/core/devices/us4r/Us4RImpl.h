@@ -107,7 +107,9 @@ public:
 
     void setRxSettings(const RxSettings &settings) override;
     void setPgaGain(uint16 value) override;
+    uint16 getPgaGain() override;
     void setLnaGain(uint16 value) override;
+    uint16 getLnaGain() override;
     void setLpfCutoff(uint32 value) override;
     void setDtgcAttenuation(std::optional<uint16> value) override;
     void setActiveTermination(std::optional<uint16> value) override;

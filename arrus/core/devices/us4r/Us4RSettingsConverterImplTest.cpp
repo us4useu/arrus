@@ -84,7 +84,7 @@ TEST_P(MappingsTest, CorrectlyConvertsMappingsToUs4OEMSettings) {
     auto[us4oemSettings, newAdapterSettings] = converter.convertToUs4OEMSettings(
         adapterSettings, probeSettings,
         rxSettings, std::vector<ChannelIdx>(),
-        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {});
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {}, 2);
 
     EXPECT_EQ(us4oemSettings.size(), mappings.expectedUs4OEMMappings.size());
 
@@ -415,7 +415,7 @@ TEST_P(ActiveChannelsTest, CorrectlyGeneratesActiveChannelGroups) {
     auto[us4oemSettings, newAdapterSettings] = converter.convertToUs4OEMSettings(
         adapterSettings, probeSettings,
         rxSettings, std::vector<ChannelIdx>(),
-        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {});
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {}, 2);
 
     EXPECT_EQ(us4oemSettings.size(), testCase.expectedUs4OEMMasks.size());
 
@@ -640,7 +640,7 @@ TEST_P(ChannelMaskingTest, CorrectlyMasksChannels) {
     auto[us4oemSettings, newAdapterSettings] = converter.convertToUs4OEMSettings(
         adapterSettings, probeSettings,
         rxSettings, mappings.channelsMask,
-        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {});
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {}, 2);
 
     std::vector<std::unordered_set<uint8>> channelsMasks;
     std::transform(
@@ -748,7 +748,7 @@ TEST(ChannelsMaskingTest, ChecksIfChannelMaskElementsDoNotExceedNumberOfProbeEle
 
     EXPECT_THROW(converter.convertToUs4OEMSettings(
                      adapterSettings, probeSettings, rxSettings, channelsMask,
-                     Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {}),
+                     Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {}, 2),
                  ::arrus::IllegalArgumentException);
 }
 
@@ -780,7 +780,7 @@ TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersEsaote) {
 
     auto [us4oemCfg, adapterCfg] = converter.convertToUs4OEMSettings(
         adapterSettings, probeSettings, rxSettings, {},
-        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R);
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R, 2);
     // Adapter mapping
     auto &actualAdapterMapping = adapterCfg.getChannelMapping();
     ChannelMapping expectedAdapterMapping = concat<ChannelAddress>(
@@ -837,7 +837,7 @@ TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersAtl) {
 
     auto [us4oemCfg, adapterCfg] = converter.convertToUs4OEMSettings(
         adapterSettings, probeSettings, rxSettings, {},
-        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R);
+        Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R, 2);
     // Adapter mapping
     auto &actualAdapterMapping = adapterCfg.getChannelMapping();
     ChannelMapping expectedAdapterMapping = concat<ChannelAddress>(

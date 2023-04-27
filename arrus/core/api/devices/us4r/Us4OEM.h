@@ -40,6 +40,16 @@ public:
     virtual float getFPGATemperature() = 0;
 
     /**
+     * Returns temperature measured by Us4OEM's UCD [Celsius]
+     */
+    virtual float getUCDTemperature() = 0;
+
+    /**
+     * Returns external temperature measured by Us4OEM's UCD [Celsius]
+     */
+    virtual float getUCDExternalTemperature() = 0;
+
+    /**
      * Returns rail voltage measured by Us4OEM's UCD [V].
      *
      * @param rail UCD rail number
@@ -125,6 +135,16 @@ public:
      * @param frequency corner high-pass filter frequency to set
      */
     virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Returns serial number of this us4OEM (a null-terminated string).
+     */
+    virtual const char* getSerialNumber() const = 0;
+
+    /**
+     * Returns revision number of this us4OEM (a null-terminated string).
+     */
+    virtual const char* getRevision() const = 0;
 
     /**
      * Disables digital high-pass filter.

@@ -82,6 +82,14 @@ Devices
     :exclude-members: start, stop, get_probe_model
     :show-inheritance:
 
+.. autoclass:: arrus.devices.us4oem.Us4OEM
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.devices.us4r.Backplane
+    :members:
+    :show-inheritance:
+
 .. autoclass:: arrus.devices.gpu.GPU
     :show-inheritance:
 
@@ -218,10 +226,6 @@ Probe check functionality
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.utils.probe_check.ProbeElementFeatureExtractor
-    :members:
-    :show-inheritance:
-
 .. autoclass:: arrus.utils.probe_check.MaxAmplitudeExtractor
     :members:
     :show-inheritance:
@@ -238,7 +242,7 @@ Probe check functionality
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.utils.probe_check.ByNeigborhoodValidator
+.. autoclass:: arrus.utils.probe_check.ByNeighborhoodValidator
     :members:
     :show-inheritance:
 

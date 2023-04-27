@@ -1,4 +1,4 @@
-# dictionary_file: "dictionary.prototxt"
+dictionary_file: "dictionary.prototxt"
 
 us4r: {
     probe_id: {

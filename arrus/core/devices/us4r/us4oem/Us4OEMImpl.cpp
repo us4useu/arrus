@@ -154,7 +154,8 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    using Validator<TxRxParamsSequence>::Validator;
+    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax)
+    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -172,8 +173,8 @@ public:
                                                        Us4OEMImpl::MAX_TX_DELAY, firingStr);
 
                 // Tx - pulse
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getCenterFrequency(), Us4OEMImpl::MIN_TX_FREQUENCY,
-                                                  Us4OEMImpl::MAX_TX_FREQUENCY, firingStr);
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
+                    op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax, firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
@@ -201,6 +202,9 @@ public:
             }
         }
     }
+private:
+    float txFrequencyMin;
+    float txFrequencyMax;
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
@@ -211,7 +215,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
     bool isDDCOn = ddc.has_value();
-    Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr));
+    Us4OEMTxRxValidator seqValidator(
+        format("{} tx rx sequence", deviceIdStr),
+        ius4oem->GetMinTxFrequency(),
+        ius4oem->GetMaxTxFrequency());
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
@@ -630,23 +637,36 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
     if (tgc.empty()) {
         ius4oem->TGCDisable();
     } else {
-        ius4oem->TGCEnable();
-        std::vector<float> actualTgc;
-
-        if (applyCharacteristic) {
-            static const std::vector<float> tgcChar = {
-                14.000f, 14.001f, 14.002f, 14.003f, 14.024f, 14.168f, 14.480f, 14.825f, 15.234f, 15.770f, 16.508f,
-                17.382f, 18.469f, 19.796f, 20.933f, 21.862f, 22.891f, 24.099f, 25.543f, 26.596f, 27.651f, 28.837f,
-                30.265f, 31.690f, 32.843f, 34.045f, 35.543f, 37.184f, 38.460f, 39.680f, 41.083f, 42.740f, 44.269f,
-                45.540f, 46.936f, 48.474f, 49.895f, 50.966f, 52.083f, 53.256f, 54.0f};
-            // observed -> applied (e.g. when applying 15 dB actually 14.01 gain was observed)
-            actualTgc = ::arrus::interpolate1d(tgcChar, ::arrus::getRange<float>(14, 55, 1.0), tgc);
-        } else {
-            actualTgc = tgc;
-        }
+        std::vector<float> actualTgc = tgc;
+        // Normalize to [0, 1].
         for (auto &val : actualTgc) {
             val = (val - tgcMin) / TGC_ATTENUATION_RANGE;
         }
+        if (applyCharacteristic) {
+            // TGC characteristic, experimentally verified.
+            static const std::vector<float> tgcChar = {
+                0.0f, 2.4999999999986144e-05f, 5.00000000000167e-05f, 7.500000000000284e-05f,
+                0.0005999999999999784f, 0.0041999999999999815f, 0.01200000000000001f, 0.020624999999999984f,
+                0.03085f, 0.04424999999999999f, 0.06269999999999998f, 0.08455000000000004f,
+                0.11172500000000003f, 0.14489999999999997f, 0.173325f, 0.19654999999999995f,
+                0.22227499999999994f, 0.252475f, 0.28857499999999997f, 0.3149f,
+                0.341275f, 0.370925f, 0.406625f, 0.44225000000000003f,
+                0.4710750000000001f, 0.501125f, 0.538575f, 0.5795999999999999f,
+                0.6115f, 0.642f, 0.677075f, 0.7185f,
+                0.756725f, 0.7885f, 0.8234f, 0.8618499999999999f,
+                0.897375f, 0.92415f, 0.952075f, 0.9814f, 1.0f
+            };
+            // the below is simply linspace(0, 1, 41)
+            static const std::vector<float> tgcCharPoints = {
+                0.0f   , 0.025f, 0.05f, 0.075f, 0.1f, 0.125f, 0.15f, 0.175f, 0.2f  ,
+                0.225f, 0.25f , 0.275f, 0.3f  , 0.325f, 0.35f , 0.375f, 0.4f  , 0.425f,
+                0.45f , 0.475f, 0.5f  , 0.525f, 0.55f , 0.575f, 0.6f  , 0.625f, 0.65f ,
+                0.675f, 0.7f  , 0.725f, 0.75f , 0.775f, 0.8f  , 0.825f, 0.85f , 0.875f,
+                0.9f  , 0.925f, 0.95f , 0.975f, 1.0f
+            };
+            actualTgc = ::arrus::interpolate1d(tgcChar, tgcCharPoints, actualTgc);
+        }
+        ius4oem->TGCEnable();
         // Currently setting firing parameter has no impact on the result
         // because TGC can be set only once for the whole sequence.
         ius4oem->TGCSetSamples(actualTgc, 0);
@@ -712,6 +732,10 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
 
 float Us4OEMImpl::getFPGATemperature() { return ius4oem->GetFPGATemp(); }
 
+float Us4OEMImpl::getUCDTemperature() { return ius4oem->GetUCDTemp(); }
+
+float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->GetUCDExtTemp(); }
+
 float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
 
 void Us4OEMImpl::checkFirmwareVersion() {
@@ -738,7 +762,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 35u + (16 * (uint32_t) ddcDecimationFactor);
+    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
 
     //Check if data valid offset is higher than TX offset
     if (offset > 240) {
@@ -775,6 +799,9 @@ void Us4OEMImpl::setAfeDemod(const std::optional<ops::us4r::DigitalDownConversio
         auto &value = ddc.value();
         setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(), value.getFirCoefficients().data(),
                     value.getFirCoefficients().size());
+    }
+    else {
+        disableAfeDemod();
     }
 }
 
@@ -813,5 +840,9 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
     setAfeDemodConfig(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters), firCoefficients,
                       static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
+
+const char* Us4OEMImpl::getSerialNumber() const { return Us4OEMImpl::SERIAL_NUMBER_MOCK_UP; }
+
+const char* Us4OEMImpl::getRevision() const { return Us4OEMImpl::REVISION_MOCK_UP; }
 
 }// namespace arrus::devices

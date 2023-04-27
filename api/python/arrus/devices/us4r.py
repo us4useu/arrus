@@ -14,6 +14,7 @@ import arrus.kernels.kernel
 import arrus.kernels.tgc
 import arrus.ops.tgc
 from collections.abc import Iterable
+from typing import Optional
 
 
 DEVICE_TYPE = DeviceType("Us4R")
@@ -40,6 +41,24 @@ class FrameChannelMapping:
     batch_size: int = 1
 
 
+class Backplane:
+    """
+    Digital backplane of the us4R device.
+    """
+
+    def get_serial_number(self) -> str:
+        """
+        Returns serial number of the digital backplane.
+        """
+        return ""
+
+    def get_revision(self) -> str:
+        """
+        Returns revision number of the digital backplane.
+        """
+        return ""
+
+
 class Us4R(Device):
     """
     A handle to Us4R device.
@@ -55,6 +74,7 @@ class Us4R(Device):
                                    self._handle.getDeviceId().getOrdinal())
         # Context for the currently running sequence.
         self._current_sequence_context = None
+        self._backplane = Backplane()
 
     def get_device_id(self):
         return self._device_id
@@ -101,17 +121,17 @@ class Us4R(Device):
         """
         self._handle.disableHV()
 
-    def start(self):
+    def get_us4oem(self, ordinal: int) -> Us4OEM:
         """
-        Starts uploaded tx/rx sequence execution.
+        Returns a handle to us4OEM with the given number.
         """
-        self._handle.start()
+        return Us4OEM(self._handle.getUs4OEM(ordinal))
 
-    def stop(self):
+    def get_backplane(self) -> Backplane:
         """
-        Stops tx/rx sequence execution.
+        Returns a handle to us4R digital backplane.
         """
-        self._handle.stop()
+        return self._backplane
 
     @property
     def sampling_frequency(self):
@@ -133,9 +153,6 @@ class Us4R(Device):
     def n_us4oems(self):
         return self._handle.getNumberOfUs4OEMs()
 
-    def get_us4oem(self, ordinal: int):
-        return Us4OEM(self._handle.getUs4OEM(ordinal))
-
     @property
     def firmware_version(self):
         result = {}
@@ -150,6 +167,18 @@ class Us4R(Device):
             us4oem_ver.append(ver)
         result["Us4OEM"] = us4oem_ver
         return result
+
+    def start(self):
+        """
+        Starts uploaded tx/rx sequence execution.
+        """
+        self._handle.start()
+
+    def stop(self):
+        """
+        Stops tx/rx sequence execution.
+        """
+        self._handle.stop()
 
     def set_kernel_context(self, kernel_context):
         self._current_sequence_context = kernel_context
@@ -179,6 +208,38 @@ class Us4R(Device):
         :param frequency: corner high-pass filter frequency to set
         """
         self._handle.setHpfCornerFrequency(frequency)
+
+    def set_lna_gain(self, gain: int):
+        """
+        Sets LNA gain.
+
+        Available: 12, 18, 24 [dB].
+
+        :param gain: gain value to set
+        """
+        self._handle.setLnaGain(gain)
+
+    def set_pga_gain(self, gain: int):
+        """
+        Sets PGA gain.
+
+        Available: 24, 30 [dB].
+
+        :param gain: gain value to set
+        """
+        self._handle.setPgaGain(gain)
+
+    def set_dtgc_attenuation(self, attenuation: Optional[int]):
+        """
+        Sets DTGC attenuation.
+
+        Available: 0, 6, 12, 18, 24, 30, 36, 42 [dB] or None;
+        None turns off DTGC.
+
+        :param attenuation: attenuation value to set
+        :return:
+        """
+        self._handle.setDtgcAttenuation(attenuation)
 
     def disable_hpf(self):
         """

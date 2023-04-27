@@ -13,17 +13,21 @@ Release notes
     - us4R: scheme stopping procedure was improved (should take less time)
     - us4R: exposed a function that allows to read us4OEM FPGA Wallclock
     - us4R: enabled hardware high-pass filter, by default us4OEMs will be initialized with 300 kHz cutoff frequency
-    - us4R: exposed the possibility to change hardware high-pass filter (HPF) cutoff frequency or to disable HPF 
+    - us4R: exposed the possibility to change hardware high-pass filter (HPF) cutoff frequency or to disable HPF
+    - us4R: exposed methods to read us4OEM serial and revision number (currently mocked up)
 
 - Python API:
 
+    - Exposed Us4OEM FPGA, UCD, UCD external temperature.
     - Implemented new module `arrus.utils.probe_check` for probe checking and automatic channel health, see example: examples/check_probe.py
+    - implemented following features for probe checking: amplitude, signal duration, normalized energy and Pearson correlation coefficient (for comparing acquired signal with previous acquired 'footprint' of a probe)
     - exposed hardware Digital Down Conversion
     - us4R: exposed the possibility to change hardware high-pass filter cutoff frequency
     - arrus.utils.imaging: changed the default filter type for BandpassFilter to hamming windows (firwin)
     - Implemented a general delay and sum look up table beamformer for 3D output volume reconstruction
     - From now on TGC curve gain values will be clipped to the [min hardware gain, max hardware gain] range by default. Change arrus.ops.tgc.LinearTGC.clip to False to restore the previous behavior.
     - Changed stop_scheme behavior to close processing runner (fixes the issue with closing arrus.utils processing on session close).
+    - Exposed the possibility to change LNA/PGA gain and DTGC attenuation.
 
 
 - MATLAB API:
