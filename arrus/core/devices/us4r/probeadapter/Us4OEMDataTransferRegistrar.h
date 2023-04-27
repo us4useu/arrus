@@ -187,15 +187,13 @@ public:
     } \
 }
     void scheduleTransfers() {
-        // Here schedule transfers only from the start points (nSrc calls), dst pointers will be incremented
+        // Schedule transfers only from the start points (nSrc calls), dst pointers will be incremented
         // appropriately (if necessary).
         uint16 elementFirstFiring = 0;
         for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
             size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // bytes addressed
             uint16 elementLastFiring = srcBuffer.getElement(srcIdx).getFiring();
             // for each element's part transfer:
-            uint16 transferFirstFiring = elementFirstFiring;
-	    transferFirstFiring = transferFirstFiring;
             for(uint16 localTransferIdx = 0; localTransferIdx < nTransfersPerElement; ++localTransferIdx) {
                 auto &transfer = elementTransfers[localTransferIdx];
                 size_t transferIdx = srcIdx*nTransfersPerElement + localTransferIdx; // global transfer idx
@@ -205,14 +203,13 @@ public:
                 uint16 transferLastFiring = elementFirstFiring + transfer.firing;
 
                 bool isLastTransfer = localTransferIdx == nTransfersPerElement-1;
-
                 std::function<void()> callback;
                 if(isLastTransfer) {
                     switch(strategy) {
                         case 0: callback = ARRUS_ON_NEW_DATA_CALLBACK(true, 0); break;
                         case 1: callback = ARRUS_ON_NEW_DATA_CALLBACK(true, 1); break;
                         case 2: callback = ARRUS_ON_NEW_DATA_CALLBACK(true, 2); break;
-                        default: throw std::runtime_error("Unknown registrar strategy");
+                        default: throw std::runtime_error("Unknown us4R buffer registrar strategy");
                     }
                 }
                 else {
@@ -220,14 +217,12 @@ public:
                         case 0: callback = ARRUS_ON_NEW_DATA_CALLBACK(false, 0); break;
                         case 1: callback = ARRUS_ON_NEW_DATA_CALLBACK(false, 1); break;
                         case 2: callback = ARRUS_ON_NEW_DATA_CALLBACK(false, 2); break;
-                        default: throw std::runtime_error("Unknown registrar strategy");
+                        default: throw std::runtime_error("Unknown us4R buffer registrar strategy");
                     }
                 }
                 ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
-
-                transferFirstFiring = transferLastFiring + 1;
             }
-            elementFirstFiring = elementLastFiring + 1;
+            elementFirstFiring = elementLastFiring+1;
         }
     }
 
