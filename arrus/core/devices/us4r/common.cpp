@@ -181,12 +181,6 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                     }
                 }
             }
-            if(seqIdx == 0) {
-                // NOTE: for us4OEM:0, even if it is RX nop, the results of this
-                // rx NOP will be transferred from us4OEM to host memory,
-                // to get the frame metadata.
-                maxSubapertureIdx = (std::max)((ChannelIdx)1, maxSubapertureIdx);
-            }
             currentFrameIdx[seqIdx] += maxSubapertureIdx;
         }
         // Check if all seqs have the same size.
@@ -197,7 +191,6 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                        [](auto &v) { return v.size(); });
         size_t maxSize = *std::max_element(std::begin(currentSeqSizes),
                                            std::end(currentSeqSizes));
-
         for(auto& resSeq : result) {
             if(resSeq.size() < maxSize) {
                 // create rxnop copy from the last element of this sequence
@@ -206,8 +199,14 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                 resSeq.resize(maxSize, TxRxParameters::createRxNOPCopy(resSeq[resSeq.size()-1]));
             }
         }
+        // NOTE: for us4OEM:0, even if it is RX nop, the results of this
+        // rx NOP will be transferred from us4OEM to host memory,
+        // to get the frame metadata. Therefore we need to increase
+        // the number of frames a given element contains.
+        currentFrameIdx[0] = FrameNumber(maxSize);
     }
     return std::make_tuple(result, opDestOp, opDestChannel);
 }
 
 }
+
