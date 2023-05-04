@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.7.7)
+set(PROJECT_VERSION 0.7.8)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 string(TIMESTAMP CURRENT_YEAR "%Y")
 

@@ -4,6 +4,12 @@ Release notes
 0.7.x
 -----
 
+0.7.8
+.....
+
+- core (C++): Fixed frame channel mapping for RX aperture smaller than 32 elements, and for non-standard probe adapters (that do not satisfy channel group modulo-32 congruency).
+
+
 0.7.7
 .....
 
