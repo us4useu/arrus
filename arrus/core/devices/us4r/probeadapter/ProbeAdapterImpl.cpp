@@ -372,7 +372,7 @@ std::function<void()> ProbeAdapterImpl::createReleaseCallback(
     switch(workMode) {
     case Scheme::WorkMode::HOST: // Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
-            for(int i = us4oems.size()-1; i >= 0; --i) {
+            for(int i = (int)us4oems.size()-1; i >= 0; --i) {
                 us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
@@ -382,7 +382,7 @@ std::function<void()> ProbeAdapterImpl::createReleaseCallback(
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
         return [this, startFiring, endFiring]() {
-            for(int i = us4oems.size()-1; i >= 0; --i) {
+            for(int i = (int)us4oems.size()-1; i >= 0; --i) {
                 us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
@@ -408,7 +408,7 @@ std::function<void()> ProbeAdapterImpl::createOnReceiveOverflowCallback(
                 }
                 // Inform about free elements only once, in the master's callback.
                 if(isMaster) {
-                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                    for(int i = (int)us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->SyncReceive();
                     }
                 }
@@ -457,7 +457,7 @@ std::function<void()> ProbeAdapterImpl::createOnTransferOverflowCallback(
                 }
                 // Inform about free elements only once, in the master's callback.
                 if(isMaster) {
-                    for(int i = us4oems.size()-1; i >= 0; --i) {
+                    for(int i = (int)us4oems.size()-1; i >= 0; --i) {
                         us4oems[i]->getIUs4oem()->SyncTransfer();
                     }
                 }
