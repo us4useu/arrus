@@ -59,6 +59,13 @@ private:
         return this->us4oems[0];
     }
     size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
+    std::function<void()> createReleaseCallback(
+        ::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 stopFiring);
+
+    std::function<void()> createOnReceiveOverflowCallback(
+        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
+    std::function<void()> createOnTransferOverflowCallback(
+        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
 
     Logger::Handle logger;
     ProbeAdapterModelId modelId;

@@ -29,7 +29,7 @@ int main() noexcept {
 
         std::vector<TxRx> txrxs;
 
-		// 10 plane waves
+        // 10 plane waves
         for(int i = 0; i < 4; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
@@ -47,7 +47,7 @@ int main() noexcept {
         Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
 
         auto result = session->upload(scheme);
-		us4r->setVoltage(5);
+        us4r->setVoltage(5);
 
         std::condition_variable cv;
         using namespace std::chrono_literals;
@@ -56,12 +56,12 @@ int main() noexcept {
             try {
                 std::cout << "Iteration: " << i << ", data: " << std::endl;
                 std::cout << "- memory ptr: " << std::hex
-                                           << ptr->getData().get<short>()
-                                           << std::dec << std::endl;
+                          << ptr->getData().get<short>()
+                          << std::dec << std::endl;
                 std::cout << "- size: " << ptr->getSize() << std::endl;
                 std::cout << "- shape: (" << ptr->getData().getShape()[0] <<
-                                     ", " << ptr->getData().getShape()[1] <<
-                                     ")" << std::endl;
+                    ", " << ptr->getData().getShape()[1] <<
+                    ")" << std::endl;
 
                 // Stop the system after 10-th frame.
                 if(i == 3) {

@@ -1,5 +1,6 @@
 #include "ProbeAdapterImpl.h"
 
+#include <thread>
 #include "arrus/core/external/eigen/Dense.h"
 #include "arrus/core/devices/us4r/common.h"
 #include "arrus/core/common/validation.h"
@@ -309,9 +310,7 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     auto ius4oem = us4oem->getIUs4oem();
     const auto nElementsSrc = bufferSrc.getNumberOfElements();
     const size_t nElementsDst = bufferDst->getNumberOfElements();
-
     size_t elementSize = getUniqueUs4OEMBufferElementSize(bufferSrc);
-
     if (elementSize == 0) {
         return;
     }
@@ -320,70 +319,27 @@ void ProbeAdapterImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const U
     }
     transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, bufferSrc, us4oem);
     transferRegistrar[us4oemOrdinal]->registerTransfers();
-
     // Register buffer element release functions.
-    bool isTriggerRequired = workMode == Scheme::WorkMode::HOST;
+    bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterUs4oem()->getDeviceId().getOrdinal();
     size_t nRepeats = nElementsDst/nElementsSrc;
     uint16 startFiring = 0;
-
     for(size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getFiring();
         for(size_t j = 0; j < nRepeats; ++j) {
-            std::function<void()> releaseFunc;
-            if(isTriggerRequired) {
-                releaseFunc = [this, startFiring, endFiring]() {
-                    for (auto &us4oem: this->us4oems) {
-                        us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                    }
-                    getMasterUs4oem()->syncTrigger();
-                };
-            }
-            else {
-                releaseFunc = [this, startFiring, endFiring]() {
-                    for (auto &us4oem: this->us4oems) {
-                        us4oem->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                    }
-                };
-            }
+            std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j*nElementsSrc+i, releaseFunc);
         }
         startFiring = endFiring+1;
     }
-
     // Overflow handling
-    ius4oem->RegisterReceiveOverflowCallback([this, bufferDst]() {
-        try {
-            if(bufferDst->isStopOnOverflow()) {
-                this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
-                this->getMasterUs4oem()->stop();
-                bufferDst->markAsInvalid();
-            } else {
-                this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
-            }
-        } catch (const std::exception &e) {
-            logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
-        } catch (...) {
-            logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown");
-        }
-    });
-
-    ius4oem->RegisterTransferOverflowCallback([this, bufferDst]() {
-        try {
-            if(bufferDst->isStopOnOverflow()) {
-                this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
-                this->getMasterUs4oem()->stop();
-                bufferDst->markAsInvalid();
-            }
-            else {
-                this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
-            }
-        } catch (const std::exception &e) {
-            logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
-        } catch (...) {
-            logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
-        }
-    });
+    ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster));
+    ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster));
+    // Work mode specific initialization
+    if(workMode == ops::us4r::Scheme::WorkMode::SYNC) {
+        ius4oem->EnableWaitOnReceiveOverflow();
+        ius4oem->EnableWaitOnTransferOverflow();
+    }
 }
 
 size_t ProbeAdapterImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {
@@ -407,6 +363,130 @@ void ProbeAdapterImpl::unregisterOutputBuffer() {
         if(transferRegistrar[i]) {
             transferRegistrar[i]->unregisterTransfers();
         }
+    }
+}
+
+std::function<void()> ProbeAdapterImpl::createReleaseCallback(
+    Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
+
+    switch(workMode) {
+    case Scheme::WorkMode::HOST: // Automatically generate new trigger after releasing all elements.
+        return [this, startFiring, endFiring]() {
+            for(int i = (int)us4oems.size()-1; i >= 0; --i) {
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+            }
+            getMasterUs4oem()->syncTrigger();
+        };
+    case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
+    case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
+    case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
+        return [this, startFiring, endFiring]() {
+            for(int i = (int)us4oems.size()-1; i >= 0; --i) {
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+            }
+        };
+    default:
+        throw ::arrus::IllegalArgumentException("Unsupported work mode.");
+    }
+}
+
+std::function<void()> ProbeAdapterImpl::createOnReceiveOverflowCallback(
+    Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster) {
+
+    using namespace std::chrono_literals;
+    switch(workMode) {
+    case Scheme::WorkMode::SYNC:
+        return  [this, buffer, isMaster]() {
+            try {
+                this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
+                size_t nElements = buffer->getNumberOfElements();
+                // Wait for all elements to be released by the user.
+                while(nElements != buffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::this_thread::sleep_for(1ms);
+                }
+                // Inform about free elements only once, in the master's callback.
+                if(isMaster) {
+                    for(int i = (int)us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncReceive();
+                    }
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+            } catch (...) {
+                logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown");
+            }
+        };
+    case Scheme::WorkMode::ASYNC:
+    case Scheme::WorkMode::HOST:
+    case Scheme::WorkMode::MANUAL:
+        return [this, buffer]() {
+            try {
+                if(buffer->isStopOnOverflow()) {
+                    this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
+                    this->getMasterUs4oem()->stop();
+                    buffer->markAsInvalid();
+                } else {
+                    this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+            } catch (...) {
+                logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown");
+            }
+        };
+    default:
+        throw ::arrus::IllegalArgumentException("Unsupported work mode.");
+    }
+}
+
+std::function<void()> ProbeAdapterImpl::createOnTransferOverflowCallback(
+    Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster) {
+
+    using namespace std::chrono_literals;
+    switch(workMode) {
+    case Scheme::WorkMode::SYNC:
+        return  [this, buffer, isMaster]() {
+            try {
+                this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
+                size_t nElements = buffer->getNumberOfElements();
+                // Wait for all elements to be released by the user.
+                while(nElements != buffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::this_thread::sleep_for(1ms);
+                }
+                // Inform about free elements only once, in the master's callback.
+                if(isMaster) {
+                    for(int i = (int)us4oems.size()-1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncTransfer();
+                    }
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
+            } catch (...) {
+                logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
+            }
+        };
+    case Scheme::WorkMode::ASYNC:
+    case Scheme::WorkMode::HOST:
+    case Scheme::WorkMode::MANUAL:
+        return [this, buffer]() {
+            try {
+                if(buffer->isStopOnOverflow()) {
+                    this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
+                    this->getMasterUs4oem()->stop();
+                    buffer->markAsInvalid();
+                } else {
+                    this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
+            } catch (...) {
+                logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
+            }
+        };
+    default:
+        throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
 }
 
