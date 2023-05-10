@@ -5,6 +5,7 @@ GPU is required.
 import numpy as np
 import arrus
 import scipy.signal
+import arrus.ops.us4r
 from arrus.ops.us4r import *
 from arrus.ops.imaging import PwiSequence
 from arrus.utils.gui import Display2D
@@ -59,7 +60,7 @@ with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
                 Squeeze(),
             ),
             placement="/GPU:0"),
-        digital_down_conversion=DigitalDownConversion(
+        digital_down_conversion=arrus.ops.us4r.DigitalDownConversion(
             demodulation_frequency=6e6,
            decimation_factor=decimation_factor,
            fir_coefficients=coeffs)
