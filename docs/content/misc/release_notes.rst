@@ -1,6 +1,19 @@
 Release notes
 =============
 
+0.9.x
+-----
+
+0.9.0
+
+- core (C++): 
+
+    - us4R: exposed SYNC mode
+    
+- Python API:
+
+    - us4R: exposed SYNC mode
+
 0.8.x
 -----
 
