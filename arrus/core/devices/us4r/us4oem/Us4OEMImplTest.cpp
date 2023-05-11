@@ -17,6 +17,7 @@ using namespace arrus::ops::us4r;
 using ::testing::_;
 using ::testing::Ge;
 using ::testing::FloatEq;
+using ::testing::FloatNear;
 using ::testing::Pointwise;
 
 MATCHER_P(FloatNearPointwise, tol, "") {
@@ -514,7 +515,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
     for(float &i : expectedTgc) {
         i = (i - 14.0f) / 40.f;
     }
-    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(expectedTgc, _));
+    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
 
     SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
 }

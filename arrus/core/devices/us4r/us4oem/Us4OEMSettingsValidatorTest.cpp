@@ -157,11 +157,11 @@ INSTANTIATE_TEST_CASE_P
                 x.lnaGain = 24,
                 x.tgcSamples = {55.0f},
                 x.invalidParameters = {"tgc samples"})),
-         // Invalid TGC samples values (3) below 0
+         // Invalid TGC samples values (3) below the minimum
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
                 x.pgaGain = 24,
                 x.lnaGain = 12,
-                x.tgcSamples = {-1.0f},
+                x.tgcSamples = {-5.0f},
                 x.isApplyCharacteristic = false,
                 x.invalidParameters = {"tgc samples"})),
          // Invalid TGC samples values (3) multiple wrong values
