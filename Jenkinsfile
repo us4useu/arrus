@@ -28,7 +28,7 @@ pipeline {
         booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish arrus C++ API package.')
         booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish arrus Python package.')
         booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish arrus MATLAB package.')
-        choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], defaultValue: '3.8', description: 'Python version to use.')
+        choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], description: 'Python version to use.')
      }
 
     stages {
