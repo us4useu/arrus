@@ -7,6 +7,7 @@ pipeline {
         PLATFORM = us4us.getPlatformName(env)
         BUILD_ENV_ADDRESS = us4us.getUs4usJenkinsVariable(env, "BUILD_ENV_ADDRESS")
         DOCKER_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONS")
+        DOCKER_OPTIONSv2 = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONSv2")  // Docker options for ARRUS >= 0.9.0.
         DOCKER_DIRS = us4us.getRemoteDirs(env, "docker", "DOCKER_BUILD_ROOT")
         SSH_DIRS = us4us.getRemoteDirs(env, "ssh", "SSH_BUILD_ROOT")
         TARGET_WORKSPACE_DIR = us4us.getTargetWorkspaceDir(env, "DOCKER_BUILD_ROOT", "SSH_BUILD_ROOT")
@@ -36,7 +37,7 @@ pipeline {
                 sh """
                    pydevops --clean --stage cfg \
                     --host '${env.BUILD_ENV_ADDRESS}' \
-                    ${env.DOCKER_OPTIONS}  \
+                    ${getDockerOptionsForTemplate(env.DOCKER_OPTIONSv2)}  \
                     --src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' \
                     ${env.DOCKER_DIRS} \
                     ${env.SSH_DIRS} \
@@ -207,4 +208,8 @@ def getBuildName(build) {
     wrap([$class: 'BuildUser']) {
         return "${env.PLATFORM} build ${build.id}, issued by: ${env.BUILD_USER_ID}, ${us4us.getCurrentDateTime()}";
     }
+}
+
+def getDockerOptionsForTemplate(dockerOptionsTemplate) {
+    return dockerOptionsTemplate.replace("%%PY_VERSION%%", "${params.PY_VERSION}");
 }
