@@ -196,11 +196,13 @@ pipeline {
 }
 
 def getArrusWhlNamePattern() {
+    pythonVersion = "cp${params.PY_VERSION}".replace(".", "");
     if(us4us.isPrerelease("${env.BRANCH_NAME}")) {
-        return "arrus*${us4us.getTimestamp()}*.whl";
+
+        return "arrus*${us4us.getTimestamp()}*${pythonVersion}*.whl";
     }
     else {
-        return "arrus*.whl";
+        return "arrus*${pythonVersion}*.whl";
     }
 }
 
