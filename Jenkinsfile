@@ -23,8 +23,11 @@ pipeline {
     }
 
      parameters {
-        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Turns on publishing arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
-        booleanParam(name: 'PUBLISH_PACKAGE', defaultValue: false, description: 'Turns on publishing arrus package with binary release on the github server. CHECKING THIS ONE WILL UPDATE ARRUS RELEASE')
+        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Publish arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
+        booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish arrus C++ API package.')
+        booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish arrus Python package.')
+        booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish arrus MATLAB package.')
+        choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], defaultValue: '3.8', description: 'Python version to use.')
      }
 
     stages {
@@ -45,6 +48,7 @@ pipeline {
                     /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
                     ${env.MISC_OPTIONS} \
                     /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX}
+                    /cfg/cmake/DARRUS_PY_VERSION=${params.PY_VERSION}
                     """
             }
         }
@@ -105,7 +109,7 @@ pipeline {
          }
         stage('PublishCpp') {
             when{
-                environment name: 'PUBLISH_PACKAGE', value: 'true'
+                environment name: 'PUBLISH_CPP', value: 'true'
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
@@ -126,7 +130,7 @@ pipeline {
         }
         stage('PublishPython') {
             when{
-                environment name: 'PUBLISH_PACKAGE', value: 'true'
+                environment name: 'PUBLISH_PY', value: 'true'
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
@@ -147,7 +151,7 @@ pipeline {
         }
         stage('PublishMatlab') {
             when{
-                environment name: 'PUBLISH_PACKAGE', value: 'true'
+                environment name: 'PUBLISH_MATLAB', value: 'true'
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
