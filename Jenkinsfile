@@ -49,7 +49,7 @@ pipeline {
                     /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
                     ${env.MISC_OPTIONS} \
                     /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX} \
-                    /cfg/DARRUS_PY_VERSION=${params.PY_VERSION}
+                    /cfg/DARRUS_PY_VERSION=${params.PY_VERSION} \
                     ${getPythonExecutableParameter(env, ${params.PY_VERSION})}
                     """
             }
