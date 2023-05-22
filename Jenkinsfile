@@ -34,6 +34,7 @@ pipeline {
     stages {
         stage('Configure') {
             steps {
+                sh 'printenv'
                 sh """
                    pydevops --clean --stage cfg \
                     --host '${env.BUILD_ENV_ADDRESS}' \
@@ -221,7 +222,6 @@ def getPythonExecutableParameter(env, pythonVersion) {
     print "Python version: ${pythonVersion}";
     sanitizedPyVersion = pythonVersion.replace(".", "");
     print "Looking for environment variable: PYTHON_EXECUTABLE_${sanitizedPyVersion}";
-    print "Environment variables: ${env}";
     pythonExecutablePath = us4us.getUs4usJenkinsVariable(env, "PYTHON_EXECUTABLE_${sanitizedPyVersion}");
     if(pythonExecutablePath != null && !pythonExecutablePath.trim().isEmpty()) {
         return "/cfg/DPYTHON_EXECUTABLE=${pythonExecutablePath}";
