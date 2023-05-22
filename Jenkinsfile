@@ -223,6 +223,7 @@ def getPythonExecutableParameter(env, pythonVersion) {
     sanitizedPyVersion = pythonVersion.replace(".", "");
     print "Looking for environment variable: PYTHON_EXECUTABLE_${sanitizedPyVersion}";
     pythonExecutablePath = us4us.getUs4usJenkinsVariable(env, "PYTHON_EXECUTABLE_${sanitizedPyVersion}");
+    print "PYTHON EXECUTABLE PATH: ${pythonExecutablePath}";
     if(pythonExecutablePath != null && !pythonExecutablePath.trim().isEmpty()) {
         return "/cfg/DPYTHON_EXECUTABLE=${pythonExecutablePath}";
     }
