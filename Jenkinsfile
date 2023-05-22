@@ -50,6 +50,7 @@ pipeline {
                     ${env.MISC_OPTIONS} \
                     /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX} \
                     /cfg/DARRUS_PY_VERSION=${params.PY_VERSION}
+                    ${getPythonExecutableParameter(env, ${params.PY_VERSION})}
                     """
             }
         }
@@ -214,4 +215,15 @@ def getBuildName(build) {
 
 def getDockerOptionsForTemplate(dockerOptionsTemplate) {
     return dockerOptionsTemplate.replace("%%PY_VERSION%%", "${params.PY_VERSION}");
+}
+
+def getPythonExecutableParameter(env, pythonVersion) {
+    var sanitizedPyVersion = pythonVersion.replace(".", "");
+    var pythonExecutablePath = us4us.getUs4usJenkinsVariable(env, "PYTHON_EXECUTABLE_${sanitizedPyVersion}");
+    if(pythonExecutablePath != null && !pythonExecutablePath.trim().isEmpty()) {
+        return "/cfg/DPYTHON_EXECUTABLE=${pythonExecutablePath}";
+    }
+    else {
+        return "";
+    }
 }
