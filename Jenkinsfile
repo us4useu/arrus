@@ -219,21 +219,8 @@ def getDockerOptionsForTemplate(dockerOptionsTemplate) {
 }
 
 def getPythonExecutableParameter(env, pythonVersion) {
-    print "Python version: ${pythonVersion}";
-    sanitizedPyVersion = pythonVersion.replace(".", "");
-    print "Looking for environment variable: PYTHON_EXECUTABLE_${sanitizedPyVersion}";
-
-     def platformName = us4us.getFullPlatformName(env);
-     print "PLATFORM NAME: ${platformName}";
-     def name ="PYTHON_EXECUTABLE_${sanitizedPyVersion}";
-     def key = "US4US_JENKINS_${name}_${platformName}";
-     print "ENV KEY: ${key}";
-     def result = env.getProperty(key);
-     result = result != null ? result : " ";
-     print "ENV RESULT: ${result}";
-
-    def pythonExecutablePath = result;
-    print "PYTHON EXECUTABLE PATH: ${pythonExecutablePath}";
+    def sanitizedPythonVersion = pythonVersion.replace(".", "");
+    def pythonExecutablePath = us4us.getUs4usJenkinsVariable(env, "ARRUS_PYTHON_EXECUTABLE_${sanitizedPythonVersion}");
     if(pythonExecutablePath != null && !pythonExecutablePath.trim().isEmpty()) {
         return "/cfg/DPYTHON_EXECUTABLE=${pythonExecutablePath}";
     }
