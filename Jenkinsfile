@@ -34,7 +34,6 @@ pipeline {
     stages {
         stage('Configure') {
             steps {
-                sh 'printenv'
                 sh """
                    pydevops --clean --stage cfg \
                     --host '${env.BUILD_ENV_ADDRESS}' \
