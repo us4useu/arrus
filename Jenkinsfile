@@ -191,9 +191,39 @@ pipeline {
                  }
              }
          }
-
-
     }
+     post {
+         failure {
+             script {
+                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                     emailext(body: "Check console output at $BUILD_URL to view the results.",
+                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                              recipientProviders: [developers(), requestor()],
+                              subject: "Build failed in Jenkins: $JOB_NAME")
+                 }
+             }
+         }
+         unstable {
+             script {
+                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                     emailext(body: "Check console output at $BUILD_URL to view the results.",
+                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                              recipientProviders: [developers(), requestor()],
+                              subject: "Unstable build in Jenkins: $JOB_NAME")
+                 }
+             }
+         }
+         changed {
+             script {
+                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                     emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                              recipientProviders: [developers(), requestor()],
+                              subject: "Jenkins build is back to normal: $JOB_NAME")
+                 }
+             }
+         }
+     }
 }
 
 def getArrusWhlNamePattern() {
