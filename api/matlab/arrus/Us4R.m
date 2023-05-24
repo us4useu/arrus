@@ -392,8 +392,11 @@ classdef Us4R < handle
                 obj.seq.tgcStart = obj.seq.tgcLim(1);
             end
             
-            distance = (400 : 150 : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec) / obj.sys.rxSampFreq * obj.seq.c;         % [m]
             obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
+            tgcOffset = 359;    % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
+            tgcInterv = 153;    % [samp]
+            distance = (tgcOffset : tgcInterv : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec) ...
+                     / obj.sys.rxSampFreq * obj.seq.c;  % [m]
             if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
                 warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
                       'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
