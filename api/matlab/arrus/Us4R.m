@@ -385,19 +385,23 @@ classdef Us4R < handle
             end
             
             %% TGC
-            % Default TGC
+            obj.seq.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-40 0];
+
+            % Default TGC start level
             if isempty(obj.seq.tgcStart)
-                obj.seq.tgcStart = 14;
-            end
-            if isempty(obj.seq.tgcSlope)
-                obj.seq.tgcSlope = 2 * 0.5e2 * mean(obj.seq.txFreq)*1e-6;
+                obj.seq.tgcStart = obj.seq.tgcLim(1);
             end
             
-            distance = (400 : 150 : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec) / obj.sys.rxSampFreq * obj.seq.c;         % [m]
+            tgcOffset = 359;    % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
+            tgcInterv = 153;    % [samp]
+            distance = (tgcOffset : tgcInterv : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec) ...
+                     / obj.sys.rxSampFreq * obj.seq.c;  % [m]
             obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
-            if any(obj.seq.tgcCurve < 14 | obj.seq.tgcCurve > 54)
-                warning('TGC values are limited to 14-54dB range');
-                obj.seq.tgcCurve = max(14,min(54,obj.seq.tgcCurve));
+            if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
+                warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
+                      'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
+                      'dB, TGC values are limited to ' num2str(obj.seq.tgcLim(1)) '-'  num2str(obj.seq.tgcLim(2)) 'dB range.']);
+                obj.seq.tgcCurve = max(obj.seq.tgcLim(1),min(obj.seq.tgcLim(2),obj.seq.tgcCurve));
             end
             
             %% Tx/Rx aperture string/missing parameters
