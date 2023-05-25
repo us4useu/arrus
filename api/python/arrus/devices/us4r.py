@@ -7,7 +7,6 @@ import collections.abc
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.exceptions
 import arrus.devices.probe
-from arrus.devices.us4oem import Us4OEM
 import arrus.metadata
 import arrus.kernels
 import arrus.kernels.kernel
@@ -121,10 +120,13 @@ class Us4R(Device):
         """
         self._handle.disableHV()
 
-    def get_us4oem(self, ordinal: int) -> Us4OEM:
+    def get_us4oem(self, ordinal: int):
         """
         Returns a handle to us4OEM with the given number.
+
+        :return: an object of type arrus.devices.us4oem.Us4OEM
         """
+        from arrus.devices.us4oem import Us4OEM
         return Us4OEM(self._handle.getUs4OEM(ordinal))
 
     def get_backplane(self) -> Backplane:
