@@ -50,6 +50,7 @@ classdef Us4R < handle
             
             obj.sys.nChArius = 32;
             obj.sys.rxSampFreq = 65e6;
+            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
             obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
             obj.sys.tgcInterv = 153; % [samp]
             obj.logTime = logTime;
@@ -282,6 +283,192 @@ classdef Us4R < handle
                         disp(['Frame rate = ' num2str(1/(acqTime+recTime),'%5.1f') ' fps']);
                     end    
                     disp('--------------------');
+                end
+            end
+        end
+        
+        function plotRawRf(obj,varargin)
+            % :param selectedLines: vector indicating the rf lines to be displayed. \
+            %   Rf lines are numbered as follows: 1:rxApertureSize*nTx*nRep. \
+            %   (optional name-value argument)
+            % :param amplitudeLim: scalar defining the displayed amplitude range \
+            %   as [-amplitudeLim, amplitudeLim] (optional name-value argument)
+            % :param boundsModeEnable: logical scalar determining if min and max \
+            %   values of each sample from a set of rf lines are displayed \
+            %   instead of individual rf lines. (optional name-value argument)
+            % :param linRangeEnable: logical scalar determining if range of \
+            %   undistorted amplitudes is displayed. (optional name-value argument)
+            
+            %% Check if system is ready for plotRawRf execution
+            if ~obj.sys.isHardwareProgrammed
+                error("plotRawRf: hardware is not programmed, rf cannot be collected");
+            end
+            if obj.seq.hwDdcEnable
+                error("plotRawRf: hardware DDC is enabled, rf cannot be collected");
+            end
+            
+            %% Input parser
+            dispParParser = inputParser;
+            
+            nLine = obj.seq.rxApSize * obj.seq.nTx * obj.seq.nRep;
+            addParameter(dispParParser, 'selectedLines', 1:nLine, ...
+                @(x) assert(isvector(x) && isnumeric(x) && all(x>0), ...
+                "selectedLines must be a positive numerical vector."));
+            
+            addParameter(dispParParser, 'amplitudeLim', 2^15, ...
+                @(x) assert(isscalar(x) && isnumeric(x) && x>0, ...
+                "amplitudeLim must be a positive numerical scalar."));
+            
+            addParameter(dispParParser, 'boundsModeEnable', false, ...
+                @(x) assert(isscalar(x) && islogical(x), ...
+                "boundsModeEnable must be a logical scalar."));
+            
+            addParameter(dispParParser, 'linRangeEnable', false, ...
+                @(x) assert(isscalar(x) && islogical(x), ...
+                "linRangeEnable must be a logical scalar."));
+            
+            parse(dispParParser, varargin{:});
+            
+            selectedLines = dispParParser.Results.selectedLines;
+            amplitudeLim  = dispParParser.Results.amplitudeLim;
+            boundsEnable  = dispParParser.Results.boundsModeEnable;
+            linRngEnable  = dispParParser.Results.linRangeEnable;
+            
+            %% Prepare figure
+            nSamp = obj.seq.nSamp;
+            if boundsEnable
+                nLine = 2;
+            else
+                nLine = numel(selectedLines);
+            end
+            
+            % Create figure.
+            hFig = figure();
+            hDisp = plot(nan(nSamp,nLine), 1:nSamp);
+            xlabel('amplitude');
+            ylabel('sample #');
+            set(gca,'XLim', amplitudeLim*[-1 1]);
+            set(gca,'YLim', [0 nSamp+1]);
+            set(gca,'YDir', 'reverse');
+            grid on;
+
+            % Undistorted amplitude range
+            if linRngEnable
+                switch obj.us4r.getLnaGain
+                    case 12, voltLim = 0.243; %[V]
+                    case 18, voltLim = 0.219; %[V]
+                    case 24, voltLim = 0.152; %[V]
+                    otherwise
+                        error('Unsupported LNA gain value.');
+                end
+                
+                tgcCurveResamp = interp1(obj.seq.tgcPoints, obj.seq.tgcCurve, ...
+                                         (obj.seq.startSample + (1:nSamp) - 1)*obj.seq.dec, "linear", nan);
+                ampUndistortLim = voltLim * 10.^(tgcCurveResamp/20) * obj.sys.adcVolt2Lsb;
+                ampUndistortLim = min(ampUndistortLim, 2^15, "includenan");
+                
+                hold on;
+                plot(ampUndistortLim(:).*[-1 1], 1:nSamp,'Color','k','LineStyle',':','LineWidth',2);
+            end
+            
+            while(ishghandle(hFig))
+                data = obj.run;
+                data = data(:,selectedLines);
+                if boundsEnable
+                    data = [min(data,[],2), max(data,[],2)];
+                end
+
+                try
+                    for iLine=1:nLine
+                        set(hDisp(iLine), 'XData', data(:,iLine));
+                    end
+                    
+                    % TODO removed below pause
+                    % Applied the pause to make the figure window more
+                    % responsive. Removing this pause may introduce some
+                    % issues when closing the figure - e.g. a long delay
+                    % between pressing the window close button and the 
+                    % reaction to that close.
+                    % That was an issue on MATLAB 2018b, testenv2.
+                    pause(0.01);
+                    
+                catch ME
+                    if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
+                        disp('Display was closed.');
+                    else
+                        rethrow(ME);
+                    end
+                end
+            end
+        end
+        
+        function imageRawRf(obj,varargin)
+            % :param selectedLines: vector indicating the rf lines to be displayed. \
+            %   Rf lines are numbered as follows: 1:rxApertureSize*nTx*nRep. \
+            %   (optional name-value argument)
+            % :param amplitudeLim: scalar defining the displayed amplitude range \
+            %   as [-amplitudeLim, amplitudeLim] (optional name-value argument)
+            
+            %% Check if system is ready for plotRawRf execution
+            if ~obj.sys.isHardwareProgrammed
+                error("plotRawRf: hardware is not programmed, rf cannot be collected");
+            end
+            if obj.seq.hwDdcEnable
+                error("plotRawRf: hardware DDC is enabled, rf cannot be collected");
+            end
+            
+            %% Input parser
+            dispParParser = inputParser;
+            
+            nLine = obj.seq.rxApSize * obj.seq.nTx * obj.seq.nRep;
+            addParameter(dispParParser, 'selectedLines', 1:nLine, ...
+                @(x) assert(isvector(x) && isnumeric(x) && all(x>0), ...
+                "selectedLines must be a positive numerical vector."));
+            
+            addParameter(dispParParser, 'amplitudeLim', 2^15, ...
+                @(x) assert(isscalar(x) && isnumeric(x) && x>0, ...
+                "amplitudeLim must be a positive numerical scalar."));
+            
+            parse(dispParParser, varargin{:});
+            
+            selectedLines = dispParParser.Results.selectedLines;
+            amplitudeLim  = dispParParser.Results.amplitudeLim;
+            
+            %% Prepare figure
+            nSamp = obj.seq.nSamp;
+            nLine = numel(selectedLines);
+            
+            % Create figure.
+            hFig = figure();
+            hDisp = imagesc(1:nLine, 1:nSamp, []);
+            xlabel('rf line #');
+            ylabel('sample #');
+            set(gca,'XLim', [0.5 nLine+0.5]);
+            set(gca,'YLim', [0.5 nSamp+0.5]);
+            set(gca,'CLim', amplitudeLim*[-1 1]);
+            colormap(jet);
+            colorbar;
+            
+            while(ishghandle(hFig))
+                data = obj.run;
+                try
+                    set(hDisp, 'CData', data(:,selectedLines));
+                    
+                    % TODO removed below pause
+                    % Applied the pause to make the figure window more
+                    % responsive. Removing this pause may introduce some
+                    % issues when closing the figure - e.g. a long delay
+                    % between pressing the window close button and the 
+                    % reaction to that close.
+                    % That was an issue on MATLAB 2018b, testenv2.
+                    pause(0.01);
+                    
+                catch ME
+                    if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
+                        disp('Display was closed.');
+                    else
+                        rethrow(ME);
+                    end
                 end
             end
         end
