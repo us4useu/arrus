@@ -50,6 +50,8 @@ classdef Us4R < handle
             
             obj.sys.nChArius = 32;
             obj.sys.rxSampFreq = 65e6;
+            obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
+            obj.sys.tgcInterv = 153; % [samp]
             obj.logTime = logTime;
             
             % Probe parameters
@@ -386,17 +388,14 @@ classdef Us4R < handle
             
             %% TGC
             obj.seq.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-40 0];
-
+            
             % Default TGC start level
             if isempty(obj.seq.tgcStart)
                 obj.seq.tgcStart = obj.seq.tgcLim(1);
             end
             
-            tgcOffset = 359;    % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
-            tgcInterv = 153;    % [samp]
-            distance = (tgcOffset : tgcInterv : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec) ...
-                     / obj.sys.rxSampFreq * obj.seq.c;  % [m]
-            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * distance;  % [dB]
+            obj.seq.tgcPoints = obj.sys.tgcOffset : obj.sys.tgcInterv : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec; % [samp]
+            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * obj.seq.tgcPoints / obj.sys.rxSampFreq * obj.seq.c;  % [dB]
             if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
                 warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
                       'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
