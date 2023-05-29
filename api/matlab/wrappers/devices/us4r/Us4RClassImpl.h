@@ -29,6 +29,12 @@ public:
         ARRUS_MATLAB_ADD_METHOD("getSamplingFrequency", getSamplingFrequency);
         ARRUS_MATLAB_ADD_METHOD("getProbeModel", getProbeModel);
         ARRUS_MATLAB_ADD_METHOD("getChannelsMask", getChannelsMask);
+        ARRUS_MATLAB_ADD_METHOD("setTgcCurveValue", setTgcCurveValue);
+        ARRUS_MATLAB_ADD_METHOD("setTgcCurveTimeValue", setTgcCurveTimeValue);
+        ARRUS_MATLAB_ADD_METHOD("setLnaGain", setLnaGain);
+        ARRUS_MATLAB_ADD_METHOD("getLnaGain", getLnaGain);
+        ARRUS_MATLAB_ADD_METHOD("setPgaGain", setPgaGain);
+        ARRUS_MATLAB_ADD_METHOD("getPgaGain", getPgaGain);
     }
 
     void disableHV(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -55,6 +61,39 @@ public:
     void getChannelsMask(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         auto channelsMask = get(obj)->getChannelsMask();
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, unsigned short, channelsMask);
+    }
+
+    void setTgcCurveValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        std::vector<float> value = convertToCppVector<float>(inputs[0], "tgc values");
+        bool applyCharacteristic = inputs[1][0];
+        get(obj)->setTgcCurve(value, applyCharacteristic);
+    }
+
+    void setTgcCurveTimeValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        std::vector<float> time = convertToCppVector<float>(inputs[0], "tgc time");
+        std::vector<float> value = convertToCppVector<float>(inputs[1], "tgc values");
+        bool applyCharacteristic = inputs[2][0];
+        get(obj)->setTgcCurve(time, value, applyCharacteristic);
+    }
+
+    void setLnaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint16 gain = inputs[0][0];
+        get(obj)->setLnaGain(gain);
+    }
+
+    void getLnaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        float gain = get(obj)->getLnaGain();
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint16, gain);
+    }
+
+    void setPgaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint16 gain = inputs[0][0];
+        get(obj)->setPgaGain(gain);
+    }
+
+    void getPgaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        float gain = get(obj)->getPgaGain();
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint16, gain);
     }
 
 };

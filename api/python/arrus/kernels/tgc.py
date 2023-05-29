@@ -31,6 +31,7 @@ def compute_linear_tgc(seq_context, fs, linear_tgc):
     sampling_time = sampling_time/fs
     distance = sampling_time*c
     tgc_values = tgc_start + distance*tgc_slope
+    # TODO: the below should be moved to ARRUS CORE
     if linear_tgc.clip:
         tgc_values = np.clip(tgc_values, 14, 54)
     return sampling_time, tgc_values

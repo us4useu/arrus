@@ -98,7 +98,7 @@ function(install_sphinx_package TARGET_NAME VENV_TARGET)
             ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
         COMMAND
             # TODO install only necessary packages (e.g. breathe is not needed by python docs generator)
-            ${INSTALL_VENV_EXECUTABLE} -m pip install Jinja2==3.0.3 sphinx==3.3.1 sphinx_rtd_theme==0.5.0 six breathe docutils==0.16
+            ${INSTALL_VENV_EXECUTABLE} -m pip install Jinja2==3.0.3 sphinx==3.3.1 sphinx_rtd_theme==0.5.0 six breathe docutils==0.16 Pygments==2.6.1
             "git+https://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain"
         DEPENDS
             ${VENV_TARGET}
@@ -136,7 +136,7 @@ function(install_cupy_package TARGET_NAME VENV_TARGET CUDA_VERSION)
         COMMAND
             ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
         COMMAND
-            ${INSTALL_VENV_EXECUTABLE} -m pip install cupy-cuda${CUDA_CUPY_VERSION}==9.6.0
+            ${INSTALL_VENV_EXECUTABLE} -m pip install cupy-cuda${CUDA_CUPY_VERSION}==10.6.0
         DEPENDS
             ${VENV_TARGET}
         WORKING_DIRECTORY

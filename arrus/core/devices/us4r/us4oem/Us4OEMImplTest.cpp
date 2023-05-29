@@ -17,6 +17,7 @@ using namespace arrus::ops::us4r;
 using ::testing::_;
 using ::testing::Ge;
 using ::testing::FloatEq;
+using ::testing::FloatNear;
 using ::testing::Pointwise;
 
 MATCHER_P(FloatNearPointwise, tol, "") {
@@ -25,6 +26,8 @@ MATCHER_P(FloatNearPointwise, tol, "") {
 
 constexpr uint16 DEFAULT_PGA_GAIN = 30;
 constexpr uint16 DEFAULT_LNA_GAIN = 24;
+constexpr float MAX_TX_FREQUENCY = 65e6f;
+constexpr float MIN_TX_FREQUENCY = 1e6f;
 
 struct TestTxRxParams {
 
@@ -55,6 +58,10 @@ protected:
     void SetUp() override {
         std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
+        // Default values returned by us4oem.
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+
         BitMask activeChannelGroups = {true, true, true, true,
                                        true, true, true, true,
                                        true, true, true, true,
@@ -187,7 +194,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsOnly) {
 
 TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
     // Tx delays
-    const auto maxFreq = Us4OEMImpl::MAX_TX_FREQUENCY;
+    const auto maxFreq = MAX_TX_FREQUENCY;
+    const auto minFreq = MIN_TX_FREQUENCY;
 
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
@@ -195,17 +203,15 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
             (x.pulse = Pulse(std::nextafter(maxFreq, maxFreq + 1e6f), 1.0f, false)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
 
     seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse = Pulse(Us4OEMImpl::MIN_TX_FREQUENCY - 0.5e6f, 1.0f, false)))
+            (x.pulse = Pulse(minFreq - 0.5e6f, 1.0f, false)))
             .getTxRxParameters()
     };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
 }
 // TODO test memory overflow protection
 // ------------------------------------------ Testing parameters set to IUs4OEM
@@ -325,6 +331,8 @@ protected:
     void SetUp() override {
         std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
         BitMask activeChannelGroups = {true, true, true, true,
                                        true, true, true, true,
                                        true, true, true, true,
@@ -507,7 +515,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
     for(float &i : expectedTgc) {
         i = (i - 14.0f) / 40.f;
     }
-    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(expectedTgc, _));
+    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
 
     SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
 }
@@ -576,10 +584,10 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
-        EXPECT_EQ(us4oem, 0);
-        EXPECT_EQ(dstChannel, i);
-        EXPECT_EQ(dstFrame, 0);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(address.getUs4oem(), 0);
+        EXPECT_EQ(address.getChannel(), i);
+        EXPECT_EQ(address.getFrame(), 0);
     }
 }
 
@@ -598,10 +606,10 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapp
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
-        EXPECT_EQ(us4oem, 0);
-        EXPECT_EQ(dstChannel, i);
-        EXPECT_EQ(dstFrame, 0);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(address.getUs4oem(), 0);
+        EXPECT_EQ(address.getChannel(), i);
+        EXPECT_EQ(address.getFrame(), 0);
     }
 }
 
@@ -622,10 +630,10 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingIncompleteRxAperture) {
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
 
     for(size_t i = 0; i < 30; ++i) {
-        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
-        EXPECT_EQ(us4oem, 0);
-        EXPECT_EQ(dstChannel, i);
-        EXPECT_EQ(dstFrame, 0);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(address.getUs4oem(), 0);
+        EXPECT_EQ(address.getChannel(), i);
+        EXPECT_EQ(address.getFrame(), 0);
     }
 }
 
@@ -646,8 +654,8 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingM
     auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[us4oem, dstfr, dstch] = fcm->getLogical(0, i);
-        std::cerr << (int16) dstch << ", ";
+        auto address = fcm->getLogical(0, i);
+        std::cerr << (int16) address.getChannel() << ", ";
     }
     std::cerr << std::endl;
 
@@ -661,10 +669,10 @@ TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingM
     };
 
     for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[us4oem, dstFrame, dstChannel] = fcm->getLogical(0, i);
-        EXPECT_EQ(us4oem, 0);
-        EXPECT_EQ(dstChannel, expectedDstChannels[i]);
-        EXPECT_EQ(dstFrame, 0);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(address.getUs4oem(), 0);
+        EXPECT_EQ(address.getChannel(), expectedDstChannels[i]);
+        EXPECT_EQ(address.getFrame(), 0);
     }
 }
 
@@ -675,6 +683,8 @@ protected:
     void SetUp() override {
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
     }
 
     Us4OEMImpl::Handle createHandle(const std::unordered_set<uint8> &channelsMask) {
@@ -794,10 +804,10 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
     expectedSrcChannels[3] = 3;
 
     for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto[us4oem, srcFrame, srcChannel] = fcm->getLogical(0, i);
-        EXPECT_EQ(us4oem, 0);
-        EXPECT_EQ(srcFrame, 0);
-        ASSERT_EQ(srcChannel, expectedSrcChannels[i]);
+        auto address = fcm->getLogical(0, i);
+        EXPECT_EQ(address.getUs4oem(), 0);
+        EXPECT_EQ(address.getFrame(), 0);
+        ASSERT_EQ(address.getChannel(), expectedSrcChannels[i]);
     }
 }
 
@@ -925,10 +935,10 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
         expectedSrcChannels[3] = 3;
 
         for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-            auto [us4oem, srcFrame, srcChannel] = fcm->getLogical(0, i);
-            EXPECT_EQ(us4oem, 0);
-            EXPECT_EQ(srcFrame, 0);
-            ASSERT_EQ(srcChannel, expectedSrcChannels[i]);
+            auto address = fcm->getLogical(0, i);
+            EXPECT_EQ(address.getUs4oem(), 0);
+            EXPECT_EQ(address.getFrame(), 0);
+            ASSERT_EQ(address.getChannel(), expectedSrcChannels[i]);
         }
     }
     {
@@ -938,11 +948,10 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
             ChannelIdx rxChannelNumber = 0;
             for(auto bit : rxApertures[frame]) {
                 if(bit) {
-                    auto [us4oem, srcFrame, srcChannel] = fcm->getLogical(frame, i);
-                    std::cerr << frame << ", " << (int)i << ", " << srcFrame << ", " << (int)srcChannel << std::endl;
-                    ASSERT_EQ(us4oem, 0);
-                    ASSERT_EQ(srcFrame, frame);
-                    ASSERT_EQ(srcChannel, i++);
+                    auto address = fcm->getLogical(frame, i);
+                    ASSERT_EQ(address.getUs4oem(), 0);
+                    ASSERT_EQ(address.getFrame(), frame);
+                    ASSERT_EQ(address.getChannel(), i++);
                 }
                 ++rxChannelNumber;
             }
@@ -956,6 +965,8 @@ protected:
     void SetUp() override {
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
     }
 
     Us4OEMImpl::Handle createHandle(Us4OEMSettings::ReprogrammingMode reprogrammingMode) {

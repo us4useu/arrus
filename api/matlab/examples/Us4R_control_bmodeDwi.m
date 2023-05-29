@@ -14,7 +14,7 @@ txFoc = -6e-3;                  % Focal distance [m]
 % To program linear scanning/compounding, set 'txApertureCenter' or 'txCenterElement' 
 % as a vector. It will also determine the number of transmissions in the sequence.
 txApCent = (-15:3:15)*1e-3;     % Tx aperture center positions [m]
-nTx = numel(txAng);             % Number of transmissions in a sequence
+nTx = numel(txApCent);          % Number of transmissions in a sequence
 
 %% Program Tx/Rx sequence and reconstruction
 % Set the Tx/Rx sequence
@@ -44,7 +44,7 @@ seq = CustomTxRxSequence(... % Obligatory parameters
                         'nRepetitions',     1, ...
                         'txPri',            400e-6, ... % time interval between physical transmissions
                         'tgcStart',         14, ...
-                        'tgcSlope',         0.02, ...
+                        'tgcSlope',         200, ...
                         'txInvert',         false ...
                         );
 

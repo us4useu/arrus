@@ -34,14 +34,9 @@ public:
                         settings.getActiveTermination().value(), ActiveTerminationValueMap::getInstance().getAvailableValues());
         }
         if(!settings.getTgcSamples().empty()) {
-            ARRUS_VALIDATOR_EXPECT_TRUE_M(
-                    !settings.isApplyTgcCharacteristic()
-                            || (settings.getPgaGain() == 30 and settings.getLnaGain() == 24),
-                    "Currently TGC characteristic can be automatically compensated only for "
-                    "PGA gain = 30 and LNA gain = 24");
             expectInRange("tgc samples", settings.getTgcSamples().size(), size_t(0), size_t(Us4OEMImpl::TGC_N_SAMPLES));
             auto[min, max] = RxSettings::getTgcMinMax(settings.getPgaGain(), settings.getLnaGain());
-            expectAllInRange("tgc samples", settings.getTgcSamples(), std::max(min, 0.0f), max);
+            expectAllInRange("tgc samples", settings.getTgcSamples(), min, max);
         }
     }
 };

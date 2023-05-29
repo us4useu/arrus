@@ -2,6 +2,7 @@ ARG TARGETPLATFORM
 FROM --platform=$TARGETPLATFORM nvidia/cuda:11.2.0-devel-ubuntu20.04
 
 ARG TARGETPLATFORM
+ARG PYTHON_VERSION="3.8"
 
 RUN echo "PLATFORM $TARGETPLATFORM"
 
@@ -12,17 +13,17 @@ WORKDIR /tmp
 
 # Settings
 ENV CMAKE_VERSION=3.21.3
-ENV PYTHON_VERSIONS="3.8"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 # Install requirements
+
+# For Python 3.10 on ubuntu20.04 we need to use external ppa
+RUN if [ "$PYTHON_VERSION" = "3.10" ] ; then apt-get update && apt install software-properties-common -y && add-apt-repository ppa:deadsnakes/ppa -y ; fi
+
 RUN apt-get update \
  && apt-get install -yq --no-install-recommends \
-    $(for x in $PYTHON_VERSIONS; do printf "python$x python$x-dev "; done) \
-    python3 \
-    python3-dev \
-    python3-pip \
+    python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-distutils \
     wget \
     git \
     vim \
@@ -33,7 +34,11 @@ RUN apt-get update \
     texlive-latex-extra \
     texlive-fonts-recommended \
     texlive-font-utils \
-    ghostscript
+    ghostscript \
+    curl
+
+# Python PIP
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}
 
 
 RUN echo "alias python=python3" >> /root/.bashrc
@@ -49,9 +54,9 @@ RUN apt-get update && apt-get install -yq --no-install-recommends libpcre3-dev \
  && ./configure && make && make install
 
 # Python dependencies and conan
-RUN for x in $PYTHON_VERSIONS; do python$x -m pip install virtualenv setuptools==52.0.0 wheel==0.36.2 Jinja2==3.0.3 sphinx==3.3.1 sphinx_rtd_theme==0.5.0 six breathe docutils==0.16 "git+https://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain" pydevops-us4us==0.2.0  && python$x -m pip install conan==1.59.0; done
+RUN python${PYTHON_VERSION} -m pip install virtualenv setuptools==67.8.0 wheel==0.36.2 Jinja2==3.0.3 sphinx==3.3.1 sphinx_rtd_theme==0.5.0 six breathe docutils==0.16 "git+https://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain" pydevops-us4us==0.2.0 && python${PYTHON_VERSION} -m pip install conan==1.59.0
 
-# Set Git user mail and name (needed to autimatically publish docs on github pages).
+# Set Git user mail and name (needed to automatically publish docs on github pages).
 RUN git config --global user.email "dev@us4us.eu" && git config --global user.name "us4us developer"
 
 WORKDIR /

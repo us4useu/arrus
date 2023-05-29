@@ -168,11 +168,25 @@ public:
     virtual void setPgaGain(uint16 value) = 0;
 
     /**
+     * Returns the current PGA gain value.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+     */
+    virtual uint16 getPgaGain() = 0;
+
+    /**
      * Sets LNA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
     virtual void setLnaGain(uint16 value) = 0;
+
+    /**
+     * Returns the current LNA gain value.
+     *
+     * See docs of arrus::devices::RxSettings for more information.
+    */
+    virtual uint16 getLnaGain() = 0;
 
     /**
      * Sets LPF cutoff.

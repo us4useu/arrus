@@ -6,7 +6,8 @@ pipeline {
     environment {
         PLATFORM = us4us.getPlatformName(env)
         BUILD_ENV_ADDRESS = us4us.getUs4usJenkinsVariable(env, "BUILD_ENV_ADDRESS")
-        DOCKER_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONS")
+        DOCKER_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONS") // Deprecated
+        DOCKER_OPTIONSv2 = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONSv2")  // Docker options for ARRUS >= 0.9.0.
         DOCKER_DIRS = us4us.getRemoteDirs(env, "docker", "DOCKER_BUILD_ROOT")
         SSH_DIRS = us4us.getRemoteDirs(env, "ssh", "SSH_BUILD_ROOT")
         TARGET_WORKSPACE_DIR = us4us.getTargetWorkspaceDir(env, "DOCKER_BUILD_ROOT", "SSH_BUILD_ROOT")
@@ -23,8 +24,11 @@ pipeline {
     }
 
      parameters {
-        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Turns on publishing arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
-        booleanParam(name: 'PUBLISH_PACKAGE', defaultValue: false, description: 'Turns on publishing arrus package with binary release on the github server. CHECKING THIS ONE WILL UPDATE ARRUS RELEASE')
+        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Publish arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
+        booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish arrus C++ API package.')
+        booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish arrus Python package.')
+        booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish arrus MATLAB package.')
+        choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], description: 'Python version to use.')
      }
 
     stages {
@@ -33,7 +37,7 @@ pipeline {
                 sh """
                    pydevops --clean --stage cfg \
                     --host '${env.BUILD_ENV_ADDRESS}' \
-                    ${env.DOCKER_OPTIONS}  \
+                    ${getDockerOptionsForTemplate(env.DOCKER_OPTIONSv2)}  \
                     --src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' \
                     ${env.DOCKER_DIRS} \
                     ${env.SSH_DIRS} \
@@ -44,7 +48,9 @@ pipeline {
                     /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
                     /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
                     ${env.MISC_OPTIONS} \
-                    /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX}
+                    /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX} \
+                    /cfg/DARRUS_PY_VERSION=${params.PY_VERSION} \
+                    ${getPythonExecutableParameter(env, params.PY_VERSION)}
                     """
             }
         }
@@ -105,7 +111,7 @@ pipeline {
          }
         stage('PublishCpp') {
             when{
-                environment name: 'PUBLISH_PACKAGE', value: 'true'
+                environment name: 'PUBLISH_CPP', value: 'true'
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
@@ -126,7 +132,7 @@ pipeline {
         }
         stage('PublishPython') {
             when{
-                environment name: 'PUBLISH_PACKAGE', value: 'true'
+                environment name: 'PUBLISH_PY', value: 'true'
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
@@ -147,7 +153,7 @@ pipeline {
         }
         stage('PublishMatlab') {
             when{
-                environment name: 'PUBLISH_PACKAGE', value: 'true'
+                environment name: 'PUBLISH_MATLAB', value: 'true'
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
@@ -185,22 +191,69 @@ pipeline {
                  }
              }
          }
-
-
     }
+     post {
+         failure {
+             script {
+                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                     emailext(body: "Check console output at $BUILD_URL to view the results.",
+                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                              recipientProviders: [developers(), requestor()],
+                              subject: "Build failed in Jenkins: $JOB_NAME")
+                 }
+             }
+         }
+         unstable {
+             script {
+                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                     emailext(body: "Check console output at $BUILD_URL to view the results.",
+                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                              recipientProviders: [developers(), requestor()],
+                              subject: "Unstable build in Jenkins: $JOB_NAME")
+                 }
+             }
+         }
+         changed {
+             script {
+                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                     emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                              recipientProviders: [developers(), requestor()],
+                              subject: "Jenkins build is back to normal: $JOB_NAME")
+                 }
+             }
+         }
+     }
 }
 
 def getArrusWhlNamePattern() {
+    pythonVersion = "cp${params.PY_VERSION}".replace(".", "");
     if(us4us.isPrerelease("${env.BRANCH_NAME}")) {
-        return "arrus*${us4us.getTimestamp()}*.whl";
+
+        return "arrus*${us4us.getTimestamp()}*${pythonVersion}*.whl";
     }
     else {
-        return "arrus*.whl";
+        return "arrus*${pythonVersion}*.whl";
     }
 }
 
 def getBuildName(build) {
     wrap([$class: 'BuildUser']) {
         return "${env.PLATFORM} build ${build.id}, issued by: ${env.BUILD_USER_ID}, ${us4us.getCurrentDateTime()}";
+    }
+}
+
+def getDockerOptionsForTemplate(dockerOptionsTemplate) {
+    return dockerOptionsTemplate.replace("%%PY_VERSION%%", "${params.PY_VERSION}");
+}
+
+def getPythonExecutableParameter(env, pythonVersion) {
+    def sanitizedPythonVersion = pythonVersion.replace(".", "");
+    def pythonExecutablePath = us4us.getUs4usJenkinsVariable(env, "ARRUS_PYTHON_EXECUTABLE_${sanitizedPythonVersion}");
+    if(pythonExecutablePath != null && !pythonExecutablePath.trim().isEmpty()) {
+        return "/cfg/DPYTHON_EXECUTABLE=${pythonExecutablePath}";
+    }
+    else {
+        return "";
     }
 }

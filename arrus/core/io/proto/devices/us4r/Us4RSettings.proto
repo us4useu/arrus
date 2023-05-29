@@ -43,4 +43,7 @@ message Us4RSettings {
   }
   repeated uint32 adapter_to_us4r_module_nr = 13;
   bool external_trigger = 14;
+  oneof optional_tx_frequency_range {
+    uint32 tx_frequency_range = 15;
+  }
 }
