@@ -48,6 +48,12 @@ extern "C" __global__ void arrusRemap(short *out, short *in, const short *fcmFra
 /**
  * Naive implementation of data remapping (physical -> logical order), version 2.
  *
+ * NOTE:
+ * - the block of threads must be a square (otherwise copying data to the output array will not work correctly).
+ * - the block of thread can have an arbitrary size <= 32
+ * - the actual shared memory size used by kernel is tile[blockDim.y][blockDim.x][2]
+ * TODO this can be optimized: used dynamically shared memory buffer
+ *
  *
  * @param out: output array
  * @param in: input array
@@ -63,14 +69,12 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
                                       const unsigned int *nFramesUs4OEM, const unsigned nSequences,
                                       const unsigned nFrames, const unsigned nSamples, const unsigned nChannels,
                                       const unsigned nComponents) {
-    // TODO temporarily assuming, that maximum number of components == 2
+    // NOTE: assuming, that maximum number of components == 2
     __shared__ short tile[32][32][2]; // NOTE: this is also the runtime block size.
 
-    // gridDim.x*32 ~= number of channels
-    // gridDim.y*32 ~= number of samples
     // Input.
-    int channel = blockIdx.x*32 + threadIdx.x; // logical channel
-    int sample = blockIdx.y*32 + threadIdx.y;  // logical sample
+    int channel = blockIdx.x*blockDim.x + threadIdx.x; // logical channel
+    int sample = blockIdx.y*blockDim.y + threadIdx.y;  // logical sample
     int frame = blockIdx.z; // logical frame, global in the whole batch of sequences
 
     int sequence = frame / nFrames;
@@ -107,16 +111,21 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
               + physicalFrame*pFrameSize + sample*pSampleSize + component*nus4OEMChannels + physicalChannel;
             value = in[indexIn];
         }
-        tile[threadIdx.y][threadIdx.x][component] = value;
+        // The below in simpler form: tile[threadIdx.y][threadIdx.x][component] = value;
+        *(&tile[0][0][0] + blockDim.x*nComponents*threadIdx.y + nComponents*threadIdx.x + component) = value;
     }
     __syncthreads();
     // Output
-    int targetSample = blockIdx.y*32 + threadIdx.x;
-    int targetChannel = blockIdx.x*32 + threadIdx.y;
+    int targetSample = blockIdx.y*blockDim.y + threadIdx.x;
+    int targetChannel = blockIdx.x*blockDim.x + threadIdx.y;
+    if (targetChannel >= nChannels || targetSample >= nSamples) {
+        return;
+    }
     for(unsigned component = 0; component < nComponents; ++component) {
         // [sequence, frame, channel, sample, component]
         size_t indexOut =
             sequence*lSequenceSize + localFrame*lFrameSize + targetChannel*lChannelSize + targetSample*nComponents + component;
-        out[indexOut] = tile[threadIdx.x][threadIdx.y][component];
+        // The below in simpler form: out[indexOut] = tile[threadIdx.x][threadIdx.y][component];
+        out[indexOut] = *(&tile[0][0][0] + blockDim.x*nComponents*threadIdx.x + nComponents*threadIdx.y + component);
     }
 }
