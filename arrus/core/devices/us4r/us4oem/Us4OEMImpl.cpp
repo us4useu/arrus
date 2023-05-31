@@ -304,6 +304,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(RX_DELAY, opIdx);
     }
+    // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
+    ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
 
     // Program data acquisitions ("ScheduleReceive" part).
     // element == the result data frame of the given operations sequence
@@ -435,7 +437,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     }
 
     // Program triggers
-    ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
     firing = 0;
     for (uint16 batchIdx = 0; batchIdx < rxBufferSize; ++batchIdx) {
         for (uint16 seqIdx = 0; seqIdx < batchSize; ++seqIdx) {
