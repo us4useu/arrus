@@ -2415,7 +2415,7 @@ class RemapToLogicalOrderV2(Operation):
         else:
             # GPU
             import cupy as cp
-            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap_v2
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size_v2, run_remap_v2
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
@@ -2435,7 +2435,7 @@ class RemapToLogicalOrderV2(Operation):
                     n_frames_us4oems.append(n_frames_us4oem)
             #  TODO constant memory
             self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
-            self.grid_size, self.block_size = get_default_grid_block_size(
+            self.grid_size, self.block_size = get_default_grid_block_size_v2(
                 self._fcm_frames, n_samples,
                 batch_size
             )
