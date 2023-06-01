@@ -122,6 +122,13 @@ public:
     MOCK_METHOD(float, getUCDExternalTemperature, (), (override));
     MOCK_METHOD(const char*, getSerialNumber, (), (const, override));
     MOCK_METHOD(const char*, getRevision, (), (const, override));
+
+    //TODO(jrozb) remove?
+    MOCK_METHOD(void, sequencerWriteRegister, (uint32_t, uint32_t), (override));
+    MOCK_METHOD(uint16_t, pulserReadRegister, (uint8_t, uint16_t), (override));
+    MOCK_METHOD(void, allPulsersWriteRegister, (uint16_t, uint16_t), (override));
+    MOCK_METHOD(uint32_t, sequencerReadRegister, (uint32_t), (override));
+    MOCK_METHOD(void, pulserWriteRegister, (uint8_t, uint16_t, uint16_t), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
