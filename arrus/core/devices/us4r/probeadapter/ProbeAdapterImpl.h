@@ -67,6 +67,8 @@ private:
     std::function<void()> createOnTransferOverflowCallback(
         ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
 
+    void calculateRxDelays(std::vector<TxRxParamsSequence> &sequences);
+
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
     std::vector<Us4OEMImplBase::RawHandle> us4oems;
