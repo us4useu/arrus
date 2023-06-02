@@ -6,6 +6,7 @@
 #include <iUs4RDBAR.h>
 #include <iUs4RPSC.h>
 #include <idbarLite.h>
+#include <idbarLitePcie.h>
 #include <ihv256.h>
 
 #include "arrus/common/asserts.h"
@@ -27,14 +28,17 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     DeviceId id(DeviceType::HV, 0);
 
     if(name == "hv256")  {
-        std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(master)));
+        // TODO how to detect if we have DBAR-Lite PCIE or the legacy DBAR-Lite?
+        std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(master)));
         std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
         return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else if(name == "us4rpsc") {
-        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(master)));
-        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
-        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+        // TODO?
+        throw std::runtime_error("unsupported: " + name + " please set hv: hv256-pcie in the prototxt file");
+//        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(master)));
+//        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
+//        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else {
         throw IllegalArgumentException(
