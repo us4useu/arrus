@@ -70,14 +70,15 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isUS4PSC) 
     }
 
     //Verify measured voltages on OEMs
-    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+    //HV measurements NYI in OEM+
+    /*for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
         voltage = this->getUCDMeasuredHVPVoltage(i);
         temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
         voltages.push_back(temp);
         voltage = this->getUCDMeasuredHVMVoltage(i);
         temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
         voltages.push_back(temp);
-    }
+    }*/
 
     return voltages;
 }
