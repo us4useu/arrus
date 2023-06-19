@@ -1,4 +1,4 @@
-% Example script for b-mode imaging using plane waves and angular scanning
+% Example script for raw rf imaging when using plane waves and angular scanning
 
 %% Initialize the system
 addpath('..\');
