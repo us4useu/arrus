@@ -56,7 +56,7 @@ classdef CustomTxRxSequence
         nRepetitions (1,:) = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
-        tgcSlope (1,:)
+        tgcSlope (1,:) = 0
         txInvert (1,:) {mustBeLogical} = false
     end
     
