@@ -288,15 +288,6 @@ void Us4RImpl::stopDevice() {
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
-    // TODO: the below should be part of session handler
-    if (this->buffer != nullptr) {
-        this->buffer->shutdown();
-        // We must be sure here, that there is no thread working on the us4rBuffer here.
-        if (this->us4rBuffer) {
-            getProbeImpl()->unregisterOutputBuffer();
-            this->us4rBuffer.reset();
-        }
-    }
     this->state = State::STOPPED;
 }
 
@@ -304,6 +295,15 @@ Us4RImpl::~Us4RImpl() {
     try {
         getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
         this->stopDevice();
+	// TODO: the below should be part of session handler
+        if (this->buffer != nullptr) {
+            this->buffer->shutdown();
+            // We must be sure here, that there is no thread working on the us4rBuffer here.
+            if (this->us4rBuffer) {
+                getProbeImpl()->unregisterOutputBuffer();
+                this->us4rBuffer.reset();
+            }
+        }
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch(const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
