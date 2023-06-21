@@ -21,6 +21,7 @@
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/utils.h"
+#include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 
 namespace arrus::devices {
 
@@ -134,6 +135,9 @@ public:
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
 
+    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
+                              ::arrus::ops::us4r::Scheme::WorkMode workMode);
+    void unregisterOutputBuffer();
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -157,6 +161,19 @@ private:
 
     ProbeImplBase::RawHandle getProbeImpl() { return probe.value().get(); }
 
+    void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
+                              Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
+    size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
+
+    std::function<void()> createReleaseCallback(
+        ::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 stopFiring);
+    std::function<void()> createOnReceiveOverflowCallback(
+        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
+    std::function<void()> createOnTransferOverflowCallback(
+        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
+
+    Us4OEMImplBase::RawHandle getMasterUs4oem() const {return this->us4oems[0].get();}
+
     std::mutex deviceStateMutex;
     std::mutex afeParamsMutex;
     Logger::Handle logger;
@@ -171,6 +188,7 @@ private:
     std::optional<RxSettings> rxSettings;
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
+    std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
 };
 
 }// namespace arrus::devices

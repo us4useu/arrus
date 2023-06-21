@@ -26,12 +26,6 @@ public:
                     uint16 rxBatchSize, std::optional<float> sri,
                     bool triggerSync, const std::optional<ops::us4r::DigitalDownConversion> &ddc) = 0;
 
-    virtual
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &transfers,
-                              ::arrus::ops::us4r::Scheme::WorkMode workMode) = 0;
-
-    virtual void unregisterOutputBuffer() = 0;
-
     virtual Ordinal getNumberOfUs4OEMs() = 0;
 
     virtual void start() = 0;
