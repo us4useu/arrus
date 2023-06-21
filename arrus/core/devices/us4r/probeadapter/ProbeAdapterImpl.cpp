@@ -272,6 +272,9 @@ void ProbeAdapterImpl::start() {
     for(auto &us4oem: this->us4oems) {
         us4oem->getIUs4oem()->DisableWaitOnReceiveOverflow();
         us4oem->getIUs4oem()->DisableWaitOnTransferOverflow();
+        // Reset tx subsystem pointers.
+        us4oem->getIUs4oem()->EnableTransmit();
+        // Reset sequencer pointers.
         us4oem->enableSequencer();
     }
     this->us4oems[0]->startTrigger();
