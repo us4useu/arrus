@@ -29,7 +29,7 @@ class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
 
-    enum class State { STARTED, STOPPED };
+    enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
     ~Us4RImpl() override;
 

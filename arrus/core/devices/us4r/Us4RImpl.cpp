@@ -262,6 +262,7 @@ void Us4RImpl::start() {
     if (!this->buffer->getOnNewDataCallback()) {
         throw ::arrus::IllegalArgumentException("'On new data callback' is not set.");
     }
+    this->state = State::START_IN_PROGRESS;
     for (auto &us4oem : us4oems) {
         us4oem->getIUs4oem()->EnableInterrupts();
     }
@@ -276,6 +277,7 @@ void Us4RImpl::stopDevice() {
     if (this->state != State::STARTED) {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
+        this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
         this->getDefaultComponent()->stop();
         for(auto &us4oem: us4oems) {
@@ -619,7 +621,9 @@ std::function<void()> Us4RImpl::createReleaseCallback(
               us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
               us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
           }
-          getMasterUs4oem()->syncTrigger();
+          if(this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
+              getMasterUs4oem()->syncTrigger();
+          }
         };
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
