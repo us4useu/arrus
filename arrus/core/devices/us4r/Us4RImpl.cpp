@@ -235,6 +235,12 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // If the output buffer already exists - remove it.
     if (this->buffer) {
         // The buffer should be already unregistered (after stopping the device).
+        this->buffer->shutdown();
+        // We must be sure here, that there is no thread working on the us4rBuffer here.
+        if (this->us4rBuffer) {
+            unregisterOutputBuffer();
+            this->us4rBuffer.reset();
+        }
         this->buffer.reset();
     }
     // Create output buffer.
