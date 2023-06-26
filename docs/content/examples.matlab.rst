@@ -2,14 +2,17 @@
 Examples
 ==============
 
-In the following parts of this chapter, we will show you how to communicate with
-the system in order to:
+In the following parts of this chapter we will show you how to use 
+the ARRUS software to communicate with the system in order to:
+
 * program the transmission/reception (TX/RX) sequence and reconstruction,
 * acquire raw RF data,
 * acquire reconstructed B-mode data,
 * obtain a real-time B-mode imaging,
-using ARRUS software. The source code of the ready-to-run examples can be found in
+
+The source code of the ready-to-run examples can be found in
 |api_language|/examples directory:
+
 * Us4R_control_bmodePwi - for B-Mode imaging using Plane Waves,
 * Us4R_control_bmodeDwi - for B-Mode imaging using Diverging Waves,
 * Us4R_control_bmodeLin - for B-Mode imaging using classical Line-by-line imaging,
@@ -55,11 +58,13 @@ The name-value input argument pairs allow you to control various aspects of TX/R
 
 The above example shows how to create the CustomTxRxSequence object with a complete set of 
 input parameters. First 11 parameters are obligatory, others are optional. For your convenience:
+
 * txApertureCenter [m] can be replaced with txCenterElement [elem],
 * rxApertureCenter [m] can be replaced with rxCenterElement [elem],
 * rxDepthRange [m] can be replaced with rxNSamples [samp].
 
 The following parameters can be scalars or vectors:
+
 * txApertureCenter or txCenterElement,
 * txApertureSize,
 * rxApertureCenter or rxCenterElement,
@@ -68,6 +73,7 @@ The following parameters can be scalars or vectors:
 * txFrequency,
 * txNPeriods,
 * txInvert.
+
 If any of them is a vector, then its length determines the number of TXs in the sequence. 
 All the other parameters must be scalars or vectors of the same length. If any parameter 
 is defined as a scalar, then it is assumed to be constant over the whole sequence. 
@@ -76,6 +82,7 @@ If all parameters are scalars, then the sequence contains a single TX/RX.
 All the remaining parameters must be scalars, i.e. they have to be constant for every TX/RX.
 
 To program the typical TX/RX strategies:
+
 * focused wave: set txFocus to positive finite values [m],
 * diverging wave: set txFocus to negative finite values [m],
 * plane wave: set txFocus to inf,
@@ -84,6 +91,7 @@ To program the typical TX/RX strategies:
 * scanning RX aperture: set rxApertureCenter or rxCenterElement to a vector of TX aperture positions,
 
 The collected data format depends on the hwDdcEnable setting:
+
 * set hwDdcEnable to false to acquire the original raw RF data, 
 * set hwDdcEnable to true to reduce the data stream and optimize the performance of the in-loop operation 
 (e.g. in the real time imaging), the collected data is in complex IQ format.
@@ -119,6 +127,7 @@ class. The name-value input argument pairs allow you to control various aspects 
 
 The xGrid and zGrid inputs define the reconstruction grid and thus they are obligatory. Other inputs are optional 
 and allow you to:
+
 * gridModeEnable - define the reconstruction mode (true -> whole image for every TX, false -> single line for every TX),
 * filter* - define the band-pass filtration of the RF data (for hwDdcEnable set to false only),
 * sos - define speed of sound in reconstruction different than in TX,
@@ -132,9 +141,9 @@ Running operations in the system
 =================================
 
 First, you should create a handle to the system on which you want to perform operations. For example, to communicate 
-with the Us4R system, create an instance of the Us4R class. You will need to indicate a *.prototxt config file 
-containing the information on the probe, adapter, gains, etc. It is extremly important to make sure that the 
-system configuration agrees with the content of the config file.
+with the Us4R system, create an instance of the Us4R class. You will need to indicate a prototxt config file 
+containing the information on the probe, adapter, gains, etc. It is **extremly important** to make sure that the 
+**system configuration agrees with the content of the config file**.
 
 .. code-block:: matlab
 
