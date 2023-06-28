@@ -57,11 +57,17 @@ The name-value input argument pairs allow you to control various aspects of TX/R
                              'txInvert',         false );
 
 The above example shows how to create the CustomTxRxSequence object with a complete set of 
-input parameters. First 11 parameters are obligatory, others are optional. For your convenience:
+input parameters. First 11 parameters are obligatory, others are optional. 
+
+**Interchangeability of parameters**
+
+For your convenience:
 
 * txApertureCenter [m] can be replaced with txCenterElement [elem],
 * rxApertureCenter [m] can be replaced with rxCenterElement [elem],
 * rxDepthRange [m] can be replaced with rxNSamples [samp].
+
+**Scalar/vector parameters, sequence length**
 
 The following parameters can be scalars or vectors:
 
@@ -79,18 +85,25 @@ All the other parameters must be scalars or vectors of the same length. If any p
 is defined as a scalar, then it is assumed to be constant over the whole sequence. 
 If all parameters are scalars, then the sequence contains a single TX/RX.
 
-All the remaining parameters must be scalars, i.e. they have to be constant for every TX/RX.
+All the remaining parameters must be scalars, i.e. they are constant for every TX/RX.
 
-To program the typical TX/RX strategies:
+**Typical TX/RX strategies**
+
+To program the typical TX waves:
 
 * focused wave: set txFocus to positive finite values [m],
 * diverging wave: set txFocus to negative finite values [m],
-* plane wave: set txFocus to inf (as in the code example above),
+* plane wave: set txFocus to inf (as in the code example above).
+
+To program the typical scanning strategies:
+
 * phased scanning: set txAngle to a vector of scanning angles [rad] (as in the code example above),
 * scanning TX aperture: set txApertureCenter or txCenterElement to a vector of TX aperture positions,
 * scanning RX aperture: set rxApertureCenter or rxCenterElement to a vector of TX aperture positions,
 
-The collected data format depends on the hwDdcEnable setting:
+**Raw data format**
+
+The collected raw data format depends on the hwDdcEnable setting:
 
 * set hwDdcEnable to **false** to acquire the original raw RF data, 
 * set hwDdcEnable to **true** to reduce the data stream, the collected data is in complex IQ format.
