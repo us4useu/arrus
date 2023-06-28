@@ -59,7 +59,8 @@ The name-value input argument pairs allow you to control various aspects of TX/R
 The above example shows how to create the CustomTxRxSequence object with a complete set of 
 input parameters. First 11 parameters are obligatory, others are optional. 
 
-**Interchangeability of parameters**
+Interchangeability of parameters
+````````````````````````````````
 
 For your convenience:
 
@@ -67,7 +68,8 @@ For your convenience:
 * rxApertureCenter [m] can be replaced with rxCenterElement [elem],
 * rxDepthRange [m] can be replaced with rxNSamples [samp].
 
-**Scalar/vector parameters, sequence length**
+Scalar/vector parameters, sequence length
+`````````````````````````````````````````
 
 The following parameters can be scalars or vectors:
 
@@ -87,7 +89,8 @@ If all parameters are scalars, then the sequence contains a single TX/RX.
 
 All the remaining parameters must be scalars, i.e. they are constant for every TX/RX.
 
-**Typical TX/RX strategies**
+Typical TX/RX strategies
+````````````````````````
 
 To program the typical TX waves:
 
@@ -101,7 +104,8 @@ To program the typical scanning strategies:
 * scanning TX aperture: set txApertureCenter or txCenterElement to a vector of TX aperture positions,
 * scanning RX aperture: set rxApertureCenter or rxCenterElement to a vector of TX aperture positions,
 
-**Raw data format**
+Raw data format
+```````````````
 
 The collected raw data format depends on the hwDdcEnable setting:
 
