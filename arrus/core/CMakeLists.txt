@@ -183,7 +183,7 @@ set(SRC_FILES
     api/session.h
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
-    devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h)
+    devices/us4r/Us4OEMDataTransferRegistrar.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -267,7 +267,7 @@ if (ARRUS_RUN_TESTS)
         devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp
         ops/us4r/DigitalDownConversion.cpp)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
-    create_core_test(devices/us4r/probeadapter/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
     create_core_test(devices/probe/ProbeImplTest.cpp
         "devices/probe/ProbeImpl.cpp;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     # core::io tests
