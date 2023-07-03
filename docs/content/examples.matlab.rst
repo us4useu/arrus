@@ -165,13 +165,20 @@ with a display-dedicated object. We prepared two classes of display objects: :re
 
 .. code-block:: matlab
 
-    display = BModeDisplay(rec, 'dynamicRange', [0 80]);
+    display = BModeDisplay(rec, 'dynamicRange', [10 70]);
     us.runLoop(@display.isOpen, @display.updateImg);
 
 .. code-block:: matlab
 
-    display = DuplexDisplay(rec, 'dynamicRange',    [0 80], ...
+    display = DuplexDisplay(rec, 'dynamicRange',    [10 70], ...
                                  'powerThreshold',  20);
     us.runLoop(@display.isOpen, @display.updateImg);
+
+Below is an example of image from a wire phantom obtained and displayed with use of the CustomTxRxSequence, 
+Reconstruction, and BModeDisplay objects defined as above.
+
+.. figure:: img/bmode_pwi_phantom_wires.png
+
+    Image of the ATS549 phantom (wires part) obtained with use of the Plane Wave Imaging.
 
 See the :ref:`arrus-Us4R` docs for more information.
