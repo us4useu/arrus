@@ -101,8 +101,8 @@ To program the typical TX waves:
 To program the typical scanning strategies:
 
 * phased scanning: set txAngle to a vector of scanning angles [rad] (as in the code example above),
-* scanning TX aperture: set txApertureCenter or txCenterElement to a vector of TX aperture positions,
-* scanning RX aperture: set rxApertureCenter or rxCenterElement to a vector of TX aperture positions,
+* scanning TX aperture: set txApertureCenter [m] or txCenterElement [elem] to a vector of TX aperture positions,
+* scanning RX aperture: set rxApertureCenter [m] or rxCenterElement [elem] to a vector of RX aperture positions,
 
 Raw data format
 ```````````````
