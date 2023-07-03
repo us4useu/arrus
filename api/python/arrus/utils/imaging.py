@@ -309,7 +309,7 @@ class ProcessingRunner:
                     self._out_i[i] = (out_i + 1) % out_buffer.n_elements
                     out_element.acquire()
                     # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
-                    out_element.data[:] = result.get()  
+                    out_element.data[:] = result.get()
                     out_elements.append(out_element)
             if self.is_extract_metadata:
                 out_elements.insert(0, metadata)
@@ -2312,6 +2312,7 @@ class RemapToLogicalOrder(Operation):
         batch_size = fcm.batch_size
         self.output_shape = (batch_size, n_frames, n_samples, n_channels)
         self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
+
         if xp == np:
             # CPU
             raise ValueError(f"'{type(self).__name__}' is not implemented for CPU")
@@ -2329,16 +2330,20 @@ class RemapToLogicalOrder(Operation):
             # Note: this is the max number of us4OEMs IN USE.
             n_us4oems = cp.max(self._fcm_us4oems).get() + 1
             n_frames_us4oems = []
-            for us4oem in range(n_us4oems):
+            # The us4OEM:0 is a master us4OEM that collects data from all transmits,
+            # even if its channels are not included in the RX aperture (each frame
+            # contains frame metadata information).
+            n_frames_us4oems.append(fcm.n_frames[0]//batch_size)
+            for us4oem in range(1, n_us4oems):
                 us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
                 if us4oem_frames.size == 0:
                     n_frames_us4oems.append(0)
                 else:
-                    n_frames_us4oem = cp.max(us4oem_frames).get().item()
+                    n_frames_us4oem = cp.max(us4oem_frames).get().item() + 1
                     n_frames_us4oems.append(n_frames_us4oem)
 
             #  TODO constant memory
-            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size
