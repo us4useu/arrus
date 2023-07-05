@@ -193,7 +193,7 @@ void Us4RImpl::disableHV() {
     hv.value()->disable();
 }
 
-std::pair<Buffer::SharedHandle, FrameChannelMapping::SharedHandle>
+std::pair<Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
 Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferNElements = scheme.getRxBufferSize();
@@ -245,7 +245,10 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // TODO implement Us4RBuffer move constructor.
     this->us4rBuffer = std::move(rxBuffer);
 
-    return {this->buffer, std::move(fcm)};
+    // Metadata
+    arrus::session::MetadataBuilder metadataBuilder;
+    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+    return {this->buffer, metadataBuilder.buildPtr()};
 }
 
 void Us4RImpl::start() {

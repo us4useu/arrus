@@ -4,5 +4,6 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
+#include "arrus/core/api/devices/Ultrasound.h"
 
 #endif //ARRUS_CORE_API_DEVICES_H

@@ -15,6 +15,8 @@
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "FrameChannelMapping.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/Ultrasound.h"
+#include "arrus/core/api/session/Metadata.h"
 
 namespace arrus::devices {
 
@@ -23,12 +25,12 @@ namespace arrus::devices {
  *
  * By default system starts with IQ demodulator turned off.
  */
-class Us4R : public DeviceWithComponents {
+class Us4R : public DeviceWithComponents, public Ultrasound {
 public:
     using Handle = std::unique_ptr<Us4R>;
     static constexpr long long INF_TIMEOUT = -1;
 
-    explicit Us4R(const DeviceId &id) : DeviceWithComponents(id) {}
+    explicit Us4R(const DeviceId &id) : DeviceWithComponents(), Ultrasound(id) {}
 
     ~Us4R() override = default;
 
@@ -58,37 +60,37 @@ public:
 
     virtual std::pair<
         std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::devices::FrameChannelMapping>
+        std::shared_ptr<arrus::session::Metadata>
     >
-    upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
+    upload(const ::arrus::ops::us4r::Scheme &scheme) override = 0;
 
     /**
      * Sets HV voltage.
      *
      * @param voltage voltage to set [V]
      */
-    virtual void setVoltage(Voltage voltage) = 0;
+    virtual void setVoltage(Voltage voltage) override = 0;
 
     /**
      * Returns configured HV voltage.
      *
      * @return hv voltage value configured on device [V]
      */
-    virtual unsigned char getVoltage() = 0;
+    virtual unsigned char getVoltage() override = 0;
 
     /**
      * Returns measured HV voltage (plus).
      *
      * @return hv voltage measured by device [V]
      */
-    virtual float getMeasuredPVoltage() = 0;
+    virtual float getMeasuredPVoltage() override = 0;
 
     /**
      * Returns measured HV voltage (minus).
      *
      * @return hv voltage measured by devivce [V]
      */
-    virtual float getMeasuredMVoltage() = 0;
+    virtual float getMeasuredMVoltage() override = 0;
 
     /**
      * Gets positive HV voltage measurement by UCD chip on OEM.
@@ -109,12 +111,12 @@ public:
     /**
      * Disables HV voltage.
      */
-    virtual void disableHV() = 0;
+    virtual void disableHV() override = 0;
 
     /**
      * Equivalent to setTgcCurve(curve, true).
      */
-    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints) = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints) override = 0;
 
     /**
      * Sets TGC curve points asynchronously.
@@ -129,7 +131,7 @@ public:
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
      */
-    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override = 0;
 
     /**
      * Sets TGC curve points asynchronously.
@@ -150,7 +152,7 @@ public:
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
      */
-    virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) = 0;
+    virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) override = 0;
 
     /**
      * Returns us4R TGC sampling points (along time axis, relative to the "sample 0"), up to given maximum time.
@@ -158,56 +160,56 @@ public:
      * @param maxT maximum time range
      * @return TGC time points at which TGC curve sample takes place
      */
-    virtual std::vector<float> getTgcCurvePoints(float maxT) const = 0;
+    virtual std::vector<float> getTgcCurvePoints(float maxT) const override = 0;
 
     /**
      * Sets PGA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setPgaGain(uint16 value) = 0;
+    virtual void setPgaGain(uint16 value) override = 0;
 
     /**
      * Returns the current PGA gain value.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual uint16 getPgaGain() = 0;
+    virtual uint16 getPgaGain() override = 0;
 
     /**
      * Sets LNA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setLnaGain(uint16 value) = 0;
+    virtual void setLnaGain(uint16 value) override = 0;
 
     /**
      * Returns the current LNA gain value.
      *
      * See docs of arrus::devices::RxSettings for more information.
     */
-    virtual uint16 getLnaGain() = 0;
+    virtual uint16 getLnaGain() override = 0;
 
     /**
      * Sets LPF cutoff.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setLpfCutoff(uint32 value) = 0;
+    virtual void setLpfCutoff(uint32 value) override = 0;
 
     /**
      * Sets DTGC attenuation.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setDtgcAttenuation(std::optional<uint16> value) = 0;
+    virtual void setDtgcAttenuation(std::optional<uint16> value) override = 0;
 
     /**
     * Sets active termination.
     *
     * See docs of arrus::devices::RxSettings for more information.
     */
-    virtual void setActiveTermination(std::optional<uint16> value) = 0;
+    virtual void setActiveTermination(std::optional<uint16> value) override = 0;
 
     /**
      * Sets a complete list of RxSettings on all Us4R components.
@@ -222,8 +224,8 @@ public:
      */
     virtual void setTestPattern(Us4OEM::RxTestPattern pattern) = 0;
 
-    virtual void start() = 0;
-    virtual void stop() = 0;
+    virtual void start() override = 0;
+    virtual void stop() override = 0;
 
     virtual std::vector<unsigned short> getChannelsMask() = 0;
 
@@ -235,14 +237,14 @@ public:
     /**
      * Returns NOMINAL us4R device sampling frequency.
      */
-    virtual float getSamplingFrequency() const = 0;
+    virtual float getSamplingFrequency() const override = 0;
 
 
     /**
      * Returns the sampling frequency with which data from us4R will be acquired. The returned value
      * depends on the result of sequence upload (e.g. DDC decimation factor).
      */
-    virtual float getCurrentSamplingFrequency() const = 0;
+    virtual float getCurrentSamplingFrequency() const override = 0;
 
     /**
      * Checks state of the Us4R device. Currently checks if each us4OEM module is in
@@ -278,7 +280,7 @@ public:
      *
      * @param frequency corner high-pass filter frequency to set
      */
-    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+    virtual void setHpfCornerFrequency(uint32_t frequency) override = 0;
 
     /**
      * Reads AFE register
@@ -298,7 +300,7 @@ public:
     /**
      * Disables digital high-pass filter.
      */
-    virtual void disableHpf() = 0;
+    virtual void disableHpf() override = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

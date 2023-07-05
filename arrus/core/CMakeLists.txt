@@ -42,6 +42,7 @@ set(SRC_FILES
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
     api/devices/us4r/RxSettings.h
+    api/devices/Ultrasound.h
     api/session/Session.h
     api/session/SessionSettings.h
     api/ops/us4r/Pulse.h
@@ -105,6 +106,9 @@ set(SRC_FILES
     devices/probe/ProbeModel.h
     devices/probe/ProbeModel.cpp
 
+    devices/dataset/DatasetImpl.cpp
+    devices/dataset/DatasetImpl.h
+
     api/io/settings.h
     io/settings.cpp
     io/validators/ProbeModelProtoValidator.h
@@ -131,6 +135,7 @@ set(SRC_FILES
     devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
     devices/us4r/Us4ROutputBuffer.h
     devices/us4r/Us4RImpl.cpp
+    devices/dataset/DatasetImpl.cpp
     devices/us4r/common.h
     devices/us4r/common.cpp
 
@@ -172,7 +177,7 @@ set(SRC_FILES
     api/session/UploadResult.h
     api/framework/DataBufferSpec.h
     api/framework/Buffer.h
-    api/session/UploadConstMetadata.h
+    api/session/Metadata.h
     api/framework/DataBuffer.h
     api/framework/FifoBuffer.h
     api/ops/us4r/DigitalDownConversion.h
