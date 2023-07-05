@@ -19,10 +19,6 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
                     const std::optional<ops::us4r::DigitalDownConversion> &ddc) = 0;
-
-    virtual void registerOutputBuffer(Us4ROutputBuffer *, const Us4RBuffer::Handle &,
-                                      ::arrus::ops::us4r::Scheme::WorkMode workMode) = 0;
-    virtual void unregisterOutputBuffer() = 0;
 };
 
 }

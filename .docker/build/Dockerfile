@@ -1,5 +1,5 @@
 ARG TARGETPLATFORM
-FROM --platform=$TARGETPLATFORM nvidia/cuda:11.2.0-devel-ubuntu20.04
+FROM --platform=$TARGETPLATFORM nvidia/cuda:11.2.2-devel-ubuntu20.04
 
 ARG TARGETPLATFORM
 ARG PYTHON_VERSION="3.8"
