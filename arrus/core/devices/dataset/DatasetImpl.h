@@ -7,6 +7,7 @@
 #include <optional>
 #include <thread>
 #include <utility>
+#include <condition_variable>
 
 #include "arrus/core/api/devices/Ultrasound.h"
 #include "arrus/core/api/framework/Buffer.h"
@@ -16,33 +17,57 @@ namespace arrus::devices {
 
 class DatasetBufferElement: public arrus::framework::BufferElement {
 public:
-    explicit DatasetBufferElement(std::vector<int16_t> data, size_t position, arrus::framework::NdArray::Shape shape)
-        : data(std::move(data)),
-          ndarray{data.data(), shape, arrus::framework::NdArray::DataType::INT16, DeviceId(DeviceType::CPU, 0)}
-    {}
+    DatasetBufferElement(size_t position, const arrus::framework::NdArray::Shape& shape) {
+        this->size = shape.product(); // The number of int16 elements.
+        this->data = new int16_t[size];
+        this->ndarray = framework::NdArray{
+            this->data, shape, arrus::framework::NdArray::DataType::INT16, DeviceId(DeviceType::CPU, 0)};
+        this->position = position;
+    }
 
     ~DatasetBufferElement() override = default;
-    void release() override {/*Ignored*/}
+
+    void acquire(const std::function<void(framework::BufferElement::BufferElement::SharedHandle)> &func) {
+        std::unique_lock<std::mutex> lock{stateMutex};
+        // Wait until the element is free.
+        readyForWrite.wait(lock, [this](){return this->state == framework::BufferElement::State::FREE;});
+
+    }
+
+    void releaseForRead() {
+        std::unique_lock<std::mutex> lock{stateMutex};
+    }
+
+    void release() override {
+        // Release
+        readyForWrite.notify_one();
+    }
     framework::NdArray &getData() override { return ndarray; }
-    size_t getSize() override { return data.size()*sizeof(int16_t); }
+    size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }
-    State getState() const override { return State::READY; }
+    State getState() const override { return state; }
 private:
-    std::vector<int16_t> data;
-    // NdArray - view for the above vector
-    arrus::framework::NdArray ndarray;
+    std::mutex stateMutex;
+    std::condition_variable readyForWrite;
+    int16_t *data{nullptr};
+    size_t size;
+    // NdArray: view of the above data pointer.
+    arrus::framework::NdArray ndarray{
+        data,
+        arrus::framework::NdArray::Shape{},
+        arrus::framework::NdArray::DataType::INT16,
+        DeviceId{DeviceType::CPU, 0}
+    };
     size_t position;
+    State state{framework::BufferElement::State::FREE};
 };
 
 class DatasetBuffer: public arrus::framework::DataBuffer {
 public:
-    /**
-     * @param data pointer to the place where the data starts
-     * @param size the size of the buffer [number of bytes]
-     */
-    DatasetBuffer(std::vector<std::vector<int16_t>> frames, arrus::framework::NdArray::Shape shape){
-        for(size_t i = 0; i < frames.size(); ++i) {
-            elements.push_back(std::make_shared<DatasetBufferElement>(frames.at(i), i, shape));
+
+    DatasetBuffer(size_t nElements, arrus::framework::NdArray::Shape shape){
+        for(size_t i = 0; i < nElements; ++i) {
+            elements.push_back(std::make_shared<DatasetBufferElement>(i, shape));
         }
     }
 
@@ -55,6 +80,7 @@ public:
     void registerShutdownCallback(framework::OnShutdownCallback&) override {/*Ignored*/}
 
     size_t getNumberOfElements() const override { return elements.size(); }
+
     std::shared_ptr<arrus::framework::BufferElement> getElement(size_t i) override {
         return elements.at(i);
     }
@@ -65,7 +91,13 @@ public:
         return elements.at(0)->getSize();
     }
     size_t getNumberOfElementsInState(framework::BufferElement::State state) const override {
-
+        int result = 0;
+        for(auto &e: elements) {
+            if(e->getState() == state) {
+                ++result;
+            }
+        }
+        return result;
     }
 
 private:
@@ -114,17 +146,22 @@ public:
     void disableHpf() override;
 
 private:
+    using DataFrame = std::vector<int16_t>;
+
+    std::vector<DataFrame> readDataset(const std::string &filepath);
+
     void producer();
 
+    State state{State::STOPPED};
     Logger::Handle logger;
     std::mutex deviceStateMutex;
     std::thread producerThread;
-    std::string filepath;
+    std::vector<DataFrame> dataset;
     size_t datasetSize{0};
     ProbeModel probeModel;
+    arrus::framework::NdArray::Shape frameShape;
     std::optional<ops::us4r::Scheme> currentScheme;
     std::shared_ptr<DatasetBuffer> buffer;
-    State state{State::STOPPED};
 };
 
 }// namespace arrus::devices

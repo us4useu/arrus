@@ -9,13 +9,13 @@ namespace arrus::devices {
 using namespace arrus::framework;
 using namespace arrus::session;
 
-DatasetImpl::DatasetImpl(const DeviceId &id, std::string filepath, size_t datasetSize, ProbeModel probeModel)
+DatasetImpl::DatasetImpl(const DeviceId &id, const std::string &filepath, size_t datasetSize, ProbeModel probeModel)
     : Ultrasound(id), logger{getLoggerFactory()->getLogger()},
-      filepath(std::move(filepath)),
       datasetSize(datasetSize),
       probeModel(std::move(probeModel)) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-    logger->log(LogSeverity::INFO, ::arrus::format("Simulated mode, dataset: {}", filepath));
+    this->logger->log(LogSeverity::INFO, ::arrus::format("Simulated mode, dataset: {}", filepath));
+    this->dataset = readDataset(filepath);
 }
 
 std::pair<Buffer::SharedHandle, Metadata::SharedHandle>
@@ -31,31 +31,39 @@ DatasetImpl::upload(const ops::us4r::Scheme &scheme) {
     auto &rxAperture = seq.getOps()[0].getRx().getAperture();
     size_t nRx = std::reduce(std::begin(rxAperture), std::end(rxAperture));
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
-
-    this->buffer = std::make_shared<DatasetBuffer>(this->datasetSize, nTx, nSamples, nRx, nValues);
-
+    this->frameShape = NdArray::Shape{nTx, nSamples, nRx, nValues};
+    this->buffer = std::make_shared<DatasetBuffer>(this->datasetSize, this->frameShape);
     // Metadata
     MetadataBuilder metadataBuilder;
-
     return std::make_pair(this->buffer, metadataBuilder.buildPtr());
 }
 
 void DatasetImpl::start() {
-    // TODO mutex
-    this->state = State::STARTED;
-    this->producerThread = std::thread(&DatasetImpl::producer, this);
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if (this->state == State::STARTED) {
+        logger->log(LogSeverity::INFO, "Already started.");
+    } else {
+        this->state = State::STARTED;
+        this->producerThread = std::thread(&DatasetImpl::producer, this);
+    }
 }
 
 void DatasetImpl::stop() {
-    // TODO mutex
-    this->state = State::STOPPED;
-    this->producerThread.join();
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    if(this->state == State::STOPPED) {
+        logger->log(LogSeverity::INFO, "Already stopped.");
+    }
+    else {
+        this->state = State::STOPPED;
+        this->producerThread.join();
+    }
 }
 
 void DatasetImpl::producer() {
     size_t i = 0;
-    logger->log(LogSeverity::INFO, "Starting dataset producer.");
+    logger->log(LogSeverity::INFO, "Starting producer.");
     while(this->state == State::STARTED) {
+        auto element = this->buffer.acquire();
         this->buffer.callOnNewDataCallback(i);
         i = (i+1) % this->datasetSize;
     }
@@ -99,22 +107,5 @@ float DatasetImpl::getSamplingFrequency() const { return 65e6; }
 float DatasetImpl::getCurrentSamplingFrequency() const { return 65e6; }
 void DatasetImpl::setHpfCornerFrequency(uint32_t frequency) {}
 void DatasetImpl::disableHpf() {}
-
-size_t DatasetBuffer::getNumberOfElements() const { return 0; }
-std::shared_ptr<arrus::framework::BufferElement> DatasetBuffer::getElement(size_t i) {
-    return std::shared_ptr<BufferElement>();
-}
-size_t DatasetBuffer::getElementSize() const { return 0; }
-size_t DatasetBuffer::getNumberOfElementsInState(framework::BufferElement::State state) const { return 0; }
-DatasetBuffer::DatasetBuffer(std::unique_ptr<int16> data, size_t size) {}
-
-void DatasetBuffer::registerOnNewDataCallback(framework::OnNewDataCallback &callback) {}
-void DatasetBuffer::registerOnOverflowCallback(framework::OnOverflowCallback &callback) {}
-void DatasetBuffer::registerShutdownCallback(framework::OnShutdownCallback &callback) {}
-
-size_t DatasetBuffer::getNumberOfElements() const { return 0; }
-std::shared_ptr<BufferElement> DatasetBuffer::getElement(size_t i) { return std::shared_ptr<BufferElement>(); }
-size_t DatasetBuffer::getElementSize() const { return 0; }
-size_t DatasetBuffer::getNumberOfElementsInState(framework::BufferElement::State state) const { return 0; }
 
 }// namespace arrus::devices
