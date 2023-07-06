@@ -28,6 +28,11 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     DeviceId id(DeviceType::HV, 0);
 
     if(name == "hv256")  {
+        std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(master)));
+        std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
+        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+    }
+    else if(name == "hv256p")  {
         // TODO how to detect if we have DBAR-Lite PCIE or the legacy DBAR-Lite?
         std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(master)));
         std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
@@ -45,6 +50,9 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
 //        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(master)));
 //        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
 //        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+    }
+    else if(name == "us4oemhvps") {
+        //TO DO
     }
     else {
         throw IllegalArgumentException(
