@@ -62,7 +62,7 @@ class Session(AbstractSession):
     on the devices should be done withing the session context.
     """
 
-    def __init__(self, cfg_path: str="us4r.prototxt",
+    def __init__(self, cfg_path: str = "us4r.prototxt",
                  medium: arrus.medium.Medium = None):
         """
         Session constructor.
