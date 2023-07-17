@@ -8,7 +8,7 @@ set(DOC_FILES
     content/introduction.rst
     content/examples/bmode_imaging.matlab.rst
     content/user_guide.python.rst
-    content/definitions.python.rst
+    content/definitions.rst
     content/examples/img/coordinate_system.jpeg
     content/examples/img/apertures.jpeg
     content/examples/img/delays.jpeg
