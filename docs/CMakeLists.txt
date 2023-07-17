@@ -8,7 +8,7 @@ set(DOC_FILES
     content/introduction.rst
     content/examples/bmode_imaging.matlab.rst
     content/user_guide.python.rst
-    content/definitions.python.rst
+    content/definitions.rst
     content/examples/img/coordinate_system.jpeg
     content/examples/img/apertures.jpeg
     content/examples/img/delays.jpeg
@@ -26,7 +26,6 @@ set(DOC_FILES
     content/api.python.rst
     content/api.matlab.rst
     content/api.cpp.rst
-    content/low_level_api.matlab.rst
     content/examples/check_probe.python.rst
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
@@ -155,7 +154,7 @@ CREATE_DOC_TARGET(cpp html docs_venv sphinx_package arrus_cpp_doxygen ${ARRUS_BR
 
 # Python
 if(ARRUS_BUILD_PY)
-    install_arrus_package(arrus_package docs_venv python_whl "PKG")
+    install_arrus_package(arrus_package docs_venv python_whl "DIR")
     CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arrus_package "")
     CREATE_DOC_TARGET(python html docs_venv sphinx_package arrus_package "")
 endif()
