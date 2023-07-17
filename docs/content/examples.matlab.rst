@@ -8,10 +8,9 @@ the ARRUS software to communicate with the system in order to:
 * program the transmission/reception (TX/RX) sequence and reconstruction,
 * acquire raw RF data,
 * acquire reconstructed B-mode data,
-* obtain a real-time B-mode imaging,
+* obtain a real-time B-mode imaging.
 
-The source code of the ready-to-run examples can be found in
-|api_language|/examples directory:
+The source code of the ready-to-run examples can be found in examples directory:
 
 * Us4R_control_bmodePwi - for B-Mode imaging using Plane Waves,
 * Us4R_control_bmodeDwi - for B-Mode imaging using Diverging Waves,
