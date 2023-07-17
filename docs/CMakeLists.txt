@@ -155,7 +155,7 @@ CREATE_DOC_TARGET(cpp html docs_venv sphinx_package arrus_cpp_doxygen ${ARRUS_BR
 
 # Python
 if(ARRUS_BUILD_PY)
-    install_arrus_package(arrus_package docs_venv python_whl "PKG")
+    install_arrus_package(arrus_package docs_venv python_whl "DIR")
     CREATE_DOC_TARGET(python pdf docs_venv sphinx_package arrus_package "")
     CREATE_DOC_TARGET(python html docs_venv sphinx_package arrus_package "")
 endif()
