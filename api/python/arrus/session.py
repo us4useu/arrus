@@ -288,6 +288,22 @@ class Session(AbstractSession):
     def get_session_context(self):
         return self._context
 
+    @property
+    def medium(self):
+        """
+        Returns currently set Medium.
+        NOTE: this method is not thread-safe!
+        """
+        return self._context.medium
+
+    @medium.setter
+    def medium(self, value):
+        """
+        Sets a new medium in the current session context.
+        NOTE: this method is not thread-safe!
+        """
+        self._context = SessionContext(medium=value)
+
     # def set_current_medium(self, medium: arrus.medium.Medium):
     #     # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
     #     raise RuntimeError("NYI")

@@ -1130,7 +1130,7 @@ class RxBeamformingPhasedScanning(Operation):
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
             tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                sequence=seq, c=c, probe_model=probe_model)
+                sequence=seq, c=c, probe_model=probe_model, fs=fs)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1252,7 +1252,7 @@ class RxBeamformingLin(Operation):
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
             tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                sequence=seq, c=c, probe_model=probe_model)
+                sequence=seq, c=c, probe_model=probe_model, fs=fs)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -2085,7 +2085,9 @@ class ReconstructLri(Operation):
         rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
 
         tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model)
+            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model,
+            fs=self.const_metadata.data_description.sampling_frequency
+        )
 
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_centers, probe_model)

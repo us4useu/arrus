@@ -315,7 +315,8 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
             context)
         # A TX/RX sequence without
         seq2 = arrus.kernels.simple_tx_rx_sequence.convert_to_tx_rx_sequence(
-            c=medium.speed_of_sound, op=seq, probe_model=probe_model
+            c=medium.speed_of_sound, op=seq, probe_model=probe_model,
+            fs=65e6,
         )
         seq2_with_mask: TxRxSequence = arrus.kernels.tx_rx_sequence.set_aperture_masks(
             sequence=seq2, probe=probe_model

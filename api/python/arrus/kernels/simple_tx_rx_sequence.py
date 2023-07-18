@@ -1,4 +1,5 @@
 import dataclasses
+import math
 from collections.abc import Collection
 import numpy as np
 import arrus.exceptions
@@ -19,6 +20,15 @@ from arrus.kernels.tx_rx_sequence import (
 )
 
 
+def _get_sampling_frequency(context: KernelExecutionContext):
+    if context.hardware_ddc is not None:
+        decimation_factor = context.hardware_ddc.decimation_factor
+    else:
+        seq: SimpleTxRxSequence = context.op
+        decimation_factor = seq.downsampling_factor
+    return context.device.sampling_frequency / decimation_factor
+
+
 def process_simple_tx_rx_sequence(context: KernelExecutionContext):
     """
     Converts SimpleTxRxSequence to raw TxRxSequence.
@@ -34,15 +44,17 @@ def process_simple_tx_rx_sequence(context: KernelExecutionContext):
     c = __get_speed_of_sound(context)
     probe = context.device.probe.model
     # TX/RX
-    raw_seq = convert_to_tx_rx_sequence(c, op, probe)
+    raw_seq = convert_to_tx_rx_sequence(
+        c, op, probe, fs=_get_sampling_frequency(context))
     new_context = dataclasses.replace(context, op=raw_seq)
     # Process the raw sequence, to calculate all the necessary
     # TX delays.
     return process_tx_rx_sequence(new_context)
 
 
-def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model):
-    tx_rx_sequence = convert_to_tx_rx_sequence(c, sequence, probe_model)
+def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model, fs):
+    tx_rx_sequence = convert_to_tx_rx_sequence(
+        c, sequence, probe_model, fs=fs)
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=tx_rx_sequence,
         probe=probe_model
@@ -52,10 +64,42 @@ def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model):
     return center_delay
 
 
-def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model):
+def convert_depth_to_sample_range(depth_range, fs, speed_of_sound):
+    """
+    Converts depth range (in [m]) to the sample range
+    (in the number of samples).
+    """
+    sample_range = np.round(2*fs*np.asarray(depth_range)/speed_of_sound)
+    # Round the number of samples to a value divisible by 64.
+    # Number of acquired must be divisible by 64 (required by us4R driver).
+    n_samples = sample_range[1]-sample_range[0]
+    n_samples = 64*int(math.ceil(n_samples/64))
+    sample_range = sample_range[0], sample_range+n_samples
+    return sample_range
+
+
+def get_sample_range(op: SimpleTxRxSequence, fs, speed_of_sound):
+    """
+    Returns sample range (if provided) or returns depth range converted
+    to the sample range according to the given sampling frequency
+    speed of sound.
+    """
+    if op.rx_sample_range is not None:
+        return op.rx_sample_range
+    else:
+        return convert_depth_to_sample_range(
+            depth_range=op.rx_depth_range,
+            fs=fs,
+            speed_of_sound=speed_of_sound
+        )
+
+
+def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
+                              fs: float):
     tx_rx_params = compute_tx_rx_params(probe=probe_model, sequence=op)
     n_tx = len(tx_rx_params["tx_ap_cent"])
     txrx = []
+    sample_range = get_sample_range(op, fs=fs, speed_of_sound=c)
     for i in range(n_tx):
         tx_aperture = tx_rx_params["tx_apertures"][i]
         rx_aperture = tx_rx_params["rx_apertures"][i]
@@ -65,7 +109,7 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model):
                 focus=op.tx_focus,
                 angle=tx_angle,
                 speed_of_sound=c)
-        rx = Rx(rx_aperture, op.rx_sample_range, op.downsampling_factor,
+        rx = Rx(rx_aperture, sample_range, op.downsampling_factor,
                 init_delay=op.init_delay)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
