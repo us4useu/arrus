@@ -1,5 +1,6 @@
 import numpy as np
 import arrus.ops.imaging
+from arrus.kernels.simple_tx_rx_sequence import get_sample_range
 import arrus.ops.us4r
 
 
@@ -11,10 +12,10 @@ def compute_linear_tgc(seq_context, fs, linear_tgc):
         return [], []
     seq = seq_context.op
     if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
-        sample_range = seq.rx_sample_range
         c = seq.speed_of_sound
         if c is None:
             c = seq_context.medium.speed_of_sound
+        sample_range = get_sample_range(seq, fs=fs, speed_of_sound=c)
     elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
         sample_range = seq.get_sample_range_unique()
         if seq_context.medium is None:
