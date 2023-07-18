@@ -608,6 +608,25 @@ class DepthToSampleRangeTest(unittest.TestCase):
         )
         self.assertEqual(sr, rx_sample_range)
 
+    def test_get_sample_range_computes_correct_sample_range(self):
+        seq = arrus.ops.imaging.PwiSequence(
+            angles=[-np.pi/4, 0.0, np.pi/4],
+            pulse=arrus.ops.us4r.Pulse(
+                center_frequency=1,
+                n_periods=1,
+                inverse=False),
+            rx_depth_range=(0, 0.5),
+            speed_of_sound=1,
+            pri=1,
+            sri=1,
+        )
+        sr = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq,
+            fs=1,
+            speed_of_sound=1,
+        )
+        self.assertEqual(sr, (0, 64))
+
 
 if __name__ == "__main__":
     unittest.main()
