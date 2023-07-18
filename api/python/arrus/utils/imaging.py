@@ -2094,7 +2094,7 @@ class ReconstructLri(Operation):
 
         tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
             sequence=seq, c=seq.speed_of_sound, probe_model=probe_model,
-            fs=self.const_metadata.data_description.sampling_frequency
+            fs=const_metadata.data_description.sampling_frequency
         )
 
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
