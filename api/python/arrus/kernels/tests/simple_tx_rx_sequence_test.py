@@ -558,5 +558,57 @@ class StaSequenceTest(SimpleTxRxSequenceTest):
                                            center_elements=np.arange(45, 146, 10))
 
 
+class DepthToSampleRangeTest(unittest.TestCase):
+
+    def setUp(self) -> None:
+        pass
+
+    def test_depth_to_sample_range_one_sample_rounded_to_64(self):
+        sr = arrus.kernels.simple_tx_rx_sequence.convert_depth_to_sample_range(
+            depth_range=(0, 0.5),
+            fs=1,
+            speed_of_sound=1,
+        )
+        np.testing.assert_equal(sr, [0, 64])
+
+    def test_depth_to_sample_range_one_sample_rounded_to_64_with_offset(self):
+        sr = arrus.kernels.simple_tx_rx_sequence.convert_depth_to_sample_range(
+            depth_range=(0.5, 1),
+            fs=1,
+            speed_of_sound=1,
+        )
+        np.testing.assert_equal(sr, [1, 65])
+
+    def test_depth_to_sample_range_ultrasound_like(self):
+        sr = arrus.kernels.simple_tx_rx_sequence.convert_depth_to_sample_range(
+            depth_range=(10e-3, 40e-3),
+            fs=65e6,
+            speed_of_sound=1500,
+        )
+        np.testing.assert_equal(sr, [867, 3491])
+        self.assertEqual((sr[1]-sr[0])%64, 0)
+
+    def test_get_sample_range_no_depth_range_sample_range_unmodified(self):
+        rx_sample_range = (0, 8)
+        seq = arrus.ops.imaging.PwiSequence(
+            angles=[-np.pi/4, 0.0, np.pi/4],
+            pulse=arrus.ops.us4r.Pulse(
+                center_frequency=1,
+                n_periods=1,
+                inverse=False),
+            rx_sample_range=(0, 8),
+            speed_of_sound=1,
+            pri=1,
+            sri=1,
+        )
+        sr = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq,
+            fs=65e6,
+            speed_of_sound=1500,
+        )
+        self.assertEqual(sr, rx_sample_range)
+
+
+
 if __name__ == "__main__":
     unittest.main()

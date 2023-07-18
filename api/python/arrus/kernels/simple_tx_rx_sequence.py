@@ -72,7 +72,7 @@ def convert_depth_to_sample_range(depth_range, fs, speed_of_sound):
     # Number of acquired must be divisible by 64 (required by us4R driver).
     n_samples = sample_range[1]-sample_range[0]
     n_samples = 64*int(math.ceil(n_samples/64))
-    sample_range = sample_range[0], sample_range+n_samples
+    sample_range = sample_range[0], sample_range[0]+n_samples
     return sample_range
 
 
