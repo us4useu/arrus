@@ -9,9 +9,7 @@ from arrus.ops.us4r import (
 from arrus.ops.imaging import (
     LinSequence, PwiSequence, StaSequence, SimpleTxRxSequence
 )
-from arrus.ops.tgc import LinearTgc
 import arrus.utils.imaging
-import arrus.kernels.tgc
 from arrus.kernels.kernel import KernelExecutionContext
 from arrus.kernels.tx_rx_sequence import (
     process_tx_rx_sequence,
