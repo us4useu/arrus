@@ -67,7 +67,7 @@ def convert_depth_to_sample_range(depth_range, fs, speed_of_sound):
     Converts depth range (in [m]) to the sample range
     (in the number of samples).
     """
-    sample_range = np.round(2*fs*np.asarray(depth_range)/speed_of_sound)
+    sample_range = np.round(2*fs*np.asarray(depth_range)/speed_of_sound).astype(int)
     # Round the number of samples to a value divisible by 64.
     # Number of acquired must be divisible by 64 (required by us4R driver).
     n_samples = sample_range[1]-sample_range[0]
