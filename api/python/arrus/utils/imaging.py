@@ -1125,7 +1125,10 @@ class RxBeamformingPhasedScanning(Operation):
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
-        start_sample, end_sample = seq.rx_sample_range
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample, end_sample = rx_sample_range
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
@@ -1474,7 +1477,9 @@ class ScanConversion(Operation):
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
-        start_sample = seq.rx_sample_range[0]
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
         input_z_grid_origin = start_sample / acq_fs * c / 2
         input_z_grid_diff = c / (fs * 2)
         # Map x_grid and z_grid to the RF frame coordinates.
@@ -2033,7 +2038,6 @@ class ReconstructLri(Operation):
         seq = const_metadata.context.sequence
         probe_model = const_metadata.context.device.probe.model
         acq_fs = (const_metadata.context.device.sampling_frequency / seq.downsampling_factor)
-        start_sample = seq.rx_sample_range[0]
 
         self.x_size = len(self.x_grid)
         self.z_size = len(self.z_grid)
@@ -2054,6 +2058,10 @@ class ReconstructLri(Operation):
         self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         self.fn = self.num_pkg.float32(seq.pulse.center_frequency)
         self.pitch = self.num_pkg.float32(probe_model.pitch)
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=self.fs, speed_of_sound=self.sos)
+        start_sample = rx_sample_range[0]
 
         # Probe description
         element_pos_x = probe_model.element_pos_x
