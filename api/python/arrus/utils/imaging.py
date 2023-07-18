@@ -2956,3 +2956,28 @@ class DelayAndSumLUT(Operation):
             self.fs, self.fn)
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
+
+
+class RunForDlPackCapsule(Operation):
+    """
+    Converts input cupy ndarray into the DL Pack capsule
+    (https://github.com/dmlc/dlpack) and runs the provided callback function.
+
+    The callback function should take DL Pack capsule as input and return
+    a new cupy array.
+
+    Note: experimental.
+    """
+
+    def __init__(self, callback, name=None):
+        super().__init__(name=name)
+        self.callback = callback
+
+    def prepare(self, const_metadata):
+        return const_metadata
+
+    def process(self, data):
+        dlpack_capsule = data.toDlpack()
+        return self.callback(dlpack_capsule)
+
+
