@@ -1247,7 +1247,9 @@ class RxBeamformingLin(Operation):
         else:
             c = medium.speed_of_sound
         tx_angle = 0
-        start_sample = seq.rx_sample_range[0]
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
         # -start_sample compensates the fact, that the data indices always
         # start from 0
@@ -1518,12 +1520,14 @@ class ScanConversion(Operation):
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
 
-        start_sample = seq.rx_sample_range[0]
-
         if seq.speed_of_sound is not None:
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
 
         tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
@@ -1582,9 +1586,13 @@ class ScanConversion(Operation):
         fs = const_metadata.context.device.sampling_frequency
         acq_fs = fs / seq.downsampling_factor
         fs = data_desc.sampling_frequency
-        start_sample, _ = seq.rx_sample_range
-        start_time = start_sample / acq_fs
         c = _get_speed_of_sound(const_metadata.context)
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+
+        start_sample, _ = rx_sample_range
+        start_time = start_sample / acq_fs
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
         tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
