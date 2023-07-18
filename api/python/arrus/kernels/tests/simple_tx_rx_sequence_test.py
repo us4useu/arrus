@@ -609,6 +609,5 @@ class DepthToSampleRangeTest(unittest.TestCase):
         self.assertEqual(sr, rx_sample_range)
 
 
-
 if __name__ == "__main__":
     unittest.main()
