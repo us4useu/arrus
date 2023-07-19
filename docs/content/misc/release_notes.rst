@@ -13,6 +13,10 @@ Release notes
 - Python API:
 
     - us4R: exposed SYNC mode
+    - Added the possibility to change session medium after its initialization
+    - Added the possibility to specify rx depth range in the SimpleTxRxSequences.
+    - Exposed OX min/max position of the probe elements.
+    - Created cupy -> DL pack operator.
 
 0.8.x
 -----
