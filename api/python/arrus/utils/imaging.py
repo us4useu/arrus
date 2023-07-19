@@ -670,7 +670,7 @@ class Processing:
             on_buffer_overflow_callback=None):
         self.pipeline = pipeline
         self._pipeline_name = _get_default_op_name(self.pipeline, 0)
-        self._pipeline_params = self._determine_params()
+        self._pipeline_param_names, self._param_defs = self._determine_params()
         self.callback = callback
         self.extract_metadata = extract_metadata
         self.input_buffer = input_buffer
@@ -681,25 +681,27 @@ class Processing:
         """
         Sets the value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_params[key]
+        pipeline_param_name = self._pipeline_param_names[key]
         self.pipeline.set_parameter(pipeline_param_name, value)
 
     def get_parameter(self, key: str) -> Sequence[Number]:
         """
         Returns the current value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_params[key]
-        return self.get_parameter(pipeline_param_name)
+        pipeline_param_name = self._pipeline_param_names[key]
+        return self.pipeline.get_parameter(pipeline_param_name)
 
     def get_parameters(self) -> Dict[str, ParameterDef]:
-        return self._pipeline_params
+        return self._param_defs
 
     def _determine_params(self):
-        _pipeline_param_name = {}
+        pipeline_param_name = {}
+        param_defs = {}
         for k, param_def in self.pipeline.get_parameters().items():
             prefixed_k = _get_op_context_param_name(self._pipeline_name, k)
-            _pipeline_param_name[prefixed_k] = k
-        return _pipeline_param_name
+            pipeline_param_name[prefixed_k] = k
+            param_defs[prefixed_k] = param_def
+        return pipeline_param_name, param_defs
 
 
 class Lambda(Operation):
