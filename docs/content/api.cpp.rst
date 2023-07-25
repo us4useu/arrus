@@ -80,10 +80,15 @@ Devices
 
 .. doxygenclass:: arrus::devices::Us4R
     :project: arrus
-    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision
+    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision, getUs4OEM
 
 .. doxygenclass:: arrus::devices::RxSettings
     :members:
+
+
+.. doxygenclass:: arrus::devices::Us4OEM
+    :project: arrus
+    :members: getSamplingFrequency, getFPGATemperature, getUCDTemperature, getUCDExternalTemperature, getUCDMeasuredVoltage, checkState, getFirmwareVersion, getTxFirmwareVersion, getFPGAWallclock, getSerialNumber, getRevision
 
 
 Output data
