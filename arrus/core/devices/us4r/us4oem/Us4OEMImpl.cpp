@@ -103,7 +103,7 @@ void Us4OEMImpl::hvpsWriteRegister(uint32_t offset, uint32_t value) {
     ius4oem->HVPSWriteRegister(offset, value);
 }
 
-uint32_t Us4OEMImpl::hvpsReadRegister(uint32_t offset) o{
+uint32_t Us4OEMImpl::hvpsReadRegister(uint32_t offset) {
     return ius4oem->HVPSReadRegister(offset);
 }
 

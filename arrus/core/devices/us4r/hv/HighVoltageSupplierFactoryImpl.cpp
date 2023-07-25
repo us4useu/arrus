@@ -47,6 +47,8 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     }
     else if(name == "us4oemhvps") {
         //TO DO
+        throw IllegalArgumentException(
+            ::arrus::format(name + "not supported yet", name));
     }
     else {
         throw IllegalArgumentException(
