@@ -300,6 +300,8 @@ public:
     virtual uint16_t pulserReadRegister(uint8_t sthv, uint16_t addr) = 0;
     virtual void pulserWriteRegister(uint8_t sthv, uint16_t addr, uint16_t reg) = 0;
     virtual void allPulsersWriteRegister(uint16_t addr, uint16_t reg) = 0;
+    virtual void hvpsWriteRegister(uint32_t offset, uint32_t value) = 0;
+    virtual uint32_t hvpsReadRegister(uint32_t offset) = 0;
 
     /**
      * Disables digital high-pass filter.

@@ -538,6 +538,16 @@ void Us4RImpl::allPulsersWriteRegister(uint16_t addr, uint16_t reg) {
     us4oems[0]->allPulsersWriteRegister(addr, reg);
 }
 
+void Us4RImpl::hvpsWriteRegister(uint32_t offset, uint32_t value) {
+    for (auto &us4oem : us4oems) {
+        us4oem->hvpsWriteRegister(offset, value);
+    }
+}
+
+uint32_t Us4RImpl::hvpsReadRegister(uint32_t offset) {
+    return us4oems[0]->hvpsReadRegister(offset);
+}
+
 uint16_t Us4RImpl::getAfe(uint8_t reg) {
     return us4oems[0]->getAfe(reg);
 }

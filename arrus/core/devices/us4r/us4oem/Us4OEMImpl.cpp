@@ -99,6 +99,14 @@ void Us4OEMImpl::allPulsersWriteRegister(uint16_t addr, uint16_t reg) {
     ius4oem->AllPulsersWriteRegister(addr, reg);
 }
 
+void Us4OEMImpl::hvpsWriteRegister(uint32_t offset, uint32_t value) {
+    ius4oem->HVPSWriteRegister(offset, value);
+}
+
+uint32_t Us4OEMImpl::hvpsReadRegister(uint32_t offset) o{
+    return ius4oem->HVPSReadRegister(offset);
+}
+
 uint16_t Us4OEMImpl::getAfe(uint8_t address) { return ius4oem->AfeReadRegister(0, address); }
 
 void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
