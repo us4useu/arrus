@@ -46,7 +46,9 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
 //        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else if(name == "us4oemhvps") {
-        //TO DO
+         throw IllegalArgumentException(
+            ::arrus::format("Unrecognized high-voltage supplier: {}", manufacturer));
+
     }
     else {
         throw IllegalArgumentException(
