@@ -280,10 +280,10 @@ class Us4R(Device):
         return self._handle.pulserReadRegister(sthv, addr)
     
     def write_hvps(self, reg, value):
-        self._handle.sthvWriteRegister(reg, value)
+        self._handle.hvpsWriteRegister(reg, value)
 
     def read_hvps(self, reg):
-        return self._handle.sthvReadRegister(reg)
+        return self._handle.hvpsReadRegister(reg)
 
     @property
     def channels_mask(self):
