@@ -39,16 +39,11 @@ if is_package_available("cupy"):
     import cupy
     import re
 
-    if not hasattr(cupy, "__version__"):
-        warnings.warn(
-            "Warning, cupy package has no __version__ attribute, "
-            "could not determine cupy version. "
-            "Imaging package may not work properly."
-        )
-    elif not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
+    if not re.match("^\\d+\\.\\d+\\.\\d+[a-z]?\\d?$", cupy.__version__):
         raise ValueError(f"Unrecognized pattern "
                          f"of the cupy version: {cupy.__version__}")
-    elif tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
+    m = re.search("^\\d+\\.\\d+\\.\\d+", cupy.__version__)
+    if tuple(int(v) for v in m.group().split(".")) < (9, 0, 0):
         raise Exception(f"The version of cupy module is too low. "
                         f"Use version ''9.0.0'' or higher.")
 else:
