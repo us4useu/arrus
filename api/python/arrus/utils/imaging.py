@@ -28,7 +28,6 @@ from numbers import Number
 from typing import Sequence, Dict, Callable, Union, Tuple
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
-import warnings
 
 
 def is_package_available(package_name):
