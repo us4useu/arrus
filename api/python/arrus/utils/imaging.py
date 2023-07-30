@@ -28,6 +28,7 @@ from numbers import Number
 from typing import Sequence, Dict, Callable, Union, Tuple
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
+import warnings
 
 
 def is_package_available(package_name):
@@ -38,10 +39,16 @@ if is_package_available("cupy"):
     import cupy
     import re
 
-    if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
+    if not hasattr(cupy, "__version__"):
+        warnings.warn(
+            "Warning, cupy package has no __version__ attribute, "
+            "could not determine cupy version. "
+            "Imaging package may not work properly."
+        )
+    elif not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
         raise ValueError(f"Unrecognized pattern "
                          f"of the cupy version: {cupy.__version__}")
-    if tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
+    elif tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
         raise Exception(f"The version of cupy module is too low. "
                         f"Use version ''9.0.0'' or higher.")
 else:
