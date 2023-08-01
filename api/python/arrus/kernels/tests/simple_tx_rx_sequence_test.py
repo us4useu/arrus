@@ -16,10 +16,13 @@ class ProbeMock:
     model: ProbeModel
 
 
+MOCKED_DEVICE_SAMPLING_FREQUENCY = 65e6
+
+
 @dataclasses.dataclass(frozen=True)
 class DeviceMock:
     probe: ProbeMock
-    sampling_frequency: float = 65e6
+    sampling_frequency: float = MOCKED_DEVICE_SAMPLING_FREQUENCY
 
 
 @dataclasses.dataclass(frozen=True)
@@ -316,7 +319,7 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
         # A TX/RX sequence without
         seq2 = arrus.kernels.simple_tx_rx_sequence.convert_to_tx_rx_sequence(
             c=medium.speed_of_sound, op=seq, probe_model=probe_model,
-            fs=65e6,
+            fs=MOCKED_DEVICE_SAMPLING_FREQUENCY,
         )
         seq2_with_mask: TxRxSequence = arrus.kernels.tx_rx_sequence.set_aperture_masks(
             sequence=seq2, probe=probe_model
@@ -582,7 +585,7 @@ class DepthToSampleRangeTest(unittest.TestCase):
     def test_depth_to_sample_range_ultrasound_like(self):
         sr = arrus.kernels.simple_tx_rx_sequence.convert_depth_to_sample_range(
             depth_range=(10e-3, 40e-3),
-            fs=65e6,
+            fs=MOCKED_DEVICE_SAMPLING_FREQUENCY,
             speed_of_sound=1500,
         )
         np.testing.assert_equal(sr, [867, 3491])
@@ -603,7 +606,7 @@ class DepthToSampleRangeTest(unittest.TestCase):
         )
         sr = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
             op=seq,
-            fs=65e6,
+            fs=MOCKED_DEVICE_SAMPLING_FREQUENCY,
             speed_of_sound=1500,
         )
         self.assertEqual(sr, rx_sample_range)
