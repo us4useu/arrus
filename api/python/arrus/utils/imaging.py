@@ -670,7 +670,7 @@ class Processing:
             on_buffer_overflow_callback=None):
         self.pipeline = pipeline
         self._pipeline_name = _get_default_op_name(self.pipeline, 0)
-        self._pipeline_params = self._determine_params()
+        self._pipeline_param_names, self._param_defs = self._determine_params()
         self.callback = callback
         self.extract_metadata = extract_metadata
         self.input_buffer = input_buffer
@@ -681,25 +681,27 @@ class Processing:
         """
         Sets the value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_params[key]
+        pipeline_param_name = self._pipeline_param_names[key]
         self.pipeline.set_parameter(pipeline_param_name, value)
 
     def get_parameter(self, key: str) -> Sequence[Number]:
         """
         Returns the current value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_params[key]
-        return self.get_parameter(pipeline_param_name)
+        pipeline_param_name = self._pipeline_param_names[key]
+        return self.pipeline.get_parameter(pipeline_param_name)
 
     def get_parameters(self) -> Dict[str, ParameterDef]:
-        return self._pipeline_params
+        return self._param_defs
 
     def _determine_params(self):
-        _pipeline_param_name = {}
+        pipeline_param_name = {}
+        param_defs = {}
         for k, param_def in self.pipeline.get_parameters().items():
             prefixed_k = _get_op_context_param_name(self._pipeline_name, k)
-            _pipeline_param_name[prefixed_k] = k
-        return _pipeline_param_name
+            pipeline_param_name[prefixed_k] = k
+            param_defs[prefixed_k] = param_def
+        return pipeline_param_name, param_defs
 
 
 class Lambda(Operation):
@@ -1125,12 +1127,15 @@ class RxBeamformingPhasedScanning(Operation):
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
-        start_sample, end_sample = seq.rx_sample_range
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample, end_sample = rx_sample_range
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
             tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                sequence=seq, c=c, probe_model=probe_model)
+                sequence=seq, c=c, probe_model=probe_model, fs=fs)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1244,7 +1249,9 @@ class RxBeamformingLin(Operation):
         else:
             c = medium.speed_of_sound
         tx_angle = 0
-        start_sample = seq.rx_sample_range[0]
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
         # -start_sample compensates the fact, that the data indices always
         # start from 0
@@ -1252,7 +1259,7 @@ class RxBeamformingLin(Operation):
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
             tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                sequence=seq, c=c, probe_model=probe_model)
+                sequence=seq, c=c, probe_model=probe_model, fs=fs)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1474,7 +1481,9 @@ class ScanConversion(Operation):
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
-        start_sample = seq.rx_sample_range[0]
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
         input_z_grid_origin = start_sample / acq_fs * c / 2
         input_z_grid_diff = c / (fs * 2)
         # Map x_grid and z_grid to the RF frame coordinates.
@@ -1513,12 +1522,14 @@ class ScanConversion(Operation):
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
 
-        start_sample = seq.rx_sample_range[0]
-
         if seq.speed_of_sound is not None:
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
 
         tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
@@ -1577,9 +1588,13 @@ class ScanConversion(Operation):
         fs = const_metadata.context.device.sampling_frequency
         acq_fs = fs / seq.downsampling_factor
         fs = data_desc.sampling_frequency
-        start_sample, _ = seq.rx_sample_range
-        start_time = start_sample / acq_fs
         c = _get_speed_of_sound(const_metadata.context)
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+
+        start_sample, _ = rx_sample_range
+        start_time = start_sample / acq_fs
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
         tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
@@ -2033,7 +2048,6 @@ class ReconstructLri(Operation):
         seq = const_metadata.context.sequence
         probe_model = const_metadata.context.device.probe.model
         acq_fs = (const_metadata.context.device.sampling_frequency / seq.downsampling_factor)
-        start_sample = seq.rx_sample_range[0]
 
         self.x_size = len(self.x_grid)
         self.z_size = len(self.z_grid)
@@ -2054,6 +2068,10 @@ class ReconstructLri(Operation):
         self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         self.fn = self.num_pkg.float32(seq.pulse.center_frequency)
         self.pitch = self.num_pkg.float32(probe_model.pitch)
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=self.fs, speed_of_sound=self.sos)
+        start_sample = rx_sample_range[0]
 
         # Probe description
         element_pos_x = probe_model.element_pos_x
@@ -2085,7 +2103,9 @@ class ReconstructLri(Operation):
         rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
 
         tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model)
+            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model,
+            fs=const_metadata.data_description.sampling_frequency
+        )
 
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_centers, probe_model)
@@ -2938,3 +2958,28 @@ class DelayAndSumLUT(Operation):
             self.fs, self.fn)
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
+
+
+class RunForDlPackCapsule(Operation):
+    """
+    Converts input cupy ndarray into the DL Pack capsule
+    (https://github.com/dmlc/dlpack) and runs the provided callback function.
+
+    The callback function should take DL Pack capsule as input and return
+    a new cupy array.
+
+    Note: experimental.
+    """
+
+    def __init__(self, callback, name=None):
+        super().__init__(name=name)
+        self.callback = callback
+
+    def prepare(self, const_metadata):
+        return const_metadata
+
+    def process(self, data):
+        dlpack_capsule = data.toDlpack()
+        return self.callback(dlpack_capsule)
+
+

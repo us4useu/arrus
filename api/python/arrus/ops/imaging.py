@@ -66,10 +66,14 @@ class SimpleTxRxSequence:
       available options: 'tx_start' - the first recorded sample is when the  \
       transmit starts, 'tx_center' - the first recorded sample is delayed by \
       tx aperture center delay and burst factor.
+    :param rx_depth_range: defines  the beginning and the end \
+      (if two-element vector) of the acquisition expressed by depth range [m] \
+      Optional exactly one of the following should be provided: rx_sample_range \
+      or rx_depth_range.
     """
     pulse: arrus.ops.us4r.Pulse
-    rx_sample_range: tuple
     pri: float
+    rx_sample_range: tuple = None
     sri: float = None
     speed_of_sound: float = None
     tx_focus: object = np.inf
@@ -86,6 +90,7 @@ class SimpleTxRxSequence:
     tgc_curve: list = None
     n_repeats: int = 1
     init_delay: str = "tx_start"
+    rx_depth_range: tuple = None
 
     def __post_init__(self):
         # Validation
@@ -102,6 +107,12 @@ class SimpleTxRxSequence:
         self.__assert_at_most_one(
             tgc_start=self.tgc_slope,
             tgc_curve=self.tgc_curve)
+
+        # Make sure that exactly one of the below parameters is provided.
+        if not ((self.rx_sample_range is not None)
+                ^ (self.rx_depth_range is not None)):
+            raise ValueError("Exactly one of the following parameters should "
+                             "be provided: rx_sample_range, rx_depth_range.")
 
         if self.downsampling_factor < 1:
             raise ValueError("Downsampling factor should be a positive value.")
