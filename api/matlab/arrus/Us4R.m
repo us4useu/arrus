@@ -1044,7 +1044,7 @@ classdef Us4R < handle
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
-                    [color,power] = dopplerColorImaging(rfBfrColor, obj.seq, obj.rec);
+                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.seq, obj.rec);
                 end
                 
                 % Vector Doppler image reconstruction
@@ -1052,7 +1052,7 @@ classdef Us4R < handle
                     rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
                     rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
                     
-                    [color,power] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.seq, obj.rec);
+                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.seq, obj.rec);
                 end
             end
 
@@ -1085,7 +1085,7 @@ classdef Us4R < handle
             
             % Put B-Mode & Doppler data together
             if obj.rec.colorEnable || obj.rec.vectorEnable
-                img = cat(4,img,power,color);
+                img = cat(4,img,power,turbu,color);
             end
             
             % Gather data from GPU
