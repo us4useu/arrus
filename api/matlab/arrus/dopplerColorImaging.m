@@ -1,9 +1,10 @@
 % Calculates Color/Vector Doppler Image based on set of iq images
-function[color,power] = dopplerColorImaging(iqImgSet,seq,proc)
+function[color,power,turbu] = dopplerColorImaging(iqImgSet,seq,proc)
 % 
 % Outputs:
-% color                 - (nZPix,nXPix) [rad/pri] color flow map
-% power                 - (nZPix,nXPix) [dB] power flow map
+% color                 - (nZPix,nXPix) [rad/pri] flow color map
+% power                 - (nZPix,nXPix) [dB] flow power map
+% turbu                 - (nZPix,nXPix) [dB] flow turbulence map
 % 
 % Inputs:
 % iqImgSet              - (nZPix,nXPix,nRep,nProj) sequence of iq images
@@ -37,8 +38,11 @@ iqImgSetFlt = single(filter(proc.wcFiltB, proc.wcFiltA, double(iqImgSet), wcFilt
 %% Mean frequency estimator (in fact - it's a mean phase shift estimator)
 color = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
 power = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
+turbu = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
 for iProj=1:nProj
-    [color(:,:,1,iProj),power(:,:,1,iProj)] = dopplerColor(iqImgSetFlt(:,:,(proc.wcFiltInitSize+1):end,iProj));
+    [color(:,:,1,iProj), ...
+     power(:,:,1,iProj), ...
+     turbu(:,:,1,iProj),] = dopplerColor(iqImgSetFlt(:,:,(proc.wcFiltInitSize+1):end,iProj));
 end
 
 %% Vector Doppler (optional)
@@ -55,6 +59,7 @@ if proc.vectorEnable
     color	= cat(4,  diff(-color.*projMask./cos(txrxAng),                    [],4) / diff(tan(txrxAng)), ...   % x-color
                     - diff(-color.*projMask./cos(txrxAng).*tan(flip(txrxAng)),[],4) / diff(tan(txrxAng)) );     % z-color
     power	= max(power.*projMask,[],4);
+    turbu   = min(turbu,[],4);
 end
 
 end
