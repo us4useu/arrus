@@ -3,6 +3,7 @@
 
 __global__ void dopplerColor(float * color, 
                              float * power, 
+                             float * turbu, 
                              float2 const * iqImg, 
                              int const nZPix, 
                              int const nXPix, 
@@ -32,6 +33,8 @@ __global__ void dopplerColor(float * color,
     }
     color[z + x*nZPix] = atan2f(auxCorr.y, auxCorr.x);
     power[z + x*nZPix] = auxPower / static_cast<float>(nRep);
+    turbu[z + x*nZPix] = 1.f - hypotf(auxCorr.x, auxCorr.y) / auxPower 
+                       * static_cast<float>(nRep) / (static_cast<float>(nRep) - 1);
 }
 
 
@@ -45,10 +48,12 @@ void mexFunction(int nlhs, mxArray * plhs[],
     /* Declare the variables */
     mxGPUArray * color;
     mxGPUArray * power;
+    mxGPUArray * turbu;
     mxGPUArray const * iqImg;
     
     float * dev_color;
     float * dev_power;
+    float * dev_turbu;
     float2 const * dev_iqImg;
     
     int nZPix;
@@ -66,8 +71,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
         mexErrMsgIdAndTxt(invalidInputMsgId, "One input required");
     }
     
-    if (nlhs>2) {
-        mexErrMsgIdAndTxt(invalidOutputMsgId, "Two outputs allowed");
+    if (nlhs>3) {
+        mexErrMsgIdAndTxt(invalidOutputMsgId, "Three outputs allowed");
     }
     
     if (!(mxIsGPUArray(prhs[0]))) {
@@ -98,22 +103,26 @@ void mexFunction(int nlhs, mxArray * plhs[],
     
     color = mxGPUCreateGPUArray(nDimOut, dimOut, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
     power = mxGPUCreateGPUArray(nDimOut, dimOut, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
+    turbu = mxGPUCreateGPUArray(nDimOut, dimOut, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
     
     /* Get pointers on the device */
     dev_color = (float *)(mxGPUGetData(color));
     dev_power = (float *)(mxGPUGetData(power));
+    dev_turbu = (float *)(mxGPUGetData(turbu));
     dev_iqImg = (float2 const *)(mxGPUGetDataReadOnly(iqImg));
     
     /* Execute CUDA kernel */
-    dopplerColor<<<blocksPerGrid, threadsPerBlock>>>(dev_color, dev_power, dev_iqImg, nZPix, nXPix, nRep);
+    dopplerColor<<<blocksPerGrid, threadsPerBlock>>>(dev_color, dev_power, dev_turbu, dev_iqImg, nZPix, nXPix, nRep);
     
     /* Wrap the output */
     plhs[0] = mxGPUCreateMxArrayOnGPU(color);
     plhs[1] = mxGPUCreateMxArrayOnGPU(power);
+    plhs[2] = mxGPUCreateMxArrayOnGPU(turbu);
     
     /* Destroy the mxGPUArray objects */
     mxGPUDestroyGPUArray(color);
     mxGPUDestroyGPUArray(power);
+    mxGPUDestroyGPUArray(turbu);
     mxGPUDestroyGPUArray(iqImg);
     
 }
