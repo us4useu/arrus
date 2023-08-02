@@ -18,9 +18,9 @@ class Medium:
     :param atteunation_n: dimensionless exponent determining the attenuation frequency dependence
     """
     name: str
-    speed_of_sound: float # [m/s]
-    attenuation_a: float # [dB/MHz/cm]
-    attenuation_n: float # dimensionless
+    speed_of_sound: float
+    attenuation_a: float
+    attenuation_n: float
 
 @dataclasses.dataclass(frozen=True)
 class MediumDTO:
