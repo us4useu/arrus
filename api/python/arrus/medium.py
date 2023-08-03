@@ -19,8 +19,8 @@ class Medium:
     """
     name: str
     speed_of_sound: float
-    attenuation_a: float
-    attenuation_n: float
+    attenuation_a: float = None
+    attenuation_n: float = None
 
 @dataclasses.dataclass(frozen=True)
 class MediumDTO:
