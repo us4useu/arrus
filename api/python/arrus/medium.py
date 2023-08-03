@@ -17,8 +17,8 @@ class Medium:
     :param attenuation_a: attenuation coefficient at 1MHz in [dB/Hz/m]
     :param atteunation_n: dimensionless exponent determining the attenuation frequency dependence
     """
-    name: str = ''
-    speed_of_sound: float = None
+    name: str
+    speed_of_sound: float
     attenuation_a: float = None
     attenuation_n: float = None
 
