@@ -38,7 +38,7 @@ if is_package_available("cupy"):
     import cupy
     import re
 
-    if not re.match("^\\d+\\.\\d+\\.\\d+[a-z]?\\d?$", cupy.__version__):
+    if not re.match("^\\d+\\.\\d+\\.\\d+[a-z]*\\d*$", cupy.__version__):
         raise ValueError(f"Unrecognized pattern "
                          f"of the cupy version: {cupy.__version__}")
     m = re.search("^\\d+\\.\\d+\\.\\d+", cupy.__version__)
