@@ -33,7 +33,6 @@ public:
         std::unique_lock<std::mutex> lock{stateMutex};
         // Wait until the element is free.
         readyForWrite.wait(lock, [this](){return this->state == framework::BufferElement::State::FREE;});
-
     }
 
     void releaseForRead() {
@@ -112,35 +111,33 @@ public:
     enum class State { STARTED, STOPPED };
 
     ~FileImpl() override = default;
-
-    FileImpl(const DeviceId &id, const FileSettings settings);
-
+    FileImpl(const DeviceId &id, const FileSettings &settings);
     FileImpl(FileImpl const &) = delete;
-
     FileImpl(FileImpl const &&) = delete;
 
-    std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::session::Metadata>
-    >
+    void start() override;
+    void stop() override;
+    void trigger() override;
+    float getSamplingFrequency() const override;
+    float getCurrentSamplingFrequency() const override;
+    std::pair<arrus::framework::Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
     upload(const ops::us4r::Scheme &scheme) override;
 
 private:
     using Frame = std::vector<int16_t>;
 
     std::vector<Frame> readDataset(const std::string &filepath);
-
     void producer();
 
     State state{State::STOPPED};
     Logger::Handle logger;
     std::mutex deviceStateMutex;
     std::thread producerThread;
+    FileSettings settings;
     std::vector<Frame> dataset;
-    size_t datasetSize{0};
-    ProbeModel probeModel;
     arrus::framework::NdArray::Shape frameShape;
     std::optional<ops::us4r::Scheme> currentScheme;
+    float currentFs;
     std::shared_ptr<DatasetBuffer> buffer;
 };
 

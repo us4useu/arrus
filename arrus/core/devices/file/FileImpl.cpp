@@ -9,13 +9,11 @@ namespace arrus::devices {
 using namespace arrus::framework;
 using namespace arrus::session;
 
-FileImpl::FileImpl(const DeviceId &id, const std::string &filepath, size_t datasetSize, ProbeModel probeModel)
-    : Ultrasound(id), logger{getLoggerFactory()->getLogger()},
-      datasetSize(datasetSize),
-      probeModel(std::move(probeModel)) {
+FileImpl::FileImpl(const DeviceId &id, const FileSettings &settings)
+    : File(id), logger{getLoggerFactory()->getLogger()}, settings(settings) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-    this->logger->log(LogSeverity::INFO, ::arrus::format("Simulated mode, dataset: {}", filepath));
-    this->dataset = readDataset(filepath);
+    this->logger->log(LogSeverity::INFO, ::arrus::format("File device, path: {}", settings.getFilepath()));
+    this->dataset = readDataset(settings.getFilepath());
 }
 
 std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const ops::us4r::Scheme &scheme) {
@@ -31,7 +29,16 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     size_t nRx = std::reduce(std::begin(rxAperture), std::end(rxAperture));
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
     this->frameShape = NdArray::Shape{nTx, nSamples, nRx, nValues};
-    this->buffer = std::make_shared<DatasetBuffer>(this->datasetSize, this->frameShape);
+    // Determine current sampling frequency
+    if(this->currentScheme->getDigitalDownConversion().has_value()) {
+        auto dec = this->currentScheme->getDigitalDownConversion().value().getDecimationFactor();
+        this->currentFs = this->getSamplingFrequency()/dec;
+    }
+    else {
+        auto dec = seq.getOps().at(0).getRx().getDownsamplingFactor();
+        this->currentFs = this->getSamplingFrequency()/dec;
+    }
+    this->buffer = std::make_shared<DatasetBuffer>(this->settings.getNFrames(), this->frameShape);
     // Metadata
     MetadataBuilder metadataBuilder;
     return std::make_pair(this->buffer, metadataBuilder.buildPtr());
@@ -69,42 +76,11 @@ void FileImpl::producer() {
     logger->log(LogSeverity::INFO, "Dataset producer stopped.");
 }
 
-std::vector<float> FileImpl::getTgcCurvePoints(float maxT) const {
-    // TODO implement
-    float nominalFs = getSamplingFrequency();
-    uint16 offset = 359;
-    uint16 tgcT = 153;
-    uint16 maxNSamples = int16(roundf(maxT*nominalFs));
-    // Note: the last TGC sample should be applied before the reception ends.
-    // This is to avoid using the same TGC curve between triggers.
-    auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
-    values.push_back(maxNSamples);
-    std::vector<float> time;
-    for(auto v: values) {
-        time.push_back(v/nominalFs);
-    }
-    return time;
+void FileImpl::trigger() {
+    throw std::runtime_error("File::trigger: NYI");
 }
 
-void FileImpl::setVoltage(Voltage voltage) {/*NOP*/}
-unsigned char FileImpl::getVoltage() { return 5; }
-float FileImpl::getMeasuredPVoltage() { return 5; }
-float FileImpl::getMeasuredMVoltage() { return 5; }
-void FileImpl::disableHV() {/*NOP*/}
-void FileImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {/*NOP*/}
-void FileImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {/*NOP*/}
-void FileImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {/*NOP*/}
-void FileImpl::setPgaGain(uint16 value) {/*NOP*/}
-uint16 FileImpl::getPgaGain() { return 0; }
-void FileImpl::setLnaGain(uint16 value) {}
-uint16 FileImpl::getLnaGain() { return 0; }
-void FileImpl::setLpfCutoff(uint32 value) {}
-void FileImpl::setDtgcAttenuation(std::optional<uint16> value) {}
-void FileImpl::setActiveTermination(std::optional<uint16> value) {}
-
 float FileImpl::getSamplingFrequency() const { return 65e6; }
-float FileImpl::getCurrentSamplingFrequency() const { return 65e6; }
-void FileImpl::setHpfCornerFrequency(uint32_t frequency) {}
-void FileImpl::disableHpf() {}
+float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 
 }// namespace arrus::devices
