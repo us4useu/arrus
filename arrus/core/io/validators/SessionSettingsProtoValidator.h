@@ -19,12 +19,10 @@ COMPILER_POP_DIAGNOSTIC_STATE
 
 namespace arrus::io {
 
-class SessionSettingsProtoValidator
-    : public Validator<std::unique_ptr<arrus::proto::SessionSettings>> {
+class SessionSettingsProtoValidator: public Validator<std::unique_ptr<arrus::proto::SessionSettings>> {
 
     public:
-    explicit SessionSettingsProtoValidator(const std::string &name)
-        : Validator(name) {}
+    explicit SessionSettingsProtoValidator(const std::string &name): Validator(name) {}
 
     void validate(
         const std::unique_ptr<arrus::proto::SessionSettings> &obj) override {
@@ -59,20 +57,15 @@ class SessionSettingsProtoValidator
             int i = 0;
             for(auto &settings : us4r.us4oems()) {
                 std::string fieldName = "Us4OEM:" + std::to_string(i);
-                expectTrue(fieldName, settings.has_rx_settings(),
-                           "Rx settings are required.");
-
-                expectAllDataType<ChannelIdx>(
-                    fieldName, settings.channel_mapping(), "channel_mapping");
-
+                expectTrue(fieldName, settings.has_rx_settings(),"Rx settings are required.");
+                expectAllDataType<ChannelIdx>(fieldName, settings.channel_mapping(), "channel_mapping");
                 RxSettingsProtoValidator validator(fieldName);
                 validator.validate(settings.rx_settings());
                 copyErrorsFrom(validator);
                 ++i;
             }
         } else if(hasProbeAdapterSettings) {
-            bool hasAllProbeSettings = hasProbeSettings && hasAdapterSettings &&
-                                       us4r.has_rx_settings();
+            bool hasAllProbeSettings = hasProbeSettings && hasAdapterSettings && us4r.has_rx_settings();
 
             expectTrue("us4r", hasAllProbeSettings,
                        "All of the following fields are required: "

@@ -94,7 +94,7 @@ public:
 
     void stop() override;
 
-    void trigger();
+    void trigger() override;
 
     void setVoltage(Voltage voltage) override;
 

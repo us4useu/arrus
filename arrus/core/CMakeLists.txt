@@ -43,6 +43,7 @@ set(SRC_FILES
     api/devices/us4r/Us4RSettings.h
     api/devices/us4r/RxSettings.h
     api/devices/Ultrasound.h
+    api/devices/File.h
     api/session/Session.h
     api/session/SessionSettings.h
     api/ops/us4r/Pulse.h
@@ -106,8 +107,8 @@ set(SRC_FILES
     devices/probe/ProbeModel.h
     devices/probe/ProbeModel.cpp
 
-    devices/dataset/DatasetImpl.cpp
-    devices/dataset/DatasetImpl.h
+    devices/dataset/FileImpl.cpp
+    devices/dataset/FileImpl.h
 
     api/io/settings.h
     io/settings.cpp

@@ -27,7 +27,7 @@ public:
 
     explicit Ultrasound(const DeviceId &id) : Device(id) {}
 
-    virtual ~Ultrasound() = default;
+    ~Ultrasound() override = default;
 
     virtual std::pair<
         std::shared_ptr<arrus::framework::Buffer>,
@@ -37,11 +37,18 @@ public:
 
     virtual void start() = 0;
     virtual void stop() = 0;
+    virtual void trigger() = 0;
 
     /**
      * Returns NOMINAL Ultrasound device sampling frequency.
      */
     virtual float getSamplingFrequency() const = 0;
+
+    /**
+     * Returns the sampling frequency with which data from us4R will be acquired. The returned value
+     * depends on the result of sequence upload (e.g. DDC decimation factor).
+     */
+    virtual float getCurrentSamplingFrequency() const = 0;
 
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;

@@ -19,6 +19,7 @@
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h"
+#include "arrus/core/devices/file/FileFactoryImpl.h"
 #include "arrus/core/session/SessionSettings.h"
 
 namespace arrus::session {
@@ -28,7 +29,6 @@ using namespace arrus::devices;
 #define ASSERT_STATE(expectedState)                                                                                    \
     do {                                                                                                               \
         if (this->state != expectedState) {                                                                            \
-                                                                                                                       \
             throw ::arrus::IllegalStateException(                                                                      \
                 ::arrus::format("Invalid session state, should be: {}", toString(expectedState)));                     \
         }                                                                                                              \
@@ -37,7 +37,6 @@ using namespace arrus::devices;
 #define ASSERT_STATE_NOT(excludedState)                                                                                \
     do {                                                                                                               \
         if (this->state == excludedState) {                                                                            \
-                                                                                                                       \
             throw ::arrus::IllegalStateException(                                                                      \
                 ::arrus::format("Invalid session state, should not be: {}", toString(excludedState)));                 \
         }                                                                                                              \
@@ -50,7 +49,9 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
             std::make_unique<Us4OEMFactoryImpl>(), std::make_unique<ProbeAdapterFactoryImpl>(),
             std::make_unique<ProbeFactoryImpl>(), std::make_unique<IUs4OEMFactoryImpl>(),
             std::make_unique<IUs4OEMInitializerImpl>(), std::make_unique<Us4RSettingsConverterImpl>(),
-            std::make_unique<HighVoltageSupplierFactoryImpl>()));
+            std::make_unique<HighVoltageSupplierFactoryImpl>()),
+        std::make_unique<FileFactoryImpl>()
+        );
 }
 
 Session::Handle createSession(const std::string &filepath) {
@@ -58,7 +59,11 @@ Session::Handle createSession(const std::string &filepath) {
     return createSession(settings);
 }
 
-SessionImpl::SessionImpl(const SessionSettings &sessionSettings, Us4RFactory::Handle us4RFactory)
+SessionImpl::SessionImpl(
+    const SessionSettings &sessionSettings,
+    Us4RFactory::Handle us4RFactory,
+    FileFactory::Handle fileFactory
+    )
     : us4rFactory(std::move(us4RFactory)) {
     getDefaultLogger()->log(LogSeverity::DEBUG,
                             arrus::format("Configuring session: {}", ::arrus::toString(sessionSettings)));
@@ -90,30 +95,57 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path
 
 arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
     try {
-        return devices.at(deviceId).get();
+        if(containsKey(devices, deviceId)) {
+            return devices.at(deviceId).get();
+        }
+        else {
+            return aliases.at(deviceId);
+        }
     } catch (const std::out_of_range &) {
         throw IllegalArgumentException(arrus::format("Device unavailable: {}", deviceId.toString()));
     }
 }
 
-SessionImpl::DeviceMap SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
-    DeviceMap result;
+void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
 
-    // Configuring Us4R.
-    const Us4RSettings &us4RSettings = sessionSettings.getUs4RSettings();
-    Us4R::Handle us4r = us4rFactory->getUs4R(0, us4RSettings);
-    result.emplace(us4r->getDeviceId(), std::move(us4r));
+    // Ultrasound systems:
+    Ordinal ultrasoundOrdinal = 0;
+    // - Us4R:
+    for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs()) {
+        const Us4RSettings &settings = sessionSettings.getUs4RSettings(i);
+        Us4R::Handle us4r = us4rFactory->getUs4R(i, settings);
+        devices.emplace(us4r->getDeviceId(), std::move(us4r));
+        aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), us4r.get());
+        ultrasoundOrdinal++;
+    }
+    // - Files:
+    for(size_t i = 0; i < sessionSettings.getNumberOfFiles()) {
+        const FileSettings &settings = sessionSettings.getFileSettings(i);
+        File::Handle file = fileFactory->getFile(i, settings);
+        devices.emplace(file->getDeviceId(), std::move(file));
+        aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), file.get());
+        ultrasoundOrdinal++;
+    }
     return result;
 }
 
-SessionImpl::~SessionImpl() { this->close(); }
+SessionImpl::~SessionImpl() {
+    try {
+        this->close();
+    } catch(const std::exception &e) {
+        getDefaultLogger()->log(LogSeverity::ERROR, arrus::format("Error while closing session: {}", e.what()));
+    } catch(...) {
+        getDefaultLogger()->log(LogSeverity::ERROR, "Unknown error on session close.");
+    }
+
+}
 
 UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE(State::STOPPED);
 
-    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
-    auto[buffer, metadata] = us4r->upload(scheme);
+    auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    auto[buffer, metadata] = ultrasound->upload(scheme);
     currentScheme = scheme;
     return UploadResult(buffer, metadata);
 }
@@ -121,15 +153,15 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
 void SessionImpl::startScheme() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE(State::STOPPED);
-    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
-    us4r->start();
+    auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    ultrasound->start();
     state = State::STARTED;
 }
 
 void SessionImpl::stopScheme() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
-    auto us4r = (::arrus::devices::Us4R *) getDevice(DeviceId(DeviceType::Us4R, 0));
-    us4r->stop();
+    auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    ultrasound->stop();
     state = State::STOPPED;
     getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
 }
@@ -145,8 +177,8 @@ void SessionImpl::run() {
         startScheme();
     } else {
         if (currentScheme.value().getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL) {
-            auto us4r = (::arrus::devices::Us4RImpl *) getDevice(DeviceId(DeviceType::Us4R, 0));
-            us4r->trigger();
+            auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+            ultrasound->trigger();
         } else {
             throw IllegalStateException("Scheme already started.");
         }

@@ -1,17 +1,19 @@
-#ifndef ARRUS_CORE_DEVICES_DATASET_DATASETIMPL_H
-#define ARRUS_CORE_DEVICES_DATASET_DATASETIMPL_H
+#ifndef ARRUS_CORE_DEVICES_FILE_FILEIMPL_H
+#define ARRUS_CORE_DEVICES_FILE_FILEIMPL_H
 
 #include <array>
-#include <arrus/core/api/framework/NdArray.h>
+#include <condition_variable>
 #include <mutex>
 #include <optional>
 #include <thread>
 #include <utility>
-#include <condition_variable>
 
+#include "arrus/core/api/devices/File.h"
 #include "arrus/core/api/devices/Ultrasound.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/session/Metadata.h"
+#include "arrus/core/api/devices/FileSettings.h"
+#include "arrus/core/api/framework/NdArray.h"
 
 namespace arrus::devices {
 
@@ -105,50 +107,28 @@ private:
     arrus::framework::OnNewDataCallback onNewDataCallback;
 };
 
-class DatasetImpl : public Ultrasound {
+class FileImpl : public File {
 public:
     enum class State { STARTED, STOPPED };
 
-    ~DatasetImpl() override {}
+    ~FileImpl() override = default;
 
-    DatasetImpl(const DeviceId &id, std::string filepath, size_t datasetSize, ProbeModel probeModel);
+    FileImpl(const DeviceId &id, const FileSettings settings);
 
-    DatasetImpl(DatasetImpl const &) = delete;
+    FileImpl(FileImpl const &) = delete;
 
-    DatasetImpl(DatasetImpl const &&) = delete;
+    FileImpl(FileImpl const &&) = delete;
 
     std::pair<
         std::shared_ptr<arrus::framework::Buffer>,
         std::shared_ptr<arrus::session::Metadata>
     >
     upload(const ops::us4r::Scheme &scheme) override;
-    void setVoltage(Voltage voltage) override;
-    unsigned char getVoltage() override;
-    float getMeasuredPVoltage() override;
-    float getMeasuredMVoltage() override;
-    void disableHV() override;
-    void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
-    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
-    void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) override;
-    std::vector<float> getTgcCurvePoints(float maxT) const override;
-    void setPgaGain(uint16 value) override;
-    uint16 getPgaGain() override;
-    void setLnaGain(uint16 value) override;
-    uint16 getLnaGain() override;
-    void setLpfCutoff(uint32 value) override;
-    void setDtgcAttenuation(std::optional<uint16> value) override;
-    void setActiveTermination(std::optional<uint16> value) override;
-    void start() override;
-    void stop() override;
-    float getSamplingFrequency() const override;
-    float getCurrentSamplingFrequency() const override;
-    void setHpfCornerFrequency(uint32_t frequency) override;
-    void disableHpf() override;
 
 private:
-    using DataFrame = std::vector<int16_t>;
+    using Frame = std::vector<int16_t>;
 
-    std::vector<DataFrame> readDataset(const std::string &filepath);
+    std::vector<Frame> readDataset(const std::string &filepath);
 
     void producer();
 
@@ -156,7 +136,7 @@ private:
     Logger::Handle logger;
     std::mutex deviceStateMutex;
     std::thread producerThread;
-    std::vector<DataFrame> dataset;
+    std::vector<Frame> dataset;
     size_t datasetSize{0};
     ProbeModel probeModel;
     arrus::framework::NdArray::Shape frameShape;
@@ -167,4 +147,4 @@ private:
 }// namespace arrus::devices
 
 
-#endif//ARRUS_CORE_DEVICES_DATASET_DATASETIMPL_H
+#endif//ARRUS_CORE_DEVICES_FILE_FILEIMPL_H

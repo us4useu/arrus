@@ -69,28 +69,28 @@ public:
      *
      * @param voltage voltage to set [V]
      */
-    virtual void setVoltage(Voltage voltage) override = 0;
+    virtual void setVoltage(Voltage voltage) = 0;
 
     /**
      * Returns configured HV voltage.
      *
      * @return hv voltage value configured on device [V]
      */
-    virtual unsigned char getVoltage() override = 0;
+    virtual unsigned char getVoltage()  = 0;
 
     /**
      * Returns measured HV voltage (plus).
      *
      * @return hv voltage measured by device [V]
      */
-    virtual float getMeasuredPVoltage() override = 0;
+    virtual float getMeasuredPVoltage()  = 0;
 
     /**
      * Returns measured HV voltage (minus).
      *
      * @return hv voltage measured by devivce [V]
      */
-    virtual float getMeasuredMVoltage() override = 0;
+    virtual float getMeasuredMVoltage()  = 0;
 
     /**
      * Gets positive HV voltage measurement by UCD chip on OEM.
@@ -111,12 +111,12 @@ public:
     /**
      * Disables HV voltage.
      */
-    virtual void disableHV() override = 0;
+    virtual void disableHV()  = 0;
 
     /**
      * Equivalent to setTgcCurve(curve, true).
      */
-    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints) override = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints)  = 0;
 
     /**
      * Sets TGC curve points asynchronously.
@@ -131,7 +131,7 @@ public:
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
      */
-    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic)  = 0;
 
     /**
      * Sets TGC curve points asynchronously.
@@ -152,7 +152,7 @@ public:
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
      */
-    virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) override = 0;
+    virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic)  = 0;
 
     /**
      * Returns us4R TGC sampling points (along time axis, relative to the "sample 0"), up to given maximum time.
@@ -160,56 +160,56 @@ public:
      * @param maxT maximum time range
      * @return TGC time points at which TGC curve sample takes place
      */
-    virtual std::vector<float> getTgcCurvePoints(float maxT) const override = 0;
+    virtual std::vector<float> getTgcCurvePoints(float maxT) const  = 0;
 
     /**
      * Sets PGA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setPgaGain(uint16 value) override = 0;
+    virtual void setPgaGain(uint16 value)  = 0;
 
     /**
      * Returns the current PGA gain value.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual uint16 getPgaGain() override = 0;
+    virtual uint16 getPgaGain()  = 0;
 
     /**
      * Sets LNA gain.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setLnaGain(uint16 value) override = 0;
+    virtual void setLnaGain(uint16 value)  = 0;
 
     /**
      * Returns the current LNA gain value.
      *
      * See docs of arrus::devices::RxSettings for more information.
     */
-    virtual uint16 getLnaGain() override = 0;
+    virtual uint16 getLnaGain()  = 0;
 
     /**
      * Sets LPF cutoff.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setLpfCutoff(uint32 value) override = 0;
+    virtual void setLpfCutoff(uint32 value)  = 0;
 
     /**
      * Sets DTGC attenuation.
      *
      * See docs of arrus::devices::RxSettings for more information.
      */
-    virtual void setDtgcAttenuation(std::optional<uint16> value) override = 0;
+    virtual void setDtgcAttenuation(std::optional<uint16> value)  = 0;
 
     /**
     * Sets active termination.
     *
     * See docs of arrus::devices::RxSettings for more information.
     */
-    virtual void setActiveTermination(std::optional<uint16> value) override = 0;
+    virtual void setActiveTermination(std::optional<uint16> value)  = 0;
 
     /**
      * Sets a complete list of RxSettings on all Us4R components.
@@ -226,6 +226,7 @@ public:
 
     virtual void start() override = 0;
     virtual void stop() override = 0;
+    virtual void trigger() override = 0;
 
     virtual std::vector<unsigned short> getChannelsMask() = 0;
 
@@ -280,7 +281,7 @@ public:
      *
      * @param frequency corner high-pass filter frequency to set
      */
-    virtual void setHpfCornerFrequency(uint32_t frequency) override = 0;
+    virtual void setHpfCornerFrequency(uint32_t frequency)  = 0;
 
     /**
      * Reads AFE register
@@ -300,7 +301,7 @@ public:
     /**
      * Disables digital high-pass filter.
      */
-    virtual void disableHpf() override = 0;
+    virtual void disableHpf()  = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

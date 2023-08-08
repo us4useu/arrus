@@ -1,15 +1,15 @@
-#include "DatasetImpl.h"
-#include <cmath>
-#include "arrus/core/common/logging.h"
-#include "arrus/core/common/collections.h"
+#include "FileImpl.h"
 #include "arrus/common/format.h"
+#include "arrus/core/common/collections.h"
+#include "arrus/core/common/logging.h"
+#include <cmath>
 
 namespace arrus::devices {
 
 using namespace arrus::framework;
 using namespace arrus::session;
 
-DatasetImpl::DatasetImpl(const DeviceId &id, const std::string &filepath, size_t datasetSize, ProbeModel probeModel)
+FileImpl::FileImpl(const DeviceId &id, const std::string &filepath, size_t datasetSize, ProbeModel probeModel)
     : Ultrasound(id), logger{getLoggerFactory()->getLogger()},
       datasetSize(datasetSize),
       probeModel(std::move(probeModel)) {
@@ -18,8 +18,7 @@ DatasetImpl::DatasetImpl(const DeviceId &id, const std::string &filepath, size_t
     this->dataset = readDataset(filepath);
 }
 
-std::pair<Buffer::SharedHandle, Metadata::SharedHandle>
-DatasetImpl::upload(const ops::us4r::Scheme &scheme) {
+std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const ops::us4r::Scheme &scheme) {
     this->currentScheme = scheme;
     auto &seq = this->currentScheme->getTxRxSequence();
 
@@ -38,17 +37,17 @@ DatasetImpl::upload(const ops::us4r::Scheme &scheme) {
     return std::make_pair(this->buffer, metadataBuilder.buildPtr());
 }
 
-void DatasetImpl::start() {
+void FileImpl::start() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if (this->state == State::STARTED) {
         logger->log(LogSeverity::INFO, "Already started.");
     } else {
         this->state = State::STARTED;
-        this->producerThread = std::thread(&DatasetImpl::producer, this);
+        this->producerThread = std::thread(&FileImpl::producer, this);
     }
 }
 
-void DatasetImpl::stop() {
+void FileImpl::stop() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if(this->state == State::STOPPED) {
         logger->log(LogSeverity::INFO, "Already stopped.");
@@ -59,7 +58,7 @@ void DatasetImpl::stop() {
     }
 }
 
-void DatasetImpl::producer() {
+void FileImpl::producer() {
     size_t i = 0;
     logger->log(LogSeverity::INFO, "Starting producer.");
     while(this->state == State::STARTED) {
@@ -70,7 +69,7 @@ void DatasetImpl::producer() {
     logger->log(LogSeverity::INFO, "Dataset producer stopped.");
 }
 
-std::vector<float> DatasetImpl::getTgcCurvePoints(float maxT) const {
+std::vector<float> FileImpl::getTgcCurvePoints(float maxT) const {
     // TODO implement
     float nominalFs = getSamplingFrequency();
     uint16 offset = 359;
@@ -87,25 +86,25 @@ std::vector<float> DatasetImpl::getTgcCurvePoints(float maxT) const {
     return time;
 }
 
-void DatasetImpl::setVoltage(Voltage voltage) {/*NOP*/}
-unsigned char DatasetImpl::getVoltage() { return 5; }
-float DatasetImpl::getMeasuredPVoltage() { return 5; }
-float DatasetImpl::getMeasuredMVoltage() { return 5; }
-void DatasetImpl::disableHV() {/*NOP*/}
-void DatasetImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {/*NOP*/}
-void DatasetImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {/*NOP*/}
-void DatasetImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {/*NOP*/}
-void DatasetImpl::setPgaGain(uint16 value) {/*NOP*/}
-uint16 DatasetImpl::getPgaGain() { return 0; }
-void DatasetImpl::setLnaGain(uint16 value) {}
-uint16 DatasetImpl::getLnaGain() { return 0; }
-void DatasetImpl::setLpfCutoff(uint32 value) {}
-void DatasetImpl::setDtgcAttenuation(std::optional<uint16> value) {}
-void DatasetImpl::setActiveTermination(std::optional<uint16> value) {}
+void FileImpl::setVoltage(Voltage voltage) {/*NOP*/}
+unsigned char FileImpl::getVoltage() { return 5; }
+float FileImpl::getMeasuredPVoltage() { return 5; }
+float FileImpl::getMeasuredMVoltage() { return 5; }
+void FileImpl::disableHV() {/*NOP*/}
+void FileImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) {/*NOP*/}
+void FileImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {/*NOP*/}
+void FileImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {/*NOP*/}
+void FileImpl::setPgaGain(uint16 value) {/*NOP*/}
+uint16 FileImpl::getPgaGain() { return 0; }
+void FileImpl::setLnaGain(uint16 value) {}
+uint16 FileImpl::getLnaGain() { return 0; }
+void FileImpl::setLpfCutoff(uint32 value) {}
+void FileImpl::setDtgcAttenuation(std::optional<uint16> value) {}
+void FileImpl::setActiveTermination(std::optional<uint16> value) {}
 
-float DatasetImpl::getSamplingFrequency() const { return 65e6; }
-float DatasetImpl::getCurrentSamplingFrequency() const { return 65e6; }
-void DatasetImpl::setHpfCornerFrequency(uint32_t frequency) {}
-void DatasetImpl::disableHpf() {}
+float FileImpl::getSamplingFrequency() const { return 65e6; }
+float FileImpl::getCurrentSamplingFrequency() const { return 65e6; }
+void FileImpl::setHpfCornerFrequency(uint32_t frequency) {}
+void FileImpl::disableHpf() {}
 
 }// namespace arrus::devices
