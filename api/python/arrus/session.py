@@ -21,7 +21,6 @@ import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.imaging
 import arrus.framework
-import time
 from typing import Sequence, Dict
 from numbers import Number
 
@@ -106,7 +105,7 @@ class Session(AbstractSession):
         upload_result = self._session_handle.upload(core_scheme)
 
         us_device.set_kernel_context(kernel_context)
-        us_device.get_data_description(upload_result, raw_seq)
+        data_description = us_device.get_data_description(upload_result, raw_seq)
 
         # Output buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
@@ -115,14 +114,13 @@ class Session(AbstractSession):
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(
             seq, raw_seq, us_device_dto, medium)
-        echo_data_description = us_device.get_data_description()
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
         input_shape = buffer.elements[0].data.shape
 
         is_iq_data = scheme.digital_down_conversion is not None
         const_metadata = arrus.metadata.ConstMetadata(
-            context=fac, data_desc=echo_data_description,
+            context=fac, data_desc=data_description,
             input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
             version=arrus.__version__
         )

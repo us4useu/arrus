@@ -291,7 +291,10 @@ class Us4R(Device, Ultrasound):
         probe_model = arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
         probe_dto = arrus.devices.probe.ProbeDTO(model=probe_model)
-        return Us4RDTO(probe=probe_dto, sampling_frequency=65e6)
+        return Us4RDTO(
+            probe=probe_dto,
+            sampling_frequency=self.sampling_frequency
+        )
 
     def get_data_description(self, upload_result, sequence):
         # Prepare data buffer and constant context metadata
@@ -313,7 +316,7 @@ class Us4R(Device, Ultrasound):
 
 # ------------------------------------------ LEGACY MOCK
 @dataclasses.dataclass(frozen=True)
-class Us4RDTO(arrus.devices.device.UltrasoundDeviceDTO):
+class Us4RDTO:
     probe: arrus.devices.probe.ProbeDTO
     sampling_frequency: float
 
