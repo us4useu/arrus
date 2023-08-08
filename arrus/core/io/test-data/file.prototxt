@@ -1,0 +1,12 @@
+dictionary_file: "dictionary.prototxt"
+
+file: {
+    file: "/home/test/test.bin"
+    n_frames: 10
+    probe_id: {
+        manufacturer: "esaote"
+        name: "sl1543"
+    }
+}
+
+

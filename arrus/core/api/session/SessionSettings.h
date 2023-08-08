@@ -50,6 +50,7 @@ private:
 };
 
 class SessionSettingsBuilder {
+public:
     SessionSettingsBuilder() = default;
 
     void addUs4R(const arrus::devices::Us4RSettings& us4r) {

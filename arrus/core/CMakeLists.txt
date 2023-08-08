@@ -16,6 +16,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/Us4OEMSettings.proto
     io/proto/devices/us4r/HVSettings.proto
     io/proto/devices/us4r/Us4RSettings.proto
+    io/proto/devices/file/FileSettings.proto
     )
 ################################################################################
 # Target
@@ -107,8 +108,8 @@ set(SRC_FILES
     devices/probe/ProbeModel.h
     devices/probe/ProbeModel.cpp
 
-    devices/dataset/FileImpl.cpp
-    devices/dataset/FileImpl.h
+    devices/file/FileImpl.cpp
+    devices/file/FileImpl.h
 
     api/io/settings.h
     io/settings.cpp
@@ -136,7 +137,6 @@ set(SRC_FILES
     devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
     devices/us4r/Us4ROutputBuffer.h
     devices/us4r/Us4RImpl.cpp
-    devices/dataset/DatasetImpl.cpp
     devices/us4r/common.h
     devices/us4r/common.cpp
 
