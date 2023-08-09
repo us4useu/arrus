@@ -266,7 +266,7 @@ void registerOnBufferOverflowCallback(const std::shared_ptr<arrus::framework::Bu
 
 // ------------------------------------------ SESSION
 %{
-#include "arrus/core/api/session/UploadConstMetadata.h"
+#include "arrus/core/api/session/Metadata.h"
 #include "arrus/core/api/session/UploadResult.h"
 #include "arrus/core/api/session/Session.h"
 using namespace ::arrus::session;
@@ -274,12 +274,12 @@ using namespace ::arrus::session;
 %};
 // TODO consider using unique_ptr anyway (https://stackoverflow.com/questions/27693812/how-to-handle-unique-ptrs-with-swig)
 
-%shared_ptr(arrus::session::UploadConstMetadata);
+%shared_ptr(arrus::session::Metadata);
 %shared_ptr(arrus::session::Session);
 %ignore createSession;
 
 
-%include "arrus/core/api/session/UploadConstMetadata.h"
+%include "arrus/core/api/session/Metadata.h"
 %include "arrus/core/api/session/UploadResult.h"
 %include "arrus/core/api/session/Session.h"
 

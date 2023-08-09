@@ -48,13 +48,13 @@ def main():
     scheme = Scheme(
         tx_rx_sequence=seq,
         rx_buffer_size=4,
-        output_buffer=DataBufferSpec(type="FIFO", n_elements=12),
+        output_buffer=DataBufferSpec(type="FIFO", n_elements=4),
         work_mode="HOST")
 
     # Here starts communication with the device.
-    with arrus.Session() as sess:
-        us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(10)
+    with arrus.Session("/home/pjarosik/tmp/test.prototxt") as sess:
+        ultrasound = sess.get_device("/Ultrasound:0")
+        # us4r.set_hv_voltage(10)
         # Upload sequence on the us4r-lite device.
         buffer, const_metadata = sess.upload(scheme)
         timer = Timer()
