@@ -119,7 +119,7 @@ classdef DuplexDisplay < handle
             obj.bmodeAutoTgcResp = bmodeAutoTgcResp;
             
             % Prepare cineLoop
-            cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
+            cineLoopLayersNumber = 1 + 3*double(obj.colorEnable && ~obj.vectorEnable) + 4*double(obj.vectorEnable);
             obj.cineLoop = nan(numel(obj.zGrid), numel(obj.xGrid), obj.cineLoopLength, cineLoopLayersNumber);
             obj.cineLoopIndex = 0;
             
@@ -228,7 +228,8 @@ classdef DuplexDisplay < handle
                     powerRGB = max(0,min(1,powerRGB));
                     powerRGB = reshape(powerMap(1+round(powerRGB*127),:),nZPix,nXPix,3);
                     
-                    turbuRGB = reshape(turbuMap(1+round(turbu*127),:),nZPix,nXPix,3);
+                    turbuRGB = max(0,min(1,turbu));
+                    turbuRGB = reshape(turbuMap(1+round(turbuRGB*127),:),nZPix,nXPix,3);
 
                     duplexMask = (power >= obj.powerThreshold) & (turbu <= obj.turbuThreshold);
                     imageRGB = bmodeRGB.*~duplexMask + colorRGB.*duplexMask;
