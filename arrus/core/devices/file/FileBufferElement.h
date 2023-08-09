@@ -33,6 +33,7 @@ public:
         func();
         this->state = framework::BufferElement::State::READY;
         readyForRead.notify_one();
+        return true;
     }
 
     bool read(const std::function<void()> &func) {

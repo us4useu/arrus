@@ -48,6 +48,14 @@ public:
      */
     virtual float getCurrentSamplingFrequency() const = 0;
 
+    /**
+     * Returns a handle to a probe identified by given ordinal number.
+     *
+     * @param ordinal ordinal number of the probe to get
+     * @return a handle to the probe
+     */
+    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) = 0;
+
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;
     void operator=(Ultrasound const &) = delete;

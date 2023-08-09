@@ -2,7 +2,9 @@
 #include "arrus/common/format.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/common/logging.h"
+#include "arrus/core/api/common/exceptions.h"
 #include <cmath>
+#include <utility>
 
 namespace arrus::devices {
 
@@ -14,32 +16,40 @@ FileImpl::FileImpl(const DeviceId &id, const FileSettings &settings)
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     this->logger->log(LogSeverity::INFO, ::arrus::format("File device, path: {}", settings.getFilepath()));
     this->dataset = readDataset(settings.getFilepath());
+    this->probe = std::make_unique<FileProbe>(id, settings.getProbeModel());
 }
 
 std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) {
+    logger->log(LogSeverity::INFO, "Reading input dataset...");
     std::ifstream file{filepath, std::ios::in | std::ios::binary};
-    std::istreambuf_iterator<char> start(file), end;
-    std::vector<char> bytes(start, end);
-    if(bytes.empty()) {
+    // Read input file size.
+    file.unsetf(std::ios::skipws);
+    file.seekg(0, std::ios::end);
+    std::streampos fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+    logger->log(LogSeverity::INFO, format("Input file size: {} MiB", float(fileSize)/(1<<20)));
+    if(fileSize == 0) {
         throw ArrusException("Empty input file. Is your input file correct?");
     }
-    if(bytes.size() % sizeof(int16_t) != 0) {
+    if(fileSize % sizeof(int16_t) != 0) {
         throw ArrusException("Invalid input data size: the number of read bytes is not divisible by 2 (int16_t). "
                              "Is your input file correct?");
     }
-    std::vector<int16_t> all(bytes.size() / sizeof(int16_t));
+    std::vector<int16_t> all(fileSize / sizeof(int16_t));
     if(all.size() % settings.getNFrames() != 0) {
         throw ArrusException(format(
             "Invalid input data size: the number of int16_t values {} is not divisible by {}. "
             "(the number of declared frames). Is your input file correct?",
             all.size(), settings.getNFrames()));
     }
-    size_t frameSize = all.size() / settings.getNFrames();
+    file.read((char*)all.data(), fileSize);
+    size_t frameSize = all.size()/settings.getNFrames();
     std::vector<Frame> result;
     for(size_t i = 0; i < settings.getNFrames(); ++i) {
         Frame frame(std::begin(all)+i*frameSize, std::begin(all)+(i+1)*frameSize);
         result.push_back(std::move(frame));
     }
+    logger->log(LogSeverity::INFO, "Data ready.");
     return result;
 }
 
@@ -53,7 +63,7 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     auto [startSample, stopSample] = seq.getOps().at(0).getRx().getSampleRange();
     size_t nSamples = stopSample-startSample;
     auto &rxAperture = seq.getOps()[0].getRx().getAperture();
-    size_t nRx = std::reduce(std::begin(rxAperture), std::end(rxAperture));
+    size_t nRx = std::accumulate(std::begin(rxAperture), std::end(rxAperture), 0);
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
     this->frameShape = NdArray::Shape{nTx, nSamples, nRx, nValues};
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
@@ -139,6 +149,13 @@ void FileImpl::consumer() {
 
 void FileImpl::trigger() {
     throw std::runtime_error("File::trigger: NYI");
+}
+
+Probe *FileImpl::getProbe(Ordinal ordinal) {
+    if(ordinal > 0) {
+        throw arrus::IllegalArgumentException("Probe with ordinal > 0 is not available in the File device.");
+    }
+    return probe.get();
 }
 
 float FileImpl::getSamplingFrequency() const { return 65e6; }

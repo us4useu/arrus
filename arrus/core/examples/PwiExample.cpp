@@ -13,41 +13,39 @@ int main() noexcept {
     using namespace ::arrus::ops::us4r;
     using namespace ::arrus::framework;
     try {
-        // TODO set path to us4r-lite configuration file
-        auto settings = ::arrus::io::readSessionSettings("C:/Users/Public/us4r.prototxt");
+        arrus::useDefaultLoggerFactory()->setClogLevel(arrus::LogSeverity::TRACE);
+        auto settings = ::arrus::io::readSessionSettings("/home/pjarosik/tmp/test.prototxt");
         auto session = ::arrus::session::createSession(settings);
-        auto us4r = (::arrus::devices::Us4R *) session->getDevice("/Us4R:0");
-        auto probe = us4r->getProbe(0);
+        auto ultrasound = (::arrus::devices::Ultrasound*) session->getDevice("/Ultrasound:0");
+        auto probe = ultrasound->getProbe(0);
 
         unsigned nElements = probe->getModel().getNumberOfElements().product();
         std::cout << "Probe with " << nElements << " elements." << std::endl;
 
-        ::arrus::BitMask rxAperture(nElements, true);
+        ::arrus::BitMask aperture(nElements, false);
+        for(int i = 0; i < 64; ++i) {
+            aperture[i] = true;
+        }
 
         Pulse pulse(6e6, 2, false);
-        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 8192};
+        ::std::pair<::arrus::uint32, arrus::uint32> sampleRange{0, 1024};
 
         std::vector<TxRx> txrxs;
 
         // 10 plane waves
-        for(int i = 0; i < 4; ++i) {
+        for(int i = 0; i < 175; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
             std::vector<float> delays(nElements, 0.0f);
-            for(int d = 0; d < nElements; ++d) {
-                delays[d] = d*i*1e-9f;
-            }
-            arrus::BitMask txAperture(nElements, true);
-            txrxs.emplace_back(Tx(txAperture, delays, pulse), Rx(rxAperture, sampleRange), 200e-6f);
+            txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange), 200e-6f);
         }
 
-        TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 32);
+        TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 1);
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 4};
-        Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
+        Scheme scheme(seq, 4, outputBuffer, Scheme::WorkMode::HOST);
 
         auto result = session->upload(scheme);
-        us4r->setVoltage(5);
 
         std::condition_variable cv;
         using namespace std::chrono_literals;

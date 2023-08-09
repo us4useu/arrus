@@ -113,16 +113,16 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs(); ++i) {
         const Us4RSettings &settings = sessionSettings.getUs4RSettings(i);
         Us4R::Handle us4r = us4rFactory->getUs4R(i, settings);
-        devices.emplace(us4r->getDeviceId(), std::move(us4r));
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), us4r.get());
+        devices.emplace(us4r->getDeviceId(), std::move(us4r));
         ultrasoundOrdinal++;
     }
     // - Files:
     for(size_t i = 0; i < sessionSettings.getNumberOfFiles(); ++i) {
         const FileSettings &settings = sessionSettings.getFileSettings(i);
         File::Handle file = fileFactory->getFile(i, settings);
-        devices.emplace(file->getDeviceId(), std::move(file));
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), file.get());
+        devices.emplace(file->getDeviceId(), std::move(file));
         ultrasoundOrdinal++;
     }
 }

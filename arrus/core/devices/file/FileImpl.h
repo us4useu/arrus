@@ -19,6 +19,15 @@
 
 namespace arrus::devices {
 
+class FileProbe: public Probe {
+public:
+    FileProbe(const DeviceId &id, ProbeModel model) : Probe(id), model(std::move(model)) {}
+    const ProbeModel &getModel() const override { return model; }
+
+private:
+    ProbeModel model;
+};
+
 class FileImpl : public File {
 public:
     enum class State { STARTED, STOPPED };
@@ -35,6 +44,7 @@ public:
     float getCurrentSamplingFrequency() const override;
     std::pair<arrus::framework::Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
     upload(const ops::us4r::Scheme &scheme) override;
+    Probe *getProbe(Ordinal ordinal) override;
 
 private:
     using Frame = std::vector<int16_t>;
@@ -54,6 +64,7 @@ private:
     std::optional<ops::us4r::Scheme> currentScheme;
     float currentFs;
     std::shared_ptr<FileBuffer> buffer;
+    std::unique_ptr<FileProbe> probe;
 };
 
 }// namespace arrus::devices
