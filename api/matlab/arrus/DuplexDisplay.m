@@ -34,6 +34,8 @@ classdef DuplexDisplay < handle
         dynamicRange
         powerThreshold
         turbuThreshold
+        stdevThreshold
+        smootheKernel
         cineLoop
         cineLoopLength
         cineLoopIndex
@@ -64,6 +66,14 @@ classdef DuplexDisplay < handle
                         @(x) assert(isnumeric(x) && isscalar(x), ...
                         "turbuThreshold must be a numerical scalar."));
             
+            addParameter(dispParParser, 'stdevThreshold', 0, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "stdevThreshold must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'thresholdSmoothe', 0, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "thresholdSmoothe must be a numerical scalar."));
+
             addParameter(dispParParser, 'subplotEnable', false, ...
                         @(x) assert(islogical(x) && isscalar(x), ...
                         "subplotEnable must be a logical scalar."));
@@ -91,6 +101,8 @@ classdef DuplexDisplay < handle
             dynamicRange     = dispParParser.Results.dynamicRange;
             powerThreshold   = dispParParser.Results.powerThreshold;
             turbuThreshold   = dispParParser.Results.turbuThreshold;
+            stdevThreshold   = dispParParser.Results.stdevThreshold;
+            thresholdSmoothe = dispParParser.Results.thresholdSmoothe;
             subplotEnable    = dispParParser.Results.subplotEnable;
             cineLoopLength   = dispParParser.Results.cineLoopLength;
             persistence      = dispParParser.Results.persistence;
@@ -106,6 +118,13 @@ classdef DuplexDisplay < handle
                 cineLoopLength = numel(persistence);
             end
             
+            if thresholdSmoothe>0
+                aux = linspace(-1,1,thresholdSmoothe).^2;
+                smootheKernel = sqrt(aux.' + aux);
+            else
+                smootheKernel = [];
+            end
+            
             obj.xGrid = proc.xGrid;
             obj.zGrid = proc.zGrid;
             obj.colorEnable = proc.colorEnable;
@@ -113,6 +132,8 @@ classdef DuplexDisplay < handle
             obj.dynamicRange = dynamicRange;
             obj.powerThreshold = powerThreshold;
             obj.turbuThreshold = turbuThreshold;
+            obj.stdevThreshold = stdevThreshold;
+            obj.smootheKernel = smootheKernel;
             obj.cineLoopLength = cineLoopLength;
             obj.persistence = reshape(persistence,1,1,[]) / sum(persistence);
             obj.bmodeTgc = bmodeTgc * obj.zGrid(:) / obj.zGrid(end);
@@ -216,9 +237,12 @@ classdef DuplexDisplay < handle
                         colorMap = hot(128);
                         colorOffset = 0;
                     end
-                    power(isnan(power)) = -inf;
-                    turbu(isnan(turbu)) = 1;
-                    color(isnan(color)) = 0;
+
+                    msk = ~isnan(color);
+                    
+                    color(~msk) = 0;
+                    power(~msk) = -realmax(class(power));
+                    turbu(~msk) = 1;
                     
                     colorRGB = color/2/pi + colorOffset;
                     colorRGB = max(0,min(1,colorRGB));
@@ -230,8 +254,22 @@ classdef DuplexDisplay < handle
                     
                     turbuRGB = max(0,min(1,turbu));
                     turbuRGB = reshape(turbuMap(1+round(turbuRGB*127),:),nZPix,nXPix,3);
+                    
+                    %% Duplex
+                    if ~isempty(obj.smootheKernel)
+                        power = conv2(power.*msk,obj.smootheKernel,'same') ./ conv2(msk,obj.smootheKernel,'same');
+                        turbu = conv2(turbu.*msk,obj.smootheKernel,'same') ./ conv2(msk,obj.smootheKernel,'same');
+                        power(~msk) = nan;
+                        turbu(~msk) = nan;
 
-                    duplexMask = (power >= obj.powerThreshold) & (turbu <= obj.turbuThreshold);
+                        stdev = movstd2(color,obj.smootheKernel);
+                    else
+                        stdev = zeros(size(color));
+                    end
+                    duplexMask = (power >= obj.powerThreshold) ...
+                               & (turbu <= obj.turbuThreshold) ...
+                               & (stdev <= obj.stdevThreshold);
+                    
                     imageRGB = bmodeRGB.*~duplexMask + colorRGB.*duplexMask;
                 else
                     imageRGB = bmodeRGB;
@@ -291,6 +329,16 @@ classdef DuplexDisplay < handle
             else
                 cineLoop = [];
             end
+        end
+
+        function out = movstd2(in,flt)
+            msk = ~isnan(in);
+            in(~msk) = 0;
+            
+            N   = conv2(msk,flt,'same');
+            avg = conv2(in,flt,'same')./N;
+            out = sqrt((conv2(in.^2,flt,'same')-N.*avg.^2)./(N-1));
+            out(~msk) = nan;
         end
         
     end    
