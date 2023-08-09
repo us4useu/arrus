@@ -39,12 +39,15 @@ public:
 private:
     using Frame = std::vector<int16_t>;
     std::vector<Frame> readDataset(const std::string &filepath);
+
     void producer();
+    void consumer();
 
     State state{State::STOPPED};
     Logger::Handle logger;
     std::mutex deviceStateMutex;
     std::thread producerThread;
+    std::thread consumerThread;
     FileSettings settings;
     std::vector<Frame> dataset;
     arrus::framework::NdArray::Shape frameShape;

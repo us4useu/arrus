@@ -16,8 +16,31 @@ FileImpl::FileImpl(const DeviceId &id, const FileSettings &settings)
     this->dataset = readDataset(settings.getFilepath());
 }
 
-std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &) {
-    return std::vector<Frame>();
+std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) {
+    std::ifstream file{filepath, std::ios::in | std::ios::binary};
+    std::istreambuf_iterator<char> start(file), end;
+    std::vector<char> bytes(start, end);
+    if(bytes.empty()) {
+        throw ArrusException("Empty input file. Is your input file correct?");
+    }
+    if(bytes.size() % sizeof(int16_t) != 0) {
+        throw ArrusException("Invalid input data size: the number of read bytes is not divisible by 2 (int16_t). "
+                             "Is your input file correct?");
+    }
+    std::vector<int16_t> all(bytes.size() / sizeof(int16_t));
+    if(all.size() % settings.getNFrames() != 0) {
+        throw ArrusException(format(
+            "Invalid input data size: the number of int16_t values {} is not divisible by {}. "
+            "(the number of declared frames). Is your input file correct?",
+            all.size(), settings.getNFrames()));
+    }
+    size_t frameSize = all.size() / settings.getNFrames();
+    std::vector<Frame> result;
+    for(size_t i = 0; i < settings.getNFrames(); ++i) {
+        Frame frame(std::begin(all)+i*frameSize, std::begin(all)+(i+1)*frameSize);
+        result.push_back(std::move(frame));
+    }
+    return result;
 }
 
 std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const ops::us4r::Scheme &scheme) {
@@ -33,6 +56,15 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     size_t nRx = std::reduce(std::begin(rxAperture), std::end(rxAperture));
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
     this->frameShape = NdArray::Shape{nTx, nSamples, nRx, nValues};
+    // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
+    if(this->frameShape.product() != dataset.at(0).size()) {
+        throw ArrusException(
+            format("The provided sequence (output dimensions: nTx: {}, nSamples: {}, nRx: {}, nComponents: {})) "
+                   "does not correspond to the data from the file (number of int16_t values: {}). "
+                   "Please make sure you are uploading the correct sequence.",
+                   nTx, nSamples, nRx, nValues, dataset.at(0).size()));
+    }
+
     // Determine current sampling frequency
     if(this->currentScheme->getDigitalDownConversion().has_value()) {
         auto dec = this->currentScheme->getDigitalDownConversion().value().getDecimationFactor();
@@ -55,6 +87,7 @@ void FileImpl::start() {
     } else {
         this->state = State::STARTED;
         this->producerThread = std::thread(&FileImpl::producer, this);
+        this->consumerThread = std::thread(&FileImpl::consumer, this);
     }
 }
 
@@ -65,19 +98,43 @@ void FileImpl::stop() {
     }
     else {
         this->state = State::STOPPED;
+        this->buffer->close();
+        guard.unlock();
         this->producerThread.join();
+        this->consumerThread.join();
     }
 }
 
 void FileImpl::producer() {
-//    size_t i = 0;
+    size_t elementNr = 0;
+    size_t frameNr = 0;
     logger->log(LogSeverity::INFO, "Starting producer.");
     while(this->state == State::STARTED) {
-//        auto element = this->buffer.acquire();
-//        this->buffer.callOnNewDataCallback(i);
-//        i = (i+1) % this->datasetSize;
+        bool cont = buffer->write(elementNr, [this, &frameNr] (const framework::BufferElement::SharedHandle &element) {
+            auto &frame = this->dataset.at(frameNr);
+            std::memcpy(element->getData().get<int16_t>(), frame.data(), frame.size()*sizeof(int16_t));
+        });
+        if(!cont) {
+            break;
+        }
+        elementNr = (elementNr+1) % buffer->getNumberOfElements();
+        frameNr = (frameNr+1) % dataset.size();
     }
-    logger->log(LogSeverity::INFO, "Dataset producer stopped.");
+    logger->log(LogSeverity::INFO, "File producer stopped.");
+}
+
+void FileImpl::consumer() {
+    size_t i = 0;
+    logger->log(LogSeverity::INFO, "Starting consumer.");
+    while(this->state == State::STARTED) {
+        bool cont = buffer->read(i, [this] (const framework::BufferElement::SharedHandle &element) {
+            this->buffer->getOnNewDataCallback()(element);
+        });
+        if(!cont) {
+            break;
+        }
+    }
+    logger->log(LogSeverity::INFO, "File consumer stopped.");
 }
 
 void FileImpl::trigger() {

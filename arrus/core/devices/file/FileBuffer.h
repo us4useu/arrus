@@ -17,11 +17,30 @@ public:
 
     ~FileBuffer() override = default;
 
+    void close() {
+        for(auto &e: elements) {
+            e->close();
+        }
+    }
+
+    bool write(size_t i, const std::function<void(framework::BufferElement::BufferElement::SharedHandle)> &func) {
+        auto &element = elements.at(i);
+        return element->write([&element, &func]() {
+            func(element);
+        });
+    }
+
+    bool read(size_t i, const std::function<void(framework::BufferElement::BufferElement::SharedHandle)> &func) {
+        auto &element = elements.at(i);
+        return element->read([&element, &func]() {
+          func(element);
+        });
+    }
+
     void registerOnNewDataCallback(arrus::framework::OnNewDataCallback &callback) override {
         this->onNewDataCallback = callback;
     }
 
-    size_t getNumberOfElements() const override { return elements.size(); }
 
     std::shared_ptr<arrus::framework::BufferElement> getElement(size_t i) override {
         return elements.at(i);
@@ -44,11 +63,15 @@ public:
         return result;
     }
 
+    size_t getNumberOfElements() const override { return elements.size(); }
+    const framework::OnNewDataCallback &getOnNewDataCallback() const { return onNewDataCallback; }
+
     void registerOnOverflowCallback(arrus::framework::OnOverflowCallback&) override {/*Ignored*/}
     void registerShutdownCallback(arrus::framework::OnShutdownCallback&) override {/*Ignored*/}
 
 private:
     std::vector<std::shared_ptr<FileBufferElement>> elements;
+    // Blocking queue of elements to consume
     arrus::framework::OnNewDataCallback onNewDataCallback;
 };
 

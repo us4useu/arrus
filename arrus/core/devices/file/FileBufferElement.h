@@ -21,20 +21,46 @@ public:
 
     ~FileBufferElement() override = default;
 
-    void acquire(const std::function<void(arrus::framework::BufferElement::BufferElement::SharedHandle)> &) {
+    bool write(const std::function<void()> &func) {
         std::unique_lock<std::mutex> lock{stateMutex};
-        // Wait until the element is free.
-        readyForWrite.wait(lock, [this](){return this->state == arrus::framework::BufferElement::State::FREE;});
+
+        while(this->state == framework::BufferElement::State::READY) {
+            readyForWrite.wait(lock);
+        }
+        if(this->state != framework::BufferElement::State::FREE) {
+            return false;
+        }
+        func();
+        this->state = framework::BufferElement::State::READY;
+        readyForRead.notify_one();
     }
 
-    void releaseForRead() {
+    bool read(const std::function<void()> &func) {
         std::unique_lock<std::mutex> lock{stateMutex};
+        while(this->state == framework::BufferElement::State::FREE) {
+            readyForRead.wait(lock);
+        }
+        if(this->state != framework::BufferElement::State::READY) {
+            return false;
+        }
+        lock.unlock();
+        func();
+        return true;
     }
 
     void release() override {
-        // Release
+        std::unique_lock<std::mutex> lock{stateMutex};
+        this->state = framework::BufferElement::State::FREE;
         readyForWrite.notify_one();
     }
+
+    void close() {
+        std::unique_lock<std::mutex> lock{stateMutex};
+        this->state = framework::BufferElement::State::INVALID;
+        readyForWrite.notify_all();
+        readyForRead.notify_all();
+    }
+
     arrus::framework::NdArray &getData() override { return ndarray; }
     size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }
@@ -42,6 +68,7 @@ public:
 private:
     std::mutex stateMutex;
     std::condition_variable readyForWrite;
+    std::condition_variable readyForRead;
     int16_t *data{nullptr};
     size_t size;
     // NdArray: view of the above data pointer.
@@ -53,6 +80,7 @@ private:
     };
     size_t position;
     State state{arrus::framework::BufferElement::State::FREE};
+    bool isClosed{false};
 };
 
 }
