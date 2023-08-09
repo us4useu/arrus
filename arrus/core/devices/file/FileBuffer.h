@@ -3,7 +3,6 @@
 
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/devices/file/FileBufferElement.h"
-#include <iostream>
 
 namespace arrus::devices {
 
