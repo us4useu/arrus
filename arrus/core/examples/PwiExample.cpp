@@ -62,7 +62,7 @@ int main() noexcept {
                     ")" << std::endl;
 
                 // Stop the system after 10-th frame.
-                if(i == 3) {
+                if(i == 30) {
                     cv.notify_one();
                 }
                 ptr->release();

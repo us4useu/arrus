@@ -123,6 +123,8 @@ void FileImpl::producer() {
         bool cont = buffer->write(elementNr, [this, &frameNr] (const framework::BufferElement::SharedHandle &element) {
             auto &frame = this->dataset.at(frameNr);
             std::memcpy(element->getData().get<int16_t>(), frame.data(), frame.size()*sizeof(int16_t));
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(100ms);
         });
         if(!cont) {
             break;
@@ -134,15 +136,16 @@ void FileImpl::producer() {
 }
 
 void FileImpl::consumer() {
-    size_t i = 0;
+    size_t elementNr = 0;
     logger->log(LogSeverity::INFO, "Starting consumer.");
     while(this->state == State::STARTED) {
-        bool cont = buffer->read(i, [this] (const framework::BufferElement::SharedHandle &element) {
+        bool cont = buffer->read(elementNr, [this] (const framework::BufferElement::SharedHandle &element) {
             this->buffer->getOnNewDataCallback()(element);
         });
         if(!cont) {
             break;
         }
+        elementNr = (elementNr+1) % buffer->getNumberOfElements();
     }
     logger->log(LogSeverity::INFO, "File consumer stopped.");
 }

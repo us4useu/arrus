@@ -3,6 +3,7 @@
 
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/devices/file/FileBufferElement.h"
+#include <iostream>
 
 namespace arrus::devices {
 
@@ -33,7 +34,7 @@ public:
     bool read(size_t i, const std::function<void(framework::BufferElement::BufferElement::SharedHandle)> &func) {
         auto &element = elements.at(i);
         return element->read([&element, &func]() {
-          func(element);
+            func(element);
         });
     }
 
