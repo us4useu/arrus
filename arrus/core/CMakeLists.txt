@@ -110,6 +110,7 @@ set(SRC_FILES
 
     devices/file/FileImpl.cpp
     devices/file/FileImpl.h
+    devices/file/FileSettings.cpp
 
     api/io/settings.h
     io/settings.cpp

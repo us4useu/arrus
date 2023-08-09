@@ -1,6 +1,9 @@
 #ifndef ARRUS_CORE_API_DEVICES_FILESETTINGS_H
 #define ARRUS_CORE_API_DEVICES_FILESETTINGS_H
 
+#include <string>
+#include "arrus/core/api/devices/probe/ProbeModel.h"
+
 namespace arrus::devices {
 
 class FileSettings {

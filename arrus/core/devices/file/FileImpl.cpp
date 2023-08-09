@@ -16,6 +16,10 @@ FileImpl::FileImpl(const DeviceId &id, const FileSettings &settings)
     this->dataset = readDataset(settings.getFilepath());
 }
 
+std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &) {
+    return std::vector<Frame>();
+}
+
 std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const ops::us4r::Scheme &scheme) {
     this->currentScheme = scheme;
     auto &seq = this->currentScheme->getTxRxSequence();
@@ -38,7 +42,7 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
         auto dec = seq.getOps().at(0).getRx().getDownsamplingFactor();
         this->currentFs = this->getSamplingFrequency()/dec;
     }
-    this->buffer = std::make_shared<DatasetBuffer>(this->settings.getNFrames(), this->frameShape);
+    this->buffer = std::make_shared<FileBuffer>(this->settings.getNFrames(), this->frameShape);
     // Metadata
     MetadataBuilder metadataBuilder;
     return std::make_pair(this->buffer, metadataBuilder.buildPtr());

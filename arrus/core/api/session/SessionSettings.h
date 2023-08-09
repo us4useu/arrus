@@ -44,6 +44,9 @@ public:
 
     const arrus::devices::FileSettings &getFileSettings(::arrus::devices::Ordinal id) const {return files.at(id);}
 
+    const std::vector<arrus::devices::Us4RSettings> &getUs4Rs() const { return us4Rs; }
+    const std::vector<arrus::devices::FileSettings> &getFiles() const { return files; }
+
 private:
     std::vector<arrus::devices::Us4RSettings> us4Rs;
     std::vector<arrus::devices::FileSettings> files;
