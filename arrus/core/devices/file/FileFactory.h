@@ -1,6 +1,9 @@
 #ifndef ARRUS_CORE_DEVICES_FILE_FILEFACTORY_H
 #define ARRUS_CORE_DEVICES_FILE_FILEFACTORY_H
 
+#include "arrus/core/api/devices/File.h"
+#include "arrus/core/api/devices/FileSettings.h"
+
 namespace arrus::devices {
 
 class FileFactory {

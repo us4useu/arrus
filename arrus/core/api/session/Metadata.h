@@ -17,9 +17,7 @@ public:
     using Handle = std::unique_ptr<Metadata>;
     using SharedHandle = std::shared_ptr<Metadata>;
 
-    explicit Metadata(std::unordered_map<std::string, std::shared_ptr<void>> metadata)
-    : metadata(std::move(metadata)) {}
-
+    explicit Metadata(std::unordered_map<std::string, std::shared_ptr<void>> metadata): metadata(std::move(metadata)) {}
 
     /**
      * Returns metadata for the given key.

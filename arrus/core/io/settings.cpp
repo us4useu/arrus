@@ -490,10 +490,9 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     if (s->has_file()) {
         settingsBuilder.addFile(readFileSettings(s->file(), dictionary));
     }
-    logger->log(LogSeverity::DEBUG,
-                arrus::format("Read settings from '{}': {}", filepath, ::arrus::toString(sessionSettings)));
-
-    return settingsBuilder.build();
+    SessionSettings settings = settingsBuilder.build();
+    logger->log(LogSeverity::DEBUG, arrus::format("Read settings from '{}': {}", filepath, arrus::toString(settings)));
+    return settings;
 }
 
 }// namespace arrus::io

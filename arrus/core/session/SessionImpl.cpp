@@ -64,10 +64,10 @@ SessionImpl::SessionImpl(
     Us4RFactory::Handle us4RFactory,
     FileFactory::Handle fileFactory
     )
-    : us4rFactory(std::move(us4RFactory)) {
+    : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)) {
     getDefaultLogger()->log(LogSeverity::DEBUG,
                             arrus::format("Configuring session: {}", ::arrus::toString(sessionSettings)));
-    devices = configureDevices(sessionSettings);
+    configureDevices(sessionSettings);
 }
 
 arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path) {
@@ -107,11 +107,10 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceI
 }
 
 void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
-
     // Ultrasound systems:
     Ordinal ultrasoundOrdinal = 0;
     // - Us4R:
-    for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs()) {
+    for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs(); ++i) {
         const Us4RSettings &settings = sessionSettings.getUs4RSettings(i);
         Us4R::Handle us4r = us4rFactory->getUs4R(i, settings);
         devices.emplace(us4r->getDeviceId(), std::move(us4r));
@@ -119,14 +118,13 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
         ultrasoundOrdinal++;
     }
     // - Files:
-    for(size_t i = 0; i < sessionSettings.getNumberOfFiles()) {
+    for(size_t i = 0; i < sessionSettings.getNumberOfFiles(); ++i) {
         const FileSettings &settings = sessionSettings.getFileSettings(i);
         File::Handle file = fileFactory->getFile(i, settings);
         devices.emplace(file->getDeviceId(), std::move(file));
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), file.get());
         ultrasoundOrdinal++;
     }
-    return result;
 }
 
 SessionImpl::~SessionImpl() {

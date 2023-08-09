@@ -29,7 +29,7 @@ public:
 
     ~DatasetBufferElement() override = default;
 
-    void acquire(const std::function<void(framework::BufferElement::BufferElement::SharedHandle)> &func) {
+    void acquire(const std::function<void(framework::BufferElement::BufferElement::SharedHandle)> &) {
         std::unique_lock<std::mutex> lock{stateMutex};
         // Wait until the element is free.
         readyForWrite.wait(lock, [this](){return this->state == framework::BufferElement::State::FREE;});

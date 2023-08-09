@@ -12,9 +12,7 @@
 #include "arrus/core/api/framework/DataBufferSpec.h"
 // TODO(pjarosik) avoid using us4r specific objects here
 #include "arrus/core/api/ops/us4r/Scheme.h"
-#include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/session/Metadata.h"
 
 namespace arrus::devices {
 

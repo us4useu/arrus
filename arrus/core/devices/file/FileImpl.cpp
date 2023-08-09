@@ -66,12 +66,12 @@ void FileImpl::stop() {
 }
 
 void FileImpl::producer() {
-    size_t i = 0;
+//    size_t i = 0;
     logger->log(LogSeverity::INFO, "Starting producer.");
     while(this->state == State::STARTED) {
-        auto element = this->buffer.acquire();
-        this->buffer.callOnNewDataCallback(i);
-        i = (i+1) % this->datasetSize;
+//        auto element = this->buffer.acquire();
+//        this->buffer.callOnNewDataCallback(i);
+//        i = (i+1) % this->datasetSize;
     }
     logger->log(LogSeverity::INFO, "Dataset producer stopped.");
 }
