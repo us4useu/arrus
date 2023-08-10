@@ -9,12 +9,16 @@ Release notes
 - core (C++): 
 
     - us4R: exposed SYNC mode
-    - Implemented File device (for simulated mode).
+    - Implemented File device (for simulated mode) #221.
     
 - Python API:
 
     - us4R: exposed SYNC mode
-    - Created an example for file device (simulated mode).
+    - Added the possibility to change session medium after its initialization
+    - Added the possibility to specify rx depth range in the SimpleTxRxSequences.
+    - Exposed OX min/max position of the probe elements.
+    - Created cupy -> DL pack operator.
+    - Created an example for file device (simulated mode) #221.
 
 0.8.x
 -----
@@ -51,6 +55,48 @@ Release notes
 
 0.7.x
 -----
+
+0.7.8
+.....
+
+- core (C++): Fixed frame channel mapping for RX aperture smaller than 32 elements, and for non-standard probe adapters (that do not satisfy channel group modulo-32 congruency).
+
+
+0.7.7
+.....
+
+- Python API: Fixed classical beamforming RF data reordering for rx aperture < 64 elements, n_repeats > 1.
+
+
+0.7.6
+.....
+
+- Python API: Now it should be possible to use arrus.devices.us4r.Us4r.set_tgc when arrus.ops.us4r.TxRxSequence is uploaded.
+
+
+0.7.5
+.....
+
+- Python API: Fixed CUDA host memory unpinning on the arrus session close.
+
+
+0.7.4
+.....
+
+- Python API: Fixed 2D display for scheme with multiple outputs (layers).
+
+
+0.7.3
+.....
+
+- core: Updated us4r-api to 0.8.7 (support multiple versions of US4RDBAR firmware).
+
+0.7.2
+.....
+
+- Matlab API:
+
+    - Removed the requirement of integer values for txNPeriods in MATLAB API.
 
 0.7.1
 .....

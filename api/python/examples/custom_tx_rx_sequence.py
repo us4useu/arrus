@@ -11,6 +11,8 @@ import arrus.utils.imaging
 import arrus.utils.us4r
 import queue
 import numpy as np
+import arrus.ops.tgc
+import arrus.medium
 
 from arrus.ops.us4r import (
     Scheme,
@@ -37,7 +39,8 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 
 def main():
     # Here starts communication with the device.
-    with arrus.Session() as sess:
+    medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
+    with arrus.Session("us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(5)
 
@@ -69,7 +72,7 @@ def main():
                 ),
             ],
             # Turn off TGC.
-            tgc_curve=[24]*200,  # [dB]
+            tgc_curve=[],  # [dB]
             # Time between consecutive acquisitions, i.e. 1/frame rate.
             sri=50e-3
         )
@@ -90,6 +93,7 @@ def main():
         )
         # Upload the scheme on the us4r-lite device.
         buffer, metadata = sess.upload(scheme)
+        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
         # Created 2D image display.
         display = Display2D(metadata=metadata, value_range=(-100, 100))
         # Start the scheme.
