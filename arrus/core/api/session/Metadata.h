@@ -56,7 +56,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<void>> metadata;
 };
 
-// TODO(pjarosik) Deprecated-0.11.0
+// TODO(pjarosik) Deprecated(0.11.0)
 typedef Metadata UploadConstMetadata;
 
 }

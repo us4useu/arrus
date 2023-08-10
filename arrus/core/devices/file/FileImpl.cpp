@@ -163,6 +163,14 @@ Probe *FileImpl::getProbe(Ordinal ordinal) {
     return probe.get();
 }
 
+void FileImpl::setParameters(const Parameters &params) {
+    std::cout << "Got parameters!" << std::endl;
+    for(auto &item: params.items()) {
+        std::cout << item.first << std::endl;
+        std::cout << item.second << std::endl;
+    }
+}
+
 float FileImpl::getSamplingFrequency() const { return 65e6; }
 float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 

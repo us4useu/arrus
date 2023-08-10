@@ -176,6 +176,7 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Interval.h"
 %include "arrus/core/api/common/Span.h"
 %include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
+%include "arrus/core/api/common/Parameters.h"
 
 %feature("valuewrapper", "0");
 

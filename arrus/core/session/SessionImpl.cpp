@@ -197,4 +197,35 @@ void SessionImpl::close() {
     this->state = State::CLOSED;
 }
 
+void SessionImpl::setParameters(const Parameters &params) {
+    // Convert map to new map: with no Ultrasound:0
+    if(params.items().empty()) {
+        return;
+    }
+    ParametersBuilder builder;
+    Device::RawHandle device = nullptr;
+    for(auto &item: params.items()) {
+        const std::string &key = item.first;
+        int value = item.second;
+        std::cout << key << std::endl;
+
+        std::string sanitizedKey{key};
+        boost::algorithm::trim(sanitizedKey);
+
+        std::cout << sanitizedKey << std::endl;
+
+        // parse path
+        auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedKey);
+        if(root != "Ultrasound:0") {
+            throw IllegalArgumentException("Currently parameters can be set only to Ultrasound:0.");
+        }
+        device = getDevice("/" + root);
+        if(device->getDeviceId().getDeviceType() != devices::DeviceType::File) {
+            throw IllegalArgumentException("Currently only ultrasound file devices can be set parameters.");
+        }
+        builder.add(tail, value);
+    }
+    device->setParameters(params);
+}
+
 }// namespace arrus::session

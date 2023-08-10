@@ -21,6 +21,7 @@ import arrus.ops.tgc
 import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.imaging
+import arrus.utils.core
 import arrus.framework
 from typing import Sequence, Dict
 from numbers import Number
@@ -231,6 +232,10 @@ class Session(AbstractSession):
         # TODO(pjarosik) key should be an id, not the whole path
         self._py_devices[path] = specific_device
         return specific_device
+
+    def set_parameters(self, params):
+        core_params = arrus.utils.core.convert_to_core_parameters(params)
+        self._session_handle.setParameters(core_params)
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """

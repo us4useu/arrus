@@ -16,6 +16,7 @@
 #include "arrus/core/api/framework/NdArray.h"
 #include "arrus/core/devices/file/FileBuffer.h"
 #include "arrus/core/devices/file/FileBufferElement.h"
+#include "arrus/core/api/common/Parameters.h"
 
 namespace arrus::devices {
 
@@ -45,6 +46,8 @@ public:
     std::pair<arrus::framework::Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
     upload(const ops::us4r::Scheme &scheme) override;
     Probe *getProbe(Ordinal ordinal) override;
+    void setParameters(const Parameters &params) override;
+
 
 private:
     using Frame = std::vector<int16_t>;

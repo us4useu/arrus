@@ -45,6 +45,7 @@ public:
 
     void operator=(SessionImpl const &&) = delete;
     void close() override;
+    void setParameters(const Parameters &params) override;
 
 private:
     ARRUS_DEFINE_ENUM_WITH_TO_STRING(
