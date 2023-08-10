@@ -72,6 +72,7 @@ private:
     std::mutex parametersMutex;
     std::optional<int> pendingSliceBegin;
     std::optional<int> pendingSliceEnd;
+    int txBegin, txEnd;
 };
 
 }// namespace arrus::devices

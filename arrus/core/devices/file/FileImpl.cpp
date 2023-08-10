@@ -68,6 +68,8 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     nRx += seq.getOps()[0].getRx().getPadding().second;
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
     this->frameShape = NdArray::Shape{1, nTx, nRx, nSamples, nValues};
+    this->txBegin = 0;
+    this->txEnd = nTx;
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
     if(this->frameShape.product() != dataset.at(0).size()) {
         throw ArrusException(
@@ -125,6 +127,8 @@ void FileImpl::producer() {
         bool cont = buffer->write(elementNr, [this, &frameNr] (const framework::BufferElement::SharedHandle &element) {
             auto &frame = this->dataset.at(frameNr);
             std::memcpy(element->getData().get<int16_t>(), frame.data(), frame.size()*sizeof(int16_t));
+            *((int*)(element->getData().get<char>()+56)) = this->txBegin;
+            *((int*)(element->getData().get<char>()+60)) = this->txEnd;
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(50ms);
         });
@@ -141,9 +145,11 @@ void FileImpl::producer() {
 
                 if(pendingSliceBegin.has_value()) {
                     sliceBegin = pendingSliceBegin.value();
+                    this->txBegin = sliceBegin;
                 }
                 if(pendingSliceEnd.has_value()) {
                     sliceEnd = pendingSliceEnd.value();
+                    this->txEnd = sliceEnd;
                 }
                 buffer->slice(1, sliceBegin, sliceEnd);
             }
