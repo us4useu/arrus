@@ -265,13 +265,12 @@ classdef DuplexDisplay < handle
                     
                     %% Duplex
                     if ~isempty(obj.smootheKernel)
-                        power = conv2(power.*msk,obj.smootheKernel,'same') ./ conv2(msk,obj.smootheKernel,'same');
-                        turbu = conv2(turbu.*msk,obj.smootheKernel,'same') ./ conv2(msk,obj.smootheKernel,'same');
-                        
-                        % local std of color map
                         N   = conv2(msk,obj.smootheKernel,'same');
-                        avg = conv2(color,obj.smootheKernel,'same')./N;
-                        stdev = sqrt((conv2(color.^2,obj.smootheKernel,'same')-N.*avg.^2)./(N-1));
+
+                        power = conv2(power.*msk,obj.smootheKernel,'same') ./ N;
+                        turbu = conv2(turbu.*msk,obj.smootheKernel,'same') ./ N;
+                        stdev = sqrt((conv2(color.^2,obj.smootheKernel,'same') - ...
+                                      conv2(color,   obj.smootheKernel,'same').^2./N)./(N-1));
                         
                         power(~msk) = nan;
                         turbu(~msk) = nan;
