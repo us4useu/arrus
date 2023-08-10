@@ -267,10 +267,15 @@ classdef DuplexDisplay < handle
                     if ~isempty(obj.smootheKernel)
                         power = conv2(power.*msk,obj.smootheKernel,'same') ./ conv2(msk,obj.smootheKernel,'same');
                         turbu = conv2(turbu.*msk,obj.smootheKernel,'same') ./ conv2(msk,obj.smootheKernel,'same');
+                        
+                        % local std of color map
+                        N   = conv2(msk,obj.smootheKernel,'same');
+                        avg = conv2(color,obj.smootheKernel,'same')./N;
+                        stdev = sqrt((conv2(color.^2,obj.smootheKernel,'same')-N.*avg.^2)./(N-1));
+                        
                         power(~msk) = nan;
                         turbu(~msk) = nan;
-
-                        stdev = movstd2(color,obj.smootheKernel);
+                        stdev(~msk) = nan;
                     else
                         stdev = zeros(size(color));
                     end
@@ -337,16 +342,6 @@ classdef DuplexDisplay < handle
             else
                 cineLoop = [];
             end
-        end
-
-        function out = movstd2(in,flt)
-            msk = ~isnan(in);
-            in(~msk) = 0;
-            
-            N   = conv2(msk,flt,'same');
-            avg = conv2(in,flt,'same')./N;
-            out = sqrt((conv2(in.^2,flt,'same')-N.*avg.^2)./(N-1));
-            out(~msk) = nan;
         end
         
     end    
