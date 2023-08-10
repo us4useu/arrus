@@ -207,12 +207,9 @@ void SessionImpl::setParameters(const Parameters &params) {
     for(auto &item: params.items()) {
         const std::string &key = item.first;
         int value = item.second;
-        std::cout << key << std::endl;
 
         std::string sanitizedKey{key};
         boost::algorithm::trim(sanitizedKey);
-
-        std::cout << sanitizedKey << std::endl;
 
         // parse path
         auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedKey);
@@ -225,7 +222,7 @@ void SessionImpl::setParameters(const Parameters &params) {
         }
         builder.add(tail, value);
     }
-    device->setParameters(params);
+    device->setParameters(builder.build());
 }
 
 }// namespace arrus::session

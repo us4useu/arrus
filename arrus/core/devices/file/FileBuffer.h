@@ -64,6 +64,12 @@ public:
         return result;
     }
 
+    void slice(size_t i, int begin, int end) {
+        for(auto &e: elements) {
+            e->slice(i, begin, end);
+        }
+    }
+
     size_t getNumberOfElements() const override { return elements.size(); }
     const framework::OnNewDataCallback &getOnNewDataCallback() const { return onNewDataCallback; }
 

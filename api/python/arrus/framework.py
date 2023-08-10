@@ -60,12 +60,24 @@ class DataBufferElement:
     def _create_np_array(self, element):
         ndarray = element.getData()
         if ndarray.getDataType() != arrus.core.NdArray.DataType_INT16:
-            raise ValueError("Currently output data type int16 is supported only.")
+            raise ValueError("Currently output data type int16 is supported "
+                             "only.")
         addr = arrus.core.castToInt(ndarray.getInt16())
         ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
         shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())
         arr = np.ctypeslib.as_array(ctypes_ptr, shape=shape)
+        self.shape = shape
         return arr
+
+    def invalidate_shape(self):
+        if self._element_handle != self.shape:
+            ndarray = self._element_handle.getData()
+            shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())
+            addr = arrus.core.castToInt(ndarray.getInt16())
+            ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
+            self._numpy_array_wrapping = np.ctypeslib.as_array(ctypes_ptr,
+                                                               shape=shape)
+            self.shape = shape
 
 
 class DataBuffer:
@@ -114,6 +126,7 @@ class DataBuffer:
     def _callback(self, element):
         pos = element.getPosition()
         py_element = self.elements[pos]
+        py_element.invalidate_shape()
         for cbk in self._callbacks:
             cbk(py_element)
 

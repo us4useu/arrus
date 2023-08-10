@@ -7,6 +7,7 @@ namespace arrus::devices {
 
 class FileBufferElement: public arrus::framework::BufferElement {
 public:
+
     FileBufferElement(size_t position, const arrus::framework::NdArray::Shape& shape) {
         this->size = shape.product(); // The number of int16 elements.
         this->data = new int16_t[size];
@@ -16,10 +17,13 @@ public:
             arrus::framework::NdArray::DataType::INT16,
             DeviceId(DeviceType::CPU, 0)
         };
+        this->dataView = this->ndarray.view();
         this->position = position;
     }
 
-    ~FileBufferElement() override = default;
+    ~FileBufferElement() {
+        delete data;
+    }
 
     bool write(const std::function<void()> &func) {
         std::unique_lock<std::mutex> lock{stateMutex};
@@ -62,7 +66,11 @@ public:
         readyForRead.notify_all();
     }
 
-    arrus::framework::NdArray &getData() override { return ndarray; }
+    void slice(size_t i, int begin, int end) {
+        this->dataView = ndarray.slice(i, begin, end);
+    }
+
+    arrus::framework::NdArray &getData() override { return dataView; }
     size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }
     State getState() const override { return state; }
@@ -79,6 +87,7 @@ private:
         arrus::framework::NdArray::DataType::INT16,
         DeviceId{DeviceType::CPU, 0}
     };
+    arrus::framework::NdArray dataView;
     size_t position;
     State state{arrus::framework::BufferElement::State::FREE};
     bool isClosed{false};

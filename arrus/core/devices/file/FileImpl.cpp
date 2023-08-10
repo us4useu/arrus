@@ -126,13 +126,28 @@ void FileImpl::producer() {
             auto &frame = this->dataset.at(frameNr);
             std::memcpy(element->getData().get<int16_t>(), frame.data(), frame.size()*sizeof(int16_t));
             using namespace std::chrono_literals;
-            std::this_thread::sleep_for(100ms);
+            std::this_thread::sleep_for(50ms);
         });
         if(!cont) {
             break;
         }
         elementNr = (elementNr+1) % buffer->getNumberOfElements();
         frameNr = (frameNr+1) % dataset.size();
+        // Update sequence parameters.
+        {
+            std::unique_lock<std::mutex> lock(parametersMutex);
+            if(pendingSliceBegin.has_value() || pendingSliceEnd.has_value()) {
+                int sliceBegin=0, sliceEnd=-1;
+
+                if(pendingSliceBegin.has_value()) {
+                    sliceBegin = pendingSliceBegin.value();
+                }
+                if(pendingSliceEnd.has_value()) {
+                    sliceEnd = pendingSliceEnd.value();
+                }
+                buffer->slice(1, sliceBegin, sliceEnd);
+            }
+        }
     }
     logger->log(LogSeverity::INFO, "File producer stopped.");
 }
@@ -164,10 +179,25 @@ Probe *FileImpl::getProbe(Ordinal ordinal) {
 }
 
 void FileImpl::setParameters(const Parameters &params) {
-    std::cout << "Got parameters!" << std::endl;
+    std::unique_lock<std::mutex> lock(parametersMutex);
+    // Validate
+    int begin = 0, end = -1;
     for(auto &item: params.items()) {
-        std::cout << item.first << std::endl;
-        std::cout << item.second << std::endl;
+        auto &key = item.first;
+        auto value = item.second;
+        if(key == "/sequence/begin") {
+            if(value < 0) {
+                throw ::arrus::IllegalArgumentException(::arrus::format("{} should be not less than 0", key));
+            }
+            pendingSliceBegin = value;
+        }
+        if(key == "/sequence/end") {
+            int currentNTx = (int)frameShape.get(1);
+            if(value >= currentNTx) {
+                throw ::arrus::IllegalArgumentException(::arrus::format("{} should be less than {}", key, currentNTx));
+            }
+            pendingSliceEnd = value;
+        }
     }
 }
 

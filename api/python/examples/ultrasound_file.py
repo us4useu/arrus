@@ -26,7 +26,7 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 
 
 def main():
-    with arrus.Session("/home/pjarosik/tmp/test.prototxt") as sess:
+    with arrus.Session("/home/pjarosik/src/us4useu/tmp/x-files/customers/nanoecho/ARRUS-221/test.prototxt") as sess:
         ultrasound = sess.get_device("/Ultrasound:0")
         # NOTE: file device does not allow to set voltage, etc.
 
@@ -55,6 +55,10 @@ def main():
                 placement="/GPU:0"
             )
         )
+        # sess.set_parameters({
+        #     "/Ultrasound:0/sequence/begin": 10,
+        #     "/Ultrasound:0/sequence/end": 30
+        # })
         buffer, metadata = sess.upload(scheme)
         display = Display2D(metadata=metadata, value_range=(0, 10))
         sess.start_scheme()

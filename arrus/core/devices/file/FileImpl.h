@@ -68,6 +68,10 @@ private:
     float currentFs;
     std::shared_ptr<FileBuffer> buffer;
     std::unique_ptr<FileProbe> probe;
+
+    std::mutex parametersMutex;
+    std::optional<int> pendingSliceBegin;
+    std::optional<int> pendingSliceEnd;
 };
 
 }// namespace arrus::devices
