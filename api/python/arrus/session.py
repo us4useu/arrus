@@ -9,6 +9,7 @@ import dataclasses
 import arrus.core
 import arrus.exceptions
 import arrus.devices.us4r
+import arrus.devices.file
 import arrus.medium
 import arrus.metadata
 import arrus.params
@@ -24,7 +25,7 @@ import arrus.framework
 from typing import Sequence, Dict
 from numbers import Number
 
-from arrus.devices import Ultrasound
+from arrus.devices.ultrasound import Ultrasound
 
 
 class AbstractSession(abc.ABC):
@@ -219,12 +220,10 @@ class Session(AbstractSession):
         specific_device_cast = {
             arrus.core.DeviceType_Us4R:
                 lambda handle: arrus.devices.us4r.Us4R(
-                    arrus.core.castToUs4r(handle),
-                    self),
+                    arrus.core.castToUs4r(handle)),
             arrus.core.DeviceType_File:
                 lambda handle: arrus.devices.file.File(
-                    arrus.core.castToFile(handle),
-                    self)
+                    arrus.core.castToFile(handle))
         }.get(device_type, None)
         if specific_device_cast is None:
             raise arrus.exceptions.DeviceNotFoundError(path)

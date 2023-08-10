@@ -64,6 +64,8 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     size_t nSamples = stopSample-startSample;
     auto &rxAperture = seq.getOps()[0].getRx().getAperture();
     size_t nRx = std::accumulate(std::begin(rxAperture), std::end(rxAperture), 0);
+    nRx += seq.getOps()[0].getRx().getPadding().first;
+    nRx += seq.getOps()[0].getRx().getPadding().second;
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
     this->frameShape = NdArray::Shape{nTx, nSamples, nRx, nValues};
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
