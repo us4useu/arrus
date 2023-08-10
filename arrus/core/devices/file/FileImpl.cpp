@@ -67,14 +67,14 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     nRx += seq.getOps()[0].getRx().getPadding().first;
     nRx += seq.getOps()[0].getRx().getPadding().second;
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
-    this->frameShape = NdArray::Shape{nTx, nSamples, nRx, nValues};
+    this->frameShape = NdArray::Shape{1, nTx, nRx, nSamples, nValues};
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
     if(this->frameShape.product() != dataset.at(0).size()) {
         throw ArrusException(
-            format("The provided sequence (output dimensions: nTx: {}, nSamples: {}, nRx: {}, nComponents: {})) "
+            format("The provided sequence (output dimensions: nTx: {}, nRx: {}, nSamples: {}, nComponents: {})) "
                    "does not correspond to the data from the file (number of int16_t values: {}). "
                    "Please make sure you are uploading the correct sequence.",
-                   nTx, nSamples, nRx, nValues, dataset.at(0).size()));
+                   nTx, nRx, nSamples, nValues, dataset.at(0).size()));
     }
 
     // Determine current sampling frequency
