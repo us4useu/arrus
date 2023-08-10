@@ -9,10 +9,12 @@ Release notes
 - core (C++): 
 
     - us4R: exposed SYNC mode
+    - Implemented File device (for simulated mode).
     
 - Python API:
 
     - us4R: exposed SYNC mode
+    - Created an example for file device (simulated mode).
 
 0.8.x
 -----

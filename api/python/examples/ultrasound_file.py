@@ -37,12 +37,12 @@ def main():
             pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
             rx_aperture_center_element=np.arange(8, 183),
             rx_aperture_size=64,
-            rx_sample_range=(0, 1024),
+            rx_sample_range=(0, 2048),
             pri=200e-6,
             tgc_start=14,
             tgc_slope=2e2,
-            downsampling_factor=2,
-            speed_of_sound=1450)
+            speed_of_sound=1450
+        )
 
         scheme = Scheme(
             tx_rx_sequence=sequence,
