@@ -5,6 +5,7 @@
 #include "arrus/core/api/common/exceptions.h"
 #include <cmath>
 #include <utility>
+#include <ctime>
 
 namespace arrus::devices {
 
@@ -129,12 +130,18 @@ void FileImpl::producer() {
             auto fileBufferElement = std::dynamic_pointer_cast<FileBufferElement>(element);
             std::memcpy(fileBufferElement->getAllData().getInt16(), frame.data(), frame.size()*sizeof(int16_t));
 
-            // Frame shape: NdArray::Shape{1, nTx, nRx, nSamples, nValues};
             // Write us4R specific metadata
-            size_t beginOffset = 28*this->frameShape[3]*this->frameShape[4];
-            size_t endOffset = 30*this->frameShape[3]*this->frameShape[4];
+            // Zero metadata row: (32 int16)
+            for(int i = 0; i < 32; ++i) {
+                size_t offset = i*this->frameShape[3]*this->frameShape[4];
+                *(element->getData().get<int16_t>()+offset) = 0;
+            }
+            size_t beginOffset = 8*this->frameShape[3]*this->frameShape[4];
+            size_t endOffset = 9*this->frameShape[3]*this->frameShape[4];
+            size_t timestampOffset = 4*this->frameShape[3]*this->frameShape[4];
             *(element->getData().get<int16_t>()+beginOffset) = (int16_t)this->txBegin;
             *(element->getData().get<int16_t>()+endOffset) = (int16_t)this->txEnd;
+            *((int16_t*)(element->getData().get<int16_t>()+timestampOffset)) = std::time(nullptr);
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(50ms);
         });
