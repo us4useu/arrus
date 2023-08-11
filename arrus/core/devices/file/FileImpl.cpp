@@ -70,7 +70,7 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
     this->frameShape = NdArray::Shape{1, nTx, nRx, nSamples, nValues};
     this->txBegin = 0;
-    this->txEnd = nTx;
+    this->txEnd = (int)nTx;
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
     if(this->frameShape.product() != dataset.at(0).size()) {
         throw ArrusException(
@@ -141,7 +141,7 @@ void FileImpl::producer() {
             size_t timestampOffset = 4*this->frameShape[3]*this->frameShape[4];
             *(element->getData().get<int16_t>()+beginOffset) = (int16_t)this->txBegin;
             *(element->getData().get<int16_t>()+endOffset) = (int16_t)this->txEnd;
-            *((int16_t*)(element->getData().get<int16_t>()+timestampOffset)) = std::time(nullptr);
+            *((int16_t*)(element->getData().get<int16_t>()+timestampOffset)) = (int16_t)std::time(nullptr);
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(50ms);
         });
