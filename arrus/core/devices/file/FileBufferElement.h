@@ -71,6 +71,7 @@ public:
     }
 
     arrus::framework::NdArray &getData() override { return dataView; }
+    arrus::framework::NdArray &getAllData() {return ndarray; }
     size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }
     State getState() const override { return state; }

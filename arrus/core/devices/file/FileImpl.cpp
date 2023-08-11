@@ -126,9 +126,15 @@ void FileImpl::producer() {
     while(this->state == State::STARTED) {
         bool cont = buffer->write(elementNr, [this, &frameNr] (const framework::BufferElement::SharedHandle &element) {
             auto &frame = this->dataset.at(frameNr);
-            std::memcpy(element->getData().get<int16_t>(), frame.data(), frame.size()*sizeof(int16_t));
-            *((int*)(element->getData().get<char>()+56)) = this->txBegin;
-            *((int*)(element->getData().get<char>()+60)) = this->txEnd;
+            auto fileBufferElement = std::dynamic_pointer_cast<FileBufferElement>(element);
+            std::memcpy(fileBufferElement->getAllData().getInt16(), frame.data(), frame.size()*sizeof(int16_t));
+
+            // Frame shape: NdArray::Shape{1, nTx, nRx, nSamples, nValues};
+            // Write us4R specific metadata
+            size_t beginOffset = 28*this->frameShape[3]*this->frameShape[4];
+            size_t endOffset = 30*this->frameShape[3]*this->frameShape[4];
+            *(element->getData().get<int16_t>()+beginOffset) = (int16_t)this->txBegin;
+            *(element->getData().get<int16_t>()+endOffset) = (int16_t)this->txEnd;
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(50ms);
         });
@@ -146,10 +152,12 @@ void FileImpl::producer() {
                 if(pendingSliceBegin.has_value()) {
                     sliceBegin = pendingSliceBegin.value();
                     this->txBegin = sliceBegin;
+                    pendingSliceBegin.reset();
                 }
                 if(pendingSliceEnd.has_value()) {
                     sliceEnd = pendingSliceEnd.value();
                     this->txEnd = sliceEnd;
+                    pendingSliceEnd.reset();
                 }
                 buffer->slice(1, sliceBegin, sliceEnd);
             }
@@ -186,23 +194,24 @@ Probe *FileImpl::getProbe(Ordinal ordinal) {
 
 void FileImpl::setParameters(const Parameters &params) {
     std::unique_lock<std::mutex> lock(parametersMutex);
-    // Validate
-    int begin = 0, end = -1;
     for(auto &item: params.items()) {
         auto &key = item.first;
         auto value = item.second;
-        if(key == "/sequence/begin") {
+        if(key == "/sequence:0/begin") {
             if(value < 0) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be not less than 0", key));
             }
             pendingSliceBegin = value;
         }
-        if(key == "/sequence/end") {
+        else if(key == "/sequence:0/end") {
             int currentNTx = (int)frameShape.get(1);
             if(value >= currentNTx) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be less than {}", key, currentNTx));
             }
             pendingSliceEnd = value;
+        }
+        else {
+            throw ::arrus::IllegalArgumentException("Unsupported setting: " + key);
         }
     }
 }

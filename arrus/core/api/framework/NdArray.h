@@ -89,7 +89,7 @@ public:
 
     NdArray slice(size_t i, int begin, int end) {
         size_t multiplier = 1;
-        for(size_t j = shape.size()-1; j > i; ++j) {
+        for(size_t j = shape.size()-1; j > i; --j) {
             multiplier *= shape[j];
         }
         if(end == -1) {
