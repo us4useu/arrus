@@ -32,8 +32,25 @@ if nRep-proc.wcFiltInitSize < 2
 end
 
 %% Wall Clutter Filtration
-wcFiltInitState = proc.wcFiltInitCoeff.*reshape(double(iqImgSet(:,:,1,:)), [1,nZPix,nXPix,nProj]);
-iqImgSetFlt = single(filter(proc.wcFiltB, proc.wcFiltA, double(iqImgSet), wcFiltInitState, 3));
+iqImgSetFlt = zeros(nZPix,nXPix,nRep,nProj,'like',iqImgSet);
+if isempty(proc.wcFiltA)
+    for iProj=1:nProj
+        iqImgSetFltAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep);
+        iqImgSetFlt(:,:,:,iProj) = reshape(conv2(iqImgSetFltAux,proc.wcFiltB(:).','same'),nZPix,nXPix,nRep);
+    end
+    iqImgSetFlt = iqImgSetFlt(:, :, (1 + floor(proc.wcFiltInitSize/2)) : (nRep - ceil(proc.wcFiltInitSize/2)), :);
+else
+    for iProj=1:nProj
+        if proc.gpuEnable
+            iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, proc.wcFiltInitCoeff);
+        else
+            wcFiltInitState = proc.wcFiltInitCoeff.*reshape(iqImgSet(:,:,1,iProj),1,nZPix*nXPix);
+            iqImgSetFltAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep).';
+            iqImgSetFlt(:,:,:,iProj) = reshape(filter(proc.wcFiltB, proc.wcFiltA, iqImgSetFltAux, wcFiltInitState).',nZPix,nXPix,nRep);
+        end
+    end
+    iqImgSetFlt = iqImgSetFlt(:, :, (1 + proc.wcFiltInitSize) : end, :);
+end
 
 %% Mean frequency estimator (in fact - it's a mean phase shift estimator)
 color = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
@@ -42,7 +59,7 @@ turbu = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
 for iProj=1:nProj
     [color(:,:,1,iProj), ...
      power(:,:,1,iProj), ...
-     turbu(:,:,1,iProj),] = dopplerColor(iqImgSetFlt(:,:,(proc.wcFiltInitSize+1):end,iProj));
+     turbu(:,:,1,iProj),] = dopplerColor(iqImgSetFlt(:,:,:,iProj));
 end
 
 %% Vector Doppler (optional)
