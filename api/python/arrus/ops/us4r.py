@@ -69,7 +69,7 @@ class Tx(Operation):
         mask, where 1 at location i means that the channel should be turned \
         on, 0 means that the channel should be turned off, or an instance of \
         Aperture class.
-    :param pulse: an excitation to perform
+    :param excitation: an excitation to perform
     :param delays: an array of delays to set to active elements [s]. Should have the \
         shape (n_a,), where n_a is a number of active elements determined by \
         tx aperture. The stored value is always of type numpy.ndarray.
@@ -130,8 +130,8 @@ class Rx(Operation):
         Aperture class.
     :param sample_range: a range of samples to acquire [start, end), starts from 0
     :param downsampling_factor: a sampling frequency divider. For example, if \
-        nominal sampling frequency (fs) is equal to 65e6 Hz, ``fs_divider=1``,\
-        means to use the nominal fs, ``fs_divider=2`` means to use 32.5e6 Hz, \
+        nominal sampling frequency (fs) is equal to 65e6 Hz, ``downsampling_factor=1``,\
+        means to use the nominal fs, ``downsampling_factor=2`` means to use 32.5e6 Hz, \
         etc.
     :param padding: a pair of values (left, right); the left/right value means
         how many zero-channels should be added from the left/right side of the
