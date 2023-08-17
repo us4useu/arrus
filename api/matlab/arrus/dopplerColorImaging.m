@@ -41,10 +41,10 @@ if isempty(proc.wcFiltA)
     iqImgSetFlt = iqImgSetFlt(:, :, (1 + floor(proc.wcFiltInitSize/2)) : (nRep - ceil(proc.wcFiltInitSize/2)), :);
 else
     for iProj=1:nProj
-        if proc.gpuEnable
+        if proc.gpuEnable && ((max(numel(proc.wcFiltB),numel(proc.wcFiltA))-1) <= 8)
             iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, proc.wcFiltInitCoeff);
         else
-            wcFiltInitState = proc.wcFiltInitCoeff.*reshape(iqImgSet(:,:,1,iProj),1,nZPix*nXPix);
+            wcFiltInitState = proc.wcFiltInitCoeff(:).*reshape(iqImgSet(:,:,1,iProj),1,nZPix*nXPix);
             iqImgSetFltAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep).';
             iqImgSetFlt(:,:,:,iProj) = reshape(filter(proc.wcFiltB, proc.wcFiltA, iqImgSetFltAux, wcFiltInitState).',nZPix,nXPix,nRep);
         end
