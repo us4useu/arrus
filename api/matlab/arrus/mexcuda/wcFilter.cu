@@ -1,11 +1,12 @@
+#define MAX_ORD 8
 #include "mex.h"
 #include "gpu/mxGPUArray.h"
 #include <string>
 #include <iostream>
 
-__constant__ float filtNumConst[9];
-__constant__ float filtDenConst[9];
-__constant__ float filtRectInitConst[8];
+__constant__ float filtNumConst[MAX_ORD + 1];
+__constant__ float filtDenConst[MAX_ORD + 1];
+__constant__ float filtRectInitConst[MAX_ORD];
 
 __global__ void wcFilter(float2 * output, 
                          float2 * filtState, 
@@ -176,16 +177,14 @@ void mexFunction(int nlhs, mxArray * plhs[],
     nZPix = mxGPUGetDimensions(input)[0];
     nXPix = mxGPUGetDimensions(input)[1];
     nRep = mxGPUGetDimensions(input)[2];
-    filtOrd = mxGPUGetNumberOfElements(filtNum) - 1;
+    filtOrd = max(mxGPUGetNumberOfElements(filtNum), 
+                  mxGPUGetNumberOfElements(filtDen)) - 1;
 
     /* Validate filter order */
-    if (mxGPUGetNumberOfElements(filtDen) != filtOrd + 1) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "filtNum and filtDen must have the same length");
-    }
     if (mxGPUGetNumberOfElements(filtRectInit) != filtOrd) {
         mexErrMsgIdAndTxt(invalidInputMsgId, "filtRectInit length must equal the filter order");
     }
-    if (filtOrd<1 || filtOrd>8) {
+    if (filtOrd<1 || filtOrd>MAX_ORD) {
         mexErrMsgIdAndTxt(invalidInputMsgId, "filter order must be in 1-8 range");
     }
     
@@ -209,9 +208,15 @@ void mexFunction(int nlhs, mxArray * plhs[],
     dev_filtRectInit = (float const *)(mxGPUGetDataReadOnly(filtRectInit));
     
     /* set constant memory */
-    if(filtOrd > 8) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "Filter order too high, kernel supports up to 8th filter order");
-    }
+    mwSize nDimAux = 1;
+    mwSize dimAux[1] = {MAX_ORD + 1};
+    mxGPUArray const * zeros = mxGPUCreateGPUArray(nDimAux, dimAux, mxSINGLE_CLASS, mxREAL, MX_GPU_INITIALIZE_VALUES);
+    float const * dev_zeros  = (float const *)(mxGPUGetDataReadOnly(zeros));
+    
+    cudaMemcpyToSymbol(filtNumConst,      dev_zeros,        (MAX_ORD+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    cudaMemcpyToSymbol(filtDenConst,      dev_zeros,        (MAX_ORD+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    cudaMemcpyToSymbol(filtRectInitConst, dev_zeros,         MAX_ORD   *sizeof(float), 0, cudaMemcpyDeviceToDevice);
+
     cudaMemcpyToSymbol(filtNumConst,      dev_filtNum,      (filtOrd+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     cudaMemcpyToSymbol(filtDenConst,      dev_filtDen,      (filtOrd+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     cudaMemcpyToSymbol(filtRectInitConst, dev_filtRectInit,  filtOrd   *sizeof(float), 0, cudaMemcpyDeviceToDevice);
