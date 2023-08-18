@@ -1382,7 +1382,7 @@ class Transpose(Operation):
         axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
         output_shape = tuple(input_shape[ax] for ax in axes)
         if input_spacing is not None:
-            output_spacing = tuple(input_spacing[ax] for ax in axes)
+            output_spacing = tuple(input_spacing.coordinates[ax] for ax in axes)
             new_signal_description = dataclasses.replace(
                 const_metadata.data_description,
                 spacing=arrus.metadata.Grid(
