@@ -17,6 +17,7 @@ Release notes
     - Added the possibility to specify rx depth range in the SimpleTxRxSequences.
     - Exposed OX min/max position of the probe elements.
     - Created cupy -> DL pack operator.
+    - Added spacing to echo data description #ARRUS-251.
 
 0.8.x
 -----
