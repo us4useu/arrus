@@ -1378,9 +1378,23 @@ class Transpose(Operation):
 
     def prepare(self, const_metadata):
         input_shape = const_metadata.input_shape
+        input_spacing = const_metadata.data_description.spacing
         axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
         output_shape = tuple(input_shape[ax] for ax in axes)
-        return const_metadata.copy(input_shape=output_shape)
+        if input_spacing is not None:
+            output_spacing = tuple(input_spacing[ax] for ax in axes)
+            new_signal_description = dataclasses.replace(
+                const_metadata.data_description,
+                spacing=arrus.metadata.Grid(
+                    coordinates=output_spacing
+                )
+            )
+            return const_metadata.copy(
+                input_shape=output_shape,
+                data_desc=new_signal_description
+            )
+        else:
+            return const_metadata.copy(input_shape=output_shape)
 
     def process(self, data):
         return self.xp.transpose(data, self.axes)
@@ -1419,6 +1433,16 @@ class ScanConversion(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
+
+        new_signal_description = dataclasses.replace(
+            const_metadata.data_description,
+            spacing=arrus.metadata.Grid(
+                coordinates=(self.z_grid, self.x_grid)
+            )
+        )
+        const_metadata = const_metadata.copy(
+            data_desc=new_signal_description
+        )
         if probe.is_convex_array():
             self.process = self._process_convex
             return self._prepare_convex(const_metadata)
@@ -2137,7 +2161,18 @@ class ReconstructLri(Operation):
         burst_factor = seq.pulse.n_periods / (2 * self.fn)
         self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
-        return const_metadata.copy(input_shape=output_shape)
+
+        # Output metadata
+        new_signal_description = dataclasses.replace(
+            const_metadata.data_description,
+            spacing=arrus.metadata.Grid(
+                coordinates=(self.x_grid, self.z_grid)
+            )
+        )
+        return const_metadata.copy(
+            input_shape=output_shape,
+            data_desc=new_signal_description
+        )
 
     def process(self, data):
         data = self.num_pkg.ascontiguousarray(data)
