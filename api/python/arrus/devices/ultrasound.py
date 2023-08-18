@@ -8,6 +8,11 @@ DEVICE_TYPE = DeviceType("Ultrasound")
 
 
 class Ultrasound(ABC):
+    """
+    An interface to the ultrasound device.
+    Please note that this class is pure abstract class and you
+    should use the concrete implementation of it (File, Us4R, etc.).
+    """
 
     @abstractmethod
     def set_kernel_context(self, context):
