@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import typing
 import numpy as np
 from arrus.ops.operation import Operation
@@ -184,7 +184,7 @@ class TxRxSequence:
         determined by the total pri only. [s]
     """
     ops: typing.List[TxRx]
-    tgc_curve: np.ndarray
+    tgc_curve: typing.Union[np.ndarray, Iterable] = field(default_factory=lambda: [])
     sri: float = None
     n_repeats: int = 1
 
