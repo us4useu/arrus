@@ -87,14 +87,14 @@ public:
         return probe.value().get();
     }
 
-    std::pair<std::shared_ptr<arrus::framework::Buffer>,std::shared_ptr<arrus::devices::FrameChannelMapping>>
+    std::pair<std::shared_ptr<arrus::framework::Buffer>, std::shared_ptr<arrus::session::Metadata>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override;
 
     void start() override;
 
     void stop() override;
 
-    void trigger();
+    void trigger() override;
 
     void setVoltage(Voltage voltage) override;
 

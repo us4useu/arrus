@@ -9,6 +9,7 @@ Release notes
 - core (C++): 
 
     - us4R: exposed SYNC mode
+    - Implemented File device (for simulated mode) #221, #ARRUS-248.
     
 - Python API:
 
@@ -17,7 +18,9 @@ Release notes
     - Added the possibility to specify rx depth range in the SimpleTxRxSequences.
     - Exposed OX min/max position of the probe elements.
     - Created cupy -> DL pack operator.
-    - Added spacing to echo data description #ARRUS-251.
+    - Created an example for file device (simulated mode) #221, #ARRUS-248.
+    - Added spacing to echo data description #295 #ARRUS-251.
+
 
 0.8.x
 -----

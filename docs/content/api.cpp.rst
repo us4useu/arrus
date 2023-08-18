@@ -102,7 +102,7 @@ An instance of the following class is returned by the ``sesion.upload`` function
 
 Upload result can include some additional information (metadata) about the acquired data:
 
-.. doxygenclass:: arrus::session::UploadConstMetadata
+.. doxygenclass:: arrus::session::Metadata
     :project: arrus
     :members:
 

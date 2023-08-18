@@ -209,6 +209,17 @@ TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
     EXPECT_EQ(rxSettings1.getActiveTermination(), 500);
 }
 
+TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) / boost::filesystem::path("file.prototxt");
+    SessionSettings settings = arrus::io::readSessionSettings(filepath.string());
+    auto const &fileSettings = settings.getFileSettings(0);
+    EXPECT_EQ(fileSettings.getFilepath(), "/home/test/test.bin");
+    EXPECT_EQ(fileSettings.getNFrames(), 10);
+    EXPECT_EQ(fileSettings.getProbeModel().getModelId().getManufacturer(), "esaote");
+    EXPECT_EQ(fileSettings.getProbeModel().getModelId().getName(), "sl1543");
+    EXPECT_EQ(fileSettings.getProbeModel().getNumberOfElements().get(0), 192);
+}
+
 TEST(ReadingProtoTxtFile, throwsExceptionOnNoChannelsMask) {
     auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
                     boost::filesystem::path("custom_us4r_no_channels_mask.prototxt");

@@ -115,7 +115,7 @@ Data buffers consists of multiple buffer elements.
 Metadata
 --------
 
-.. autoclass:: arrus.metadata.ConstMetadata
+.. autoclass:: arrus.metadata.Metadata
     :members:
     :show-inheritance:
 
