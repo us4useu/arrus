@@ -18,7 +18,7 @@ class FrameAcquisitionContext:
     :param medium: description of the Medium assumed during communication session with the device
     :param custom_data: a dictionary with custom data
     """
-    device: arrus.devices.device.UltrasoundDeviceDTO
+    device: arrus.devices.ultrasound.UltrasoundDTO
     sequence: arrus.ops.Operation
     raw_sequence: arrus.ops.us4r.TxRxSequence
     medium: arrus.medium.MediumDTO

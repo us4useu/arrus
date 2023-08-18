@@ -9,6 +9,7 @@ Release notes
 - core (C++): 
 
     - us4R: exposed SYNC mode
+    - Implemented File device (for simulated mode) #221.
     
 - Python API:
 
@@ -17,6 +18,7 @@ Release notes
     - Added the possibility to specify rx depth range in the SimpleTxRxSequences.
     - Exposed OX min/max position of the probe elements.
     - Created cupy -> DL pack operator.
+    - Created an example for file device (simulated mode) #221.
 
 0.8.x
 -----
