@@ -2109,8 +2109,8 @@ class ReconstructLri(Operation):
             tx_op = seq
             rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
                 op=seq, fs=self.fs, speed_of_sound=seq.speed_of_sound)
-            angles = np.asarray(seq.angles)
-            focus = np.asarray(seq.tx_focus)
+            angles = np.atleast_1d(np.asarray(seq.angles))
+            focus = np.atleast_1d(np.asarray(seq.tx_focus))
             #
             # TX aperture description
             # Convert the sequence to the positions of the aperture centers
