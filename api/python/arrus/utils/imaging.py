@@ -1956,7 +1956,9 @@ class SelectFrames(Operation):
         :param frames: frames to select
         """
         super().__init__()
-        self.frames = frames
+        if isinstance(frames, np.ndarray):
+            frames = frames.tolist()
+        self.frames = tuple(frames)
 
     def set_pkgs(self, **kwargs):
         pass
@@ -1970,16 +1972,22 @@ class SelectFrames(Operation):
         if len(input_shape) == 3:
             input_n_frames, d2, d3 = input_shape
             output_shape = n_frames, d2, d3
+            self.selector = [slice(None)]*3
+            self.selector[0] = self.frames
         elif len(input_shape) == 4:
             n_seq, input_n_frames, d2, d3 = input_shape
             output_shape = n_seq, n_frames, d2, d3
+            self.selector = [slice(None)]*4
+            self.selector[1] = self.frames
         else:
             raise ValueError("The input should be 3-D or 4-D "
                              "(frame number should be the first or second axis)")
 
+        self.selector = tuple(self.selector)
+
         # Adapt sequence and raw sequence to the changes in the number of
         # frames.
-        new_raw_ops = self._limit_params(
+        new_raw_ops = self._limit_list(
             const_metadata.context.raw_sequence.ops,
             self.frames
         )
@@ -2015,7 +2023,7 @@ class SelectFrames(Operation):
             return const_metadata.copy(input_shape=output_shape,
                                        context=new_context)
         elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
-            new_ops = self._limit_params(
+            new_ops = self._limit_list(
                 const_metadata.context.sequence.ops,
                 self.frames
             )
@@ -2033,13 +2041,17 @@ class SelectFrames(Operation):
             return const_metadata.copy(input_shape=output_shape)
 
     def process(self, data):
-        return data[self.frames]
+        return data[self.selector]
 
     def _limit_params(self, value, frames):
         if value is not None and hasattr(value, "__len__") and len(value) > 1:
             return np.array(value)[frames]
         else:
             return value
+
+    def _limit_list(self, l, frames):
+        if l is not None:
+            return [e for i, e in enumerate(l) if i in frames]
 
 
 # Alias
