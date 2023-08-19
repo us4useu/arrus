@@ -739,15 +739,15 @@ class Lambda(Operation):
         return self.func(data)
 
 
-def _get_unique_pulse(sequence):
+def _get_unique_center_frequency(sequence):
     if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
-        return sequence.pulse
+        return sequence.pulse.center_frequency
     elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
         pulses = {tx_rx.tx.excitation for tx_rx in sequence.ops}
         if len(pulses) > 1:
             raise ValueError("Each TX/RX should have exactly the same "
                              "definition of transmit pulse.")
-        return next(iter(pulses))
+        return next(iter(pulses)).center_frequency
 
 
 class BandpassFilter(Operation):
@@ -794,7 +794,7 @@ class BandpassFilter(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
-        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        center_frequency = _get_unique_center_frequency(const_metadata.context.sequence)
         sampling_frequency = const_metadata.data_description.sampling_frequency
         band = [l * center_frequency, r * center_frequency]
         if self.filter_type == "butter":
@@ -931,7 +931,7 @@ class QuadratureDemodulation(Operation):
     def prepare(self, const_metadata):
         xp = self.xp
         fs = const_metadata.data_description.sampling_frequency
-        fc = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        fc = _get_unique_center_frequency(const_metadata.context.sequence)
         input_shape = const_metadata.input_shape
         n_samples = input_shape[-1]
         if n_samples == 0:
@@ -965,7 +965,7 @@ class DigitalDownConversion(Operation):
 
     def prepare(self, const_metadata):
         self.demodulator = QuadratureDemodulation()
-        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        center_frequency = _get_unique_center_frequency(const_metadata.context.sequence)
         sampling_frequency = const_metadata.data_description.sampling_frequency
         cutoff_freq = center_frequency * self.fir_cutoff_relative
         fir_coefficients = scipy.signal.firwin(
