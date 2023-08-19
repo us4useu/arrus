@@ -1955,6 +1955,7 @@ class SelectFrames(Operation):
 
         :param frames: frames to select
         """
+        super().__init__()
         self.frames = frames
 
     def set_pkgs(self, **kwargs):
@@ -1966,23 +1967,38 @@ class SelectFrames(Operation):
         seq = context.sequence
         n_frames = len(self.frames)
 
-        if len(input_shape) != 3:
-            raise ValueError("The input should be 3-D "
-                             "(frame number should be the first axis)")
+        if len(input_shape) == 3:
+            input_n_frames, d2, d3 = input_shape
+            output_shape = n_frames, d2, d3
+        elif len(input_shape) == 4:
+            n_seq, input_n_frames, d2, d3 = input_shape
+            output_shape = n_seq, n_frames, d2, d3
+        else:
+            raise ValueError("The input should be 3-D or 4-D "
+                             "(frame number should be the first or second axis)")
 
-        input_n_frames, d2, d3 = input_shape
-        output_shape = (n_frames, d2, d3)
-        # TODO make this op less prone to changes in op implementation
+        # Adapt sequence and raw sequence to the changes in the number of
+        # frames.
+        new_raw_ops = self._limit_params(
+            const_metadata.context.raw_sequence.ops,
+            self.frames
+        )
+        new_raw_seq = dataclasses.replace(
+            const_metadata.context.raw_sequence,
+            ops=new_raw_ops
+        )
         if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
             # select appropriate angles
             angles = self._limit_params(seq.angles, self.frames)
             tx_focus = self._limit_params(seq.tx_focus, self.frames)
-            tx_aperture_center_element = self._limit_params(seq.tx_aperture_center_element,
-                                                            self.frames)
-            tx_aperture_center = self._limit_params(seq.tx_aperture_center, self.frames)
-            rx_aperture_center_element = self._limit_params(seq.rx_aperture_center_element,
-                                                            self.frames)
-            rx_aperture_center = self._limit_params(seq.rx_aperture_center, self.frames)
+            tx_aperture_center_element = self._limit_params(
+                seq.tx_aperture_center_element, self.frames)
+            tx_aperture_center = self._limit_params(
+                seq.tx_aperture_center, self.frames)
+            rx_aperture_center_element = self._limit_params(
+                seq.rx_aperture_center_element, self.frames)
+            rx_aperture_center = self._limit_params(
+                seq.rx_aperture_center, self.frames)
 
             new_seq = dataclasses.replace(
                 seq,
@@ -1992,11 +2008,25 @@ class SelectFrames(Operation):
                 tx_aperture_center=tx_aperture_center,
                 rx_aperture_center_element=rx_aperture_center_element,
                 rx_aperture_center=rx_aperture_center)
-            new_context = const_metadata.context
-            new_context = arrus.metadata.FrameAcquisitionContext(
-                device=new_context.device, sequence=new_seq,
-                raw_sequence=new_context.raw_sequence,
-                medium=new_context.medium, custom_data=new_context.custom_data)
+            new_context = dataclasses.replace(
+                const_metadata.context,
+                sequence=new_seq,
+                raw_sequence=new_raw_seq)
+            return const_metadata.copy(input_shape=output_shape,
+                                       context=new_context)
+        elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
+            new_ops = self._limit_params(
+                const_metadata.context.sequence.ops,
+                self.frames
+            )
+            new_seq = dataclasses.replace(
+                const_metadata.context.sequence,
+                ops=new_ops
+            )
+            new_context = dataclasses.replace(
+                const_metadata.context,
+                sequence=new_seq,
+                raw_sequence=new_raw_seq)
             return const_metadata.copy(input_shape=output_shape,
                                        context=new_context)
         else:
