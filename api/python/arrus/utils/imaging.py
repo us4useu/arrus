@@ -2126,7 +2126,7 @@ class ReconstructLri(Operation):
             )
         elif isinstance(seq, TxRxSequence):
             self._assert_unique(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
-            self._assert_unique(seq, lambda op: op.tx.excitation.n_cycles, "n_cycles")
+            self._assert_unique(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
             self._assert_unique(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
             self._assert_unique(seq, lambda op: op.rx.sample_range, "sample_range")
             self._assert_unique(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")

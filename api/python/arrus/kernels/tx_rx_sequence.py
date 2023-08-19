@@ -232,17 +232,17 @@ def __get_center_element(aperture, probe_model):
 
 def get_apertures_center_elements(apertures: typing.Iterable[Aperture],
                                   probe_model):
-    return [
+    return np.asarray([
         __get_aperture_center_element(ap, probe_model)
         for ap in apertures
-    ]
+    ])
 
 
 def get_apertures_sizes(apertures, probe_model):
-    return [
+    return np.asarray([
         ap.size if ap.size is not None else probe_model.n_elements
         for ap in apertures
-    ]
+    ])
 
 
 def __get_aperture_center_element(aperture: Aperture, probe_model):
