@@ -3,6 +3,7 @@ In some time this module probably will not be needed anymore,
 as all of the below functionality will be moved to C++ API.
 """
 import dataclasses
+import typing
 
 import numpy as np
 from arrus.ops.us4r import (
@@ -229,6 +230,21 @@ def __get_center_element(aperture, probe_model):
     return tx_ap_cent_elem
 
 
+def get_apertures_center_elements(apertures: typing.Iterable[Aperture],
+                                  probe_model):
+    return [
+        __get_aperture_center_element(ap, probe_model)
+        for ap in apertures
+    ]
+
+
+def get_apertures_sizes(apertures, probe_model):
+    return [
+        ap.size if ap.size is not None else probe_model.n_elements
+        for ap in apertures
+    ]
+
+
 def __get_aperture_center_element(aperture: Aperture, probe_model):
     if aperture.center_element is not None:
         return aperture.center_element
@@ -319,3 +335,16 @@ def get_init_delay(pulse, tx_delay_center):
     burst_factor = n_periods / (2 * fc)
     delay = burst_factor + tx_delay_center
     return delay
+
+
+def get_center_delay(sequence: TxRxSequence, probe_model):
+    """
+    NOTE: the input sequence TX must be defined by focus, angle speed of sound
+    This function does not work with the tx rx sequence with raw delays.
+    """
+    sequence_with_masks: TxRxSequence = set_aperture_masks(
+        sequence=sequence,
+        probe=probe_model
+    )
+    _, center_delay = get_tx_delays(probe_model, sequence, sequence_with_masks)
+    return center_delay

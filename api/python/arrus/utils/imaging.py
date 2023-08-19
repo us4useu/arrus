@@ -28,7 +28,8 @@ from numbers import Number
 from typing import Sequence, Dict, Callable, Union, Tuple
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
-
+from arrus.ops.us4r import TxRxSequence
+from arrus.ops.imaging import SimpleTxRxSequence
 
 def is_package_available(package_name):
     return importlib.util.find_spec(package_name) is not None
@@ -2046,6 +2047,7 @@ class ReconstructLri(Operation):
     """
 
     def __init__(self, x_grid, z_grid, rx_tang_limits=None):
+        super().__init__()
         self.x_grid = x_grid
         self.z_grid = z_grid
         import cupy as cp
@@ -2058,7 +2060,6 @@ class ReconstructLri(Operation):
 
     def prepare(self, const_metadata):
         import cupy as cp
-
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
         _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri.cu")).read_text()
         self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
@@ -2069,10 +2070,77 @@ class ReconstructLri(Operation):
         # INPUT PARAMETERS.
         # Input data shape.
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
-
         seq = const_metadata.context.sequence
+        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         probe_model = const_metadata.context.device.probe.model
-        acq_fs = (const_metadata.context.device.sampling_frequency / seq.downsampling_factor)
+
+        if isinstance(seq, SimpleTxRxSequence):
+            rx_op = seq
+            tx_op = seq
+            rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+                op=seq, fs=self.fs, speed_of_sound=seq.speed_of_sound)
+            angles = np.asarray(seq.angles)
+            focus = np.asarray(seq.tx_focus)
+            #
+            # TX aperture description
+            # Convert the sequence to the positions of the aperture centers
+            tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
+                probe_model,
+                seq)
+            tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
+            rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
+
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=seq.speed_of_sound, probe_model=probe_model,
+                fs=const_metadata.data_description.sampling_frequency
+            )
+        elif isinstance(seq, TxRxSequence):
+            self._assert_unique(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            self._assert_unique(seq, lambda op: op.tx.excitation.n_cycles, "n_cycles")
+            self._assert_unique(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            self._assert_unique(seq, lambda op: op.rx.sample_range, "sample_range")
+            self._assert_unique(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            # Reference TX/RX ops
+            rx_op = seq.ops[0].rx
+            tx_op = seq.ops[0].tx
+            rx_sample_range = rx_op.sample_range
+            angles = np.asarray([op.tx.angle for op in seq.ops])
+            focus = np.asarray([op.tx.focus for op in seq.ops])
+            if tx_op.angle is None and tx_op.focus is None:
+                raise ValueError("It is required to provide sequence with "
+                                 "transmit angles in order to run "
+                                 "the ReconstructLri operator.")
+            tx_apertures = [op.tx.aperture for op in seq.ops]
+            rx_apertures = [op.rx.aperture for op in seq.ops]
+            tx_centers = arrus.kernels.tx_rx_sequence.get_apertures_center_elements(
+                apertures=tx_apertures, probe_model=probe_model
+            )
+            tx_sizes = arrus.kernels.tx_rx_sequence.get_apertures_sizes(
+                apertures=tx_apertures, probe_model=probe_model
+            )
+            rx_centers = arrus.kernels.tx_rx_sequence.get_apertures_center_elements(
+                apertures=rx_apertures, probe_model=probe_model
+            )
+            rx_sizes = arrus.kernels.tx_rx_sequence.get_apertures_sizes(
+                apertures=rx_apertures, probe_model=probe_model
+            )
+            tx_center_delay = arrus.kernels.tx_rx_sequence.get_center_delay(
+                sequence=seq, probe_model=probe_model
+            )
+        else:
+            raise ValueError(f"Unsupported type of sequence: {seq}")
+
+        if len(focus) == 1:
+            focus = np.repeat(focus, self.n_tx)
+        if len(angles) == 1:
+            angles = np.repeat(angles, self.n_tx)
+
+        # tx center value is calculated with the assumption that the delays
+        # are "normalized to 0 values (i.e. min(all_delays) == 0.
+        # We need to take into account the actual delays here:
+        # the min(delays) may be != 0, e.g. when we reconstructing only some
+        # subsequence of the original sequence.
+        tx_center_delay -= self._get_min_delay(const_metadata.context.raw_sequence)
 
         self.x_size = len(self.x_grid)
         self.z_size = len(self.z_grid)
@@ -2089,20 +2157,15 @@ class ReconstructLri(Operation):
         self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
 
         # System and transmit properties.
-        self.sos = self.num_pkg.float32(seq.speed_of_sound)
-        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
-        self.fn = self.num_pkg.float32(seq.pulse.center_frequency)
+        self.sos = self.num_pkg.float32(tx_op.speed_of_sound)
+        self.fn = self.num_pkg.float32(tx_op.excitation.center_frequency)
         self.pitch = self.num_pkg.float32(probe_model.pitch)
-
-        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
-            op=seq, fs=self.fs, speed_of_sound=self.sos)
         start_sample = rx_sample_range[0]
 
         # Probe description
         element_pos_x = probe_model.element_pos_x
         element_pos_z = probe_model.element_pos_z
         element_angle_tang = np.tan(probe_model.element_angle)
-
         self.n_elements = probe_model.n_elements
 
         device_props = cp.cuda.runtime.getDeviceProperties(0)
@@ -2119,22 +2182,9 @@ class ReconstructLri(Operation):
         self._tang_elem_const = _get_const_memory_array(
             self._kernel_module, name="tangElemConst", input_array=tang_elem)
 
-        # TX aperture description
-        # Convert the sequence to the positions of the aperture centers
-        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
-            probe_model,
-            seq)
-        tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
-        rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
-
-        tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model,
-            fs=const_metadata.data_description.sampling_frequency
-        )
-
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_centers, probe_model)
-        tx_center_angles = tx_center_angles + seq.angles
+        tx_center_angles = tx_center_angles + angles
         self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
         self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
         self.tx_ap_cent_z = self.num_pkg.asarray(tx_center_z, dtype=self.num_pkg.float32)
@@ -2157,11 +2207,11 @@ class ReconstructLri(Operation):
 
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
-        self.tx_foc = self.num_pkg.asarray([seq.tx_focus] * self.n_tx, dtype=self.num_pkg.float32)
-        burst_factor = seq.pulse.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
-        self.initial_delay = self.num_pkg.float32(self.initial_delay)
 
+        self.tx_foc = self.num_pkg.asarray(focus, dtype=self.num_pkg.float32)
+        burst_factor = tx_op.excitation.n_periods/(2 * self.fn)
+        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
+        self.initial_delay = self.num_pkg.float32(self.initial_delay)
         # Output metadata
         new_signal_description = dataclasses.replace(
             const_metadata.data_description,
@@ -2192,6 +2242,18 @@ class ReconstructLri(Operation):
             self.initial_delay)
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
+
+    def _assert_unique(self, seq: TxRxSequence, getter: Callable, name: str):
+        s = {getter(op) for op in seq.ops}
+        if len(s) > 1:
+            raise ValueError("The following property should be unique "
+                             f"in the sequence: {name}, found values: "
+                             f"{s}")
+
+    def _get_min_delay(self, raw_sequence):
+        all_delays = [op.tx.delays for op in raw_sequence.ops]
+        all_delays = np.stack(all_delays)
+        return np.min(all_delays)
 
 
 class Sum(Operation):
