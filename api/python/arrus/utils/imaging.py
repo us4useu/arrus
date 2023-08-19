@@ -743,11 +743,11 @@ def _get_unique_center_frequency(sequence):
     if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
         return sequence.pulse.center_frequency
     elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
-        pulses = {tx_rx.tx.excitation for tx_rx in sequence.ops}
-        if len(pulses) > 1:
+        cfs = {tx_rx.tx.excitation.center_frequency for tx_rx in sequence.ops}
+        if len(cfs) > 1:
             raise ValueError("Each TX/RX should have exactly the same "
                              "definition of transmit pulse.")
-        return next(iter(pulses)).center_frequency
+        return next(iter(cfs))
 
 
 class BandpassFilter(Operation):
