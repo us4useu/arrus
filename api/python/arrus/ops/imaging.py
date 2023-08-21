@@ -92,6 +92,10 @@ class SimpleTxRxSequence:
     init_delay: str = "tx_start"
     rx_depth_range: tuple = None
 
+    @property
+    def excitation(self):
+        return self.pulse
+
     def __post_init__(self):
         # Validation
         self.__assert_at_most_one(
