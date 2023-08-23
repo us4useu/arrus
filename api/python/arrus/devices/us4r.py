@@ -282,6 +282,10 @@ class Us4R(Device, Ultrasound):
         """
         return self._handle.getAfe(addr)
 
+    def hvps_set_voltage(self, voltage):
+        self._handle.hvpsSetVoltage(voltage)
+
+
     @property
     def channels_mask(self):
         """

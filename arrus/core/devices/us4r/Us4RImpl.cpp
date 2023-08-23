@@ -530,6 +530,12 @@ void Us4RImpl::disableHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
 }
 
+void Us4RImpl::hvpsSetVoltage(float voltage) {
+	for (auto &us4oem : us4oems) {
+		us4oem->hvpsSetVoltage(voltage);
+	}
+}
+
 uint16_t Us4RImpl::getAfe(uint8_t reg) {
     return us4oems[0]->getAfe(reg);
 }
