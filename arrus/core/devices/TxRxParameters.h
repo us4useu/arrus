@@ -27,7 +27,8 @@ public:
             op.rxSampleRange,
             op.rxDecimationFactor,
             op.pri,
-            op.rxPadding
+            op.rxPadding,
+            op.rxDelay
         );
     }
 
@@ -52,12 +53,13 @@ public:
                    std::vector<bool> rxAperture,
                    Interval<uint32> rxSampleRange,
                    uint32 rxDecimationFactor, float pri,
-                   Tuple<ChannelIdx> rxPadding = {0, 0})
+                   Tuple<ChannelIdx> rxPadding = {0, 0},
+                   float rxDelay = 0.0f)
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri),
-          rxPadding(std::move(rxPadding)){}
+          rxPadding(std::move(rxPadding)), rxDelay(rxDelay) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const {
         return txAperture;
@@ -115,6 +117,11 @@ public:
         return !atLeastOneRxActive;
     }
 
+    float getRxDelay() const { return rxDelay; }
+
+    // TODO(pjarosik) consider removing the below setter (keep this class immutable).
+    void setRxDelay(float delay) { this->rxDelay = delay; }
+
     friend std::ostream &
     operator<<(std::ostream &os, const TxRxParameters &parameters) {
         os << "Tx/Rx: ";
@@ -130,6 +137,7 @@ public:
            << parameters.getRxSampleRange().end();
         os << ", fs divider: " << parameters.getRxDecimationFactor()
            << ", padding: " << parameters.getRxPadding()[0] << ", " << parameters.getRxPadding()[1];
+        os << ", rx delay: " << parameters.getRxDelay();
         os << std::endl;
         return os;
     }
@@ -141,7 +149,8 @@ public:
                rxAperture == rhs.rxAperture &&
                rxSampleRange == rhs.rxSampleRange &&
                rxDecimationFactor == rhs.rxDecimationFactor &&
-               pri == rhs.pri;
+               pri == rhs.pri &&
+               rxDelay == rhs.rxDelay;
     }
 
     bool operator!=(const TxRxParameters &rhs) const {
@@ -157,6 +166,7 @@ private:
     int32 rxDecimationFactor;
     float pri;
     Tuple<ChannelIdx> rxPadding;
+    float rxDelay;
 };
 
 

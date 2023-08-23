@@ -302,7 +302,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
-        ius4oem->SetRxDelay(RX_DELAY, opIdx);
+        ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
     }
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);

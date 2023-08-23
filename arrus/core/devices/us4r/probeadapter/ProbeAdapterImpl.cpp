@@ -188,6 +188,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
     }
     auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(seqs, us4oemL2PChannelMappings);
+    calculateRxDelays(splittedOps);
 
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;
@@ -288,6 +289,33 @@ void ProbeAdapterImpl::syncTrigger() {
     this->us4oems[0]->syncTrigger();
 }
 
-
+/**
+ * NOTE: this method works in-place (modified input sequence).
+ */
+void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequences) {
+    auto nUs4OEMs = sequences.size();
+    auto sequenceSize = sequences[0].size();
+    for(size_t txrx = 0; txrx < sequenceSize; ++txrx) {
+        float maxDelay = 0.0f;
+        for(size_t oem = 0; oem < nUs4OEMs; ++oem) {
+            auto &delays = sequences[oem][txrx].getTxDelays();
+            // TX delay
+            float txrxMaxDelay = *std::max_element(std::begin(delays), std::end(delays));
+            // burst time
+            float frequency = sequences[oem][txrx].getTxPulse().getCenterFrequency();
+            float nPeriods = sequences[oem][txrx].getTxPulse().getNPeriods();
+            float burstTime = 1/frequency*nPeriods;
+            // Total rx delay
+            float newDelay = txrxMaxDelay + burstTime;
+            if(newDelay > maxDelay) {
+                maxDelay = newDelay;
+            }
+        }
+        // Set Rx delays in the input sequences.
+        for(size_t oem = 0; oem < nUs4OEMs; ++oem) {
+            sequences[oem][txrx].setRxDelay(maxDelay);
+        }
+    }
+}
 
 }
