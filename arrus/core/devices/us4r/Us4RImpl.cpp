@@ -548,6 +548,12 @@ uint32_t Us4RImpl::hvpsReadRegister(uint32_t offset) {
     return us4oems[0]->hvpsReadRegister(offset);
 }
 
+void Us4RImpl::hvpsSetVoltage(float voltage) {
+	for (auto &us4oem : us4oems) {
+		us4oem->hvpsSetVoltage(voltage);
+	}
+}
+
 uint16_t Us4RImpl::getAfe(uint8_t reg) {
     return us4oems[0]->getAfe(reg);
 }

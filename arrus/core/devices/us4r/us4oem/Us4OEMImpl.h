@@ -143,6 +143,7 @@ public:
 
     void hvpsWriteRegister(uint32_t offset, uint32_t value) override;
     uint32_t hvpsReadRegister(uint32_t offset) override;
+	void hvpsSetVoltage(float voltage) override;
 
     uint16_t getAfe(uint8_t address) override;
     void setAfe(uint8_t address, uint16_t value) override;

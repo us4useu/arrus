@@ -81,6 +81,7 @@ public:
     virtual void allPulsersWriteRegister(uint16_t addr, uint16_t reg) = 0;
     virtual void hvpsWriteRegister(uint32_t offset, uint32_t value) = 0;
     virtual uint32_t hvpsReadRegister(uint32_t offset) = 0;
+	virtual void hvpsSetVoltage(float voltage) = 0;
     /**
     * Enables and configures AFE built-in demodulator
     *
