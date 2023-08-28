@@ -285,6 +285,10 @@ class Us4R(Device):
     def read_hvps(self, reg):
         return self._handle.hvpsReadRegister(reg)
 
+    def hvps_set_voltage(self, voltage):
+        self._handle.hvpsSetVoltage(voltage)
+
+
     @property
     def channels_mask(self):
         """

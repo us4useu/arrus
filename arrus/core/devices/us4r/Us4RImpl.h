@@ -138,6 +138,7 @@ public:
     void allPulsersWriteRegister(uint16_t addr, uint16_t reg) override;
     void hvpsWriteRegister(uint32_t offset, uint32_t value) override;
     uint32_t hvpsReadRegister(uint32_t offset) override;
+	void hvpsSetVoltage(float voltage) override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
