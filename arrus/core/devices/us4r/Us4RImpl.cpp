@@ -116,7 +116,7 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
 
 void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
-    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     // Validate.
     auto *device = getDefaultComponent();
     auto voltageRange = device->getAcceptedVoltageRange();

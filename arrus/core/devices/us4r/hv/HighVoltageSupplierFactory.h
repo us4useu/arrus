@@ -10,7 +10,7 @@ namespace arrus::devices {
 
 class HighVoltageSupplierFactory {
 public:
-    virtual HighVoltageSupplier::Handle getHighVoltageSupplier(const HVSettings &settings, IUs4OEM *master) = 0;
+    virtual std::vector<HighVoltageSupplier::Handle> getHighVoltageSupplier(const HVSettings &settings, const std::vector<IUs4OEM *> &master) = 0;
     virtual ~HighVoltageSupplierFactory() = default;
 };
 
