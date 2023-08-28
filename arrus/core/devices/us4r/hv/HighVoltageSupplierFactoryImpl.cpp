@@ -14,8 +14,8 @@
 
 namespace arrus::devices {
 
-HighVoltageSupplier::Handle
-HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &settings, IUs4OEM *master) {
+std::vector<HighVoltageSupplier::Handle>
+HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &settings, const std::vector<IUs4OEM*> &us4oems) {
     const std::string &manufacturer = settings.getModelId().getManufacturer();
     const std::string &name = settings.getModelId().getName();
     ARRUS_REQUIRES_EQUAL(manufacturer, "us4us",
@@ -28,27 +28,28 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     DeviceId id(DeviceType::HV, 0);
 
     if(name == "hv256")  {
-        std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(master)));
+        std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0])));
         std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
         return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else if(name == "hv256p")  {
         // TODO how to detect if we have DBAR-Lite PCIE or the legacy DBAR-Lite?
-        std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(master)));
+        std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(us4oems[0])));
         std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
-        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+        return std::vector<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else if(name == "us4rpsc") {
         // TODO?
         throw std::runtime_error("unsupported: " + name + " please set hv: hv256-pcie in the prototxt file");
-//        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(master)));
 //        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
 //        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else if(name == "us4oemhvps") {
-        //TO DO
-        throw IllegalArgumentException(
-            ::arrus::format(name + "not supported yet", name));
+        std::vector<HighVoltageSupplier::Handle> hvs(us4oems.size(), nullptr);
+        std::transform(std::begin(us4oems), std::end(us4oems), std::begin(hvs), [](IUs4OEM* us4oem){
+            return std::make_unique<HighVoltageSupplier::Handle>(us4oem->getHVPS());
+        }); 
+        return hvs;
     }
     else {
         throw IllegalArgumentException(

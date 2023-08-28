@@ -167,12 +167,12 @@ class Us4RFactoryImpl : public Us4RFactory {
         return {std::move(us4oems), master};
     }
 
-    std::optional<HighVoltageSupplier::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
+    std::vector<HighVoltageSupplier::Handle> getHV(const std::optional<HVSettings> &settings, std::vector<IUs4OEM *> &us4oems) {
         if (settings.has_value()) {
             const auto &hvSettings = settings.value();
-            return hvFactory->getHighVoltageSupplier(hvSettings, master);
+            return hvFactory->getHighVoltageSupplier(hvSettings, us4oems);
         } else {
-            return std::nullopt;
+            return std::vector{};
         }
     }
 

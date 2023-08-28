@@ -171,7 +171,7 @@ private:
     Us4OEMs us4oems;
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
-    std::optional<HighVoltageSupplier::Handle> hv;
+    std::vector<HighVoltageSupplier::Handle> hv;
     std::unique_ptr<Us4RBuffer> us4rBuffer;
     std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};
