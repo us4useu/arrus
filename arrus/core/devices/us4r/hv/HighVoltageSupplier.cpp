@@ -5,7 +5,7 @@
 namespace arrus::devices {
 
 HighVoltageSupplier::HighVoltageSupplier(const DeviceId &id, HVModelId modelId,
-                                         std::unique_ptr<IDBAR> dbar,
+                                         std::optional<std::unique_ptr<IDBAR>> dbar,
                                          std::unique_ptr<IHV> hv)
     : Device(id),
     logger(getLoggerFactory()->getLogger()),
