@@ -19,7 +19,7 @@ public:
     using Handle = std::unique_ptr<HighVoltageSupplier>;
 
     HighVoltageSupplier(const DeviceId &id, HVModelId modelId,
-                        std::unique_ptr<IDBAR> dbar,
+                        std::optional<std::unique_ptr<IDBAR>> dbar,
                         std::unique_ptr<IHV> hv);
 
     void setVoltage(Voltage voltage) {
@@ -71,7 +71,7 @@ public:
 private:
     Logger::Handle logger;
     HVModelId modelId;
-    std::unique_ptr<IDBAR> dbar;
+    std::optional<std::unique_ptr<IDBAR>> dbar;
     std::unique_ptr<IHV> hv;
 };
 

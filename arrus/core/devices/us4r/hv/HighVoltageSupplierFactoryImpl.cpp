@@ -30,13 +30,25 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     if(name == "hv256")  {
         std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0])));
         std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
-        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+        
+        auto _hv = std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+
+        std::vector<HighVoltageSupplier::Handle> hvs;
+        hvs.push_back(std::move(_hv));
+
+        return hvs;
     }
     else if(name == "hv256p")  {
         // TODO how to detect if we have DBAR-Lite PCIE or the legacy DBAR-Lite?
         std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(us4oems[0])));
         std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
-        return std::vector<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+        
+        auto _hv = std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+
+        std::vector<HighVoltageSupplier::Handle> hvs;
+        hvs.push_back(std::move(_hv));
+
+        return hvs;
     }
     else if(name == "us4rpsc") {
         // TODO?
@@ -45,10 +57,14 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
 //        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
     }
     else if(name == "us4oemhvps") {
-        std::vector<HighVoltageSupplier::Handle> hvs(us4oems.size(), nullptr);
-        std::transform(std::begin(us4oems), std::end(us4oems), std::begin(hvs), [](IUs4OEM* us4oem){
-            return std::make_unique<HighVoltageSupplier::Handle>(us4oem->getHVPS());
-        }); 
+        std::vector<HighVoltageSupplier::Handle> hvs;
+
+        for(auto us4oem: us4oems) {
+            std::unique_ptr<IDBAR> dbar;
+            std::unique_ptr<IHV> hv(us4oem->getHVPS());
+            hvs.push_back(std::move(std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::nullopt, std::move(hv))));
+        }
+
         return hvs;
 
     }
