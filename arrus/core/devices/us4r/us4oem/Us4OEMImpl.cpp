@@ -403,7 +403,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     sampleSize = 2 * sizeof(OutputDType);
                 } else {
                     startSampleRaw = startSample * op.getRxDecimationFactor();
-                    sampleOffset = TX_SAMPLE_DELAY_RAW_DATA;
+                    sampleOffset = ius4oem->GetTxOffset();
                     nSamplesRaw = nSamples;
                     sampleSize = sizeof(OutputDType);
                 }
@@ -783,6 +783,8 @@ uint32 Us4OEMImpl::getFirmwareVersion() { return ius4oem->GetFirmwareVersion(); 
 
 uint32 Us4OEMImpl::getTxFirmwareVersion() { return ius4oem->GetTxFirmwareVersion(); }
 
+uint32_t Us4OEMImpl::getTxOffset()  { return ius4oem->GetTxOffset(); }
+
 void Us4OEMImpl::checkState() { this->checkFirmwareVersion(); }
 
 void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
@@ -795,15 +797,16 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
+    uint32_t txOffset = ius4oem->GetTxOffset();
+    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor); 
 
     //Check if data valid offset is higher than TX offset
-    if (offset > 240) {
+    if (offset > txOffset) {
         //If TX offset is lower than data valid offset return just data valid offset and log warning
         this->logger->log(LogSeverity::WARNING,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} cycles to align start of RX data with start of TX.",
-                                          ddcDecimationFactor, (offset - 240)));
+                                          ddcDecimationFactor, (offset - txOffset)));
         return offset;
     } else {
         //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
@@ -814,7 +817,7 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
             return offset + 2*84;
         }
         else {
-            offset += ((240u - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
+            offset += ((txOffset - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
             return offset;
         }
     }
