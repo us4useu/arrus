@@ -375,7 +375,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     sampleSize = 2 * sizeof(OutputDType);
                 } else {
                     startSampleRaw = startSample * op.getRxDecimationFactor();
-                    sampleOffset = TX_SAMPLE_DELAY_RAW_DATA;
+                    sampleOffset = ius4oem->GetTxOffset();
                     nSamplesRaw = nSamples;
                     sampleSize = sizeof(OutputDType);
                 }
@@ -768,7 +768,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t txOffset = getTxOffset();
+    uint32_t txOffset = ius4oem->GetTxOffset();
     uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor); 
 
     //Check if data valid offset is higher than TX offset
