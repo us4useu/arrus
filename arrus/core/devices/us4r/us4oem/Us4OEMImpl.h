@@ -66,7 +66,6 @@ public:
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
-    static constexpr uint32_t TX_SAMPLE_DELAY_RAW_DATA = 240;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
