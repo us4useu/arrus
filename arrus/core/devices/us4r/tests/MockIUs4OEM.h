@@ -204,6 +204,7 @@ public:
     MOCK_METHOD(void, SetTxFrequencyRange, (int range), (override));
     MOCK_METHOD(float, GetMinTxFrequency, (), (const, override));
     MOCK_METHOD(float, GetMaxTxFrequency, (), (const, override));
+    MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
