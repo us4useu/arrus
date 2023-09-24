@@ -2293,8 +2293,7 @@ class ReconstructLri(Operation):
                              f"{s}")
 
     def _get_min_delay(self, raw_sequence):
-        all_delays = [op.tx.delays for op in raw_sequence.ops]
-        all_delays = np.stack(all_delays)
+        all_delays = [np.min(op.tx.delays) for op in raw_sequence.ops]
         return np.min(all_delays)
 
 
