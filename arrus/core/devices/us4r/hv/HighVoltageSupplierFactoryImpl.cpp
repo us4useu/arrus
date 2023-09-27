@@ -27,7 +27,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     us4r::Logger::Handle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
     DeviceId id(DeviceType::HV, 0);
 
-    if(name == "hv256" || name == "hv256p")  {
+    if(name == "hv256")  {
 
         std::vector<HighVoltageSupplier::Handle> hvs;
         auto ver = us4oems[0]->GetOemVersion();
