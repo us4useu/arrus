@@ -18,7 +18,7 @@ def split_device_id_str(s):
     """
     Extracts device type from given string id.
 
-    :param s: id as a string
+    :param str: id as a string
     :return: device type string
     """
     s = s.strip()
@@ -47,5 +47,11 @@ class Device(abc.ABC):
 
     def __repr__(self):
         return self.__str__()
+
+
+class UltrasoundDeviceDTO(abc.ABC):
+    @abc.abstractmethod
+    def get_id(self):
+        pass
 
 

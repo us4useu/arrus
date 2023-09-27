@@ -447,6 +447,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
         rxBufferElements.emplace_back(srcAddress, size, firing, shape, NdArrayDataType);
     }
+    ius4oem->EnableTransmit();
 
     // Set frame repetition interval if possible.
     float totalPri = 0.0f;

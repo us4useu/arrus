@@ -191,6 +191,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                        [](auto &v) { return v.size(); });
         size_t maxSize = *std::max_element(std::begin(currentSeqSizes),
                                            std::end(currentSeqSizes));
+        int us4oemOrdinal = 0;
         for(auto& resSeq : result) {
             if(resSeq.size() < maxSize) {
                 // create rxnop copy from the last element of this sequence
@@ -198,6 +199,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                 // in this method in some of the code above.
                 resSeq.resize(maxSize, TxRxParameters::createRxNOPCopy(resSeq[resSeq.size()-1]));
             }
+            us4oemOrdinal++;
         }
         // NOTE: for us4OEM:0, even if it is RX nop, the results of this
         // rx NOP will be transferred from us4OEM to host memory,
@@ -209,4 +211,3 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
 }
 
 }
-

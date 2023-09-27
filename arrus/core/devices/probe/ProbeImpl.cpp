@@ -127,6 +127,15 @@ void ProbeImpl::syncTrigger() {
     adapter->syncTrigger();
 }
 
+void ProbeImpl::registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
+                                     ::arrus::ops::us4r::Scheme::WorkMode workMode) {
+    adapter->registerOutputBuffer(buffer, us4rBuffer, workMode);
+}
+
+void ProbeImpl::unregisterOutputBuffer() {
+    adapter->unregisterOutputBuffer();
+}
+
 // Remaps FCM according to given rx aperture active channels mappings.
 
 /**

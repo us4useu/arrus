@@ -591,7 +591,7 @@ the following interface:
 
 - The ``process`` function will be called when new data arrives, at the appropriate stage of the pipeline.
 - The ``prepare`` function will be called on Pipeline initialization. You should implement this function if
-  you want to do some initialization based on Metadata object, which contains the complete trace
+  you want to do some initialization based on ConstMetadata object, which contains the complete trace
   of data acquisition and processing done made before the current step.
 
 .. note::

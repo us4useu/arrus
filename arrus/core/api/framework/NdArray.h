@@ -29,8 +29,6 @@ public:
     /** Array shape. */
     typedef Tuple<size_t> Shape;
 
-    NdArray(): ptr(nullptr), placement(devices::DeviceId(devices::DeviceType::CPU, 0)){}
-
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
         ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement) {}
 
@@ -81,22 +79,6 @@ public:
      */
     DataType getDataType() const {
         return dataType;
-    }
-
-    NdArray view() const {
-        return NdArray{ptr, shape, dataType, placement};
-    }
-
-    NdArray slice(size_t i, int begin, int end) {
-        size_t multiplier = 1;
-        for(size_t j = shape.size()-1; j > i; --j) {
-            multiplier *= shape[j];
-        }
-        if(end == -1) {
-            end = (int)shape[i];
-        }
-        Shape newShape = shape.set(i, end-begin);
-        return NdArray{((int16_t*)ptr) + multiplier*begin, newShape, dataType, placement};
     }
 
 private:

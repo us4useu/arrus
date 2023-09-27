@@ -16,7 +16,8 @@ public:
      * @param channelMapping flattened channel mappings. For 2-D array channel
      *    mapping is row major order.
      */
-    ProbeSettings(ProbeModel model, std::vector<ChannelIdx> channelMapping)
+    ProbeSettings(ProbeModel model,
+                  std::vector<ChannelIdx> channelMapping)
             : model(std::move(model)),
               channelMapping(std::move(channelMapping)) {}
 

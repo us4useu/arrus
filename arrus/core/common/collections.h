@@ -145,7 +145,7 @@ toBitset(const std::vector<bool> &in) {
 }
 
 template<typename Map, typename K>
-inline bool containsKey(const Map &map, const K &key) {
+inline bool containsKey(Map map, const K &key) {
     return map.find(key) != std::end(map);
 }
 

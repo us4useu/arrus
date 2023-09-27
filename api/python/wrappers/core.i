@@ -116,7 +116,6 @@ namespace std {
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/devices/File.h"
 
 using namespace ::arrus;
 %}
@@ -176,7 +175,6 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Interval.h"
 %include "arrus/core/api/common/Span.h"
 %include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
-%include "arrus/core/api/common/Parameters.h"
 
 %feature("valuewrapper", "0");
 
@@ -268,7 +266,7 @@ void registerOnBufferOverflowCallback(const std::shared_ptr<arrus::framework::Bu
 
 // ------------------------------------------ SESSION
 %{
-#include "arrus/core/api/session/Metadata.h"
+#include "arrus/core/api/session/UploadConstMetadata.h"
 #include "arrus/core/api/session/UploadResult.h"
 #include "arrus/core/api/session/Session.h"
 using namespace ::arrus::session;
@@ -276,12 +274,12 @@ using namespace ::arrus::session;
 %};
 // TODO consider using unique_ptr anyway (https://stackoverflow.com/questions/27693812/how-to-handle-unique-ptrs-with-swig)
 
-%shared_ptr(arrus::session::Metadata);
+%shared_ptr(arrus::session::UploadConstMetadata);
 %shared_ptr(arrus::session::Session);
 %ignore createSession;
 
 
-%include "arrus/core/api/session/Metadata.h"
+%include "arrus/core/api/session/UploadConstMetadata.h"
 %include "arrus/core/api/session/UploadResult.h"
 %include "arrus/core/api/session/Session.h"
 
@@ -317,13 +315,13 @@ void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
 
 %};
 // ------------------------------------------ DEVICES
+// Us4R
 %{
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
-#include "arrus/core/api/devices/File.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
@@ -337,7 +335,6 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceWithComponents.h"
 %include "arrus/core/api/devices/us4r/Us4OEM.h"
 %include "arrus/core/api/devices/us4r/Us4R.h"
-%include "arrus/core/api/devices/File.h"
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/Probe.h"
@@ -348,14 +345,6 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     auto ptr = dynamic_cast<Us4R*>(device);
     if(!ptr) {
         throw std::runtime_error("Given device is not an us4r handle.");
-    }
-    return ptr;
-}
-
-arrus::devices::File *castToFile(arrus::devices::Device *device) {
-    auto ptr = dynamic_cast<File*>(device);
-    if(!ptr) {
-        throw std::runtime_error("Given device is not a file handle.");
     }
     return ptr;
 }

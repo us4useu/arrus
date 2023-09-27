@@ -32,21 +32,6 @@ def run_remap_v1(grid_size, block_size, params):
     return remap_v1_kernel(grid_size, block_size, params)
 
 
-def get_default_grid_block_size_v2(fcm_frames, n_samples, batch_size):
-    # Note the kernel implementation
-    n_frames, n_channels = fcm_frames.shape
-    # Make sure the kernel will work properly for e.g. small (< 32 RX channels) apertures
-    # Note: the v2 kernel is performing also transposition, backed up by shared memory.
-    block_width = min(n_channels, n_samples)
-    block_size = (min(block_width, 32), min(block_width, 32))
-    grid_size = (
-        (n_channels-1)//block_size[0]  + 1,
-        (n_samples-1)//block_size[1] + 1,
-        n_frames*batch_size
-    )
-    return grid_size, block_size
-
-
 def run_remap_v2(grid_size, block_size, params):
     """
     :param params: a list: data_out, data_in, fcm_frames,

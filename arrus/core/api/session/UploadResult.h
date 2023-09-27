@@ -1,8 +1,8 @@
 #ifndef ARRUS_ARRUS_CORE_API_SESSION_UPLOADRESULT_H
 #define ARRUS_ARRUS_CORE_API_SESSION_UPLOADRESULT_H
 
-#include "Metadata.h"
 #include "arrus/core/api/framework/Buffer.h"
+#include "UploadConstMetadata.h"
 
 namespace arrus::session {
 
@@ -16,7 +16,7 @@ public:
     virtual ~UploadResult() {};
 
     UploadResult(std::shared_ptr<::arrus::framework::Buffer> buffer,
-                 std::shared_ptr<Metadata> constMetadata)
+                 std::shared_ptr<UploadConstMetadata> constMetadata)
         : buffer(std::move(buffer)), constMetadata(std::move(constMetadata)) {}
 
 	/**
@@ -30,13 +30,13 @@ public:
      * Returns a pointer to the upload constant metadata
      * (desription of the data produced by the system).
      */
-    const std::shared_ptr<Metadata> &getConstMetadata() const {
+    const std::shared_ptr<UploadConstMetadata> &getConstMetadata() const {
         return constMetadata;
     }
 
 private:
     ::arrus::framework::Buffer::SharedHandle buffer;
-    Metadata::SharedHandle constMetadata;
+    UploadConstMetadata::SharedHandle constMetadata;
 };
 
 }

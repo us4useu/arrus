@@ -3,13 +3,9 @@ syntax = "proto3";
 package arrus.proto;
 
 import "io/proto/devices/us4r/Us4RSettings.proto";
-import "io/proto/devices/file/FileSettings.proto";
 
 message SessionSettings {
-  oneof one_of_device_representation {
-    Us4RSettings us4r = 1;
-    FileSettings file = 2;
-  }
-  string dictionary_file = 3;
+  Us4RSettings us4r = 1;
+  string dictionary_file = 2;
 }
 

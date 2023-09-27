@@ -221,7 +221,7 @@ private:
     RxSettings rxSettings;
     bool externalTrigger{false};
     /** Current sampling frequency of the data produced by us4OEM. */
-    float currentSamplingFrequency{SAMPLING_FREQUENCY};
+    float currentSamplingFrequency;
     /** Global state mutex */
     mutable std::mutex stateMutex;
 };

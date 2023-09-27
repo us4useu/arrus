@@ -4,8 +4,7 @@
 #include <unordered_map>
 #include <mutex>
 
-#include "arrus/core/devices/us4r/Us4RFactory.h"
-#include "arrus/core/devices/file/FileFactory.h"
+#include <arrus/core/devices/us4r/Us4RFactory.h>
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/common/hash.h"
 #include "arrus/core/devices/DeviceId.h"
@@ -17,11 +16,9 @@ class SessionImpl : public Session {
 public:
     SessionImpl(
         const SessionSettings &sessionSettings,
-        arrus::devices::Us4RFactory::Handle us4RFactory,
-        arrus::devices::FileFactory::Handle fileFactory
-        );
+        arrus::devices::Us4RFactory::Handle us4RFactory);
 
-    ~SessionImpl() override;
+    virtual ~SessionImpl();
 
     arrus::devices::Device::RawHandle
     getDevice(const std::string &deviceId) override;
@@ -45,7 +42,6 @@ public:
 
     void operator=(SessionImpl const &&) = delete;
     void close() override;
-    void setParameters(const Parameters &params) override;
 
 private:
     ARRUS_DEFINE_ENUM_WITH_TO_STRING(
@@ -64,17 +60,11 @@ private:
         arrus::devices::Device::Handle,
         GET_HASHER_NAME(arrus::devices::DeviceId)>;
 
-    using AliasMap = std::unordered_map<
-        arrus::devices::DeviceId,
-        arrus::devices::Device::RawHandle,
-        GET_HASHER_NAME(arrus::devices::DeviceId)>;
-
-    void configureDevices(const SessionSettings &sessionSettings);
+    DeviceMap
+    configureDevices(const SessionSettings &sessionSettings);
 
     DeviceMap devices;
-    AliasMap aliases;
     arrus::devices::Us4RFactory::Handle us4rFactory;
-    arrus::devices::FileFactory::Handle fileFactory;
     std::recursive_mutex stateMutex;
     std::optional<ops::us4r::Scheme> currentScheme;
     State state{State::STOPPED};

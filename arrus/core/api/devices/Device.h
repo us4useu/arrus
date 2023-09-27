@@ -3,7 +3,6 @@
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/DeviceId.h"
-#include "arrus/core/api/common/Parameters.h"
 
 #include <memory>
 
@@ -18,10 +17,6 @@ public:
     }
 
     virtual ~Device() = default;
-
-    virtual void setParameters(const Parameters &) {
-        throw IllegalArgumentException("This device does not support setting any parameters.");
-    }
 
 protected:
     explicit Device(const DeviceId &id): id(id) {}
