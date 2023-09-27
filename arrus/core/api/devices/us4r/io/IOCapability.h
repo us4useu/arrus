@@ -1,0 +1,14 @@
+#ifndef ARRUS_CORE_API_DEVICES_US4R_IO_CAPABILITY_H
+#define ARRUS_CORE_API_DEVICES_US4R_IO_CAPABILITY_H
+
+namespace arrus::devices::us4r {
+
+enum class IOCapability {
+    PROBE_CONNECTED_CHECK,
+    PULSE_COUNTER,
+    BITSTREAM_ADDRESSING // To be implemented soon
+};
+
+}
+
+#endif//ARRUS_CORE_API_DEVICES_US4R_IO_CAPABILITY_H
