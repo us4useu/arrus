@@ -142,7 +142,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 
     //Verify register
     auto &hvModel = this->hv[0]->getModelId();
-    bool isHV256 = hvModel.getManufacturer() == "us4us" && (hvModel.getName() == "hv256" || hvModel.getName() == "hv256p");
+    bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
 
     if(isHV256) {
         // Do not check the voltage measured by US4RPSC, as it may not be correct
