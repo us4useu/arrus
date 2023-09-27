@@ -51,10 +51,13 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
         return hvs;
     }
     else if(name == "us4rpsc") {
-        // TODO?
-        throw std::runtime_error("unsupported: " + name + " please set hv: hv256-pcie in the prototxt file");
-//        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
-//        return std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+        std::vector<HighVoltageSupplier::Handle> hvs;
+        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0])));
+        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
+        auto _hv =  std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+        hvs.push_back(std::move(_hv));
+
+        return hvs;
     }
     else if(name == "us4oemhvps") {
         std::vector<HighVoltageSupplier::Handle> hvs;
