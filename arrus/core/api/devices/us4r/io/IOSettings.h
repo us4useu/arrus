@@ -26,14 +26,6 @@ public:
         return *addresses.find(IOCapability::PROBE_CONNECTED_CHECK)->second.begin();
     }
 
-    bool hasPulseCounterCapability() const {
-        return addresses.find(IOCapability::PULSE_COUNTER) != std::end(addresses);
-    }
-
-    IOAddressSet getPulseCounterCapabilityAddressSet() const {
-        return addresses.find(IOCapability::PULSE_COUNTER)->second;
-    }
-
 private:
     std::unordered_map<IOCapability, IOAddressSet> addresses;
 };
@@ -45,11 +37,6 @@ class IOSettingsBuilder {
 
     IOSettingsBuilder &setProbeConnectedCheckCapability(const IOAddressSet& addresses) {
         addr.emplace(IOCapability::PROBE_CONNECTED_CHECK, addresses);
-        return *this;
-    }
-
-    IOSettingsBuilder &setPulseCounterCapability(const IOAddressSet& addresses) {
-        addr.emplace(IOCapability::PULSE_COUNTER, addresses);
         return *this;
     }
 

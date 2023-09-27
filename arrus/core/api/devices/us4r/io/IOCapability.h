@@ -5,8 +5,8 @@ namespace arrus::devices::us4r {
 
 enum class IOCapability {
     PROBE_CONNECTED_CHECK,
-    PULSE_COUNTER,
-    BITSTREAM_ADDRESSING // To be implemented soon
+//    PULSE_COUNTER, // To be available in v0.9.0
+//    BITSTREAM_ADDRESSING // To be available on v0.10.0
 };
 
 }
