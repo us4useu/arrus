@@ -18,7 +18,9 @@ enum class DeviceType {
     Probe,
     GPU,
     CPU,
-    HV
+    HV,
+    Ultrasound,
+    File,
 };
 
 /**

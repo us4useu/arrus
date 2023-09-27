@@ -7,10 +7,8 @@
 
 namespace arrus::devices {
 
-class DeviceWithComponents : public Device {
+class DeviceWithComponents {
 public:
-    using Device::Device;
-
     /**
      * Returns a raw handle to the component of this device.
      *

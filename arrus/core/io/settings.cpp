@@ -1,13 +1,13 @@
 #include "arrus/core/api/io/settings.h"
-#include <fcntl.h>
 #include <boost/filesystem.hpp>
+#include <cstdlib>
+#include <fcntl.h>
 #include <memory>
 #include <unordered_map>
-#include <cstdlib>
 
+#include "arrus/common/utils.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/session/SessionSettings.h"
-#include "arrus/common/utils.h"
 #include "cfg/default.h"
 
 #ifdef _MSC_VER
@@ -23,24 +23,23 @@
 #endif
 
 #include "arrus/common/asserts.h"
-#include "arrus/common/format.h"
 #include "arrus/common/compiler.h"
+#include "arrus/common/format.h"
 #include "arrus/core/common/validation.h"
-#include "arrus/core/io/validators/SessionSettingsProtoValidator.h"
-#include "arrus/core/io/validators/DictionaryProtoValidator.h"
 #include "arrus/core/io/SettingsDictionary.h"
+#include "arrus/core/io/validators/DictionaryProtoValidator.h"
+#include "arrus/core/io/validators/SessionSettingsProtoValidator.h"
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
 COMPILER_DISABLE_MSVC_WARNINGS(4127)
 
-#include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 // TODO(146) should point to arrus/core/io/...
-#include "io/proto/session/SessionSettings.pb.h"
 #include "io/proto/Dictionary.pb.h"
+#include "io/proto/session/SessionSettings.pb.h"
 
 COMPILER_POP_DIAGNOSTIC_STATE
-
 
 namespace arrus::io {
 
@@ -49,35 +48,31 @@ namespace ap = arrus::proto;
 using namespace ::arrus::devices;
 using namespace ::arrus::session;
 
-template<typename T>
-std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
+template<typename T> std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
     int fd = ARRUS_OPEN_FILE(filepath.c_str(), O_RDONLY);
-    ARRUS_REQUIRES_TRUE(
-        fd != 0, arrus::format("Could not open file {}", filepath));
+    ARRUS_REQUIRES_TRUE(fd != 0, arrus::format("Could not open file {}", filepath));
     google::protobuf::io::FileInputStream input(fd);
     input.SetCloseOnDelete(true);
     auto result = std::make_unique<T>();
     bool parseOk = google::protobuf::TextFormat::Parse(&input, result.get());
-    if(!parseOk) {
-        throw IllegalArgumentException(::arrus::format(
-            "Error while parsing file {}, please check error messages "
-            "that appeared the above.", filepath));
+    if (!parseOk) {
+        throw IllegalArgumentException(::arrus::format("Error while parsing file {}, please check error messages "
+                                                       "that appeared the above.",
+                                                       filepath));
     }
     return result;
 }
 
-template<typename T>
-std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
+template<typename T> std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
     auto result = std::make_unique<T>();
     bool parseOk = google::protobuf::TextFormat::ParseFromString(proto, result.get());
-    if(!parseOk) {
+    if (!parseOk) {
         throw IllegalArgumentException("Error while reading proto txt.");
     }
     return result;
 }
 
-ProbeAdapterSettings
-readAdapterSettings(const ap::ProbeAdapterModel &proto) {
+ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     ProbeAdapterModelId id(proto.id().manufacturer(), proto.id().name());
     // Safe, should be verified by probe adapter proto validator.
     auto nChannels = static_cast<ChannelIdx>(proto.n_channels());
@@ -85,59 +80,51 @@ readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     ProbeAdapterSettings::ChannelMapping channelMapping;
     using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
 
-    if(proto.has_channel_mapping()) {
+    if (proto.has_channel_mapping()) {
         const auto &mapping = proto.channel_mapping();
         const auto &us4oems = mapping.us4oems();
         const auto &inChannels = mapping.channels();
 
-        auto modules = ::arrus::castTo<Ordinal>(
-            std::begin(us4oems), std::end(us4oems));
-        auto channels = ::arrus::castTo<ChannelIdx>(
-            std::begin(inChannels), std::end(inChannels));
+        auto modules = ::arrus::castTo<Ordinal>(std::begin(us4oems), std::end(us4oems));
+        auto channels = ::arrus::castTo<ChannelIdx>(std::begin(inChannels), std::end(inChannels));
 
         ARRUS_REQUIRES_EQUAL(modules.size(), channels.size(),
-                             IllegalArgumentException(
-                                 "Us4oems and channels lists should have "
-                                 "the same size"));
+                             IllegalArgumentException("Us4oems and channels lists should have "
+                                                      "the same size"));
         channelMapping = std::vector<ChannelAddress>{modules.size()};
-        for(unsigned i = 0; i < modules.size(); ++i) {
+        for (unsigned i = 0; i < modules.size(); ++i) {
             channelMapping[i] = {modules[i], channels[i]};
         }
-    } else if(!proto.channel_mapping_regions().empty()) {
+    } else if (!proto.channel_mapping_regions().empty()) {
         std::vector<Ordinal> modules;
         std::vector<ChannelIdx> channels;
-        for(auto const &region : proto.channel_mapping_regions()) {
+        for (auto const &region : proto.channel_mapping_regions()) {
             auto module = static_cast<Ordinal>(region.us4oem());
 
-            if(region.has_region()) {
+            if (region.has_region()) {
 
                 ChannelIdx begin = ARRUS_SAFE_CAST(region.region().begin(), ChannelIdx);
                 ChannelIdx end = ARRUS_SAFE_CAST(region.region().end(), ChannelIdx);
 
-                for(ChannelIdx ch = begin; ch <= end; ++ch) {
+                for (ChannelIdx ch = begin; ch <= end; ++ch) {
                     channelMapping.emplace_back(module, ch);
                 }
-            }
-            else {
+            } else {
                 // Just channels.
-                for(auto channel : region.channels()) {
-                    channelMapping.emplace_back(
-                        module, static_cast<ChannelIdx>(channel));
+                for (auto channel : region.channels()) {
+                    channelMapping.emplace_back(module, static_cast<ChannelIdx>(channel));
                 }
             }
-
         }
     }
     return ProbeAdapterSettings(id, nChannels, channelMapping);
 }
 
-
 ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     ProbeModelId id{proto.id().manufacturer(), proto.id().name()};
     using ElementIdxType = ProbeModel::ElementIdxType;
 
-    auto nElementsVec = ::arrus::castTo<ElementIdxType>(
-        std::begin(proto.n_elements()), std::end(proto.n_elements()));
+    auto nElementsVec = ::arrus::castTo<ElementIdxType>(std::begin(proto.n_elements()), std::end(proto.n_elements()));
     // TODO move
     Tuple<ElementIdxType> nElements{nElementsVec};
 
@@ -154,20 +141,17 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius);
 }
 
-
-std::vector<ChannelIdx> readProbeConnectionChannelMapping(
-    const ap::ProbeToAdapterConnection &connection) {
+std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapterConnection &connection) {
 
     const auto &channelMapping = connection.channel_mapping();
     const auto &ranges = connection.channel_mapping_ranges();
 
-    if(!channelMapping.empty()) {
-        return castTo<ChannelIdx>(std::begin(channelMapping),
-                                  std::end(channelMapping));
-    } else if(!ranges.empty()) {
+    if (!channelMapping.empty()) {
+        return castTo<ChannelIdx>(std::begin(channelMapping), std::end(channelMapping));
+    } else if (!ranges.empty()) {
         std::vector<ChannelIdx> result;
-        for(auto const &range: ranges) {
-            for(int i = range.begin(); i <= range.end(); ++i) {
+        for (auto const &range : ranges) {
+            for (int i = range.begin(); i <= range.end(); ++i) {
                 result.push_back(static_cast<ChannelIdx>(i));
             }
         }
@@ -177,38 +161,37 @@ std::vector<ChannelIdx> readProbeConnectionChannelMapping(
     }
 }
 
-SettingsDictionary
-readDictionary(const ap::Dictionary *proto) {
+SettingsDictionary readDictionary(const ap::Dictionary *proto) {
     SettingsDictionary result;
 
-    if(proto == nullptr) {
+    if (proto == nullptr) {
         return result;
     }
 
-    for(auto const &adapter : proto->probe_adapter_models()) {
+    for (auto const &adapter : proto->probe_adapter_models()) {
         result.insertAdapterSettings(readAdapterSettings(adapter));
     }
 
     // index connections
     std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections;
 
-    for(const ap::ProbeToAdapterConnection &conn : proto->probe_to_adapter_connections()) {
+    for (const ap::ProbeToAdapterConnection &conn : proto->probe_to_adapter_connections()) {
         std::string key = SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
         const ap::ProbeToAdapterConnection *ptr = &conn;
         connections.emplace(key, ptr);
     }
 
     // Read probes.
-    for(auto const &probe : proto->probe_models()) {
+    for (auto const &probe : proto->probe_models()) {
         const ProbeModel probeModel = readProbeModel(probe);
         result.insertProbeModel(probeModel);
         std::string key = SettingsDictionary::convertProtoIdToString(probe.id());
         auto range = connections.equal_range(key);
-        for(auto it = range.first; it != range.second; ++it) {
+        for (auto it = range.first; it != range.second; ++it) {
             auto conn = it->second;
             std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*conn);
 
-            for(auto const &adapterProtoId : conn->probe_adapter_model_id()) {
+            for (auto const &adapterProtoId : conn->probe_adapter_model_id()) {
                 const ProbeAdapterModelId adapterId(adapterProtoId.manufacturer(), adapterProtoId.name());
                 result.insertProbeSettings(ProbeSettings(probeModel, channelMapping), adapterId);
             }
@@ -219,69 +202,64 @@ readDictionary(const ap::Dictionary *proto) {
 
 RxSettings readRxSettings(const proto::RxSettings &proto) {
     std::optional<uint16> dtgcAtt;
-    if(proto.dtgcAttenuation__case() == proto::RxSettings::kDtgcAttenuation) {
+    if (proto.dtgcAttenuation__case() == proto::RxSettings::kDtgcAttenuation) {
         // dtgc attenuation is set
         dtgcAtt = static_cast<uint16>(proto.dtgc_attenuation());
     }
     auto pgaGain = static_cast<uint16>(proto.pga_gain());
     auto lnaGain = static_cast<uint16>(proto.lna_gain());
 
-    RxSettings::TGCCurve tgcSamples = castTo<arrus::ops::us4r::TGCSampleValue>(
-        std::begin(proto.tgc_samples()), std::end(proto.tgc_samples()));
+    RxSettings::TGCCurve tgcSamples =
+        castTo<arrus::ops::us4r::TGCSampleValue>(std::begin(proto.tgc_samples()), std::end(proto.tgc_samples()));
 
     uint32 lpfCutoff = proto.lpf_cutoff();
 
     std::optional<uint16> activeTermination;
-    if(proto.activeTermination__case() == proto::RxSettings::kActiveTermination) {
+    if (proto.activeTermination__case() == proto::RxSettings::kActiveTermination) {
         activeTermination = static_cast<uint16>(proto.active_termination());
     }
     // TODO apply characteristic parameter
     return RxSettings(dtgcAtt, pgaGain, lnaGain, tgcSamples, lpfCutoff, activeTermination);
 }
 
-ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r,
-                                              const SettingsDictionary &dictionary) {
-    if(us4r.has_adapter()) {
+ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, const SettingsDictionary &dictionary) {
+    if (us4r.has_adapter()) {
         return readAdapterSettings(us4r.adapter());
-    } else if(us4r.has_adapter_id()) {
-        ProbeAdapterModelId id{us4r.adapter_id().manufacturer(),
-                               us4r.adapter_id().name()};
+    } else if (us4r.has_adapter_id()) {
+        ProbeAdapterModelId id{us4r.adapter_id().manufacturer(), us4r.adapter_id().name()};
         try {
             return dictionary.getAdapterSettings(id);
-        } catch(const std::out_of_range &) {
-            throw IllegalArgumentException(
-                arrus::format("Adapter with id {} not found.", id.toString()));
+        } catch (const std::out_of_range &) {
+            throw IllegalArgumentException(arrus::format("Adapter with id {} not found.", id.toString()));
         }
     } else {
         throw ArrusException("NYI");
     }
 }
 
-ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r,
-                                     const ProbeAdapterModelId &adapterId,
+ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r, const ProbeAdapterModelId &adapterId,
                                      const SettingsDictionary &dictionary) {
-    if(us4r.has_probe()) {
+    if (us4r.has_probe()) {
         ProbeModel model = readProbeModel(us4r.probe());
         std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(us4r.probe_to_adapter_connection());
         return ProbeSettings(model, channelMapping);
-    } else if(us4r.has_probe_id()) {
+    } else if (us4r.has_probe_id()) {
         ProbeModelId id{us4r.probe_id().manufacturer(), us4r.probe_id().name()};
-        if(us4r.has_probe_to_adapter_connection()) {
+        if (us4r.has_probe_to_adapter_connection()) {
             std::vector<ChannelIdx> channelMapping =
-                readProbeConnectionChannelMapping(
-                    us4r.probe_to_adapter_connection());
+                readProbeConnectionChannelMapping(us4r.probe_to_adapter_connection());
             try {
                 ProbeModel model = dictionary.getProbeModel(id);
                 return ProbeSettings(model, channelMapping);
-            } catch(std::out_of_range &) {
+            } catch (std::out_of_range &) {
                 throw IllegalArgumentException(format("Probe with id {} not found.", id.toString()));
             }
         } else {
             try {
                 return dictionary.getProbeSettings(id, adapterId);
-            } catch(std::out_of_range &) {
-                throw IllegalArgumentException(format(
-                        "Probe settings for probe with id {} adapter with id {} not found.", id.toString()));
+            } catch (std::out_of_range &) {
+                throw IllegalArgumentException(
+                    format("Probe settings for probe with id {} adapter with id {} not found.", id.toString()));
             }
         }
     } else {
@@ -289,19 +267,19 @@ ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r,
     }
 }
 
-template<typename T>
-std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
+template<typename T> std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
     auto &channels = mask.channels();
 
     // validate
-    for(auto channel : channels) {
-        ARRUS_REQUIRES_DATA_TYPE(channel, T, arrus::format(
-            "Channel mask should contain only values from uint16 range "
-            "(found: '{}')", channel));
+    for (auto channel : channels) {
+        ARRUS_REQUIRES_DATA_TYPE(channel, T,
+                                 arrus::format("Channel mask should contain only values from uint16 range "
+                                               "(found: '{}')",
+                                               channel));
     }
     std::vector<T> result;
 
-    for(auto channel : channels) {
+    for (auto channel : channels) {
         result.push_back(static_cast<T>(channel));
     }
     return result;
@@ -309,109 +287,121 @@ std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
 
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode);
 
-Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r,
-                              const SettingsDictionary &dictionary) {
+ProbeModel readProbeModel(const proto::FileSettings &file, const SettingsDictionary &dictionary) {
+    if (file.has_probe()) {
+        return readProbeModel(file.probe());
+    } else if (file.has_probe_id()) {
+        ProbeModelId id{file.probe_id().manufacturer(), file.probe_id().name()};
+        try {
+            return dictionary.getProbeModel(id);
+        } catch (std::out_of_range &) {
+            throw IllegalArgumentException(format("Probe model with id {} not found.", id.toString()));
+        }
+    }
+    else {
+        throw std::runtime_error("NYI");
+    }
+}
+
+FileSettings readFileSettings(const proto::FileSettings &file, const SettingsDictionary &dictionary) {
+    return FileSettings{
+        file.filepath(),
+        file.n_frames(),
+        readProbeModel(file, dictionary)
+    };
+}
+
+Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDictionary &dictionary) {
     std::optional<HVSettings> hvSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
     int txFrequencyRange = 1;
 
-    if(us4r.has_hv()) {
+    if (us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();
         auto &name = us4r.hv().model_id().name();
         ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
         ARRUS_REQUIRES_NON_EMPTY_IAE(name);
         hvSettings = HVSettings(HVModelId(manufacturer, name));
     }
-    if(us4r.optional_nus4ems_case() != proto::Us4RSettings::OPTIONAL_NUS4EMS_NOT_SET) {
+    if (us4r.optional_nus4ems_case() != proto::Us4RSettings::OPTIONAL_NUS4EMS_NOT_SET) {
         nUs4OEMs = static_cast<Ordinal>(us4r.nus4oems());
     }
-    if(us4r.optional_tx_frequency_range_case() != proto::Us4RSettings::OPTIONAL_TX_FREQUENCY_RANGE_NOT_SET) {
+    if (us4r.optional_tx_frequency_range_case() != proto::Us4RSettings::OPTIONAL_TX_FREQUENCY_RANGE_NOT_SET) {
         txFrequencyRange = static_cast<int>(us4r.tx_frequency_range());
     }
-    if(!us4r.adapter_to_us4r_module_nr().empty()) {
+    if (!us4r.adapter_to_us4r_module_nr().empty()) {
         auto &adapter2Us4RModule = us4r.adapter_to_us4r_module_nr();
-        for(auto &nr: adapter2Us4RModule) {
+        for (auto &nr : adapter2Us4RModule) {
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
-    if(!us4r.us4oems().empty()) {
+    if (!us4r.us4oems().empty()) {
         // Us4OEMs are provided.
         std::vector<Us4OEMSettings> us4oemSettings;
 
         std::vector<std::unordered_set<uint8>> us4oemChannelsMask;
         us4oemChannelsMask.resize(us4r.us4oems().size());
 
-        if(!us4r.us4oem_channels_mask().empty() && us4r.us4oems().size() != us4r.us4oem_channels_mask().size()) {
+        if (!us4r.us4oem_channels_mask().empty() && us4r.us4oems().size() != us4r.us4oem_channels_mask().size()) {
             throw ::arrus::IllegalArgumentException("The number of us4oem channels masks should be the "
                                                     "same as the number of us4oems.");
         }
 
         int i = 0;
-        for(auto &mask: us4r.us4oem_channels_mask()) {
+        for (auto &mask : us4r.us4oem_channels_mask()) {
             auto channelsMask = readChannelsMask<uint8>(mask);
             us4oemChannelsMask[i] = std::unordered_set<uint8>(std::begin(channelsMask), std::end(channelsMask));
             ++i;
         }
 
-        for(auto const &us4oem : us4r.us4oems()) {
+        for (auto const &us4oem : us4r.us4oems()) {
             auto rxSettings = readRxSettings(us4oem.rx_settings());
-            auto channelMapping = castTo<ChannelIdx>(
-                std::begin(us4oem.channel_mapping()),
-                std::end(us4oem.channel_mapping()));
-            auto activeChannelGroups = castTo<bool>(
-                std::begin(us4oem.active_channel_groups()),
-                std::end(us4oem.active_channel_groups()));
+            auto channelMapping =
+                castTo<ChannelIdx>(std::begin(us4oem.channel_mapping()), std::end(us4oem.channel_mapping()));
+            auto activeChannelGroups =
+                castTo<bool>(std::begin(us4oem.active_channel_groups()), std::end(us4oem.active_channel_groups()));
             Us4OEMSettings::ReprogrammingMode reprogrammingMode =
-                    convertToReprogrammingMode(us4oem.reprogramming_mode());
-            us4oemSettings.emplace_back(
-                channelMapping, activeChannelGroups, rxSettings,
-                us4oemChannelsMask[i], reprogrammingMode);
+                convertToReprogrammingMode(us4oem.reprogramming_mode());
+            us4oemSettings.emplace_back(channelMapping, activeChannelGroups, rxSettings, us4oemChannelsMask[i],
+                                        reprogrammingMode);
         }
         return Us4RSettings(us4oemSettings, hvSettings, nUs4OEMs, adapterToUs4RModuleNr, txFrequencyRange);
     } else {
-        ProbeAdapterSettings adapterSettings =readOrGetAdapterSettings(us4r, dictionary);
+        ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
         ProbeSettings probeSettings = readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
         RxSettings rxSettings = readRxSettings(us4r.rx_settings());
 
         // ensure that user provided channels mask
         // TODO(pjarosik) consider removing this check in the future
-        if(!us4r.has_channels_mask()) {
-            throw IllegalArgumentException(
-                "Us4r settings field 'channels_mask' is required. "
-                "Set empty array of channels if you want to turn off channel masking.");
+        if (!us4r.has_channels_mask()) {
+            throw IllegalArgumentException("Us4r settings field 'channels_mask' is required. "
+                                           "Set empty array of channels if you want to turn off channel masking.");
         }
 
-        if(us4r.us4oem_channels_mask().empty()) {
-            throw IllegalArgumentException(
-                "Us4r settings field 'us4oem_channels_mask is required. "
-                "Set empty array of channels for each of the module explicitly if you want "
-                "to turn of channel masking.");
+        if (us4r.us4oem_channels_mask().empty()) {
+            throw IllegalArgumentException("Us4r settings field 'us4oem_channels_mask is required. "
+                                           "Set empty array of channels for each of the module explicitly if you want "
+                                           "to turn of channel masking.");
         }
 
         std::vector<ChannelIdx> channelsMask = readChannelsMask<ChannelIdx>(us4r.channels_mask());
         std::vector<std::vector<uint8>> us4oemChannelsMask;
-        for(auto &mask: us4r.us4oem_channels_mask()) {
+        for (auto &mask : us4r.us4oem_channels_mask()) {
             us4oemChannelsMask.push_back(readChannelsMask<uint8>(mask));
         }
         auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
 
-        return {adapterSettings, probeSettings, rxSettings,
-                hvSettings, channelsMask, us4oemChannelsMask,
-                reprogrammingMode, nUs4OEMs, adapterToUs4RModuleNr, us4r.external_trigger(),
-                txFrequencyRange
-        };
+        return {adapterSettings,       probeSettings,           rxSettings,        hvSettings,
+                channelsMask,          us4oemChannelsMask,      reprogrammingMode, nUs4OEMs,
+                adapterToUs4RModuleNr, us4r.external_trigger(), txFrequencyRange};
     }
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
-    switch(mode) {
-        case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL:
-            return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
-        case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL:
-            return Us4OEMSettings::ReprogrammingMode::PARALLEL;
-        default:
-            throw std::runtime_error("Unknown reprogramming mode: "
-            + std::to_string(mode));
+    switch (mode) {
+    case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL: return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
+    case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL: return Us4OEMSettings::ReprogrammingMode::PARALLEL;
+    default: throw std::runtime_error("Unknown reprogramming mode: " + std::to_string(mode));
     }
 }
 
@@ -420,21 +410,20 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     // Read ARRUS_PATH.
     const char *arrusPathStr = std::getenv(ARRUS_PATH_KEY);
     boost::filesystem::path arrusPath;
-    if(arrusPathStr != nullptr) {
+    if (arrusPathStr != nullptr) {
         arrusPath = arrusPathStr;
     }
     // Read and validate session.
     boost::filesystem::path sessionSettingsPath{filepath};
     // Try with the provided path first.
-    if(!boost::filesystem::is_regular_file(sessionSettingsPath)) {
+    if (!boost::filesystem::is_regular_file(sessionSettingsPath)) {
         // Next, try with ARRUS_PATH.
-        if(!arrusPath.empty() && sessionSettingsPath.is_relative()) {
+        if (!arrusPath.empty() && sessionSettingsPath.is_relative()) {
             sessionSettingsPath = arrusPath / sessionSettingsPath;
-            if(!boost::filesystem::is_regular_file(sessionSettingsPath)) {
+            if (!boost::filesystem::is_regular_file(sessionSettingsPath)) {
                 throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
             }
-        }
-        else {
+        } else {
             throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
         }
     }
@@ -450,22 +439,21 @@ SessionSettings readSessionSettings(const std::string &filepath) {
 
     // Read and validate Dictionary.
     std::unique_ptr<ap::Dictionary> d;
-    if(!s->dictionary_file().empty()) {
+    if (!s->dictionary_file().empty()) {
         std::string dictionaryPathStr;
         // 1. Try to find the file relative to the current working directory.
-        if(boost::filesystem::is_regular_file(s->dictionary_file())) {
+        if (boost::filesystem::is_regular_file(s->dictionary_file())) {
             dictionaryPathStr = s->dictionary_file();
-        }
-        else {
+        } else {
             // 2. Try to use the parent directory of session settings.
             auto dictP = sessionSettingsPath.parent_path() / s->dictionary_file();
-            if(boost::filesystem::is_regular_file(dictP)) {
+            if (boost::filesystem::is_regular_file(dictP)) {
                 dictionaryPathStr = dictP.string();
             } else {
                 // 3. Try to use ARRUS_PATH, if available.
-                if(!arrusPath.empty()) {
+                if (!arrusPath.empty()) {
                     boost::filesystem::path arrusDicP = arrusPath / s->dictionary_file();
-                    if(boost::filesystem::is_regular_file(arrusDicP)) {
+                    if (boost::filesystem::is_regular_file(arrusDicP)) {
                         dictionaryPathStr = arrusDicP.string();
                     } else {
                         throw IllegalArgumentException(
@@ -478,17 +466,15 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::INFO,
-                    ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::INFO, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
         try {
             d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
-        }
-        catch(const IllegalArgumentException &e) {
-            throw IllegalArgumentException(
-                ::arrus::format("Error while reading ARRUS default "
-                                "dictionary. Message: {}", e.what()));
+        } catch (const IllegalArgumentException &e) {
+            throw IllegalArgumentException(::arrus::format("Error while reading ARRUS default "
+                                                           "dictionary. Message: {}",
+                                                           e.what()));
         }
         logger->log(LogSeverity::INFO, "Using default dictionary.");
     }
@@ -497,16 +483,16 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     dictionaryValidator.throwOnErrors();
 
     SettingsDictionary dictionary = readDictionary(d.get());
-
-    Us4RSettings us4rSettings = readUs4RSettings(s->us4r(), dictionary);
-    // TODO std move
-    SessionSettings sessionSettings(us4rSettings);
-
-    logger->log(LogSeverity::DEBUG,
-                arrus::format("Read settings from '{}': {}", filepath, ::arrus::toString(sessionSettings)));
-
-    return sessionSettings;
+    SessionSettingsBuilder settingsBuilder;
+    if (s->has_us4r()) {
+        settingsBuilder.addUs4R(readUs4RSettings(s->us4r(), dictionary));
+    }
+    if (s->has_file()) {
+        settingsBuilder.addFile(readFileSettings(s->file(), dictionary));
+    }
+    SessionSettings settings = settingsBuilder.build();
+    logger->log(LogSeverity::DEBUG, arrus::format("Read settings from '{}': {}", filepath, arrus::toString(settings)));
+    return settings;
 }
 
-
-}
+}// namespace arrus::io

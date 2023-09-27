@@ -1,0 +1,14 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+import "io/proto/devices/probe/ProbeModel.proto";
+
+message FileSettings {
+  string filepath = 1;
+  uint32 n_frames = 2;
+  oneof one_of_probe_representation {
+    ProbeModel.Id probe_id = 3;
+    ProbeModel probe = 4;
+  }
+}

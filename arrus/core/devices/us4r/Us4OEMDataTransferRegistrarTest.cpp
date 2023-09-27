@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
 
 namespace {
 
@@ -76,7 +76,6 @@ TEST(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoThreeTrans
     };
     ASSERT_EQ(transfers, expected);
 }
-
 }
 
 
