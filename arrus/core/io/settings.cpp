@@ -117,6 +117,7 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
             }
         }
     }
+    // io capabilities
     return ProbeAdapterSettings(id, nChannels, channelMapping);
 }
 

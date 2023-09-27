@@ -18,7 +18,7 @@ public:
     using ChannelMapping = std::vector<ChannelAddress>;
 
     ProbeAdapterSettings(ProbeAdapterModelId modelId, ChannelIdx nChannels, const ChannelMapping &mapping,
-                         us4r::IOSettings ioSettings)
+                         us4r::IOSettings ioSettings = us4r::IOSettings())
         : modelId(std::move(modelId)), nChannels(nChannels), mapping(mapping), ioSettings(std::move(ioSettings)) {}
 
     const ProbeAdapterModelId &getModelId() const { return modelId; }

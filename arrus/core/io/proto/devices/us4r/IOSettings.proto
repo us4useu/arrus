@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "io/proto/devices/us4r/IOAddress.proto";
+import "io/proto/devices/us4r/IOCapability.proto";
+
+message IOSettings {
+
+  message CapabilityAddress {
+    IOCapability capability = 1;
+    repeated IOAddress addresses = 2;
+  }
+
+  repeated CapabilityAddress capabilities = 1;
+}
