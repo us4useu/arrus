@@ -133,6 +133,7 @@ public:
     void checkState() override;
     uint32 getTxFirmwareVersion() override;
     uint32_t getTxOffset() override;
+    uint32_t getOemVersion() override;
 
     void setTestPattern(RxTestPattern pattern) override;
 

@@ -756,6 +756,8 @@ uint32 Us4OEMImpl::getTxFirmwareVersion() { return ius4oem->GetTxFirmwareVersion
 
 uint32_t Us4OEMImpl::getTxOffset()  { return ius4oem->GetTxOffset(); }
 
+uint32_t Us4OEMImpl::getOemVersion()  { return ius4oem->GetOemVersion(); }
+
 void Us4OEMImpl::checkState() { this->checkFirmwareVersion(); }
 
 void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
