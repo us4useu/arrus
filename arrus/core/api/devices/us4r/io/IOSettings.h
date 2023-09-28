@@ -35,13 +35,13 @@ private:
  * IO Settings builder.
  */
 class IOSettingsBuilder {
-
+public:
     IOSettingsBuilder &setProbeConnectedCheckCapability(const IOAddressSet& addresses) {
         addr.emplace(IOCapability::PROBE_CONNECTED_CHECK, addresses);
         return *this;
     }
 
-    IOSettings builder() {
+    IOSettings build() {
         return IOSettings(addr);
     }
 

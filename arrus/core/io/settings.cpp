@@ -118,7 +118,31 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
         }
     }
     // io capabilities
-    return ProbeAdapterSettings(id, nChannels, channelMapping);
+    if(proto.has_io_settings()) {
+        auto &ioSettingsProto = proto.io_settings();
+        arrus::devices::us4r::IOSettingsBuilder settingsBuilder;
+        for(auto &entry: ioSettingsProto.capabilities()) {
+            // Convert to arrus IO address.
+            std::vector<arrus::devices::us4r::IOAddress> addresses;
+            for(auto addressProto: entry.addresses()) {
+                Ordinal us4oem = ARRUS_SAFE_CAST(addressProto.us4oem(), Ordinal);
+                uint8_t io = ARRUS_SAFE_CAST(addressProto.io(), uint8_t);
+                addresses.emplace_back(us4oem, io);
+            }
+            arrus::devices::us4r::IOAddressSet addressSet(addresses);
+            switch(entry.capability()) {
+            case arrus::proto::IOCapability::PROBE_CONNECTED_CHECK:
+                settingsBuilder.setProbeConnectedCheckCapability(addressSet);
+                break;
+            default:
+                throw IllegalArgumentException("Unhandled capability nr: " + std::to_string(entry.capability()));
+            }
+        }
+        return ProbeAdapterSettings(id, nChannels, channelMapping, settingsBuilder.build());
+    }
+    else {
+        return ProbeAdapterSettings(id, nChannels, channelMapping);
+    }
 }
 
 ProbeModel readProbeModel(const proto::ProbeModel &proto) {
