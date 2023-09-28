@@ -19,7 +19,7 @@ public:
         return instance;
     }
 
-    us4r::afe58jd18::PGA_GAIN getEnumValue(const ValueType value) {
+    ::us4r::afe58jd18::PGA_GAIN getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 
@@ -45,11 +45,11 @@ public:
     void operator=(PGAGainValueMap const &&) = delete;
 
 private:
-    std::unordered_map<ValueType, us4r::afe58jd18::PGA_GAIN> valueMap;
+    std::unordered_map<ValueType, ::us4r::afe58jd18::PGA_GAIN> valueMap;
 
     PGAGainValueMap() {
-        valueMap.emplace(ValueType(24), us4r::afe58jd18::PGA_GAIN::PGA_GAIN_24dB);
-        valueMap.emplace(ValueType(30), us4r::afe58jd18::PGA_GAIN::PGA_GAIN_30dB);
+        valueMap.emplace(ValueType(24), ::us4r::afe58jd18::PGA_GAIN::PGA_GAIN_24dB);
+        valueMap.emplace(ValueType(30), ::us4r::afe58jd18::PGA_GAIN::PGA_GAIN_30dB);
     }
 
 };

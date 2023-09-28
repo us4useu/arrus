@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_DEVICES_US4R_IO_IOSETTINGS_H
 
 #include <utility>
+#include <unordered_map>
 
 #include "IOCapability.h"
 #include "IOAddress.h"

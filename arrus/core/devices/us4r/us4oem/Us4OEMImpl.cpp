@@ -702,12 +702,12 @@ inline void Us4OEMImpl::setDtgcAttenuationAfe(std::optional<uint16> param, bool 
         return;
     }
     if (param.has_value()) {
-        ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
+        ius4oem->SetDTGC(::us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
                          DTGCAttenuationValueMap::getInstance().getEnumValue(param.value()));
     } else {
         // DTGC param does not matter
-        ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
-                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
+        ius4oem->SetDTGC(::us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
+                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
     }
 }
 
@@ -722,11 +722,11 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
         return;
     }
     if (rxSettings.getActiveTermination().has_value()) {
-        ius4oem->SetActiveTermination(us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
+        ius4oem->SetActiveTermination(::us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
                                       ActiveTerminationValueMap::getInstance().getEnumValue(param.value()));
     } else {
-        ius4oem->SetActiveTermination(us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
-                                      us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
+        ius4oem->SetActiveTermination(::us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
+                                      ::us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
     }
 }
 

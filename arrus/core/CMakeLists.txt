@@ -17,6 +17,9 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/HVSettings.proto
     io/proto/devices/us4r/Us4RSettings.proto
     io/proto/devices/file/FileSettings.proto
+    io/proto/devices/us4r/IOAddress.proto
+    io/proto/devices/us4r/IOCapability.proto
+    io/proto/devices/us4r/IOSettings.proto
     )
 ################################################################################
 # Target
