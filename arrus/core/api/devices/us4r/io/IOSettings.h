@@ -20,10 +20,15 @@ public:
     explicit IOSettings(std::unordered_map<IOCapability, IOAddressSet> addresses) : addresses(std::move(addresses)) {}
 
     bool hasProbeConnectedCheckCapability() const {
-        return addresses.find(IOCapability::PROBE_CONNECTED_CHECK) != std::end(addresses);
+        auto it = addresses.find(IOCapability::PROBE_CONNECTED_CHECK);
+        return it != std::end(addresses) && it->second.size() > 0;
     }
 
     IOAddress getProbeConnectedCheckCapabilityAddress() const {
+        if(!hasProbeConnectedCheckCapability()) {
+            throw arrus::IllegalArgumentException("The IO Settings of the device have no probe connected check "
+                                                  "capability.");
+        }
         return *addresses.find(IOCapability::PROBE_CONNECTED_CHECK)->second.begin();
     }
 

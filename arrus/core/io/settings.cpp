@@ -130,12 +130,14 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
                 addresses.emplace_back(us4oem, io);
             }
             arrus::devices::us4r::IOAddressSet addressSet(addresses);
-            switch(entry.capability()) {
-            case arrus::proto::IOCapability::PROBE_CONNECTED_CHECK:
-                settingsBuilder.setProbeConnectedCheckCapability(addressSet);
-                break;
-            default:
-                throw IllegalArgumentException("Unhandled capability nr: " + std::to_string(entry.capability()));
+            if(addressSet.size() > 0) {
+                switch(entry.capability()) {
+                case arrus::proto::IOCapability::PROBE_CONNECTED_CHECK:
+                    settingsBuilder.setProbeConnectedCheckCapability(addressSet);
+                    break;
+                default:
+                    throw IllegalArgumentException("Unhandled capability nr: " + std::to_string(entry.capability()));
+                }
             }
         }
         return ProbeAdapterSettings(id, nChannels, channelMapping, settingsBuilder.build());
