@@ -44,18 +44,20 @@ class Backplane:
     """
     Digital backplane of the us4R device.
     """
+    def __init__(self, us4r):
+        self._us4r = us4r
 
     def get_serial_number(self) -> str:
         """
         Returns serial number of the digital backplane.
         """
-        return ""
+        return self._us4r._handle.getBackplaneSerialNumber()
 
     def get_revision(self) -> str:
         """
         Returns revision number of the digital backplane.
         """
-        return ""
+        return self._us4r._handle.getBackplaneRevision()
 
 
 class Us4R(Device, Ultrasound):
@@ -72,7 +74,7 @@ class Us4R(Device, Ultrasound):
                                    self._handle.getDeviceId().getOrdinal())
         # Context for the currently running sequence.
         self._kernel_context = None
-        self._backplane = Backplane()
+        self._backplane = Backplane(self)
 
     def get_device_id(self):
         return self._device_id
