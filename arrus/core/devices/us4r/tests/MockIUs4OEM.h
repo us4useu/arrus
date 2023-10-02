@@ -213,6 +213,8 @@ public:
     MOCK_METHOD(void, HVPSSetVoltage, (float), (override));
     MOCK_METHOD(IHV*, getHVPS, (), (override));
     MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
+    MOCK_METHOD(std::string, GetSerialNumber, (), (override));
+    MOCK_METHOD(std::string, GetRevisionNumber, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
