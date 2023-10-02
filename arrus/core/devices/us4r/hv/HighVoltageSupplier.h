@@ -18,9 +18,7 @@ class HighVoltageSupplier : public Device {
 public:
     using Handle = std::unique_ptr<HighVoltageSupplier>;
 
-    HighVoltageSupplier(const DeviceId &id, HVModelId modelId,
-                        std::optional<std::unique_ptr<IDBAR>> dbar,
-                        std::unique_ptr<IHV> hv);
+    HighVoltageSupplier(const DeviceId &id, HVModelId modelId, std::unique_ptr<IHV> hv);
 
     void setVoltage(Voltage voltage) {
         try {
@@ -67,11 +65,9 @@ public:
     const HVModelId &getModelId() const {
         return modelId;
     }
-
 private:
     Logger::Handle logger;
     HVModelId modelId;
-    std::optional<std::unique_ptr<IDBAR>> dbar;
     std::unique_ptr<IHV> hv;
 };
 

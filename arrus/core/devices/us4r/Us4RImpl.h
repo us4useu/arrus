@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "arrus/common/asserts.h"
+#include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
@@ -16,12 +17,13 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/RxSettings.h"
+#include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
+#include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/utils.h"
-#include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 
 namespace arrus::devices {
 
@@ -34,11 +36,15 @@ public:
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
-             std::vector<unsigned short> channelsMask);
+             std::vector<unsigned short> channelsMask,
+             std::optional<DigitalBackplane::Handle> backplane
+             );
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
-             std::vector<unsigned short> channelsMask);
+             std::vector<unsigned short> channelsMask,
+             std::optional<DigitalBackplane::Handle> backplane
+             );
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -140,6 +146,8 @@ public:
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                               ::arrus::ops::us4r::Scheme::WorkMode workMode);
     void unregisterOutputBuffer();
+    const char *getBackplaneSerialNumber() override;
+    const char *getBackplaneRevision() override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -182,6 +190,7 @@ private:
     Us4OEMs us4oems;
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
+    std::optional<DigitalBackplane::Handle> digitalBackplane;
     std::vector<HighVoltageSupplier::Handle> hv;
     std::unique_ptr<Us4RBuffer> us4rBuffer;
     std::shared_ptr<Us4ROutputBuffer> buffer;

@@ -15,7 +15,11 @@
 namespace arrus::devices {
 
 std::vector<HighVoltageSupplier::Handle>
-HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &settings, const std::vector<IUs4OEM*> &us4oems) {
+HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
+    const HVSettings &settings, const std::vector<IUs4OEM*> &us4oems,
+    const std::optional<DigitalBackplane::Handle> &backplane
+    ) {
+
     const std::string &manufacturer = settings.getModelId().getManufacturer();
     const std::string &name = settings.getModelId().getName();
     ARRUS_REQUIRES_EQUAL(manufacturer, "us4us",
@@ -31,17 +35,17 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
 
         std::vector<HighVoltageSupplier::Handle> hvs;
         auto ver = us4oems[0]->GetOemVersion();
+        ARRUS_REQUIRES_TRUE(backplane.has_value(), "Backplane is required for hv256.");
+        IDBAR* dbar = backplane.value()->getIDBAR();
 
         if(ver == 1) {
-            std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0])));
             std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
-            auto _hv = std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+            auto _hv = std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));
         }
         else if(ver == 2) {
-            std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(us4oems[0])));
             std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
-            auto _hv = std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+            auto _hv = std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));
         }
         else {
@@ -52,9 +56,10 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     }
     else if(name == "us4rpsc") {
         std::vector<HighVoltageSupplier::Handle> hvs;
-        std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0])));
+        ARRUS_REQUIRES_TRUE(backplane.has_value(), "Backplane is required for hv256.");
+        IDBAR* dbar = backplane.value()->getIDBAR();
         std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
-        auto _hv =  std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(dbar), std::move(hv));
+        auto _hv =  std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(hv));
         hvs.push_back(std::move(_hv));
 
         return hvs;
@@ -64,7 +69,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
 
         for(auto us4oem: us4oems) {
             std::unique_ptr<IHV> hv(us4oem->getHVPS());
-            hvs.push_back(std::move(std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::nullopt, std::move(hv))));
+            hvs.push_back(std::make_unique<HighVoltageSupplier>(id, settings.getModelId(), std::move(hv)));
         }
 
         return hvs;
@@ -72,7 +77,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(const HVSettings &setting
     }
     else {
         throw IllegalArgumentException(
-            ::arrus::format("Unrecognized high-voltage supplier: {}", manufacturer));
+            ::arrus::format("Unrecognized high-voltage supplier: {}, {}", manufacturer, name));
     }
 }
 }
