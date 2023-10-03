@@ -25,7 +25,8 @@ public:
     using ChannelMapping = ProbeAdapterSettings::ChannelMapping;
 
     ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,std::vector<Us4OEMImplBase::RawHandle> us4oems,
-                     ChannelIdx numberOfChannels, ChannelMapping channelMapping);
+                     ChannelIdx numberOfChannels, ChannelMapping channelMapping,
+                     const ::arrus::devices::us4r::IOSettings &ioSettings);
 
     [[nodiscard]] ChannelIdx getNumberOfChannels() const override {
         return numberOfChannels;
@@ -46,11 +47,15 @@ public:
 
     void syncTrigger() override;
 private:
+    Ordinal getFrameMetadataOem(const us4r::IOSettings &settings);
+
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
     std::vector<Us4OEMImplBase::RawHandle> us4oems;
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
+    /** The OEM, which is responsible for acquiring pulse counter metadata (ordinal number). **/
+    Ordinal frameMetadataOem{0};
 };
 }
 

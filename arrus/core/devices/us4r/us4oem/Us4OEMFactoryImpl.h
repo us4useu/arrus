@@ -15,7 +15,7 @@ public:
     Us4OEMFactoryImpl() = default;
 
     Us4OEMImplBase::Handle getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem, const Us4OEMSettings &cfg,
-                                     bool isExternalTrigger) override {
+                                     bool isExternalTrigger, bool acceptRxNops = false) override {
         // Validate settings.
         Us4OEMSettingsValidator validator(ordinal);
         validator.validate(cfg);
@@ -69,7 +69,7 @@ public:
                                             std::move(ius4oem), cfg.getActiveChannelGroups(),
                                             channelMapping, cfg.getRxSettings(),
                                             cfg.getChannelsMask(), cfg.getReprogrammingMode(),
-                                            isExternalTrigger);
+                                            isExternalTrigger, acceptRxNops);
     }
 
 private:

@@ -90,7 +90,7 @@ public:
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
-               bool externalTrigger);
+               bool externalTrigger, bool acceptRxNops);
 
     ~Us4OEMImpl() override;
 
@@ -215,6 +215,7 @@ private:
     float currentSamplingFrequency{SAMPLING_FREQUENCY};
     /** Global state mutex */
     mutable std::mutex stateMutex;
+    bool acceptRxNops{false};
 };
 
 }

@@ -135,6 +135,9 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
                 case arrus::proto::IOCapability::PROBE_CONNECTED_CHECK:
                     settingsBuilder.setProbeConnectedCheckCapability(addressSet);
                     break;
+                case arrus::proto::IOCapability::PULSE_COUNTER:
+                    settingsBuilder.setPulseCounterCapability(addressSet);
+                    break;
                 default:
                     throw IllegalArgumentException("Unhandled capability nr: " + std::to_string(entry.capability()));
                 }

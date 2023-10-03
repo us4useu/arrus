@@ -43,7 +43,8 @@ std::tuple<
     Eigen::Tensor<int8, 3>
 >
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
-                            const std::vector<std::vector<uint8_t>> &mappings);
+                            const std::vector<std::vector<uint8_t>> &mappings,
+                            Ordinal frameMetadataOem);
 
 }
 

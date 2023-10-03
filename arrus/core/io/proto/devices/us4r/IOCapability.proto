@@ -4,4 +4,5 @@ package arrus.proto;
 
 enum IOCapability {
     PROBE_CONNECTED_CHECK = 0;
+    PULSE_COUNTER = 1;
 }

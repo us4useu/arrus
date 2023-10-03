@@ -15,9 +15,11 @@ namespace arrus::devices {
 using namespace ::arrus::ops::us4r;
 using ::arrus::ops::us4r::Scheme;
 
-ProbeAdapterImpl::ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelId,
-                                   std::vector<Us4OEMImplBase::RawHandle> us4oems, ChannelIdx numberOfChannels,
-                                   ChannelMapping channelMapping)
+ProbeAdapterImpl::ProbeAdapterImpl(
+    DeviceId deviceId, ProbeAdapterModelId modelId,
+    std::vector<Us4OEMImplBase::RawHandle> us4oems, ChannelIdx numberOfChannels,
+    ChannelMapping channelMapping,
+    const ::arrus::devices::us4r::IOSettings &ioSettings)
         : ProbeAdapterImplBase(deviceId), logger(getLoggerFactory()->getLogger()),
           modelId(std::move(modelId)),
           us4oems(std::move(us4oems)),
@@ -25,6 +27,7 @@ ProbeAdapterImpl::ProbeAdapterImpl(DeviceId deviceId, ProbeAdapterModelId modelI
           channelMapping(std::move(channelMapping)) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
+    frameMetadataOem = getFrameMetadataOem(ioSettings);
 }
 
 class ProbeAdapterTxRxValidator : public Validator<TxRxParamsSequence> {
@@ -186,7 +189,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(auto &us4oem: us4oems) {
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
     }
-    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(seqs, us4oemL2PChannelMappings);
+    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(
+        seqs, us4oemL2PChannelMappings, frameMetadataOem);
 
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;
@@ -286,7 +290,20 @@ void ProbeAdapterImpl::stop() {
 void ProbeAdapterImpl::syncTrigger() {
     this->us4oems[0]->syncTrigger();
 }
-
-
+Ordinal ProbeAdapterImpl::getFrameMetadataOem(const us4r::IOSettings &settings) {
+    if(!settings.hasPulseCounterCapability()) {
+        return 0; // By default us4OEM:0 is considered to provide frame metadata
+    }
+    else {
+        std::unordered_set<Ordinal> oems = settings.getPulseCounterCapabilityOEMs();
+        if(oems.size() != 1) {
+            throw ::arrus::IllegalArgumentException("Exactly one OEM should be set for the pulse counter capability.");
+        }
+        else {
+            // Only a single OEM.
+            return *std::begin(oems);
+        }
+    }
+}
 
 }
