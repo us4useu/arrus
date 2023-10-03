@@ -44,17 +44,11 @@ public:
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
     (override));
-    MOCK_METHOD(unsigned char, SetTxHalfPeriods,
-            (unsigned char nop, const unsigned short firing), (override));
+    MOCK_METHOD(uint32_t, SetTxHalfPeriods,
+            (uint32_t nop, const unsigned short firing), (override));
     MOCK_METHOD(void, SetTxInvert, (bool onoff, const unsigned short firing),
     (override));
     MOCK_METHOD(void, SetTxCw, (bool onoff, const unsigned short firing),
-    (override));
-    MOCK_METHOD(void, SetRxAperture,
-            (const unsigned char origin, const unsigned char size, const unsigned short firing),
-    (override));
-    MOCK_METHOD(void, SetTxAperture,
-            (const unsigned char origin, const unsigned char size, const unsigned short firing),
     (override));
     MOCK_METHOD(void, SetRxAperture,
             (const std::bitset<NCH>& aperture, const unsigned short firing),
@@ -204,6 +198,20 @@ public:
     MOCK_METHOD(void, SetTxFrequencyRange, (int range), (override));
     MOCK_METHOD(float, GetMinTxFrequency, (), (const, override));
     MOCK_METHOD(float, GetMaxTxFrequency, (), (const, override));
+    MOCK_METHOD(void, PulserWriteRegister, (uint8_t, uint16_t, uint16_t), (override));
+    MOCK_METHOD(uint16_t, PulserReadRegister, (uint8_t, uint16_t), (override));
+    MOCK_METHOD(uint32_t, GetOemVersion, (), (override));
+    MOCK_METHOD(void, SequencerWriteRegister, (uint32_t, uint32_t), (override));
+    MOCK_METHOD(uint32_t, SequencerReadRegister, (uint32_t), (override));
+    MOCK_METHOD(void, AllPulsersWriteRegister, (uint16_t, uint16_t), (override));
+    MOCK_METHOD(void, DBARLitePcieWriteReg, (uint8_t, uint8_t), (override));
+    MOCK_METHOD(uint8_t, DBARLitePcieReadReg, (uint8_t), (override));
+    MOCK_METHOD(void, DBARLitePcieWriteBuf, (uint8_t, std::vector<unsigned char>), (override));
+    MOCK_METHOD(void, DBARLitePcieReadBuf, (uint8_t, std::vector<unsigned char>), (override));
+    MOCK_METHOD(void, HVPSWriteRegister, (uint32_t, uint32_t), (override));
+    MOCK_METHOD(uint32_t, HVPSReadRegister, (uint32_t), (override));
+    MOCK_METHOD(void, HVPSSetVoltage, (float), (override));
+    MOCK_METHOD(IHV*, getHVPS, (), (override));
     MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
 };
 
