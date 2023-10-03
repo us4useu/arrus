@@ -84,6 +84,7 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
     }
     else if(ver == 2) {
         //Verify measured voltages on OEM+s
+        //Currently OEM+ does not support internal voltage measurement - skip
     }
 
     
