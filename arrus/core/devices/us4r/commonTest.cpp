@@ -47,8 +47,7 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsSingleOperationCorrectly) {
         }
     };
 
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(
-        in, DEFAULT_MAPPING1);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
 
     std::vector<bool> expectedRxAperture0(128);
     expectedRxAperture0[1] = true;
@@ -93,8 +92,7 @@ TEST(SplitRxApertureIfNecessaryTest, DoesNotSplitOpIfNotNecessary) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(
-        in, DEFAULT_MAPPING1);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
 
     std::vector<TxRxParamsSequence> expected{
         {
@@ -141,8 +139,7 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
             getStdTxRxParameters(rxAperture3)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(
-        in, DEFAULT_MAPPING1);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
 
     // IN op 0
     std::vector<bool> expRxAperture0(128);
@@ -231,8 +228,7 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsFullRxApertureCorrectly) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in,
-                                                                         DEFAULT_MAPPING1);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
 
     std::vector<bool> expectedRxAperture0(128);
     for(size_t i = 0; i < 32; ++i) {
@@ -311,7 +307,7 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
     }
 
     std::vector<TxRxParamsSequence> in = {seq0, seq1};
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING2);
+    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING2, 0);
 
     TxRxParamsSequence expectedSeq0;
     {
