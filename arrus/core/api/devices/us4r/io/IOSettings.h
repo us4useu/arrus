@@ -33,20 +33,20 @@ public:
         return *addresses.find(IOCapability::PROBE_CONNECTED_CHECK)->second.begin();
     }
 
-    bool hasPulseCounterCapability() const {
-        auto it = addresses.find(IOCapability::PULSE_COUNTER);
+    bool hasFrameMetadataCapability() const {
+        auto it = addresses.find(IOCapability::FRAME_METADATA);
         return it != std::end(addresses) && it->second.size() > 0;
     }
 
-    IOAddressSet getPulseCounterCapabilityAddresses() const {
-        if(!hasPulseCounterCapability()) {
+    IOAddressSet getFrameMetadataCapabilityAddresses() const {
+        if(!hasFrameMetadataCapability()) {
             throw arrus::IllegalArgumentException("The IO Settings of the device have no pulse counter capability.");
         }
-        return addresses.find(IOCapability::PULSE_COUNTER)->second;
+        return addresses.find(IOCapability::FRAME_METADATA)->second;
     }
 
-    std::unordered_set<Ordinal> getPulseCounterCapabilityOEMs() const {
-        auto addrs = getPulseCounterCapabilityAddresses();
+    std::unordered_set<Ordinal> getFrameMetadataCapabilityOEMs() const {
+        auto addrs = getFrameMetadataCapabilityAddresses();
         // Check if only a single OEM is addressed by pulse counter functionality.
         std::unordered_set<Ordinal> oems;
         for(auto &a: addrs) {
@@ -71,8 +71,8 @@ public:
         return *this;
     }
 
-    IOSettingsBuilder &setPulseCounterCapability(const IOAddressSet& addresses) {
-        addr.emplace(IOCapability::PULSE_COUNTER, addresses);
+    IOSettingsBuilder &setFrameMetadataCapability(const IOAddressSet& addresses) {
+        addr.emplace(IOCapability::FRAME_METADATA, addresses);
         return *this;
     }
 

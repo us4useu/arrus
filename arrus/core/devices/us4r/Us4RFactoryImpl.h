@@ -172,8 +172,8 @@ class Us4RFactoryImpl : public Us4RFactory {
 
         // Determine which OEMs must acquire RX nops, for pulse counter capability.
         std::unordered_set<Ordinal> pulseCounterOems;
-        if(io.hasPulseCounterCapability())  {
-            pulseCounterOems = io.getPulseCounterCapabilityOEMs();
+        if(io.hasFrameMetadataCapability())  {
+            pulseCounterOems = io.getFrameMetadataCapabilityOEMs();
         }
         else {
             // By default us4OEM:0 is the pulse counter.

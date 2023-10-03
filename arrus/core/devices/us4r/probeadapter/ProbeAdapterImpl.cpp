@@ -291,11 +291,11 @@ void ProbeAdapterImpl::syncTrigger() {
     this->us4oems[0]->syncTrigger();
 }
 Ordinal ProbeAdapterImpl::getFrameMetadataOem(const us4r::IOSettings &settings) {
-    if(!settings.hasPulseCounterCapability()) {
+    if(!settings.hasFrameMetadataCapability()) {
         return 0; // By default us4OEM:0 is considered to provide frame metadata
     }
     else {
-        std::unordered_set<Ordinal> oems = settings.getPulseCounterCapabilityOEMs();
+        std::unordered_set<Ordinal> oems = settings.getFrameMetadataCapabilityOEMs();
         if(oems.size() != 1) {
             throw ::arrus::IllegalArgumentException("Exactly one OEM should be set for the pulse counter capability.");
         }
