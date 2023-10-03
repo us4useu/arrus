@@ -142,7 +142,9 @@ protected:
         probeAdapter = std::make_unique<ProbeAdapterImpl>(
                 DeviceId(DeviceType::ProbeAdapter, 0),
                 ProbeAdapterModelId("test", "test"),
-                us4oemsPtr, getNChannels(), getChannelMapping());
+                us4oemsPtr, getNChannels(), getChannelMapping(),
+                ::arrus::devices::us4r::IOSettings()
+            );
     }
 
     virtual ProbeAdapterImpl::ChannelMapping getChannelMapping() = 0;

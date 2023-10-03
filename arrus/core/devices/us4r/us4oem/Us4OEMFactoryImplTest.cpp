@@ -14,7 +14,7 @@ namespace {
 
 using namespace arrus;
 using namespace arrus::devices;
-using namespace us4r::afe58jd18;
+using namespace ::us4r::afe58jd18;
 
 using ::testing::_;
 using ::testing::FloatEq;
@@ -94,8 +94,8 @@ TEST_P(Us4OEMFactoryOptionalParametersTest, VerifyUs4OEMFactoryOptionalParameter
                                            us4rParameters.activeTerminationValue));
     } else {
         // NO enable
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN, testing::Matcher<us4r::afe58jd18::GBL_ACTIVE_TERM>(_))).Times(0);
-        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS, testing::Matcher<us4r::afe58jd18::GBL_ACTIVE_TERM>(_)));
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_EN, testing::Matcher<::us4r::afe58jd18::GBL_ACTIVE_TERM>(_))).Times(0);
+        EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS, testing::Matcher<::us4r::afe58jd18::GBL_ACTIVE_TERM>(_)));
     }
     Us4OEMFactoryImpl factory;
     factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false);
