@@ -84,13 +84,23 @@ class Us4RFactoryImpl : public Us4RFactory {
             // Create probe.
             ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings, adapter.get());
 
-            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
+            std::vector<IUs4OEM*> ius4oems;
+            for(auto &us4oem: us4oems) {
+                ius4oems.push_back(us4oem->getIUs4oem());
+            }
+
+            auto hv = getHV(settings.getHVSettings(), ius4oems);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings,
                                               settings.getChannelsMask());
         } else {
             // Custom Us4OEMs only
             auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false, us4r::IOSettings());
-            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
+            std::vector<IUs4OEM*> ius4oems;
+            for(auto &us4oem: us4oems) {
+                ius4oems.push_back(us4oem->getIUs4oem());
+            }
+
+            auto hv = getHV(settings.getHVSettings(), ius4oems);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask());
         }
     }
@@ -185,12 +195,13 @@ class Us4RFactoryImpl : public Us4RFactory {
         return {std::move(us4oems), master};
     }
 
-    std::optional<HighVoltageSupplier::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
+    std::vector<HighVoltageSupplier::Handle> getHV(const std::optional<HVSettings> &settings, std::vector<IUs4OEM *> &us4oems) {
         if (settings.has_value()) {
             const auto &hvSettings = settings.value();
-            return hvFactory->getHighVoltageSupplier(hvSettings, master);
+            return hvFactory->getHighVoltageSupplier(hvSettings, us4oems);
         } else {
-            return std::nullopt;
+            std::vector<HighVoltageSupplier::Handle> empty;
+            return empty;
         }
     }
 

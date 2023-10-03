@@ -37,7 +37,7 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
     }
 }
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
                    std::vector<unsigned short> channelsMask)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)),
       channelsMask(std::move(channelsMask)) {
@@ -45,7 +45,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltag
 }
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
-                   ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv,
+                   ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv,
                    const RxSettings &rxSettings, std::vector<unsigned short> channelsMask)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
       probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)), rxSettings(rxSettings),
@@ -53,13 +53,13 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterIm
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
-std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isUS4PSC) {
+std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
     std::vector<std::pair <std::string,float>> voltages;
     std::pair <std::string,float> temp;
     float voltage;
     // Do not log the voltage measured by US4RPSC, as it may not be correct
     // for this hardware.
-    if(!isUS4PSC) {
+    if(isHV256) {
         //Measure voltages on HV
         voltage = this->getMeasuredPVoltage();
         temp = std::make_pair(std::string("HVP on HV supply"), voltage);
@@ -69,25 +69,35 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isUS4PSC) 
         voltages.push_back(temp);
     }
 
-    //Verify measured voltages on OEMs
-    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-        voltage = this->getUCDMeasuredHVPVoltage(i);
-        temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
-        voltages.push_back(temp);
-        voltage = this->getUCDMeasuredHVMVoltage(i);
-        temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
-        voltages.push_back(temp);
+    auto ver = us4oems[0]->getOemVersion();
+
+    if(ver == 1) {
+        //Verify measured voltages on OEMs
+        for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+            voltage = this->getUCDMeasuredHVPVoltage(i);
+            temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
+            voltages.push_back(temp);
+            voltage = this->getUCDMeasuredHVMVoltage(i);
+            temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
+            voltages.push_back(temp);
+        }
     }
+    else if(ver == 2) {
+        //Verify measured voltages on OEM+s
+        //Currently OEM+ does not support internal voltage measurement - skip
+    }
+
+    
 
     return voltages;
 }
 
-void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool isUS4PSC) {
+void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool isHV256) {
     std::vector<std::pair <std::string,float>> voltages;
     bool fail = true;
     while(retries-- && fail) {
         fail = false;
-        voltages = logVoltages(isUS4PSC);
+        voltages = logVoltages(isHV256);
         for(size_t i = 0; i < voltages.size(); i++) {
             if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
                 fail = true;
@@ -116,7 +126,7 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
 
 void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
-    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
+    ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     // Validate.
     auto *device = getDefaultComponent();
     auto voltageRange = device->getAcceptedVoltageRange();
@@ -129,7 +139,11 @@ void Us4RImpl::setVoltage(Voltage voltage) {
         throw IllegalArgumentException(
             ::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
     }
-    hv.value()->setVoltage(voltage);
+
+    for(uint8_t n = 0; n < hv.size(); n++) {
+        hv[n]->setVoltage(voltage);
+    }
+    
 
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -137,10 +151,10 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     int retries = 5;
 
     //Verify register
-    auto &hvModel = this->hv.value()->getModelId();
-    bool isUS4PSC = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc";
+    auto &hvModel = this->hv[0]->getModelId();
+    bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
 
-    if(!isUS4PSC) {
+    if(isHV256) {
         // Do not check the voltage measured by US4RPSC, as it may not be correct
         // for this hardware.
         Voltage setVoltage = this->getVoltage();
@@ -156,22 +170,22 @@ void Us4RImpl::setVoltage(Voltage voltage) {
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
 
-    checkVoltage(voltage, tolerance, retries, isUS4PSC);
+    checkVoltage(voltage, tolerance, retries, isHV256);
 }
 
 unsigned char Us4RImpl::getVoltage() {
-    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
-    return hv.value()->getVoltage();
+    ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
+    return hv[0]->getVoltage();
 }
 
 float Us4RImpl::getMeasuredPVoltage() {
-    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
-    return hv.value()->getMeasuredPVoltage();
+    ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
+    return hv[0]->getMeasuredPVoltage();
 }
 
 float Us4RImpl::getMeasuredMVoltage() {
-    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
-    return hv.value()->getMeasuredMVoltage();
+    ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
+    return hv[0]->getMeasuredMVoltage();
 }
 
 float Us4RImpl::getUCDMeasuredHVPVoltage(uint8_t oemId) {
@@ -190,8 +204,11 @@ void Us4RImpl::disableHV() {
         throw IllegalStateException("You cannot disable HV while the system is running.");
     }
     logger->log(LogSeverity::INFO, "Disabling HV");
-    ARRUS_REQUIRES_TRUE(hv.has_value(), "No HV have been set.");
-    hv.value()->disable();
+    ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
+
+    for(uint8_t n = 0; n < hv.size(); n++) {
+        hv[n]->disable();
+    }
 }
 
 std::pair<Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>

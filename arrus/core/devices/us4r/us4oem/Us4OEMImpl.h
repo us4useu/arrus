@@ -66,10 +66,9 @@ public:
 
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
-    static constexpr uint32_t TX_SAMPLE_DELAY_RAW_DATA = 240;
-    static constexpr float RX_DELAY = 0.0;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
+    static constexpr float RX_DELAY = 0.0;
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
     static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f; // [s]
@@ -133,6 +132,8 @@ public:
     uint32 getFirmwareVersion() override;
     void checkState() override;
     uint32 getTxFirmwareVersion() override;
+    uint32_t getTxOffset() override;
+    uint32_t getOemVersion() override;
 
     void setTestPattern(RxTestPattern pattern) override;
 
