@@ -33,11 +33,11 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::optional<HighVoltageSupplier::Handle> hv,
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
              std::vector<unsigned short> channelsMask);
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
-             ProbeImplBase::Handle &probe, std::optional<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
+             ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
              std::vector<unsigned short> channelsMask);
 
     Us4RImpl(Us4RImpl const &) = delete;
@@ -180,7 +180,7 @@ private:
     Us4OEMs us4oems;
     std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
     std::optional<ProbeImplBase::Handle> probe;
-    std::optional<HighVoltageSupplier::Handle> hv;
+    std::vector<HighVoltageSupplier::Handle> hv;
     std::unique_ptr<Us4RBuffer> us4rBuffer;
     std::shared_ptr<Us4ROutputBuffer> buffer;
     State state{State::STOPPED};

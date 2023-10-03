@@ -30,6 +30,12 @@ find_library(Us4_DBARLite_LIBRARY
         NO_CMAKE_ENVIRONMENT_PATH
         NO_SYSTEM_ENVIRONMENT_PATH
 )
+find_library(Us4_DBARLitePcie_LIBRARY
+    NAMES DBARLitePcie
+    PATHS ${Us4_LIBRARY_DIR}
+    NO_CMAKE_ENVIRONMENT_PATH
+    NO_SYSTEM_ENVIRONMENT_PATH
+    )
 find_library(Us4_Us4RPSC_LIBRARY
     NAMES Us4RPSC
     PATHS ${Us4_LIBRARY_DIR}
@@ -91,6 +97,7 @@ find_package_handle_standard_args(
         Us4_US4OEM_LIBRARY
         Us4_HV256_LIBRARY
         Us4_DBARLite_LIBRARY
+        Us4_DBARLitePcie_LIBRARY
         Us4_INCLUDE_DIR
         VERSION_VAR Us4_VERSION
 )
@@ -120,6 +127,15 @@ if(Us4_FOUND AND NOT TARGET Us4::DBARLite)
             INTERFACE_COMPILE_OPTIONS "${PC_Us4_CFLAGS_OTHER}"
             INTERFACE_INCLUDE_DIRECTORIES "${Us4_INCLUDE_DIR}"
     )
+endif()
+
+if(Us4_FOUND AND NOT TARGET Us4::DBARLitePcie)
+    add_library(Us4::DBARLitePcie UNKNOWN IMPORTED)
+    set_target_properties(Us4::DBARLitePcie PROPERTIES
+        IMPORTED_LOCATION "${Us4_DBARLitePcie_LIBRARY}"
+        INTERFACE_COMPILE_OPTIONS "${PC_Us4_CFLAGS_OTHER}"
+        INTERFACE_INCLUDE_DIRECTORIES "${Us4_INCLUDE_DIR}"
+        )
 endif()
 
 if(Us4_FOUND AND NOT TARGET Us4::Us4RPSC)
