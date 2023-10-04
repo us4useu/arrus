@@ -82,10 +82,6 @@ void Us4OEMImpl::stopTrigger() {
     }
 }
 
-void Us4OEMImpl::hvpsSetVoltage(float voltage) {
-	ius4oem->HVPSSetVoltage(voltage);
-}
-
 uint16_t Us4OEMImpl::getAfe(uint8_t address) { return ius4oem->AfeReadRegister(0, address); }
 
 void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
