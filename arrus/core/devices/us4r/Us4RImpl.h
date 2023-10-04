@@ -138,8 +138,6 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
 
-	void hvpsSetVoltage(float voltage) override;
-
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
 

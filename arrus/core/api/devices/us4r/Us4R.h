@@ -299,8 +299,6 @@ public:
     virtual void setAfe(uint8_t reg, uint16_t val) = 0;
 
 
-	virtual void hvpsSetVoltage(float voltage) = 0;
-
     /**
      * Disables digital high-pass filter.
      */

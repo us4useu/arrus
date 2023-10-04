@@ -92,9 +92,10 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
     }
     else if(ver == 2) {
         //Verify measured voltages on OEM+s
+        //Currently OEM+ does not support internal voltage measurement - skip
     }
 
-    
+
 
     return voltages;
 }
@@ -150,7 +151,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     for(uint8_t n = 0; n < hv.size(); n++) {
         hv[n]->setVoltage(voltage);
     }
-    
+
 
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -551,12 +552,6 @@ void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
 
 void Us4RImpl::disableHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
-}
-
-void Us4RImpl::hvpsSetVoltage(float voltage) {
-	for (auto &us4oem : us4oems) {
-		us4oem->hvpsSetVoltage(voltage);
-	}
 }
 
 uint16_t Us4RImpl::getAfe(uint8_t reg) {

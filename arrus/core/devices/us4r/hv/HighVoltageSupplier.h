@@ -65,6 +65,7 @@ public:
     const HVModelId &getModelId() const {
         return modelId;
     }
+
 private:
     Logger::Handle logger;
     HVModelId modelId;

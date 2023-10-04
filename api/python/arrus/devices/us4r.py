@@ -213,7 +213,7 @@ class Us4R(Device, Ultrasound):
 
     def set_test_pattern(self, pattern):
         """
-        Sets given test ADC test patter to be run by Us4OEM components.
+        Sets given test ADC test pattern to be run by Us4OEM components.
         """
         test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
         self._handle.setTestPattern(test_pattern_core)
