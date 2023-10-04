@@ -136,6 +136,9 @@ public:
 
     void setTestPattern(RxTestPattern pattern) override;
 
+    void enableProbeCheck(uint8_t pin) override;
+    void disableProbeCheck() override;
+
     uint16_t getAfe(uint8_t address) override;
     void setAfe(uint8_t address, uint16_t value) override;
 

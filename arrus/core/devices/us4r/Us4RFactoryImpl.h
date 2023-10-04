@@ -182,7 +182,7 @@ class Us4RFactoryImpl : public Us4RFactory {
         if(settings.hasProbeConnectedCheckCapability()) {
             auto addr = settings.getProbeConnectedCheckCapabilityAddress();
             std::cout << "Setting address: us4oem:" << addr.getUs4OEM() << ", " << addr.getIO() << " for us4oem: " << us4oems.at(addr.getUs4OEM())->getIUs4oem()->GetID() << std::endl;
-//            us4oems.at(addr.getUs4OEM())->getIUs4oem().SetProbeCheckIO(addr.getIO());
+            us4oems.at(addr.getUs4OEM())->getIUs4oem()->EnableProbeCheck(addr.getIO());
         }
     }
 
