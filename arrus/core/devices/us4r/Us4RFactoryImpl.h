@@ -181,8 +181,12 @@ class Us4RFactoryImpl : public Us4RFactory {
     void initCapabilities(const Us4RImpl::Us4OEMs& us4oems, const us4r::IOSettings settings) {
         if(settings.hasProbeConnectedCheckCapability()) {
             auto addr = settings.getProbeConnectedCheckCapabilityAddress();
-            std::cout << "Setting address: us4oem:" << addr.getUs4OEM() << ", " << addr.getIO() << " for us4oem: " << us4oems.at(addr.getUs4OEM())->getIUs4oem()->GetID() << std::endl;
-            us4oems.at(addr.getUs4OEM())->getIUs4oem()->EnableProbeCheck(addr.getIO());
+            if(addr.getUs4OEM() == 0){
+                us4oems.at(addr.getUs4OEM())->getIUs4oem()->EnableProbeCheck(addr.getIO());
+            }
+            else {
+                throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");
+            }
         }
     }
 
