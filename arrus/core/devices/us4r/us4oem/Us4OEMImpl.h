@@ -138,8 +138,6 @@ public:
 
     void setTestPattern(RxTestPattern pattern) override;
 
-	void hvpsSetVoltage(float voltage) override;
-
     uint16_t getAfe(uint8_t address) override;
     void setAfe(uint8_t address, uint16_t value) override;
 
