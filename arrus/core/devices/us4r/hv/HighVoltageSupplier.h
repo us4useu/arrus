@@ -14,18 +14,20 @@
 
 namespace arrus::devices {
 
+/**
+ * us4us HV interface.
+ */
 class HighVoltageSupplier : public Device {
 public:
     using Handle = std::unique_ptr<HighVoltageSupplier>;
 
     HighVoltageSupplier(const DeviceId &id, HVModelId modelId,
-                        std::optional<std::unique_ptr<IDBAR>> dbar,
-                        std::unique_ptr<IHV> hv);
+                        std::optional<std::unique_ptr<IDBAR>> dbar);
 
     void setVoltage(Voltage voltage) {
         try {
-            hv->EnableHV();
-            hv->SetHVVoltage(voltage);
+            getIHV()->EnableHV();
+            getIHV()->SetHVVoltage(voltage);
         } catch(std::exception &e) {
             // TODO catch a specific exception
             logger->log(
@@ -34,33 +36,33 @@ public:
                     "First attempt to set HV voltage failed with "
                     "message: '{}', trying once more.",
                     e.what()));
-            hv->EnableHV();
-            hv->SetHVVoltage(voltage);
+            getIHV()->EnableHV();
+            getIHV()->SetHVVoltage(voltage);
         }
     }
 
     unsigned char getVoltage() {
-        return hv->GetHVVoltage();
+        return getIHV()->GetHVVoltage();
     }
 
     float getMeasuredPVoltage() {
-        return hv->GetMeasuredHVPVoltage();
+        return getIHV()->GetMeasuredHVPVoltage();
     }
 
     float getMeasuredMVoltage() {
-        return hv->GetMeasuredHVMVoltage();
+        return getIHV()->GetMeasuredHVMVoltage();
     }
 
     void disable() {
         try {
-            hv->DisableHV();
+            getIHV()->DisableHV();
         } catch(std::exception &e) {
             logger->log(LogSeverity::INFO,
                         ::arrus::format(
                             "First attempt to disable high voltage failed with "
                             "message: '{}', trying once more.",
                             e.what()));
-            hv->DisableHV();
+            getIHV()->DisableHV();
         }
     }
 
@@ -68,11 +70,45 @@ public:
         return modelId;
     }
 
+protected:
+    virtual IHV* getIHV() = 0;
+
 private:
     Logger::Handle logger;
     HVModelId modelId;
     std::optional<std::unique_ptr<IDBAR>> dbar;
+};
+
+/**
+ * Us4us HV interface. This class owns the handle to the HV.
+ */
+class HighVoltageSupplierOwner: public HighVoltageSupplier {
+public:
+    HighVoltageSupplierOwner(const DeviceId &id, HVModelId modelId,
+                             std::optional<std::unique_ptr<IDBAR>> dbar, std::unique_ptr<IHV> hv)
+        : HighVoltageSupplier(id, std::move(modelId), std::move(dbar)), hv(std::move(hv)) {}
+
+protected:
+    IHV *getIHV() override { return hv.get(); }
+
+private:
     std::unique_ptr<IHV> hv;
+};
+
+/**
+ * Us4us HV interface. This class does not own the handle to the HV (it's only a view).
+ */
+class HighVoltageSupplierView: public HighVoltageSupplier {
+public:
+    HighVoltageSupplierView(const DeviceId &id, HVModelId modelId,
+                            std::optional<std::unique_ptr<IDBAR>> dbar, IHV *hv)
+        : HighVoltageSupplier(id, std::move(modelId), std::move(dbar)), hv(hv) {}
+
+protected:
+    IHV *getIHV() override { return hv; }
+
+private:
+    IHV* hv;
 };
 
 
