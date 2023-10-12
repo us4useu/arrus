@@ -25,12 +25,12 @@ namespace arrus::devices {
  *
  * By default system starts with IQ demodulator turned off.
  */
-class Us4R: public DeviceWithComponents, public Ultrasound {
+class Us4R: public Ultrasound, public DeviceWithComponents {
 public:
     using Handle = std::unique_ptr<Us4R>;
     static constexpr long long INF_TIMEOUT = -1;
 
-    explicit Us4R(const DeviceId &id) : DeviceWithComponents(), Ultrasound(id) {}
+    explicit Us4R(const DeviceId &id) : Ultrasound(id), DeviceWithComponents() {}
     ~Us4R() override = default;
     using Device::getDeviceId;
 
