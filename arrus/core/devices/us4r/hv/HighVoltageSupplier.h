@@ -83,7 +83,7 @@ private:
 class HighVoltageSupplierOwner: public HighVoltageSupplier {
 public:
     HighVoltageSupplierOwner(const DeviceId &id, HVModelId modelId, std::unique_ptr<IHV> hv)
-        : HighVoltageSupplier(id, std::move(modelId), hv(std::move(hv)) {}
+        : HighVoltageSupplier(id, std::move(modelId)), hv(std::move(hv)) {}
 
 protected:
     IHV *getIHV() override { return hv.get(); }
@@ -98,7 +98,7 @@ private:
 class HighVoltageSupplierView: public HighVoltageSupplier {
 public:
     HighVoltageSupplierView(const DeviceId &id, HVModelId modelId, IHV *hv)
-        : HighVoltageSupplier(id, std::move(modelId), std::move(dbar)), hv(hv) {}
+        : HighVoltageSupplier(id, std::move(modelId)), hv(hv) {}
 
 protected:
     IHV *getIHV() override { return hv; }
