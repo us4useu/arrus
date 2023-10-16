@@ -4,11 +4,10 @@
 
 namespace arrus::devices {
 
-HighVoltageSupplier::HighVoltageSupplier(const DeviceId &id, HVModelId modelId, std::unique_ptr<IHV> hv)
+HighVoltageSupplier::HighVoltageSupplier(const DeviceId &id, HVModelId modelId)
     : Device(id),
     logger(getLoggerFactory()->getLogger()),
-    modelId(std::move(modelId)),
-    hv(std::move(hv)) {
+    modelId(std::move(modelId)) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
