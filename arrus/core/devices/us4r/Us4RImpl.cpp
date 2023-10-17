@@ -38,18 +38,26 @@ UltrasoundDevice *Us4RImpl::getDefaultComponent() {
 }
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
-                   std::vector<unsigned short> channelsMask)
-    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)), hv(std::move(hv)),
-      channelsMask(std::move(channelsMask)) {
+                   std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane)
+    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
+      digitalBackplane(std::move(backplane)),
+      hv(std::move(hv)),
+      channelsMask(std::move(channelsMask))
+{
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
                    ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv,
-                   const RxSettings &rxSettings, std::vector<unsigned short> channelsMask)
+                   const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
+                   std::optional<DigitalBackplane::Handle> backplane)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
-      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)), hv(std::move(hv)), rxSettings(rxSettings),
-      channelsMask(std::move(channelsMask)) {
+      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)),
+      digitalBackplane(std::move(backplane)),
+      hv(std::move(hv)),
+      rxSettings(rxSettings),
+      channelsMask(std::move(channelsMask))
+{
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
@@ -87,7 +95,7 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
         //Currently OEM+ does not support internal voltage measurement - skip
     }
 
-    
+
 
     return voltages;
 }
@@ -143,7 +151,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     for(uint8_t n = 0; n < hv.size(); n++) {
         hv[n]->setVoltage(voltage);
     }
-    
+
 
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -761,6 +769,20 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
     default:
         throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
+}
+
+const char *Us4RImpl::getBackplaneSerialNumber() {
+    if(!this->digitalBackplane.has_value()) {
+        throw arrus::IllegalArgumentException("No backplane defined.");
+    }
+    return this->digitalBackplane->get()->getSerialNumber();
+}
+
+const char *Us4RImpl::getBackplaneRevision() {
+    if(!this->digitalBackplane.has_value()) {
+        throw arrus::IllegalArgumentException("No backplane defined.");
+    }
+    return this->digitalBackplane->get()->getRevisionNumber();
 }
 
 }// namespace arrus::devices

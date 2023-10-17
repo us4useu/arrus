@@ -17,6 +17,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h"
+#include "arrus/core/devices/us4r/backplane/DigitalBackplaneFactoryImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h"
 #include "arrus/core/devices/file/FileFactoryImpl.h"
@@ -49,7 +50,9 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
             std::make_unique<Us4OEMFactoryImpl>(), std::make_unique<ProbeAdapterFactoryImpl>(),
             std::make_unique<ProbeFactoryImpl>(), std::make_unique<IUs4OEMFactoryImpl>(),
             std::make_unique<IUs4OEMInitializerImpl>(), std::make_unique<Us4RSettingsConverterImpl>(),
-            std::make_unique<HighVoltageSupplierFactoryImpl>()),
+            std::make_unique<HighVoltageSupplierFactoryImpl>(),
+            std::make_unique<DigitalBackplaneFactoryImpl>()
+            ),
         std::make_unique<FileFactoryImpl>()
         );
 }
