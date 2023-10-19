@@ -298,7 +298,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];
             }
-            ius4oem->SetTxDelay(txChannel, txDelay, opIdx);
+            ius4oem->SetTxDelay(txChannel, txDelay, opIdx, true);
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
