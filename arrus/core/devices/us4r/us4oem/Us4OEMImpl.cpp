@@ -292,7 +292,30 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
 
         // Delays
+        /*uint8 txChannel = 0;
+        for (bool bit : op.getTxAperture()) {
+            float txDelay = 0;
+            if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
+                txDelay = op.getTxDelays()[txChannel];
+            }
+            ius4oem->SetTxDelay(txChannel, txDelay, opIdx, true);
+            ++txChannel;
+        }*/
+        ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
+        ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
+        ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
+        ius4oem->SetRxTime(rxTime, opIdx);
+        ius4oem->SetRxDelay(RX_DELAY, opIdx);
+    }
+
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (uint16 opIdx = 0; opIdx < seq.size(); ++opIdx)  {
+        
         uint8 txChannel = 0;
+        auto const &op = seq[opIdx];
+        
         for (bool bit : op.getTxAperture()) {
             float txDelay = 0;
             if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
@@ -301,12 +324,12 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             ius4oem->SetTxDelay(txChannel, txDelay, opIdx, true);
             ++txChannel;
         }
-        ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
-        ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
-        ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
-        ius4oem->SetRxTime(rxTime, opIdx);
-        ius4oem->SetRxDelay(RX_DELAY, opIdx);
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    this->logger->log(LogSeverity::INFO, ::arrus::format("Writing Tx delays took {} us", duration.count()));
+
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
 
@@ -624,7 +647,14 @@ void Us4OEMImpl::enableSequencer() {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
+
+    auto start = std::chrono::high_resolution_clock::now();
+
     this->ius4oem->EnableSequencer(txConfOnTrigger);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    this->logger->log(LogSeverity::INFO, ::arrus::format("Writing Tx delays took {} us", duration.count()));
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
