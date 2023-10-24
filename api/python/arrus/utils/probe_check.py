@@ -840,7 +840,7 @@ class ProbeHealthVerifier:
                     ),
                     rx_aperture_center_element=np.arange(0, n_elements),
                     rx_aperture_size=nrx,
-                    rx_sample_range=(0, 512),
+                    rx_sample_range=(0, 1024),
                     pri=1000e-6,
                     tgc_start=14,
                     tgc_slope=0,
