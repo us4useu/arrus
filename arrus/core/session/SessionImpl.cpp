@@ -146,6 +146,7 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     ASSERT_STATE(State::STOPPED);
 
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    // TODO assert all constants are on Us4R:0/sequence/txDelays
     auto[buffer, metadata] = ultrasound->upload(scheme);
     currentScheme = scheme;
     return UploadResult(buffer, metadata);

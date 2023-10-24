@@ -349,7 +349,7 @@ Us4RImpl::~Us4RImpl() {
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync,
-                         const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
+                         const std::optional<ops::us4r::DigitalDownConversion> &ddc, const std::) {
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
@@ -365,7 +365,7 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
         ++opIdx;
     }
     return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
-                                           triggerSync, ddc);
+                                           triggerSync, ddc, txDelayProfiles);
 }
 
 void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }

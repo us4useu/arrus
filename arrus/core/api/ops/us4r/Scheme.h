@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_H
 #define ARRUS_CORE_API_OPS_US4R_H
 
+#include "arrus/core/api/framework/Constant.h"
 #include <utility>
 
 #include "DigitalDownConversion.h"
@@ -62,6 +63,12 @@ public:
         : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
           workMode(workMode), ddc(std::move(digitalDownConversion)) {}
 
+    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
+           WorkMode workMode, std::optional<DigitalDownConversion> ddc,
+           std::vector<arrus::Constant> constants)
+        : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
+          workMode(workMode), ddc(std::move(ddc)), constants(std::move(constants)) {}
+
     const TxRxSequence &getTxRxSequence() const { return txRxSequence; }
 
     uint16 getRxBufferSize() const { return rxBufferSize; }
@@ -72,12 +79,15 @@ public:
 
     const std::optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
 
+    const std::vector<arrus::Constant> &getConstants() const { return constants; }
+
 private:
     TxRxSequence txRxSequence;
     uint16 rxBufferSize;
     ::arrus::framework::DataBufferSpec outputBuffer;
     WorkMode workMode;
     std::optional<DigitalDownConversion> ddc;
+    std::vector<arrus::Constant> constants;
 };
 
 }// namespace arrus::ops::us4r
