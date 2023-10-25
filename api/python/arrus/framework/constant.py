@@ -15,6 +15,9 @@ class Constant:
         self.placement = placement
         self.name = name
 
+    def get_full_name(self):
+        return self.placement + "/" + self.name
+
 
 def _get_unique_name(constants: List[Constant], name):
     """
@@ -24,9 +27,9 @@ def _get_unique_name(constants: List[Constant], name):
     name_pattern = fr"{name}:([0-9]+)"
     numbers = []
     for constant in constants:
-        if constant.placement != "Us4R:0":
+        if constant.placement != "/Us4R:0":
             raise ValueError("Currently the constants can be defined only for "
-                             "Us4R:0 device.")
+                             "/Us4R:0 device.")
         match = re.search(name_pattern, constant.name)
         if match:
             id = match.group(1)

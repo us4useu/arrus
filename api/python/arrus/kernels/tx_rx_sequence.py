@@ -31,13 +31,13 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
         sequence=sequence,
         probe_model=probe_model,
         fs=fs,
-        constants=constants
+        focus_constants=constants
     )
     return sequence
 
 
 def convert_to_us4r_sequence(
-        sequence: TxRxSequence, probe_model, fs: float, constants
+        sequence: TxRxSequence, probe_model, fs: float, focus_constants=(),
 ):
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=sequence,
@@ -56,16 +56,34 @@ def convert_to_us4r_sequence(
     )
     if len(delays_is_none) != 1 or len(foc_ang_c_is_none) != 1:
         # the above arrays are {True, False}
-        raise ValueError("All TX/RXs delays should be None"
+        raise ValueError("All TX/RXs delays should be None "
                          "or focus,angle,speed of sound should be None.")
     if delays_is_none == {True}:
         # Updates in the input sequence the following parameters:
         # - tx: delays, focus, angle, speed_of_sound
         # - rx: init_delay, sample_range
         # Otherwise, we need to convert focus, angle, c to raw TX delays.
+
+        # Currently we support sequence/txFocus:i constants only.
+        # sequence/txFocus:i is logically translated to sequence/op:*/txFocus:i
+        # and each sequence/op:j/txFocus:i is translated into sequence/op:j/txDelays:i
+        # Finally, in the output sequence we should have
+        # a sequence of ops with tx_delays: Constant(sequence/op:j/txDelays:i)
+        #
+        # If the raw TX/RX sequence is set, each tx_delays should be translated
+        # to Constant(sequence/op:j/txDelays:i).
+        # The list of ALL tx delays should be specified in the constants.
+        # Each TX should have tx_delays set to string.
+        # Make sure that it is possible to do implicit conversion Constant -> tx_delays.
+        # Otherwise we will break Metadata API.
+        # is it possible at all? If not, maybe for backward conversion convert
+        # each in the raw_sequence before saving it into const_metadata.
+        # In the future versions of API Constant will have to have numpy compatible
+        # interface.
+
         dels, tx_center_delay = get_tx_delays(
             probe_model, sequence, sequence_with_masks,
-            constants=constants
+            focus_constant=
         )
         new_ops = []
         # Update input sequence.
@@ -92,7 +110,7 @@ def convert_to_us4r_sequence(
 
 def get_tx_delays(
         probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence,
-
+        focus_constant=None
 ):
     """
     Returns tx_center_delay = None when all TXs have empty aperture.

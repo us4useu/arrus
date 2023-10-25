@@ -16,7 +16,6 @@ from arrus.kernels.tx_rx_sequence import (
     get_tx_delays,
     set_aperture_masks
 )
-
 from arrus.framework.constant import Constant, _get_unique_name
 
 
@@ -110,12 +109,14 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
     tx_focus = op.tx_focus
     if not isinstance(tx_focus, arrus.framework.Constant):
         name = _get_unique_name(constants)
-        tx_focus = arrus.framework.Constant(
+        tx_focus_constant = arrus.framework.Constant(
             value=tx_focus,
             placement="/Us4R:0",
             name=name
         )
-        constants = constants + [tx_focus]
+        tx_focus_full_name: str = tx_focus_constant.get_full_name()
+        constants = constants + [tx_focus_constant]
+        tx_focus = tx_focus_full_name
 
     for i in range(n_tx):
         tx_aperture = tx_rx_params["tx_apertures"][i]
@@ -135,7 +136,6 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
             txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats),
         constants=constants
     )
-
 
 
 def __get_speed_of_sound(context):
