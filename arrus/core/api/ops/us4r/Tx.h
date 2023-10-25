@@ -25,12 +25,19 @@ public:
           delays(std::move(delays)),
           excitation(excitation) {}
 
+    Tx(std::vector<bool> aperture, const std::string& delaysProfileName, const Pulse &excitation)
+        : aperture(std::move(aperture)), excitation(excitation), delaysProfileName(delaysProfileName) {}
+
     const std::vector<bool> &getAperture() const {
         return aperture;
     }
 
     const std::vector<float> &getDelays() const {
-        return delays;
+        if(!delays.has_value()) {
+            ::arrus::IllegalArgumentException("This TX object is using pre-defined TX delays, therefore you are not "
+                                              "allowed to use getTxDelays() method.");
+        }
+        return delays.value();
     }
 
     const Pulse &getExcitation() const {
@@ -39,8 +46,9 @@ public:
 
 private:
     std::vector<bool> aperture;
-    std::vector<float> delays;
+    std::optional<std::vector<float>> delays;
     Pulse excitation;
+    std::optional<std::string> delaysProfileName;
 };
 
 

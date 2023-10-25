@@ -9,7 +9,6 @@
 namespace arrus::framework {
 
 
-
 /**
  * N-dimensional array.
  *
@@ -23,16 +22,43 @@ class NdArray {
 public:
     /** A list of currently supported data types of the output buffer.*/
     enum class DataType {
-        INT16
+        INT16,
+        FLOAT32
     };
+
+    static size_t getDataTypeSize(DataType type) {
+        switch(type) {
+        case DataType::INT16:
+            return sizeof(int16_t);
+        case DataType::FLOAT32:
+            return sizeof(float32);
+        default:
+            throw arrus::IllegalArgumentException("Unsupported data type");
+        }
+    }
 
     /** Array shape. */
     typedef Tuple<size_t> Shape;
 
     NdArray(): ptr(nullptr), placement(devices::DeviceId(devices::DeviceType::CPU, 0)){}
 
+    NdArray(Shape shape, DataType dataType, devices::DeviceId placement, std::string name)
+        : shape(std::move(shape)), dataType(dataType), placement(std::move(placement)), name(std::move(name)),
+          isView(false) {
+
+        size_t bytesToAllocate = shape.product() * getDataTypeSize(dataType);
+        ptr = new char[bytesToAllocate];
+    }
+
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
-        ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement) {}
+        ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement), isView(true) {}
+
+    virtual ~NdArray() {
+        if(!isView) {
+            // NOTE: migration to new framework API: the non-view ndarrays will have the char* ptr property.
+            delete[] (char*)ptr;
+        }
+    }
 
     /**
     * Returns a pointer to data.
@@ -56,6 +82,14 @@ public:
         return (T *) ptr;
     }
 
+    template<typename T>
+    void set(size_t i, T value) {
+        if(!this->isView) {
+            throw ::arrus::IllegalArgumentException("The NdArray value setter can be used only for non-view NdArrays.");
+        }
+        T* dst = (char*)ptr + i*sizeof(T);
+        *dst = value;
+    }
 
     /**
      * Returns a pointer to the memory data (assuming the data type is int16).
@@ -99,11 +133,17 @@ public:
         return NdArray{((int16_t*)ptr) + multiplier*begin, newShape, dataType, placement};
     }
 
+    const devices::DeviceId &getPlacement() const { return placement; }
+
+    const std::string &getName() const { return name; }
+
 private:
     void *ptr;
     Shape shape;
     DataType dataType;
     ::arrus::devices::DeviceId placement;
+    bool isView;
+    std::string name{};
 };
 
 }

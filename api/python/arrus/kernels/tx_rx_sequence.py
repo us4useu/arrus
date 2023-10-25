@@ -21,18 +21,24 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
     into a list of raw delays.
     """
     sequence: TxRxSequence = context.op
+    constants = context.constants
     probe_model = context.device.probe.model
     fs: float = __get_sampling_frequency(context)
     # Update the following sequence parameters (if necessary):
     # - tx: aperture (to binary mask)
     # - rx: aperture (to binary mask), rx padding
-    sequence, _ = convert_to_us4r_sequence(sequence=sequence,
-                                        probe_model=probe_model,
-                                        fs=fs)
+    sequence, _ = convert_to_us4r_sequence(
+        sequence=sequence,
+        probe_model=probe_model,
+        fs=fs,
+        constants=constants
+    )
     return sequence
 
 
-def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
+def convert_to_us4r_sequence(
+        sequence: TxRxSequence, probe_model, fs: float, constants
+):
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=sequence,
         probe=probe_model
@@ -57,7 +63,10 @@ def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
         # - tx: delays, focus, angle, speed_of_sound
         # - rx: init_delay, sample_range
         # Otherwise, we need to convert focus, angle, c to raw TX delays.
-        dels, tx_center_delay = get_tx_delays(probe_model, sequence, sequence_with_masks)
+        dels, tx_center_delay = get_tx_delays(
+            probe_model, sequence, sequence_with_masks,
+            constants=constants
+        )
         new_ops = []
         # Update input sequence.
         for i, op in enumerate(sequence_with_masks.ops):
@@ -81,7 +90,10 @@ def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
         return sequence, None
 
 
-def get_tx_delays(probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence):
+def get_tx_delays(
+        probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence,
+
+):
     """
     Returns tx_center_delay = None when all TXs have empty aperture.
     """

@@ -78,6 +78,7 @@ private:
     std::recursive_mutex stateMutex;
     std::optional<ops::us4r::Scheme> currentScheme;
     State state{State::STOPPED};
+    void verifyScheme(const ops::us4r::Scheme &scheme);
 };
 
 

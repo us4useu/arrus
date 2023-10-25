@@ -63,11 +63,11 @@ public:
         : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
           workMode(workMode), ddc(std::move(digitalDownConversion)) {}
 
-    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
-           WorkMode workMode, std::optional<DigitalDownConversion> ddc,
-           std::vector<arrus::Constant> constants)
-        : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
-          workMode(workMode), ddc(std::move(ddc)), constants(std::move(constants)) {}
+    Scheme(const TxRxSequence &txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
+           WorkMode workMode, const std::optional<DigitalDownConversion> &ddc,
+           const std::vector<arrus::framework::NdArray> &constants)
+        : txRxSequence(txRxSequence), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer), workMode(workMode),
+          ddc(ddc), constants(constants) {}
 
     const TxRxSequence &getTxRxSequence() const { return txRxSequence; }
 
@@ -79,7 +79,7 @@ public:
 
     const std::optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
 
-    const std::vector<arrus::Constant> &getConstants() const { return constants; }
+    const std::vector<arrus::framework::NdArray> &getConstants() const { return constants; }
 
 private:
     TxRxSequence txRxSequence;
@@ -87,7 +87,7 @@ private:
     ::arrus::framework::DataBufferSpec outputBuffer;
     WorkMode workMode;
     std::optional<DigitalDownConversion> ddc;
-    std::vector<arrus::Constant> constants;
+    std::vector<arrus::framework::NdArray> constants;
 };
 
 }// namespace arrus::ops::us4r
