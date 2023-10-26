@@ -81,9 +81,13 @@ def convert_to_us4r_sequence(
         # In the future versions of API Constant will have to have numpy compatible
         # interface.
 
+        # Input: Tx/Rxs with tx.focus = "sequence/op:i/txFocus:j" or value
+        # if this is the second option:
+        #   Convert each tx.focus to Constant("sequence/op:i/txDelays:j")
+
+
         dels, tx_center_delay = get_tx_delays(
             probe_model, sequence, sequence_with_masks,
-            focus_constant=
         )
         new_ops = []
         # Update input sequence.
@@ -110,7 +114,6 @@ def convert_to_us4r_sequence(
 
 def get_tx_delays(
         probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence,
-        focus_constant=None
 ):
     """
     Returns tx_center_delay = None when all TXs have empty aperture.

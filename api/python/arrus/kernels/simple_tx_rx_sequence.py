@@ -108,7 +108,7 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
 
     tx_focus = op.tx_focus
     if not isinstance(tx_focus, arrus.framework.Constant):
-        name = _get_unique_name(constants)
+        name = _get_unique_name(constants, "sequence/txFocus")
         tx_focus_constant = arrus.framework.Constant(
             value=tx_focus,
             placement="/Us4R:0",
@@ -117,6 +117,7 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
         tx_focus_full_name: str = tx_focus_constant.get_full_name()
         constants = constants + [tx_focus_constant]
         tx_focus = tx_focus_full_name
+
 
     for i in range(n_tx):
         tx_aperture = tx_rx_params["tx_apertures"][i]
@@ -131,10 +132,24 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
                 init_delay=op.init_delay)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
+    # TODO the below
+    # Constant outputs: all of the form "sequence/op:i/txFocus:j"
+
     return ConversionResults(
         sequence=TxRxSequence(
             txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats),
         constants=constants
+    )
+
+
+def __convert_to_op_specific_constant(constant, op_i):
+    component, variable = constant.name.split("/")
+    output_name = f"{component}/op:{op_i}/{variable}"
+
+    return arrus.framework.Constant(
+        value=constant.value,
+        placement=constant.placement,
+        name=output_name
     )
 
 
