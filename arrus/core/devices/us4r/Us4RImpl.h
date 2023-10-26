@@ -146,6 +146,7 @@ public:
     void unregisterOutputBuffer();
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
+    void setParameters(const Parameters &parameters) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -154,7 +155,8 @@ private:
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync,
-                   const std::optional<ops::us4r::DigitalDownConversion> &ddc);
+                   const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                   const std::vector<framework::NdArray> &txDelayProfiles);
 
     /**
      * Applies a given function on all functions.
@@ -198,6 +200,7 @@ private:
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
+    std::pair<std::vector<arrus::framework::Constant>, TxRxSequence> extractTxDelays(const ops::us4r::Scheme &scheme);
 };
 
 }// namespace arrus::devices

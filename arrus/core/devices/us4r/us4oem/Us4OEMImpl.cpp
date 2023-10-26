@@ -213,7 +213,8 @@ private:
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
                             uint16 batchSize, std::optional<float> sri, bool triggerSync,
-                            const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
+                            const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
+                            const std::vector<arrus::framework::NdArray> &txDelays) {
     std::unique_lock<std::mutex> lock{stateMutex};
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
@@ -243,6 +244,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     // helper data
     const std::bitset<N_ADDR_CHANNELS> emptyAperture;
     const std::bitset<N_ACTIVE_CHANNEL_GROUPS> emptyChannelGroups;
+
+    size_t nTxDelayProfiles = txDelays.size();
+
 
     // Program Tx/rx sequence ("firings")
     for (uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
@@ -292,13 +296,23 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
 
         // Delays
+        size_t currentTxDelaysId = 0;
+
         uint8 txChannel = 0;
         for (bool bit : op.getTxAperture()) {
-            float txDelay = 0;
+            // First set the internal TX delays.
+            for(currentTxDelaysId = 0; currentTxDelaysId < nTxDelayProfiles; ++currentTxDelaysId) {
+                float txDelay = 0.0f;
+                if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
+                    txDelay = txDelays[currentTxDelaysId].get<float>((size_t)opIdx, (size_t)txChannel);
+                }
+                ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
+            }
+            float txDelay = 0.0f;
             if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];
             }
-            ius4oem->SetTxDelay(txChannel, txDelay, opIdx, true);
+            ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);

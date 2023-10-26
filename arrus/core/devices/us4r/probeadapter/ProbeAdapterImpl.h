@@ -36,7 +36,9 @@ public:
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize=2,
                     uint16 rxBatchSize=1, std::optional<float> sri=std::nullopt,
                     bool triggerSync = false,
-                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt) override;
+                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
+                    const std::vector<arrus::framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
+                    ) override;
 
     Ordinal getNumberOfUs4OEMs() override;
 

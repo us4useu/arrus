@@ -223,7 +223,6 @@ std::pair<Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
 Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferNElements = scheme.getRxBufferSize();
-    auto &seq = scheme.getTxRxSequence();
     auto workMode = scheme.getWorkMode();
 
     unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
@@ -244,10 +243,10 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // Upload and register buffers.
     bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
 
-    std::vector<::arrus::framework::NdArray> constants = getConstants(scheme);
+    auto [constants, seq] = this->extractTxDelays(scheme);
 
     auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
-                                          scheme.getDigitalDownConversion());
+                                          scheme.getDigitalDownConversion(), constants);
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -352,7 +351,8 @@ Us4RImpl::~Us4RImpl() {
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync,
-                         const std::optional<ops::us4r::DigitalDownConversion> &ddc, const std::) {
+                         const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                         const std::vector<framework::NdArray> &txDelayProfiles) {
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
@@ -786,6 +786,33 @@ const char *Us4RImpl::getBackplaneRevision() {
         throw arrus::IllegalArgumentException("No backplane defined.");
     }
     return this->digitalBackplane->get()->getRevisionNumber();
+}
+
+void Us4RImpl::setParameters(const Parameters &params) {
+    for(auto &item: params.items()) {
+        auto &key = item.first;
+        auto value = item.second;
+        if(key != "/sequence:0/txDelays") {
+            throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txDelays parameter.");
+        }
+        this->us4oems[0]->getIUs4oem()->Pause();
+        this->us4oems[0]->getIUs4oem()->SetTxDelaysProfile(value);
+        this->us4oems[0]->getIUs4oem()->Resume();
+    }
+}
+std::pair<std::vector<arrus::framework::NdArray>, TxRxSequence> Us4RImpl::extractTxDelays(const Scheme &scheme) {
+    std::vector<TxRx> newOps;
+    std::vector<arrus::framework::NdArray> txDelays;
+    auto &seq = scheme.getTxRxSequence();
+    std::optional<arrus::framework::NdArray> sequenceDelays; // The delays defined within the sequence.
+    for(auto &op: seq.getOps()) {
+        // TODO implement
+        auto &tx = op.getTx();
+        auto newTx = tx.copy()
+    }
+
+    return std::make_pair(txDelays, seq.copy(newOps));
+    // The output sequence will always have txDelaysId set.
 }
 
 }// namespace arrus::devices

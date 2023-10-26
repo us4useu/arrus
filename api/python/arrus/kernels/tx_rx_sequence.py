@@ -83,12 +83,17 @@ def convert_to_us4r_sequence(
 
         # Input: Tx/Rxs with tx.focus = "sequence/op:i/txFocus:j" or value
         # if this is the second option:
-        #   Convert each tx.focus to Constant("sequence/op:i/txDelays:j")
 
+        # Currently support one of the possibilities:
+        # all TX/RXs have the focus set to the same string ->
 
         dels, tx_center_delay = get_tx_delays(
             probe_model, sequence, sequence_with_masks,
         )
+
+        # Calculate delays for each constant.
+
+
         new_ops = []
         # Update input sequence.
         for i, op in enumerate(sequence_with_masks.ops):

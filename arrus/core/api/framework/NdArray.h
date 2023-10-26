@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 
 #include <utility>
+#include <cstring>
 
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -46,12 +47,22 @@ public:
         : shape(std::move(shape)), dataType(dataType), placement(std::move(placement)), name(std::move(name)),
           isView(false) {
 
-        size_t bytesToAllocate = shape.product() * getDataTypeSize(dataType);
-        ptr = new char[bytesToAllocate];
+        this->nBytes = shape.product() * getDataTypeSize(dataType);
+        ptr = new char[this->nBytes];
     }
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
-        ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement), isView(true) {}
+        ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement), isView(true) {
+        this->nBytes = shape.product() * getDataTypeSize(dataType);
+    }
+
+    NdArray zerosLike() const {
+        NdArray array(this->shape, this->dataType, this->placement, this->name);
+        std::memset((char*)(this->ptr), 0, this->nBytes);
+        return std::move(array);
+    }
+
+    // TODO implement - copy, move constructors
 
     virtual ~NdArray() {
         if(!isView) {
@@ -81,6 +92,41 @@ public:
     const T *get() const {
         return (T *) ptr;
     }
+
+    template<typename T>
+    T get(size_t row, size_t column) const {
+        if(this->shape.size() != 2) {
+            throw ::arrus::IllegalArgumentException("The array is expected to be 2D.");
+        }
+        size_t height = this->shape[0];
+        size_t width = this-> shape[1];
+        if(row >= height || column >= width) {
+            throw ::arrus::IllegalArgumentException(
+                "Accessing arrays out of bounds, "
+                "dimensions: " + std::to_string(height) + ", " + std::to_string(height) +
+                "indices: " + std::to_string(row) + ", " + std::to_string(column));
+        }
+        T* dst = (T*)ptr + (row*width + column);
+        return *dst;
+    }
+
+    template<typename T>
+    void set(size_t row, size_t column, T value) {
+        if(this->shape.size() != 2) {
+            throw ::arrus::IllegalArgumentException("The array is expected to be 2D.");
+        }
+        size_t height = this->shape[0];
+        size_t width = this-> shape[1];
+        if(row >= height || column >= width) {
+            throw ::arrus::IllegalArgumentException(
+                "Accessing arrays out of bounds, "
+                "dimensions: " + std::to_string(height) + ", " + std::to_string(height) +
+                    "indices: " + std::to_string(row) + ", " + std::to_string(column));
+        }
+        T* dst = (T*)ptr + (row*width + column);
+        *dst = value;
+    }
+
 
     template<typename T>
     void set(size_t i, T value) {
@@ -144,6 +190,7 @@ private:
     ::arrus::devices::DeviceId placement;
     bool isView;
     std::string name{};
+    size_t nBytes;
 };
 
 }
