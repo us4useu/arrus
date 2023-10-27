@@ -344,6 +344,32 @@ probe_adapter_models: [
         ]
     },
     {
+        id: {
+            manufacturer: "us4us"
+            name: "atl/philips2"
+        }
+        n_channels: 128
+        channel_mapping_regions: [
+            {
+                us4oem: 0
+                region: {begin: 0, end: 31}
+            },
+            {
+                us4oem: 1
+                region: {begin: 0, end: 31}
+            },
+            {
+                us4oem: 0
+                region: {begin: 32, end: 63}
+            },
+            {
+                us4oem: 1
+                region: {begin: 32, end: 63}
+            }
+        ]
+    },
+
+    {
         # DEPRECATED, use atl/philips-us4r
         id: {
             manufacturer: "us4us"
@@ -1491,7 +1517,12 @@ probe_to_adapter_connections: [
             {
                 manufacturer: "us4us"
                 name: "atl/philips-us4r"
+            },
+            {
+                manufacturer: "us4us"
+                name: "atl/philips2"
             }
+
         ]
         channel_mapping_ranges: {
             begin: 0
