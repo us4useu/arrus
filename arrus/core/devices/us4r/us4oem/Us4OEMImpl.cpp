@@ -308,6 +308,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 }
                 ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
             }
+            // Then set the profile from the input sequence (for backward-compatibility).
+            // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
+            // and reduces the risk of causing new bugs in the whole mapping implementation.
+            // This will be optimized in v0.10.0.
             float txDelay = 0.0f;
             if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];

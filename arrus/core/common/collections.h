@@ -239,6 +239,16 @@ std::vector<T> copyToVector(const Span<T> span) {
     return result;
 }
 
+template<typename T>
+bool areConsecutive(const std::vector<T> values) {
+    for(int i = 0; i < values.size(); ++i) {
+        if(values[i] != i) {
+            return false;
+        }
+    }
+    return true;
+}
+
 }
 
 #endif //ARRUS_CORE_COMMON_COLLECTIONS_H

@@ -40,10 +40,12 @@ namespace arrus::devices {
 std::tuple<
     std::vector<TxRxParamsSequence>,
     Eigen::Tensor<FrameChannelMapping::FrameNumber, 3>,
-    Eigen::Tensor<int8, 3>
+    Eigen::Tensor<int8, 3>,
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>>
 >
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
-                            const std::vector<std::vector<uint8_t>> &mappings);
+                            const std::vector<std::vector<uint8_t>> &mappings,
+                            std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> txDelayProfiles);
 
 }
 

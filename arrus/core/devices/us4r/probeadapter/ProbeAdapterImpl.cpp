@@ -94,7 +94,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     Eigen::MatrixXi frameChannel(nFrames, rxApertureSize);
     frameChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
-    ::arrus::framework::NdArray::Shape txDelaysProfileShape = {seq.size(), Us4OEMImpl::N_ADDR_CHANNELS};
+    ::arrus::framework::NdArray::Shape txDelaysProfileShape = {seq.size(), Us4OEMImpl::N_TX_CHANNELS};
 
     // Initialize helper arrays.
     for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
@@ -209,17 +209,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(auto &us4oem: us4oems) {
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
     }
-    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(seqs, us4oemL2PChannelMappings);
-
-    // TODO make it possible to use this with
-    // TODO implement
-    // verify the number of ops is equal to the number of profiles -- otherwise throw non-compatility error
-
-    for(size_t i; i < )
-
-    if(splittedOps[0].size() != txDelayProfilesList[0][0].getShape()[0]) {
-
-    }
+    auto[splittedOps, opDstSplittedOp, opDestSplittedCh, us4oemTxDelayProfiles] = splitRxAperturesIfNecessary(
+        seqs, us4oemL2PChannelMappings, txDelayProfilesList);
 
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;
@@ -232,8 +223,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
-                                                          batchSize, sri, triggerSync, ddc);
+        auto[buffer, fcMapping] = us4oem->setTxRxSequence(
+            splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
+            batchSize, sri, triggerSync, ddc, us4oemTxDelayProfiles.at(us4oemOrdinal));
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
         currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
         numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames()*batchSize;

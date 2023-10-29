@@ -44,8 +44,8 @@ public:
     NdArray(): ptr(nullptr), placement(devices::DeviceId(devices::DeviceType::CPU, 0)){}
 
     NdArray(Shape shape, DataType dataType, devices::DeviceId placement, std::string name)
-        : shape(std::move(shape)), dataType(dataType), placement(std::move(placement)), name(std::move(name)),
-          isView(false) {
+        : shape(std::move(shape)), dataType(dataType), placement(std::move(placement)),
+          isView(false), name(std::move(name)) {
 
         this->nBytes = shape.product() * getDataTypeSize(dataType);
         ptr = new char[this->nBytes];
@@ -59,7 +59,7 @@ public:
     NdArray zerosLike() const {
         NdArray array(this->shape, this->dataType, this->placement, this->name);
         std::memset((char*)(this->ptr), 0, this->nBytes);
-        return std::move(array);
+        return array;
     }
 
     // TODO implement - copy, move constructors
