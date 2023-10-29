@@ -1,7 +1,6 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_H
 #define ARRUS_CORE_API_OPS_US4R_H
 
-#include "arrus/core/api/framework/Constant.h"
 #include <utility>
 
 #include "DigitalDownConversion.h"

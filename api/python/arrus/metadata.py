@@ -21,7 +21,7 @@ class FrameAcquisitionContext:
     """
     device: arrus.devices.ultrasound.UltrasoundDTO
     sequence: arrus.ops.Operation
-    raw_sequence: arrus.ops.us4r.TxRxSequence
+    raw_sequence: arrus.ops.Operation
     medium: arrus.medium.MediumDTO
     custom_data: dict
 

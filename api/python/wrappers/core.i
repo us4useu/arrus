@@ -208,7 +208,9 @@ namespace arrus {
     %template(IntervalFloat) Interval<float>;
 };
 
+%ignore arrus::framework::NdArray::NdArray;
 %include "arrus/core/api/framework/NdArray.h"
+
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
 %include "arrus/core/api/framework/Buffer.h"
@@ -445,9 +447,9 @@ void Arrus2dArrayVectorPushBack(
     const std::string &arrayName
 ) {
     ::arrus::framework::NdArray::Shape shape = {nRows, nCols};
-    ::arrus::DeviceId placement(placementName, placementOrdinal);
+    ::arrus::devices::DeviceId placement(::arrus::devices::parseToDeviceTypeEnum(placementName), placementOrdinal);
     ::arrus::framework::NdArray array(
-        (char*)addrPtr,
+        (void*)addrPtr,
         shape,
         ::arrus::framework::NdArray::DataType::FLOAT32,
         placement,

@@ -243,6 +243,8 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // Upload and register buffers.
     bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
 
+    auto &seq = scheme.getTxRxSequence();
+
     auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
                                           scheme.getDigitalDownConversion(), scheme.getConstants());
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");

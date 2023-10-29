@@ -88,7 +88,8 @@ public:
             setTxRxSequence,
             (const TxRxParamsSequence &seq, const::arrus::ops::us4r::TGCCurve &tgc,
                     uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri,
-                    bool triggerSync, const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc),
+                    bool triggerSync, const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
+                    const std::vector<arrus::framework::NdArray> &txDelayProfiles),
             (override));
     MOCK_METHOD(Interval<Voltage>, getAcceptedVoltageRange, (), (override));
     MOCK_METHOD(float, getSamplingFrequency, (), (override));
@@ -235,7 +236,7 @@ class ProbeAdapterChannelMapping1Test : public AbstractProbeAdapterImplTest {
 #define EXPECT_SEQUENCE_PROPERTY_NFRAMES(deviceId, matcher, nFrames) \
         do {                                                         \
             \
-            EXPECT_CALL(*(us4oems[deviceId].get()), setTxRxSequence(matcher, _, _, _, _, _, _)) \
+            EXPECT_CALL(*(us4oems[deviceId].get()), setTxRxSequence(matcher, _, _, _, _, _, _, _)) \
                 .WillOnce(Return(ByMove(createEmptySetTxRxResult(deviceId, nFrames, 32)))); \
         } while(0)
 
@@ -246,7 +247,7 @@ class ProbeAdapterChannelMapping1Test : public AbstractProbeAdapterImplTest {
     probeAdapter->setTxRxSequence(seq, defaultTGCCurve)
 
 #define US4OEM_MOCK_SET_TX_RX_SEQUENCE() \
-    setTxRxSequence(_, _, _, _, _, _, _)
+    setTxRxSequence(_, _, _, _, _, _, _, _)
 
 TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectly) {
     BitMask txAperture(64, false);

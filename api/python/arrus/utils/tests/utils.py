@@ -195,6 +195,7 @@ class ArrusImagingTestCase(ArrusTestCase):
         kernel = arrus.kernels.get_kernel(type(sequence))
         kernel_context = arrus.kernels.kernel.KernelExecutionContext(
             device=device, medium=medium, op=sequence, custom={})
-        return kernel(kernel_context)
+        result = kernel(kernel_context)
+        return result.sequence
 
 

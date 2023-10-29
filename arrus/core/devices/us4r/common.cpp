@@ -214,7 +214,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
 
     // Map to target TX delays (after splitting to sub-apertures).
     // Optimization: if we simply have 1-1 mapping between input and output sequences, just return the input txDelays.
-    if(!::arrus::areConsecutive(srcOpIdx)) {
+    if(!::arrus::areConsecutive(srcOpIdx) || inputTxDelayProfiles.empty()) {
         return std::make_tuple(result, opDestOp, opDestChannel, inputTxDelayProfiles);
     }
     else {

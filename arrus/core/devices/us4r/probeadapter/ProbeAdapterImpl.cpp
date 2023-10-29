@@ -223,9 +223,12 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
-        auto[buffer, fcMapping] = us4oem->setTxRxSequence(
-            splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
-            batchSize, sri, triggerSync, ddc, us4oemTxDelayProfiles.at(us4oemOrdinal));
+        std::vector<arrus::framework::NdArray> profile;
+        if(!us4oemTxDelayProfiles.empty()) {
+            profile = us4oemTxDelayProfiles.at(us4oemOrdinal);
+        }
+        auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
+            batchSize, sri, triggerSync, ddc, profile);
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
         currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
         numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames()*batchSize;

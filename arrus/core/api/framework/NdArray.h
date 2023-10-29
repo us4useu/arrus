@@ -56,8 +56,8 @@ public:
         this->nBytes = shape.product() * getDataTypeSize(dataType);
     }
 
-    NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement, bool isView):
-        shape(std::move(shape)), dataType(dataType), placement(placement), isView(isView) {
+    NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement, std::string name, bool isView):
+        shape(std::move(shape)), dataType(dataType), placement(placement), isView(isView), name(std::move(name)) {
         this->nBytes = shape.product() * getDataTypeSize(dataType);
         if(isView) {
             this->ptr = ptr;
@@ -67,7 +67,7 @@ public:
         }
     }
 
-    NdArray(NdArray &other): shape(std::move(other.shape)), dataType(other.dataType), placement(other.placement),
+    NdArray(const NdArray &other): shape(std::move(other.shape)), dataType(other.dataType), placement(other.placement),
                               isView(other.isView), name(other.name), nBytes(other.nBytes) {
         if(other.isView) {
             this->ptr = other.ptr;
@@ -106,7 +106,7 @@ public:
         return *this;
     }
 
-    NdArray& operator=(NdArray& rhs) noexcept {
+    NdArray& operator=(const NdArray& rhs) noexcept {
         if(this == &rhs) {
             return *this;
         }

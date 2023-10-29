@@ -41,6 +41,10 @@ public:
     MOCK_METHOD(float, SetTxDelay,
             (const unsigned char channel, const float value, const unsigned short firing),
     (override));
+    MOCK_METHOD(float, SetTxDelay,
+        (const unsigned char channel, const float value, const unsigned short firing, size_t profile),
+    (override));
+    MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
     (override));

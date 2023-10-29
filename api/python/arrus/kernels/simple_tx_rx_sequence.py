@@ -54,7 +54,7 @@ def process_simple_tx_rx_sequence(context: KernelExecutionContext):
 def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model, fs):
     # NOTE: this method will work only properly only in the case of a single TX focus.
     tx_rx_sequence = convert_to_tx_rx_sequence(
-        c, sequence, probe_model, fs=fs, constants=[])
+        c, sequence, probe_model, fs=fs)
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=tx_rx_sequence,
         probe=probe_model
@@ -102,7 +102,7 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
     sample_range = get_sample_range(op, fs=fs, speed_of_sound=c)
 
     tx_focus = op.tx_focus
-    if not isinstance(tx_focus, arrus.framework.Constant):
+    if isinstance(tx_focus, arrus.framework.Constant):
         tx_focus = tx_focus.value
 
     for i in range(n_tx):
