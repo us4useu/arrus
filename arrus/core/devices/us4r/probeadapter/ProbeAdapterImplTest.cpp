@@ -120,8 +120,11 @@ public:
     MOCK_METHOD(void, disableHpf, (), (override));
     MOCK_METHOD(float, getUCDTemperature, (), (override));
     MOCK_METHOD(float, getUCDExternalTemperature, (), (override));
-    MOCK_METHOD(const char*, getSerialNumber, (), (const, override));
-    MOCK_METHOD(const char*, getRevision, (), (const, override));
+    MOCK_METHOD(const char*, getSerialNumber, (), (override));
+    MOCK_METHOD(const char*, getRevision, (), (override));
+
+    MOCK_METHOD(uint32_t, getTxOffset, (), (override));
+    MOCK_METHOD(uint32_t, getOemVersion, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {

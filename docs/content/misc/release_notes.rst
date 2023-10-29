@@ -10,6 +10,7 @@ Release notes
 
     - us4R: exposed SYNC mode
     - Implemented File device (for simulated mode) #221, #ARRUS-248.
+    - us4R: exposed us4OEM and digital backplane serial number and revision #ARRUS-267.
     
 - Python API:
 
@@ -20,6 +21,7 @@ Release notes
     - Created cupy -> DL pack operator.
     - Created an example for file device (simulated mode) #221, #ARRUS-248.
     - Added spacing to echo data description #295 #ARRUS-251.
+    - us4R: exposed us4OEM and digital backplane serial number and revision #ARRUS-267.
 
 
 0.8.x

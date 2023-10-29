@@ -1145,7 +1145,7 @@ probe_to_adapter_connections: [
                 name: "esaote3"
             }
         ],
-        channel_mapping: [ 
+        channel_mapping: [
 	                   93,  90,  87,  83,  80,  77,  73,  70,
                        67,  63,  60,  57,  53,  50,  47,  43,
                        40,  37,  35,  33,  30,  27,  26,  23,
