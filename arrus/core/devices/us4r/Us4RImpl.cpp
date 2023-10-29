@@ -793,9 +793,11 @@ void Us4RImpl::setParameters(const Parameters &params) {
         if(key != "/sequence:0/txDelays") {
             throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txDelays parameter.");
         }
-        this->us4oems[0]->getIUs4oem()->Pause();
-        this->us4oems[0]->getIUs4oem()->SetTxDelaysProfile(value);
-        this->us4oems[0]->getIUs4oem()->Resume();
+        this->us4oems[0]->getIUs4oem()->TriggerStop();
+        for(auto &us4oem: us4oems) {
+            us4oem->getIUs4oem()->SetTxDelays(value);
+        }
+        this->us4oems[0]->getIUs4oem()->TriggerStart();
     }
 }
 
