@@ -243,10 +243,8 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     // Upload and register buffers.
     bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
 
-    auto [constants, seq] = this->extractTxDelays(scheme);
-
     auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
-                                          scheme.getDigitalDownConversion(), constants);
+                                          scheme.getDigitalDownConversion(), scheme.getConstants());
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -799,20 +797,6 @@ void Us4RImpl::setParameters(const Parameters &params) {
         this->us4oems[0]->getIUs4oem()->SetTxDelaysProfile(value);
         this->us4oems[0]->getIUs4oem()->Resume();
     }
-}
-std::pair<std::vector<arrus::framework::NdArray>, TxRxSequence> Us4RImpl::extractTxDelays(const Scheme &scheme) {
-    std::vector<TxRx> newOps;
-    std::vector<arrus::framework::NdArray> txDelays;
-    auto &seq = scheme.getTxRxSequence();
-    std::optional<arrus::framework::NdArray> sequenceDelays; // The delays defined within the sequence.
-    for(auto &op: seq.getOps()) {
-        // TODO implement
-        auto &tx = op.getTx();
-        auto newTx = tx.copy()
-    }
-
-    return std::make_pair(txDelays, seq.copy(newOps));
-    // The output sequence will always have txDelaysId set.
 }
 
 }// namespace arrus::devices

@@ -426,6 +426,7 @@ using namespace arrus::ops::us4r;
 
 namespace std {
 %template(TxRxVector) vector<arrus::ops::us4r::TxRx>;
+%template(ArrusNdArrayVector) vector<arrus::framework::NdArray>;
 };
 
 %inline %{
@@ -436,6 +437,24 @@ void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs, arrus::ops::
 
 void VectorFloatPushBack(std::vector<float> &vector, double value) {
     vector.push_back(float(value));
+}
+
+void Arrus2dArrayVectorPushBack(
+    std::vector<arrus::framework::NdArray> &arrays,
+    size_t nRows, size_t nCols, size_t addrPtr, const std::string &placementName, size_t placementOrdinal,
+    const std::string &arrayName
+) {
+    ::arrus::framework::NdArray::Shape shape = {nRows, nCols};
+    ::arrus::DeviceId placement(placementName, placementOrdinal);
+    ::arrus::framework::NdArray array(
+        (char*)addrPtr,
+        shape,
+        ::arrus::framework::NdArray::DataType::FLOAT32,
+        placement,
+        arrayName,
+        false // is view => copy
+    );
+    arrays.push_back(array);
 }
 
 %};

@@ -56,6 +56,17 @@ public:
         this->nBytes = shape.product() * getDataTypeSize(dataType);
     }
 
+    NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement, bool isView):
+        shape(std::move(shape)), dataType(dataType), placement(placement), isView(isView) {
+        this->nBytes = shape.product() * getDataTypeSize(dataType);
+        if(isView) {
+            this->ptr = ptr;
+        } else {
+            this->ptr = new char[this->nBytes];
+            std::memcpy(this->ptr, ptr, this->nBytes);
+        }
+    }
+
     NdArray zerosLike() const {
         NdArray array(this->shape, this->dataType, this->placement, this->name);
         std::memset((char*)(this->ptr), 0, this->nBytes);

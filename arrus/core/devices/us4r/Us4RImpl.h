@@ -200,7 +200,6 @@ private:
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
-    std::pair<std::vector<arrus::framework::Constant>, TxRxSequence> extractTxDelays(const ops::us4r::Scheme &scheme);
 };
 
 }// namespace arrus::devices

@@ -103,9 +103,16 @@ class Session(AbstractSession):
             scheme.digital_down_conversion,
             constants
         )
-        raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
+        raw_seq, tx_delays = arrus.kernels.get_kernel(type(seq))(kernel_context)
+        # tx_delays: a list of arrus.Constant's, each arrus.Constant has a
+        # value 2D array, where rows: number of operations, cols: number of probe
+        # TX channels.
 
-        actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
+        actual_scheme = dataclasses.replace(
+            scheme,
+            tx_rx_sequence=raw_seq,
+            constants=tx_delays
+        )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
 

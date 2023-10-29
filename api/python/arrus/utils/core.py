@@ -143,6 +143,9 @@ def convert_to_core_scheme(scheme):
         "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
     }[scheme.work_mode]
     ddc = scheme.digital_down_conversion
+
+    constants = convert_constants_to_arrus_ndarray(scheme.constants)
+
     if scheme.digital_down_conversion is not None:
         ddc = arrus.core.DigitalDownConversion(
             ddc.demodulation_frequency,
@@ -150,10 +153,10 @@ def convert_to_core_scheme(scheme):
             ddc.decimation_factor
         )
         return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 core_work_mode, ddc)
+                                 core_work_mode, ddc, constants)
     else:
         return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 core_work_mode)
+                                 core_work_mode, constants)
 
 
 def convert_to_test_pattern(test_pattern_str):
@@ -176,3 +179,28 @@ def convert_to_core_parameters(params: Dict[str, Any]):
     for k, v in params.items():
         builder.add(k, v)
     return builder.build()
+
+
+def convert_constants_to_arrus_ndarray(py_constants):
+    result = arrus.core.ArrusNdArrayVector()
+    for py_const in py_constants:
+        value = py_const.value
+        if not isinstance(value, np.ndarray):
+            # NOTE: assuming scalar!
+            value = np.asarray(value)
+        value = np.atleast_2d(value).astype(np.float32)
+        placement: str = py_const.placement
+        placement = placement.strip()
+        if placement.startswith("/"):
+            placement = placement[1:].strip()
+        placement_name, placement_ordinal = placement.split(":")
+        placement_name = placement_name.strip()
+        placement_ordinal = int(placement_ordinal.strip())
+        arrus.core.Arrus2dArrayVectorPushBack(
+            result,
+            # rows, columns
+            value[0], value[1], value.ctypes.data,
+            placement_name, placement_ordinal,
+            py_const.name
+        )
+    return result
