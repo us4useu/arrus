@@ -67,6 +67,73 @@ public:
         }
     }
 
+    NdArray(NdArray &other): shape(std::move(other.shape)), dataType(other.dataType), placement(other.placement),
+                              isView(other.isView), name(other.name), nBytes(other.nBytes) {
+        if(other.isView) {
+            this->ptr = other.ptr;
+        }
+        else {
+            this->ptr = new char[this->nBytes];
+            std::memcpy(this->ptr, other.ptr, this->nBytes);
+        }
+    }
+
+    NdArray(NdArray &&other): ptr(other.ptr), shape(std::move(other.shape)), dataType(other.dataType),
+                              placement(other.placement), isView(other.isView), name(other.name), nBytes(other.nBytes) {
+        other.ptr = nullptr;
+        other.nBytes = 0;
+    }
+
+    NdArray& operator=(NdArray&& rhs) noexcept {
+        if(this == &rhs) {
+            return *this;
+        }
+        this->shape = rhs.shape;
+        this->dataType = rhs.dataType;
+        this->placement = rhs.placement;
+        this->name = rhs.name;
+
+        if(!this->isView) {
+            delete (char*)this->ptr;
+            this->nBytes = 0;
+        }
+        this->ptr = rhs.ptr;
+        this->nBytes = rhs.nBytes;
+        this->isView = rhs.isView;
+        rhs.ptr = nullptr;
+        rhs.nBytes = 0;
+
+        return *this;
+    }
+
+    NdArray& operator=(NdArray& rhs) noexcept {
+        if(this == &rhs) {
+            return *this;
+        }
+        this->shape = rhs.shape;
+        this->dataType = rhs.dataType;
+        this->placement = rhs.placement;
+        this->name = rhs.name;
+
+        if(!this->isView) {
+            delete (char*)this->ptr;
+            this->nBytes = 0;
+        }
+        if(!rhs.isView) {
+            this->nBytes = rhs.nBytes;
+            this->ptr = new char[this->nBytes];
+            std::memcpy(this->ptr, rhs.ptr, this->nBytes);
+        }
+        else {
+            this->nBytes = rhs.nBytes;
+            this->ptr = rhs.ptr;
+        }
+        this->isView = rhs.isView;
+
+        return *this;
+    }
+
+
     NdArray zerosLike() const {
         NdArray array(this->shape, this->dataType, this->placement, this->name);
         std::memset((char*)(this->ptr), 0, this->nBytes);
