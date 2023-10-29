@@ -25,7 +25,7 @@ class KernelExecutionContext:
     op: arrus.ops.Operation
     custom: dict
     hardware_ddc: arrus.ops.us4r.DigitalDownConversion = None
-    constants: List[arrus.framework.Constant] = tuple()
+    constants: List[arrus.framework.Constant] = ()
 
 
 @dataclasses.dataclass(frozen=True)

@@ -43,14 +43,9 @@ def process_simple_tx_rx_sequence(context: KernelExecutionContext):
     c = __get_speed_of_sound(context)
     probe = context.device.probe.model
     # TX/RX
-    conversion_result = convert_to_tx_rx_sequence(
-        c, op, probe, fs=_get_sampling_frequency(context),
-        constants=op.constants)
-    new_context = dataclasses.replace(
-        context,
-        op=conversion_result.sequence,
-        constants=conversion_result.constants
-    )
+    new_seq = convert_to_tx_rx_sequence(
+        c, op, probe, fs=_get_sampling_frequency(context))
+    new_context = dataclasses.replace(context, op=new_seq)
     # Process the raw sequence, to calculate all the necessary
     # TX delays.
     return process_tx_rx_sequence(new_context)
@@ -100,7 +95,7 @@ def get_sample_range(op: SimpleTxRxSequence, fs, speed_of_sound):
 
 
 def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
-                              fs: float, constants):
+                              fs: float):
     tx_rx_params = compute_tx_rx_params(probe=probe_model, sequence=op)
     n_tx = len(tx_rx_params["tx_ap_cent"])
     txrx = []
@@ -108,16 +103,7 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
 
     tx_focus = op.tx_focus
     if not isinstance(tx_focus, arrus.framework.Constant):
-        name = _get_unique_name(constants, "sequence/txFocus")
-        tx_focus_constant = arrus.framework.Constant(
-            value=tx_focus,
-            placement="/Us4R:0",
-            name=name
-        )
-        tx_focus_full_name: str = tx_focus_constant.get_full_name()
-        constants = constants + [tx_focus_constant]
-        tx_focus = tx_focus_full_name
-
+        tx_focus = tx_focus.value
 
     for i in range(n_tx):
         tx_aperture = tx_rx_params["tx_apertures"][i]
@@ -132,14 +118,7 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
                 init_delay=op.init_delay)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
-    # TODO the below
-    # Constant outputs: all of the form "sequence/op:i/txFocus:j"
-
-    return ConversionResults(
-        sequence=TxRxSequence(
-            txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats),
-        constants=constants
-    )
+    return TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats)
 
 
 def __convert_to_op_specific_constant(constant, op_i):
