@@ -73,6 +73,7 @@ def convert_to_us4r_sequence_with_constants(
         sequence=sequence,
         probe=probe_model
     )
+    original_sequence = sequence
     # We want all operators to have exactly the same combination
     # of parameters: delays or focus,angle,speed of sound.
     # Currently this is required because of TX center delay equalization
@@ -121,7 +122,7 @@ def convert_to_us4r_sequence_with_constants(
             focus = tx_focus_const.value
             focuses = [focus]*len(sequence_with_masks.ops)
             constant_delays, _ = get_tx_delays_for_focuses(
-                probe_model, sequence, sequence_with_masks,
+                probe_model, original_sequence, sequence_with_masks,
                 focuses
             )
             full_tx_delays = _get_full_tx_delays(

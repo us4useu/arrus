@@ -792,6 +792,7 @@ void Us4RImpl::setParameters(const Parameters &params) {
     for(auto &item: params.items()) {
         auto &key = item.first;
         auto value = item.second;
+        logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
         if(key != "/sequence:0/txDelays") {
             throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txDelays parameter.");
         }

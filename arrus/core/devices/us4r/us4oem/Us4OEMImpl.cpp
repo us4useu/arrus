@@ -297,7 +297,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
 
         // Delays
         size_t currentTxDelaysId = 0;
-
         uint8 txChannel = 0;
         for (bool bit : op.getTxAperture()) {
             // First set the internal TX delays.
@@ -325,6 +324,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(RX_DELAY, opIdx);
     }
+    // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
+    ius4oem->SetTxDelays(nTxDelayProfiles);
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
 

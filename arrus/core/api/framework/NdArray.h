@@ -47,18 +47,18 @@ public:
         : shape(std::move(shape)), dataType(dataType), placement(std::move(placement)),
           isView(false), name(std::move(name)) {
 
-        this->nBytes = shape.product() * getDataTypeSize(dataType);
-        ptr = new char[this->nBytes];
+        this->nBytes = this->shape.product() * getDataTypeSize(this->dataType);
+        this->ptr = new char[this->nBytes];
     }
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
         ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement), isView(true) {
-        this->nBytes = shape.product() * getDataTypeSize(dataType);
+        this->nBytes = this->shape.product() * getDataTypeSize(this->dataType);
     }
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement, std::string name, bool isView):
         shape(std::move(shape)), dataType(dataType), placement(placement), isView(isView), name(std::move(name)) {
-        this->nBytes = shape.product() * getDataTypeSize(dataType);
+        this->nBytes = this->shape.product() * getDataTypeSize(this->dataType);
         if(isView) {
             this->ptr = ptr;
         } else {
@@ -143,7 +143,7 @@ public:
     // TODO implement - copy, move constructors
 
     virtual ~NdArray() {
-        if(!isView) {
+        if(!isView && this->ptr != nullptr && this->nBytes > 0) {
             // NOTE: migration to new framework API: the non-view ndarrays will have the char* ptr property.
             delete[] (char*)ptr;
         }
@@ -177,7 +177,7 @@ public:
             throw ::arrus::IllegalArgumentException("The array is expected to be 2D.");
         }
         size_t height = this->shape[0];
-        size_t width = this-> shape[1];
+        size_t width = this->shape[1];
         if(row >= height || column >= width) {
             throw ::arrus::IllegalArgumentException(
                 "Accessing arrays out of bounds, "

@@ -199,7 +199,7 @@ def convert_constants_to_arrus_ndarray(py_constants):
         arrus.core.Arrus2dArrayVectorPushBack(
             result,
             # rows, columns
-            value[0], value[1], value.ctypes.data,
+            value.shape[0], value.shape[1], arrus.core.VectorFloat(value.flatten().tolist()),
             placement_name, placement_ordinal,
             py_const.name
         )

@@ -443,13 +443,13 @@ void VectorFloatPushBack(std::vector<float> &vector, double value) {
 
 void Arrus2dArrayVectorPushBack(
     std::vector<arrus::framework::NdArray> &arrays,
-    size_t nRows, size_t nCols, size_t addrPtr, const std::string &placementName, size_t placementOrdinal,
+    size_t nRows, size_t nCols, std::vector<float> values, const std::string &placementName, size_t placementOrdinal,
     const std::string &arrayName
 ) {
     ::arrus::framework::NdArray::Shape shape = {nRows, nCols};
     ::arrus::devices::DeviceId placement(::arrus::devices::parseToDeviceTypeEnum(placementName), placementOrdinal);
     ::arrus::framework::NdArray array(
-        (void*)addrPtr,
+        (void*)values.data(),
         shape,
         ::arrus::framework::NdArray::DataType::FLOAT32,
         placement,

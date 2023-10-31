@@ -62,11 +62,15 @@ public:
         : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
           workMode(workMode), ddc(std::move(digitalDownConversion)) {}
 
-    Scheme(const TxRxSequence &txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
+    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode, const std::optional<DigitalDownConversion> &ddc,
            const std::vector<arrus::framework::NdArray> &constants)
         : txRxSequence(txRxSequence), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer), workMode(workMode),
           ddc(ddc), constants(constants) {}
+
+    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
+           WorkMode workMode, const std::vector<arrus::framework::NdArray> &constants)
+        : Scheme(txRxSequence, rxBufferSize, outputBuffer, workMode, std::nullopt, constants) {}
 
     const TxRxSequence &getTxRxSequence() const { return txRxSequence; }
 
