@@ -20,6 +20,17 @@ public:
     using Handle = std::unique_ptr<Session>;
 
     /**
+     * Session state.
+     *
+     * - STOPPED: the session is stopped (no device is running).
+     * - STARTED: the session is started (at least one of the session devices is running).
+     * - CLOSED: the session was closed (the connection to all the session devices was closed).
+     */
+    enum class State {
+        STOPPED, STARTED, CLOSED
+    };
+
+    /**
      * Returns a handle to device with given Id. The string format is:
      * /DeviceType:Ordinal, e.g. "/Us4R:0".
      *
@@ -79,7 +90,13 @@ public:
 
     virtual void setParameters(const arrus::Parameters& params) = 0;
 
+    /**
+     * Returns the current state of the session. See also Session::State.
+     */
+    virtual State getCurrentState() = 0;
+
     virtual ~Session() = default;
+
 };
 
 /**

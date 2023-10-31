@@ -46,9 +46,10 @@ public:
     void operator=(SessionImpl const &&) = delete;
     void close() override;
     void setParameters(const Parameters &params) override;
+    State getCurrentState() override;
 
 private:
-    ARRUS_DEFINE_ENUM_WITH_TO_STRING(
+    ARRUS_DEFINE_ENUM_TO_STRING(
             State,
             // The connection with devices is established, but the input sources do not produce
             // any new data right now.
