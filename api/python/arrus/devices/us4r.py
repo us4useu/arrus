@@ -283,21 +283,6 @@ class Us4R(Device, Ultrasound):
         :param addr: register address (8-bit)
         """
         return self._handle.getAfe(addr)
-    
-    def write_sequencer(self, addr, reg):
-        self._handle.sequencerWriteRegister(addr, reg)
-    
-    def read_sequencer(self, addr):
-        return self._handle.sequencerReadRegister(addr)
-
-    def write_pulser(self, sthv, addr, reg):
-        self._handle.pulserWriteRegister(sthv, addr, reg)
-      
-    def write_all_pulsers(self, addr, reg):
-        self._handle.allPulsersWriteRegister(addr, reg)
-    
-    def read_pulser(self, sthv, addr):
-        return self._handle.pulserReadRegister(sthv, addr)
 
 
     @property
