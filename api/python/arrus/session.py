@@ -124,7 +124,7 @@ class Session(AbstractSession):
         # -- Constant metadata
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(
-            seq, raw_seq, us_device_dto, medium)
+            seq, raw_seq, us_device_dto, medium, tx_delay_constants)
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
         input_shape = buffer.elements[0].data.shape
@@ -308,9 +308,12 @@ class Session(AbstractSession):
             constants=constants
         )
 
-    def _create_frame_acquisition_context(self, seq, raw_seq, device, medium):
+    def _create_frame_acquisition_context(self, seq, raw_seq, device, medium,
+                                          constants):
         return arrus.metadata.FrameAcquisitionContext(
             device=device, sequence=seq, raw_sequence=raw_seq,
-            medium=medium, custom_data={})
+            medium=medium, custom_data={},
+            constants=constants
+        )
 
 
