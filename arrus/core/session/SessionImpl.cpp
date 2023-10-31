@@ -228,4 +228,8 @@ void SessionImpl::setParameters(const Parameters &params) {
     device->setParameters(builder.build());
 }
 
+Session::State SessionImpl::getCurrentState() {
+    return state;
+}
+
 }// namespace arrus::session
