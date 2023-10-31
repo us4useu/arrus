@@ -793,8 +793,8 @@ void Us4RImpl::setParameters(const Parameters &params) {
         auto &key = item.first;
         auto value = item.second;
         logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
-        if(key != "/sequence:0/txDelays") {
-            throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txDelays parameter.");
+        if(key != "/sequence:0/txFocus") {
+            throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
         }
         this->us4oems[0]->getIUs4oem()->TriggerStop();
         for(auto &us4oem: us4oems) {

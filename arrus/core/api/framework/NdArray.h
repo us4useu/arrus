@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <cstring>
+#include <sstream>
 
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -49,6 +50,7 @@ public:
 
         this->nBytes = this->shape.product() * getDataTypeSize(this->dataType);
         this->ptr = new char[this->nBytes];
+        std::memset((char*)(this->ptr), 0, this->nBytes);
     }
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement) :
@@ -136,7 +138,6 @@ public:
 
     NdArray zerosLike() const {
         NdArray array(this->shape, this->dataType, this->placement, this->name);
-        std::memset((char*)(this->ptr), 0, this->nBytes);
         return array;
     }
 
@@ -260,6 +261,20 @@ public:
     const devices::DeviceId &getPlacement() const { return placement; }
 
     const std::string &getName() const { return name; }
+
+    const std::string toString() const {
+	if(this->shape.size() != 2 || this->dataType != NdArray::DataType::FLOAT32) {
+		throw ::arrus::IllegalArgumentException("Currently toString supports 2D float32 arrays only.");
+	}
+	std::stringstream ss;
+	for(size_t r = 0; r < this->shape[0]; ++r) {
+		for(size_t c = 0; c < this->shape[1]; ++c) {
+			ss << this->get<float>(r, c) << ", ";
+		}
+		ss << std::endl;
+	}
+	return ss.str();
+    }
 
 private:
     void *ptr;

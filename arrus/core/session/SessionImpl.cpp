@@ -217,7 +217,7 @@ void SessionImpl::setParameters(const Parameters &params) {
 
         // parse path
         auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedKey);
-        device = getDevice(root);
+        device = getDevice("/" + root);
         builder.add(tail, value);
     }
     device->setParameters(builder.build());

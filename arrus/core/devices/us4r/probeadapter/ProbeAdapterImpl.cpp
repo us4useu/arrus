@@ -209,9 +209,10 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(auto &us4oem: us4oems) {
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
     }
+
     auto[splittedOps, opDstSplittedOp, opDestSplittedCh, us4oemTxDelayProfiles] = splitRxAperturesIfNecessary(
         seqs, us4oemL2PChannelMappings, txDelayProfilesList);
-
+	
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;
     // section -> us4oem -> transfer

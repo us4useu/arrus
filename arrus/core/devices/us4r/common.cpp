@@ -61,7 +61,7 @@ std::tuple<
 >
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                             const std::vector<std::vector<uint8_t>> &us4oemL2PMappings,
-                            std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> inputTxDelayProfiles) {
+                            const std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> &inputTxDelayProfiles) {
     using FrameNumber = FrameChannelMapping::FrameNumber;
     // All sequences must have the same length.
     ARRUS_REQUIRES_NON_EMPTY_IAE(seqs);
@@ -214,7 +214,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
 
     // Map to target TX delays (after splitting to sub-apertures).
     // Optimization: if we simply have 1-1 mapping between input and output sequences, just return the input txDelays.
-    if(!::arrus::areConsecutive(srcOpIdx) || inputTxDelayProfiles.empty()) {
+    if(::arrus::areConsecutive(srcOpIdx) || inputTxDelayProfiles.empty()) {
         return std::make_tuple(result, opDestOp, opDestChannel, inputTxDelayProfiles);
     }
     else {
@@ -222,6 +222,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
             size_t nOps = result[seqIdx].size();
             ::arrus::framework::NdArray::Shape shape{nOps, Us4OEMImpl::N_TX_CHANNELS};
             ::arrus::framework::NdArray::DataType dataType = framework::NdArray::DataType::FLOAT32;
+            std::vector<::arrus::framework::NdArray> outputProfiles;
             for(auto &profile: inputTxDelayProfiles.at(seqIdx)) {
                 const DeviceId &placement = profile.getPlacement();
                 const std::string &name = profile.getName();
@@ -231,8 +232,9 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                         outputProfile.set(opIdx, ch, profile.get<float>(srcOpIdx[opIdx], ch));
                     }
                 }
-
+                outputProfiles.push_back(outputProfile);
             }
+            outputTxDelayProfiles.emplace(seqIdx, outputProfiles);
         }
         return std::make_tuple(result, opDestOp, opDestChannel, outputTxDelayProfiles);
     }
