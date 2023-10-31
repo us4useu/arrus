@@ -797,9 +797,17 @@ void Us4RImpl::setParameters(const Parameters &params) {
             throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
         }
         this->us4oems[0]->getIUs4oem()->TriggerStop();
-        for(auto &us4oem: us4oems) {
-            us4oem->getIUs4oem()->SetTxDelays(value);
-        }
+        try {
+            for(auto &us4oem: us4oems) {
+                us4oem->getIUs4oem()->SetTxDelays(value);
+            }
+	} 
+	catch(...) {
+            // Try resume.
+            this->us4oems[0]->getIUs4oem()->TriggerStart();
+	    throw;
+	}
+	// Everything OK, resume.
         this->us4oems[0]->getIUs4oem()->TriggerStart();
     }
 }
