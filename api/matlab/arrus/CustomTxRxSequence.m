@@ -22,7 +22,7 @@ classdef CustomTxRxSequence
     % :param hwDdcEnable: enables complex iq output
     % :param decimation: decimation factor, for real output (hwDdcEnable==false) \
     %   it must be positive integer, for complex output (hwDdcEnable==true) \
-    %   it must be multiple of 0.25 and be >=2 
+    %   it must be multiple of 0.25 and be >=2
     % :param nRepetitions: number of repetitions of the sequence (positive \
     %   integer). Can be a string "max" -- in this case, the maximum number \
     %   of repetitions that can be performed on the system (taking into \ 
@@ -56,7 +56,7 @@ classdef CustomTxRxSequence
         nRepetitions (1,:) = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
-        tgcSlope (1,:)
+        tgcSlope (1,:) = 0
         txInvert (1,:) {mustBeLogical} = false
     end
     
@@ -115,7 +115,7 @@ classdef CustomTxRxSequence
             if ~isstring(obj.txApertureSize)
                 obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
             end
-            
+
             obj.txInvert = double(obj.txInvert);
             
         end

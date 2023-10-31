@@ -1,14 +1,14 @@
 #ifndef ARRUS_CORE_API_SESSION_SESSION_H
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
-#include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/common/Parameters.h"
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/session/SessionSettings.h"
 #include "arrus/core/api/session/UploadResult.h"
-#include "arrus/core/api/common/macros.h"
 
 namespace arrus::session {
 
@@ -76,6 +76,8 @@ public:
      * will result in InvalidStateException.
      */
     virtual void close() = 0;
+
+    virtual void setParameters(const arrus::Parameters& params) = 0;
 
     virtual ~Session() = default;
 };

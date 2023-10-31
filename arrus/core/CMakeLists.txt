@@ -16,6 +16,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/Us4OEMSettings.proto
     io/proto/devices/us4r/HVSettings.proto
     io/proto/devices/us4r/Us4RSettings.proto
+    io/proto/devices/file/FileSettings.proto
     )
 ################################################################################
 # Target
@@ -42,6 +43,8 @@ set(SRC_FILES
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
     api/devices/us4r/RxSettings.h
+    api/devices/Ultrasound.h
+    api/devices/File.h
     api/session/Session.h
     api/session/SessionSettings.h
     api/ops/us4r/Pulse.h
@@ -104,6 +107,10 @@ set(SRC_FILES
     devices/probe/ProbeSettings.cpp
     devices/probe/ProbeModel.h
     devices/probe/ProbeModel.cpp
+
+    devices/file/FileImpl.cpp
+    devices/file/FileImpl.h
+    devices/file/FileSettings.cpp
 
     api/io/settings.h
     io/settings.cpp
@@ -172,7 +179,7 @@ set(SRC_FILES
     api/session/UploadResult.h
     api/framework/DataBufferSpec.h
     api/framework/Buffer.h
-    api/session/UploadConstMetadata.h
+    api/session/Metadata.h
     api/framework/DataBuffer.h
     api/framework/FifoBuffer.h
     api/ops/us4r/DigitalDownConversion.h
@@ -183,7 +190,7 @@ set(SRC_FILES
     api/session.h
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
-    devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h)
+    devices/us4r/Us4OEMDataTransferRegistrar.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -216,6 +223,7 @@ target_link_libraries(${TARGET_NAME}
     Us4::US4OEM
     Us4::HV256
     Us4::DBARLite
+    Us4::DBARLitePcie
     Us4::Us4RDBAR
     Us4::Us4RPSC
     Boost::Boost
@@ -267,7 +275,7 @@ if (ARRUS_RUN_TESTS)
         devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp
         ops/us4r/DigitalDownConversion.cpp)
     create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
-    create_core_test(devices/us4r/probeadapter/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
     create_core_test(devices/probe/ProbeImplTest.cpp
         "devices/probe/ProbeImpl.cpp;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     # core::io tests

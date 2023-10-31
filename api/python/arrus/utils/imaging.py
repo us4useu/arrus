@@ -28,7 +28,8 @@ from numbers import Number
 from typing import Sequence, Dict, Callable, Union, Tuple
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
-
+from arrus.ops.us4r import TxRxSequence
+from arrus.ops.imaging import SimpleTxRxSequence
 
 def is_package_available(package_name):
     return importlib.util.find_spec(package_name) is not None
@@ -38,10 +39,11 @@ if is_package_available("cupy"):
     import cupy
     import re
 
-    if not re.match("^\\d+\\.\\d+\\.\\d+$", cupy.__version__):
+    if not re.match("^\\d+\\.\\d+\\.\\d+[a-z]*\\d*$", cupy.__version__):
         raise ValueError(f"Unrecognized pattern "
                          f"of the cupy version: {cupy.__version__}")
-    if tuple(int(v) for v in cupy.__version__.split(".")) < (9, 0, 0):
+    m = re.search("^\\d+\\.\\d+\\.\\d+", cupy.__version__)
+    if tuple(int(v) for v in m.group().split(".")) < (9, 0, 0):
         raise Exception(f"The version of cupy module is too low. "
                         f"Use version ''9.0.0'' or higher.")
 else:
@@ -309,7 +311,7 @@ class ProcessingRunner:
                     self._out_i[i] = (out_i + 1) % out_buffer.n_elements
                     out_element.acquire()
                     # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
-                    out_element.data[:] = result.get()  
+                    out_element.data[:] = result.get()
                     out_elements.append(out_element)
             if self.is_extract_metadata:
                 out_elements.insert(0, metadata)
@@ -670,7 +672,7 @@ class Processing:
             on_buffer_overflow_callback=None):
         self.pipeline = pipeline
         self._pipeline_name = _get_default_op_name(self.pipeline, 0)
-        self._pipeline_params = self._determine_params()
+        self._pipeline_param_names, self._param_defs = self._determine_params()
         self.callback = callback
         self.extract_metadata = extract_metadata
         self.input_buffer = input_buffer
@@ -681,25 +683,27 @@ class Processing:
         """
         Sets the value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_params[key]
+        pipeline_param_name = self._pipeline_param_names[key]
         self.pipeline.set_parameter(pipeline_param_name, value)
 
     def get_parameter(self, key: str) -> Sequence[Number]:
         """
         Returns the current value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_params[key]
-        return self.get_parameter(pipeline_param_name)
+        pipeline_param_name = self._pipeline_param_names[key]
+        return self.pipeline.get_parameter(pipeline_param_name)
 
     def get_parameters(self) -> Dict[str, ParameterDef]:
-        return self._pipeline_params
+        return self._param_defs
 
     def _determine_params(self):
-        _pipeline_param_name = {}
+        pipeline_param_name = {}
+        param_defs = {}
         for k, param_def in self.pipeline.get_parameters().items():
             prefixed_k = _get_op_context_param_name(self._pipeline_name, k)
-            _pipeline_param_name[prefixed_k] = k
-        return _pipeline_param_name
+            pipeline_param_name[prefixed_k] = k
+            param_defs[prefixed_k] = param_def
+        return pipeline_param_name, param_defs
 
 
 class Lambda(Operation):
@@ -735,15 +739,15 @@ class Lambda(Operation):
         return self.func(data)
 
 
-def _get_unique_pulse(sequence):
+def _get_unique_center_frequency(sequence):
     if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
-        return sequence.pulse
+        return sequence.pulse.center_frequency
     elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
-        pulses = {tx_rx.tx.excitation for tx_rx in sequence.ops}
-        if len(pulses) > 1:
+        cfs = {tx_rx.tx.excitation.center_frequency for tx_rx in sequence.ops}
+        if len(cfs) > 1:
             raise ValueError("Each TX/RX should have exactly the same "
                              "definition of transmit pulse.")
-        return next(iter(pulses))
+        return next(iter(cfs))
 
 
 class BandpassFilter(Operation):
@@ -790,7 +794,7 @@ class BandpassFilter(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         l, r = self.bound_l, self.bound_r
-        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        center_frequency = _get_unique_center_frequency(const_metadata.context.sequence)
         sampling_frequency = const_metadata.data_description.sampling_frequency
         band = [l * center_frequency, r * center_frequency]
         if self.filter_type == "butter":
@@ -927,7 +931,7 @@ class QuadratureDemodulation(Operation):
     def prepare(self, const_metadata):
         xp = self.xp
         fs = const_metadata.data_description.sampling_frequency
-        fc = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        fc = _get_unique_center_frequency(const_metadata.context.sequence)
         input_shape = const_metadata.input_shape
         n_samples = input_shape[-1]
         if n_samples == 0:
@@ -961,7 +965,7 @@ class DigitalDownConversion(Operation):
 
     def prepare(self, const_metadata):
         self.demodulator = QuadratureDemodulation()
-        center_frequency = _get_unique_pulse(const_metadata.context.sequence).center_frequency
+        center_frequency = _get_unique_center_frequency(const_metadata.context.sequence)
         sampling_frequency = const_metadata.data_description.sampling_frequency
         cutoff_freq = center_frequency * self.fir_cutoff_relative
         fir_coefficients = scipy.signal.firwin(
@@ -1125,12 +1129,15 @@ class RxBeamformingPhasedScanning(Operation):
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
-        start_sample, end_sample = seq.rx_sample_range
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample, end_sample = rx_sample_range
         initial_delay = - start_sample / acq_fs
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
             tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                sequence=seq, c=c, probe_model=probe_model)
+                sequence=seq, c=c, probe_model=probe_model, fs=fs)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1244,7 +1251,9 @@ class RxBeamformingLin(Operation):
         else:
             c = medium.speed_of_sound
         tx_angle = 0
-        start_sample = seq.rx_sample_range[0]
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
         rx_aperture_origin = _get_rx_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
         # -start_sample compensates the fact, that the data indices always
         # start from 0
@@ -1252,7 +1261,7 @@ class RxBeamformingLin(Operation):
         if seq.init_delay == "tx_start":
             burst_factor = n_periods / (2 * fc)
             tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                sequence=seq, c=c, probe_model=probe_model)
+                sequence=seq, c=c, probe_model=probe_model, fs=fs)
             initial_delay += tx_center_delay + burst_factor
         elif not seq.init_delay == "tx_center":
             raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
@@ -1370,9 +1379,23 @@ class Transpose(Operation):
 
     def prepare(self, const_metadata):
         input_shape = const_metadata.input_shape
+        input_spacing = const_metadata.data_description.spacing
         axes = list(range(len(input_shape)))[::-1] if self.axes is None else self.axes
         output_shape = tuple(input_shape[ax] for ax in axes)
-        return const_metadata.copy(input_shape=output_shape)
+        if input_spacing is not None:
+            output_spacing = tuple(input_spacing.coordinates[ax] for ax in axes)
+            new_signal_description = dataclasses.replace(
+                const_metadata.data_description,
+                spacing=arrus.metadata.Grid(
+                    coordinates=output_spacing
+                )
+            )
+            return const_metadata.copy(
+                input_shape=output_shape,
+                data_desc=new_signal_description
+            )
+        else:
+            return const_metadata.copy(input_shape=output_shape)
 
     def process(self, data):
         return self.xp.transpose(data, self.axes)
@@ -1411,6 +1434,16 @@ class ScanConversion(Operation):
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = const_metadata.context.device.probe.model
+
+        new_signal_description = dataclasses.replace(
+            const_metadata.data_description,
+            spacing=arrus.metadata.Grid(
+                coordinates=(self.z_grid, self.x_grid)
+            )
+        )
+        const_metadata = const_metadata.copy(
+            data_desc=new_signal_description
+        )
         if probe.is_convex_array():
             self.process = self._process_convex
             return self._prepare_convex(const_metadata)
@@ -1474,7 +1507,9 @@ class ScanConversion(Operation):
         acq_fs = (const_metadata.context.device.sampling_frequency
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
-        start_sample = seq.rx_sample_range[0]
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
         input_z_grid_origin = start_sample / acq_fs * c / 2
         input_z_grid_diff = c / (fs * 2)
         # Map x_grid and z_grid to the RF frame coordinates.
@@ -1513,12 +1548,14 @@ class ScanConversion(Operation):
                   / seq.downsampling_factor)
         fs = data_desc.sampling_frequency
 
-        start_sample = seq.rx_sample_range[0]
-
         if seq.speed_of_sound is not None:
             c = seq.speed_of_sound
         else:
             c = medium.speed_of_sound
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
 
         tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
@@ -1577,9 +1614,13 @@ class ScanConversion(Operation):
         fs = const_metadata.context.device.sampling_frequency
         acq_fs = fs / seq.downsampling_factor
         fs = data_desc.sampling_frequency
-        start_sample, _ = seq.rx_sample_range
-        start_time = start_sample / acq_fs
         c = _get_speed_of_sound(const_metadata.context)
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+
+        start_sample, _ = rx_sample_range
+        start_time = start_sample / acq_fs
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
         tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
@@ -1914,7 +1955,10 @@ class SelectFrames(Operation):
 
         :param frames: frames to select
         """
-        self.frames = frames
+        super().__init__()
+        if isinstance(frames, np.ndarray):
+            frames = frames.tolist()
+        self.frames = tuple(frames)
 
     def set_pkgs(self, **kwargs):
         pass
@@ -1925,23 +1969,44 @@ class SelectFrames(Operation):
         seq = context.sequence
         n_frames = len(self.frames)
 
-        if len(input_shape) != 3:
-            raise ValueError("The input should be 3-D "
-                             "(frame number should be the first axis)")
+        if len(input_shape) == 3:
+            input_n_frames, d2, d3 = input_shape
+            output_shape = n_frames, d2, d3
+            self.selector = [slice(None)]*3
+            self.selector[0] = self.frames
+        elif len(input_shape) == 4:
+            n_seq, input_n_frames, d2, d3 = input_shape
+            output_shape = n_seq, n_frames, d2, d3
+            self.selector = [slice(None)]*4
+            self.selector[1] = self.frames
+        else:
+            raise ValueError("The input should be 3-D or 4-D "
+                             "(frame number should be the first or second axis)")
 
-        input_n_frames, d2, d3 = input_shape
-        output_shape = (n_frames, d2, d3)
-        # TODO make this op less prone to changes in op implementation
+        self.selector = tuple(self.selector)
+
+        # Adapt sequence and raw sequence to the changes in the number of
+        # frames.
+        new_raw_ops = self._limit_list(
+            const_metadata.context.raw_sequence.ops,
+            self.frames
+        )
+        new_raw_seq = dataclasses.replace(
+            const_metadata.context.raw_sequence,
+            ops=new_raw_ops
+        )
         if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
             # select appropriate angles
             angles = self._limit_params(seq.angles, self.frames)
             tx_focus = self._limit_params(seq.tx_focus, self.frames)
-            tx_aperture_center_element = self._limit_params(seq.tx_aperture_center_element,
-                                                            self.frames)
-            tx_aperture_center = self._limit_params(seq.tx_aperture_center, self.frames)
-            rx_aperture_center_element = self._limit_params(seq.rx_aperture_center_element,
-                                                            self.frames)
-            rx_aperture_center = self._limit_params(seq.rx_aperture_center, self.frames)
+            tx_aperture_center_element = self._limit_params(
+                seq.tx_aperture_center_element, self.frames)
+            tx_aperture_center = self._limit_params(
+                seq.tx_aperture_center, self.frames)
+            rx_aperture_center_element = self._limit_params(
+                seq.rx_aperture_center_element, self.frames)
+            rx_aperture_center = self._limit_params(
+                seq.rx_aperture_center, self.frames)
 
             new_seq = dataclasses.replace(
                 seq,
@@ -1951,24 +2016,42 @@ class SelectFrames(Operation):
                 tx_aperture_center=tx_aperture_center,
                 rx_aperture_center_element=rx_aperture_center_element,
                 rx_aperture_center=rx_aperture_center)
-            new_context = const_metadata.context
-            new_context = arrus.metadata.FrameAcquisitionContext(
-                device=new_context.device, sequence=new_seq,
-                raw_sequence=new_context.raw_sequence,
-                medium=new_context.medium, custom_data=new_context.custom_data)
+            new_context = dataclasses.replace(
+                const_metadata.context,
+                sequence=new_seq,
+                raw_sequence=new_raw_seq)
+            return const_metadata.copy(input_shape=output_shape,
+                                       context=new_context)
+        elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
+            new_ops = self._limit_list(
+                const_metadata.context.sequence.ops,
+                self.frames
+            )
+            new_seq = dataclasses.replace(
+                const_metadata.context.sequence,
+                ops=new_ops
+            )
+            new_context = dataclasses.replace(
+                const_metadata.context,
+                sequence=new_seq,
+                raw_sequence=new_raw_seq)
             return const_metadata.copy(input_shape=output_shape,
                                        context=new_context)
         else:
             return const_metadata.copy(input_shape=output_shape)
 
     def process(self, data):
-        return data[self.frames]
+        return data[self.selector]
 
     def _limit_params(self, value, frames):
         if value is not None and hasattr(value, "__len__") and len(value) > 1:
             return np.array(value)[frames]
         else:
             return value
+
+    def _limit_list(self, l, frames):
+        if l is not None:
+            return [e for i, e in enumerate(l) if i in frames]
 
 
 # Alias
@@ -2006,6 +2089,7 @@ class ReconstructLri(Operation):
     """
 
     def __init__(self, x_grid, z_grid, rx_tang_limits=None):
+        super().__init__()
         self.x_grid = x_grid
         self.z_grid = z_grid
         import cupy as cp
@@ -2018,7 +2102,6 @@ class ReconstructLri(Operation):
 
     def prepare(self, const_metadata):
         import cupy as cp
-
         current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
         _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri.cu")).read_text()
         self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
@@ -2029,11 +2112,77 @@ class ReconstructLri(Operation):
         # INPUT PARAMETERS.
         # Input data shape.
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
-
         seq = const_metadata.context.sequence
+        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         probe_model = const_metadata.context.device.probe.model
-        acq_fs = (const_metadata.context.device.sampling_frequency / seq.downsampling_factor)
-        start_sample = seq.rx_sample_range[0]
+
+        if isinstance(seq, SimpleTxRxSequence):
+            rx_op = seq
+            tx_op = seq
+            rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+                op=seq, fs=self.fs, speed_of_sound=seq.speed_of_sound)
+            angles = np.atleast_1d(np.asarray(seq.angles))
+            focus = np.atleast_1d(np.asarray(seq.tx_focus))
+            #
+            # TX aperture description
+            # Convert the sequence to the positions of the aperture centers
+            tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
+                probe_model,
+                seq)
+            tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
+            rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
+
+            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                sequence=seq, c=seq.speed_of_sound, probe_model=probe_model,
+                fs=const_metadata.data_description.sampling_frequency
+            )
+        elif isinstance(seq, TxRxSequence):
+            self._assert_unique(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            self._assert_unique(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
+            self._assert_unique(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            self._assert_unique(seq, lambda op: op.rx.sample_range, "sample_range")
+            self._assert_unique(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            # Reference TX/RX ops
+            rx_op = seq.ops[0].rx
+            tx_op = seq.ops[0].tx
+            rx_sample_range = rx_op.sample_range
+            angles = np.asarray([op.tx.angle for op in seq.ops])
+            focus = np.asarray([op.tx.focus for op in seq.ops])
+            if tx_op.angle is None and tx_op.focus is None:
+                raise ValueError("It is required to provide sequence with "
+                                 "transmit angles in order to run "
+                                 "the ReconstructLri operator.")
+            tx_apertures = [op.tx.aperture for op in seq.ops]
+            rx_apertures = [op.rx.aperture for op in seq.ops]
+            tx_centers = arrus.kernels.tx_rx_sequence.get_apertures_center_elements(
+                apertures=tx_apertures, probe_model=probe_model
+            )
+            tx_sizes = arrus.kernels.tx_rx_sequence.get_apertures_sizes(
+                apertures=tx_apertures, probe_model=probe_model
+            )
+            rx_centers = arrus.kernels.tx_rx_sequence.get_apertures_center_elements(
+                apertures=rx_apertures, probe_model=probe_model
+            )
+            rx_sizes = arrus.kernels.tx_rx_sequence.get_apertures_sizes(
+                apertures=rx_apertures, probe_model=probe_model
+            )
+            tx_center_delay = arrus.kernels.tx_rx_sequence.get_center_delay(
+                sequence=seq, probe_model=probe_model
+            )
+        else:
+            raise ValueError(f"Unsupported type of sequence: {seq}")
+
+        if len(focus) == 1:
+            focus = np.repeat(focus, self.n_tx)
+        if len(angles) == 1:
+            angles = np.repeat(angles, self.n_tx)
+
+        # tx center value is calculated with the assumption that the delays
+        # are "normalized to 0 values (i.e. min(all_delays) == 0.
+        # We need to take into account the actual delays here:
+        # the min(delays) may be != 0, e.g. when we reconstructing only some
+        # subsequence of the original sequence.
+        tx_center_delay -= self._get_min_delay(const_metadata.context.raw_sequence)
 
         self.x_size = len(self.x_grid)
         self.z_size = len(self.z_grid)
@@ -2050,16 +2199,15 @@ class ReconstructLri(Operation):
         self.z_pix = self.num_pkg.asarray(self.z_grid, dtype=self.num_pkg.float32)
 
         # System and transmit properties.
-        self.sos = self.num_pkg.float32(seq.speed_of_sound)
-        self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
-        self.fn = self.num_pkg.float32(seq.pulse.center_frequency)
+        self.sos = self.num_pkg.float32(tx_op.speed_of_sound)
+        self.fn = self.num_pkg.float32(tx_op.excitation.center_frequency)
         self.pitch = self.num_pkg.float32(probe_model.pitch)
+        start_sample = rx_sample_range[0]
 
         # Probe description
         element_pos_x = probe_model.element_pos_x
         element_pos_z = probe_model.element_pos_z
         element_angle_tang = np.tan(probe_model.element_angle)
-
         self.n_elements = probe_model.n_elements
 
         device_props = cp.cuda.runtime.getDeviceProperties(0)
@@ -2076,20 +2224,9 @@ class ReconstructLri(Operation):
         self._tang_elem_const = _get_const_memory_array(
             self._kernel_module, name="tangElemConst", input_array=tang_elem)
 
-        # TX aperture description
-        # Convert the sequence to the positions of the aperture centers
-        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
-            probe_model,
-            seq)
-        tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
-        rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
-
-        tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-            sequence=seq, c=seq.speed_of_sound, probe_model=probe_model)
-
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_centers, probe_model)
-        tx_center_angles = tx_center_angles + seq.angles
+        tx_center_angles = tx_center_angles + angles
         self.tx_ang_zx = self.num_pkg.asarray(tx_center_angles, dtype=self.num_pkg.float32)
         self.tx_ap_cent_x = self.num_pkg.asarray(tx_center_x, dtype=self.num_pkg.float32)
         self.tx_ap_cent_z = self.num_pkg.asarray(tx_center_z, dtype=self.num_pkg.float32)
@@ -2112,11 +2249,22 @@ class ReconstructLri(Operation):
 
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
-        self.tx_foc = self.num_pkg.asarray([seq.tx_focus] * self.n_tx, dtype=self.num_pkg.float32)
-        burst_factor = seq.pulse.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
+
+        self.tx_foc = self.num_pkg.asarray(focus, dtype=self.num_pkg.float32)
+        burst_factor = tx_op.excitation.n_periods/(2 * self.fn)
+        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
-        return const_metadata.copy(input_shape=output_shape)
+        # Output metadata
+        new_signal_description = dataclasses.replace(
+            const_metadata.data_description,
+            spacing=arrus.metadata.Grid(
+                coordinates=(self.x_grid, self.z_grid)
+            )
+        )
+        return const_metadata.copy(
+            input_shape=output_shape,
+            data_desc=new_signal_description
+        )
 
     def process(self, data):
         data = self.num_pkg.ascontiguousarray(data)
@@ -2136,6 +2284,17 @@ class ReconstructLri(Operation):
             self.initial_delay)
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
+
+    def _assert_unique(self, seq: TxRxSequence, getter: Callable, name: str):
+        s = {getter(op) for op in seq.ops}
+        if len(s) > 1:
+            raise ValueError("The following property should be unique "
+                             f"in the sequence: {name}, found values: "
+                             f"{s}")
+
+    def _get_min_delay(self, raw_sequence):
+        all_delays = [np.min(op.tx.delays) for op in raw_sequence.ops]
+        return np.min(all_delays)
 
 
 class Sum(Operation):
@@ -2312,6 +2471,7 @@ class RemapToLogicalOrder(Operation):
         batch_size = fcm.batch_size
         self.output_shape = (batch_size, n_frames, n_samples, n_channels)
         self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
+
         if xp == np:
             # CPU
             raise ValueError(f"'{type(self).__name__}' is not implemented for CPU")
@@ -2329,16 +2489,20 @@ class RemapToLogicalOrder(Operation):
             # Note: this is the max number of us4OEMs IN USE.
             n_us4oems = cp.max(self._fcm_us4oems).get() + 1
             n_frames_us4oems = []
-            for us4oem in range(n_us4oems):
+            # The us4OEM:0 is a master us4OEM that collects data from all transmits,
+            # even if its channels are not included in the RX aperture (each frame
+            # contains frame metadata information).
+            n_frames_us4oems.append(fcm.n_frames[0]//batch_size)
+            for us4oem in range(1, n_us4oems):
                 us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
                 if us4oem_frames.size == 0:
                     n_frames_us4oems.append(0)
                 else:
-                    n_frames_us4oem = cp.max(us4oem_frames).get().item()
+                    n_frames_us4oem = cp.max(us4oem_frames).get().item() + 1
                     n_frames_us4oems.append(n_frames_us4oem)
 
             #  TODO constant memory
-            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
+            self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)
             self.grid_size, self.block_size = get_default_grid_block_size(
                 self._fcm_frames, n_samples,
                 batch_size
@@ -2415,7 +2579,7 @@ class RemapToLogicalOrderV2(Operation):
         else:
             # GPU
             import cupy as cp
-            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size, run_remap_v2
+            from arrus.utils.us4r_remap_gpu import get_default_grid_block_size_v2, run_remap_v2
             self._fcm_frames = cp.asarray(fcm.frames)
             self._fcm_channels = cp.asarray(fcm.channels)
             self._fcm_us4oems = cp.asarray(fcm.us4oems)
@@ -2435,7 +2599,7 @@ class RemapToLogicalOrderV2(Operation):
                     n_frames_us4oems.append(n_frames_us4oem)
             #  TODO constant memory
             self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32) + 1
-            self.grid_size, self.block_size = get_default_grid_block_size(
+            self.grid_size, self.block_size = get_default_grid_block_size_v2(
                 self._fcm_frames, n_samples,
                 batch_size
             )
@@ -2933,3 +3097,28 @@ class DelayAndSumLUT(Operation):
             self.fs, self.fn)
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
+
+
+class RunForDlPackCapsule(Operation):
+    """
+    Converts input cupy ndarray into the DL Pack capsule
+    (https://github.com/dmlc/dlpack) and runs the provided callback function.
+
+    The callback function should take DL Pack capsule as input and return
+    a new cupy array.
+
+    Note: experimental.
+    """
+
+    def __init__(self, callback, name=None):
+        super().__init__(name=name)
+        self.callback = callback
+
+    def prepare(self, const_metadata):
+        return const_metadata
+
+    def process(self, data):
+        dlpack_capsule = data.toDlpack()
+        return self.callback(dlpack_capsule)
+
+

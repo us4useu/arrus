@@ -2,6 +2,7 @@ import numpy as np
 import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
+from typing import Dict, Any
 
 _UINT16_MIN = 0
 _UINT16_MAX = 2**16-1
@@ -169,3 +170,9 @@ def convert_from_tuple(core_tuple):
     v = [core_tuple.get(i) for i in range(core_tuple.size())]
     return tuple(v)
 
+
+def convert_to_core_parameters(params: Dict[str, Any]):
+    builder = arrus.core.ParametersBuilder()
+    for k, v in params.items():
+        builder.add(k, v)
+    return builder.build()

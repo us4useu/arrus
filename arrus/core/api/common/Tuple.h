@@ -35,6 +35,12 @@ public:
         return this->values[i];
     }
 
+    Tuple<T> set(size_t i, T value) const {
+        std::vector<T> newValues(values);
+        newValues[i] = value;
+        return Tuple{newValues};
+    }
+
     /**
      * Returns the tuple size (number of values it consists of).
      */

@@ -18,7 +18,7 @@ class KernelExecutionContext:
     :param op: operation to perform
     :param custom: custom data
     """
-    device: arrus.devices.device.UltrasoundDeviceDTO
+    device: arrus.devices.ultrasound.UltrasoundDTO
     medium: arrus.medium.MediumDTO
     op: arrus.ops.Operation
     custom: dict

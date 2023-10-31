@@ -7,6 +7,7 @@
 
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
+#include "arrus/common/cache.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
@@ -132,14 +133,10 @@ public:
     uint32 getFirmwareVersion() override;
     void checkState() override;
     uint32 getTxFirmwareVersion() override;
+    uint32_t getTxOffset() override;
+    uint32_t getOemVersion() override;
 
     void setTestPattern(RxTestPattern pattern) override;
-
-    void sequencerWriteRegister(uint32_t addr, uint32_t value) override;
-    uint32_t sequencerReadRegister(uint32_t addr) override; 
-    uint16_t pulserReadRegister(uint8_t sthv, uint16_t addr) override;
-    void pulserWriteRegister(uint8_t sthv, uint16_t addr, uint16_t reg) override;
-    void allPulsersWriteRegister(uint16_t addr, uint16_t reg) override;
 
     uint16_t getAfe(uint8_t address) override;
     void setAfe(uint8_t address, uint16_t value) override;
@@ -156,15 +153,11 @@ public:
 
     float getFPGAWallclock() override;
 
-    const char *getSerialNumber() const override;
+    const char *getSerialNumber() override;
 
-    const char *getRevision() const override;
+    const char *getRevision() override;
 
 private:
-    // SN and REVISION mockups for the legacy us4OEM model.
-    const char* SERIAL_NUMBER_MOCK_UP = "";
-    const char* REVISION_MOCK_UP = "";
-
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
@@ -217,9 +210,11 @@ private:
     RxSettings rxSettings;
     bool externalTrigger{false};
     /** Current sampling frequency of the data produced by us4OEM. */
-    float currentSamplingFrequency;
+    float currentSamplingFrequency{SAMPLING_FREQUENCY};
     /** Global state mutex */
     mutable std::mutex stateMutex;
+    arrus::Cached<std::string> serialNumber;
+    arrus::Cached<std::string> revision;
 };
 
 }

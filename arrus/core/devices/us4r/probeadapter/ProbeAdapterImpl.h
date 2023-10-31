@@ -3,16 +3,16 @@
 
 #include <utility>
 
+#include "arrus/common/asserts.h"
+#include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
+#include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/common/logging.h"
+#include "arrus/core/devices/TxRxParameters.h"
+#include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
+#include "arrus/core/devices/us4r/Us4RBuffer.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
-#include "arrus/core/devices/TxRxParameters.h"
-#include "arrus/core/api/ops/us4r/tgc.h"
-#include "arrus/common/asserts.h"
-#include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/Us4RBuffer.h"
-#include "arrus/core/devices/us4r/probeadapter/Us4OEMDataTransferRegistrar.h"
-#include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 
 namespace arrus::devices {
 
@@ -45,28 +45,7 @@ public:
     void stop() override;
 
     void syncTrigger() override;
-
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
-                              ::arrus::ops::us4r::Scheme::WorkMode workMode) override;
-
-    void unregisterOutputBuffer() override;
-
 private:
-    void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
-                              Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
-
-    Us4OEMImplBase::RawHandle getMasterUs4oem() const {
-        return this->us4oems[0];
-    }
-    size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
-    std::function<void()> createReleaseCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 stopFiring);
-
-    std::function<void()> createOnReceiveOverflowCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
-    std::function<void()> createOnTransferOverflowCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
-
     void calculateRxDelays(std::vector<TxRxParamsSequence> &sequences);
 
     Logger::Handle logger;
@@ -74,7 +53,6 @@ private:
     std::vector<Us4OEMImplBase::RawHandle> us4oems;
     ChannelIdx numberOfChannels;
     ChannelMapping channelMapping;
-    std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
 };
 }
 

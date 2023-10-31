@@ -13,8 +13,6 @@ High-level MATLAB scripts
     :show-inheritance:
     :members:
 
-.. _arrus-api-sequences:
-
 .. _arrus.CustomTxRxSequence:
 
 .. mat:autoclass:: arrus.CustomTxRxSequence
@@ -36,3 +34,8 @@ Utilities
     :show-inheritance:
     :members:
 
+.. _arrus.DuplexDisplay:
+
+.. mat:autoclass:: arrus.DuplexDisplay
+    :show-inheritance:
+    :members:

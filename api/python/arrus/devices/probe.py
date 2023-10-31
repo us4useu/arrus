@@ -41,6 +41,20 @@ class ProbeModel:
             z_pos = z_pos - np.min(z_pos)
         return x_pos, z_pos, angle
 
+    @property
+    def x_min(self):
+        """
+        A short to get the position of the "left-most" element.
+        """
+        return np.min(self.element_pos_x)
+
+    @property
+    def x_max(self):
+        """
+        A short to get the position of the "right-most" element.
+        """
+        return np.max(self.element_pos_x)
+
     def is_convex_array(self):
         return not (math.isnan(self.curvature_radius)
                     or self.curvature_radius == 0.0)
