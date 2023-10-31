@@ -138,12 +138,6 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
 
-    void sequencerWriteRegister(uint32_t addr, uint32_t value) override;
-    uint32_t sequencerReadRegister(uint32_t addr) override;
-    uint16_t pulserReadRegister(uint8_t sthv, uint16_t addr) override;
-    void pulserWriteRegister(uint8_t sthv, uint16_t addr, uint16_t reg) override;
-    void allPulsersWriteRegister(uint16_t addr, uint16_t reg) override;
-
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
 

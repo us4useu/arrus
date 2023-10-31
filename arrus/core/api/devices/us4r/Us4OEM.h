@@ -74,12 +74,6 @@ public:
     */
 	virtual void setAfe(uint8_t address, uint16_t value) = 0;
 
-    virtual void sequencerWriteRegister(uint32_t addr, uint32_t value) = 0;
-    virtual uint32_t sequencerReadRegister(uint32_t addr) = 0; 
-    virtual uint16_t pulserReadRegister(uint8_t sthv, uint16_t addr) = 0;
-    virtual void pulserWriteRegister(uint8_t sthv, uint16_t addr, uint16_t reg) = 0;
-    virtual void allPulsersWriteRegister(uint16_t addr, uint16_t reg) = 0;
-
     /**
     * Enables and configures AFE built-in demodulator
     *

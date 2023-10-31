@@ -82,26 +82,6 @@ void Us4OEMImpl::stopTrigger() {
     }
 }
 
-void Us4OEMImpl::sequencerWriteRegister(uint32_t addr, uint32_t value) {
-    ius4oem->SequencerWriteRegister(addr, value);
-}
-
-uint32_t Us4OEMImpl::sequencerReadRegister(uint32_t addr) { 
-    return ius4oem->SequencerReadRegister(addr);
-}
-
-uint16_t Us4OEMImpl::pulserReadRegister(uint8_t sthv, uint16_t addr) {
-    return ius4oem->PulserReadRegister(sthv, addr);
-}
-
-void Us4OEMImpl::pulserWriteRegister(uint8_t sthv, uint16_t addr, uint16_t reg) {
-    ius4oem->PulserWriteRegister(sthv, addr, reg);
-}
-
-void Us4OEMImpl::allPulsersWriteRegister(uint16_t addr, uint16_t reg) {
-    ius4oem->AllPulsersWriteRegister(addr, reg);
-}
-
 uint16_t Us4OEMImpl::getAfe(uint8_t address) { return ius4oem->AfeReadRegister(0, address); }
 
 void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
