@@ -128,7 +128,7 @@ classdef DuplexDisplay < handle
             
             if thresholdSmoothe>0
                 aux = linspace(-1,1,thresholdSmoothe).^2;
-                smootheKernel = sqrt(aux.' + aux);
+                smootheKernel = double(sqrt(aux.' + aux) <= 1);
             else
                 smootheKernel = [];
             end
