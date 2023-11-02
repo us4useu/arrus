@@ -15,9 +15,9 @@ classdef DuplexDisplay < handle
     % :param stdevThreshold: limit of standard deviation of color data \
     %   over which the color data is not displayed \
     %   (scalar) (optional name-value argument)
-    % :param thresholdSmoothe: size [pix] of the smoothing kernel applied \
-    %   to the images that are used for thresholding, e.g. power, turbu, \
-    %   stdev (scalar) (optional name-value argument)
+    % :param thresholdSmoothe: size [pix] of the circular smoothing kernel 
+    %   applied to the images that are used for thresholding, e.g. power, 
+    %   turbu, stdev (scalar) (optional name-value argument)
     % :param subplotEnable: enables separate display of Duplex, bmode, \
     %   power, and turbulence (logical scalar) (optional name-value argument)
     % :param cineLoopLength: positive scalar, number of frames stored in \
