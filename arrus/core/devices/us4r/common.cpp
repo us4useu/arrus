@@ -223,7 +223,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
             ::arrus::framework::NdArray::Shape shape{nOps, Us4OEMImpl::N_TX_CHANNELS};
             ::arrus::framework::NdArray::DataType dataType = framework::NdArray::DataType::FLOAT32;
             std::vector<::arrus::framework::NdArray> outputProfiles;
-            for(auto &profile: inputTxDelayProfiles.at(seqIdx)) {
+            for(auto &profile: inputTxDelayProfiles.at(static_cast<uint16_t>(seqIdx))) {
                 const DeviceId &placement = profile.getPlacement();
                 const std::string &name = profile.getName();
                 ::arrus::framework::NdArray outputProfile(shape, dataType, placement, name);
@@ -234,7 +234,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                 }
                 outputProfiles.push_back(outputProfile);
             }
-            outputTxDelayProfiles.emplace(seqIdx, outputProfiles);
+            outputTxDelayProfiles.emplace(static_cast<uint16_t>(seqIdx), outputProfiles);
         }
         return std::make_tuple(result, opDestOp, opDestChannel, outputTxDelayProfiles);
     }
