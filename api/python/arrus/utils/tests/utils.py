@@ -179,7 +179,7 @@ class ArrusImagingTestCase(ArrusTestCase):
 
         acquisition_context = arrus.metadata.FrameAcquisitionContext(
             device=device, sequence=sequence, raw_sequence=raw_sequence,
-            medium=medium, custom_data={}
+            medium=medium, custom_data={}, constants=[]
         )
         return acquisition_context
 
