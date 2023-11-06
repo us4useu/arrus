@@ -62,8 +62,15 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
     // set tx rx sequence
     std::vector<TxRxParameters> adapterSeq;
     std::vector<arrus::framework::NdArray> adapterTxDelayProfiles;
+    ::arrus::framework::NdArray::Shape outputProfileShape = {seq.size(), adapter->getNumberOfChannels()};
     for(auto &inputTxDelayProfile: txDelayProfiles) {
-        adapterTxDelayProfiles.push_back(inputTxDelayProfile.zerosLike());
+        ::arrus::framework::NdArray emptyArray(
+            outputProfileShape,
+            inputTxDelayProfile.getDataType(),
+            inputTxDelayProfile.getPlacement(),
+            inputTxDelayProfile.getName()
+        );
+        adapterTxDelayProfiles.push_back(emptyArray);
     }
 
     auto probeNumberOfElements = model.getNumberOfElements().product();
