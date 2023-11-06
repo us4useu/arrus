@@ -212,7 +212,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
 
     auto[splittedOps, opDstSplittedOp, opDestSplittedCh, us4oemTxDelayProfiles] = splitRxAperturesIfNecessary(
         seqs, us4oemL2PChannelMappings, txDelayProfilesList);
-	
+
+    calculateRxDelays(splittedOps);
+
     // set sequence on each us4oem
     std::vector<FrameChannelMapping::Handle> fcMappings;
     // section -> us4oem -> transfer
@@ -317,5 +319,44 @@ void ProbeAdapterImpl::syncTrigger() {
 }
 
 
+
+/**
+ * NOTE: this method works in-place (modifies input sequence).
+ */
+void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequences) {
+    auto nUs4OEMs = sequences.size();
+    auto sequenceSize = sequences[0].size();
+    for(size_t txrx = 0; txrx < sequenceSize; ++txrx) {
+        float maxDelay = 0.0f;
+        for(size_t oem = 0; oem < nUs4OEMs; ++oem) {
+            TxRxParameters &op = sequences[oem][txrx];
+            std::vector<float> delays;
+            // NOTE: assuming that TX aperture and delays have the same length.
+            // Filtering out tx delay values that have tx delay == 0.
+            for(size_t i = 0; i < op.getTxAperture().size(); ++i) {
+                if(op.getTxAperture()[i]) {
+                    delays.push_back(op.getTxDelays()[i]);
+                }
+            }
+            if(!delays.empty()) {
+                // TX delay
+                float txrxMaxDelay = *std::max_element(std::begin(delays), std::end(delays));
+                // burst time
+                float frequency = op.getTxPulse().getCenterFrequency();
+                float nPeriods = op.getTxPulse().getNPeriods();
+                float burstTime = 1.0f/frequency*nPeriods;
+                // Total rx delay
+                float newDelay = txrxMaxDelay + burstTime;
+                if(newDelay > maxDelay) {
+                    maxDelay = newDelay;
+                }
+            }
+        }
+        // Set Rx delays in the input sequences.
+        for(size_t oem = 0; oem < nUs4OEMs; ++oem) {
+            sequences[oem][txrx].setRxDelay(maxDelay);
+        }
+    }
+}
 
 }

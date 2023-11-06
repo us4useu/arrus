@@ -307,15 +307,13 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxDelaysCorrectly) {
     for(int i = 18; i < 32; ++i) {
         delays0[i] = i * 5e-6;
     }
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxDelays, delays0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxDelays, delays0)));
 
     std::vector<float> delays1(Us4OEMImpl::N_TX_CHANNELS, 0);
     for(int i = 0; i < 44 - 32; ++i) {
         delays1[i] = (i + 32) * 5e-6;
     }
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxDelays, delays1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxDelays, delays1)));
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
 }
@@ -331,12 +329,10 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectlySingleUs4
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_ADDR_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 10, 21, true);
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
 
     BitMask expectedTxAp1(Us4OEMImpl::N_ADDR_CHANNELS, false);
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
 }
@@ -351,13 +347,11 @@ TEST_F(ProbeAdapterChannelMapping1Test, DistributesTxAperturesCorrectlySingleUs4
                     .getTxRxParameters()
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_ADDR_CHANNELS, false);
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
 
     BitMask expectedTxAp1(Us4OEMImpl::N_ADDR_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp1, 10, 29, true);
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
 }
@@ -397,12 +391,10 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesCorrectlySin
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 33, 48, true);
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
 
     BitMask expectedTxAp1(Us4OEMImpl::N_TX_CHANNELS, false);
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
 }
@@ -422,13 +414,11 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesCorrectlyTwo
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 64 + 14, 64 + 32, true);
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
 
     BitMask expectedTxAp1(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp1, 64 + 0, 64 + 8, true);
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
 }
@@ -448,13 +438,11 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesCorrectlyThr
     };
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 16, 48, true);
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
 
     BitMask expectedTxAp1(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp1, 0, 32, true);
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
 }
@@ -479,14 +467,12 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, DistributesTxAperturesWithGapsCorr
     BitMask expectedTxAp0(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp0, 8, 96, true);
     expectedTxAp0[0 + 14] = expectedTxAp0[0 + 17] = expectedTxAp0[32 + 25] = false;
-    EXPECT_SEQUENCE_PROPERTY(0,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
+    EXPECT_SEQUENCE_PROPERTY(0, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp0)));
 
     BitMask expectedTxAp1(Us4OEMImpl::N_TX_CHANNELS, false);
     ::arrus::setValuesInRange(expectedTxAp1, 0, 64 + 30, true);
     expectedTxAp1[0 + 23] = expectedTxAp1[0 + 24] = expectedTxAp1[64 + 7] = false;
-    EXPECT_SEQUENCE_PROPERTY(1,
-                             ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
+    EXPECT_SEQUENCE_PROPERTY(1, ElementsAre(Property(&TxRxParameters::getTxAperture, expectedTxAp1)));
 
     SET_TX_RX_SEQUENCE(probeAdapter, seq);
 }
@@ -1141,6 +1127,93 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     }
     EXPECT_EQ(0, fcm->getFirstFrame(1)); // Us4OEM:1
 }
+
+TEST_F(ProbeAdapterChannelMappingEsaote3Test, CalculatesCorrectRxDelay) {
+    std::vector<float> delays0(getNChannels(), 0.0f);
+    std::vector<float> delays1(getNChannels(), 0.0f);
+    BitMask txAperture(getNChannels(), true);
+    BitMask rxAperture(getNChannels(), true);
+    // Partially filled
+    BitMask txAperture1(getNChannels(), false);
+    std::fill(std::begin(txAperture1), std::begin(txAperture1)+10, true);
+
+    ops::us4r::Pulse pulse0{2.0e6f, 2.0f, false};
+    ops::us4r::Pulse pulse1{3.0e6f, 3.0f, true};
+    for(int i = 0; i < getNChannels(); ++i) {
+        delays0[i] = i * 10e-7;
+    }
+    for(int i = 0; i < getNChannels(); ++i) {
+        delays1[i] = 0.0f;
+    }
+    std::vector<TxRxParameters> seq = {
+        // Linearly increasing TX delays.
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays0,
+                x.pulse = pulse0
+            ))
+            .getTxRxParameters(),
+        // All TX delays the same.
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays1,
+                x.pulse = pulse1
+            ))
+            .getTxRxParameters(),
+        // Partial TX aperture.
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture1,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays0,
+                x.pulse = pulse1
+            ))
+            .getTxRxParameters()
+    };
+
+    float rxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0))
+                     + 1.0f/pulse0.getCenterFrequency()*pulse0.getNPeriods();
+    float rxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1))
+                     + 1.0f/pulse1.getCenterFrequency()*pulse1.getNPeriods();
+    float rxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0)+10)
+                     + 1.0f/pulse1.getCenterFrequency()*pulse1.getNPeriods();
+
+    std::cout << "RX delay 0: " << rxDelay0 << std::endl;
+    std::cout << "RX delay 1: " << rxDelay1 << std::endl;
+    std::cout << "RX delay 2: " << rxDelay2 << std::endl;
+
+    EXPECT_SEQUENCE_PROPERTY_NFRAMES(0, ElementsAre(
+                                            Property(&TxRxParameters::getRxDelay, rxDelay0),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay0),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay0),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay1),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay1),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay1),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay2),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay2),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay2)
+                                            ), 9);
+    EXPECT_SEQUENCE_PROPERTY_NFRAMES(1, ElementsAre(
+                                            Property(&TxRxParameters::getRxDelay, rxDelay0),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay0),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay0),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay1),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay1),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay1),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay2),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay2),
+                                            Property(&TxRxParameters::getRxDelay, rxDelay2)
+                                            ), 9);
+    SET_TX_RX_SEQUENCE(probeAdapter, seq);
+}
+
 // ------------------------------------------ TODO Test that all other parameters are passed unmodified
 }
 

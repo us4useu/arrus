@@ -232,4 +232,8 @@ void SessionImpl::verifyScheme(const ops::us4r::Scheme &scheme) {
     }
 }
 
+Session::State SessionImpl::getCurrentState() {
+    return state;
+}
+
 }// namespace arrus::session
