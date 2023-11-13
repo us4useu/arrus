@@ -31,6 +31,8 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
       reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
+      serialNumber([this](){return this->ius4oem->GetSerialNumber();}),
+      revision([this](){return this->ius4oem->GetRevisionNumber();}),
       acceptRxNops(acceptRxNops) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
@@ -303,7 +305,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
-        ius4oem->SetRxDelay(RX_DELAY, opIdx);
+        ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
     }
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
@@ -847,8 +849,8 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
                       static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
 
-const char* Us4OEMImpl::getSerialNumber() const { return Us4OEMImpl::SERIAL_NUMBER_MOCK_UP; }
+const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
 
-const char* Us4OEMImpl::getRevision() const { return Us4OEMImpl::REVISION_MOCK_UP; }
+const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
 }// namespace arrus::devices

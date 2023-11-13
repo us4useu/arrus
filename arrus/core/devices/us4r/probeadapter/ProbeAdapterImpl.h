@@ -47,6 +47,7 @@ public:
 
     void syncTrigger() override;
 private:
+    void calculateRxDelays(std::vector<TxRxParamsSequence> &sequences);
     Ordinal getFrameMetadataOem(const us4r::IOSettings &settings);
 
     Logger::Handle logger;

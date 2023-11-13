@@ -67,9 +67,6 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
     ${CMAKE_COMMAND} -E copy
     ${ARRUS_MATLAB_CORE_SO_FILE} ${TOOLBOX_OUTPUT_DIR}
-    COMMAND
-    ${CMAKE_COMMAND} -E copy
-    ${Us4_ROOT_DIR}/matlab/Us4MEX.mexw64 ${TOOLBOX_OUTPUT_DIR}
     # Excluded directories/files
     COMMAND
     ${CMAKE_COMMAND} -E rm -rf "${TOOLBOX_OUTPUT_DIR}/mexcuda"
