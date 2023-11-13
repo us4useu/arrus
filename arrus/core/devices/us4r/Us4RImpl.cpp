@@ -223,7 +223,6 @@ std::pair<Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
 Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferNElements = scheme.getRxBufferSize();
-    auto &seq = scheme.getTxRxSequence();
     auto workMode = scheme.getWorkMode();
 
     unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
@@ -243,8 +242,11 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     }
     // Upload and register buffers.
     bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
+
+    auto &seq = scheme.getTxRxSequence();
+
     auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
-                                          scheme.getDigitalDownConversion());
+                                          scheme.getDigitalDownConversion(), scheme.getConstants());
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -349,7 +351,8 @@ Us4RImpl::~Us4RImpl() {
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync,
-                         const std::optional<ops::us4r::DigitalDownConversion> &ddc) {
+                         const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                         const std::vector<framework::NdArray> &txDelayProfiles) {
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
@@ -365,7 +368,7 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
         ++opIdx;
     }
     return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
-                                           triggerSync, ddc);
+                                           triggerSync, ddc, txDelayProfiles);
 }
 
 void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
@@ -783,6 +786,30 @@ const char *Us4RImpl::getBackplaneRevision() {
         throw arrus::IllegalArgumentException("No backplane defined.");
     }
     return this->digitalBackplane->get()->getRevisionNumber();
+}
+
+void Us4RImpl::setParameters(const Parameters &params) {
+    for(auto &item: params.items()) {
+        auto &key = item.first;
+        auto value = item.second;
+        logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
+        if(key != "/sequence:0/txFocus") {
+            throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
+        }
+        this->us4oems[0]->getIUs4oem()->TriggerStop();
+        try {
+            for(auto &us4oem: us4oems) {
+                us4oem->getIUs4oem()->SetTxDelays(value);
+            }
+	} 
+	catch(...) {
+            // Try resume.
+            this->us4oems[0]->getIUs4oem()->TriggerStart();
+	    throw;
+	}
+	// Everything OK, resume.
+        this->us4oems[0]->getIUs4oem()->TriggerStart();
+    }
 }
 
 }// namespace arrus::devices

@@ -23,6 +23,7 @@ Release notes
     - Created an example for file device (simulated mode) #221, #ARRUS-248.
     - Added spacing to echo data description #295 #ARRUS-251.
     - us4R: exposed us4OEM and digital backplane serial number and revision #ARRUS-267.
+    - us4R: provided the possibility to dynamically change TX focus, #US4R-326.
 
 
 0.8.x

@@ -9,7 +9,8 @@ import numpy as np
 from arrus.ops.us4r import (
     TxRxSequence, Tx, Rx, TxRx, Aperture
 )
-from arrus.kernels.kernel import KernelExecutionContext
+from arrus.kernels.kernel import KernelExecutionContext, ConversionResults
+from arrus.framework import Constant
 
 
 def process_tx_rx_sequence(context: KernelExecutionContext):
@@ -21,22 +22,58 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
     into a list of raw delays.
     """
     sequence: TxRxSequence = context.op
+    tx_delay_constants = context.constants
     probe_model = context.device.probe.model
     fs: float = __get_sampling_frequency(context)
     # Update the following sequence parameters (if necessary):
     # - tx: aperture (to binary mask)
     # - rx: aperture (to binary mask), rx padding
-    sequence, _ = convert_to_us4r_sequence(sequence=sequence,
-                                        probe_model=probe_model,
-                                        fs=fs)
-    return sequence
+    sequence, _, constants = convert_to_us4r_sequence_with_constants(
+        sequence=sequence,
+        probe_model=probe_model,
+        fs=fs,
+        tx_focus_constants=tx_delay_constants
+    )
+    return ConversionResults(
+        sequence=sequence,
+        constants=constants
+    )
 
 
 def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
+    """
+    for backward compatibility
+    """
+    seq, center_delay, constants = convert_to_us4r_sequence_with_constants(
+        sequence=sequence,
+        probe_model=probe_model,
+        fs=fs,
+        tx_focus_constants=()
+    )
+    return seq, center_delay
+
+
+def _get_full_tx_delays(constant_delays, sequence_with_masks):
+    """
+    :return: array (n ops, n elements)
+    """
+    output_array = []
+    for i, op in enumerate(sequence_with_masks.ops):
+        tx = op.tx
+        core_delays = np.zeros(tx.aperture.shape, dtype=np.float32)
+        core_delays[tx.aperture] = constant_delays[i]
+        output_array.append(core_delays)
+    return np.stack(output_array)
+
+
+def convert_to_us4r_sequence_with_constants(
+        sequence: TxRxSequence, probe_model, fs: float, tx_focus_constants
+):
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=sequence,
         probe=probe_model
     )
+    original_sequence = sequence
     # We want all operators to have exactly the same combination
     # of parameters: delays or focus,angle,speed of sound.
     # Currently this is required because of TX center delay equalization
@@ -50,14 +87,17 @@ def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
     )
     if len(delays_is_none) != 1 or len(foc_ang_c_is_none) != 1:
         # the above arrays are {True, False}
-        raise ValueError("All TX/RXs delays should be None"
+        raise ValueError("All TX/RXs delays should be None "
                          "or focus,angle,speed of sound should be None.")
     if delays_is_none == {True}:
         # Updates in the input sequence the following parameters:
         # - tx: delays, focus, angle, speed_of_sound
         # - rx: init_delay, sample_range
         # Otherwise, we need to convert focus, angle, c to raw TX delays.
-        dels, tx_center_delay = get_tx_delays(probe_model, sequence, sequence_with_masks)
+        dels, tx_center_delay = get_tx_delays(
+            probe_model, sequence, sequence_with_masks,
+        )
+        # Calculate delays for each constant.
         new_ops = []
         # Update input sequence.
         for i, op in enumerate(sequence_with_masks.ops):
@@ -76,12 +116,42 @@ def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
             new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
             new_ops.append(new_op)
         sequence = dataclasses.replace(sequence, ops=new_ops)
-        return sequence, tx_center_delay
+
+        output_constants = []
+        for i, tx_focus_const in enumerate(tx_focus_constants):
+            focus = tx_focus_const.value
+            focuses = [focus]*len(sequence_with_masks.ops)
+            constant_delays, _ = get_tx_delays_for_focuses(
+                probe_model, original_sequence, sequence_with_masks,
+                focuses
+            )
+            full_tx_delays = _get_full_tx_delays(
+                constant_delays, sequence_with_masks)
+            output_constants.append(
+                Constant(
+                    value=full_tx_delays,
+                    placement=tx_focus_const.placement,
+                    name=f"sequence/txDelays:{i}"
+                )
+            )
+        return sequence, tx_center_delay, output_constants
     else:
-        return sequence, None
+        # NOTE: constants are currently not supported for raw TxRxSequence
+        return sequence, None, []
 
 
-def get_tx_delays(probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence):
+def get_tx_delays(
+        probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence,
+):
+    focuses = [op.tx.focus for op in sequence.ops]
+    return get_tx_delays_for_focuses(
+        probe, sequence, seq_with_masks, focuses)
+
+
+def get_tx_delays_for_focuses(
+        probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence,
+        tx_focuses
+):
     """
     Returns tx_center_delay = None when all TXs have empty aperture.
     """
@@ -108,9 +178,10 @@ def get_tx_delays(probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence):
         tx_cent_x = tx_center_x[i]
         tx_cent_z = tx_center_z[i]
         c = tx.speed_of_sound
-        assert (tx.focus is not None and tx.angle is not None
+        tx_focus = tx_focuses[i]
+        assert (tx_focus is not None and tx.angle is not None
                 and tx.speed_of_sound is not None)
-        if np.isinf(tx.focus):
+        if np.isinf(tx_focus):
             # PWI
             delays = (element_x * np.sin(tx_angle)
                       + element_z * np.cos(tx_angle)) / c  # [1, n_elem]
@@ -118,13 +189,13 @@ def get_tx_delays(probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence):
                             + tx_cent_z * np.cos(tx_angle)) / c  # scalar
         else:
             # Virtual source/focus
-            focus_x = tx_cent_x + tx.focus * np.sin(tx_angle)  # scalar
-            focus_z = tx_cent_z + tx.focus * np.cos(tx_angle)  # scalar
+            focus_x = tx_cent_x + tx_focus * np.sin(tx_angle)  # scalar
+            focus_z = tx_cent_z + tx_focus * np.cos(tx_angle)  # scalar
             delays = np.sqrt((focus_x - element_x) ** 2
                              + (focus_z - element_z) ** 2) / c  # [1, n_elem]
             center_delay = np.sqrt((focus_x - tx_cent_x) ** 2
                                    + (focus_z - tx_cent_z) ** 2) / c  # scalar
-            foc_defoc = 1 - 2 * float(tx.focus > 0)
+            foc_defoc = 1 - 2 * float(tx_focus > 0)
             delays = delays * foc_defoc
             center_delay = center_delay * foc_defoc
         tx_delays.append(delays)
