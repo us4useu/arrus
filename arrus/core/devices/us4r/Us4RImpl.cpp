@@ -148,8 +148,29 @@ void Us4RImpl::setVoltage(Voltage voltage) {
             ::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
     }
 
+    bool isHVPS = true;
+
     for(uint8_t n = 0; n < hv.size(); n++) {
-        hv[n]->setVoltage(voltage);
+        auto &hvModel = this->hv[n]->getModelId();
+        if(hvModel.getName() != "hvps") {
+            isHVPS = false;
+            break;
+        }
+    }
+
+    if(isHVPS) {
+        std::vector<std::thread> threads;
+        for (uint8_t n = 0; n < hv.size(); n++) {
+            threads.push_back(std::thread(&HighVoltageSupplier::setVoltage, hv[n].get(), voltage));
+        }
+        for (auto &thread : threads) {
+            thread.join();
+        }
+    }
+    else {
+        for(uint8_t n = 0; n < hv.size(); n++) {
+            hv[n]->setVoltage(voltage);
+        }
     }
 
 
