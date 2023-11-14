@@ -6,6 +6,7 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <future>
 
 #define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
     if (!rxSettings.has_value()) {                                                                                     \
@@ -152,19 +153,19 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 
     for(uint8_t n = 0; n < hv.size(); n++) {
         auto &hvModel = this->hv[n]->getModelId();
-        if(hvModel.getName() != "hvps") {
+        if(hvModel.getName() != "us4oemhvps") {
             isHVPS = false;
             break;
         }
     }
 
     if(isHVPS) {
-        std::vector<std::thread> threads;
+        std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
-            threads.push_back(std::thread(&HighVoltageSupplier::setVoltage, hv[n].get(), voltage));
+            futures.push_back(std::async(std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), voltage));
         }
-        for (auto &thread : threads) {
-            thread.join();
+        for (auto &future : futures) {
+            future.wait();
         }
     }
     else {
