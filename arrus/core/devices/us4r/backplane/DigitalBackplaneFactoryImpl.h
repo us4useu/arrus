@@ -21,7 +21,7 @@ public:
         if(manufacturer != "us4us") {
             throw IllegalArgumentException("Only 'us4us' digital backplane is supported.");
         }
-        if(name == "dbarLite")  {
+        if(name == "dbarlite")  {
             return getDBARLite(us4oems);
         }
         else if(name == "us4rdbar") {
