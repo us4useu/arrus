@@ -24,22 +24,25 @@ public:
     MOCK_METHOD(void, ReleaseTransferRxBufferToHost,
         (unsigned char * dstAddress, size_t length, size_t srcAddress),
     (override));
-    MOCK_METHOD(void, SetPGAGain, (us4r::afe58jd18::PGA_GAIN gain), (override));
-    MOCK_METHOD(void, SetLPFCutoff, (us4r::afe58jd18::LPF_PROG cutoff),
+    MOCK_METHOD(void, SetPGAGain, (::us4r::afe58jd18::PGA_GAIN gain), (override));
+    MOCK_METHOD(void, SetLPFCutoff, (::us4r::afe58jd18::LPF_PROG cutoff),
     (override));
     MOCK_METHOD(void, SetActiveTermination,
-            (us4r::afe58jd18::ACTIVE_TERM_EN endis, us4r::afe58jd18::GBL_ACTIVE_TERM term),
+            (::us4r::afe58jd18::ACTIVE_TERM_EN endis, ::us4r::afe58jd18::GBL_ACTIVE_TERM term),
     (override));
-    MOCK_METHOD(void, SetLNAGain, (us4r::afe58jd18::LNA_GAIN_GBL gain),
+    MOCK_METHOD(void, SetLNAGain, (::us4r::afe58jd18::LNA_GAIN_GBL gain),
     (override));
     MOCK_METHOD(void, SetDTGC,
-            (us4r::afe58jd18::EN_DIG_TGC endis, us4r::afe58jd18::DIG_TGC_ATTENUATION att),
+            (::us4r::afe58jd18::EN_DIG_TGC endis, ::us4r::afe58jd18::DIG_TGC_ATTENUATION att),
     (override));
     MOCK_METHOD(void, InitializeTX, (), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
     MOCK_METHOD(float, SetTxDelay,
             (const unsigned char channel, const float value, const unsigned short firing),
+    (override));
+    MOCK_METHOD(float, SetTxDelay,
+        (const unsigned char channel, const float value, const unsigned short firing, size_t profile),
     (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
@@ -135,7 +138,7 @@ public:
     MOCK_METHOD(void, EnableInterrupts, (), (override));
     MOCK_METHOD(void, DisableInterrupts, (), (override));
 
-    MOCK_METHOD(void, SetActiveTermination, (us4r::afe58jd18::ACTIVE_TERM_EN, us4r::afe58jd18::ACT_TERM_IND_RES), (override));
+    MOCK_METHOD(void, SetActiveTermination, (::us4r::afe58jd18::ACTIVE_TERM_EN, ::us4r::afe58jd18::ACT_TERM_IND_RES), (override));
     MOCK_METHOD(void, AfeWriteRegister, (uint8_t, uint8_t, uint16_t), (override));
     MOCK_METHOD(void, AfeDemodEnable, (), (override));
     MOCK_METHOD(void, AfeDemodEnable, (uint8_t), (override));
@@ -215,6 +218,10 @@ public:
     MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
     MOCK_METHOD(std::string, GetSerialNumber, (), (override));
     MOCK_METHOD(std::string, GetRevisionNumber, (), (override));
+    MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
+    MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
+    MOCK_METHOD(bool, CheckProbeConnected, (), (override));
+    MOCK_METHOD(void, DisableProbeCheck, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

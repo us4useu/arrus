@@ -57,18 +57,6 @@ public:
     virtual float getUCDMeasuredVoltage(uint8_t rail) = 0;
 
     /**
-    * Enables probe check function
-    *
-    * @param pin: Probe check pin
-    */
-    virtual void enableProbeCheck(uint8_t pin) = 0;
-
-    /**
-    * Disables probe check function
-    */
-    virtual void disableProbeCheck()  = 0;
-
-    /**
     * Reads AFE register
     *
     * @param address: register address
