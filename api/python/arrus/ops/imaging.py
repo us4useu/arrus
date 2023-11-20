@@ -1,8 +1,11 @@
+from typing import Union
+
 import arrus.ops.us4r
 import numpy as np
 import arrus.ops
 import dataclasses
 from collections.abc import Collection
+from arrus.framework import Constant
 
 
 def assert_is_scalar(key, value):
@@ -76,7 +79,7 @@ class SimpleTxRxSequence:
     rx_sample_range: tuple = None
     sri: float = None
     speed_of_sound: float = None
-    tx_focus: object = np.inf
+    tx_focus: Union[object, Constant] = np.inf
     angles: object = 0.0
     downsampling_factor: int = 1
     tx_aperture_center_element: list = None

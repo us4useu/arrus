@@ -44,6 +44,7 @@ public:
     MOCK_METHOD(float, SetTxDelay,
         (const unsigned char channel, const float value, const unsigned short firing, size_t profile),
     (override));
+    MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
     (override));
@@ -218,7 +219,6 @@ public:
     MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
     MOCK_METHOD(std::string, GetSerialNumber, (), (override));
     MOCK_METHOD(std::string, GetRevisionNumber, (), (override));
-    MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));

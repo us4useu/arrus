@@ -3,6 +3,7 @@ import ctypes
 import numpy as np
 import arrus.core
 import traceback
+from arrus.framework.constant import Constant
 
 
 class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):

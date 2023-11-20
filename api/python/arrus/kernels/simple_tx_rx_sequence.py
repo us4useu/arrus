@@ -10,12 +10,13 @@ from arrus.ops.imaging import (
     LinSequence, PwiSequence, StaSequence, SimpleTxRxSequence
 )
 import arrus.utils.imaging
-from arrus.kernels.kernel import KernelExecutionContext
+from arrus.kernels.kernel import KernelExecutionContext, ConversionResults
 from arrus.kernels.tx_rx_sequence import (
     process_tx_rx_sequence,
     get_tx_delays,
     set_aperture_masks
 )
+from arrus.framework.constant import Constant, _get_unique_name
 
 
 def _get_sampling_frequency(context: KernelExecutionContext):
@@ -42,15 +43,16 @@ def process_simple_tx_rx_sequence(context: KernelExecutionContext):
     c = __get_speed_of_sound(context)
     probe = context.device.probe.model
     # TX/RX
-    raw_seq = convert_to_tx_rx_sequence(
+    new_seq = convert_to_tx_rx_sequence(
         c, op, probe, fs=_get_sampling_frequency(context))
-    new_context = dataclasses.replace(context, op=raw_seq)
+    new_context = dataclasses.replace(context, op=new_seq)
     # Process the raw sequence, to calculate all the necessary
     # TX delays.
     return process_tx_rx_sequence(new_context)
 
 
 def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model, fs):
+    # NOTE: this method will work only properly only in the case of a single TX focus.
     tx_rx_sequence = convert_to_tx_rx_sequence(
         c, sequence, probe_model, fs=fs)
     sequence_with_masks: TxRxSequence = set_aperture_masks(
@@ -98,21 +100,36 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
     n_tx = len(tx_rx_params["tx_ap_cent"])
     txrx = []
     sample_range = get_sample_range(op, fs=fs, speed_of_sound=c)
+
+    tx_focus = op.tx_focus
+    if isinstance(tx_focus, arrus.framework.Constant):
+        tx_focus = tx_focus.value
+
     for i in range(n_tx):
         tx_aperture = tx_rx_params["tx_apertures"][i]
         rx_aperture = tx_rx_params["rx_apertures"][i]
         tx_angle = tx_rx_params["tx_angle"][i]
 
         tx = Tx(tx_aperture, op.pulse,
-                focus=op.tx_focus,
+                focus=tx_focus,
                 angle=tx_angle,
                 speed_of_sound=c)
         rx = Rx(rx_aperture, sample_range, op.downsampling_factor,
                 init_delay=op.init_delay)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
-    return TxRxSequence(txrx, tgc_curve=[], sri=op.sri,
-                        n_repeats=op.n_repeats)
+    return TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats)
+
+
+def __convert_to_op_specific_constant(constant, op_i):
+    component, variable = constant.name.split("/")
+    output_name = f"{component}/op:{op_i}/{variable}"
+
+    return arrus.framework.Constant(
+        value=constant.value,
+        placement=constant.placement,
+        name=output_name
+    )
 
 
 def __get_speed_of_sound(context):
