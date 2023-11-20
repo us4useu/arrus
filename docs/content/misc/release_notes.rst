@@ -12,6 +12,7 @@ Release notes
     - Implemented File device (for simulated mode) #221, #ARRUS-248.
     - us4R: exposed us4OEM and digital backplane serial number and revision #ARRUS-267.
     - Added Session::getCurrentState method, which returns the current state of the session (e.g if the devices are running or not).
+    - us4R: Provided the possibility to explicitly specify what digital backplane is used #US4R-352.
     
 - Python API:
 
