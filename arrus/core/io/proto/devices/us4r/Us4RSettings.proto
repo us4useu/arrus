@@ -8,6 +8,7 @@ import "io/proto/devices/us4r/ProbeToAdapterConnection.proto";
 import "io/proto/devices/us4r/RxSettings.proto";
 import "io/proto/devices/us4r/Us4OEMSettings.proto";
 import "io/proto/devices/us4r/HVSettings.proto";
+import "io/proto/devices/us4r/DigitalBackplaneSettings.proto";
 
 message Us4RSettings {
 
