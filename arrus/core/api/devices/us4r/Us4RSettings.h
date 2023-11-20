@@ -11,6 +11,7 @@
 #include "arrus/core/api/devices/us4r/HVSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/devices/us4r/DigitalBackplaneSettings.h"
 
 namespace arrus::devices {
 
@@ -21,10 +22,12 @@ public:
     explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
                           std::optional<Ordinal> nUs4OEMs = std::nullopt,
                           std::vector<Ordinal> adapterToUs4RModuleNumber = {},
-                          int txFrequencyRange = 1)
+                          int txFrequencyRange = 1,
+                          std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
+                          )
         : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)),
           nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
-          txFrequencyRange(txFrequencyRange)
+          txFrequencyRange(txFrequencyRange), digitalBackplaneSettings(std::move(digitalBackplaneSettings))
           {}
 
     Us4RSettings(
@@ -38,7 +41,8 @@ public:
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
         bool externalTrigger = false,
-        int txFrequencyRange = 1
+        int txFrequencyRange = 1,
+        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -49,7 +53,8 @@ public:
           nUs4OEMs(nUs4OEMs),
           adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
           externalTrigger(externalTrigger),
-          txFrequencyRange(txFrequencyRange)
+          txFrequencyRange(txFrequencyRange),
+          digitalBackplaneSettings(std::move(digitalBackplaneSettings))
     {}
 
     const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
@@ -101,6 +106,10 @@ public:
         return txFrequencyRange;
     }
 
+    const std::optional<DigitalBackplaneSettings> &getDigitalBackplaneSettings() const {
+        return digitalBackplaneSettings;
+    }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -141,6 +150,10 @@ private:
     /** Transmit frequency range to set on us4OEM devices. Actually, TX frequency divider.
      *  Default value: 1.*/
     int txFrequencyRange = 1;
+    /**
+     * Digital backplane ("DBAR") settings. If not provided, DBAR will be determined based on select HV supplier.
+     */
+     std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
 };
 
 }

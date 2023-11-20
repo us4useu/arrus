@@ -343,6 +343,7 @@ FileSettings readFileSettings(const proto::FileSettings &file, const SettingsDic
 
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDictionary &dictionary) {
     std::optional<HVSettings> hvSettings;
+    std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
     int txFrequencyRange = 1;
@@ -353,6 +354,13 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
         ARRUS_REQUIRES_NON_EMPTY_IAE(name);
         hvSettings = HVSettings(HVModelId(manufacturer, name));
+    }
+    if(us4r.has_digital_backplane()) {
+        auto &manufacturer = us4r.digital_backplane().model_id().manufacturer();
+        auto &name = us4r.digital_backplane().model_id().name();
+        ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
+        ARRUS_REQUIRES_NON_EMPTY_IAE(name);
+        digitalBackplaneSettings = DigitalBackplaneSettings(DigitalBackplaneId(manufacturer, name));
     }
     if (us4r.optional_nus4ems_case() != proto::Us4RSettings::OPTIONAL_NUS4EMS_NOT_SET) {
         nUs4OEMs = static_cast<Ordinal>(us4r.nus4oems());
@@ -396,7 +404,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             us4oemSettings.emplace_back(channelMapping, activeChannelGroups, rxSettings, us4oemChannelsMask[i],
                                         reprogrammingMode);
         }
-        return Us4RSettings(us4oemSettings, hvSettings, nUs4OEMs, adapterToUs4RModuleNr, txFrequencyRange);
+        return Us4RSettings(us4oemSettings, hvSettings, nUs4OEMs, adapterToUs4RModuleNr, txFrequencyRange,
+                            digitalBackplaneSettings);
     } else {
         ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
         ProbeSettings probeSettings = readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
@@ -424,7 +433,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
 
         return {adapterSettings,       probeSettings,           rxSettings,        hvSettings,
                 channelsMask,          us4oemChannelsMask,      reprogrammingMode, nUs4OEMs,
-                adapterToUs4RModuleNr, us4r.external_trigger(), txFrequencyRange};
+                adapterToUs4RModuleNr, us4r.external_trigger(), txFrequencyRange,
+                digitalBackplaneSettings
+        };
     }
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

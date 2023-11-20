@@ -5,6 +5,8 @@ namespace arrus::devices {
 
 class DigitalBackplaneFactory {
 public:
+    virtual std::optional<DigitalBackplane::Handle> getDigitalBackplane(const DigitalBackplaneSettings &settings,
+                                                                        const std::vector<IUs4OEM *> &master) = 0;
     virtual std::optional<DigitalBackplane::Handle> getDigitalBackplane(const HVSettings &settings,
                                                                         const std::vector<IUs4OEM *> &master) = 0;
     virtual ~DigitalBackplaneFactory() = default;

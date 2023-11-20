@@ -46,4 +46,5 @@ message Us4RSettings {
   oneof optional_tx_frequency_range {
     uint32 tx_frequency_range = 15;
   }
+  DigitalBackplaneSettings digital_backplane = 16;
 }

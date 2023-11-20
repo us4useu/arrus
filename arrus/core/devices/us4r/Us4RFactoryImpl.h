@@ -92,7 +92,7 @@ class Us4RFactoryImpl : public Us4RFactory {
                 ius4oems.push_back(us4oem->getIUs4oem());
             }
 
-            auto backplane = getBackplane(settings.getHVSettings(), ius4oems);
+            auto backplane = getBackplane(settings.getDigitalBackplaneSettings(), settings.getHVSettings(), ius4oems);
             auto hv = getHV(settings.getHVSettings(), ius4oems, backplane);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings,
                                               settings.getChannelsMask(), std::move(backplane));
@@ -104,7 +104,7 @@ class Us4RFactoryImpl : public Us4RFactory {
                 ius4oems.push_back(us4oem->getIUs4oem());
             }
 
-            auto backplane = getBackplane(settings.getHVSettings(), ius4oems);
+            auto backplane = getBackplane(settings.getDigitalBackplaneSettings(), settings.getHVSettings(), ius4oems);
             auto hv = getHV(settings.getHVSettings(), ius4oems, backplane);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask(),
                                               std::move(backplane));
@@ -213,11 +213,17 @@ class Us4RFactoryImpl : public Us4RFactory {
         }
     }
 
-    std::optional<DigitalBackplane::Handle> getBackplane(const std::optional<HVSettings> &settings,
-                                                         std::vector<IUs4OEM *> &us4oems) {
-        if (settings.has_value()) {
-            const auto &hvSettings = settings.value();
-            return backplaneFactory->getDigitalBackplane(hvSettings, us4oems);
+    std::optional<DigitalBackplane::Handle> getBackplane(
+        const std::optional<DigitalBackplaneSettings> &dbarSettings,
+        const std::optional<HVSettings> &hvSettings,
+        std::vector<IUs4OEM *> &us4oems) {
+
+        if(dbarSettings.has_value()) {
+            return backplaneFactory->getDigitalBackplane(dbarSettings.value(), us4oems);
+        }
+        else if (hvSettings.has_value()) {
+            // Fallback option: try to determine HV model based on the HV in use.
+            return backplaneFactory->getDigitalBackplane(hvSettings.value(), us4oems);
         } else {
             return std::nullopt;
         }
