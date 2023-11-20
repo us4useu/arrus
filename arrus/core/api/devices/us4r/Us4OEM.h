@@ -132,6 +132,16 @@ public:
     virtual uint32 getTxFirmwareVersion() = 0;
 
     /**
+     * Returns Tx offset
+    */
+    virtual uint32_t getTxOffset() = 0;
+
+    /**
+     * Returns OEM version (OEM/OEM+)
+    */
+    virtual uint32_t getOemVersion() = 0;
+
+    /**
      * Returns current FPGA wall clock (time passed since Init function was called).
      *
      * @return FPGA wall clock (seconds)
@@ -151,12 +161,12 @@ public:
     /**
      * Returns serial number of this us4OEM (a null-terminated string).
      */
-    virtual const char* getSerialNumber() const = 0;
+    virtual const char* getSerialNumber() = 0;
 
     /**
      * Returns revision number of this us4OEM (a null-terminated string).
      */
-    virtual const char* getRevision() const = 0;
+    virtual const char* getRevision() = 0;
 
     /**
      * Disables digital high-pass filter.

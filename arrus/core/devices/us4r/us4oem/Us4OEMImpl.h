@@ -7,6 +7,7 @@
 
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
+#include "arrus/common/cache.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
@@ -67,7 +68,6 @@ public:
     // Sampling
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32_t TX_SAMPLE_DELAY_RAW_DATA = 240;
-    static constexpr float RX_DELAY = 0.0;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
@@ -133,6 +133,8 @@ public:
     uint32 getFirmwareVersion() override;
     void checkState() override;
     uint32 getTxFirmwareVersion() override;
+    uint32_t getTxOffset() override;
+    uint32_t getOemVersion() override;
 
     void setTestPattern(RxTestPattern pattern) override;
 
@@ -154,15 +156,11 @@ public:
 
     float getFPGAWallclock() override;
 
-    const char *getSerialNumber() const override;
+    const char *getSerialNumber() override;
 
-    const char *getRevision() const override;
+    const char *getRevision() override;
 
 private:
-    // SN and REVISION mockups for the legacy us4OEM model.
-    const char* SERIAL_NUMBER_MOCK_UP = "";
-    const char* REVISION_MOCK_UP = "";
-
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
@@ -218,6 +216,8 @@ private:
     float currentSamplingFrequency{SAMPLING_FREQUENCY};
     /** Global state mutex */
     mutable std::mutex stateMutex;
+    arrus::Cached<std::string> serialNumber;
+    arrus::Cached<std::string> revision;
 };
 
 }

@@ -46,6 +46,8 @@ public:
 
     void syncTrigger() override;
 private:
+    void calculateRxDelays(std::vector<TxRxParamsSequence> &sequences);
+
     Logger::Handle logger;
     ProbeAdapterModelId modelId;
     std::vector<Us4OEMImplBase::RawHandle> us4oems;

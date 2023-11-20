@@ -7,7 +7,10 @@ namespace arrus::devices {
 
 class HighVoltageSupplierFactoryImpl : public HighVoltageSupplierFactory {
 public:
-    HighVoltageSupplier::Handle getHighVoltageSupplier(const HVSettings &settings, IUs4OEM *master) override;
+    std::vector<HighVoltageSupplier::Handle> getHighVoltageSupplier(
+        const HVSettings &settings, const std::vector<IUs4OEM *> &us4oems,
+        const std::optional<DigitalBackplane::Handle> &backplane
+    ) override;
 };
 
 }

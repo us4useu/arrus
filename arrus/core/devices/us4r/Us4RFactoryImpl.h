@@ -18,6 +18,7 @@
 
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactory.h"
+#include "arrus/core/devices/us4r/backplane/DigitalBackplaneFactory.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverter.h"
 
 namespace arrus::devices {
@@ -30,14 +31,16 @@ class Us4RFactoryImpl : public Us4RFactory {
                     std::unique_ptr<IUs4OEMFactory> ius4oemFactory,
                     std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer,
                     std::unique_ptr<Us4RSettingsConverter> us4RSettingsConverter,
-                    std::unique_ptr<HighVoltageSupplierFactory> hvFactory)
+                    std::unique_ptr<HighVoltageSupplierFactory> hvFactory,
+                    std::unique_ptr<DigitalBackplaneFactory> backplaneFactory)
         : ius4oemFactory(std::move(ius4oemFactory)),
           ius4oemInitializer(std::move(ius4oemInitializer)),
           us4oemFactory(std::move(us4oemFactory)),
           us4RSettingsConverter(std::move(us4RSettingsConverter)),
           probeAdapterFactory(std::move(adapterFactory)),
           probeFactory(std::move(probeFactory)),
-          hvFactory(std::move(hvFactory)) {}
+          hvFactory(std::move(hvFactory)),
+          backplaneFactory(std::move(backplaneFactory)){}
 
     Us4R::Handle getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
         DeviceId id(DeviceType::Us4R, ordinal);
@@ -84,14 +87,27 @@ class Us4RFactoryImpl : public Us4RFactory {
             // Create probe.
             ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings, adapter.get());
 
-            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
+            std::vector<IUs4OEM*> ius4oems;
+            for(auto &us4oem: us4oems) {
+                ius4oems.push_back(us4oem->getIUs4oem());
+            }
+
+            auto backplane = getBackplane(settings.getHVSettings(), ius4oems);
+            auto hv = getHV(settings.getHVSettings(), ius4oems, backplane);
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings,
-                                              settings.getChannelsMask());
+                                              settings.getChannelsMask(), std::move(backplane));
         } else {
             // Custom Us4OEMs only
             auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false, us4r::IOSettings());
-            auto hv = getHV(settings.getHVSettings(), masterIUs4OEM);
-            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask());
+            std::vector<IUs4OEM*> ius4oems;
+            for(auto &us4oem: us4oems) {
+                ius4oems.push_back(us4oem->getIUs4oem());
+            }
+
+            auto backplane = getBackplane(settings.getHVSettings(), ius4oems);
+            auto hv = getHV(settings.getHVSettings(), ius4oems, backplane);
+            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask(),
+                                              std::move(backplane));
         }
     }
 
@@ -169,10 +185,23 @@ class Us4RFactoryImpl : public Us4RFactory {
         return {std::move(us4oems), master};
     }
 
-    std::optional<HighVoltageSupplier::Handle> getHV(const std::optional<HVSettings> &settings, IUs4OEM *master) {
+    std::vector<HighVoltageSupplier::Handle> getHV(const std::optional<HVSettings> &settings,
+                                                   std::vector<IUs4OEM *> &us4oems,
+                                                   const std::optional<DigitalBackplane::Handle> &backplane) {
         if (settings.has_value()) {
             const auto &hvSettings = settings.value();
-            return hvFactory->getHighVoltageSupplier(hvSettings, master);
+            return hvFactory->getHighVoltageSupplier(hvSettings, us4oems, backplane);
+        } else {
+            std::vector<HighVoltageSupplier::Handle> empty;
+            return empty;
+        }
+    }
+
+    std::optional<DigitalBackplane::Handle> getBackplane(const std::optional<HVSettings> &settings,
+                                                         std::vector<IUs4OEM *> &us4oems) {
+        if (settings.has_value()) {
+            const auto &hvSettings = settings.value();
+            return backplaneFactory->getDigitalBackplane(hvSettings, us4oems);
         } else {
             return std::nullopt;
         }
@@ -198,6 +227,7 @@ class Us4RFactoryImpl : public Us4RFactory {
     std::unique_ptr<ProbeAdapterFactory> probeAdapterFactory;
     std::unique_ptr<ProbeFactory> probeFactory;
     std::unique_ptr<HighVoltageSupplierFactory> hvFactory;
+    std::unique_ptr<DigitalBackplaneFactory> backplaneFactory;
 };
 
 }

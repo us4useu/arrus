@@ -30,7 +30,10 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
                        bool externalTrigger = false)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
-      reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger) {
+      reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
+      serialNumber([this](){return this->ius4oem->GetSerialNumber();}),
+      revision([this](){return this->ius4oem->GetRevisionNumber();})
+{
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -306,7 +309,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
-        ius4oem->SetRxDelay(RX_DELAY, opIdx);
+        ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
     }
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
@@ -375,7 +378,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     sampleSize = 2 * sizeof(OutputDType);
                 } else {
                     startSampleRaw = startSample * op.getRxDecimationFactor();
-                    sampleOffset = TX_SAMPLE_DELAY_RAW_DATA;
+                    sampleOffset = ius4oem->GetTxOffset();
                     nSamplesRaw = nSamples;
                     sampleSize = sizeof(OutputDType);
                 }
@@ -754,6 +757,10 @@ uint32 Us4OEMImpl::getFirmwareVersion() { return ius4oem->GetFirmwareVersion(); 
 
 uint32 Us4OEMImpl::getTxFirmwareVersion() { return ius4oem->GetTxFirmwareVersion(); }
 
+uint32_t Us4OEMImpl::getTxOffset()  { return ius4oem->GetTxOffset(); }
+
+uint32_t Us4OEMImpl::getOemVersion()  { return ius4oem->GetOemVersion(); }
+
 void Us4OEMImpl::checkState() { this->checkFirmwareVersion(); }
 
 void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
@@ -766,15 +773,16 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
     //DDC valid data offset
-    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
+    uint32_t txOffset = ius4oem->GetTxOffset();
+    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor); 
 
     //Check if data valid offset is higher than TX offset
-    if (offset > 240) {
+    if (offset > txOffset) {
         //If TX offset is lower than data valid offset return just data valid offset and log warning
         this->logger->log(LogSeverity::WARNING,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} cycles to align start of RX data with start of TX.",
-                                          ddcDecimationFactor, (offset - 240)));
+                                          ddcDecimationFactor, (offset - txOffset)));
         return offset;
     } else {
         //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
@@ -785,7 +793,7 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
             return offset + 2*84;
         }
         else {
-            offset += ((240u - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
+            offset += ((txOffset - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
             return offset;
         }
     }
@@ -845,8 +853,8 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
                       static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
 
-const char* Us4OEMImpl::getSerialNumber() const { return Us4OEMImpl::SERIAL_NUMBER_MOCK_UP; }
+const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
 
-const char* Us4OEMImpl::getRevision() const { return Us4OEMImpl::REVISION_MOCK_UP; }
+const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
 }// namespace arrus::devices
