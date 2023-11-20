@@ -14,11 +14,11 @@ public:
     using RawHandle = ProbeImplBase *;
     using Probe::Probe;
 
-    virtual
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    virtual std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
-                    const std::optional<ops::us4r::DigitalDownConversion> &ddc) = 0;
+                    const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                    const std::vector<framework::NdArray> &txDelayProfiles) = 0;
 };
 
 }

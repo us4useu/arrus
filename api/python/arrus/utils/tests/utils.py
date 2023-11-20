@@ -179,7 +179,7 @@ class ArrusImagingTestCase(ArrusTestCase):
 
         acquisition_context = arrus.metadata.FrameAcquisitionContext(
             device=device, sequence=sequence, raw_sequence=raw_sequence,
-            medium=medium, custom_data={}
+            medium=medium, custom_data={}, constants=[]
         )
         return acquisition_context
 
@@ -195,6 +195,7 @@ class ArrusImagingTestCase(ArrusTestCase):
         kernel = arrus.kernels.get_kernel(type(sequence))
         kernel_context = arrus.kernels.kernel.KernelExecutionContext(
             device=device, medium=medium, op=sequence, custom={})
-        return kernel(kernel_context)
+        result = kernel(kernel_context)
+        return result.sequence
 
 

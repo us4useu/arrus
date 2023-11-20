@@ -213,7 +213,8 @@ private:
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
                             uint16 batchSize, std::optional<float> sri, bool triggerSync,
-                            const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
+                            const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
+                            const std::vector<arrus::framework::NdArray> &txDelays) {
     std::unique_lock<std::mutex> lock{stateMutex};
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
@@ -243,6 +244,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     // helper data
     const std::bitset<N_ADDR_CHANNELS> emptyAperture;
     const std::bitset<N_ACTIVE_CHANNEL_GROUPS> emptyChannelGroups;
+
+    size_t nTxDelayProfiles = txDelays.size();
+
 
     // Program Tx/rx sequence ("firings")
     for (uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
@@ -292,13 +296,26 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
 
         // Delays
+        size_t currentTxDelaysId = 0;
         uint8 txChannel = 0;
         for (bool bit : op.getTxAperture()) {
-            float txDelay = 0;
+            // First set the internal TX delays.
+            for(currentTxDelaysId = 0; currentTxDelaysId < nTxDelayProfiles; ++currentTxDelaysId) {
+                float txDelay = 0.0f;
+                if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
+                    txDelay = txDelays[currentTxDelaysId].get<float>((size_t)opIdx, (size_t)txChannel);
+                }
+                ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
+            }
+            // Then set the profile from the input sequence (for backward-compatibility).
+            // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
+            // and reduces the risk of causing new bugs in the whole mapping implementation.
+            // This will be optimized in v0.10.0.
+            float txDelay = 0.0f;
             if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];
             }
-            ius4oem->SetTxDelay(txChannel, txDelay, opIdx);
+            ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
@@ -307,6 +324,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
     }
+    // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
+    ius4oem->SetTxDelays(nTxDelayProfiles);
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
 

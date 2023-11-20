@@ -46,8 +46,9 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsSingleOperationCorrectly) {
             getStdTxRxParameters(rxAperture)
         }
     };
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> inputTxDelayProfiles;
 
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
+    auto [res, fcmDstFrame, fcmDstChannel, outConstants] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, inputTxDelayProfiles, 0);
 
     std::vector<bool> expectedRxAperture0(128);
     expectedRxAperture0[1] = true;
@@ -92,7 +93,9 @@ TEST(SplitRxApertureIfNecessaryTest, DoesNotSplitOpIfNotNecessary) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> inputTxDelayProfiles;
+
+    auto [res, fcmDstFrame, fcmDstChannel, outConstants] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, inputTxDelayProfiles, 0);
 
     std::vector<TxRxParamsSequence> expected{
         {
@@ -139,7 +142,8 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsMultipleOpsCorrectly) {
             getStdTxRxParameters(rxAperture3)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> inputTxDelayProfiles;
+    auto [res, fcmDstFrame, fcmDstChannel, outChannels] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, inputTxDelayProfiles, 0);
 
     // IN op 0
     std::vector<bool> expRxAperture0(128);
@@ -228,7 +232,8 @@ TEST(SplitRxApertureIfNecessaryTest, SplitsFullRxApertureCorrectly) {
             getStdTxRxParameters(rxAperture)
         }
     };
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, 0);
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> inputTxDelayProfiles;
+    auto [res, fcmDstFrame, fcmDstChannel, outConstants] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING1, inputTxDelayProfiles, 0);
 
     std::vector<bool> expectedRxAperture0(128);
     for(size_t i = 0; i < 32; ++i) {
@@ -307,7 +312,8 @@ TEST(SplitRxApertureIfNecessaryTest, PadsWithNopsCorrectly) {
     }
 
     std::vector<TxRxParamsSequence> in = {seq0, seq1};
-    auto [res, fcmDstFrame, fcmDstChannel] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING2, 0);
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> inputTxDelayProfiles;
+    auto [res, fcmDstFrame, fcmDstChannel, outConstants] = splitRxAperturesIfNecessary(in, DEFAULT_MAPPING2, inputTxDelayProfiles, 0);
 
     TxRxParamsSequence expectedSeq0;
     {

@@ -63,6 +63,10 @@ public:
     TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI, int16 nRepeats = 1)
         : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats) {}
 
+    TxRxSequence copy(std::vector<TxRx> ops) {
+        return TxRxSequence(std::move(ops), this->tgcCurve, this->sri.value(), this->nRepeats);
+    }
+
     /**
      * Returns vector of operations to perform.
      */

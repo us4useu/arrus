@@ -6,6 +6,7 @@
 #include <limits>
 
 #include "arrus/core/common/aperture.h"
+#include "arrus/core/common/collections.h"
 
 namespace arrus::devices {
 
@@ -55,13 +56,13 @@ std::vector<T> revertMapping(const std::vector<T> &mapping) {
 std::tuple<
     std::vector<TxRxParamsSequence>,
     Eigen::Tensor<FrameChannelMapping::FrameNumber, 3>,
-    Eigen::Tensor<int8, 3>
+    Eigen::Tensor<int8, 3>,
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>>
 >
-splitRxAperturesIfNecessary(
-    const std::vector<TxRxParamsSequence> &seqs,
-    const std::vector<std::vector<uint8_t>> &us4oemL2PMappings,
-    Ordinal frameMetadataOem = 0) {
-
+splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
+                            const std::vector<std::vector<uint8_t>> &us4oemL2PMappings,
+                            const std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> &inputTxDelayProfiles,
+                            Ordinal frameMetadataOem = 0) {
     using FrameNumber = FrameChannelMapping::FrameNumber;
     // All sequences must have the same length.
     ARRUS_REQUIRES_NON_EMPTY_IAE(seqs);
@@ -78,6 +79,9 @@ splitRxAperturesIfNecessary(
     Eigen::Tensor<FrameChannelMapping::FrameNumber, 3> opDestOp(seqs.size(), numberOfFrames, maxRxApertureSize);
     // (module, logical frame, logical rx channel) -> physical rx channel
     Eigen::Tensor<int8, 3> opDestChannel(seqs.size(), numberOfFrames, maxRxApertureSize);
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> outputTxDelayProfiles;
+    std::vector<size_t> srcOpIdx; // srcOpIdx[output op idx] = input op idx (before splitting into sub-apertures)
+
     opDestOp.setZero();
     opDestChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
@@ -200,10 +204,38 @@ splitRxAperturesIfNecessary(
         // NOTE: for us4OEM that acquires metadata, even if it is RX nop, the results of this
         // rx NOP will be transferred from us4OEM to host memory,
         // to get the frame metadata. Therefore we need to increase
-        // the number of frames a given OEM contains.
+        // the number of frames a given element contains.
         currentFrameIdx[frameMetadataOem] = FrameNumber(maxSize);
+
+        srcOpIdx.resize(maxSize, opIdx);
     }
-    return std::make_tuple(result, opDestOp, opDestChannel);
+
+    // Map to target TX delays (after splitting to sub-apertures).
+    // Optimization: if we simply have 1-1 mapping between input and output sequences, just return the input txDelays.
+    if(::arrus::areConsecutive(srcOpIdx) || inputTxDelayProfiles.empty()) {
+        return std::make_tuple(result, opDestOp, opDestChannel, inputTxDelayProfiles);
+    }
+    else {
+        for(size_t seqIdx = 0; seqIdx < result.size(); ++seqIdx) {
+            size_t nOps = result[seqIdx].size();
+            ::arrus::framework::NdArray::Shape shape{nOps, Us4OEMImpl::N_TX_CHANNELS};
+            ::arrus::framework::NdArray::DataType dataType = framework::NdArray::DataType::FLOAT32;
+            std::vector<::arrus::framework::NdArray> outputProfiles;
+            for(auto &profile: inputTxDelayProfiles.at(static_cast<uint16_t>(seqIdx))) {
+                const DeviceId &placement = profile.getPlacement();
+                const std::string &name = profile.getName();
+                ::arrus::framework::NdArray outputProfile(shape, dataType, placement, name);
+                for(size_t opIdx = 0; opIdx < nOps; ++opIdx) {
+                    for(size_t ch = 0; ch < shape.get(1); ++ch) {
+                        outputProfile.set(opIdx, ch, profile.get<float>(srcOpIdx[opIdx], ch));
+                    }
+                }
+                outputProfiles.push_back(outputProfile);
+            }
+            outputTxDelayProfiles.emplace(static_cast<uint16_t>(seqIdx), outputProfiles);
+        }
+        return std::make_tuple(result, opDestOp, opDestChannel, outputTxDelayProfiles);
+    }
 }
 
 }

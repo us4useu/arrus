@@ -755,7 +755,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, DoesNothingWithAperturesWhenNoChannelM
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
     for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0));
+        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
     }
 
     SET_TX_RX_SEQUENCE(us4oem, seq);
@@ -795,7 +795,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
     for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0));
+        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
     }
 
     auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);

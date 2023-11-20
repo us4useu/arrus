@@ -65,7 +65,8 @@ private:
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
                                   uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync,
-                                  const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
+                                  const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
+                                  const std::vector<arrus::framework::NdArray> &txDelayProfiles) {
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(::arrus::format("{} tx rx sequence", getDeviceId().toString()), numberOfChannels);
     validator.validate(seq);
@@ -75,6 +76,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     // us4oem, op number -> aperture/delays
     std::unordered_map<Ordinal, std::vector<BitMask>> txApertures, rxApertures;
     std::unordered_map<Ordinal, std::vector<std::vector<float>>> txDelaysList;
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> txDelayProfilesList;
 
     // Here is an assumption, that each operation has the same size rx aperture.
     auto paddingSize = seq[0].getRxPadding().sum();
@@ -95,11 +97,27 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     Eigen::MatrixXi frameChannel(nFrames, rxApertureSize);
     frameChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
+    ::arrus::framework::NdArray::Shape txDelaysProfileShape = {seq.size(), Us4OEMImpl::N_TX_CHANNELS};
+
     // Initialize helper arrays.
     for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
         txApertures.emplace(ordinal, std::vector<BitMask>(seq.size()));
         rxApertures.emplace(ordinal, std::vector<BitMask>(seq.size()));
         txDelaysList.emplace(ordinal, std::vector<std::vector<float>>(seq.size()));
+
+        // Profiles.
+        std::vector<arrus::framework::NdArray> txDelayProfilesForModule;
+        size_t nProfiles = txDelayProfiles.size();
+        for(size_t i = 0; i < nProfiles; ++i) {
+            ::arrus::framework::NdArray emptyArray(
+                txDelaysProfileShape,
+                txDelayProfiles[i].getDataType(),
+                txDelayProfiles[i].getPlacement(),
+                txDelayProfiles[i].getName()
+            );
+            txDelayProfilesForModule.push_back(std::move(emptyArray));
+        }
+        txDelayProfilesList.emplace(ordinal, txDelayProfilesForModule);
     }
 
     // Split Tx, Rx apertures and tx delays into sub-apertures specific for each us4oem module.
@@ -133,6 +151,10 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
             txApertures[dstModule][opNumber][dstChannel] = txAperture[ach];
             rxApertures[dstModule][opNumber][dstChannel] = rxAperture[ach];
             txDelaysList[dstModule][opNumber][dstChannel] = txDelays[ach];
+
+            for(size_t i = 0; i < txDelayProfiles.size(); ++i) {
+                txDelayProfilesList[dstModule][i].set(opNumber, dstChannel, txDelayProfiles[i].get<float>(opNumber, ach));
+            }
 
             // FC Mapping stuff
             if(op.getRxAperture()[ach]) {
@@ -189,8 +211,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(auto &us4oem: us4oems) {
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
     }
-    auto[splittedOps, opDstSplittedOp, opDestSplittedCh] = splitRxAperturesIfNecessary(
-        seqs, us4oemL2PChannelMappings, frameMetadataOem);
+
+    auto[splittedOps, opDstSplittedOp, opDestSplittedCh, us4oemTxDelayProfiles] = splitRxAperturesIfNecessary(
+        seqs, us4oemL2PChannelMappings, txDelayProfilesList, frameMetadataOem);
 
     calculateRxDelays(splittedOps);
 
@@ -205,8 +228,12 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     Us4RBufferBuilder us4RBufferBuilder;
     for(Ordinal us4oemOrdinal = 0; us4oemOrdinal < us4oems.size(); ++us4oemOrdinal) {
         auto &us4oem = us4oems[us4oemOrdinal];
+        std::vector<arrus::framework::NdArray> profile;
+        if(!us4oemTxDelayProfiles.empty()) {
+            profile = us4oemTxDelayProfiles.at(us4oemOrdinal);
+        }
         auto[buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
-                                                          batchSize, sri, triggerSync, ddc);
+            batchSize, sri, triggerSync, ddc, profile);
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
         currentFrameOffset += fcMapping->getNumberOfLogicalFrames()*batchSize;
         numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames()*batchSize;

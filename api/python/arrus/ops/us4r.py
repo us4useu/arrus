@@ -3,6 +3,7 @@ import typing
 import numpy as np
 from arrus.ops.operation import Operation
 from typing import Iterable
+from arrus.framework import Constant
 
 
 @dataclass(frozen=True)
@@ -253,3 +254,4 @@ class Scheme:
     work_mode: str = "HOST"
     processing: object = None
     digital_down_conversion: DigitalDownConversion = None
+    constants: typing.List[Constant] = tuple()
