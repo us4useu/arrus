@@ -77,7 +77,8 @@ class Us4RFactoryImpl : public Us4RFactory {
             // verify if the generated us4oemSettings.channelsMask is equal to us4oemChannelsMask field
             validateChannelsMasks(us4OEMSettings, settings.getUs4OEMChannelsMask());
 
-            auto[us4oems, masterIUs4OEM] = getUs4OEMs(us4OEMSettings, settings.isExternalTrigger());
+            auto[us4oems, masterIUs4OEM] =
+                getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings());
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
                 [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
@@ -97,7 +98,7 @@ class Us4RFactoryImpl : public Us4RFactory {
                                               settings.getChannelsMask(), std::move(backplane));
         } else {
             // Custom Us4OEMs only
-            auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false);
+            auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false, us4r::IOSettings());
             std::vector<IUs4OEM*> ius4oems;
             for(auto &us4oem: us4oems) {
                 ius4oems.push_back(us4oem->getIUs4oem());
@@ -148,7 +149,7 @@ class Us4RFactoryImpl : public Us4RFactory {
      * @return a pair: us4oems, master ius4oem
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger) {
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings io) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,"At least one us4oem should be configured.");
         auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
 
@@ -180,6 +181,7 @@ class Us4RFactoryImpl : public Us4RFactory {
             us4oems.push_back(us4oemFactory->getUs4OEM(static_cast<ChannelIdx>(i), ius4oems[i], us4oemCfgs[i],
                                                        isExternalTrigger));
         }
+        initCapabilities(us4oems, io);
         return {std::move(us4oems), master};
     }
 
@@ -204,6 +206,19 @@ class Us4RFactoryImpl : public Us4RFactory {
             return std::nullopt;
         }
     }
+
+    void initCapabilities(const Us4RImpl::Us4OEMs& us4oems, const us4r::IOSettings settings) {
+        if(settings.hasProbeConnectedCheckCapability()) {
+            auto addr = settings.getProbeConnectedCheckCapabilityAddress();
+            if(addr.getUs4OEM() == 0){
+                us4oems.at(addr.getUs4OEM())->getIUs4oem()->EnableProbeCheck(addr.getIO());
+            }
+            else {
+                throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");
+            }
+        }
+    }
+
 
     std::unique_ptr<IUs4OEMFactory> ius4oemFactory;
     std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer;

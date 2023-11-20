@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+message IOAddress {
+  int32 us4oem = 1;
+  int32 io = 2;
+}

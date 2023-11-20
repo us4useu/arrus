@@ -129,7 +129,6 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         std::vector<std::vector<int32>> us4oemChannels(us4oems.size());
         std::vector<std::vector<int32>> adapterChannels(us4oems.size());
 
-        // TODO change the below to an 'assert'
         ARRUS_REQUIRES_TRUE(txAperture.size() == rxAperture.size() && txAperture.size() == numberOfChannels,
                             format("Tx and Rx apertures should have a size: {}", numberOfChannels));
         for (Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
