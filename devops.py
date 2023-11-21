@@ -10,7 +10,7 @@ version = "0.2.0"
 # US4R_API_RELEASE_DIR, if the us4r_api_dir parameters is not provided
 # explicitly. Note: the below tag/branch should conform with the us4R required
 # version.
-us4r_api_default_branch_tag = "ref-US4R-333"
+us4r_api_default_branch_tag = "v0.10.0-dev"
 
 
 def get_default_generator_for_current_os():
