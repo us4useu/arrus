@@ -77,6 +77,7 @@ protected:
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false,
             false
         );
     }
@@ -364,6 +365,7 @@ protected:
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false,
             false
         );
     }
@@ -706,7 +708,9 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings, channelsMask,
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
-            false);
+            false,
+            false
+            );
 
     }
 
@@ -990,6 +994,7 @@ protected:
                 channelMapping, rxSettings,
                 std::unordered_set<uint8>({}),
                 reprogrammingMode,
+                false,
                 false
         );
 

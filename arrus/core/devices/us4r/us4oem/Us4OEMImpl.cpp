@@ -27,13 +27,13 @@ namespace arrus::devices {
 Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
                        std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                        std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
-                       bool externalTrigger = false)
+                       bool externalTrigger = false, bool acceptRxNops = false)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
       reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
       serialNumber([this](){return this->ius4oem->GetSerialNumber();}),
-      revision([this](){return this->ius4oem->GetRevisionNumber();})
-{
+      revision([this](){return this->ius4oem->GetRevisionNumber();}),
+      acceptRxNops(acceptRxNops) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -407,7 +407,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (batchIdx == 0) {
                     size_t partSize = 0;
-                    if(!op.isRxNOP() || this->isMaster()) {
+                    if(!op.isRxNOP() || acceptRxNops) {
                         partSize = nBytes;
                     }
                     // Otherwise, make an empty part (i.e. partSize = 0).
@@ -415,10 +415,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     // us4oem sequencer).
                     rxBufferElementParts.emplace_back(outputAddress, partSize, firing);
                 }
-                if (!op.isRxNOP() || this->isMaster()) {
-                    // Also, allows rx nops for master module.
-                    // Master module gathers frame metadata, so we cannot miss any of it.
-                    // All RX nops are just overwritten.
+                if (!op.isRxNOP() || acceptRxNops) {
+                    // Also, allows rx nops.
+                    // For example, the master module gathers frame metadata, so we cannot miss any of it.
+                    // In all other cases, all RX nops are just overwritten.
                     outputAddress += nBytes;
                     totalNSamples += (unsigned) nSamples;
                 }
@@ -500,8 +500,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
     // FC mapping
     auto numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
-    if (this->isMaster()) {
-        // We transfer all master module frames due to possible metadata stored in the frame.
+    if (acceptRxNops) {
+        // We transfer all module frames due to possible metadata stored in the frame (if enabled).
         numberOfOutputFrames = ARRUS_SAFE_CAST(seq.size(), ChannelIdx);
     }
     FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
@@ -549,7 +549,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     mapping.emplace_back(std::nullopt);
                 }
                 auto frameNumber = noRxNopId;
-                if (this->isMaster()) {
+                if (acceptRxNops) {
                     frameNumber = opId;
                 }
                 fcmBuilder.setChannelMapping(frameNumber, onChannel,

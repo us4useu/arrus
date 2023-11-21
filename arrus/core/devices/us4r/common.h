@@ -45,7 +45,8 @@ std::tuple<
 >
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                             const std::vector<std::vector<uint8_t>> &mappings,
-                            const std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> &txDelayProfiles);
+                            const std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> &txDelayProfiles,
+                            Ordinal frameMetadataOem);
 
 }
 

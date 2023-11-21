@@ -61,7 +61,8 @@ std::tuple<
 >
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                             const std::vector<std::vector<uint8_t>> &us4oemL2PMappings,
-                            const std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> &inputTxDelayProfiles) {
+                            const std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> &inputTxDelayProfiles,
+                            Ordinal frameMetadataOem = 0) {
     using FrameNumber = FrameChannelMapping::FrameNumber;
     // All sequences must have the same length.
     ARRUS_REQUIRES_NON_EMPTY_IAE(seqs);
@@ -103,9 +104,8 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
     // us4oem ordinal number -> current frame idx
     std::vector<FrameNumber> currentFrameIdx(seqs.size(), 0);
     // For each operation
-    for(size_t opIdx = 0; opIdx < seqLength; ++opIdx) {
-        // For each module
-        for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) {
+    for(size_t opIdx = 0; opIdx < seqLength; ++opIdx) { // For each TX/RX
+        for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) { // for each OEM
             const auto &seq = seqs[seqIdx];
             const auto &op = seq[opIdx];
 
@@ -132,7 +132,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
             ChannelIdx maxSubapertureIdx = *std::max_element(
                 std::begin(subapertureIdxs), std::end(subapertureIdxs));
             if(maxSubapertureIdx > 1) {
-                // Split aperture into smaller subapertures.
+                // Split aperture into smaller subapertures (Muxing).
                 std::vector<BitMask> rxSubapertures(maxSubapertureIdx);
                 for(auto &subaperture : rxSubapertures) {
                     subaperture.resize(N_ADDR_CHANNELS);
@@ -174,8 +174,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                 ChannelIdx opActiveChannel = 0;
                 for(auto bit : op.getRxAperture()) {
                     if(bit) {
-                        opDestOp(seqIdx, opIdx, opActiveChannel) =
-                            currentFrameIdx[seqIdx];
+                        opDestOp(seqIdx, opIdx, opActiveChannel) = currentFrameIdx[seqIdx];
                         ARRUS_REQUIRES_TRUE_E(
                             opActiveChannel <= (std::numeric_limits<int8>::max)(),
                             arrus::ArrusException(
@@ -191,8 +190,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
         // Check if all seqs have the same size.
         // If not, pad them with a rx NOP.
         std::vector<size_t> currentSeqSizes;
-        std::transform(std::begin(result), std::end(result),
-                       std::back_inserter(currentSeqSizes),
+        std::transform(std::begin(result), std::end(result), std::back_inserter(currentSeqSizes),
                        [](auto &v) { return v.size(); });
         size_t maxSize = *std::max_element(std::begin(currentSeqSizes), std::end(currentSeqSizes));
         for(auto& resSeq : result) {
@@ -203,11 +201,11 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                 resSeq.resize(maxSize, TxRxParameters::createRxNOPCopy(resSeq[resSeq.size()-1]));
             }
         }
-        // NOTE: for us4OEM:0, even if it is RX nop, the results of this
+        // NOTE: for us4OEM that acquires metadata, even if it is RX nop, the results of this
         // rx NOP will be transferred from us4OEM to host memory,
         // to get the frame metadata. Therefore we need to increase
         // the number of frames a given element contains.
-        currentFrameIdx[0] = FrameNumber(maxSize);
+        currentFrameIdx[frameMetadataOem] = FrameNumber(maxSize);
 
         srcOpIdx.resize(maxSize, opIdx);
     }

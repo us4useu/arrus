@@ -149,7 +149,7 @@ class Us4RFactoryImpl : public Us4RFactory {
      * @return a pair: us4oems, master ius4oem
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings io) {
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings& io) {
         ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1,"At least one us4oem should be configured.");
         auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
 
@@ -176,10 +176,26 @@ class Us4RFactoryImpl : public Us4RFactory {
         ARRUS_REQUIRES_EQUAL(ius4oems.size(), us4oemCfgs.size(),
                              ArrusException("Values are not equal: ius4oem size, us4oem settings size"));
 
+        // Determine which OEMs must acquire RX nops, for pulse counter capability.
+        std::unordered_set<Ordinal> pulseCounterOems;
+        if(io.hasFrameMetadataCapability())  {
+            pulseCounterOems = io.getFrameMetadataCapabilityOEMs();
+        }
+        else {
+            // By default us4OEM:0 is the pulse counter.
+            pulseCounterOems.insert(Ordinal(0));
+        }
         for (unsigned i = 0; i < ius4oems.size(); ++i) {
             // TODO(Us4R-10) use ius4oem->GetDeviceID() as an ordinal number, instead of value of i
-            us4oems.push_back(us4oemFactory->getUs4OEM(static_cast<ChannelIdx>(i), ius4oems[i], us4oemCfgs[i],
-                                                       isExternalTrigger));
+            auto ordinal = static_cast<Ordinal>(i);
+            us4oems.push_back(us4oemFactory->getUs4OEM(
+                static_cast<Ordinal>(i),
+                ius4oems[i],
+                us4oemCfgs[i],
+                isExternalTrigger,
+                setContains(pulseCounterOems, ordinal) // accept RX nops?
+                // NOTE: the above should be consistent with the ProbeAdapterImpl::frameMetadataOem
+            ));
         }
         initCapabilities(us4oems, io);
         return {std::move(us4oems), master};
@@ -218,7 +234,6 @@ class Us4RFactoryImpl : public Us4RFactory {
             }
         }
     }
-
 
     std::unique_ptr<IUs4OEMFactory> ius4oemFactory;
     std::unique_ptr<IUs4OEMInitializer> ius4oemInitializer;
