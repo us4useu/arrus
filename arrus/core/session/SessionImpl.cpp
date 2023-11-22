@@ -17,6 +17,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h"
+#include "arrus/core/devices/us4r/backplane/DigitalBackplaneFactoryImpl.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h"
 #include "arrus/core/devices/file/FileFactoryImpl.h"
@@ -49,7 +50,9 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
             std::make_unique<Us4OEMFactoryImpl>(), std::make_unique<ProbeAdapterFactoryImpl>(),
             std::make_unique<ProbeFactoryImpl>(), std::make_unique<IUs4OEMFactoryImpl>(),
             std::make_unique<IUs4OEMInitializerImpl>(), std::make_unique<Us4RSettingsConverterImpl>(),
-            std::make_unique<HighVoltageSupplierFactoryImpl>()),
+            std::make_unique<HighVoltageSupplierFactoryImpl>(),
+            std::make_unique<DigitalBackplaneFactoryImpl>()
+            ),
         std::make_unique<FileFactoryImpl>()
         );
 }
@@ -143,6 +146,7 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
     ASSERT_STATE(State::STOPPED);
 
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    this->verifyScheme(scheme);
     auto[buffer, metadata] = ultrasound->upload(scheme);
     currentScheme = scheme;
     return UploadResult(buffer, metadata);
@@ -213,16 +217,23 @@ void SessionImpl::setParameters(const Parameters &params) {
 
         // parse path
         auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedKey);
-        if(root != "Ultrasound:0") {
-            throw IllegalArgumentException("Currently parameters can be set only to Ultrasound:0.");
-        }
         device = getDevice("/" + root);
-        if(device->getDeviceId().getDeviceType() != devices::DeviceType::File) {
-            throw IllegalArgumentException("Currently only ultrasound file devices can be set parameters.");
-        }
         builder.add(tail, value);
     }
     device->setParameters(builder.build());
+}
+
+void SessionImpl::verifyScheme(const ops::us4r::Scheme &scheme) {
+    DeviceId expectedPlacement{DeviceType::Us4R, 0};
+    for(auto constant: scheme.getConstants()) {
+        if(constant.getPlacement() != expectedPlacement) {
+            throw ::arrus::IllegalArgumentException("Currently Us4R constants are supported only.");
+        }
+    }
+}
+
+Session::State SessionImpl::getCurrentState() {
+    return state;
 }
 
 }// namespace arrus::session

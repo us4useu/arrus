@@ -9,10 +9,44 @@ class Unit:
     """
     SI Unit definitions.
     """
+
+    # base units
+    s = "s" # second
+    m = "m" # metre
+    kg = "kg" # kilogram
+    A = "A" # ampere
+    K = "K" # kelvin
+    mol = "mol" # mole
+    cd = "cd" # candela
+
+    # derived units
+    rad = "rad" # radian
+    sr = "sr" # steradian
+    Hz = "Hz" # hertz
+    N = "N" # newton
+    Pa = "Pa" # pascal
+    J = "J" # joule
+    W = "W" # watt
+    C = "C" # coulomb
+    V = "V"  # volt
+    O = "O"  # ohm
+    S = "S"  # siemens
+    Wb = "Wb"  # weber
+    T = "T"  # tesla
+    H = "H"  # henry
+    Celsius = "Celsius"  # celsius
+    lm = "lm"  # lumen
+    lx = "lx"  # lux
+    Bq = "Bq"  # becquerel
+    Gy = "Gy"  # gray
+    Sv = "Sv"  # sievert
+    kat = "kat"  # katal
+
+    # other units
     dB = "dB"  # decibel
     pixel = "pixel"
-    V = "V"  # Voltage
-
+    mps = "m/s" # meter per second
+    radps = "rad/s" # radian per second
 
 class Space(abc.ABC):
     """

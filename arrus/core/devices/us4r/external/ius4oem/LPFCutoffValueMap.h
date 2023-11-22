@@ -19,7 +19,7 @@ public:
         return instance;
     }
 
-    us4r::afe58jd18::LPF_PROG getEnumValue(const LPFCutoffValueType value) {
+    ::us4r::afe58jd18::LPF_PROG getEnumValue(const LPFCutoffValueType value) {
         return valueMap.at(value);
     }
 
@@ -45,21 +45,21 @@ public:
     void operator=(LPFCutoffValueMap const &&) = delete;
 
 private:
-    std::unordered_map<LPFCutoffValueType, us4r::afe58jd18::LPF_PROG> valueMap;
+    std::unordered_map<LPFCutoffValueType, ::us4r::afe58jd18::LPF_PROG> valueMap;
 
     LPFCutoffValueMap() {
         valueMap.emplace(10000000,
-                         us4r::afe58jd18::LPF_PROG::LPF_PROG_10MHz);
+                         ::us4r::afe58jd18::LPF_PROG::LPF_PROG_10MHz);
         valueMap.emplace(15000000,
-                         us4r::afe58jd18::LPF_PROG::LPF_PROG_15MHz);
+                         ::us4r::afe58jd18::LPF_PROG::LPF_PROG_15MHz);
         valueMap.emplace(20000000,
-                         us4r::afe58jd18::LPF_PROG::LPF_PROG_20MHz);
+                         ::us4r::afe58jd18::LPF_PROG::LPF_PROG_20MHz);
         valueMap.emplace(30000000,
-                         us4r::afe58jd18::LPF_PROG::LPF_PROG_30MHz);
+                         ::us4r::afe58jd18::LPF_PROG::LPF_PROG_30MHz);
         valueMap.emplace(35000000,
-                         us4r::afe58jd18::LPF_PROG::LPF_PROG_35MHz);
+                         ::us4r::afe58jd18::LPF_PROG::LPF_PROG_35MHz);
         valueMap.emplace(50000000,
-                         us4r::afe58jd18::LPF_PROG::LPF_PROG_50MHz);
+                         ::us4r::afe58jd18::LPF_PROG::LPF_PROG_50MHz);
     }
 
 };

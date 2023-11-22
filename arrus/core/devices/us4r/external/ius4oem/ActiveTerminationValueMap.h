@@ -19,8 +19,7 @@ public:
         return instance;
     }
 
-    us4r::afe58jd18::GBL_ACTIVE_TERM
-    getEnumValue(const ValueType value) {
+    ::us4r::afe58jd18::GBL_ACTIVE_TERM getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 
@@ -46,18 +45,18 @@ public:
     void operator=(ActiveTerminationValueMap const &&) = delete;
 
 private:
-    std::unordered_map<ValueType, us4r::afe58jd18::GBL_ACTIVE_TERM> valueMap{};
+    std::unordered_map<ValueType, ::us4r::afe58jd18::GBL_ACTIVE_TERM> valueMap{};
 
     ActiveTerminationValueMap() {
         valueMap.emplace((ValueType)50,
-                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
+                         ::us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
         valueMap.emplace((ValueType)100,
-                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_100);
+                         ::us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_100);
 
         valueMap.emplace((ValueType)200,
-                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200);
+                         ::us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_200);
         valueMap.emplace((ValueType)400,
-                         us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_400);
+                         ::us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_400);
     }
 
 };

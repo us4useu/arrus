@@ -94,15 +94,24 @@ class Session(AbstractSession):
         medium = self._context.medium
         seq = scheme.tx_rx_sequence
         processing = scheme.processing
+        constants = scheme.constants
 
         kernel_context = self._create_kernel_context(
             seq,
             us_device_dto,
             medium,
-            scheme.digital_down_conversion)
-        raw_seq = arrus.kernels.get_kernel(type(seq))(kernel_context)
+            scheme.digital_down_conversion,
+            constants
+        )
+        conversion_results = arrus.kernels.get_kernel(type(seq))(kernel_context)
+        raw_seq = conversion_results.sequence
+        tx_delay_constants = conversion_results.constants
 
-        actual_scheme = dataclasses.replace(scheme, tx_rx_sequence=raw_seq)
+        actual_scheme = dataclasses.replace(
+            scheme,
+            tx_rx_sequence=raw_seq,
+            constants=tx_delay_constants
+        )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
 
@@ -115,7 +124,7 @@ class Session(AbstractSession):
         # -- Constant metadata
         # --- Frame acquisition context
         fac = self._create_frame_acquisition_context(
-            seq, raw_seq, us_device_dto, medium)
+            seq, raw_seq, us_device_dto, medium, tx_delay_constants)
 
         buffer = arrus.framework.DataBuffer(buffer_handle)
         input_shape = buffer.elements[0].data.shape
@@ -207,17 +216,18 @@ class Session(AbstractSession):
         :param path: a path to the device
         :return: a handle to device
         """
-        # TODO use only device available in arrus core
-        # First, try getting initially available devices.
-        if path in self._py_devices:
-            return self._py_devices[path]
-        # Then try finding a device using arrus core implementation.
-
         device_handle = self._session_handle.getDevice(path)
 
-        # Cast device to its type class.
         device_id = device_handle.getDeviceId()
         device_type = device_id.getDeviceType()
+        device_ordinal = device_id.getOrdinal()
+
+        py_id = (device_type, device_ordinal)
+        if py_id in self._py_devices:
+            return self._py_devices[py_id]
+
+
+        # Cast device to its type class.
         specific_device_cast = {
             arrus.core.DeviceType_Us4R:
                 lambda handle: arrus.devices.us4r.Us4R(
@@ -229,8 +239,7 @@ class Session(AbstractSession):
         if specific_device_cast is None:
             raise arrus.exceptions.DeviceNotFoundError(path)
         specific_device = specific_device_cast(device_handle)
-        # TODO(pjarosik) key should be an id, not the whole path
-        self._py_devices[path] = specific_device
+        self._py_devices[py_id] = specific_device
         return specific_device
 
     def set_parameters(self, params):
@@ -281,24 +290,30 @@ class Session(AbstractSession):
 
     def _create_py_devices(self):
         devices = {
-            "/CPU:0": arrus.devices.cpu.CPU(0)
+            (arrus.core.DeviceType_CPU, 0) : arrus.devices.cpu.CPU(0)
         }
         # Create CPU and GPU devices
         cupy_spec = importlib.util.find_spec("cupy")
         if cupy_spec is not None:
             import cupy
             cupy.cuda.device.Device(0).use()
-            devices["/GPU:0"] = arrus.devices.gpu.GPU(0)
+            devices[(arrus.core.DeviceType_GPU, 0)] = arrus.devices.gpu.GPU(0)
         return devices
 
-    def _create_kernel_context(self, seq, device, medium, hardware_ddc):
+    def _create_kernel_context(self, seq, device, medium, hardware_ddc,
+                               constants):
         return arrus.kernels.kernel.KernelExecutionContext(
             device=device, medium=medium, op=seq, custom={},
-            hardware_ddc=hardware_ddc
+            hardware_ddc=hardware_ddc,
+            constants=constants
         )
 
-    def _create_frame_acquisition_context(self, seq, raw_seq, device, medium):
+    def _create_frame_acquisition_context(self, seq, raw_seq, device, medium,
+                                          constants):
         return arrus.metadata.FrameAcquisitionContext(
             device=device, sequence=seq, raw_sequence=raw_seq,
-            medium=medium, custom_data={})
+            medium=medium, custom_data={},
+            constants=constants
+        )
+
 

@@ -36,7 +36,7 @@ class ReconstructionTestCase(ArrusImagingTestCase):
         ztop = 0
         zbot = 50*1e-3
         nrow = np.round((zbot - ztop)/ds + 1).astype(int)
-        self.z_grid = np.linspace(ztop, zbot , nrow)
+        self.z_grid = np.linspace(ztop, zbot, nrow)
 
         # set arbitrary tolerances (in [mm]) i.e. possible differences
         # between expected and obtained maxima in b-mode image of a wire

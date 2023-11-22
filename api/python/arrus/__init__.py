@@ -30,3 +30,4 @@ else:
     print("Warning: running without arrus.core module.")
 
 
+from arrus.framework import Constant
