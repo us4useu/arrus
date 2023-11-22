@@ -363,11 +363,11 @@ Color Doppler
 
 To enable the Color Doppler mode, one has to:
 
-* create the TX/RX Sequence that will **collect the echoes the same way a number of times**,
+* create the TX/RX Sequence that will **collect the echoes the same way a given number of times**,
 * create the Reconstruction that will enable and define the Doppler processing.
 
 Below is an example of a sequence that will acquire the data for both: B-mode and Color Doppler. In both modes 
-the sequence utilizes plane waves ('txFocus' set to inf) emitted from the whole probe, and the echoes are recorded 
+the sequence utilizes plane waves ('txFocus' set to inf) emitted from the whole aperture of the probe, and the echoes are recorded
 with all the probe elements as well (TX/RX aperture centered at the probe center x=0, aperture size equal to number of probe elements). 
 
 * In case of B-mode the plane waves will be emitted at 7 different angles for compounding purposes: (-15:5:15)*pi/180. 
@@ -387,12 +387,9 @@ with all the probe elements as well (TX/RX aperture centered at the probe center
 The Reconstruction parameters, apart from the reconstruction grid, must contain:
 
 * Color Doppler enable flag ('colorEnable' set to true),
-* frame identifiers: frames 1-7 are utilized by B-mode ('bmodeFrames' set to 1:7), the following 32 frames are used for 
-Color Doppler ('colorFrames' set to 7+(1:32)),
-* limits of RX tangents for Color Doppler reconstruction ('colorRxTangLim'). The default is [-0.5 0.5]. It is reasonable 
-to add an offset to make the RX beam angled the same way as the TX beam.
-* coefficients of a high-pass Wall Clutter Filter ('wcFilterBCoeff' and 'wcFilterACoeff'). Optionally there is a possibility 
-to omit first n output samples of the filter ('wcFiltInitSize') to reduce the influence of its transient characteristics.
+* frame identifiers: frames 1-7 are utilized by B-mode ('bmodeFrames' set to 1:7), the following 32 frames are used for Color Doppler ('colorFrames' set to 7+(1:32)),
+* limits of RX tangents for Color Doppler reconstruction ('colorRxTangLim'). The default is [-0.5 0.5]. It is reasonable to add an offset to make the RX beam angled the same way as the TX beam.
+* coefficients of a high-pass Wall Clutter Filter ('wcFilterBCoeff' and 'wcFilterACoeff'). Optionally there is a possibility to omit first n output samples of the filter ('wcFiltInitSize') to reduce the influence of its transient characteristics.
 
 .. code-block:: matlab
     
@@ -419,6 +416,6 @@ To obtain good Doppler signal it is suggested to use longer TX pulses ('txNPerio
 
 The Color Doppler scale corresponds to a range from -pi to pi [rad per sample]. To convert it to the Doppler frequencies, 
 one has to know the Pulse Repetition Frequency (PRF) which is given by the formula: PRF = 1/txPri/nFirePerTx. 'txPri' is 
-the time between physical emissions and is one of the pareameters of the CustomTxRxSequence. nFirePerTx is the number of 
+the time between physical emissions and is one of the parameters of the CustomTxRxSequence. nFirePerTx is the number of
 repeting the emissions needed to acquire the echoes with the programmed RX aperture (e.g. 'rxApertureSize' is 192, number 
 of system RX channels is 64, then each TX must be repeated 3 times so that the 64-channel system can acquire 192-channel data).
