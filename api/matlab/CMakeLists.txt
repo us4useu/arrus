@@ -19,7 +19,7 @@ set(SOURCE_FILES
     arrus/scanConversion.m
     arrus/Us4R.m
     arrus/wedgeParams.m
-    examples/Us4R_control_rfPwi.m
+    examples/Us4R_control_rawRfPwi.m
     examples/Us4R_control_bmodePwi.m
     examples/Us4R_control_bmodeDwi.m
     examples/Us4R_control_bmodeLin.m
