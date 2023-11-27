@@ -15,7 +15,7 @@ classdef DuplexDisplay < handle
     % :param stdevThreshold: limit of standard deviation of color data \
     %   over which the color data is not displayed \
     %   (scalar) (optional name-value argument)
-    % :param thresholdSmoothe: size [pix] of the circular smoothing kernel 
+    % :param thresholdSmooth: size [pix] of the circular smoothing kernel 
     %   applied to the images that are used for thresholding, e.g. power, 
     %   turbu, stdev (scalar) (optional name-value argument)
     % :param subplotEnable: enables separate display of Duplex, bmode, \
@@ -43,7 +43,7 @@ classdef DuplexDisplay < handle
         powerThreshold
         turbuThreshold
         stdevThreshold
-        smootheKernel
+        smoothKernel
         cineLoop
         cineLoopLength
         cineLoopIndex
@@ -78,9 +78,9 @@ classdef DuplexDisplay < handle
                         @(x) assert(isnumeric(x) && isscalar(x), ...
                         "stdevThreshold must be a numerical scalar."));
             
-            addParameter(dispParParser, 'thresholdSmoothe', 0, ...
+            addParameter(dispParParser, 'thresholdSmooth', 0, ...
                         @(x) assert(isnumeric(x) && isscalar(x), ...
-                        "thresholdSmoothe must be a numerical scalar."));
+                        "thresholdSmooth must be a numerical scalar."));
 
             addParameter(dispParParser, 'subplotEnable', false, ...
                         @(x) assert(islogical(x) && isscalar(x), ...
@@ -110,7 +110,7 @@ classdef DuplexDisplay < handle
             powerThreshold   = dispParParser.Results.powerThreshold;
             turbuThreshold   = dispParParser.Results.turbuThreshold;
             stdevThreshold   = dispParParser.Results.stdevThreshold;
-            thresholdSmoothe = dispParParser.Results.thresholdSmoothe;
+            thresholdSmooth  = dispParParser.Results.thresholdSmooth;
             subplotEnable    = dispParParser.Results.subplotEnable;
             cineLoopLength   = dispParParser.Results.cineLoopLength;
             persistence      = dispParParser.Results.persistence;
@@ -126,11 +126,11 @@ classdef DuplexDisplay < handle
                 cineLoopLength = numel(persistence);
             end
             
-            if thresholdSmoothe>0
-                aux = linspace(-1,1,thresholdSmoothe).^2;
-                smootheKernel = double(sqrt(aux.' + aux) <= 1);
+            if thresholdSmooth>0
+                aux = linspace(-1,1,thresholdSmooth).^2;
+                smoothKernel = double(sqrt(aux.' + aux) <= 1);
             else
-                smootheKernel = [];
+                smoothKernel = [];
             end
             
             obj.xGrid = proc.xGrid;
@@ -141,7 +141,7 @@ classdef DuplexDisplay < handle
             obj.powerThreshold = powerThreshold;
             obj.turbuThreshold = turbuThreshold;
             obj.stdevThreshold = stdevThreshold;
-            obj.smootheKernel = smootheKernel;
+            obj.smoothKernel = smoothKernel;
             obj.cineLoopLength = cineLoopLength;
             obj.persistence = reshape(persistence,1,1,[]) / sum(persistence);
             obj.bmodeTgc = bmodeTgc * obj.zGrid(:) / obj.zGrid(end);
@@ -264,13 +264,13 @@ classdef DuplexDisplay < handle
                     turbuRGB = reshape(turbuMap(1+round(turbuRGB*127),:),nZPix,nXPix,3);
                     
                     %% Duplex
-                    if ~isempty(obj.smootheKernel)
-                        N   = conv2(msk,obj.smootheKernel,'same');
+                    if ~isempty(obj.smoothKernel)
+                        N   = conv2(msk,obj.smoothKernel,'same');
 
-                        power = conv2(power.*msk,obj.smootheKernel,'same') ./ N;
-                        turbu = conv2(turbu.*msk,obj.smootheKernel,'same') ./ N;
-                        stdev = sqrt((conv2(color.^2,obj.smootheKernel,'same') - ...
-                                      conv2(color,   obj.smootheKernel,'same').^2./N)./(N-1));
+                        power = conv2(power.*msk,obj.smoothKernel,'same') ./ N;
+                        turbu = conv2(turbu.*msk,obj.smoothKernel,'same') ./ N;
+                        stdev = sqrt((conv2(color.^2,obj.smoothKernel,'same') - ...
+                                      conv2(color,   obj.smoothKernel,'same').^2./N)./(N-1));
                         
                         power(~msk) = nan;
                         turbu(~msk) = nan;
