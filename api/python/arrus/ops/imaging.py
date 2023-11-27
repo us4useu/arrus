@@ -112,7 +112,7 @@ class SimpleTxRxSequence:
             tgc_start=self.tgc_start,
             tgc_curve=self.tgc_curve)
         self.__assert_at_most_one(
-            tgc_start=self.tgc_slope,
+            tgc_slope=self.tgc_slope,
             tgc_curve=self.tgc_curve)
 
         # Make sure that exactly one of the below parameters is provided.
