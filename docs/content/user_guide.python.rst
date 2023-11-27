@@ -57,7 +57,8 @@ which can be configured by providing the ``hv`` field. The following power
 supplies are currently supported:
 
 - us4R-Lite systems: manufacturer: ``us4us``, name: ``hv256``,
-- us4R systems: manufacturer: ``us4us``, name: ``us4rpsc``.
+- us4R systems: manufacturer: ``us4us``, name: ``us4rpsc``,
+- us4OEM+ with internal HV: manufacturer: ``us4us``, name: ``us4oemhvps``.
 
 Example:
 
@@ -71,6 +72,28 @@ Example:
     }
 
 To turn off the high voltage supplier, skip the ``hv`` field.
+
+Based on the HV selected, our software will try to automatically select the type of digital backplane (DBAR) to be used:
+
+- for the systems with ``hv256`` power supply, ``dbarlite`` will be used,
+- for the systems with ``us4rpsc`` power supply, ``us4rpsc`` will be used,
+- for the systems ``us4oemhvps``, a system with no digital backplane will be assumed.
+
+It is also possible to explicitly specify the backplane model in the configuration file, just provide the field
+``digital_backplane``:
+
+::
+
+    digital_backplane: {
+      model_id {
+        manufacturer: "us4us"
+        name: "model_name"
+      }
+    }
+
+
+Where ``model_name`` can be one of the following: ``dbarlite`` or ``us4rpsc``.
+
 
 To configure us4r’s signal transmission/data reception, it is essential to
 specify the settings of the probe and probe adapter used in the system.
@@ -591,7 +614,7 @@ the following interface:
 
 - The ``process`` function will be called when new data arrives, at the appropriate stage of the pipeline.
 - The ``prepare`` function will be called on Pipeline initialization. You should implement this function if
-  you want to do some initialization based on ConstMetadata object, which contains the complete trace
+  you want to do some initialization based on Metadata object, which contains the complete trace
   of data acquisition and processing done made before the current step.
 
 .. note::

@@ -1,4 +1,6 @@
 import dataclasses
+from typing import Any, List
+
 import arrus.medium
 import arrus.ops
 import arrus.ops.us4r
@@ -18,8 +20,16 @@ class KernelExecutionContext:
     :param op: operation to perform
     :param custom: custom data
     """
-    device: arrus.devices.device.UltrasoundDeviceDTO
+    device: arrus.devices.ultrasound.UltrasoundDTO
     medium: arrus.medium.MediumDTO
     op: arrus.ops.Operation
     custom: dict
     hardware_ddc: arrus.ops.us4r.DigitalDownConversion = None
+    constants: List[arrus.framework.Constant] = ()
+
+
+@dataclasses.dataclass(frozen=True)
+class ConversionResults:
+    sequence: object
+    constants: List[Any]
+

@@ -28,6 +28,7 @@ constexpr uint16 DEFAULT_PGA_GAIN = 30;
 constexpr uint16 DEFAULT_LNA_GAIN = 24;
 constexpr float MAX_TX_FREQUENCY = 65e6f;
 constexpr float MIN_TX_FREQUENCY = 1e6f;
+constexpr uint32_t TX_OFFSET = 123;
 
 struct TestTxRxParams {
 
@@ -61,6 +62,7 @@ protected:
         // Default values returned by us4oem.
         ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetTxOffset).WillByDefault(testing::Return(TX_OFFSET));
 
         BitMask activeChannelGroups = {true, true, true, true,
                                        true, true, true, true,
@@ -75,6 +77,7 @@ protected:
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false,
             false
         );
     }
@@ -362,6 +365,7 @@ protected:
             channelMapping, rxSettings,
             std::unordered_set<uint8>(),
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            false,
             false
         );
     }
@@ -430,11 +434,11 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
             (x.sampleRange = sampleRange))
             .getTxRxParameters()
     };
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(Us4OEMImpl::RX_DELAY, 0));
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(0.0f, 0)); // Note: the value 0.0 is the default value
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::TX_SAMPLE_DELAY_RAW_DATA + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, TX_OFFSET + sampleRange.start(), _, _, _));
     // ScheduleReceive: starting sample
     SET_TX_RX_SEQUENCE(us4oem, seq);
 }
@@ -450,11 +454,11 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
             (x.sampleRange = sampleRange))
             .getTxRxParameters()
     };
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(Us4OEMImpl::RX_DELAY, 0));
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(0.0f, 0)); // Note: the default value of TxRxParameters
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, Us4OEMImpl::TX_SAMPLE_DELAY_RAW_DATA + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, TX_OFFSET + sampleRange.start(), _, _, _));
     // ScheduleReceive: starting sample
     SET_TX_RX_SEQUENCE(us4oem, seq);
 }
@@ -704,7 +708,9 @@ protected:
             std::move(ius4oem), activeChannelGroups,
             channelMapping, rxSettings, channelsMask,
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
-            false);
+            false,
+            false
+            );
 
     }
 
@@ -749,7 +755,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, DoesNothingWithAperturesWhenNoChannelM
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
     for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0));
+        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
     }
 
     SET_TX_RX_SEQUENCE(us4oem, seq);
@@ -789,7 +795,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
     for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0));
+        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
     }
 
     auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
@@ -988,6 +994,7 @@ protected:
                 channelMapping, rxSettings,
                 std::unordered_set<uint8>({}),
                 reprogrammingMode,
+                false,
                 false
         );
 

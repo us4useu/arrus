@@ -2,6 +2,7 @@ import numpy as np
 import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
+from typing import Dict, Any
 
 _UINT16_MIN = 0
 _UINT16_MAX = 2**16-1
@@ -142,6 +143,9 @@ def convert_to_core_scheme(scheme):
         "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
     }[scheme.work_mode]
     ddc = scheme.digital_down_conversion
+
+    constants = convert_constants_to_arrus_ndarray(scheme.constants)
+
     if scheme.digital_down_conversion is not None:
         ddc = arrus.core.DigitalDownConversion(
             ddc.demodulation_frequency,
@@ -149,10 +153,10 @@ def convert_to_core_scheme(scheme):
             ddc.decimation_factor
         )
         return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 core_work_mode, ddc)
+                                 core_work_mode, ddc, constants)
     else:
         return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 core_work_mode)
+                                 core_work_mode, constants)
 
 
 def convert_to_test_pattern(test_pattern_str):
@@ -169,3 +173,34 @@ def convert_from_tuple(core_tuple):
     v = [core_tuple.get(i) for i in range(core_tuple.size())]
     return tuple(v)
 
+
+def convert_to_core_parameters(params: Dict[str, Any]):
+    builder = arrus.core.ParametersBuilder()
+    for k, v in params.items():
+        builder.add(k, v)
+    return builder.build()
+
+
+def convert_constants_to_arrus_ndarray(py_constants):
+    result = arrus.core.ArrusNdArrayVector()
+    for py_const in py_constants:
+        value = py_const.value
+        if not isinstance(value, np.ndarray):
+            # NOTE: assuming scalar!
+            value = np.asarray(value)
+        value = np.atleast_2d(value).astype(np.float32)
+        placement: str = py_const.placement
+        placement = placement.strip()
+        if placement.startswith("/"):
+            placement = placement[1:].strip()
+        placement_name, placement_ordinal = placement.split(":")
+        placement_name = placement_name.strip()
+        placement_ordinal = int(placement_ordinal.strip())
+        arrus.core.Arrus2dArrayVectorPushBack(
+            result,
+            # rows, columns
+            value.shape[0], value.shape[1], arrus.core.VectorFloat(value.flatten().tolist()),
+            placement_name, placement_ordinal,
+            py_const.name
+        )
+    return result

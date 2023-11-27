@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+enum IOCapability {
+    PROBE_CONNECTED_CHECK = 0;
+    FRAME_METADATA = 1;
+}

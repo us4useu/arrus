@@ -116,6 +116,7 @@ namespace std {
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
+#include "arrus/core/api/devices/File.h"
 
 using namespace ::arrus;
 %}
@@ -175,6 +176,7 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Interval.h"
 %include "arrus/core/api/common/Span.h"
 %include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
+%include "arrus/core/api/common/Parameters.h"
 
 %feature("valuewrapper", "0");
 
@@ -206,7 +208,9 @@ namespace arrus {
     %template(IntervalFloat) Interval<float>;
 };
 
+%ignore arrus::framework::NdArray::NdArray;
 %include "arrus/core/api/framework/NdArray.h"
+
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
 %include "arrus/core/api/framework/Buffer.h"
@@ -266,7 +270,7 @@ void registerOnBufferOverflowCallback(const std::shared_ptr<arrus::framework::Bu
 
 // ------------------------------------------ SESSION
 %{
-#include "arrus/core/api/session/UploadConstMetadata.h"
+#include "arrus/core/api/session/Metadata.h"
 #include "arrus/core/api/session/UploadResult.h"
 #include "arrus/core/api/session/Session.h"
 using namespace ::arrus::session;
@@ -274,12 +278,12 @@ using namespace ::arrus::session;
 %};
 // TODO consider using unique_ptr anyway (https://stackoverflow.com/questions/27693812/how-to-handle-unique-ptrs-with-swig)
 
-%shared_ptr(arrus::session::UploadConstMetadata);
+%shared_ptr(arrus::session::Metadata);
 %shared_ptr(arrus::session::Session);
 %ignore createSession;
 
 
-%include "arrus/core/api/session/UploadConstMetadata.h"
+%include "arrus/core/api/session/Metadata.h"
 %include "arrus/core/api/session/UploadResult.h"
 %include "arrus/core/api/session/Session.h"
 
@@ -315,13 +319,13 @@ void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
 
 %};
 // ------------------------------------------ DEVICES
-// Us4R
 %{
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
+#include "arrus/core/api/devices/File.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
@@ -335,6 +339,7 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceWithComponents.h"
 %include "arrus/core/api/devices/us4r/Us4OEM.h"
 %include "arrus/core/api/devices/us4r/Us4R.h"
+%include "arrus/core/api/devices/File.h"
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/Probe.h"
@@ -345,6 +350,14 @@ arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
     auto ptr = dynamic_cast<Us4R*>(device);
     if(!ptr) {
         throw std::runtime_error("Given device is not an us4r handle.");
+    }
+    return ptr;
+}
+
+arrus::devices::File *castToFile(arrus::devices::Device *device) {
+    auto ptr = dynamic_cast<File*>(device);
+    if(!ptr) {
+        throw std::runtime_error("Given device is not a file handle.");
     }
     return ptr;
 }
@@ -415,6 +428,7 @@ using namespace arrus::ops::us4r;
 
 namespace std {
 %template(TxRxVector) vector<arrus::ops::us4r::TxRx>;
+%template(ArrusNdArrayVector) vector<arrus::framework::NdArray>;
 };
 
 %inline %{
@@ -425,6 +439,24 @@ void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs, arrus::ops::
 
 void VectorFloatPushBack(std::vector<float> &vector, double value) {
     vector.push_back(float(value));
+}
+
+void Arrus2dArrayVectorPushBack(
+    std::vector<arrus::framework::NdArray> &arrays,
+    size_t nRows, size_t nCols, std::vector<float> values, const std::string &placementName, size_t placementOrdinal,
+    const std::string &arrayName
+) {
+    ::arrus::framework::NdArray::Shape shape = {nRows, nCols};
+    ::arrus::devices::DeviceId placement(::arrus::devices::parseToDeviceTypeEnum(placementName), placementOrdinal);
+    ::arrus::framework::NdArray array(
+        (void*)values.data(),
+        shape,
+        ::arrus::framework::NdArray::DataType::FLOAT32,
+        placement,
+        arrayName,
+        false // is view => copy
+    );
+    arrays.push_back(array);
 }
 
 %};

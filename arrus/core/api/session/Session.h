@@ -1,14 +1,14 @@
 #ifndef ARRUS_CORE_API_SESSION_SESSION_H
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
-#include "arrus/core/api/ops/us4r/TxRxSequence.h"
-#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/common/Parameters.h"
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/ops/us4r/Scheme.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/session/SessionSettings.h"
 #include "arrus/core/api/session/UploadResult.h"
-#include "arrus/core/api/common/macros.h"
 
 namespace arrus::session {
 
@@ -18,6 +18,17 @@ namespace arrus::session {
 class Session {
 public:
     using Handle = std::unique_ptr<Session>;
+
+    /**
+     * Session state.
+     *
+     * - STOPPED: the session is stopped (no device is running).
+     * - STARTED: the session is started (at least one of the session devices is running).
+     * - CLOSED: the session was closed (the connection to all the session devices was closed).
+     */
+    enum class State {
+        STOPPED, STARTED, CLOSED
+    };
 
     /**
      * Returns a handle to device with given Id. The string format is:
@@ -77,7 +88,15 @@ public:
      */
     virtual void close() = 0;
 
+    virtual void setParameters(const arrus::Parameters& params) = 0;
+
+    /**
+     * Returns the current state of the session. See also Session::State.
+     */
+    virtual State getCurrentState() = 0;
+
     virtual ~Session() = default;
+
 };
 
 /**

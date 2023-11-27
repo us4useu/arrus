@@ -44,6 +44,18 @@ V safeCast(const T &in, const std::string& paramName,
         }                                                                     \
     }
 
+#define ARRUS_DEFINE_ENUM_TO_STRING(name, enumerators)                        \
+    inline const char* toString(name v) {                                     \
+        switch (v) {                                                          \
+            BOOST_PP_SEQ_FOR_EACH(                                            \
+                ARRUS_DEFINE_ENUM_WITH_TO_STRING_CASE,                        \
+                name,                                                         \
+                enumerators                                                   \
+            )                                                                 \
+            default: return "[Unknown " BOOST_PP_STRINGIZE(name) "]";         \
+        }                                                                     \
+    }
+
 }
 
 #endif //ARRUS_COMMON_UTILS_H

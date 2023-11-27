@@ -17,7 +17,9 @@ static const std::unordered_map<DeviceType, std::string>
         {DeviceType::Probe,       "Probe"},
         {DeviceType::GPU,         "GPU"},
         {DeviceType::CPU,         "CPU"},
-        {DeviceType::HV,         "HV"}
+        {DeviceType::HV,          "HV"},
+        {DeviceType::Ultrasound,  "Ultrasound"},
+        {DeviceType::File,        "File"},
 };
 
 /**
@@ -85,7 +87,6 @@ std::string toString(const DeviceType deviceTypeEnum) {
 }
 
 // DeviceId.
-
 DeviceId DeviceId::parse(const std::string &deviceId) {
     std::vector<std::string> deviceIdComponents;
     boost::algorithm::split(deviceIdComponents, deviceId,

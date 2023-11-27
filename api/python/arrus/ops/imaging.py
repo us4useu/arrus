@@ -1,8 +1,11 @@
+from typing import Union
+
 import arrus.ops.us4r
 import numpy as np
 import arrus.ops
 import dataclasses
 from collections.abc import Collection
+from arrus.framework import Constant
 
 
 def assert_is_scalar(key, value):
@@ -76,7 +79,7 @@ class SimpleTxRxSequence:
     rx_sample_range: tuple = None
     sri: float = None
     speed_of_sound: float = None
-    tx_focus: object = np.inf
+    tx_focus: Union[object, Constant] = np.inf
     angles: object = 0.0
     downsampling_factor: int = 1
     tx_aperture_center_element: list = None
@@ -92,6 +95,10 @@ class SimpleTxRxSequence:
     init_delay: str = "tx_start"
     rx_depth_range: tuple = None
 
+    @property
+    def excitation(self):
+        return self.pulse
+
     def __post_init__(self):
         # Validation
         self.__assert_at_most_one(
@@ -105,7 +112,7 @@ class SimpleTxRxSequence:
             tgc_start=self.tgc_start,
             tgc_curve=self.tgc_curve)
         self.__assert_at_most_one(
-            tgc_start=self.tgc_slope,
+            tgc_slope=self.tgc_slope,
             tgc_curve=self.tgc_curve)
 
         # Make sure that exactly one of the below parameters is provided.

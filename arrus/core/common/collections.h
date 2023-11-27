@@ -145,7 +145,7 @@ toBitset(const std::vector<bool> &in) {
 }
 
 template<typename Map, typename K>
-inline bool containsKey(Map map, const K &key) {
+inline bool containsKey(const Map &map, const K &key) {
     return map.find(key) != std::end(map);
 }
 
@@ -237,6 +237,16 @@ std::vector<T> copyToVector(const Span<T> span) {
         result[i] = span[i];
     }
     return result;
+}
+
+template<typename T>
+bool areConsecutive(const std::vector<T> values) {
+    for(size_t i = 0; i < values.size(); ++i) {
+        if(values[i] != i) {
+            return false;
+        }
+    }
+    return true;
 }
 
 }

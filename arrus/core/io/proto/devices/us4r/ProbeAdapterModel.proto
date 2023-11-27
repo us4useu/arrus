@@ -3,6 +3,7 @@ syntax  = "proto3";
 package arrus.proto;
 
 import "io/proto/common/IntervalInteger.proto";
+import "io/proto/devices/us4r/IOSettings.proto";
 
 message ProbeAdapterModel {
 
@@ -27,4 +28,5 @@ message ProbeAdapterModel {
   uint32 n_channels = 2;
   ChannelMapping channel_mapping = 3;
   repeated ChannelMappingRegion channel_mapping_regions = 4;
+  IOSettings io_settings = 5;
 }

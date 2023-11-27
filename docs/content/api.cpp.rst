@@ -80,7 +80,7 @@ Devices
 
 .. doxygenclass:: arrus::devices::Us4R
     :project: arrus
-    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision, getUs4OEM
+    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision, getUs4OEM, getBackplaneSerialNumber, getBackplaneRevision
 
 .. doxygenclass:: arrus::devices::RxSettings
     :members:
@@ -102,7 +102,7 @@ An instance of the following class is returned by the ``sesion.upload`` function
 
 Upload result can include some additional information (metadata) about the acquired data:
 
-.. doxygenclass:: arrus::session::UploadConstMetadata
+.. doxygenclass:: arrus::session::Metadata
     :project: arrus
     :members:
 

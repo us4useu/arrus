@@ -71,7 +71,8 @@ set(SOURCE_FILES
         arrus/exceptions.py
         arrus/medium.py
         arrus/params.py
-        arrus/framework.py
+        arrus/framework/__init__.py
+        arrus/framework/constant.py
         arrus/ops/__init__.py
         arrus/ops/imaging.py
         arrus/ops/tgc.py

@@ -1,17 +1,17 @@
 import dataclasses
 import numpy as np
-import time
-import ctypes
-import collections.abc
 
 from arrus.devices.device import Device, DeviceId, DeviceType
+from arrus.devices.ultrasound import Ultrasound
 import arrus.exceptions
 import arrus.devices.probe
+import arrus.ops.imaging
+import arrus.ops.tgc
+from arrus.devices.us4oem import Us4OEM
 import arrus.metadata
 import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
-import arrus.ops.tgc
 from collections.abc import Iterable
 from typing import Optional
 
@@ -44,36 +44,37 @@ class Backplane:
     """
     Digital backplane of the us4R device.
     """
+    def __init__(self, us4r):
+        self._us4r = us4r
 
     def get_serial_number(self) -> str:
         """
         Returns serial number of the digital backplane.
         """
-        return ""
+        return self._us4r._handle.getBackplaneSerialNumber()
 
     def get_revision(self) -> str:
         """
         Returns revision number of the digital backplane.
         """
-        return ""
+        return self._us4r._handle.getBackplaneRevision()
 
 
-class Us4R(Device):
+class Us4R(Device, Ultrasound):
     """
     A handle to Us4R device.
 
     Wraps an access to arrus.core.Us4R object.
     """
 
-    def __init__(self, handle, parent_session):
+    def __init__(self, handle):
         super().__init__()
         self._handle = handle
-        self._session = parent_session
         self._device_id = DeviceId(DEVICE_TYPE,
                                    self._handle.getDeviceId().getOrdinal())
         # Context for the currently running sequence.
-        self._current_sequence_context = None
-        self._backplane = Backplane()
+        self._kernel_context = None
+        self._backplane = Backplane(self)
 
     def get_device_id(self):
         return self._device_id
@@ -85,11 +86,11 @@ class Us4R(Device):
         :param samples: a given TGC to set.
         """
         if isinstance(tgc_curve, arrus.ops.tgc.LinearTgc):
-            if self._current_sequence_context is None:
+            if self._kernel_context is None:
                 raise ValueError("There is no tx/rx sequence currently "
                                  "uploaded.")
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
-                self._current_sequence_context,
+                self._kernel_context,
                 self.current_sampling_frequency,
                 tgc_curve)
         elif not isinstance(tgc_curve, Iterable):
@@ -183,7 +184,24 @@ class Us4R(Device):
         self._handle.stop()
 
     def set_kernel_context(self, kernel_context):
-        self._current_sequence_context = kernel_context
+        self._kernel_context = kernel_context
+        # Set TGC curve from the context.
+        seq = self._kernel_context.op
+        if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
+            if seq.tgc_start is not None and seq.tgc_slope is not None:
+                # NOTE: the below line has to be called after
+                # session.upload call, otherwise an invalid sampling
+                # frequency may be used.
+                self.set_tgc(arrus.ops.tgc.LinearTgc(
+                    start=seq.tgc_start,
+                    slope=seq.tgc_slope
+                ))
+            elif seq.tgc_curve is not None:
+                self.set_tgc(seq.tgc_curve)
+            else:
+                self.set_tgc([])
+        else:
+            self.set_tgc(seq.tgc_curve)
 
     def get_probe_model(self):
         """
@@ -195,7 +213,7 @@ class Us4R(Device):
 
     def set_test_pattern(self, pattern):
         """
-        Sets given test ADC test patter to be run by Us4OEM components.
+        Sets given test ADC test pattern to be run by Us4OEM components.
         """
         test_pattern_core = arrus.utils.core.convert_to_test_pattern(pattern)
         self._handle.setTestPattern(test_pattern_core)
@@ -266,6 +284,7 @@ class Us4R(Device):
         """
         return self._handle.getAfe(addr)
 
+
     @property
     def channels_mask(self):
         """
@@ -273,17 +292,37 @@ class Us4R(Device):
         """
         return self._handle.getChannelsMask()
 
-    def _get_dto(self):
+    def get_dto(self):
         import arrus.utils.core
         probe_model = arrus.utils.core.convert_to_py_probe_model(
             core_model=self._handle.getProbe(0).getModel())
         probe_dto = arrus.devices.probe.ProbeDTO(model=probe_model)
-        return Us4RDTO(probe=probe_dto, sampling_frequency=65e6)
+        return Us4RDTO(
+            probe=probe_dto,
+            sampling_frequency=self.sampling_frequency
+        )
+
+    def get_data_description(self, upload_result, sequence):
+        # Prepare data buffer and constant context metadata
+        fcm = arrus.core.getFrameChannelMapping(upload_result)
+        fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
+            arrus.utils.core.convert_fcm_to_np_arrays(fcm, self.n_us4oems)
+        fcm = arrus.devices.us4r.FrameChannelMapping(
+            us4oems=fcm_us4oems,
+            frames=fcm_frame,
+            channels=fcm_channel,
+            frame_offsets=frame_offsets,
+            n_frames=n_frames,
+            batch_size=sequence.n_repeats)
+        return arrus.metadata.EchoDataDescription(
+            sampling_frequency=self.current_sampling_frequency,
+            custom={"frame_channel_mapping": fcm}
+        )
 
 
 # ------------------------------------------ LEGACY MOCK
 @dataclasses.dataclass(frozen=True)
-class Us4RDTO(arrus.devices.device.UltrasoundDeviceDTO):
+class Us4RDTO:
     probe: arrus.devices.probe.ProbeDTO
     sampling_frequency: float
 

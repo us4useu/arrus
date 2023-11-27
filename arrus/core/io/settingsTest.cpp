@@ -87,6 +87,7 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
                       { 1, 88 }, { 1, 92 }, { 1, 89 }, { 1, 94 }, { 1, 90 }, { 1, 91 }, { 1, 95 }, { 1, 93 }
                   }
               ));
+    EXPECT_FALSE(adapterSettings->getIOSettings().hasProbeConnectedCheckCapability());
     // Rx settings
     auto const &rxSettings = us4rSettings.getRxSettings();
     EXPECT_FALSE(rxSettings->getDtgcAttenuation().has_value());
@@ -146,6 +147,8 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
                       { 0, 28 }, { 1, 28 }, { 0, 29 }, { 1, 29 }, { 0, 30 }, { 1, 30 }, { 0, 31 }, { 1, 31 }
                   }
               ));
+    EXPECT_EQ(adapterSettings->getIOSettings().getProbeConnectedCheckCapabilityAddress(),
+              ::arrus::devices::us4r::IOAddress(1, 3));
     // Rx settings
     auto const &rxSettings = us4rSettings.getRxSettings();
     EXPECT_EQ(rxSettings->getDtgcAttenuation(), 0);
@@ -207,6 +210,17 @@ TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
               std::vector<TGCSampleValue>({14.5, 15.5, 16.5, 17.5}));
     EXPECT_EQ(rxSettings1.getLpfCutoff(), 1000000);
     EXPECT_EQ(rxSettings1.getActiveTermination(), 500);
+}
+
+TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) / boost::filesystem::path("file.prototxt");
+    SessionSettings settings = arrus::io::readSessionSettings(filepath.string());
+    auto const &fileSettings = settings.getFileSettings(0);
+    EXPECT_EQ(fileSettings.getFilepath(), "/home/test/test.bin");
+    EXPECT_EQ(fileSettings.getNFrames(), 10);
+    EXPECT_EQ(fileSettings.getProbeModel().getModelId().getManufacturer(), "esaote");
+    EXPECT_EQ(fileSettings.getProbeModel().getModelId().getName(), "sl1543");
+    EXPECT_EQ(fileSettings.getProbeModel().getNumberOfElements().get(0), 192);
 }
 
 TEST(ReadingProtoTxtFile, throwsExceptionOnNoChannelsMask) {

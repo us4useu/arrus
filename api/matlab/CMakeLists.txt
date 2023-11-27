@@ -19,7 +19,7 @@ set(SOURCE_FILES
     arrus/scanConversion.m
     arrus/Us4R.m
     arrus/wedgeParams.m
-    examples/Us4R_control_rfPwi.m
+    examples/Us4R_control_rawRfPwi.m
     examples/Us4R_control_bmodePwi.m
     examples/Us4R_control_bmodeDwi.m
     examples/Us4R_control_bmodeLin.m
@@ -68,9 +68,6 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
     ${CMAKE_COMMAND} -E copy
     ${ARRUS_MATLAB_CORE_SO_FILE} ${TOOLBOX_OUTPUT_DIR}
-    COMMAND
-    ${CMAKE_COMMAND} -E copy
-    ${Us4_ROOT_DIR}/matlab/Us4MEX.mexw64 ${TOOLBOX_OUTPUT_DIR}
     # Excluded directories/files
     COMMAND
     ${CMAKE_COMMAND} -E rm -rf "${TOOLBOX_OUTPUT_DIR}/mexcuda"
