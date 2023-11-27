@@ -52,7 +52,7 @@ classdef Reconstruction
         vector0RxTangLim = [-0.5 0.5]
         vector1RxTangLim = [-0.5 0.5]
         wcFilterACoeff
-        wcFilterBCoeff
+        wcFilterBCoeff = 1
         wcFiltInitSize = 0
     end
     

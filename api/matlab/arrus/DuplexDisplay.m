@@ -10,8 +10,16 @@ classdef DuplexDisplay < handle
     %   limits to apply (optional name-value argument)
     % :param powerThreshold: power limit [dB] below which the color data \
     %   is not displayed (scalar) (optional name-value argument)
+    % :param turbuThreshold: turbulence limit over which the color data \
+    %   is not displayed (scalar) (optional name-value argument)
+    % :param stdevThreshold: limit of standard deviation of color data \
+    %   over which the color data is not displayed \
+    %   (scalar) (optional name-value argument)
+    % :param thresholdSmooth: size [pix] of the circular smoothing kernel 
+    %   applied to the images that are used for thresholding, e.g. power, 
+    %   turbu, stdev (scalar) (optional name-value argument)
     % :param subplotEnable: enables separate display of Duplex, bmode, \
-    %   color, and power (logical scalar) (optional name-value argument)
+    %   power, and turbulence (logical scalar) (optional name-value argument)
     % :param cineLoopLength: positive scalar, number of frames stored in \
     %   cineloop (optional name-value argument)
     % :param persistence: persistence filtration weights (vector) or \
@@ -33,6 +41,9 @@ classdef DuplexDisplay < handle
         vectorEnable
         dynamicRange
         powerThreshold
+        turbuThreshold
+        stdevThreshold
+        smoothKernel
         cineLoop
         cineLoopLength
         cineLoopIndex
@@ -59,6 +70,18 @@ classdef DuplexDisplay < handle
                         @(x) assert(isnumeric(x) && isscalar(x), ...
                         "powerThreshold must be a numerical scalar."));
             
+            addParameter(dispParParser, 'turbuThreshold', 1, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "turbuThreshold must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'stdevThreshold', 0, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "stdevThreshold must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'thresholdSmooth', 0, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "thresholdSmooth must be a numerical scalar."));
+
             addParameter(dispParParser, 'subplotEnable', false, ...
                         @(x) assert(islogical(x) && isscalar(x), ...
                         "subplotEnable must be a logical scalar."));
@@ -85,6 +108,9 @@ classdef DuplexDisplay < handle
             proc             = dispParParser.Results.reconstructionObject;
             dynamicRange     = dispParParser.Results.dynamicRange;
             powerThreshold   = dispParParser.Results.powerThreshold;
+            turbuThreshold   = dispParParser.Results.turbuThreshold;
+            stdevThreshold   = dispParParser.Results.stdevThreshold;
+            thresholdSmooth  = dispParParser.Results.thresholdSmooth;
             subplotEnable    = dispParParser.Results.subplotEnable;
             cineLoopLength   = dispParParser.Results.cineLoopLength;
             persistence      = dispParParser.Results.persistence;
@@ -100,32 +126,37 @@ classdef DuplexDisplay < handle
                 cineLoopLength = numel(persistence);
             end
             
+            if thresholdSmooth>0
+                aux = linspace(-1,1,thresholdSmooth).^2;
+                smoothKernel = double(sqrt(aux.' + aux) <= 1);
+            else
+                smoothKernel = [];
+            end
+            
             obj.xGrid = proc.xGrid;
             obj.zGrid = proc.zGrid;
             obj.colorEnable = proc.colorEnable;
             obj.vectorEnable = proc.vectorEnable;
             obj.dynamicRange = dynamicRange;
             obj.powerThreshold = powerThreshold;
+            obj.turbuThreshold = turbuThreshold;
+            obj.stdevThreshold = stdevThreshold;
+            obj.smoothKernel = smoothKernel;
             obj.cineLoopLength = cineLoopLength;
             obj.persistence = reshape(persistence,1,1,[]) / sum(persistence);
             obj.bmodeTgc = bmodeTgc * obj.zGrid(:) / obj.zGrid(end);
             obj.bmodeAutoTgcResp = bmodeAutoTgcResp;
             
             % Prepare cineLoop
-            cineLoopLayersNumber = 1 + 2*double(obj.colorEnable && ~obj.vectorEnable) + 3*double(obj.vectorEnable);
+            cineLoopLayersNumber = 1 + 3*double(obj.colorEnable && ~obj.vectorEnable) + 4*double(obj.vectorEnable);
             obj.cineLoop = nan(numel(obj.zGrid), numel(obj.xGrid), obj.cineLoopLength, cineLoopLayersNumber);
             obj.cineLoopIndex = 0;
             
             % Create figure.
             obj.hFig = figure();
             if subplotEnable && (obj.colorEnable || obj.vectorEnable)
-                if obj.colorEnable
-                    subplotColorMaps = cat(3, gray, gray, jet, hot);
-                    subplotDynRange = [dynamicRange; dynamicRange; [-pi pi]; dynamicRange];
-                elseif obj.vectorEnable
-                    subplotColorMaps = cat(3, gray, gray, hot, hot);
-                    subplotDynRange = [dynamicRange; dynamicRange; [0 2*pi]; dynamicRange];
-                end
+                subplotColorMaps = cat(3, gray, gray, hot, hot);
+                subplotDynRange = [dynamicRange; dynamicRange; dynamicRange; [0 1]];
                 
                 for iAx=1:4
                     obj.hAx(iAx) = subplot(2,2,iAx);
@@ -200,20 +231,26 @@ classdef DuplexDisplay < handle
                 
                 if obj.colorEnable || obj.vectorEnable
                     power = data(:,:,:,2);
+                    turbu = data(:,:,:,3);
                     powerMap = hot(128);
+                    turbuMap = hot(128);
                     if obj.colorEnable
-                        color = data(:,:,:,3);
+                        color = data(:,:,:,4);
                         colorMap = jet(128);
                         colorOffset = 0.5;
                     elseif obj.vectorEnable
-                        colorX = data(:,:,:,3);
-                        colorZ = data(:,:,:,4);
+                        colorX = data(:,:,:,4);
+                        colorZ = data(:,:,:,5);
                         color = sqrt(colorX.^2 + colorZ.^2);
                         colorMap = hot(128);
                         colorOffset = 0;
                     end
-                    power(isnan(power)) = -inf;
-                    color(isnan(color)) = 0;
+
+                    msk = ~isnan(color);
+                    
+                    color(~msk) = 0;
+                    power(~msk) = -realmax(class(power));
+                    turbu(~msk) = 1;
                     
                     colorRGB = color/2/pi + colorOffset;
                     colorRGB = max(0,min(1,colorRGB));
@@ -223,7 +260,28 @@ classdef DuplexDisplay < handle
                     powerRGB = max(0,min(1,powerRGB));
                     powerRGB = reshape(powerMap(1+round(powerRGB*127),:),nZPix,nXPix,3);
                     
-                    duplexMask = (power >= obj.powerThreshold);
+                    turbuRGB = max(0,min(1,turbu));
+                    turbuRGB = reshape(turbuMap(1+round(turbuRGB*127),:),nZPix,nXPix,3);
+                    
+                    %% Duplex
+                    if ~isempty(obj.smoothKernel)
+                        N   = conv2(msk,obj.smoothKernel,'same');
+
+                        power = conv2(power.*msk,obj.smoothKernel,'same') ./ N;
+                        turbu = conv2(turbu.*msk,obj.smoothKernel,'same') ./ N;
+                        stdev = sqrt((conv2(color.^2,obj.smoothKernel,'same') - ...
+                                      conv2(color,   obj.smoothKernel,'same').^2./N)./(N-1));
+                        
+                        power(~msk) = nan;
+                        turbu(~msk) = nan;
+                        stdev(~msk) = nan;
+                    else
+                        stdev = zeros(size(color));
+                    end
+                    duplexMask = (power >= obj.powerThreshold) ...
+                               & (turbu <= obj.turbuThreshold) ...
+                               & (stdev <= obj.stdevThreshold);
+                    
                     imageRGB = bmodeRGB.*~duplexMask + colorRGB.*duplexMask;
                 else
                     imageRGB = bmodeRGB;
@@ -233,8 +291,8 @@ classdef DuplexDisplay < handle
                 set(obj.hImg(1), 'CData', imageRGB);
                 if numel(obj.hImg)==4
                     set(obj.hImg(2), 'CData', bmodeRGB);
-                    set(obj.hImg(3), 'CData', colorRGB);
-                    set(obj.hImg(4), 'CData', powerRGB);
+                    set(obj.hImg(3), 'CData', powerRGB);
+                    set(obj.hImg(4), 'CData', turbuRGB);
                 end
                 
                 if obj.vectorEnable

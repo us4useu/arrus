@@ -1,9 +1,10 @@
 % Calculates Color/Vector Doppler Image based on set of iq images
-function[color,power] = dopplerColorImaging(iqImgSet,seq,proc)
+function[color,power,turbu] = dopplerColorImaging(iqImgSet,seq,proc)
 % 
 % Outputs:
-% color                 - (nZPix,nXPix) [rad/pri] color flow map
-% power                 - (nZPix,nXPix) [dB] power flow map
+% color                 - (nZPix,nXPix) [rad/pri] flow color map
+% power                 - (nZPix,nXPix) [dB] flow power map
+% turbu                 - (nZPix,nXPix) [dB] flow turbulence map
 % 
 % Inputs:
 % iqImgSet              - (nZPix,nXPix,nRep,nProj) sequence of iq images
@@ -31,14 +32,34 @@ if nRep-proc.wcFiltInitSize < 2
 end
 
 %% Wall Clutter Filtration
-wcFiltInitState = proc.wcFiltInitCoeff.*reshape(double(iqImgSet(:,:,1,:)), [1,nZPix,nXPix,nProj]);
-iqImgSetFlt = single(filter(proc.wcFiltB, proc.wcFiltA, double(iqImgSet), wcFiltInitState, 3));
+iqImgSetFlt = zeros(nZPix,nXPix,nRep,nProj,'like',iqImgSet);
+if isempty(proc.wcFiltA)
+    for iProj=1:nProj
+        iqImgSetFltAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep);
+        iqImgSetFlt(:,:,:,iProj) = reshape(conv2(iqImgSetFltAux,proc.wcFiltB(:).','same'),nZPix,nXPix,nRep);
+    end
+    iqImgSetFlt = iqImgSetFlt(:, :, (1 + floor(proc.wcFiltInitSize/2)) : (nRep - ceil(proc.wcFiltInitSize/2)), :);
+else
+    for iProj=1:nProj
+        if proc.gpuEnable && ((max(numel(proc.wcFiltB),numel(proc.wcFiltA))-1) <= 8)
+            iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, proc.wcFiltInitCoeff);
+        else
+            wcFiltInitState = proc.wcFiltInitCoeff(:).*reshape(iqImgSet(:,:,1,iProj),1,nZPix*nXPix);
+            iqImgSetFltAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep).';
+            iqImgSetFlt(:,:,:,iProj) = reshape(filter(proc.wcFiltB, proc.wcFiltA, iqImgSetFltAux, wcFiltInitState).',nZPix,nXPix,nRep);
+        end
+    end
+    iqImgSetFlt = iqImgSetFlt(:, :, (1 + proc.wcFiltInitSize) : end, :);
+end
 
 %% Mean frequency estimator (in fact - it's a mean phase shift estimator)
 color = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
 power = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
+turbu = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
 for iProj=1:nProj
-    [color(:,:,1,iProj),power(:,:,1,iProj)] = dopplerColor(iqImgSetFlt(:,:,(proc.wcFiltInitSize+1):end,iProj));
+    [color(:,:,1,iProj), ...
+     power(:,:,1,iProj), ...
+     turbu(:,:,1,iProj),] = dopplerColor(iqImgSetFlt(:,:,:,iProj));
 end
 
 %% Vector Doppler (optional)
@@ -55,6 +76,7 @@ if proc.vectorEnable
     color	= cat(4,  diff(-color.*projMask./cos(txrxAng),                    [],4) / diff(tan(txrxAng)), ...   % x-color
                     - diff(-color.*projMask./cos(txrxAng).*tan(flip(txrxAng)),[],4) / diff(tan(txrxAng)) );     % z-color
     power	= max(power.*projMask,[],4);
+    turbu   = min(turbu,[],4);
 end
 
 end
