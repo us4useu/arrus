@@ -191,6 +191,8 @@ std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapt
     }
 }
 
+std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> indexProbeToAdapterConnections(
+    const google::protobuf::RepeatedPtrField<::arrus::proto::ProbeToAdapterConnection> &probeToAdapterConnections);
 SettingsDictionary readDictionary(const ap::Dictionary *proto) {
     SettingsDictionary result;
 
@@ -203,13 +205,10 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
     }
 
     // index connections
-    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections;
+    auto &probeToAdapterConnections = proto->probe_to_adapter_connections();
 
-    for (const ap::ProbeToAdapterConnection &conn : proto->probe_to_adapter_connections()) {
-        std::string key = SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
-        const ap::ProbeToAdapterConnection *ptr = &conn;
-        connections.emplace(key, ptr);
-    }
+    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections =
+        indexProbeToAdapterConnections(probeToAdapterConnections);
 
     // Read probes.
     for (auto const &probe : proto->probe_models()) {
@@ -228,6 +227,16 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
         }
     }
     return result;
+}
+std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> indexProbeToAdapterConnections(
+    const google::protobuf::RepeatedPtrField<::arrus::proto::ProbeToAdapterConnection> &probeToAdapterConnections) {
+    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections;
+    for (const ap::ProbeToAdapterConnection &conn : probeToAdapterConnections) {
+        std::string key = SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
+        const ap::ProbeToAdapterConnection *ptr = &conn;
+        connections.emplace(key, ptr);
+    }
+    return connections;
 }
 
 RxSettings readRxSettings(const proto::RxSettings &proto) {
@@ -267,14 +276,50 @@ ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, c
     }
 }
 
-ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r, const ProbeAdapterModelId &adapterId,
+const proto::ProbeToAdapterConnection * getUniqueConnection(
+    const ProbeModel &model, const proto::ProbeModel_Id &probeId,
+    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> &connections) {
+    std::string key = SettingsDictionary::convertProtoIdToString(probeId);
+    if(connections.count(key) > 1) {
+        throw IllegalArgumentException(
+            format("Multiple probe to adapter connection definitions for probe: {}", model.getModelId().toString()));
+    }
+    auto it = connections.find(key);
+    if(it == std::end(connections)) {
+        throw IllegalArgumentException(format(
+            "No definition found for probe {}, but the probe is used in the probe to adapter connections list. ",
+            model.getModelId().toString()));
+    }
+    return it->second;
+}
+
+std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4r, const ProbeAdapterModelId &adapterId,
                                      const SettingsDictionary &dictionary) {
-    if (us4r.has_probe()) {
-        ProbeModel model = readProbeModel(us4r.probe());
-        std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(us4r.probe_to_adapter_connection());
-        return ProbeSettings(model, channelMapping);
-    } else if (us4r.has_probe_id()) {
-        ProbeModelId id{us4r.probe_id().manufacturer(), us4r.probe_id().name()};
+    // Read and index by probe probe to adapter connections
+    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections =
+        indexProbeToAdapterConnections(us4r.probe_to_adapter_connection());
+
+    std::vector<ProbeSettings> result;
+    for(auto &probe: us4r.probe()) {
+        ProbeModel model = readProbeModel(probe);
+        auto probeId = probe.id();
+        getUniqueConnection(model, probeId, connections, it);
+        std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*(it->second));
+        result.emplace_back(model, channelMapping);
+    }
+    for(auto &probeId: us4r.probe_id()) {
+        ProbeModelId id{probeId.manufacturer(), probeId.name()};
+        std::string key = SettingsDictionary::convertProtoIdToString(probeId);
+        if(connections.count(key) > 1) {
+            throw IllegalArgumentException(
+                format("Multiple probe to adapter connection definitions for probe: {}", model.getModelId().toString()));
+        }
+        auto it = connections.find(key);
+        if(it == std::end(connections)) {
+            throw IllegalArgumentException(format(
+                "No definition found for probe {}, but the probe is used in the probe to adapter connections list. ",
+                model.getModelId().toString()));
+        }
         if (us4r.has_probe_to_adapter_connection()) {
             std::vector<ChannelIdx> channelMapping =
                 readProbeConnectionChannelMapping(us4r.probe_to_adapter_connection());
@@ -292,10 +337,16 @@ ProbeSettings readOrGetProbeSettings(const proto::Us4RSettings &us4r, const Prob
                     format("Probe settings for probe with id {} adapter with id {} not found.", id.toString()));
             }
         }
+    }
+    if (us4r.has_probe()) {
+
+    } else if (us4r.has_probe_id()) {
+
     } else {
         throw ArrusException("NYI");
     }
 }
+
 
 template<typename T> std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
     auto &channels = mask.channels();

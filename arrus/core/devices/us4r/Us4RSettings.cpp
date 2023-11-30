@@ -27,15 +27,17 @@ operator<<(std::ostream &os, const Us4RSettings &settings) {
     }
 
     auto &probeAdapterSettings = settings.getProbeAdapterSettings();
-    auto &probeSettings = settings.getProbeSettings();
+    auto &probeSettings = settings.getProbeSettingsList();
     auto &rxSettings = settings.getRxSettings();
     auto &channelsMask = settings.getChannelsMask();
     auto &us4oemChannelsMasks = settings.getUs4OEMChannelsMask();
 
     os << " probeAdapterSettings: ";
     printOptionalValue(probeAdapterSettings, os);
-    os << " probeSettings: ";
-    printOptionalValue(probeSettings, os);
+    for(auto &probe: probeSettings) {
+        os << " probeSettings: ";
+        os << probe;
+    }
     os << " rxSettings: ";
     printOptionalValue(rxSettings, os);
 

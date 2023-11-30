@@ -13,4 +13,5 @@ message ProbeToAdapterConnection {
   // Channel mapping - one of:
   repeated uint32 channel_mapping = 3;
   repeated IntervalInteger channel_mapping_ranges = 4;
+  optional unit32 bitstream_id = 5;
 }

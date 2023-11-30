@@ -19,6 +19,9 @@ class Us4RSettings {
 public:
     using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
 
+    /**
+     * TODO deprecated, will be removed in 0.11.0
+     */
     explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
                           std::optional<Ordinal> nUs4OEMs = std::nullopt,
                           std::vector<Ordinal> adapterToUs4RModuleNumber = {},
@@ -57,9 +60,6 @@ public:
           digitalBackplaneSettings(std::move(digitalBackplaneSettings))
     {}
 
-    /**
-     * Provides the possibility to specify settings for a single
-     */
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,
         ProbeSettings probeSettings,
@@ -104,6 +104,10 @@ public:
                 "There are no settings for probe: " + std::to_string(ordinal)
                 );
         }
+    }
+
+    const std::vector<ProbeSettings> &getProbeSettingsList() const {
+        return probeSettings;
     }
 
     /**
