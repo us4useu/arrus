@@ -32,7 +32,7 @@ public:
 
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,
-        ProbeSettings probeSettings,
+        std::vector<ProbeSettings> probeSettings,
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
         std::vector<ChannelIdx> channelsMask,
@@ -57,6 +57,38 @@ public:
           digitalBackplaneSettings(std::move(digitalBackplaneSettings))
     {}
 
+    /**
+     * Provides the possibility to specify settings for a single
+     */
+    Us4RSettings(
+        ProbeAdapterSettings probeAdapterSettings,
+        ProbeSettings probeSettings,
+        RxSettings rxSettings,
+        std::optional<HVSettings> hvSettings,
+        std::vector<ChannelIdx> channelsMask,
+        std::vector<std::vector<uint8>> us4oemChannelsMask,
+        ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
+        std::optional<Ordinal> nUs4OEMs = std::nullopt,
+        std::vector<Ordinal> adapterToUs4RModuleNumber = {},
+        bool externalTrigger = false,
+        int txFrequencyRange = 1,
+        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
+        ) : Us4RSettings(
+                std::move(probeAdapterSettings),
+                std::vector<ProbeSettings>{std::move(probeSettings)},
+                std::move(rxSettings),
+                std::move(hvSettings),
+                std::move(channelsMask),
+                std::move(us4oemChannelsMask),
+                reprogrammingMode,
+                nUs4OEMs,
+                std::move(adapterToUs4RModuleNumber),
+                externalTrigger,
+                txFrequencyRange,
+                std::move(digitalBackplaneSettings)
+        )
+    {}
+
     const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
         return us4oemSettings;
     }
@@ -66,8 +98,23 @@ public:
         return probeAdapterSettings;
     }
 
-    const std::optional<ProbeSettings> &getProbeSettings() const {
-        return probeSettings;
+    const ProbeSettings &getProbeSettings(size_t ordinal) const {
+        if(ordinal >= probeSettings.size()) {
+            throw IllegalArgumentException(
+                "There are no settings for probe: " + std::to_string(ordinal)
+                );
+        }
+    }
+
+    /**
+     * Returns probe settings for probe 0.
+     * TODO (ARRUS-276) deprecated, will be removed in v0.11.0
+     */
+    std::optional<ProbeSettings> getProbeSettings() const {
+        if(probeSettings.empty()) {
+            return std::nullopt;
+        }
+        return getProbeSettings(0);
     }
 
     const std::optional<RxSettings> &getRxSettings() const {
@@ -118,9 +165,9 @@ private:
      *  Us4OEMSettings must be set. When is set, the list of Us4OEM
      *  settings should be empty. */
     std::optional<ProbeAdapterSettings> probeAdapterSettings{};
-    /** ProbeSettings to set. Optional - when is set, ProbeAdapterSettings also
+    /** List of ProbeSettings to set. Optional - when is set, ProbeAdapterSettings also
      * must be available.*/
-    std::optional<ProbeSettings> probeSettings{};
+    std::vector<ProbeSettings> probeSettings;
     /** Required when no Us4OEM settings are set. */
     std::optional<RxSettings> rxSettings;
     /** Optional (us4r devices may have externally controlled hv suppliers. */
