@@ -279,6 +279,9 @@ class ProbeElementFeatureExtractor(ABC):
     """
     feature: str
 
+    def __init__(self, metadata):
+        self.metadata = metadata
+
     @abstractmethod
     def extract(self, rf: np.ndarray, *args) -> np.ndarray:
         raise ValueError("Abstract class")
@@ -297,6 +300,8 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     def extract(self, rf: np.ndarray) -> np.ndarray:
         # TODO(zklog) perhaps it might be a good idea to also remove the DC component here?
         rf = rf.copy()
+        print("ASDADASDSAS")
+        print(self.metadata.context.sequence.pulse.center_frequency)
         # rf = _hpfilter(rf, axis=-2)
         rf = np.abs(rf[:, :, :, :])
         # Reduce each RF frame into a vector of n elements
@@ -746,7 +751,7 @@ class ProbeHealthVerifier:
         # validator.
         results = {}
         for feature in features:
-            extractor = EXTRACTORS[feature.name]()
+            extractor = EXTRACTORS[feature.name](metadata)
             if feature.name == "footprint_pcc":
                 try:
                     extractor_result = extractor.extract(rfs, footprint.rf)
