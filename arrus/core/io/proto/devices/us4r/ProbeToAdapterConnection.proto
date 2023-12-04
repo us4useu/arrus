@@ -7,11 +7,14 @@ import "io/proto/devices/us4r/ProbeAdapterModel.proto";
 import "io/proto/common/IntervalInteger.proto";
 
 message ProbeToAdapterConnection {
+  message BitstreamId {
+    uint32 ordinal = 1;
+  }
   ProbeModel.Id probe_model_id = 1;
   repeated ProbeAdapterModel.Id probe_adapter_model_id = 2;
 
   // Channel mapping - one of:
   repeated uint32 channel_mapping = 3;
   repeated IntervalInteger channel_mapping_ranges = 4;
-  optional unit32 bitstream_id = 5;
+  BitstreamId bitstream_id = 5;
 }

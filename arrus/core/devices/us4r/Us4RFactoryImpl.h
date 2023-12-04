@@ -59,7 +59,7 @@ class Us4RFactoryImpl : public Us4RFactory {
             adapterValidator.validate(probeAdapterSettings);
             adapterValidator.throwOnErrors();
             // Probe
-            auto &probeSettings = settings.getProbeSettings().value();
+            auto probeSettings = settings.getProbeSettings().value();
             // TODO validate probe settings
             auto &rxSettings = settings.getRxSettings().value();
             // Rx settings will be validated by a specific device

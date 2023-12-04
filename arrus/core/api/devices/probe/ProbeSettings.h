@@ -3,13 +3,16 @@
 
 #include <utility>
 #include <ostream>
+#include <optional>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
 
 namespace arrus::devices {
+
 class ProbeSettings {
 public:
+    using BitstreamId = uint16_t;
     /**
      *
      * @param model
@@ -20,6 +23,10 @@ public:
             : model(std::move(model)),
               channelMapping(std::move(channelMapping)) {}
 
+    ProbeSettings(ProbeModel model, std::vector<ChannelIdx> channelMapping,
+                  const std::optional<BitstreamId> &bitstreamId)
+        : model(std::move(model)), channelMapping(std::move(channelMapping)), bitstreamId(bitstreamId) {}
+
     const std::vector<ChannelIdx> &getChannelMapping() const {
         return channelMapping;
     }
@@ -28,10 +35,13 @@ public:
         return model;
     }
 
+    const std::optional<BitstreamId> &getBitstreamId() const { return bitstreamId; }
+
 private:
     ProbeModel model;
     /** A probe channel mapping to the underlying device. */
     std::vector<ChannelIdx> channelMapping;
+    std::optional<BitstreamId> bitstreamId{std::nullopt};
 };
 }
 

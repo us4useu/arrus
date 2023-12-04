@@ -104,6 +104,7 @@ public:
                 "There are no settings for probe: " + std::to_string(ordinal)
                 );
         }
+        return probeSettings.at(ordinal);
     }
 
     const std::vector<ProbeSettings> &getProbeSettingsList() const {
