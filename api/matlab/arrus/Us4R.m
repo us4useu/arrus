@@ -773,7 +773,7 @@ classdef Us4R < handle
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
             
-            if obj.rec.colorEnable || obj.rec.vectorEnable
+            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
                 [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
             end
             
@@ -805,10 +805,16 @@ classdef Us4R < handle
                 obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
                 obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
                 obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
+                obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
+                obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
                 obj.seq.rxSampFreq     =          single(obj.seq.rxSampFreq);
                 obj.rec.sos            =          single(obj.rec.sos);
                 obj.seq.startSample    =          single(obj.seq.startSample);
                 obj.seq.txDelCent      =          single(obj.seq.txDelCent);
+
+                if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
+                    obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
+                end
                 
             end
         end
@@ -1044,7 +1050,7 @@ classdef Us4R < handle
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
-                    [color,power] = dopplerColorImaging(rfBfrColor, obj.seq, obj.rec);
+                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.seq, obj.rec);
                 end
                 
                 % Vector Doppler image reconstruction
@@ -1052,7 +1058,7 @@ classdef Us4R < handle
                     rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
                     rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
                     
-                    [color,power] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.seq, obj.rec);
+                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.seq, obj.rec);
                 end
             end
 
@@ -1085,7 +1091,7 @@ classdef Us4R < handle
             
             % Put B-Mode & Doppler data together
             if obj.rec.colorEnable || obj.rec.vectorEnable
-                img = cat(4,img,power,color);
+                img = cat(4,img,power,turbu,color);
             end
             
             % Gather data from GPU

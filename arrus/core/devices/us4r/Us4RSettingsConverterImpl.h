@@ -132,7 +132,9 @@ public:
                 ProbeAdapterSettings(
                     probeAdapterSettings.getModelId(),
                     probeAdapterSettings.getNumberOfChannels(),
-                    adapterChannelMapping)};
+                    adapterChannelMapping,
+                    probeAdapterSettings.getIOSettings()
+                )};
     }
 
 private:

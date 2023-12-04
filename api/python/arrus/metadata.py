@@ -1,6 +1,6 @@
 import dataclasses
 import abc
-from typing import Sequence, Optional
+from typing import Sequence, Optional, List
 
 import arrus.devices.device
 import arrus.medium
@@ -21,9 +21,10 @@ class FrameAcquisitionContext:
     """
     device: arrus.devices.ultrasound.UltrasoundDTO
     sequence: arrus.ops.Operation
-    raw_sequence: arrus.ops.us4r.TxRxSequence
+    raw_sequence: arrus.ops.Operation
     medium: arrus.medium.MediumDTO
     custom_data: dict
+    constants: List
 
 
 class DataDescription(abc.ABC):

@@ -19,7 +19,7 @@ public:
         return instance;
     }
 
-    us4r::afe58jd18::LNA_GAIN_GBL getEnumValue(const ValueType value) {
+    ::us4r::afe58jd18::LNA_GAIN_GBL getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 
@@ -45,15 +45,15 @@ public:
     void operator=(LNAGainValueMap const &&) = delete;
 
 private:
-    std::unordered_map<ValueType, us4r::afe58jd18::LNA_GAIN_GBL> valueMap;
+    std::unordered_map<ValueType, ::us4r::afe58jd18::LNA_GAIN_GBL> valueMap;
 
     LNAGainValueMap() {
         valueMap.emplace(ValueType(12),
-                         us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_12dB);
+                         ::us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_12dB);
         valueMap.emplace(ValueType(18),
-                         us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_18dB);
+                         ::us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_18dB);
         valueMap.emplace(ValueType(24),
-                         us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_24dB);
+                         ::us4r::afe58jd18::LNA_GAIN_GBL::LNA_GAIN_GBL_24dB);
     }
 
 };

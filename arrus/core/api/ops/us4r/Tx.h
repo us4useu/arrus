@@ -37,6 +37,7 @@ public:
         return excitation;
     }
 
+
 private:
     std::vector<bool> aperture;
     std::vector<float> delays;

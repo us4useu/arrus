@@ -149,12 +149,12 @@ public:
     /**
      * Returns serial number of this us4OEM (a null-terminated string).
      */
-    virtual const char* getSerialNumber() const = 0;
+    virtual const char* getSerialNumber() = 0;
 
     /**
      * Returns revision number of this us4OEM (a null-terminated string).
      */
-    virtual const char* getRevision() const = 0;
+    virtual const char* getRevision() = 0;
 
     /**
      * Disables digital high-pass filter.

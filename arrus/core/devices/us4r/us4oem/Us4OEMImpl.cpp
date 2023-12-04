@@ -27,10 +27,13 @@ namespace arrus::devices {
 Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
                        std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                        std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
-                       bool externalTrigger = false)
+                       bool externalTrigger = false, bool acceptRxNops = false)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
-      reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger) {
+      reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
+      serialNumber([this](){return this->ius4oem->GetSerialNumber();}),
+      revision([this](){return this->ius4oem->GetRevisionNumber();}),
+      acceptRxNops(acceptRxNops) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -210,7 +213,8 @@ private:
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
                             uint16 batchSize, std::optional<float> sri, bool triggerSync,
-                            const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc) {
+                            const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
+                            const std::vector<arrus::framework::NdArray> &txDelays) {
     std::unique_lock<std::mutex> lock{stateMutex};
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
@@ -241,6 +245,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     const std::bitset<N_ADDR_CHANNELS> emptyAperture;
     const std::bitset<N_ACTIVE_CHANNEL_GROUPS> emptyChannelGroups;
     this->isDecimationFactorAdjustmentLogged = false;
+
+    size_t nTxDelayProfiles = txDelays.size();
+
 
     // Program Tx/rx sequence ("firings")
     for (uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
@@ -290,21 +297,36 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         }
 
         // Delays
+        size_t currentTxDelaysId = 0;
         uint8 txChannel = 0;
         for (bool bit : op.getTxAperture()) {
-            float txDelay = 0;
+            // First set the internal TX delays.
+            for(currentTxDelaysId = 0; currentTxDelaysId < nTxDelayProfiles; ++currentTxDelaysId) {
+                float txDelay = 0.0f;
+                if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
+                    txDelay = txDelays[currentTxDelaysId].get<float>((size_t)opIdx, (size_t)txChannel);
+                }
+                ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
+            }
+            // Then set the profile from the input sequence (for backward-compatibility).
+            // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
+            // and reduces the risk of causing new bugs in the whole mapping implementation.
+            // This will be optimized in v0.10.0.
+            float txDelay = 0.0f;
             if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
                 txDelay = op.getTxDelays()[txChannel];
             }
-            ius4oem->SetTxDelay(txChannel, txDelay, opIdx);
+            ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
         ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
-        ius4oem->SetRxDelay(RX_DELAY, opIdx);
+        ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
     }
+    // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
+    ius4oem->SetTxDelays(nTxDelayProfiles);
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(nOps * batchSize * rxBufferSize);
 
@@ -386,7 +408,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (batchIdx == 0) {
                     size_t partSize = 0;
-                    if(!op.isRxNOP() || this->isMaster()) {
+                    if(!op.isRxNOP() || acceptRxNops) {
                         partSize = nBytes;
                     }
                     // Otherwise, make an empty part (i.e. partSize = 0).
@@ -394,10 +416,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     // us4oem sequencer).
                     rxBufferElementParts.emplace_back(outputAddress, partSize, firing);
                 }
-                if (!op.isRxNOP() || this->isMaster()) {
-                    // Also, allows rx nops for master module.
-                    // Master module gathers frame metadata, so we cannot miss any of it.
-                    // All RX nops are just overwritten.
+                if (!op.isRxNOP() || acceptRxNops) {
+                    // Also, allows rx nops.
+                    // For example, the master module gathers frame metadata, so we cannot miss any of it.
+                    // In all other cases, all RX nops are just overwritten.
                     outputAddress += nBytes;
                     totalNSamples += (unsigned) nSamples;
                 }
@@ -479,8 +501,8 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
     // FC mapping
     auto numberOfOutputFrames = getNumberOfNoRxNOPs(seq);
-    if (this->isMaster()) {
-        // We transfer all master module frames due to possible metadata stored in the frame.
+    if (acceptRxNops) {
+        // We transfer all module frames due to possible metadata stored in the frame (if enabled).
         numberOfOutputFrames = ARRUS_SAFE_CAST(seq.size(), ChannelIdx);
     }
     FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_RX_CHANNELS);
@@ -528,7 +550,7 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
                     mapping.emplace_back(std::nullopt);
                 }
                 auto frameNumber = noRxNopId;
-                if (this->isMaster()) {
+                if (acceptRxNops) {
                     frameNumber = opId;
                 }
                 fcmBuilder.setChannelMapping(frameNumber, onChannel,
@@ -703,12 +725,12 @@ inline void Us4OEMImpl::setDtgcAttenuationAfe(std::optional<uint16> param, bool 
         return;
     }
     if (param.has_value()) {
-        ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
+        ius4oem->SetDTGC(::us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_EN,
                          DTGCAttenuationValueMap::getInstance().getEnumValue(param.value()));
     } else {
         // DTGC param does not matter
-        ius4oem->SetDTGC(us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
-                         us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
+        ius4oem->SetDTGC(::us4r::afe58jd18::EN_DIG_TGC::EN_DIG_TGC_DIS,
+                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
     }
 }
 
@@ -723,11 +745,11 @@ inline void Us4OEMImpl::setActiveTerminationAfe(std::optional<uint16> param, boo
         return;
     }
     if (rxSettings.getActiveTermination().has_value()) {
-        ius4oem->SetActiveTermination(us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
+        ius4oem->SetActiveTermination(::us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_EN,
                                       ActiveTerminationValueMap::getInstance().getEnumValue(param.value()));
     } else {
-        ius4oem->SetActiveTermination(us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
-                                      us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
+        ius4oem->SetActiveTermination(::us4r::afe58jd18::ACTIVE_TERM_EN::ACTIVE_TERM_DIS,
+                                      ::us4r::afe58jd18::GBL_ACTIVE_TERM::GBL_ACTIVE_TERM_50);
     }
 }
 
@@ -861,8 +883,8 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
                       static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
 
-const char* Us4OEMImpl::getSerialNumber() const { return Us4OEMImpl::SERIAL_NUMBER_MOCK_UP; }
+const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
 
-const char* Us4OEMImpl::getRevision() const { return Us4OEMImpl::REVISION_MOCK_UP; }
+const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
 }// namespace arrus::devices

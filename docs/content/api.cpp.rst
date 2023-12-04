@@ -80,7 +80,7 @@ Devices
 
 .. doxygenclass:: arrus::devices::Us4R
     :project: arrus
-    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision, getUs4OEM
+    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision, getUs4OEM, getBackplaneSerialNumber, getBackplaneRevision
 
 .. doxygenclass:: arrus::devices::RxSettings
     :members:

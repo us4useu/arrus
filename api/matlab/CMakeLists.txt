@@ -19,7 +19,7 @@ set(SOURCE_FILES
     arrus/scanConversion.m
     arrus/Us4R.m
     arrus/wedgeParams.m
-    examples/Us4R_control_rfPwi.m
+    examples/Us4R_control_rawRfPwi.m
     examples/Us4R_control_bmodePwi.m
     examples/Us4R_control_bmodeDwi.m
     examples/Us4R_control_bmodeLin.m
@@ -27,6 +27,7 @@ set(SOURCE_FILES
 )
 
 set(ARRUS_CUDA_MEX_SRC_FILES
+    arrus/mexcuda/wcFilter.cu
     arrus/mexcuda/dopplerColor.cu
     arrus/mexcuda/iqRaw2Lri.cu
     arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu

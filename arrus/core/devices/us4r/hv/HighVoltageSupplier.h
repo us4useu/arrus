@@ -21,8 +21,7 @@ class HighVoltageSupplier : public Device {
 public:
     using Handle = std::unique_ptr<HighVoltageSupplier>;
 
-    HighVoltageSupplier(const DeviceId &id, HVModelId modelId,
-                        std::optional<std::unique_ptr<IDBAR>> dbar);
+    HighVoltageSupplier(const DeviceId &id, HVModelId modelId);
 
     void setVoltage(Voltage voltage) {
         try {
@@ -76,7 +75,6 @@ protected:
 private:
     Logger::Handle logger;
     HVModelId modelId;
-    std::optional<std::unique_ptr<IDBAR>> dbar;
 };
 
 /**
@@ -84,9 +82,8 @@ private:
  */
 class HighVoltageSupplierOwner: public HighVoltageSupplier {
 public:
-    HighVoltageSupplierOwner(const DeviceId &id, HVModelId modelId,
-                             std::optional<std::unique_ptr<IDBAR>> dbar, std::unique_ptr<IHV> hv)
-        : HighVoltageSupplier(id, std::move(modelId), std::move(dbar)), hv(std::move(hv)) {}
+    HighVoltageSupplierOwner(const DeviceId &id, HVModelId modelId, std::unique_ptr<IHV> hv)
+        : HighVoltageSupplier(id, std::move(modelId)), hv(std::move(hv)) {}
 
 protected:
     IHV *getIHV() override { return hv.get(); }
@@ -100,9 +97,8 @@ private:
  */
 class HighVoltageSupplierView: public HighVoltageSupplier {
 public:
-    HighVoltageSupplierView(const DeviceId &id, HVModelId modelId,
-                            std::optional<std::unique_ptr<IDBAR>> dbar, IHV *hv)
-        : HighVoltageSupplier(id, std::move(modelId), std::move(dbar)), hv(hv) {}
+    HighVoltageSupplierView(const DeviceId &id, HVModelId modelId, IHV *hv)
+        : HighVoltageSupplier(id, std::move(modelId)), hv(hv) {}
 
 protected:
     IHV *getIHV() override { return hv; }

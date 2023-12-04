@@ -7,6 +7,7 @@
 
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
+#include "arrus/common/cache.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
@@ -68,7 +69,6 @@ public:
     static constexpr float SAMPLING_FREQUENCY = 65e6;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
-    static constexpr float RX_DELAY = 0.0;
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
     static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f; // [s]
@@ -89,7 +89,7 @@ public:
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
                std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
-               bool externalTrigger);
+               bool externalTrigger, bool acceptRxNops);
 
     ~Us4OEMImpl() override;
 
@@ -104,7 +104,9 @@ public:
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false,
-                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt) override;
+                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
+                    const std::vector<arrus::framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
+                    ) override;
 
     float getSamplingFrequency() override;
 
@@ -152,15 +154,11 @@ public:
 
     float getFPGAWallclock() override;
 
-    const char *getSerialNumber() const override;
+    const char *getSerialNumber() override;
 
-    const char *getRevision() const override;
+    const char *getRevision() override;
 
 private:
-    // SN and REVISION mockups for the legacy us4OEM model.
-    const char* SERIAL_NUMBER_MOCK_UP = "";
-    const char* REVISION_MOCK_UP = "";
-
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
@@ -216,6 +214,9 @@ private:
     float currentSamplingFrequency{SAMPLING_FREQUENCY};
     /** Global state mutex */
     mutable std::mutex stateMutex;
+    arrus::Cached<std::string> serialNumber;
+    arrus::Cached<std::string> revision;
+    bool acceptRxNops{false};
     bool isDecimationFactorAdjustmentLogged{false};
 };
 

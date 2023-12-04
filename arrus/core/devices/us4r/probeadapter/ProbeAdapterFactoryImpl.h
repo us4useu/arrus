@@ -25,7 +25,9 @@ public:
             settings.getModelId(),
             us4oems,
             settings.getNumberOfChannels(),
-            settings.getChannelMapping());
+            settings.getChannelMapping(),
+            settings.getIOSettings()
+        );
     }
 };
 

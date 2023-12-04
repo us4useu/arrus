@@ -304,6 +304,16 @@ public:
      */
     virtual void disableHpf()  = 0;
 
+    /**
+     * Returns serial number of the backplane (if available).
+     */
+    virtual const char* getBackplaneSerialNumber() = 0;
+
+    /**
+     * Returns serial number of the backplane (if available).
+     */
+    virtual const char* getBackplaneRevision() = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;
