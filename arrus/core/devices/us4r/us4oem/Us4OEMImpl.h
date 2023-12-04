@@ -216,6 +216,7 @@ private:
     float currentSamplingFrequency{SAMPLING_FREQUENCY};
     /** Global state mutex */
     mutable std::mutex stateMutex;
+    bool isDecimationFactorAdjustmentLogged{false};
 };
 
 }

@@ -240,6 +240,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     // helper data
     const std::bitset<N_ADDR_CHANNELS> emptyAperture;
     const std::bitset<N_ACTIVE_CHANNEL_GROUPS> emptyChannelGroups;
+    this->isDecimationFactorAdjustmentLogged = false;
 
     // Program Tx/rx sequence ("firings")
     for (uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
@@ -790,10 +791,13 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
     //Check if data valid offset is higher than TX offset
     if (offset > txOffset) {
         //If TX offset is lower than data valid offset return just data valid offset and log warning
-        this->logger->log(LogSeverity::WARNING,
+        if(!this->isDecimationFactorAdjustmentLogged) {
+            this->logger->log(LogSeverity::WARNING,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} microseconds to align start of RX data with start of TX.",
                                           ddcDecimationFactor, (float)(offset - txOffset + offsetCorrection)/65.0f));
+            this->isDecimationFactorAdjustmentLogged = true;
+        }
         return offset;
     } else {
         //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
