@@ -814,7 +814,7 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
     if (offset > txOffset) {
         //If TX offset is lower than data valid offset return just data valid offset and log warning
         if(!this->isDecimationFactorAdjustmentLogged) {
-            this->logger->log(LogSeverity::WARNING,
+            this->logger->log(LogSeverity::INFO,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} microseconds to align start of RX data with start of TX.",
                                           ddcDecimationFactor, (float)(offset - txOffset + offsetCorrection)/65.0f));
