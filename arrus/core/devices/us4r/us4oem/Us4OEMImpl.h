@@ -157,6 +157,9 @@ public:
     const char *getSerialNumber() override;
 
     const char *getRevision() override;
+    BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) override;
+    void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
+                        const std::vector<uint16_t> &lengths) override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
@@ -199,6 +202,8 @@ private:
     void resetAfe();
     void setHpfCornerFrequency(uint32_t frequency);
     void disableHpf();
+    void setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
+                                 const std::vector<uint16_t> &periods);
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -217,6 +222,10 @@ private:
     arrus::Cached<std::string> serialNumber;
     arrus::Cached<std::string> revision;
     bool acceptRxNops{false};
+    /** maps from the bitstream id (0, 1,...), to bitstream FPGA offset. */
+    std::vector<uint16> bitstreamOffsets;
+    /** The size of each bitstream defined (the number of registers). */
+    std::vector<uint16> bitstreamSizes;
 };
 
 }

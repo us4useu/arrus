@@ -21,6 +21,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/IOCapability.proto
     io/proto/devices/us4r/IOSettings.proto
     io/proto/devices/us4r/DigitalBackplaneSettings.proto
+    io/proto/devices/us4r/Bitstream.proto
     )
 ################################################################################
 # Target

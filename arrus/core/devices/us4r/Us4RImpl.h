@@ -43,8 +43,9 @@ public:
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
              std::vector<unsigned short> channelsMask,
-             std::optional<DigitalBackplane::Handle> backplane
-             );
+             std::optional<DigitalBackplane::Handle> backplane,
+             std::vector<Bitstream> bitstreams,
+             bool hasIOBitstreamAddressing);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -147,6 +148,7 @@ public:
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
     void setParameters(const Parameters &parameters) override;
+    void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -182,7 +184,11 @@ private:
     std::function<void()> createOnTransferOverflowCallback(
         ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
 
+    BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths);
+
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {return this->us4oems[0].get();}
+
+    TxRxParameters convertToTxRxParameters(const ops::us4r::TxRx &rx, std::optional<BitstreamId> bitstreamId);
 
     std::mutex deviceStateMutex;
     std::mutex afeParamsMutex;
@@ -200,6 +206,8 @@ private:
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
+    std::vector<Bitstream> bitstreams;
+    bool hasIOBitstreamAdressing{false};
 };
 
 }// namespace arrus::devices

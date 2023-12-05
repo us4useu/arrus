@@ -157,8 +157,10 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax)
-    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
+    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax,
+                        BitstreamId nBitstreams)
+    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax),
+      nBitstreams(nBitstreams) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -203,11 +205,16 @@ public:
                 ARRUS_VALIDATOR_EXPECT_TRUE_M((op.getRxPadding() == ::arrus::Tuple<ChannelIdx>{0, 0}),
                                               ("Rx padding is not allowed for us4oems. " + firingStr));
             }
+            if(op.getBitstreamId().has_value()) {
+                ARRUS_REQUIRES_TRUE(op.getBitstreamId().value() < nBitstreams,
+                                    "Bitstream id should not exceed " + std::to_string(nBitstreams));
+            }
         }
     }
 private:
     float txFrequencyMin;
     float txFrequencyMax;
+    BitstreamId nBitstreams;
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
@@ -222,7 +229,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     Us4OEMTxRxValidator seqValidator(
         format("{} tx rx sequence", deviceIdStr),
         ius4oem->GetMinTxFrequency(),
-        ius4oem->GetMaxTxFrequency());
+        ius4oem->GetMaxTxFrequency(),
+        bitstreamOffsets.size()
+    );
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
@@ -323,6 +332,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
+        if(op.getBitstreamId().has_value() && isMaster()) {
+            ius4oem->SetFiringIOBS(opIdx, bitstreamOffsets.at(op.getBitstreamId().value()));
+        }
     }
     // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
     ius4oem->SetTxDelays(nTxDelayProfiles);
@@ -871,5 +883,40 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
 const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
 
 const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
+
+BitstreamId Us4OEMImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
+    ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
+    uint16 bitstreamOffset = 0;
+    uint16 bitstreamId = 0;
+    if(! bitstreamOffsets.empty()) {
+        bitstreamId = int16(bitstreamOffsets.size());
+        bitstreamOffset = bitstreamOffsets.at(bitstreamId-1) + bitstreamSizes.at(bitstreamId-1);
+    }
+    setIOBitstreamForOffset(bitstreamOffset, levels, periods);
+    bitstreamOffsets.push_back(bitstreamOffset);
+    bitstreamSizes.push_back(uint16(levels.size()));
+    return bitstreamId;
+}
+
+void Us4OEMImpl::setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
+                                const std::vector<uint16_t> &periods) {
+    ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
+    ARRUS_REQUIRES_TRUE(id < bitstreamOffsets.size(), "The bitstream with the given id does not exists.");
+    if(id == bitstreamOffsets.size()-1) {
+        // Allow to change the last bitstream size.
+        ARRUS_REQUIRES_EQUAL_IAE(levels.size(), bitstreamSizes.at(id));
+    }
+    setIOBitstreamForOffset(bitstreamOffsets.at(id), levels, periods);
+    bitstreamSizes[id] = levels.size();
+}
+
+void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
+                                const std::vector<uint16_t> &periods) {
+    ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
+    size_t nRegisters = levels.size();
+    for(size_t i = 0; i < nRegisters; ++i) {
+        ius4oem->SetIOBSRegister(bitstreamOffset, levels[i], i == (nRegisters -1), periods[i]);
+    }
+}
 
 }// namespace arrus::devices

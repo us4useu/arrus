@@ -307,7 +307,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
             // If there are some probe to adapter connections: use only them.
             auto *connection = getUniqueConnection(probeId, connections);
             std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*connection);
-            std::optional<ProbeSettings::BitstreamId> bitstreamId;
+            std::optional<BitstreamId> bitstreamId;
             if(connection->has_bitstream_id()) {
                 bitstreamId = connection->bitstream_id().ordinal();
             }
@@ -322,7 +322,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
         const auto& probeId = probe.id();
         auto *connection = getUniqueConnection(probeId, connections);
         std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*connection);
-        std::optional<ProbeSettings::BitstreamId> bitstreamId;
+        std::optional<BitstreamId> bitstreamId;
         if(connection->has_bitstream_id()) {
             bitstreamId = connection->bitstream_id().ordinal();
         }
@@ -373,6 +373,22 @@ FileSettings readFileSettings(const proto::FileSettings &file, const SettingsDic
         file.n_frames(),
         readProbeModel(file, dictionary)
     };
+}
+
+std::vector<Bitstream> readBitstreams(const ::google::protobuf::RepeatedPtrField<::arrus::proto::Bitstream>& bitstreams) {
+    std::vector<Bitstream> result;
+    for(auto &b: bitstreams) {
+        std::vector<uint8> levels;
+        std::vector<uint16> periods;
+        std::transform(std::begin(b.levels()), std::end(b.levels()), std::back_inserter(levels), [](auto v) {
+            return (uint8)v;
+        });
+        std::transform(std::begin(b.periods()), std::end(b.periods()), std::back_inserter(periods), [](auto v) {
+          return (uint16)v;
+        });
+        result.emplace_back(levels, periods);
+    }
+    return result;
 }
 
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDictionary &dictionary) {
@@ -464,11 +480,12 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             us4oemChannelsMask.push_back(readChannelsMask<uint8>(mask));
         }
         auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
+        std::vector<Bitstream> bitstreams = readBitstreams(us4r.bitstreams());
 
         return {adapterSettings,       probeSettings,           rxSettings,        hvSettings,
                 channelsMask,          us4oemChannelsMask,      reprogrammingMode, nUs4OEMs,
                 adapterToUs4RModuleNr, us4r.external_trigger(), txFrequencyRange,
-                digitalBackplaneSettings
+                digitalBackplaneSettings, bitstreams
         };
     }
 }

@@ -9,6 +9,7 @@ import "io/proto/devices/us4r/RxSettings.proto";
 import "io/proto/devices/us4r/Us4OEMSettings.proto";
 import "io/proto/devices/us4r/HVSettings.proto";
 import "io/proto/devices/us4r/DigitalBackplaneSettings.proto";
+import "io/proto/devices/us4r/Bitstream.proto";
 
 message Us4RSettings {
 
@@ -46,4 +47,5 @@ message Us4RSettings {
     uint32 tx_frequency_range = 15;
   }
   DigitalBackplaneSettings digital_backplane = 16;
+  repeated Bitstream bitstreams = 17;
 }

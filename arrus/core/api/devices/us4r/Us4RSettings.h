@@ -12,6 +12,7 @@
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/us4r/DigitalBackplaneSettings.h"
+#include "arrus/core/api/devices/us4r/Bitstream.h"
 
 namespace arrus::devices {
 
@@ -45,7 +46,8 @@ public:
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
         bool externalTrigger = false,
         int txFrequencyRange = 1,
-        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
+        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
+        std::vector<Bitstream> bitstreams = std::vector<Bitstream>()
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -57,7 +59,8 @@ public:
           adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
           externalTrigger(externalTrigger),
           txFrequencyRange(txFrequencyRange),
-          digitalBackplaneSettings(std::move(digitalBackplaneSettings))
+          digitalBackplaneSettings(std::move(digitalBackplaneSettings)),
+          bitstreams(std::move(bitstreams))
     {}
 
     Us4RSettings(
@@ -162,6 +165,8 @@ public:
         return digitalBackplaneSettings;
     }
 
+    const std::vector<Bitstream> &getBitstreams() const { return bitstreams; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -206,6 +211,10 @@ private:
      * Digital backplane ("DBAR") settings. If not provided, DBAR will be determined based on select HV supplier.
      */
      std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
+     /**
+      * Bitstream definitions.
+      */
+     std::vector<Bitstream> bitstreams;
 };
 
 }

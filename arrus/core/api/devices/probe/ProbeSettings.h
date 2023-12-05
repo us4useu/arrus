@@ -12,7 +12,6 @@ namespace arrus::devices {
 
 class ProbeSettings {
 public:
-    using BitstreamId = uint16_t;
     /**
      *
      * @param model

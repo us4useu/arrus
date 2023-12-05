@@ -51,15 +51,27 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageS
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
                    ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv,
                    const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
-                   std::optional<DigitalBackplane::Handle> backplane)
+                   std::optional<DigitalBackplane::Handle> backplane,
+                   std::vector<Bitstream> bitstreams,
+                   bool hasIOBitstreamAddressing)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
       probeAdapter(std::move(probeAdapter)), probe(std::move(probe)),
       digitalBackplane(std::move(backplane)),
       hv(std::move(hv)),
       rxSettings(rxSettings),
-      channelsMask(std::move(channelsMask))
+      channelsMask(std::move(channelsMask)),
+      bitstreams(std::move(bitstreams)),
+      hasIOBitstreamAdressing(hasIOBitstreamAddressing)
 {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
+    if(hasIOBitstreamAdressing) {
+        // Add empty IOBitstream, to use for TX/RX between probe switching.
+        getMasterUs4oem()->addIOBitstream({0, }, {1, });
+    }
+
+    for(auto &bitstream: bitstreams) {
+        getMasterUs4oem()->addIOBitstream(bitstream.getLevels(), bitstream.getPeriods());
+    }
 }
 
 std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
@@ -378,15 +390,18 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
     std::vector<TxRxParameters> actualSeq;
     // Convert to intermediate representation (TxRxParameters).
     size_t opIdx = 0;
+
+    if(hasIOBitstreamAdressing) {
+        // emplace a single, short op, for bitstream pattern switching only
+        ARRUS_REQUIRES_TRUE(seq.getOps().size() > 1, "The sequence should have at least one TX/RX defined.");
+        TxRxParametersBuilder builder(convertToTxRxParameters(seq.getOps().at(0), 1));
+        builder.convertToNOP();
+        actualSeq.push_back(builder.build());
+    }
+
     for (const auto &txrx : seq.getOps()) {
-        auto &tx = txrx.getTx();
-        auto &rx = txrx.getRx();
-
-        Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
-        Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
-
-        actualSeq.push_back(TxRxParameters(tx.getAperture(), tx.getDelays(), tx.getExcitation(), rx.getAperture(),
-                                           sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding));
+        TxRxParameters params = convertToTxRxParameters(txrx, 0);
+        actualSeq.push_back(params);
         ++opIdx;
     }
     return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
@@ -832,6 +847,27 @@ void Us4RImpl::setParameters(const Parameters &params) {
 	// Everything OK, resume.
         this->us4oems[0]->getIUs4oem()->TriggerStart();
     }
+}
+
+BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) {
+    return this->us4oems[0]->addIOBitstream(levels, lengths);
+}
+
+void Us4RImpl::setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) {
+    this->us4oems[0]->setIOBitstream(id, levels, lengths);
+}
+
+TxRxParameters Us4RImpl::convertToTxRxParameters(const ops::us4r::TxRx &txrx, std::optional<BitstreamId> bitstreamId = std::nullopt) {
+    auto &tx = txrx.getTx();
+    auto &rx = txrx.getRx();
+
+    Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
+    Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
+
+
+    return TxRxParameters(tx.getAperture(), tx.getDelays(), tx.getExcitation(), rx.getAperture(),
+                          sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding,
+                          0.0f, bitstreamId);
 }
 
 }// namespace arrus::devices

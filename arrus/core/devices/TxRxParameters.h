@@ -28,7 +28,8 @@ public:
             op.rxDecimationFactor,
             op.pri,
             op.rxPadding,
-            op.rxDelay
+            op.rxDelay,
+            op.bitstreamId
         );
     }
 
@@ -54,12 +55,14 @@ public:
                    Interval<uint32> rxSampleRange,
                    uint32 rxDecimationFactor, float pri,
                    Tuple<ChannelIdx> rxPadding = {0, 0},
-                   float rxDelay = 0.0f)
+                   float rxDelay = 0.0f,
+                   std::optional<BitstreamId> bitstreamId = std::nullopt
+                   )
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri),
-          rxPadding(std::move(rxPadding)), rxDelay(rxDelay) {}
+          rxPadding(std::move(rxPadding)), rxDelay(rxDelay), bitstreamId(bitstreamId) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const {
         return txAperture;
@@ -119,6 +122,8 @@ public:
 
     float getRxDelay() const { return rxDelay; }
 
+    const std::optional<BitstreamId> &getBitstreamId() const { return bitstreamId; }
+
     // TODO(pjarosik) consider removing the below setter (keep this class immutable).
     void setRxDelay(float delay) { this->rxDelay = delay; }
 
@@ -138,6 +143,9 @@ public:
         os << ", fs divider: " << parameters.getRxDecimationFactor()
            << ", padding: " << parameters.getRxPadding()[0] << ", " << parameters.getRxPadding()[1];
         os << ", rx delay: " << parameters.getRxDelay();
+        if(parameters.getBitstreamId().has_value()) {
+            os << ", bitstream id: " << parameters.getBitstreamId().value();
+        }
         os << std::endl;
         return os;
     }
@@ -150,7 +158,8 @@ public:
                rxSampleRange == rhs.rxSampleRange &&
                rxDecimationFactor == rhs.rxDecimationFactor &&
                pri == rhs.pri &&
-               rxDelay == rhs.rxDelay;
+               rxDelay == rhs.rxDelay &&
+               bitstreamId == rhs.bitstreamId;
     }
 
     bool operator!=(const TxRxParameters &rhs) const {
@@ -167,6 +176,80 @@ private:
     float pri;
     Tuple<ChannelIdx> rxPadding;
     float rxDelay;
+    std::optional<BitstreamId> bitstreamId;
+};
+
+class TxRxParametersBuilder {
+public:
+
+    explicit TxRxParametersBuilder(const TxRxParameters &params) {
+        txAperture = params.getTxAperture();
+        txDelays = params.getTxDelays();
+        txPulse = params.getTxPulse();
+        rxAperture = params.getRxAperture();
+        rxSampleRange = params.getRxSampleRange();
+        rxDecimationFactor = params.getRxDecimationFactor();
+        pri = params.getPri();
+        rxPadding = params.getRxPadding();
+        rxDelay = params.getRxDelay();
+        bitstreamId = params.getBitstreamId();
+    }
+
+
+    TxRxParameters build() {
+        if(!txPulse.has_value()) {
+            throw IllegalArgumentException("TX pulse definition is required");
+        }
+        return TxRxParameters(
+            txAperture,
+            txDelays,
+            txPulse.value(),
+            rxAperture,
+            rxSampleRange,
+            rxDecimationFactor,
+            pri,
+            rxPadding,
+            rxDelay,
+            bitstreamId
+        );
+    }
+
+    void convertToNOP() {
+        txAperture = BitMask(txAperture.size(), false);
+        rxAperture = BitMask(rxAperture.size(), false);
+        txDelays = getNTimes<float>(txAperture.size(), 0.0f);
+    }
+
+    void setTxAperture(const std::vector<bool> &value) { TxRxParametersBuilder::txAperture = value; }
+    void setTxDelays(const std::vector<float> &value) { TxRxParametersBuilder::txDelays = value; }
+    void setTxPulse(const std::optional<::arrus::ops::us4r::Pulse> &value) {
+        TxRxParametersBuilder::txPulse = value;
+    }
+    void setRxAperture(const std::vector<bool> &value) { TxRxParametersBuilder::rxAperture = value; }
+    void setRxSampleRange(const Interval<uint32> &value) {
+        TxRxParametersBuilder::rxSampleRange = value;
+    }
+    void setRxDecimationFactor(int32 value) {
+        TxRxParametersBuilder::rxDecimationFactor = value;
+    }
+    void setPri(float value) { TxRxParametersBuilder::pri = value; }
+    void setRxPadding(const Tuple<ChannelIdx> &value) { TxRxParametersBuilder::rxPadding = value; }
+    void setRxDelay(float value) { TxRxParametersBuilder::rxDelay = value; }
+    void setBitstreamId(const std::optional<BitstreamId> &value) {
+        TxRxParametersBuilder::bitstreamId = value;
+    }
+
+private:
+    ::std::vector<bool> txAperture;
+    ::std::vector<float> txDelays;
+    std::optional<::arrus::ops::us4r::Pulse> txPulse;
+    ::std::vector<bool> rxAperture;
+    Interval<uint32> rxSampleRange;
+    int32 rxDecimationFactor;
+    float pri;
+    Tuple<ChannelIdx> rxPadding;
+    float rxDelay;
+    std::optional<BitstreamId> bitstreamId;
 };
 
 
