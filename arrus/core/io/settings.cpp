@@ -226,9 +226,9 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
         auto range = connections.equal_range(key);
         for (auto it = range.first; it != range.second; ++it) {
             auto conn = it->second;
-            std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*conn);
+            std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(conn);
 
-            for (auto const &adapterProtoId : conn->probe_adapter_model_id()) {
+            for (auto const &adapterProtoId : conn.probe_adapter_model_id()) {
                 const ProbeAdapterModelId adapterId(adapterProtoId.manufacturer(), adapterProtoId.name());
                 result.insertProbeSettings(ProbeSettings(probeModel, channelMapping), adapterId);
             }
@@ -312,7 +312,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
         if(us4r.probe_to_adapter_connection_size() > 0) {
             // If there are some probe to adapter connections: use only them.
             auto connection = getUniqueConnection(probeId, connections);
-            std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*connection);
+            std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(connection);
             std::optional<BitstreamId> bitstreamId;
             if(connection.has_bitstream_id()) {
                 bitstreamId = connection.bitstream_id().ordinal();
@@ -335,7 +335,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
         else {
             connection = getUniqueConnection(probeId, connections);
         }
-        std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*connection);
+        std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(connection);
         std::optional<BitstreamId> bitstreamId;
         if(connection.has_bitstream_id()) {
             bitstreamId = connection.bitstream_id().ordinal();
