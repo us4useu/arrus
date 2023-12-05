@@ -191,8 +191,16 @@ std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapt
     }
 }
 
-std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> indexProbeToAdapterConnections(
-    const google::protobuf::RepeatedPtrField<::arrus::proto::ProbeToAdapterConnection> &probeToAdapterConnections);
+std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> indexProbeToAdapterConnections(
+    const google::protobuf::RepeatedPtrField<::arrus::proto::ProbeToAdapterConnection> &probeToAdapterConnections) {
+    std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> connections;
+    for (const ap::ProbeToAdapterConnection &conn : probeToAdapterConnections) {
+        std::string key = SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
+        connections.emplace(key, conn);
+    }
+    return connections;
+}
+
 SettingsDictionary readDictionary(const ap::Dictionary *proto) {
     SettingsDictionary result;
 
@@ -207,7 +215,7 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
     // index connections
     auto &probeToAdapterConnections = proto->probe_to_adapter_connections();
 
-    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections =
+    std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> connections =
         indexProbeToAdapterConnections(probeToAdapterConnections);
 
     // Read probes.
@@ -228,16 +236,7 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
     }
     return result;
 }
-std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> indexProbeToAdapterConnections(
-    const google::protobuf::RepeatedPtrField<::arrus::proto::ProbeToAdapterConnection> &probeToAdapterConnections) {
-    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections;
-    for (const ap::ProbeToAdapterConnection &conn : probeToAdapterConnections) {
-        std::string key = SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
-        const ap::ProbeToAdapterConnection *ptr = &conn;
-        connections.emplace(key, ptr);
-    }
-    return connections;
-}
+
 
 RxSettings readRxSettings(const proto::RxSettings &proto) {
     std::optional<uint16> dtgcAtt;
@@ -276,8 +275,8 @@ ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, c
     }
 }
 
-const proto::ProbeToAdapterConnection * getUniqueConnection(const proto::ProbeModel_Id &probeId,
-    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> &connections) {
+proto::ProbeToAdapterConnection getUniqueConnection(const proto::ProbeModel_Id &probeId,
+    std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> &connections) {
     std::string key = SettingsDictionary::convertProtoIdToString(probeId);
     ProbeModelId id{probeId.manufacturer(), probeId.name()};
     if(connections.count(key) > 1) {
@@ -296,20 +295,27 @@ const proto::ProbeToAdapterConnection * getUniqueConnection(const proto::ProbeMo
 std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4r, const ProbeAdapterModelId &adapterId,
                                      const SettingsDictionary &dictionary) {
     // Read and index by probe to adapter connections
-    std::unordered_multimap<std::string, const ap::ProbeToAdapterConnection *> connections =
+    std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> connections =
         indexProbeToAdapterConnections(us4r.probe_to_adapter_connection());
 
     std::vector<ProbeSettings> result;
+
+    int nProbes = us4r.probe_id_size() + us4r.probe_size();
+    ARRUS_REQUIRES_TRUE(us4r.probe_to_adapter_connection_size() == 0
+                        || (us4r.probe_to_adapter_connection_size() == nProbes),
+                        "You should skip probe to adapter connections list, or provide the same number of "
+                        "probe to adapter connections and probe definitions in the configuration file.");
+
     for(auto &probeId: us4r.probe_id()) {
         ProbeModelId id{probeId.manufacturer(), probeId.name()};
         ProbeModel model = dictionary.getProbeModel(id);
         if(us4r.probe_to_adapter_connection_size() > 0) {
             // If there are some probe to adapter connections: use only them.
-            auto *connection = getUniqueConnection(probeId, connections);
+            auto connection = getUniqueConnection(probeId, connections);
             std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*connection);
             std::optional<BitstreamId> bitstreamId;
-            if(connection->has_bitstream_id()) {
-                bitstreamId = connection->bitstream_id().ordinal();
+            if(connection.has_bitstream_id()) {
+                bitstreamId = connection.bitstream_id().ordinal();
             }
             result.emplace_back(model, channelMapping, bitstreamId);
         } else {
@@ -317,14 +323,22 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
             result.push_back(dictionary.getProbeSettings(id, adapterId));
         }
     }
+
     for(auto &probe: us4r.probe()) {
         ProbeModel model = readProbeModel(probe);
         const auto& probeId = probe.id();
-        auto *connection = getUniqueConnection(probeId, connections);
+        proto::ProbeToAdapterConnection connection;
+        if(us4r.probe_to_adapter_connection_size() == 1) {
+            // Also a single probe (see the verification above).
+            connection = *std::begin(us4r.probe_to_adapter_connection());
+        }
+        else {
+            connection = getUniqueConnection(probeId, connections);
+        }
         std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(*connection);
         std::optional<BitstreamId> bitstreamId;
-        if(connection->has_bitstream_id()) {
-            bitstreamId = connection->bitstream_id().ordinal();
+        if(connection.has_bitstream_id()) {
+            bitstreamId = connection.bitstream_id().ordinal();
         }
         result.emplace_back(model, channelMapping);
     }
