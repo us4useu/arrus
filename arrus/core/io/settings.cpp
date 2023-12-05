@@ -340,7 +340,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
         if(connection.has_bitstream_id()) {
             bitstreamId = connection.bitstream_id().ordinal();
         }
-        result.emplace_back(model, channelMapping);
+        result.emplace_back(model, channelMapping, bitstreamId);
     }
     return result;
 }
