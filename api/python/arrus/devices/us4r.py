@@ -284,6 +284,8 @@ class Us4R(Device, Ultrasound):
         """
         return self._handle.getAfe(addr)
 
+    def set_io_bitstream(self, id, levels, periods):
+        return self._handle.setIOBitstream(id, list(levels), list(periods))
 
     @property
     def channels_mask(self):

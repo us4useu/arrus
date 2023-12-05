@@ -849,12 +849,12 @@ void Us4RImpl::setParameters(const Parameters &params) {
     }
 }
 
-BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) {
-    return this->us4oems[0]->addIOBitstream(levels, lengths);
+BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
+    return this->us4oems[0]->addIOBitstream(levels, periods);
 }
 
-void Us4RImpl::setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) {
-    this->us4oems[0]->setIOBitstream(id, levels, lengths);
+void Us4RImpl::setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
+    this->us4oems[0]->setIOBitstream(id, levels, periods);
 }
 
 TxRxParameters Us4RImpl::convertToTxRxParameters(const ops::us4r::TxRx &txrx, std::optional<BitstreamId> bitstreamId = std::nullopt) {

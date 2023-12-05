@@ -148,7 +148,7 @@ public:
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
     void setParameters(const Parameters &parameters) override;
-    void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) override;
+    void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -184,7 +184,7 @@ private:
     std::function<void()> createOnTransferOverflowCallback(
         ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
 
-    BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths);
+    BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
 
     Us4OEMImplBase::RawHandle getMasterUs4oem() const {return this->us4oems[0].get();}
 

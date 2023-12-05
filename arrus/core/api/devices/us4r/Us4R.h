@@ -314,7 +314,7 @@ public:
      */
     virtual const char* getBackplaneRevision() = 0;
 
-    virtual void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) = 0;
+    virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
