@@ -84,8 +84,16 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
 
     // Here is an assumption, that each operation has the same size rx aperture, except RX nops.
     auto nFrames = getNumberOfNoRxNOPs(seq);
-    auto paddingSize = seq[0].getRxPadding().sum();
-    auto rxApertureSize = getNumberOfActiveChannels(seq[0].getRxAperture()) + paddingSize;
+    // find the first non rx NOP and use it to determine rxApertureSize
+    size_t rxApertureSize = 0;
+    for(auto &op: seq) {
+        if(! op.isRxNOP()) {
+            auto paddingSize = seq[0].getRxPadding().sum();
+            rxApertureSize = getNumberOfActiveChannels(seq[0].getRxAperture()) + paddingSize;
+            break;
+        }
+    }
+    ARRUS_REQUIRES_TRUE(rxApertureSize > 0, "At least one TX/RX should have non-empty RX aperture.");
 
     // -- Frame channel mapping stuff related to splitting each operation between available
     // modules.
@@ -170,20 +178,20 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                 ++activeAdapterCh;
             }
         }
-        // FCM
-        // Compute rank of each us4oem RX channel (to get the "aperture" channel number).
-        // The rank is needed, as the further code decomposes each op into 32-rx element ops
-        // assuming, that the first 32 channels of rx aperture will be used in the first
-        // op, the next 32 channels in the second op and so on.
-        for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
-            auto &uChannels = us4oemChannels[ordinal];
-            auto &aChannels = adapterChannels[ordinal];
-            auto rxApertureChannels = ::arrus::rank(uChannels);
-            for(size_t c = 0; c < uChannels.size(); ++c) {
-                frameChannel(frameNumber, aChannels[c]) = static_cast<int32>(rxApertureChannels[c]);
-            }
-        }
         if(!isRxNop) {
+            // FCM
+            // Compute rank of each us4oem RX channel (to get the "aperture" channel number).
+            // The rank is needed, as the further code decomposes each op into 32-rx element ops
+            // assuming, that the first 32 channels of rx aperture will be used in the first
+            // op, the next 32 channels in the second op and so on.
+            for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
+                auto &uChannels = us4oemChannels[ordinal];
+                auto &aChannels = adapterChannels[ordinal];
+                auto rxApertureChannels = ::arrus::rank(uChannels);
+                for(size_t c = 0; c < uChannels.size(); ++c) {
+                    frameChannel(frameNumber, aChannels[c]) = static_cast<int32>(rxApertureChannels[c]);
+                }
+            }
             ++frameNumber;
         }
         ++opNumber;

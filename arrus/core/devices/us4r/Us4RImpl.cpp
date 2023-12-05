@@ -394,7 +394,7 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
 
     if(hasIOBitstreamAdressing) {
         // emplace a single, short op, for bitstream pattern switching only
-        ARRUS_REQUIRES_TRUE(seq.getOps().size() > 1, "The sequence should have at least one TX/RX defined.");
+        ARRUS_REQUIRES_TRUE(seq.getOps().size() >= 1, "The sequence should have at least one TX/RX defined.");
         TxRxParametersBuilder builder(convertToTxRxParameters(seq.getOps().at(0), 1));
         builder.convertToNOP();
         actualSeq.push_back(builder.build());
