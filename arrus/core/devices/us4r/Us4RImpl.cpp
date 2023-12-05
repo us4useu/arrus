@@ -66,6 +66,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterIm
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     if(hasIOBitstreamAdressing) {
         // Add empty IOBitstream, to use for TX/RX between probe switching.
+        getMasterUs4oem()->getIUs4oem()->SetWaveformIODriveMode();
         getMasterUs4oem()->addIOBitstream({0, }, {1, });
     }
 
