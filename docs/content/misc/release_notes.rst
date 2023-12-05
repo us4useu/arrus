@@ -25,6 +25,7 @@ Release notes
     - Added spacing to echo data description #295 #ARRUS-251.
     - us4R: exposed us4OEM and digital backplane serial number and revision #ARRUS-267.
     - us4R: provided the possibility to dynamically change TX focus, #US4R-326.
+    - us4R: added high pass filter in the probe check implementation to support us4OEM+ #US4R-356. 
 
 
 0.8.x
