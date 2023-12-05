@@ -46,13 +46,15 @@ public:
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(nChannels), firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(nChannels), firingStr);
 
-            ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
-                                          "Each Rx should acquire the same number of samples.");
-            size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[firing].getRxAperture()),
-                                                          std::end(txRxs[firing].getRxAperture()), 0);
-            currActiveRxChannels += txRxs[firing].getRxPadding().sum();
-            ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
-                                          "Each rx aperture should have the same size.");
+            if(!op.isRxNOP()) {
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
+                                              "Each Rx should acquire the same number of samples.");
+                size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[firing].getRxAperture()),
+                                                              std::end(txRxs[firing].getRxAperture()), 0);
+                currActiveRxChannels += txRxs[firing].getRxPadding().sum();
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
+                                              "Each rx aperture should have the same size.");
+            }
             if(hasErrors()) {
                 return;
             }
@@ -61,6 +63,8 @@ public:
 private:
     ChannelIdx nChannels;
 };
+
+// TODO allow RX NOPs here
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
@@ -78,10 +82,10 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     std::unordered_map<Ordinal, std::vector<std::vector<float>>> txDelaysList;
     std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> txDelayProfilesList;
 
-    // Here is an assumption, that each operation has the same size rx aperture.
+    // Here is an assumption, that each operation has the same size rx aperture, except RX nops.
+    auto nFrames = getNumberOfNoRxNOPs(seq);
     auto paddingSize = seq[0].getRxPadding().sum();
     auto rxApertureSize = getNumberOfActiveChannels(seq[0].getRxAperture()) + paddingSize;
-    auto nFrames = getNumberOfNoRxNOPs(seq);
 
     // -- Frame channel mapping stuff related to splitting each operation between available
     // modules.
