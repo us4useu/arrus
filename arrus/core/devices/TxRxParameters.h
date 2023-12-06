@@ -217,7 +217,7 @@ public:
     void convertToNOP() {
         txAperture = BitMask(txAperture.size(), false);
         rxAperture = BitMask(rxAperture.size(), false);
-        txDelays = getNTimes<float>(txAperture.size(), 0.0f);
+        txDelays = getNTimes<float>(0.0f, txAperture.size());
     }
 
     void setTxAperture(const std::vector<bool> &value) { TxRxParametersBuilder::txAperture = value; }
