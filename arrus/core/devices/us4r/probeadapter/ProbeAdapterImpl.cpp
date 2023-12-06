@@ -15,6 +15,26 @@ namespace arrus::devices {
 using namespace ::arrus::ops::us4r;
 using ::arrus::ops::us4r::Scheme;
 
+
+const TxRxParameters &getFirstProbeAdapterRxOp(const std::vector<TxRxParameters> &seq) {
+    for(auto &op: seq) {
+        if(! op.isRxNOP()) {
+            return op;
+        }
+    }
+    throw IllegalArgumentException("All Rxs have empty aperture, this is not allowed.");
+}
+
+
+size_t getProbeAdapterRxApertureSize(const std::vector<TxRxParameters> &seq) {
+    auto const &op = getFirstProbeAdapterRxOp(seq);
+    auto paddingSize = op.getRxPadding().sum();
+    size_t rxApertureSize = getNumberOfActiveChannels(op.getRxAperture()) + paddingSize;
+    ARRUS_REQUIRES_TRUE(rxApertureSize > 0, "At least one TX/RX should have non-empty RX aperture.");
+    return rxApertureSize;
+}
+
+
 ProbeAdapterImpl::ProbeAdapterImpl(
     DeviceId deviceId, ProbeAdapterModelId modelId,
     std::vector<Us4OEMImplBase::RawHandle> us4oems, ChannelIdx numberOfChannels,
@@ -36,9 +56,10 @@ public:
             : Validator(componentName), nChannels(nChannels) {}
 
     void validate(const TxRxParamsSequence &txRxs) override {
-        const auto nSamples = txRxs[0].getNumberOfSamples();
-        size_t nActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()), std::end(txRxs[0].getRxAperture()), 0);
-        nActiveRxChannels += txRxs[0].getRxPadding().sum();
+        auto const &refOp = getFirstProbeAdapterRxOp(txRxs);
+        auto nSamples = refOp.getNumberOfSamples();
+        size_t nActiveRxChannels = std::accumulate(std::begin(refOp.getRxAperture()), std::end(refOp.getRxAperture()), 0);
+        nActiveRxChannels += refOp.getRxPadding().sum();
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs[firing];
             auto firingStr = ::arrus::format("firing {}", firing);
@@ -64,7 +85,6 @@ private:
     ChannelIdx nChannels;
 };
 
-// TODO allow RX NOPs here
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
@@ -85,15 +105,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     // Here is an assumption, that each operation has the same size rx aperture, except RX nops.
     auto nFrames = getNumberOfNoRxNOPs(seq);
     // find the first non rx NOP and use it to determine rxApertureSize
-    size_t rxApertureSize = 0;
-    for(auto &op: seq) {
-        if(! op.isRxNOP()) {
-            auto paddingSize = seq[0].getRxPadding().sum();
-            rxApertureSize = getNumberOfActiveChannels(seq[0].getRxAperture()) + paddingSize;
-            break;
-        }
-    }
-    ARRUS_REQUIRES_TRUE(rxApertureSize > 0, "At least one TX/RX should have non-empty RX aperture.");
+    size_t rxApertureSize = getProbeAdapterRxApertureSize(seq);
 
     // -- Frame channel mapping stuff related to splitting each operation between available
     // modules.
@@ -218,7 +230,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         }
         // keep operations with empty tx or rx aperture - they are still a part of the larger operation
     }
-    // split operations if necessary
+    // creating 32-element subapertures
     std::vector<std::vector<uint8_t>> us4oemL2PChannelMappings;
     for(auto &us4oem: us4oems) {
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
