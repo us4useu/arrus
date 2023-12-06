@@ -334,9 +334,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
-        if(op.getBitstreamId().has_value() && isMaster()) {
-            ius4oem->SetFiringIOBS(opIdx, bitstreamOffsets.at(op.getBitstreamId().value()));
-        }
+
     }
     // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
     ius4oem->SetTxDelays(nTxDelayProfiles);
@@ -435,6 +433,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     // In all other cases, all RX nops are just overwritten.
                     outputAddress += nBytes;
                     totalNSamples += (unsigned) nSamples;
+                }
+                if(op.getBitstreamId().has_value() && isMaster()) {
+                    // Apply
+                    ius4oem->SetFiringIOBS(opIdx, bitstreamOffsets.at(op.getBitstreamId().value()));
                 }
             }
         }
