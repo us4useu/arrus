@@ -70,7 +70,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterIm
         getMasterUs4oem()->addIOBitstream({0, }, {1, });
     }
 
-    for(auto &bitstream: bitstreams) {
+    for(auto &bitstream: this->bitstreams) {
         getMasterUs4oem()->addIOBitstream(bitstream.getLevels(), bitstream.getPeriods());
     }
 }
@@ -398,12 +398,17 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
         TxRxParametersBuilder builder(convertToTxRxParameters(seq.getOps().at(0), 1));
         builder.convertToNOP();
         builder.setPri(2000e-6);
+        builder.setBitstreamId(1);
         actualSeq.push_back(builder.build());
     }
 
     for (const auto &txrx : seq.getOps()) {
         TxRxParameters params = convertToTxRxParameters(txrx, 0);
-        actualSeq.push_back(params);
+        TxRxParametersBuilder builder(params);
+        if(hasIOBitstreamAdressing) {
+            builder.setBitstreamId(0);
+        }
+        actualSeq.push_back(builder.build());
         ++opIdx;
     }
     return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),

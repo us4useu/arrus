@@ -158,9 +158,9 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
     Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax,
-                        BitstreamId nBitstreams)
+                        BitstreamId nBitstreams, bool isMaster)
     : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax),
-      nBitstreams(nBitstreams) {}
+      nBitstreams(nBitstreams), isMaster(isMaster) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -205,7 +205,7 @@ public:
                 ARRUS_VALIDATOR_EXPECT_TRUE_M((op.getRxPadding() == ::arrus::Tuple<ChannelIdx>{0, 0}),
                                               ("Rx padding is not allowed for us4oems. " + firingStr));
             }
-            if(op.getBitstreamId().has_value()) {
+            if(op.getBitstreamId().has_value() && isMaster) {
                 ARRUS_REQUIRES_TRUE(op.getBitstreamId().value() < nBitstreams,
                                     "Bitstream id should not exceed " + std::to_string(nBitstreams));
             }
@@ -215,6 +215,7 @@ private:
     float txFrequencyMin;
     float txFrequencyMax;
     BitstreamId nBitstreams;
+    bool isMaster{false};
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
@@ -230,7 +231,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         format("{} tx rx sequence", deviceIdStr),
         ius4oem->GetMinTxFrequency(),
         ius4oem->GetMaxTxFrequency(),
-        bitstreamOffsets.size()
+        bitstreamOffsets.size(),
+        isMaster()
     );
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
@@ -915,7 +917,7 @@ void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vect
     ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
     size_t nRegisters = levels.size();
     for(size_t i = 0; i < nRegisters; ++i) {
-        ius4oem->SetIOBSRegister(bitstreamOffset, levels[i], i == (nRegisters -1), periods[i]);
+        ius4oem->SetIOBSRegister(bitstreamOffset+i, levels[i], i == (nRegisters-1), periods[i]);
     }
 }
 

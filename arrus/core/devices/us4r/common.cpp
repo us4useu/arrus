@@ -163,7 +163,7 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                         op.getTxAperture(), op.getTxDelays(), op.getTxPulse(),
                         subaperture, // Modified
                         op.getRxSampleRange(), op.getRxDecimationFactor(), op.getPri(),
-                        op.getRxPadding());
+                        op.getRxPadding(), op.getRxDelay(), op.getBitstreamId());
                 }
             } else {
                 // we have a single rx aperture, or all rx channels are empty,

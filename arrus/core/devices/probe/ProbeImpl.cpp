@@ -117,7 +117,9 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
             }
         }
         adapterSeq.emplace_back(txAperture, txDelays, op.getTxPulse(), rxAperture, op.getRxSampleRange(),
-                                op.getRxDecimationFactor(), op.getPri(), op.getRxPadding());
+                                op.getRxDecimationFactor(), op.getPri(), op.getRxPadding(),
+                                op.getRxDelay(),
+                                op.getBitstreamId());
         if(! op.isRxNOP()) {
             rxApertureChannelMappings.push_back(rxApertureChannelMapping);
             rxPaddingLeft.push_back(op.getRxPadding()[0]);

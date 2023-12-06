@@ -225,7 +225,10 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
             us4oemSeq.emplace_back(txAperture, txDelays, op.getTxPulse(),
                                    rxAperture, op.getRxSampleRange(),
                                    op.getRxDecimationFactor(), op.getPri(),
-                                   Tuple<ChannelIdx>({0, 0}));
+                                   Tuple<ChannelIdx>({0, 0}),
+                                   op.getRxDelay(),
+                                   op.getBitstreamId()
+                                   );
             ++i;
         }
         // keep operations with empty tx or rx aperture - they are still a part of the larger operation

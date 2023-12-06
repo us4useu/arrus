@@ -97,7 +97,8 @@ class Us4RFactoryImpl : public Us4RFactory {
             return std::make_unique<Us4RImpl>(id, std::move(us4oems), adapter, probe, std::move(hv), rxSettings,
                                               settings.getChannelsMask(), std::move(backplane),
                                               settings.getBitstreams(),
-                                              probeSettings.getBitstreamId().has_value());
+                                              probeSettings.getBitstreamId().has_value()
+                                              );
         } else {
             // Custom Us4OEMs only
             auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false, us4r::IOSettings());

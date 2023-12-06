@@ -75,7 +75,8 @@ public:
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
         bool externalTrigger = false,
         int txFrequencyRange = 1,
-        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
+        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
+        std::vector<Bitstream> bitstreams = std::vector<Bitstream>()
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -88,7 +89,8 @@ public:
                 std::move(adapterToUs4RModuleNumber),
                 externalTrigger,
                 txFrequencyRange,
-                std::move(digitalBackplaneSettings)
+                std::move(digitalBackplaneSettings),
+                std::move(bitstreams)
         )
     {}
 
