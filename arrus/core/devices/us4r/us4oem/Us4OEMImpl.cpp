@@ -237,6 +237,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc)->build();
 
     setTgcCurve(this->rxSettings);
+    ius4oem->ResetSequencer();
     ius4oem->SetNumberOfFirings(nOps);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
