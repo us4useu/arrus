@@ -40,6 +40,7 @@ Release notes
     - Made tgc_curve parameter optional (default: no TGC) #ARRUS-278.
 
 - MATLAB API:
+
     - Fixed issues with TGC in Matlab, enable the RF display #ARRUS-202, ARRUS-203.
     - Color Doppler - thresholding and wall clutter filtration #ARRUS-239.
 
