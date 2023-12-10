@@ -23,7 +23,7 @@ import arrus.utils
 import arrus.utils.imaging
 import arrus.utils.core
 import arrus.framework
-from typing import Sequence, Dict
+from typing import Sequence, Dict, Iterable
 from numbers import Number
 
 from arrus.devices.ultrasound import Ultrasound
@@ -93,8 +93,14 @@ class Session(AbstractSession):
         us_device_dto = us_device.get_dto()
         medium = self._context.medium
         sequences = scheme.tx_rx_sequence
-        processing = scheme.processing
+        processings = scheme.processing
         constants = scheme.constants
+
+        if not isinstance(sequences, Iterable):
+            sequences = [sequences]
+
+        if not isinstance(processings, Iterable):
+            processings = [processings]
 
         raw_sequences = []
         for seq in sequences:
