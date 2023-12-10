@@ -92,20 +92,23 @@ class Session(AbstractSession):
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
         us_device_dto = us_device.get_dto()
         medium = self._context.medium
-        seq = scheme.tx_rx_sequence
+        sequences = scheme.tx_rx_sequence
         processing = scheme.processing
         constants = scheme.constants
 
-        kernel_context = self._create_kernel_context(
-            seq,
-            us_device_dto,
-            medium,
-            scheme.digital_down_conversion,
-            constants
-        )
-        conversion_results = arrus.kernels.get_kernel(type(seq))(kernel_context)
-        raw_seq = conversion_results.sequence
-        tx_delay_constants = conversion_results.constants
+        raw_sequences = []
+        for seq in sequences:
+            kernel_context = self._create_kernel_context(
+                seq,
+                us_device_dto,
+                medium,
+                scheme.digital_down_conversion,
+                constants
+            )
+            conversion_results = arrus.kernels.get_kernel(type(seq))(kernel_context)
+            raw_seq = conversion_results.sequence
+            tx_delay_constants = conversion_results.constants
+            raw_sequences.append(raw_seq)
 
         actual_scheme = dataclasses.replace(
             scheme,
