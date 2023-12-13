@@ -42,6 +42,10 @@ public:
         return !(rhs == *this);
     }
 
+    float getPulseLength() const {
+        return nPeriods/centerFrequency;
+    }
+
 private:
     float centerFrequency;
     float nPeriods;

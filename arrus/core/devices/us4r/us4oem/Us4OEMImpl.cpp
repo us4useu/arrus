@@ -157,8 +157,10 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax)
-    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
+    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax,
+                        float txPulseLengthMin, float txPulseLengthMax)
+    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax),
+      txPulseLengthMin(txPulseLengthMin), txPulseLengthMax(txPulseLengthMax) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -168,7 +170,6 @@ public:
             const auto &op = txRxs[firing];
             if (!op.isNOP()) {
                 auto firingStr = ::arrus::format(" (firing {})", firing);
-
                 // Tx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(Us4OEMImpl::N_TX_CHANNELS), firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(Us4OEMImpl::N_TX_CHANNELS), firingStr);
@@ -178,7 +179,9 @@ public:
                 // Tx - pulse
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
                     op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax, firingStr);
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
+
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getPulseLength(),
+                                                  txPulseLengthMin, txPulseLengthMax, firingStr);
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M((fractional == 0.0f || fractional == 0.5f), (firingStr + ", n periods"));
@@ -208,6 +211,8 @@ public:
 private:
     float txFrequencyMin;
     float txFrequencyMax;
+    float txPulseLengthMin;
+    float txPulseLengthMax;
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
@@ -222,7 +227,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     Us4OEMTxRxValidator seqValidator(
         format("{} tx rx sequence", deviceIdStr),
         ius4oem->GetMinTxFrequency(),
-        ius4oem->GetMaxTxFrequency());
+        ius4oem->GetMaxTxFrequency(),
+        ius4oem->GetMinTxPulseLength(),
+        ius4oem->GetMaxTxPulseLength()
+    );
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
