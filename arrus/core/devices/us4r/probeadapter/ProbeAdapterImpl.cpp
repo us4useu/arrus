@@ -367,8 +367,14 @@ void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequen
     auto sequenceSize = sequences[0].size();
     for(size_t txrx = 0; txrx < sequenceSize; ++txrx) {
         float maxDelay = 0.0f;
+
+        bool allRxNops = true;
+
         for(size_t oem = 0; oem < nUs4OEMs; ++oem) {
             TxRxParameters &op = sequences[oem][txrx];
+            if(!op.isRxNOP()) {
+                allRxNops = false;
+            }
             std::vector<float> delays;
             // NOTE: assuming that TX aperture and delays have the same length.
             // Filtering out tx delay values that have tx delay == 0.
@@ -390,6 +396,12 @@ void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequen
                     maxDelay = newDelay;
                 }
             }
+        }
+        // DO NOT Set RX delay for ops which are RX nops, as this op will not turn
+        // RX at all. Simply set it to the minimal value (as this doesn't matter
+        // and it should pass validation later).
+        if(allRxNops) {
+            maxDelay = 0.0f;
         }
         // Set Rx delays in the input sequences.
         for(size_t oem = 0; oem < nUs4OEMs; ++oem) {
