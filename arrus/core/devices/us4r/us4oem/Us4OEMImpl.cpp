@@ -327,7 +327,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             ++txChannel;
         }
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
-        ius4oem->SetTxHalfPeriods(static_cast<uint8>(op.getTxPulse().getNPeriods() * 2), opIdx);
+        ius4oem->SetTxHalfPeriods(static_cast<uint32_t>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
