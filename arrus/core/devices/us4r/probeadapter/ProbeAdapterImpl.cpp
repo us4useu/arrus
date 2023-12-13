@@ -15,6 +15,26 @@ namespace arrus::devices {
 using namespace ::arrus::ops::us4r;
 using ::arrus::ops::us4r::Scheme;
 
+
+const TxRxParameters &getFirstProbeAdapterRxOp(const std::vector<TxRxParameters> &seq) {
+    for(auto &op: seq) {
+        if(! op.isRxNOP()) {
+            return op;
+        }
+    }
+    throw IllegalArgumentException("All Rxs have empty aperture, this is not allowed.");
+}
+
+
+size_t getProbeAdapterRxApertureSize(const std::vector<TxRxParameters> &seq) {
+    auto const &op = getFirstProbeAdapterRxOp(seq);
+    auto paddingSize = op.getRxPadding().sum();
+    size_t rxApertureSize = getNumberOfActiveChannels(op.getRxAperture()) + paddingSize;
+    ARRUS_REQUIRES_TRUE(rxApertureSize > 0, "At least one TX/RX should have non-empty RX aperture.");
+    return rxApertureSize;
+}
+
+
 ProbeAdapterImpl::ProbeAdapterImpl(
     DeviceId deviceId, ProbeAdapterModelId modelId,
     std::vector<Us4OEMImplBase::RawHandle> us4oems, ChannelIdx numberOfChannels,
@@ -36,9 +56,10 @@ public:
             : Validator(componentName), nChannels(nChannels) {}
 
     void validate(const TxRxParamsSequence &txRxs) override {
-        const auto nSamples = txRxs[0].getNumberOfSamples();
-        size_t nActiveRxChannels = std::accumulate(std::begin(txRxs[0].getRxAperture()), std::end(txRxs[0].getRxAperture()), 0);
-        nActiveRxChannels += txRxs[0].getRxPadding().sum();
+        auto const &refOp = getFirstProbeAdapterRxOp(txRxs);
+        auto nSamples = refOp.getNumberOfSamples();
+        size_t nActiveRxChannels = std::accumulate(std::begin(refOp.getRxAperture()), std::end(refOp.getRxAperture()), 0);
+        nActiveRxChannels += refOp.getRxPadding().sum();
         for(size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs[firing];
             auto firingStr = ::arrus::format("firing {}", firing);
@@ -46,13 +67,15 @@ public:
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(nChannels), firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(nChannels), firingStr);
 
-            ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
-                                          "Each Rx should acquire the same number of samples.");
-            size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[firing].getRxAperture()),
-                                                          std::end(txRxs[firing].getRxAperture()), 0);
-            currActiveRxChannels += txRxs[firing].getRxPadding().sum();
-            ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
-                                          "Each rx aperture should have the same size.");
+            if(!op.isRxNOP()) {
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
+                                              "Each Rx should acquire the same number of samples.");
+                size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[firing].getRxAperture()),
+                                                              std::end(txRxs[firing].getRxAperture()), 0);
+                currActiveRxChannels += txRxs[firing].getRxPadding().sum();
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
+                                              "Each rx aperture should have the same size.");
+            }
             if(hasErrors()) {
                 return;
             }
@@ -61,6 +84,7 @@ public:
 private:
     ChannelIdx nChannels;
 };
+
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
@@ -78,10 +102,10 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     std::unordered_map<Ordinal, std::vector<std::vector<float>>> txDelaysList;
     std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> txDelayProfilesList;
 
-    // Here is an assumption, that each operation has the same size rx aperture.
-    auto paddingSize = seq[0].getRxPadding().sum();
-    auto rxApertureSize = getNumberOfActiveChannels(seq[0].getRxAperture()) + paddingSize;
+    // Here is an assumption, that each operation has the same size rx aperture, except RX nops.
     auto nFrames = getNumberOfNoRxNOPs(seq);
+    // find the first non rx NOP and use it to determine rxApertureSize
+    size_t rxApertureSize = getProbeAdapterRxApertureSize(seq);
 
     // -- Frame channel mapping stuff related to splitting each operation between available
     // modules.
@@ -166,20 +190,20 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                 ++activeAdapterCh;
             }
         }
-        // FCM
-        // Compute rank of each us4oem RX channel (to get the "aperture" channel number).
-        // The rank is needed, as the further code decomposes each op into 32-rx element ops
-        // assuming, that the first 32 channels of rx aperture will be used in the first
-        // op, the next 32 channels in the second op and so on.
-        for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
-            auto &uChannels = us4oemChannels[ordinal];
-            auto &aChannels = adapterChannels[ordinal];
-            auto rxApertureChannels = ::arrus::rank(uChannels);
-            for(size_t c = 0; c < uChannels.size(); ++c) {
-                frameChannel(frameNumber, aChannels[c]) = static_cast<int32>(rxApertureChannels[c]);
-            }
-        }
         if(!isRxNop) {
+            // FCM
+            // Compute rank of each us4oem RX channel (to get the "aperture" channel number).
+            // The rank is needed, as the further code decomposes each op into 32-rx element ops
+            // assuming, that the first 32 channels of rx aperture will be used in the first
+            // op, the next 32 channels in the second op and so on.
+            for(Ordinal ordinal = 0; ordinal < us4oems.size(); ++ordinal) {
+                auto &uChannels = us4oemChannels[ordinal];
+                auto &aChannels = adapterChannels[ordinal];
+                auto rxApertureChannels = ::arrus::rank(uChannels);
+                for(size_t c = 0; c < uChannels.size(); ++c) {
+                    frameChannel(frameNumber, aChannels[c]) = static_cast<int32>(rxApertureChannels[c]);
+                }
+            }
             ++frameNumber;
         }
         ++opNumber;
