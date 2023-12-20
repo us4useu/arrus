@@ -395,18 +395,18 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
     if(hasIOBitstreamAdressing) {
         // emplace a single, short op, for bitstream pattern switching only
         ARRUS_REQUIRES_TRUE(seq.getOps().size() >= 1, "The sequence should have at least one TX/RX defined.");
-        TxRxParametersBuilder builder(convertToTxRxParameters(seq.getOps().at(0), 1));
+        TxRxParametersBuilder builder(convertToTxRxParameters(seq.getOps().at(0), BitstreamId(1)));
         builder.convertToNOP();
         builder.setPri(2000e-6f);
-        builder.setBitstreamId(1);
+        builder.setBitstreamId(BitstreamId(1));
         actualSeq.push_back(builder.build());
     }
 
     for (const auto &txrx : seq.getOps()) {
-        TxRxParameters params = convertToTxRxParameters(txrx, 0);
+        TxRxParameters params = convertToTxRxParameters(txrx, BitstreamId(0));
         TxRxParametersBuilder builder(params);
         if(hasIOBitstreamAdressing) {
-            builder.setBitstreamId(0);
+            builder.setBitstreamId(BitstreamId(0));
         }
         actualSeq.push_back(builder.build());
         ++opIdx;
@@ -860,8 +860,8 @@ BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const s
     return this->us4oems[0]->addIOBitstream(levels, periods);
 }
 
-void Us4RImpl::setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
-    this->us4oems[0]->setIOBitstream(id, levels, periods);
+void Us4RImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
+    this->us4oems[0]->setIOBitstream(bitstreamId, levels, periods);
 }
 
 TxRxParameters Us4RImpl::convertToTxRxParameters(const ops::us4r::TxRx &txrx, std::optional<BitstreamId> bitstreamId = std::nullopt) {

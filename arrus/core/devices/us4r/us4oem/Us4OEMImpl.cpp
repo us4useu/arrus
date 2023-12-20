@@ -231,7 +231,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         format("{} tx rx sequence", deviceIdStr),
         ius4oem->GetMinTxFrequency(),
         ius4oem->GetMaxTxFrequency(),
-        bitstreamOffsets.size(),
+        static_cast<BitstreamId>(bitstreamOffsets.size()),
         isMaster()
     );
     seqValidator.validate(seq);
@@ -911,14 +911,14 @@ void Us4OEMImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8
         ARRUS_REQUIRES_EQUAL_IAE(levels.size(), bitstreamSizes.at(bitstreamId));
     }
     setIOBitstreamForOffset(bitstreamOffsets.at(bitstreamId), levels, periods);
-    bitstreamSizes[bitstreamId] = levels.size();
+    bitstreamSizes[bitstreamId] = static_cast<uint16>(levels.size());
 }
 
 void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
                                 const std::vector<uint16_t> &periods) {
     ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
-    size_t nRegisters = levels.size();
-    for(size_t i = 0; i < nRegisters; ++i) {
+    size_t nRegisters = static_cast<uint16_t>(levels.size());
+    for(uint16_t i = 0; i < nRegisters; ++i) {
         ius4oem->SetIOBSRegister(bitstreamOffset+i, levels[i], i == (nRegisters-1), periods[i]);
     }
 }

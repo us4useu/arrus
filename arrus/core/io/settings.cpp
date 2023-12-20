@@ -315,7 +315,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
             std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(connection);
             std::optional<BitstreamId> bitstreamId;
             if(connection.has_bitstream_id()) {
-                bitstreamId = connection.bitstream_id().ordinal();
+                bitstreamId = ARRUS_SAFE_CAST(connection.bitstream_id().ordinal(), uint16_t);
             }
             result.emplace_back(model, channelMapping, bitstreamId);
         } else {
@@ -338,7 +338,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
         std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(connection);
         std::optional<BitstreamId> bitstreamId;
         if(connection.has_bitstream_id()) {
-            bitstreamId = connection.bitstream_id().ordinal();
+            bitstreamId = ARRUS_SAFE_CAST(connection.bitstream_id().ordinal(), uint16_t);
         }
         result.emplace_back(model, channelMapping, bitstreamId);
     }
