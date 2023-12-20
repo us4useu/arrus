@@ -902,16 +902,16 @@ BitstreamId Us4OEMImpl::addIOBitstream(const std::vector<uint8_t> &levels, const
     return bitstreamId;
 }
 
-void Us4OEMImpl::setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
+void Us4OEMImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8_t> &levels,
                                 const std::vector<uint16_t> &periods) {
     ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
-    ARRUS_REQUIRES_TRUE(id < bitstreamOffsets.size(), "The bitstream with the given id does not exists.");
-    if(id == bitstreamOffsets.size()-1) {
+    ARRUS_REQUIRES_TRUE(bitstreamId < bitstreamOffsets.size(), "The bitstream with the given id does not exists.");
+    if(bitstreamId == bitstreamOffsets.size()-1) {
         // Allow to change the last bitstream size.
-        ARRUS_REQUIRES_EQUAL_IAE(levels.size(), bitstreamSizes.at(id));
+        ARRUS_REQUIRES_EQUAL_IAE(levels.size(), bitstreamSizes.at(bitstreamId));
     }
-    setIOBitstreamForOffset(bitstreamOffsets.at(id), levels, periods);
-    bitstreamSizes[id] = levels.size();
+    setIOBitstreamForOffset(bitstreamOffsets.at(bitstreamId), levels, periods);
+    bitstreamSizes[bitstreamId] = levels.size();
 }
 
 void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
