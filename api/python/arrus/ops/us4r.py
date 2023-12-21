@@ -77,7 +77,6 @@ class Tx(Operation):
     :param focus: transmission focus depth [m] np.inf means to transmit plane wave
     :param angle: transmission angles [rad]
     :param speed_of_sound: assumed speed of sound [m/s]
-    :param placement: probe on which the TX should be executed
     """
     aperture: typing.Union[np.ndarray, Aperture]
     excitation: Pulse
@@ -85,7 +84,6 @@ class Tx(Operation):
     focus: typing.Optional[float] = None
     angle: typing.Optional[float] = None
     speed_of_sound: typing.Optional[float] = None
-    placement: str = None
 
     def __post_init__(self):
         # Validate.
@@ -151,7 +149,6 @@ class Rx(Operation):
     downsampling_factor: int = 1
     padding: tuple = (0, 0)
     init_delay: str = "tx_start"
-    placement: str = None
 
     def __post_init__(self):
         if not isinstance(self.aperture, Aperture):
@@ -251,7 +248,7 @@ class Scheme:
     :param processing: data processing to perform on the raw channel RF data \
       currently only arrus.utils.imaging is supported
     """
-    tx_rx_sequence: typing.Union[TxRxSequence, typing.Sequence[TxRxSequence]]
+    tx_rx_sequence: TxRxSequence
     rx_buffer_size: int = 2
     output_buffer: DataBufferSpec = DataBufferSpec(type="FIFO", n_elements=4)
     work_mode: str = "HOST"
