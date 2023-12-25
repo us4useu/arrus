@@ -56,7 +56,7 @@ public:
      * @param ordinal ordinal number of the probe to get
      * @return a handle to the probe
      */
-    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) = 0;
+    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) override = 0;
 
     virtual std::pair<
         std::shared_ptr<arrus::framework::Buffer>,
@@ -234,6 +234,11 @@ public:
      * Returns the number of us4OEM modules that are used in this us4R system.
      */
     virtual uint8_t getNumberOfUs4OEMs() = 0;
+
+    /**
+     * Returns the number of probes that are connected to the system.
+     */
+    virtual int getNumberOfProbes() = 0;
 
     /**
      * Returns NOMINAL us4R device sampling frequency.

@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
-import typing
 import numpy as np
 from arrus.ops.operation import Operation
-from typing import Iterable
+from typing import Iterable, Dict, Union, List, Callable, Sequence
 from arrus.framework import Constant
 
 
@@ -77,6 +76,7 @@ class Tx(Operation):
     :param focus: transmission focus depth [m] np.inf means to transmit plane wave
     :param angle: transmission angles [rad]
     :param speed_of_sound: assumed speed of sound [m/s]
+    :param placement: id of the probe that should do perform TX
     """
     aperture: typing.Union[np.ndarray, Aperture]
     excitation: Pulse
@@ -84,6 +84,7 @@ class Tx(Operation):
     focus: typing.Optional[float] = None
     angle: typing.Optional[float] = None
     speed_of_sound: typing.Optional[float] = None
+    placement: str = "Probe:0"
 
     def __post_init__(self):
         # Validate.
@@ -113,9 +114,10 @@ class Tx(Operation):
                                  "shape (number of active elements,)")
             if self.delays is not None \
                     and self.delays.shape[0] != np.sum(self.aperture):
-                raise ValueError(f"The array of delays should have the size equal "
-                                 f"to the number of active elements of aperture "
-                                 f"({self.aperture.shape})")
+                raise ValueError(
+                    f"The array of delays should have the size equal "
+                    f"to the number of active elements of aperture "
+                    f"({self.aperture.shape})")
         if not isinstance(self.aperture, Aperture):
             object.__setattr__(self, "aperture", np.asarray(self.aperture))
 
@@ -143,12 +145,14 @@ class Rx(Operation):
       available options: 'tx_start' - the first recorded sample is when the  \
       transmit starts, 'tx_center' - the first recorded sample is delayed by \
       tx aperture center delay and burst factor.
+    :param placement: id of the probe that should do this RX
     """
     aperture: typing.Union[np.ndarray, Aperture]
     sample_range: tuple
     downsampling_factor: int = 1
     padding: tuple = (0, 0)
     init_delay: str = "tx_start"
+    placement: str = "Probe:0"
 
     def __post_init__(self):
         if not isinstance(self.aperture, Aperture):
@@ -185,9 +189,11 @@ class TxRxSequence:
         determined by the total pri only. [s]
     """
     ops: typing.List[TxRx]
-    tgc_curve: typing.Union[np.ndarray, Iterable] = field(default_factory=lambda: [])
+    tgc_curve: typing.Union[np.ndarray, Iterable] = field(
+        default_factory=lambda: [])
     sri: float = None
     n_repeats: int = 1
+    name: str = "TxRxSequence:0"
 
     def __post_init__(self):
         object.__setattr__(self, "tgc_curve", np.asarray(self.tgc_curve))
@@ -248,10 +254,10 @@ class Scheme:
     :param processing: data processing to perform on the raw channel RF data \
       currently only arrus.utils.imaging is supported
     """
-    tx_rx_sequence: TxRxSequence
+    tx_rx_sequence: Union[TxRxSequence, Sequence[TxRxSequence]]
     rx_buffer_size: int = 2
     output_buffer: DataBufferSpec = DataBufferSpec(type="FIFO", n_elements=4)
     work_mode: str = "HOST"
-    processing: object = None
+    processing: Union[Callable, Sequence[Callable]] = None
     digital_down_conversion: DigitalDownConversion = None
-    constants: typing.List[Constant] = tuple()
+    constants: List[Constant] = tuple()

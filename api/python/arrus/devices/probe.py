@@ -3,6 +3,11 @@ import numpy as np
 import math
 from typing import Tuple
 
+from arrus.core import DeviceId
+from arrus.devices.device import DeviceType
+
+DEVICE_TYPE = DeviceType("Probe")
+
 
 @dataclasses.dataclass(frozen=True)
 class ProbeModelId:
@@ -63,6 +68,5 @@ class ProbeModel:
 @dataclasses.dataclass(frozen=True)
 class ProbeDTO:
     model: ProbeModel
-
-    def get_id(self):
-        return "Probe:0"
+    # TODO(0.12.0) make id obligatory (will break previous const metadata)
+    device_id: DeviceId = DeviceId(DEVICE_TYPE, 0)
