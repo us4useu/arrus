@@ -56,7 +56,10 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
     
     for (int iTx=0; iTx<nTx; iTx++) {
         
-        float const rngRxTangInv = 1 / (maxRxTang[iTx] - minRxTang[iTx]); // inverted tangent range
+        float minRxTangPix = minRxTang[z + x*nZPix + iTx*nZPix*nXPix];
+        float maxRxTangPix = maxRxTang[z + x*nZPix + iTx*nZPix*nXPix];
+        
+        float const rngRxTangInv = 1 / (maxRxTangPix - minRxTangPix); // inverted tangent range
         float omega = 2 * M_PI * fn[iTx];
         
         if (!isinf(txFoc[iTx])) {
@@ -117,8 +120,8 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
 //                 rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
                 rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
                 rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
-                if (rxTang < minRxTang[iTx] || rxTang > maxRxTang[iTx]) continue;
-                rxApod = (rxTang-minRxTang[iTx])*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
+                if (rxTang < minRxTangPix || rxTang > maxRxTangPix) continue;
+                rxApod = (rxTang-minRxTangPix)*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
                 rxApod = tex1D(rxApodTex, rxApod);
                 
                 time = (txDist + rxDist) * sosInv + initDel[iTx];
@@ -306,8 +309,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
     checkData(elemLst,   "elemLst",   true,  false, 1, invalidInputMsgId);
     checkData(rxElemOrig,"rxElemOrig",true,  false, 1, invalidInputMsgId);
     checkData(nSampOmit, "nSampOmit", true,  false, 1, invalidInputMsgId);
-    checkData(minRxTang, "minRxTang", false, false, 1, invalidInputMsgId);
-    checkData(maxRxTang, "maxRxTang", false, false, 1, invalidInputMsgId);
+    checkData(minRxTang, "minRxTang", false, false, 3, invalidInputMsgId);
+    checkData(maxRxTang, "maxRxTang", false, false, 3, invalidInputMsgId);
     
     /* Get some additional information */
     nSamp = mxGPUGetDimensions(iqRaw)[0];
@@ -418,8 +421,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
                                                                       dev_elemLst   + iPart*nTxPerPart, 
                                                                       dev_rxElemOrig + iPart*nTxPerPart, 
                                                                       dev_nSampOmit + iPart*nTxPerPart, 
-                                                                      dev_minRxTang + iPart*nTxPerPart, 
-                                                                      dev_maxRxTang + iPart*nTxPerPart, 
+                                                                      dev_minRxTang + iPart*nZPix*nXPix*nTxPerPart, 
+                                                                      dev_maxRxTang + iPart*nZPix*nXPix*nTxPerPart, 
                                                                       fs, sos, 
                                                                       nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
     }
