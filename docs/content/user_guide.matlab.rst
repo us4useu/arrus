@@ -294,7 +294,7 @@ Currently, the default dictionary contains definitions of the following probes:
 
 - ultrasonix:
 
-  - probes: ``l14-5/38``
+  - probes: ``l14-5/38``, ``l9-4/38``
   - adapters: ``ultrasonix``
 
 - olympus:

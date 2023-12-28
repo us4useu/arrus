@@ -962,9 +962,25 @@ probe_models: [
             end: 10e6
         },
         voltage_range: {
-	    begin: 0,
-	    end: 90
-	}
+            begin: 0,
+            end: 90
+	    }
+    },
+    {
+        id: {
+            manufacturer: "ultrasonix"
+            name: "l9-4/38"
+        }
+        n_elements: 128
+        pitch: 0.3048e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+            begin: 0,
+            end: 90
+	    }
     },
     {
         id: {
@@ -1332,6 +1348,26 @@ probe_to_adapter_connections: [
          probe_model_id: {
              manufacturer: "ultrasonix"
              name: "l14-5/38"
+         }
+         probe_adapter_model_id: [
+             {
+                 manufacturer: "us4us"
+                 name: "ultrasonix"
+             },
+             {
+                 manufacturer: "us4us"
+                 name: "ultrasonix-us4r"
+             }
+         ]
+         channel_mapping_ranges: {
+                begin: 0
+                end: 127
+         }
+     },
+    {
+         probe_model_id: {
+             manufacturer: "ultrasonix"
+             name: "l9-4/38"
          }
          probe_adapter_model_id: [
              {
