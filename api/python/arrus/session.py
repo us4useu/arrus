@@ -97,7 +97,7 @@ class Session(AbstractSession):
         if not isinstance(sequences, Iterable):
             sequences = (sequences, )
         processings = scheme.processing
-        if not isinstance(processings, Iterable):
+        if not isinstance(processings, Iterable) and processings is not None:
             processings = (processings, )
         constants = scheme.constants
 
@@ -166,24 +166,30 @@ class Session(AbstractSession):
             # setup processing
             import arrus.utils.imaging as _imaging
 
-            if isinstance(processings, _imaging.Pipeline):
-                # Wrap Pipeline into the Processing object.
-                processings = _imaging.Processing(
-                    pipeline=processings,
-                    callback=None,
-                    extract_metadata=False
-                )
-            if isinstance(processings, _imaging.Processing):
-                processings = arrus.utils.imaging.ProcessingRunner(
-                    buffer, const_metadata, processings)
-                outputs = processings.outputs
-            else:
-                raise ValueError("Unsupported type of processing: "
-                                 f"{type(processings)}")
+            input_buffer = GPUBuffer()
+
+            for i, processing in enumerate(processings):
+                if isinstance(processing, _imaging.Pipeline):
+                    # Wrap Pipeline into the Processing object.
+                    processing.name = f"Pipeline:{i}"
+                    processing = _imaging.Processing(
+                        pipeline=processing,
+                        callback=None,
+                        extract_metadata=False
+                    )
+                if isinstance(processing, _imaging.Processing):
+                    processing = arrus.utils.imaging.ProcessingRunner(
+                        buffer, metadatas[f"Sequence:{i}"], processing,
+                        output_nr=i
+                    )
+                    outputs = processing.outputs
+                else:
+                    raise ValueError("Unsupported type of processing: "
+                                    f"{type(processings)}")
             self._current_processing = processings
         else:
             # Device buffer and const_metadata
-            outputs = buffer, const_metadata
+            outputs = buffer, metadatas
         return outputs
 
     def __enter__(self):

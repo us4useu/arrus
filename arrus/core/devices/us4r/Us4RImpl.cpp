@@ -2,11 +2,12 @@
 #include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
 #include "arrus/core/common/interpolate.h"
+#include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 
 #include <chrono>
+#include <future>
 #include <memory>
 #include <thread>
-#include <future>
 
 #define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
     if (!rxSettings.has_value()) {                                                                                     \
@@ -15,73 +16,60 @@
 
 namespace arrus::devices {
 
-using ::arrus::framework::Buffer;
-using ::arrus::framework::DataBufferSpec;
-using ::arrus::ops::us4r::Pulse;
-using ::arrus::ops::us4r::Rx;
-using ::arrus::ops::us4r::Scheme;
-using ::arrus::ops::us4r::Tx;
-using ::arrus::ops::us4r::TxRxSequence;
-
-UltrasoundDevice *Us4RImpl::getDefaultComponent() {
-    // NOTE! The implementation of this function determines
-    // validation behaviour of SetVoltage function.
-    // The safest option is to prefer using Probe only,
-    // with an option to choose us4oem
-    // (but the user has to specify it explicitly in settings).
-    // Currently there should be no option to set TxRxSequence
-    // on an adapter directly.
-    if (probe.has_value()) {
-        return probe.value().get();
-    } else {
-        return us4oems[0].get();
-    }
-}
+using namespace ::arrus::framework;
+using namespace ::arrus::ops::us4r;
+using namespace ::arrus::session;
+using namespace ::arrus::devices::us4r;
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
                    std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane)
     : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
-      digitalBackplane(std::move(backplane)),
-      hv(std::move(hv)),
-      channelsMask(std::move(channelsMask))
-{
+      digitalBackplane(std::move(backplane)), hv(std::move(hv)), channelsMask(std::move(channelsMask)) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
-                   ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv,
-                   const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
-                   std::optional<DigitalBackplane::Handle> backplane,
-                   std::vector<Bitstream> bitstreams,
-                   bool hasIOBitstreamAddressing)
-    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
-      probeAdapter(std::move(probeAdapter)), probe(std::move(probe)),
-      digitalBackplane(std::move(backplane)),
-      hv(std::move(hv)),
-      rxSettings(rxSettings),
-      channelsMask(std::move(channelsMask)),
-      bitstreams(std::move(bitstreams)),
-      hasIOBitstreamAdressing(hasIOBitstreamAddressing)
-{
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeImplBase::Handle &probe,
+                   ProbeSettings::ChannelMapping probeChannelMapping, ProbeAdapterSettings probeAdapterSettings,
+                   std::vector<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
+                   std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane,
+                   std::vector<Bitstream> bitstreams, bool hasIOBitstreamAddressing)
+    : Us4R(id) {
+
+    this->logger = getLoggerFactory()->getLogger();
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-    if(hasIOBitstreamAdressing) {
+    this->us4oems = std::move(us4oems);
+    this->probe = std::move(probe);
+    this->digitalBackplane = std::move(backplane);
+    this->hv = std::move(hv);
+    this->rxSettings = rxSettings;
+    this->channelsMask = std::move(channelsMask);
+    this->bitstreams = std::move(bitstreams);
+    this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
+
+    if (this->hasIOBitstreamAdressing) {
         // Add empty IOBitstream, to use for TX/RX between probe switching.
-        getMasterUs4oem()->getIUs4oem()->SetWaveformIODriveMode();
-        getMasterUs4oem()->addIOBitstream({0, }, {1, });
+        getMasterOEM()->getIUs4oem()->SetWaveformIODriveMode();
+        getMasterOEM()->addIOBitstream(
+            {
+                0,
+            },
+            {
+                1,
+            });
     }
 
-    for(auto &bitstream: this->bitstreams) {
-        getMasterUs4oem()->addIOBitstream(bitstream.getLevels(), bitstream.getPeriods());
+    for (auto &bitstream : this->bitstreams) {
+        getMasterOEM()->addIOBitstream(bitstream.getLevels(), bitstream.getPeriods());
     }
 }
 
-std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
-    std::vector<std::pair <std::string,float>> voltages;
-    std::pair <std::string,float> temp;
+std::vector<std::pair<std::string, float>> Us4RImpl::logVoltages(bool isHV256) {
+    std::vector<std::pair<std::string, float>> voltages;
+    std::pair<std::string, float> temp;
     float voltage;
     // Do not log the voltage measured by US4RPSC, as it may not be correct
     // for this hardware.
-    if(isHV256) {
+    if (isHV256) {
         //Measure voltages on HV
         voltage = this->getMeasuredPVoltage();
         temp = std::make_pair(std::string("HVP on HV supply"), voltage);
@@ -93,7 +81,7 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
 
     auto ver = us4oems[0]->getOemVersion();
 
-    if(ver == 1) {
+    if (ver == 1) {
         //Verify measured voltages on OEMs
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
             voltage = this->getUCDMeasuredHVPVoltage(i);
@@ -103,44 +91,44 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
             temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
             voltages.push_back(temp);
         }
-    }
-    else if(ver == 2) {
+    } else if (ver == 2) {
         //Verify measured voltages on OEM+s
         //Currently OEM+ does not support internal voltage measurement - skip
     }
-
-
 
     return voltages;
 }
 
 void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool isHV256) {
-    std::vector<std::pair <std::string,float>> voltages;
+    std::vector<std::pair<std::string, float>> voltages;
     bool fail = true;
-    while(retries-- && fail) {
+    while (retries-- && fail) {
         fail = false;
         voltages = logVoltages(isHV256);
-        for(size_t i = 0; i < voltages.size(); i++) {
-            if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
+        for (size_t i = 0; i < voltages.size(); i++) {
+            if (abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
                 fail = true;
             }
         }
-        if(!fail) { break; }
+        if (!fail) {
+            break;
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
     //log last measured voltages
-    for(size_t i = 0; i < voltages.size(); i++) {
+    for (size_t i = 0; i < voltages.size(); i++) {
         logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].first + " = {} V", voltages[i].second));
     }
 
-    if(fail){
+    if (fail) {
         disableHV();
         //find violating voltage
-        for(size_t i = 0; i < voltages.size(); i++) {
-            if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
-                throw IllegalStateException(::arrus::format(voltages[i].first + " invalid '{}', should be in range: [{}, {}]",
-                voltages[i].second, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+        for (size_t i = 0; i < voltages.size(); i++) {
+            if (abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
+                throw IllegalStateException(::arrus::format(
+                    voltages[i].first + " invalid '{}', should be in range: [{}, {}]", voltages[i].second,
+                    (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
             }
         }
     }
@@ -150,8 +138,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     // Validate.
-    auto *device = getDefaultComponent();
-    auto voltageRange = device->getAcceptedVoltageRange();
+    auto voltageRange = this->getAcceptedVoltageRange();
 
     // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
     auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
@@ -159,20 +146,20 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 
     if (voltage < minVoltage || voltage > maxVoltage) {
         throw IllegalArgumentException(
-            ::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
+            format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
     }
 
     bool isHVPS = true;
 
-    for(uint8_t n = 0; n < hv.size(); n++) {
+    for (uint8_t n = 0; n < hv.size(); n++) {
         auto &hvModel = this->hv[n]->getModelId();
-        if(hvModel.getName() != "us4oemhvps") {
+        if (hvModel.getName() != "us4oemhvps") {
             isHVPS = false;
             break;
         }
     }
 
-    if(isHVPS) {
+    if (isHVPS) {
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
             futures.push_back(std::async(std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), voltage));
@@ -180,34 +167,31 @@ void Us4RImpl::setVoltage(Voltage voltage) {
         for (auto &future : futures) {
             future.wait();
         }
-    }
-    else {
-        for(uint8_t n = 0; n < hv.size(); n++) {
+    } else {
+        for (uint8_t n = 0; n < hv.size(); n++) {
             hv[n]->setVoltage(voltage);
         }
     }
 
-
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    float tolerance = 4.0f; // 4V tolerance
+    float tolerance = 4.0f;// 4V tolerance
     int retries = 5;
 
     //Verify register
     auto &hvModel = this->hv[0]->getModelId();
     bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
 
-    if(isHV256) {
+    if (isHV256) {
         // Do not check the voltage measured by US4RPSC, as it may not be correct
         // for this hardware.
         Voltage setVoltage = this->getVoltage();
         if (setVoltage != voltage) {
             disableHV();
-            throw IllegalStateException(
-                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
+            throw IllegalStateException(::arrus::format(
+                "Voltage set on HV module '{}' does not match requested value: '{}'", setVoltage, voltage));
         }
-    }
-    else {
+    } else {
         this->logger->log(LogSeverity::INFO,
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
@@ -243,45 +227,37 @@ float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
 
 void Us4RImpl::disableHV() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
-    if(this->state == State::STARTED) {
+    if (this->state == State::STARTED) {
         throw IllegalStateException("You cannot disable HV while the system is running.");
     }
     logger->log(LogSeverity::INFO, "Disabling HV");
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
 
-    for(uint8_t n = 0; n < hv.size(); n++) {
+    for (uint8_t n = 0; n < hv.size(); n++) {
         hv[n]->disable();
     }
 }
 
-std::pair<Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
-Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
+std::pair<Buffer::SharedHandle, Metadata::SharedHandle> Us4RImpl::upload(const Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
-    auto rxBufferNElements = scheme.getRxBufferSize();
+    auto rxBufferSize = scheme.getRxBufferSize();
     auto workMode = scheme.getWorkMode();
 
-    unsigned hostBufferNElements = outputBufferSpec.getNumberOfElements();
-
+    unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
-    ARRUS_REQUIRES_EQUAL(
-        getDefaultComponent(), probe.value().get(),
-        IllegalArgumentException("Currently TxRx sequence upload is available for system with probes only."));
-    if ((hostBufferNElements % rxBufferNElements) != 0) {
-        throw IllegalArgumentException(
+    ARRUS_REQUIRES_EQUAL_IAE(
+        (hostBufferSize % rxBufferSize), 0,
+        IllegalArgumentException(
             format("The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
-                   hostBufferNElements, rxBufferNElements));
-    }
+                   hostBufferNElements, rxBufferNElements)));
+
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if (this->state == State::STARTED) {
         throw IllegalStateException("The device is running, uploading sequence is forbidden.");
     }
-    // Upload and register buffers.
-    bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
 
-    auto &seq = scheme.getTxRxSequence();
-
-    auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
-                                          scheme.getDigitalDownConversion(), scheme.getConstants());
+    auto [rxBuffer, fcm] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+                                           scheme.getDigitalDownConversion(), scheme.getConstants());
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -307,7 +283,7 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     }
     // Create output buffer.
     this->buffer =
-        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
+        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferSize, stopOnOverflow);
     registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
 
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
@@ -315,7 +291,7 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     this->us4rBuffer = std::move(rxBuffer);
 
     // Metadata
-    arrus::session::MetadataBuilder metadataBuilder;
+    MetadataBuilder metadataBuilder;
     metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
     return {this->buffer, metadataBuilder.buildPtr()};
 }
@@ -337,7 +313,7 @@ void Us4RImpl::start() {
     for (auto &us4oem : us4oems) {
         us4oem->getIUs4oem()->EnableInterrupts();
     }
-    this->getDefaultComponent()->start();
+    this->getMasterOEM()->start();
     this->state = State::STARTED;
 }
 
@@ -350,8 +326,8 @@ void Us4RImpl::stopDevice() {
     } else {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
-        this->getDefaultComponent()->stop();
-        for(auto &us4oem: us4oems) {
+        this->getMasterOEM()->stop();
+        for (auto &us4oem : us4oems) {
             us4oem->getIUs4oem()->WaitForPendingTransfers();
             us4oem->getIUs4oem()->WaitForPendingInterrupts();
         }
@@ -369,7 +345,7 @@ Us4RImpl::~Us4RImpl() {
     try {
         getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
         this->stopDevice();
-	// TODO: the below should be part of session handler
+        // TODO: the below should be part of session handler
         if (this->buffer != nullptr) {
             this->buffer->shutdown();
             // We must be sure here, that there is no thread working on the us4rBuffer here.
@@ -379,43 +355,70 @@ Us4RImpl::~Us4RImpl() {
             }
         }
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
-    } catch(const std::exception &e) {
+    } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
     }
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync,
-                         const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                         const std::vector<framework::NdArray> &txDelayProfiles) {
-    std::vector<TxRxParameters> actualSeq;
+Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
+                          const std::optional<DigitalDownConversion> &ddc,
+                          const std::vector<NdArray> &txDelayProfiles) {
     // Convert to intermediate representation (TxRxParameters).
-    size_t opIdx = 0;
+    ProbeToAdapterMappingConverter probeToAdapterConverter(probeToAdapterChannelMappings);
+    InterfaceToUs4OEMMappingConverter adapterToUs4OEMConverter(probeAdapterSettings.getChannelMapping());
+    SubapertureConverter subapertureConverter(Us4OEMImpl::N_RX_CHANNELS);
 
-    if(hasIOBitstreamAdressing) {
-        // emplace a single, short op, for bitstream pattern switching only
-        ARRUS_REQUIRES_TRUE(seq.getOps().size() >= 1, "The sequence should have at least one TX/RX defined.");
-        TxRxParametersBuilder builder(convertToTxRxParameters(seq.getOps().at(0), BitstreamId(1)));
-        builder.convertToNOP();
-        builder.setPri(2000e-6f);
-        builder.setBitstreamId(BitstreamId(1));
-        actualSeq.push_back(builder.build());
-    }
+    Us4OEMSequences oemSequences;
 
-    for (const auto &txrx : seq.getOps()) {
-        TxRxParameters params = convertToTxRxParameters(txrx, BitstreamId(0));
-        TxRxParametersBuilder builder(params);
-        if(hasIOBitstreamAdressing) {
-            builder.setBitstreamId(BitstreamId(0));
-        }
-        actualSeq.push_back(builder.build());
-        ++opIdx;
+    for (const auto &sequence : sequences) {
+        // Convert the sequence to the us4R internal representation.
+        // Map from probe to adapter channels.
+        auto adapterSequence = probeToAdapterConverter.convert(sequence);
+        // Split sequence between us4OEMs.
+        auto oemLogicalSequences = adapterToUs4OEMConverter.convert(adapterSequence);
+        // Split into us4OEM sub-apertures.
+        auto oemPhysicalSequences = subapertureConverter.convert(oemLogicalSequences);
+        oemSequences.push_back(std::move(oemPhysicalSequences));
     }
-    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
-                                           triggerSync, ddc, txDelayProfiles);
+    // Upload sequence on uO4OEMs.
+    for (auto [ordinal, sequence] : oemSequences) {
+        us4oems[ordinal]->upload();
+    }
+    // Update metadata (FCM in particular).
 }
 
-void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
+TxRxParametersSequence Us4RImpl::createSequencePreamble(const TxRxSequence &sequence) {
+    TxRxParametersSequenceBuilder preambleBuilder;
+    if (hasIOBitstreamAdressing) {
+        // emplace a single, short op, for bitstream pattern switching only
+
+        ARRUS_REQUIRES_TRUE(!sequence.getOps().empty(), "The sequence should have at least one TX/RX defined.");
+        TxRxParametersBuilder entryBuilder(sequence.getOps().at(0));
+        // No TX/RX
+        entryBuilder.convertToNOP();
+        // Bitstream only.
+        entryBuilder.setBitstreamId(BitstreamId(1));
+        // NOTE: 2ms is an aribtrary value (should work at least for 576-channel MUX board).
+        entryBuilder.setPri(2000e-6f);
+        preambleBuilder.addEntry((entryBuilder.build()));
+    }
+    return preambleBuilder.build();
+}
+
+TxRxParametersSequence Us4RImpl::convertToInternalSequence(const TxRxSequence &sequence) {
+    TxRxParametersSequenceBuilder sequenceBuilder;
+    for (const auto &txrx : sequence.getOps()) {
+        TxRxParametersBuilder builder(txrx);
+        if (hasIOBitstreamAdressing) {
+            builder.setBitstreamId(BitstreamId(0));
+        }
+        sequenceBuilder.addEntry(builder.build());
+    }
+    return sequenceBuilder.build();
+}
+
+void Us4RImpl::trigger() { this->getMasterOEM()->syncTrigger(); }
 
 // AFE parameter setters.
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
@@ -431,7 +434,7 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyC
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
-    if(y.empty()) {
+    if (y.empty()) {
         // Turn off TGC
         setTgcCurve(y, applyCharacteristic);
     } else {
@@ -455,14 +458,14 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     uint16 offset = 359;
     uint16 tgcT = 153;
     // TODO try avoid converting from samples to time then back to samples?
-    uint16 maxNSamples = int16(roundf(maxT*nominalFs));
+    uint16 maxNSamples = int16(roundf(maxT * nominalFs));
     // Note: the last TGC sample should be applied before the reception ends.
     // This is to avoid using the same TGC curve between triggers.
     auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
-    values.push_back(maxNSamples); // TODO(jrozb91) To reconsider (not a full TGC sampling time)
+    values.push_back(maxNSamples);// TODO(jrozb91) To reconsider (not a full TGC sampling time)
     std::vector<float> time;
-    for(auto v: values) {
-        time.push_back(v/nominalFs);
+    for (auto v : values) {
+        time.push_back(v / nominalFs);
     }
     return time;
 }
@@ -590,7 +593,7 @@ void Us4RImpl::disableAfeDemod() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAfeDemod(); }, "disableAfeDemod");
 }
 
-float Us4RImpl::getCurrentSamplingFrequency() const {return us4oems[0]->getCurrentSamplingFrequency(); }
+float Us4RImpl::getCurrentSamplingFrequency() const { return us4oems[0]->getCurrentSamplingFrequency(); }
 
 void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
     applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setHpfCornerFrequency(frequency); },
@@ -601,9 +604,7 @@ void Us4RImpl::disableHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
 }
 
-uint16_t Us4RImpl::getAfe(uint8_t reg) {
-    return us4oems[0]->getAfe(reg);
-}
+uint16_t Us4RImpl::getAfe(uint8_t reg) { return us4oems[0]->getAfe(reg); }
 
 void Us4RImpl::setAfe(uint8_t reg, uint16_t val) {
     for (auto &us4oem : us4oems) {
@@ -612,13 +613,13 @@ void Us4RImpl::setAfe(uint8_t reg, uint16_t val) {
 }
 
 void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4RBuffer::Handle &us4rDDRBuffer,
-                                            Scheme::WorkMode workMode) {
+                                    Scheme::WorkMode workMode) {
     Ordinal us4oemOrdinal = 0;
 
-    if(transferRegistrar.size() < us4oems.size()) {
+    if (transferRegistrar.size() < us4oems.size()) {
         transferRegistrar.resize(us4oems.size());
     }
-    for(auto &us4oem: us4oems) {
+    for (auto &us4oem : us4oems) {
         auto us4oemBuffer = us4rDDRBuffer->getUs4oemBuffer(us4oemOrdinal);
         this->registerOutputBuffer(outputBuffer, us4oemBuffer, us4oem.get(), workMode);
         ++us4oemOrdinal;
@@ -630,8 +631,8 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4RBu
  *  is a multiple of number of us4oem elements.
  * - this function will not schedule data transfer when the us4oem element size is 0.
  */
-void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
-                                    Us4OEMImplBase *us4oem, Scheme::WorkMode workMode) {
+void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc, Us4OEMImplBase *us4oem,
+                                    Scheme::WorkMode workMode) {
     auto us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
     auto ius4oem = us4oem->getIUs4oem();
     const auto nElementsSrc = bufferSrc.getNumberOfElements();
@@ -640,29 +641,29 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     if (elementSize == 0) {
         return;
     }
-    if(transferRegistrar[us4oemOrdinal]) {
+    if (transferRegistrar[us4oemOrdinal]) {
         transferRegistrar[us4oemOrdinal].reset();
     }
     transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, bufferSrc, us4oem);
     transferRegistrar[us4oemOrdinal]->registerTransfers();
     // Register buffer element release functions.
-    bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterUs4oem()->getDeviceId().getOrdinal();
-    size_t nRepeats = nElementsDst/nElementsSrc;
+    bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterOEM()->getDeviceId().getOrdinal();
+    size_t nRepeats = nElementsDst / nElementsSrc;
     uint16 startFiring = 0;
-    for(size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
+    for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getFiring();
-        for(size_t j = 0; j < nRepeats; ++j) {
+        for (size_t j = 0; j < nRepeats; ++j) {
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
-            bufferDst->registerReleaseFunction(j*nElementsSrc+i, releaseFunc);
+            bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);
         }
-        startFiring = endFiring+1;
+        startFiring = endFiring + 1;
     }
     // Overflow handling
     ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster));
     ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster));
     // Work mode specific initialization
-    if(workMode == ops::us4r::Scheme::WorkMode::SYNC) {
+    if (workMode == ops::us4r::Scheme::WorkMode::SYNC) {
         ius4oem->EnableWaitOnReceiveOverflow();
         ius4oem->EnableWaitOnTransferOverflow();
     }
@@ -670,7 +671,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
 
 size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {
     std::unordered_set<size_t> sizes;
-    for (auto &element: us4oemBuffer.getElements()) {
+    for (auto &element : us4oemBuffer.getElements()) {
         sizes.insert(element.getSize());
     }
     if (sizes.size() > 1) {
@@ -682,176 +683,163 @@ size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuff
 }
 
 void Us4RImpl::unregisterOutputBuffer() {
-    if(transferRegistrar.empty()) {
+    if (transferRegistrar.empty()) {
         return;
     }
     for (Ordinal i = 0; i < us4oems.size(); ++i) {
-        if(transferRegistrar[i]) {
+        if (transferRegistrar[i]) {
             transferRegistrar[i]->unregisterTransfers();
         }
     }
 }
 
-std::function<void()> Us4RImpl::createReleaseCallback(
-    Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
+std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
 
-    switch(workMode) {
-    case Scheme::WorkMode::HOST: // Automatically generate new trigger after releasing all elements.
+    switch (workMode) {
+    case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
-          for(int i = (int)us4oems.size()-1; i >= 0; --i) {
-              us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-              us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-          }
-          if(this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
-              getMasterUs4oem()->syncTrigger();
-          }
+            for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+            }
+            if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
+                getMasterOEM()->syncTrigger();
+            }
         };
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
         return [this, startFiring, endFiring]() {
-          for(int i = (int)us4oems.size()-1; i >= 0; --i) {
-              us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-              us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-          }
+            for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+            }
         };
-    default:
-        throw ::arrus::IllegalArgumentException("Unsupported work mode.");
+    default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
 }
 
-std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(
-    Scheme::WorkMode workMode, Us4ROutputBuffer *outputBuffer, bool isMaster) {
+std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode workMode,
+                                                                Us4ROutputBuffer *outputBuffer, bool isMaster) {
 
     using namespace std::chrono_literals;
-    switch(workMode) {
+    switch (workMode) {
     case Scheme::WorkMode::SYNC:
-        return  [this, outputBuffer, isMaster]() {
-          try {
-              this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
-              size_t nElements = outputBuffer->getNumberOfElements();
-              // Wait for all elements to be released by the user.
-              while(nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                  std::this_thread::sleep_for(1ms);
-              }
-              // Inform about free elements only once, in the master's callback.
-              if(isMaster) {
-                  for(int i = (int)us4oems.size()-1; i >= 0; --i) {
-                      us4oems[i]->getIUs4oem()->SyncReceive();
-                  }
-              }
-          } catch (const std::exception &e) {
-              logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
-          } catch (...) {
-              logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown");
-          }
+        return [this, outputBuffer, isMaster]() {
+            try {
+                this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
+                size_t nElements = outputBuffer->getNumberOfElements();
+                // Wait for all elements to be released by the user.
+                while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::this_thread::sleep_for(1ms);
+                }
+                // Inform about free elements only once, in the master's callback.
+                if (isMaster) {
+                    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncReceive();
+                    }
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+            } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
     case Scheme::WorkMode::MANUAL:
         return [this, outputBuffer]() {
-          try {
-              if(outputBuffer->isStopOnOverflow()) {
-                  this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
-                  this->getMasterUs4oem()->stop();
-                  outputBuffer->markAsInvalid();
-              } else {
-                  this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
-              }
-          } catch (const std::exception &e) {
-              logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
-          } catch (...) {
-              logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown");
-          }
+            try {
+                if (outputBuffer->isStopOnOverflow()) {
+                    this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
+                    this->getMasterOEM()->stop();
+                    outputBuffer->markAsInvalid();
+                } else {
+                    this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+            } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
-    default:
-        throw ::arrus::IllegalArgumentException("Unsupported work mode.");
+    default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
 }
 
-std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
-    Scheme::WorkMode workMode, Us4ROutputBuffer *outputBuffer, bool isMaster) {
+std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMode workMode,
+                                                                 Us4ROutputBuffer *outputBuffer, bool isMaster) {
 
     using namespace std::chrono_literals;
-    switch(workMode) {
+    switch (workMode) {
     case Scheme::WorkMode::SYNC:
-        return  [this, outputBuffer, isMaster]() {
-          try {
-              this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
-              size_t nElements = outputBuffer->getNumberOfElements();
-              // Wait for all elements to be released by the user.
-              while(nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                  std::this_thread::sleep_for(1ms);
-              }
-              // Inform about free elements only once, in the master's callback.
-              if(isMaster) {
-                  for(int i = (int)us4oems.size()-1; i >= 0; --i) {
-                      us4oems[i]->getIUs4oem()->SyncTransfer();
-                  }
-              }
-          } catch (const std::exception &e) {
-              logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
-          } catch (...) {
-              logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
-          }
+        return [this, outputBuffer, isMaster]() {
+            try {
+                this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
+                size_t nElements = outputBuffer->getNumberOfElements();
+                // Wait for all elements to be released by the user.
+                while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
+                    std::this_thread::sleep_for(1ms);
+                }
+                // Inform about free elements only once, in the master's callback.
+                if (isMaster) {
+                    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                        us4oems[i]->getIUs4oem()->SyncTransfer();
+                    }
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
+            } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
     case Scheme::WorkMode::MANUAL:
         return [this, outputBuffer]() {
-          try {
-              if(outputBuffer->isStopOnOverflow()) {
-                  this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
-                  this->getMasterUs4oem()->stop();
-                  outputBuffer->markAsInvalid();
-              } else {
-                  this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
-              }
-          } catch (const std::exception &e) {
-              logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
-          } catch (...) {
-              logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown");
-          }
+            try {
+                if (outputBuffer->isStopOnOverflow()) {
+                    this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
+                    this->getMasterOEM()->stop();
+                    outputBuffer->markAsInvalid();
+                } else {
+                    this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
+                }
+            } catch (const std::exception &e) {
+                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
+            } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
         };
-    default:
-        throw ::arrus::IllegalArgumentException("Unsupported work mode.");
+    default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
 }
 
 const char *Us4RImpl::getBackplaneSerialNumber() {
-    if(!this->digitalBackplane.has_value()) {
+    if (!this->digitalBackplane.has_value()) {
         throw arrus::IllegalArgumentException("No backplane defined.");
     }
     return this->digitalBackplane->get()->getSerialNumber();
 }
 
 const char *Us4RImpl::getBackplaneRevision() {
-    if(!this->digitalBackplane.has_value()) {
+    if (!this->digitalBackplane.has_value()) {
         throw arrus::IllegalArgumentException("No backplane defined.");
     }
     return this->digitalBackplane->get()->getRevisionNumber();
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    for(auto &item: params.items()) {
+    for (auto &item : params.items()) {
         auto &key = item.first;
         auto value = item.second;
         logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
-        if(key != "/sequence:0/txFocus") {
+        if (key != "/sequence:0/txFocus") {
             throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
         }
         this->us4oems[0]->getIUs4oem()->TriggerStop();
         try {
-            for(auto &us4oem: us4oems) {
+            for (auto &us4oem : us4oems) {
                 us4oem->getIUs4oem()->SetTxDelays(value);
             }
-	} 
-	catch(...) {
+        } catch (...) {
             // Try resume.
             this->us4oems[0]->getIUs4oem()->TriggerStart();
-	    throw;
-	}
-	// Everything OK, resume.
+            throw;
+        }
+        // Everything OK, resume.
         this->us4oems[0]->getIUs4oem()->TriggerStart();
     }
 }
@@ -860,21 +848,9 @@ BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const s
     return this->us4oems[0]->addIOBitstream(levels, periods);
 }
 
-void Us4RImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
+void Us4RImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8_t> &levels,
+                              const std::vector<uint16_t> &periods) {
     this->us4oems[0]->setIOBitstream(bitstreamId, levels, periods);
-}
-
-TxRxParameters Us4RImpl::convertToTxRxParameters(const ops::us4r::TxRx &txrx, std::optional<BitstreamId> bitstreamId = std::nullopt) {
-    auto &tx = txrx.getTx();
-    auto &rx = txrx.getRx();
-
-    Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
-    Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
-
-
-    return TxRxParameters(tx.getAperture(), tx.getDelays(), tx.getExcitation(), rx.getAperture(),
-                          sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding,
-                          0.0f, bitstreamId);
 }
 
 }// namespace arrus::devices

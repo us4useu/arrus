@@ -76,8 +76,9 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
     auto probeNumberOfElements = model.getNumberOfElements().product();
 
     // Each vector contains mapping:
-    // probe's rx aperture element number -> adapter rx aperture channel number
+    // probe's rx aperture element number -> ADAPTER rx channel number
     // Where each element is the active bit element/channel number.
+    // NOTE: the target value is the GLOBAL ADAPTER channel number, not the ADAPTER CHANNEL NUMBER
     std::vector<std::vector<ChannelIdx>> rxApertureChannelMappings;
 
     // TODO the below list is used only in the remapFcm function, consider simplifying it
@@ -85,15 +86,18 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
     std::vector<ChannelIdx> rxPaddingRight;
 
     size_t opIdx = 0;
+    // Probe sequence -> adapter sequence
     for (const auto &op: seq) {
         logger->log(LogSeverity::TRACE, format("Setting tx/rx {}", ::arrus::toString(op)));
         std::vector<ChannelIdx> rxApertureChannelMapping;
 
+        // Adapte channel apertures/delays.
         BitMask txAperture(adapter->getNumberOfChannels());
         BitMask rxAperture(adapter->getNumberOfChannels());
         std::vector<float> txDelays(adapter->getNumberOfChannels());
 
 
+        // TODO ponizsze moze nie byc prawdziwe: rozne glowice RX oraz TX (z rozna liczba elementow)
         ARRUS_REQUIRES_TRUE(
             op.getTxAperture().size() == op.getRxAperture().size()
          && op.getTxAperture().size() == op.getTxDelays().size()

@@ -219,7 +219,7 @@ private:
 };
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
+Us4OEMImpl::upload(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
                             uint16 batchSize, std::optional<float> sri, bool triggerSync,
                             const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
                             const std::vector<arrus::framework::NdArray> &txDelays) {

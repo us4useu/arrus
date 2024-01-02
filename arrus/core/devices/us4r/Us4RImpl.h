@@ -36,15 +36,11 @@ public:
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
-             std::vector<unsigned short> channelsMask,
-             std::optional<DigitalBackplane::Handle> backplane
-             );
-
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
-             ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
-             std::vector<unsigned short> channelsMask,
-             std::optional<DigitalBackplane::Handle> backplane,
-             std::vector<Bitstream> bitstreams,
+             std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane);
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeImplBase::Handle &probe,
+             ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
+             const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
+             std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
              bool hasIOBitstreamAddressing);
 
     Us4RImpl(Us4RImpl const &) = delete;
@@ -103,6 +99,7 @@ public:
 
     void trigger() override;
 
+    Interval<Voltage> getAcceptedVoltageRange();
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;
@@ -127,7 +124,7 @@ public:
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
     std::vector<unsigned short> getChannelsMask() override;
-    std::vector<std::pair <std::string,float>> logVoltages(bool isUS4PSC);
+    std::vector<std::pair<std::string, float>> logVoltages(bool isUS4PSC);
     void checkVoltage(Voltage voltage, float tolerance, int retries, bool isUS4PSC);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
@@ -148,17 +145,19 @@ public:
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
     void setParameters(const Parameters &parameters) override;
-    void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) override;
+    void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
+                        const std::vector<uint16_t> &periods) override;
 
 private:
-    UltrasoundDevice *getDefaultComponent();
-
     void stopDevice();
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync,
-                   const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                   const std::vector<framework::NdArray> &txDelayProfiles);
+    uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
+                    arrus::ops::us4r::Scheme::WorkMode workMode,
+                    const std::optional<arrus::ops::us4r::DigitalDownConversion> &ddc,
+                    const std::vector<arrus::framework::NdArray> &txDelayProfiles);
+    us4r::TxRxParametersSequence createSequencePreamble(const ops::us4r::TxRxSequence &sequence);
+    us4r::TxRxParametersSequence convertToInternalSequence(const ops::us4r::TxRxSequence &sequence);
 
     /**
      * Applies a given function on all functions.
@@ -166,7 +165,7 @@ private:
      * an appropriate logging message will printed out, and the result exception,
      * TODO consider implementing rollback mechanism?
      */
-    void applyForAllUs4OEMs(const std::function<void(Us4OEM* us4oem)>& func, const std::string &funcName);
+    void applyForAllUs4OEMs(const std::function<void(Us4OEM *us4oem)> &func, const std::string &funcName);
     void disableAfeDemod();
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients);
@@ -177,35 +176,37 @@ private:
                               Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
     size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
 
-    std::function<void()> createReleaseCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 stopFiring);
-    std::function<void()> createOnReceiveOverflowCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
-    std::function<void()> createOnTransferOverflowCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
+    std::function<void()> createReleaseCallback(::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
+                                                uint16 stopFiring);
+    std::function<void()> createOnReceiveOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
+                                                          Us4ROutputBuffer *buffer, bool isMaster);
+    std::function<void()> createOnTransferOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
+                                                           Us4ROutputBuffer *buffer, bool isMaster);
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
-
-    Us4OEMImplBase::RawHandle getMasterUs4oem() const {return this->us4oems[0].get();}
-
-    TxRxParameters convertToTxRxParameters(const ops::us4r::TxRx &rx, std::optional<BitstreamId> bitstreamId);
+    Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
 
     std::mutex deviceStateMutex;
-    std::mutex afeParamsMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
-    std::optional<ProbeAdapterImplBase::Handle> probeAdapter;
-    std::optional<ProbeImplBase::Handle> probe;
+    // Sub-components.
+    ProbeImplBase::Handle probe;
     std::optional<DigitalBackplane::Handle> digitalBackplane;
     std::vector<HighVoltageSupplier::Handle> hv;
-    std::unique_ptr<Us4RBuffer> us4rBuffer;
-    std::shared_ptr<Us4ROutputBuffer> buffer;
+    // Settings.
     State state{State::STOPPED};
     // AFE parameters.
+    std::mutex afeParamsMutex;
     std::optional<RxSettings> rxSettings;
+    std::vector<ProbeSettings::ChannelMapping> probeToAdapterChannelMappings;
+    ProbeAdapterSettings probeAdapterSettings;
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
+    // Buffers.
+    std::unique_ptr<Us4RBuffer> us4rBuffer;
+    std::shared_ptr<Us4ROutputBuffer> buffer;
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
+    // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
 };

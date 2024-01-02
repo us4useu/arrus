@@ -209,10 +209,11 @@ class ProcessingRunner:
         READY = 1
         CLOSED = 2
 
-    def __init__(self, input_buffer, const_metadata, processing):
+    def __init__(self, input_buffer, const_metadata, processing, output_nr=0):
         import cupy as cp
         # Initialize pipeline.
         self.cp = cp
+        self.output_nr = output_nr  # The number of element output
         # Pin input buffer.
         self.input_buffer = self.__register_buffer(input_buffer)
         default_buffer = ProcessingBuffer(size=2, type="locked")
@@ -254,7 +255,7 @@ class ProcessingRunner:
         if self.is_extract_metadata:
             self.metadata_extractor = ExtractMetadata()
             self.metadata_extractor.prepare(const_metadata)
-        self.input_buffer.append_on_new_data_callback(self.process)
+        self.input_buffer.append_on_new_data_callback(self.process, self.output_nr)
         if processing.on_buffer_overflow_callback is not None:
             self.input_buffer.append_on_buffer_overflow_callback(
                 processing.on_buffer_overflow_callback)

@@ -21,13 +21,16 @@ public:
      *  aperture[i] = true means that the i-th channel should be turned on
      * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param downsamplingFactor the factor by which the sampling frequency should be divided, an integer
+     * @param placement probe on which the RX should be performed.
      */
     Rx(std::vector<bool> aperture, std::pair<unsigned int, unsigned int> sampleRange,
        unsigned int downsamplingFactor = 1,
-       std::pair<unsigned short, unsigned short> padding = {(ChannelIdx)0, (ChannelIdx) 0})
+       std::pair<unsigned short, unsigned short> padding = {(ChannelIdx)0, (ChannelIdx) 0},
+       devices::DeviceId placement = devices::DeviceId(devices::DeviceType::Probe, 0))
         : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)),
           downsamplingFactor(downsamplingFactor),
-          padding(std::move(padding)) {}
+          padding(std::move(padding)),
+          placement(placement) {}
 
     const std::vector<bool> &getAperture() const {
         return aperture;
@@ -41,15 +44,16 @@ public:
         return downsamplingFactor;
     }
 
-    const std::pair<unsigned short, unsigned short> &getPadding() const {
-        return padding;
-    }
+    const std::pair<unsigned short, unsigned short> &getPadding() const { return padding; }
+
+    devices::DeviceId getPlacement() const { return placement; }
 
 private:
     std::vector<bool> aperture;
     std::pair<unsigned, unsigned> sampleRange;
     unsigned downsamplingFactor;
     std::pair<unsigned short, unsigned short> padding;
+    devices::DeviceId placement;
 };
 
 }

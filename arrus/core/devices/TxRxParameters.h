@@ -12,7 +12,7 @@
 #include "arrus/core/common/collections.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
 
-namespace arrus::devices {
+namespace arrus::devices::us4r {
 
 class TxRxParameters {
 public:
@@ -56,13 +56,13 @@ public:
                    uint32 rxDecimationFactor, float pri,
                    Tuple<ChannelIdx> rxPadding = {0, 0},
                    float rxDelay = 0.0f,
-                   std::optional<BitstreamId> bitstreamId = std::nullopt
-                   )
+                   std::optional<BitstreamId> bitstreamId = std::nullopt)
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
           txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri),
-          rxPadding(std::move(rxPadding)), rxDelay(rxDelay), bitstreamId(bitstreamId) {}
+          rxPadding(std::move(rxPadding)), rxDelay(rxDelay), bitstreamId(bitstreamId),
+    {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const {
         return txAperture;
@@ -179,6 +179,7 @@ private:
     std::optional<BitstreamId> bitstreamId;
 };
 
+
 class TxRxParametersBuilder {
 public:
 
@@ -195,6 +196,24 @@ public:
         bitstreamId = params.getBitstreamId();
     }
 
+    explicit TxRxParametersBuilder(const arrus::ops::us4r::TxRx &op) {
+        auto &tx = op.getTx();
+        auto &rx = op.getRx();
+
+        Interval<uint32> sampleRange(rx.getSampleRange().first, rx.getSampleRange().second);
+        Tuple<ChannelIdx> padding({rx.getPadding().first, rx.getPadding().second});
+
+        this->txAperture = tx.getAperture();
+        this->txDelays = tx.getDelays();
+        this->txPulse = tx.getExcitation();
+        this->rxAperture = rx.getAperture();
+        this->rxSampleRange = sampleRange;
+        this->rxDecimationFactor = rx.getDownsamplingFactor();
+        this->pri = op.getPri();
+        this->rxPadding = padding;
+        this->rxDelay = 0.0f;
+        this->bitstreamId = std::nullopt;
+    }
 
     TxRxParameters build() {
         if(!txPulse.has_value()) {
@@ -252,13 +271,49 @@ private:
     std::optional<BitstreamId> bitstreamId;
 };
 
+class TxRxParametersSequenceBuilder;
 
-using TxRxParamsSequence = std::vector<TxRxParameters>;
+class TxRxParametersSequence {
+public:
+    TxRxParametersSequence() = default;
+    explicit TxRxParametersSequence(const std::vector<TxRxParameters> &parameters) : parameters(parameters) {}
 
-/**
- * Returns the number of actual ops, that is, a the number of ops excluding RxNOPs.
- */
-uint16 getNumberOfNoRxNOPs(const TxRxParamsSequence &seq);
+    [[nodiscard]] std::vector<TxRxParameters> getParameters() const { return parameters; }
+
+    /**
+     * Returns the number of actual ops, that is, a the number of ops excluding RxNOPs.
+     */
+    uint16 getNumberOfNoRxNOPs() const {
+        uint16 res = 0;
+        for(const auto &param: parameters) {
+            if(!param.isRxNOP()) {
+                ++res;
+            }
+        }
+        return res;
+    }
+private:
+    friend TxRxParametersSequenceBuilder;
+    std::vector<TxRxParameters> parameters;
+};
+
+class TxRxParametersSequenceBuilder {
+public:
+    TxRxParametersSequenceBuilder() = default;
+
+    TxRxParametersSequenceBuilder &addEntry(const TxRxParameters &params) {
+        sequence.parameters.push_back(params);
+        return *this;
+    }
+
+    TxRxParametersSequenceBuilder &addEntries(const TxRxParametersSequence &sequence) {}
+    arrus::devices::us4r::TxRxParametersSequence build() {
+
+    }
+
+private:
+    TxRxParametersSequence sequence;
+};
 
 }
 

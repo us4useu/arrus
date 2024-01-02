@@ -32,7 +32,8 @@ public:
     virtual bool isMaster() = 0;
 
     virtual std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-    setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+    upload(const std::vector<arrus::devices::us4r::TxRxParametersSequence> &sequences,
+                    const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
                     uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
                     const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<arrus::framework::NdArray> &txDelays) = 0;
