@@ -19,7 +19,7 @@ public:
         return instance;
     }
 
-    ::us4r::afe58jd18::DIG_TGC_ATTENUATION getEnumValue(const ValueType value) {
+    ::us4r::afe58jd48::DIG_TGC_ATTENUATION getEnumValue(const ValueType value) {
         return valueMap.at(value);
     }
 
@@ -45,25 +45,23 @@ public:
     void operator=(DTGCAttenuationValueMap const &&) = delete;
 
 private:
-    std::unordered_map<ValueType, ::us4r::afe58jd18::DIG_TGC_ATTENUATION> valueMap;
+    std::unordered_map<ValueType, ::us4r::afe58jd48::DIG_TGC_ATTENUATION> valueMap;
 
     DTGCAttenuationValueMap() {
         valueMap.emplace(ValueType(0),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_0dB);
+                         ::us4r::afe58jd48::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_0dB);
         valueMap.emplace(ValueType(6),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_6dB);
+                         ::us4r::afe58jd48::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_6dB);
         valueMap.emplace(ValueType(12),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_12dB);
+                         ::us4r::afe58jd48::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_12dB);
         valueMap.emplace(ValueType(18),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_18dB);
+                         ::us4r::afe58jd48::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_18dB);
         valueMap.emplace(ValueType(24),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_24dB);
+                         ::us4r::afe58jd48::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_24dB);
         valueMap.emplace(ValueType(30),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_30dB);
+                         ::us4r::afe58jd48::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_30dB);
         valueMap.emplace(ValueType(36),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_36dB);
-        valueMap.emplace(ValueType(42),
-                         ::us4r::afe58jd18::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_42dB);
+                         ::us4r::afe58jd48::DIG_TGC_ATTENUATION::DIG_TGC_ATTENUATION_36dB);
     }
 
 

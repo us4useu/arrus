@@ -170,7 +170,7 @@ class ArrusImagingTestCase(ArrusTestCase):
                     pitch=0.2e-3,
                     curvature_radius=0.0
                 ),
-                sampling_frequency=65e6
+                sampling_frequency=120e6
             )
         # if medium is none, keep it None
 

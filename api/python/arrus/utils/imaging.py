@@ -2252,7 +2252,7 @@ class ReconstructLri(Operation):
 
         self.tx_foc = self.num_pkg.asarray(focus, dtype=self.num_pkg.float32)
         burst_factor = tx_op.excitation.n_periods/(2 * self.fn)
-        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
+        self.initial_delay = -start_sample/120e6+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         # Output metadata
         new_signal_description = dataclasses.replace(
@@ -2938,7 +2938,7 @@ class ReconstructLri3D(Operation):
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
         burst_factor = ref_tx.excitation.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
+        self.initial_delay = -start_sample / 120e6 + burst_factor + tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
         self.rx_apod = self.num_pkg.asarray(self.rx_apod)
@@ -3080,7 +3080,7 @@ class DelayAndSumLUT(Operation):
 
         self.n_elements = probe_model.n_elements
         burst_factor = pulse.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 65e6 + burst_factor
+        self.initial_delay = -start_sample / 120e6 + burst_factor
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         return const_metadata.copy(input_shape=output_shape)
 

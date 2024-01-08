@@ -13,6 +13,8 @@ import queue
 import numpy as np
 import arrus.ops.tgc
 import arrus.medium
+import sys
+from collections import deque
 
 from arrus.ops.us4r import (
     Scheme,
@@ -34,41 +36,42 @@ from arrus.utils.gui import (
 )
 
 arrus.set_clog_level(arrus.logging.INFO)
-arrus.add_log_file("test.log", arrus.logging.INFO)
+arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
-    with arrus.Session("us4r.prototxt", medium=medium) as sess:
+    with arrus.Session(sys.argv[1], medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(5)
+        #us4r.set_test_pattern("RAMP")
+        #us4r.set_hv_voltage(5)
 
         n_elements = us4r.get_probe_model().n_elements
         # Full transmit aperture, full receive aperture.
         seq = TxRxSequence(
             ops=[
                 TxRx(
-                    Tx(aperture=[True]*n_elements,
+                    Tx(aperture=[False]*n_elements,
                        excitation=Pulse(center_frequency=6e6, n_periods=2,
                                         inverse=False),
                        # Custom delays 1.
-                       delays=[0]*n_elements),
+                       delays=[]),#0]*n_elements),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 4096),
+                       sample_range=(0, 8192),
                        downsampling_factor=1),
-                    pri=200e-6
+                    pri=1000e-6
                 ),
                 TxRx(
-                    Tx(aperture=[True]*n_elements,
+                    Tx(aperture=[False]*n_elements,
                        excitation=Pulse(center_frequency=6e6, n_periods=2,
                                         inverse=False),
                        # Custom delays 2.
-                       delays=np.linspace(0, 1e-6, n_elements)),
+                       delays=[]),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 4096),
+                       sample_range=(0, 8192),
                        downsampling_factor=1),
-                    pri=200e-6
+                    pri=1000e-6
                 ),
             ],
             # Turn off TGC.
@@ -76,6 +79,9 @@ def main():
             # Time between consecutive acquisitions, i.e. 1/frame rate.
             sri=50e-3
         )
+        
+        rf_queue = deque(maxlen=10)
+        
         # Declare the complete scheme to execute on the devices.
         scheme = Scheme(
             # Run the provided sequence.
@@ -84,16 +90,18 @@ def main():
             processing=Pipeline(
                 steps=(
                     RemapToLogicalOrder(),
+                    Lambda(lambda data: (rf_queue.append(data.get()), data)[1]),
                     Squeeze(),
                     SelectFrames([0]),
-                    Squeeze(),
+                    Squeeze()
                 ),
                 placement="/GPU:0"
             )
         )
         # Upload the scheme on the us4r-lite device.
         buffer, metadata = sess.upload(scheme)
-        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
+#        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=54, slope=2e2))
+        us4r.set_tgc([14]*10)
         # Created 2D image display.
         display = Display2D(metadata=metadata, value_range=(-100, 100))
         # Start the scheme.
@@ -102,6 +110,8 @@ def main():
         # The 2D display will consume data put the the input queue.
         # The below function blocks current thread until the window is closed.
         display.start(buffer)
+        
+        np.save("aTGC14.npy", np.stack(rf_queue))
 
         print("Display closed, stopping the script.")
 

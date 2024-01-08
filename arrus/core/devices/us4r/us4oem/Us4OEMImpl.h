@@ -66,7 +66,7 @@ public:
     static constexpr float MIN_RX_TIME = 20e-6f;
 
     // Sampling
-    static constexpr float SAMPLING_FREQUENCY = 65e6;
+    static constexpr float SAMPLING_FREQUENCY = 120e6;
     static constexpr uint32 MIN_NSAMPLES = 64;
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data

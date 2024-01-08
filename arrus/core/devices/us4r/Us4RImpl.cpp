@@ -396,7 +396,7 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
 void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, false); }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
     ARRUS_ASSERT_RX_SETTINGS_SET();

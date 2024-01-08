@@ -18,7 +18,7 @@ namespace arrus::devices {
  * - LNA gain, available: 12, 18, 24 [dB].
  * - PGA gain, available: 24, 30 [dB].
  * - TGC samples: analog TGC curve samples [dB]. Up to 1022 samples. TGC samples should be in range
- *   [min, max](closed interval) where min = (lna gain + pga gain)-40, and max = (lna gain, pga gain).
+ *   [min, max](closed interval) where min = (lna gain + pga gain)-36, and max = (lna gain, pga gain).
  *   Empty list turns off analog TGC.
  * - Active termination, available: 50, 100, 200, 400 [Ohm] or std::nullopt. null opt turns off active termination
  * - LPF cutoff, available: 10000000, 15000000, 20000000, 30000000, 35000000, 50000000 [Hz].
@@ -34,7 +34,7 @@ class RxSettings {
 public:
     using TGCSample = arrus::ops::us4r::TGCSampleValue;
     using TGCCurve = arrus::ops::us4r::TGCCurve;
-    static constexpr float TGC_ATTENUATION_RANGE = 40.0f;
+    static constexpr float TGC_ATTENUATION_RANGE = 36.0f;
 
     /**
      * A helper function that computes a pair of (min, max) acceptable analog TGC gain for given PGA and LNA gain
