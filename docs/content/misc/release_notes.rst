@@ -4,6 +4,15 @@ Release notes
 0.9.x
 -----
 
+0.9.1
+
+- core (C++):
+
+    - updated us4r-api to 0.10.1:
+
+        - Fixed AFE test patterns generation (RAMP, etc.) #US4R-381.
+        - Added HVP1/M1 voltages calibration skip when not used #US4R-376.       
+
 0.9.0
 
 - core (C++): 
