@@ -130,7 +130,8 @@ public:
            << ", delays: " << ::arrus::toString(parameters.getTxDelays())
            << ", center frequency: " << parameters.getTxPulse().getCenterFrequency()
            << ", n. periods: " << parameters.getTxPulse().getNPeriods()
-           << ", inverse: " << parameters.getTxPulse().isInverse();
+           << ", inverse: " << parameters.getTxPulse().isInverse()
+           << ", tx voltage level: " <<parameters.getTxPulse().getAmplitudeLevel();
         os << "; RX: ";
         os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
         os << "sample range: " << parameters.getRxSampleRange().start() << ", "

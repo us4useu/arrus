@@ -184,6 +184,10 @@ public:
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M((fractional == 0.0f || fractional == 0.5f), (firingStr + ", n periods"));
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getAmplitudeLevel(),
+                    static_cast<ops::us4r::Pulse::AmplitudeLevel>(0),
+                    static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
+                    firingStr);
 
                 // Rx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(Us4OEMImpl::N_ADDR_CHANNELS),
@@ -322,6 +326,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), opIdx);
         ius4oem->SetTxHalfPeriods(static_cast<uint32_t>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
+        // ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), opIdx); TODO
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
     }

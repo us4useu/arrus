@@ -27,7 +27,8 @@ def convert_to_core_sequence(seq):
         core_excitation = arrus.core.Pulse(
             centerFrequency=tx.excitation.center_frequency,
             nPeriods=tx.excitation.n_periods,
-            inverse=tx.excitation.inverse
+            inverse=tx.excitation.inverse,
+            amplitudeLevel=tx.excitation.amplitude_level
         )
         core_tx = arrus.core.Tx(
             aperture=arrus.core.VectorBool(tx.aperture.tolist()),
