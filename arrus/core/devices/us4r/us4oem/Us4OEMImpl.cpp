@@ -31,9 +31,8 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
       channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
       reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
-      serialNumber([this](){return this->ius4oem->GetSerialNumber();}),
-      revision([this](){return this->ius4oem->GetRevisionNumber();}),
-      acceptRxNops(acceptRxNops) {
+      serialNumber([this]() { return this->ius4oem->GetSerialNumber(); }),
+      revision([this]() { return this->ius4oem->GetRevisionNumber(); }), acceptRxNops(acceptRxNops) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 
@@ -159,8 +158,8 @@ class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
     Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax,
                         float txPulseLengthMin, float txPulseLengthMax)
-    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax),
-      txPulseLengthMin(txPulseLengthMin), txPulseLengthMax(txPulseLengthMax) {}
+        : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax),
+          txPulseLengthMin(txPulseLengthMin), txPulseLengthMax(txPulseLengthMax) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -177,11 +176,11 @@ public:
                                                        Us4OEMImpl::MAX_TX_DELAY, firingStr);
 
                 // Tx - pulse
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                    op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax, firingStr);
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax,
+                                                  firingStr);
 
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getPulseLength(),
-                                                  txPulseLengthMin, txPulseLengthMax, firingStr);
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getPulseLength(), txPulseLengthMin, txPulseLengthMax,
+                                                  firingStr);
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M((fractional == 0.0f || fractional == 0.5f), (firingStr + ", n periods"));
@@ -208,6 +207,7 @@ public:
             }
         }
     }
+
 private:
     float txFrequencyMin;
     float txFrequencyMax;
@@ -224,13 +224,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     // Validate input sequence and parameters.
     std::string deviceIdStr = getDeviceId().toString();
     bool isDDCOn = ddc.has_value();
-    Us4OEMTxRxValidator seqValidator(
-        format("{} tx rx sequence", deviceIdStr),
-        ius4oem->GetMinTxFrequency(),
-        ius4oem->GetMaxTxFrequency(),
-        ius4oem->GetMinTxPulseLength(),
-        ius4oem->GetMaxTxPulseLength()
-    );
+    Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence", deviceIdStr), ius4oem->GetMinTxFrequency(),
+                                     ius4oem->GetMaxTxFrequency(), ius4oem->GetMinTxPulseLength(),
+                                     ius4oem->GetMaxTxPulseLength());
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
@@ -255,7 +251,6 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
 
     size_t nTxDelayProfiles = txDelays.size();
 
-
     // Program Tx/rx sequence ("firings")
     for (uint16 opIdx = 0; opIdx < seq.size(); ++opIdx) {
         logger->log(LogSeverity::TRACE, format("Setting tx/rx: {}", opIdx));
@@ -265,11 +260,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         } else {
             logger->log(LogSeverity::DEBUG, arrus::format("Setting tx/rx {}: {}", opIdx, ::arrus::toString(op)));
         }
-        auto sampleRange = op.getRxSampleRange().asPair();
-        auto endSample = std::get<1>(sampleRange);
         float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float) op.getRxDecimationFactor();
         this->currentSamplingFrequency = SAMPLING_FREQUENCY / decimationFactor;
-        float rxTime = getRxTime(endSample, this->currentSamplingFrequency);
+        float rxTime = getRxTime(op, this->currentSamplingFrequency);
 
         // Computing total TX/RX time
         float txrxTime = 0.0f;
@@ -308,10 +301,10 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         uint8 txChannel = 0;
         for (bool bit : op.getTxAperture()) {
             // First set the internal TX delays.
-            for(currentTxDelaysId = 0; currentTxDelaysId < nTxDelayProfiles; ++currentTxDelaysId) {
+            for (currentTxDelaysId = 0; currentTxDelaysId < nTxDelayProfiles; ++currentTxDelaysId) {
                 float txDelay = 0.0f;
                 if (bit && !::arrus::setContains(this->channelsMask, txChannel)) {
-                    txDelay = txDelays[currentTxDelaysId].get<float>((size_t)opIdx, (size_t)txChannel);
+                    txDelay = txDelays[currentTxDelaysId].get<float>((size_t) opIdx, (size_t) txChannel);
                 }
                 ius4oem->SetTxDelay(txChannel, txDelay, opIdx, currentTxDelaysId);
             }
@@ -415,7 +408,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (batchIdx == 0) {
                     size_t partSize = 0;
-                    if(!op.isRxNOP() || acceptRxNops) {
+                    if (!op.isRxNOP() || acceptRxNops) {
                         partSize = nBytes;
                     }
                     // Otherwise, make an empty part (i.e. partSize = 0).
@@ -618,8 +611,15 @@ Us4OEMImpl::setRxMappings(const std::vector<TxRxParameters> &seq) {
 
 float Us4OEMImpl::getSamplingFrequency() { return Us4OEMImpl::SAMPLING_FREQUENCY; }
 
-float Us4OEMImpl::getRxTime(size_t nSamples, float samplingFrequency) {
-    return std::max(MIN_RX_TIME, (float) nSamples / samplingFrequency + RX_TIME_EPSILON);
+float Us4OEMImpl::getRxTime(const TxRxParameters &op, float samplingFrequency) {
+    auto sampleRange = op.getRxSampleRange().asPair();
+    float nSamples = static_cast<float>(std::get<1>(sampleRange));
+    auto &pulse = op.getTxPulse();
+    float txTime = pulse.getPulseLength();
+    float rxTime = nSamples / samplingFrequency;
+    // TODO consider txTime+rxTime
+    rxTime = std::max(txTime, rxTime);
+    return std::max(MIN_RX_TIME, (float)  rxTime + RX_TIME_EPSILON);
 }
 
 std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(std::bitset<N_ADDR_CHANNELS> aperture) {
@@ -809,13 +809,12 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) c
         return offset;
     } else {
         //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
-        if(ddcDecimationFactor == 4) {
+        if (ddcDecimationFactor == 4) {
             // Note: for some reason us4OEM AFE has a different offset for
             // decimation factor; the below values was determined
             // experimentally.
-            return offset + 2*84;
-        }
-        else {
+            return offset + 2 * 84;
+        } else {
             offset += ((txOffset - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
             return offset;
         }
@@ -834,8 +833,7 @@ void Us4OEMImpl::setAfeDemod(const std::optional<ops::us4r::DigitalDownConversio
         auto &value = ddc.value();
         setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(), value.getFirCoefficients().data(),
                     value.getFirCoefficients().size());
-    }
-    else {
+    } else {
         disableAfeDemod();
     }
 }
@@ -876,8 +874,8 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
                       static_cast<uint16_t>(nCoefficients), demodulationFrequency);
 }
 
-const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
+const char *Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
 
-const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
+const char *Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
 }// namespace arrus::devices

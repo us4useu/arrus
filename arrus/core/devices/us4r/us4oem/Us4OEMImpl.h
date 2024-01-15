@@ -164,7 +164,7 @@ private:
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
     setRxMappings(const std::vector<TxRxParameters> &seq);
 
-    static float getRxTime(size_t nSamples, float samplingFrequency);
+    static float getRxTime(const TxRxParameters &op, float samplingFrequency);
 
     std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
 
