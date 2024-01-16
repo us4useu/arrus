@@ -36,15 +36,11 @@ public:
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
-             std::vector<unsigned short> channelsMask,
-             std::optional<DigitalBackplane::Handle> backplane
-             );
+             std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane);
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeAdapterImplBase::Handle &probeAdapter,
              ProbeImplBase::Handle &probe, std::vector<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
-             std::vector<unsigned short> channelsMask,
-             std::optional<DigitalBackplane::Handle> backplane
-             );
+             std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -103,6 +99,8 @@ public:
     void trigger() override;
 
     void setVoltage(Voltage voltage) override;
+    void setVoltage(Voltage voltageMinus, Voltage voltagePlus,
+                    ops::us4r::Pulse::AmplitudeLevel amplitudeLevel) override;
 
     void disableHV() override;
 
@@ -126,8 +124,7 @@ public:
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
     std::vector<unsigned short> getChannelsMask() override;
-    std::vector<std::pair <std::string,float>> logVoltages(bool isUS4PSC);
-    void checkVoltage(Voltage voltage, float tolerance, int retries, bool isUS4PSC);
+    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isUS4PSC);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
@@ -149,6 +146,15 @@ public:
     void setParameters(const Parameters &parameters) override;
 
 private:
+    struct VoltageLogbook {
+        enum class Polarity { MINUS, PLUS };
+
+        std::string name;
+        float voltage;
+        Polarity polarity;
+    };
+    std::vector<VoltageLogbook> logVoltages(bool isHV256);
+
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
@@ -164,7 +170,7 @@ private:
      * an appropriate logging message will printed out, and the result exception,
      * TODO consider implementing rollback mechanism?
      */
-    void applyForAllUs4OEMs(const std::function<void(Us4OEM* us4oem)>& func, const std::string &funcName);
+    void applyForAllUs4OEMs(const std::function<void(Us4OEM *us4oem)> &func, const std::string &funcName);
     void disableAfeDemod();
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients);
@@ -175,14 +181,14 @@ private:
                               Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
     size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
 
-    std::function<void()> createReleaseCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 stopFiring);
-    std::function<void()> createOnReceiveOverflowCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
-    std::function<void()> createOnTransferOverflowCallback(
-        ::arrus::ops::us4r::Scheme::WorkMode workMode, Us4ROutputBuffer *buffer, bool isMaster);
+    std::function<void()> createReleaseCallback(::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
+                                                uint16 stopFiring);
+    std::function<void()> createOnReceiveOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
+                                                          Us4ROutputBuffer *buffer, bool isMaster);
+    std::function<void()> createOnTransferOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
+                                                           Us4ROutputBuffer *buffer, bool isMaster);
 
-    Us4OEMImplBase::RawHandle getMasterUs4oem() const {return this->us4oems[0].get();}
+    Us4OEMImplBase::RawHandle getMasterUs4oem() const { return this->us4oems[0].get(); }
 
     std::mutex deviceStateMutex;
     std::mutex afeParamsMutex;

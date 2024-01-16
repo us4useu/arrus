@@ -72,6 +72,15 @@ public:
     virtual void setVoltage(Voltage voltage) = 0;
 
     /**
+     * Sets HV voltage.
+     *
+     * @param voltageMinus voltage to set [V], lower bound. NOTE: should be a positive value
+     * @param voltagePlus voltage to set [V], upper bound
+     * @param amplitudeLevel amplitude level to update
+     */
+    virtual void setVoltage(Voltage voltageMinus, Voltage voltagePlus, uint8 amplitudeLevel) = 0;
+
+    /**
      * Returns configured HV voltage.
      *
      * @return hv voltage value configured on device [V]

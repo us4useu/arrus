@@ -23,10 +23,10 @@ public:
 
     HighVoltageSupplier(const DeviceId &id, HVModelId modelId);
 
-    void setVoltage(Voltage voltage) {
+    void setVoltage(Voltage voltageMinus, Voltage voltagePlus, uint8 amplitudeLevel) {
         try {
             getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(voltage);
+            getIHV()->SetHVPMVoltage(voltageMinus, voltagePlus, amplitudeLevel);
         } catch(std::exception &e) {
             // TODO catch a specific exception
             logger->log(
@@ -36,7 +36,7 @@ public:
                     "message: '{}', trying once more.",
                     e.what()));
             getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(voltage);
+            getIHV()->SetHVPMVoltage(voltageMinus, voltagePlus, amplitudeLevel);
         }
     }
 

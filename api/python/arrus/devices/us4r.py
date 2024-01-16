@@ -107,13 +107,34 @@ class Us4R(Device, Ultrasound):
             # points.
             self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
-    def set_hv_voltage(self, voltage):
+    def set_hv_voltage(
+            self, voltage=None, voltage_minus=None, voltage_plus=None,
+            amplitude_level=0
+    ):
         """
         Enables HV and sets a given voltage.
 
-        :param voltage: voltage to set
+        :param voltage: voltage to set for both minus and plus polarity
+        :param voltage_minus: voltage to set for negative polarity; SHOULD A POSITIVE VALUE
+        :param voltage_plus: voltage to set for positive polarity
+        :param amplitude: tx voltage amplitude level to update
         """
-        self._handle.setVoltage(voltage)
+        # Validate
+        is_symmetric = voltage is not None
+        is_asymmetric = voltage_minus is not None or voltage_plus is not None
+        if not (is_symmetric ^ is_asymmetric):
+            raise ValueError("Exactly one of the following should be provided: "
+                             "voltage or (voltage_minus and voltage_plus).")
+
+        if is_asymmetric:
+            # Make sure both voltage_minus and voltage plus are provided
+            if voltage_minus is None or voltage_plus is None:
+                raise ValueError("Both voltage_minus and voltage_plus should "
+                                 "be provided.")
+        if voltage is not None:
+            voltage_minus = voltage
+            voltage_plus = voltage
+        self._handle.setVoltage(voltage_minus, voltage_plus, amplitude_level)
 
     def disable_hv(self):
         """
