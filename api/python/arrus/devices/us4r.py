@@ -107,34 +107,25 @@ class Us4R(Device, Ultrasound):
             # points.
             self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
-    def set_hv_voltage(
-            self, voltage=None, voltage_minus=None, voltage_plus=None,
-            amplitude_level=0
-    ):
+    def set_hv_voltage(self, *args):
         """
-        Enables HV and sets a given voltage.
+        Enables HV and sets a given voltage(s).
 
-        :param voltage: voltage to set for both minus and plus polarity
-        :param voltage_minus: voltage to set for negative polarity; SHOULD A POSITIVE VALUE
-        :param voltage_plus: voltage to set for positive polarity
-        :param amplitude: tx voltage amplitude level to update
+        This method expects a list of integers or a list of pairs of integers
+        as input.
+        A single integer v means that the voltage should be set t +v and -v.
+        A pair (vm, vp) means that the -voltage should be set to vm,
+        -voltage to vp.
+
+        Voltage is always expected to be positive number (even for -v).
+
+        Examples:
+            set_hv_voltage(10) -- sets +10 -10 on amplitude level 0.
+            set_hv_voltage((10, 10), (5, 5)) -- sets +10, -10 on level 0,
+            +5, -5 on level 1.
         """
-        # Validate
-        is_symmetric = voltage is not None
-        is_asymmetric = voltage_minus is not None or voltage_plus is not None
-        if not (is_symmetric ^ is_asymmetric):
-            raise ValueError("Exactly one of the following should be provided: "
-                             "voltage or (voltage_minus and voltage_plus).")
-
-        if is_asymmetric:
-            # Make sure both voltage_minus and voltage plus are provided
-            if voltage_minus is None or voltage_plus is None:
-                raise ValueError("Both voltage_minus and voltage_plus should "
-                                 "be provided.")
-        if voltage is not None:
-            voltage_minus = voltage
-            voltage_plus = voltage
-        self._handle.setVoltage(voltage_minus, voltage_plus, amplitude_level)
+        voltages = arrus.utils.core.convert_to_hv_voltages(args)
+        self._handle.setVoltage(voltages)
 
     def disable_hv(self):
         """

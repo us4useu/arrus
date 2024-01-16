@@ -99,8 +99,7 @@ public:
     void trigger() override;
 
     void setVoltage(Voltage voltage) override;
-    void setVoltage(Voltage voltageMinus, Voltage voltagePlus,
-                    ops::us4r::Pulse::AmplitudeLevel amplitudeLevel) override;
+    void setVoltage(const std::vector<HVVoltage> &voltages) override;
 
     void disableHV() override;
 

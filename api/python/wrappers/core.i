@@ -32,8 +32,13 @@ private:
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/devices/us4r/HVVoltage.h"
 using namespace ::arrus;
 %};
+
+%feature("valuewrapper", "1");
+%include "arrus/core/api/devices/us4r/HVVoltage.h"
+%feature("valuewrapper", "0");
 
 // TODO try not declaring explicitly the below types
 namespace std {
@@ -42,7 +47,7 @@ namespace std {
 %template(VectorUInt16) vector<unsigned short>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
-
+%template(VectorHVVoltage) vector<arrus::devices::HVVoltage>;
 };
 
 // ------------------------------------------ EXCEPTION HANDLING

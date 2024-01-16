@@ -17,6 +17,7 @@
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/Ultrasound.h"
 #include "arrus/core/api/session/Metadata.h"
+#include "arrus/core/api/devices/us4r/HVVoltage.h"
 
 namespace arrus::devices {
 
@@ -73,12 +74,12 @@ public:
 
     /**
      * Sets HV voltage.
+    *  The input vector describes what voltages should be set for each tx voltage level (rail).
+    *  voltages[0] is for the tx voltage level 0, voltage[1] is for tx voltage level 1 and so on.
      *
-     * @param voltageMinus voltage to set [V], lower bound. NOTE: should be a positive value
-     * @param voltagePlus voltage to set [V], upper bound
-     * @param amplitudeLevel amplitude level to update
+     * @param voltages voltages to set [V]
      */
-    virtual void setVoltage(Voltage voltageMinus, Voltage voltagePlus, uint8 amplitudeLevel) = 0;
+    virtual void setVoltage(const std::vector<HVVoltage> &voltages) = 0;
 
     /**
      * Returns configured HV voltage.

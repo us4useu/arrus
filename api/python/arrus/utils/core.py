@@ -2,7 +2,7 @@ import numpy as np
 import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, Union, List
 
 _UINT16_MIN = 0
 _UINT16_MAX = 2**16-1
@@ -205,3 +205,25 @@ def convert_constants_to_arrus_ndarray(py_constants):
             py_const.name
         )
     return result
+
+
+def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
+    result = []
+    for v in values:
+        if isinstance(v, tuple):
+            vm, vp = v
+            if not isinstance(vm, int) or not isinstance(vp, int):
+                raise ValueError("Voltages are expected to be integers")
+        if isinstance(v, int):
+            vm, vp = v, v
+        else:
+            raise ValueError("Voltages are expected to be integers "
+                             "or pair of integers.")
+
+        min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
+        if not (min_v <= vm <= max_v) or not (min_v <= vp <= max_v):
+            raise ValueError("Voltages are expected to be values in range "
+                             f"[{min_v}, {max_v}]")
+        result.append(arrus.core.HVVoltage(voltageMinus=vm, voltagePlus=vp))
+    return arrus.core.VectorHVVoltage(result)
+
