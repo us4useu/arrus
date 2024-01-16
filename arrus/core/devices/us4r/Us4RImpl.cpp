@@ -146,12 +146,12 @@ void Us4RImpl::setVoltage(Voltage voltageMinus, Voltage voltagePlus, Pulse::Ampl
     auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
     auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
 
-    ARRUS_REQUIRES_TRUE_E(voltageMinus < minVoltage || voltageMinus > maxVoltage,
+    ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
         IllegalArgumentException(format(
             "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,
             minVoltage, maxVoltage))
     );
-    ARRUS_REQUIRES_TRUE_E(voltagePlus < minVoltage || voltagePlus > maxVoltage,
+    ARRUS_REQUIRES_TRUE_E(voltagePlus >= minVoltage && voltagePlus <= maxVoltage,
         IllegalArgumentException(format(
             "Unaccepted voltage '{}', should be in range: [{}, {}]", voltagePlus,
             minVoltage, maxVoltage))
