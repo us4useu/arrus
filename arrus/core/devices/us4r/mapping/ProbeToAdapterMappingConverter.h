@@ -1,9 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_MAPPING_INTERFACETOINTERFACEMAPPINGCONVERTER_H
 #define ARRUS_CORE_DEVICES_US4R_MAPPING_INTERFACETOINTERFACEMAPPINGCONVERTER_H
 
-#include "arrus/core/api/framework/NdArray.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-
+#include "arrus/core/api/framework/NdArray.h"
 
 namespace arrus::devices::us4r {
 
@@ -19,17 +18,15 @@ public:
      * @param probeToBitstreamId probe to bistream ID, 1D array, probeToBitstreamId[probe ordinal] = bitstream id,
      *                           optional, nullopt means that the bitstream addresing is not used.
      */
-    ProbeToAdapterMappingConverter(const std::vector<framework::NdArray> &mappings,
-                                   const std::optional<framework::NdArray> &probeToBitstreamId):
-    mappings(mappings), probeToAdapterBitstreamId(probeToBitstreamId) {}
+    ProbeToAdapterMappingConverter(const std::vector<NdArray> &mappings,
+                                   const std::optional<NdArray> &probeToBitstreamId)
+        : mappings(mappings), probeToBitstreamId(probeToBitstreamId) {}
 
-    static framework::NdArray convert(const framework::NdArray &values, const framework::NdArray mapping) {
-
-    }
+    static NdArray convert(const NdArray &values, const NdArray &mapping) { return values[mapping]; }
 
     TxRxParametersSequence convert(const ops::us4r::TxRxSequence &sequence) {
         TxRxParametersSequenceBuilder sequenceBuilder;
-        for(const auto& op: sequence.getOps()) {
+        for (const auto &op : sequence.getOps()) {
             sequenceBuilder.addEntry(convert(op));
         }
         return std::move(sequenceBuilder.build());
@@ -39,15 +36,15 @@ public:
         TxRxParametersBuilder builder(op);
         auto txProbe = op.getTx().getPlacement().getOrdinal();
         auto rxProbe = op.getRx().getPlacement().getOrdinal();
-        if(probeToAdapterBitstreamId.has_value()) {
-            auto txBitstreamId = probeToAdapterBitstreamId[txProbe];
-            auto rxBitstreamId = probeToAdapterBitstreamId[rxProbe];
-            ARRUS_REQUIRES_EQUAL(txBitstreamId, rxBitstreamId,
-                IllegalArgumentException(
-                    format("Bitstream ids should be the same for RX and TX probes, got: {}(probe {}) and {}(probe {})",
-                        rxProbe, op.getRx().getPlacement().toString(),
-                        txProbe, op.getTx().getPlacement().toString()
-                    )));
+        if (probeToBitstreamId.has_value()) {
+            const auto &bitstreamMapping = probeToBitstreamId.value();
+            auto txBitstreamId = bitstreamMapping.get<uint8>(txProbe);
+            auto rxBitstreamId = bitstreamMapping.get<uint8>(rxProbe);
+            ARRUS_REQUIRES_EQUAL(
+                txBitstreamId, rxBitstreamId,
+                IllegalArgumentException(format(
+                    "Bitstream ids should be the same for RX and TX probes, got: {} (probe {}) and {} (probe {})",
+                    rxProbe, op.getRx().getPlacement().toString(), txProbe, op.getTx().getPlacement().toString())));
             // Determine bit stream ids for these probes.
             builder.setBitstreamId(txProbe);
         } else {
@@ -63,11 +60,9 @@ public:
         return builder.build();
     }
 
-    FrameChannelMapping
-
 private:
-    std::vector<framework::NdArray> mappings;
-    std::optional<framework::NdArray> probeToAdapterBitstreamId;
+    std::vector<NdArray> mappings;
+    std::optional<NdArray> probeToBitstreamId;
 };
 }// namespace arrus::devices::us4r
 

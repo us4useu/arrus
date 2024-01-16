@@ -26,8 +26,15 @@ public:
 
     static size_t getDataTypeSize(DataType type) {
         switch (type) {
-        case DataType::INT16: return sizeof(int16_t);
+        case DataType::BOOL: return sizeof(bool);
+        case DataType::UINT8: return sizeof(uint8);
+        case DataType::INT8: return sizeof(int8);
+        case DataType::UINT16: return sizeof(uint16);
+        case DataType::INT16: return sizeof(int16);
+        case DataType::UINT32: return sizeof(uint32);
+        case DataType::INT32: return sizeof(int32);
         case DataType::FLOAT32: return sizeof(float32);
+        case DataType::FLOAT64: return sizeof(float64);
         default: throw IllegalArgumentException("Unsupported data type");
         }
     }
@@ -170,9 +177,24 @@ public:
     */
     template<typename T> const T *get() const { return (T *) ptr; }
 
+    template<typename T> T get(size_t column) const {
+        if (this->shape.size() != 1) {
+            throw IllegalArgumentException("The array is expected to be 1D.");
+        }
+        size_t width = this->shape[0];
+        if (column >= width) {
+            throw IllegalArgumentException("Accessing arrays out of bounds, "
+                                           "dimensions: " + std::to_string(width) + ", " +
+                                           + "indices: " + std::to_string(column));
+
+        }
+        T *dst = static_cast<T *>(ptr) + column;
+        return *dst;
+    }
+
     template<typename T> T get(size_t row, size_t column) const {
         if (this->shape.size() != 2) {
-            throw ::arrus::IllegalArgumentException("The array is expected to be 2D.");
+            throw IllegalArgumentException("The array is expected to be 2D.");
         }
         size_t height = this->shape[0];
         size_t width = this->shape[1];
@@ -184,6 +206,9 @@ public:
         }
         T *dst = (T *) ptr + (row * width + column);
         return *dst;
+    }
+
+    NdArray operator[](const NdArray& indices) {
     }
 
     template<typename T> void set(size_t row, size_t column, T value) {
@@ -216,16 +241,10 @@ public:
      */
     short *getInt16() { return this->get<short>(); }
 
-    /**
-     * Returns data shape.
-     */
     const Shape &getShape() const { return shape; }
 
     size_t getNumberOfElements() const { return shape.product(); }
 
-    /**
-     * Returns array data type.
-     */
     DataType getDataType() const { return dataType; }
 
     NdArray view() const { return NdArray{ptr, shape, dataType, placement}; }
@@ -247,7 +266,7 @@ public:
     const std::string &getName() const { return name; }
 
     const std::string toString() const {
-        if (this->shape.size() != 2 || this->dataType != NdArray::DataType::FLOAT32) {
+        if (this->shape.size() != 2 || this->dataType != DataType::FLOAT32) {
             throw IllegalArgumentException("Currently toString supports 2D float32 arrays only.");
         }
         std::stringstream ss;
@@ -261,7 +280,14 @@ public:
     }
 
     template<typename T> std::vector<T> toVector() {
-        // TODO safecast (strict)
+        // TODO verify if this is the same data type
+        if(shape.size() != 1) {
+            throw IllegalArgumentException("toVector method works only for 1D arrays.");
+        }
+        size_t n = shape.size();
+        std::vector<T> result(n);
+        for(size_t i = 0; i < n; ++i) { result[i] = get<T>(i); }
+        return std::move(result);
     }
 
 private:
@@ -284,6 +310,11 @@ template<> inline NdArray::DataType NdArray::getDataType<uint32>() { return Data
 template<> inline NdArray::DataType NdArray::getDataType<int32>() { return DataType::INT32; }
 template<> inline NdArray::DataType NdArray::getDataType<float32>() { return DataType::FLOAT32; }
 template<> inline NdArray::DataType NdArray::getDataType<double>() { return DataType::FLOAT64; }
+
+template<typename T>
+NdArray asarray(std::vector<T> vec) {
+    return std::move(NdArray::asarray<T>(vec));
+}
 
 }// namespace arrus::framework
 
