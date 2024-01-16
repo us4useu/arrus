@@ -36,6 +36,8 @@ private:
 using namespace ::arrus;
 %};
 
+%include "arrus/core/api/common/types.h"
+
 %feature("valuewrapper", "1");
 %include "arrus/core/api/devices/us4r/HVVoltage.h"
 %feature("valuewrapper", "0");
@@ -137,7 +139,6 @@ using namespace ::arrus;
 #define __attribute__(x)
 
 %include "arrus/core/api/common/macros.h"
-%include "arrus/core/api/common/types.h"
 
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)

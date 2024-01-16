@@ -214,7 +214,7 @@ def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
             vm, vp = v
             if not isinstance(vm, int) or not isinstance(vp, int):
                 raise ValueError("Voltages are expected to be integers")
-        if isinstance(v, int):
+        elif isinstance(v, int):
             vm, vp = v, v
         else:
             raise ValueError("Voltages are expected to be integers "
@@ -224,6 +224,6 @@ def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
         if not (min_v <= vm <= max_v) or not (min_v <= vp <= max_v):
             raise ValueError("Voltages are expected to be values in range "
                              f"[{min_v}, {max_v}]")
-        result.append(arrus.core.HVVoltage(voltageMinus=vm, voltagePlus=vp))
+        result.append(arrus.core.HVVoltage(vm, vp))
     return arrus.core.VectorHVVoltage(result)
 

@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_API_DEVICES_US4R_HVVOLTAGE_H
 #define ARRUS_CORE_API_DEVICES_US4R_HVVOLTAGE_H
 
+#include "arrus/core/api/common/types.h"
+
 namespace arrus::devices {
 /**
 * HV voltage curve description.
