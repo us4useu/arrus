@@ -38,8 +38,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
                             int const nXPix, 
                             int const nSamp, 
                             int const nElem, 
-                            int const nRx, 
-                            int const nTx)
+                            int const nRx)
 {
     int z = blockIdx.x * blockDim.x + threadIdx.x;
     int x = blockIdx.y * blockDim.y + threadIdx.y;
@@ -53,93 +52,90 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
     float modSin, modCos, sampRe, sampIm, pixRe, pixIm, pixWgh;
     float const sosInv = 1 / sos;
 //     float const zDistInv = 1 / zPix[z];
+        
+    float const rngRxTangInv = 1 / (*maxRxTang - *minRxTang); // inverted tangent range
+    float omega = 2 * M_PI * *fn;
     
-    for (int iTx=0; iTx<nTx; iTx++) {
+    if (!isinf(*txFoc)) {
+        /* STA */
+        float zFoc	= *txApCentZ + *txFoc * cosf(*txAngZX);
+        float xFoc	= *txApCentX + *txFoc * sinf(*txAngZX);
         
-        float const rngRxTangInv = 1 / (maxRxTang[iTx] - minRxTang[iTx]); // inverted tangent range
-        float omega = 2 * M_PI * fn[iTx];
+        float pixFocArrang;
         
-        if (!isinf(txFoc[iTx])) {
-            /* STA */
-            float zFoc	= txApCentZ[iTx] + txFoc[iTx] * cosf(txAngZX[iTx]);
-            float xFoc	= txApCentX[iTx] + txFoc[iTx] * sinf(txAngZX[iTx]);
-            
-            float pixFocArrang;
-            
-            if (txFoc[iTx] <= 0.f) {
-                /* Virtual Point Source BEHIND probe surface */
-                // Valid pixels are assumed to be always in front of the focal point (VSP)
-                pixFocArrang = 1.f;
-            }
-            else {
-                /* Virtual Point Source IN FRONT OF probe surface */
-                // Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
-                // to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
-                pixFocArrang = (((zPix[z]-zFoc)*(zFoc-txApCentZ[iTx]) + 
-                                 (xPix[x]-xFoc)*(xFoc-txApCentX[iTx])) >= 0.f) ? 1.f : -1.f;
-            }
-            txDist	= ownHypotf(zPix[z] - zFoc, xPix[x] - xFoc);
-            txDist *= pixFocArrang; // Compensation for the Pix-Foc arrangement
-            txDist += txFoc[iTx]; // Compensation for the reference time being the moment when txApCent fires.
-            
-            // Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
-            // to determine if the pixel is in the sonified area (dot product >= 0).
-            // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
-            txApod = ( ( (-(xElemConst[txApFstElem[iTx]] - xFoc)*(zPix[z] - zFoc) + 
-                           (zElemConst[txApFstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) && 
-                       ( ( (xElemConst[txApLstElem[iTx]] - xFoc)*(zPix[z] - zFoc) - 
-                           (zElemConst[txApLstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
+        if (*txFoc <= 0.f) {
+            /* Virtual Point Source BEHIND probe surface */
+            // Valid pixels are assumed to be always in front of the focal point (VSP)
+            pixFocArrang = 1.f;
         }
         else {
-            /* PWI */
-            txDist = (zPix[z] - txApCentZ[iTx]) * cosf(txAngZX[iTx]) + 
-                     (xPix[x] - txApCentX[iTx]) * sinf(txAngZX[iTx]);
-            
-            // Projections of ApEdge-Pix vector on the rotated unit vector of tx direction (dot products) ...
-            // to determine if the pixel is in the sonified area (dot product >= 0).
-            // For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
-            txApod = ( ( (-(zPix[z]-zElemConst[txApFstElem[iTx]]) * sinf(txAngZX[iTx]) + 
-                           (xPix[x]-xElemConst[txApFstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f ) && 
-                       ( ( (zPix[z]-zElemConst[txApLstElem[iTx]]) * sinf(txAngZX[iTx]) - 
-                           (xPix[x]-xElemConst[txApLstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f ) ) ? 1.f : 0.f;
+            /* Virtual Point Source IN FRONT OF probe surface */
+            // Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
+            // to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
+            pixFocArrang = (((zPix[z] - zFoc) * (zFoc - *txApCentZ) + 
+                             (xPix[x] - xFoc) * (xFoc - *txApCentX)) >= 0.f) ? 1.f : -1.f;
         }
+        txDist	= ownHypotf(zPix[z] - zFoc, xPix[x] - xFoc);
+        txDist *= pixFocArrang; // Compensation for the Pix-Foc arrangement
+        txDist += *txFoc; // Compensation for the reference time being the moment when txApCent fires.
         
-        pixRe = 0.f;
-        pixIm = 0.f;
-        pixWgh = 0.f;
-        
-        if (txApod != 0.f) {
-            for (int iRx=0; iRx<nRx; iRx++) {
-                iElem = iRx + rxApOrigElem[iTx];
-                if (iElem<0 || iElem>=nElem) continue;
-                
-                rxDist = ownHypotf(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-//                 rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
-                rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-                rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
-                if (rxTang < minRxTang[iTx] || rxTang > maxRxTang[iTx]) continue;
-                rxApod = (rxTang-minRxTang[iTx])*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
-                rxApod = tex1D(rxApodTex, rxApod);
-                
-                time = (txDist + rxDist) * sosInv + initDel[iTx];
-                iSamp = time * fs;
-                if (iSamp<static_cast<float>(nSampOmit[iTx]) || iSamp>static_cast<float>(nSamp-1)) continue;
-                
-                float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iRx + iTx*nRx);
-                sampRe = iqSamp.x;
-                sampIm = iqSamp.y;
-                
-                __sincosf(omega * time, &modSin, &modCos);
-                
-                pixRe += (sampRe * modCos - sampIm * modSin) * rxApod; // 60-80us
-                pixIm += (sampRe * modSin + sampIm * modCos) * rxApod;
-                pixWgh += rxApod;
-            }
-        }
-        
-        iqLri[z + x*nZPix + iTx*nZPix*nXPix].x = pixRe / pixWgh * txApod;
-        iqLri[z + x*nZPix + iTx*nZPix*nXPix].y = pixIm / pixWgh * txApod;
+        // Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
+        // to determine if the pixel is in the sonified area (dot product >= 0).
+        // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
+        txApod = ( ( (-(xElemConst[*txApFstElem] - xFoc) * (zPix[z] - zFoc)  + 
+                       (zElemConst[*txApFstElem] - zFoc) * (xPix[x] - xFoc)) * pixFocArrang >= 0.f ) && 
+                   ( ( (xElemConst[*txApLstElem] - xFoc) * (zPix[z] - zFoc)  - 
+                       (zElemConst[*txApLstElem] - zFoc) * (xPix[x] - xFoc)) * pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
     }
+    else {
+        /* PWI */
+        txDist = (zPix[z] - *txApCentZ) * cosf(*txAngZX) + 
+                 (xPix[x] - *txApCentX) * sinf(*txAngZX);
+        
+        // Projections of ApEdge-Pix vector on the rotated unit vector of tx direction (dot products) ...
+        // to determine if the pixel is in the sonified area (dot product >= 0).
+        // For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
+        txApod = ( ( (-(zPix[z] - zElemConst[*txApFstElem]) * sinf(*txAngZX) + 
+                       (xPix[x] - xElemConst[*txApFstElem]) * cosf(*txAngZX)) >= 0.f ) && 
+                   ( ( (zPix[z] - zElemConst[*txApLstElem]) * sinf(*txAngZX) - 
+                       (xPix[x] - xElemConst[*txApLstElem]) * cosf(*txAngZX)) >= 0.f ) ) ? 1.f : 0.f;
+    }
+    
+    pixRe = 0.f;
+    pixIm = 0.f;
+    pixWgh = 0.f;
+    
+    if (txApod != 0.f) {
+        for (int iRx=0; iRx<nRx; iRx++) {
+            iElem = iRx + *rxApOrigElem;
+            if (iElem<0 || iElem>=nElem) continue;
+            
+            rxDist = ownHypotf(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+//             rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv; //this approach seems to be 4-5% faster
+            rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+            rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang * tangElemConst[iElem]);
+            if (rxTang < *minRxTang || rxTang > *maxRxTang) continue;
+            rxApod = (rxTang - *minRxTang) * rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sides
+            rxApod = tex1D(rxApodTex, rxApod);
+            
+            time = (txDist + rxDist) * sosInv + *initDel;
+            iSamp = time * fs;
+            if (iSamp<static_cast<float>(*nSampOmit) || iSamp>static_cast<float>(nSamp-1)) continue;
+            
+            float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iRx);
+            sampRe = iqSamp.x;
+            sampIm = iqSamp.y;
+            
+            __sincosf(omega * time, &modSin, &modCos);
+            
+            pixRe += (sampRe * modCos - sampIm * modSin) * rxApod; // 60-80us
+            pixIm += (sampRe * modSin + sampIm * modCos) * rxApod;
+            pixWgh += rxApod;
+        }
+    }
+    
+    iqLri[z + x * nZPix].x = pixRe / pixWgh * txApod;
+    iqLri[z + x * nZPix].y = pixIm / pixWgh * txApod;
 }
 
 __host__ void checkData(mxGPUArray const * const data, 
@@ -378,50 +374,44 @@ void mexFunction(int nlhs, mxArray * plhs[],
     cudaMemcpyToArray(cuArrayApod, 0, 0, dev_rxApod, nRxApodSamp*sizeof(float), cudaMemcpyDeviceToDevice);
     cudaBindTextureToArray(rxApodTex, cuArrayApod, channelDesc);
     
-    /* configure texture reference */
+    /* configure texture reference (raw iq) */
     iqRawTex.normalized  = false;
     iqRawTex.addressMode[0] = cudaAddressModeBorder;
     iqRawTex.filterMode  = cudaFilterModeLinear;
     
-    int nTxPerPart = (nRx*nTx <= 2048) ? nTx : 2048/nRx;
-    int nPart = (nTx+nTxPerPart-1)/nTxPerPart;
-    
     cudaArray* cuArray;
-    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nRx*nTxPerPart);
+    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nRx);
     cudaMalloc3DArray(&cuArray, &iqRawTex.channelDesc, cuArraySize, cudaArrayLayered);
     cudaBindTextureToArray(iqRawTex, cuArray);
     
-    /* Kernel in loop - due to limited number of texture layers */
+    /* Kernel in loop - one Tx at a time */
     cudaMemcpy3DParms cuArrayCopy = {0};
     cuArrayCopy.dstArray = cuArray;
     cuArrayCopy.kind = cudaMemcpyDeviceToDevice;
-    for (int iPart=0; iPart<nPart; iPart++) {
-        
-        int nTxInThisPart = (iPart<(nPart-1)) ? nTxPerPart : (nTx-iPart*nTxPerPart);
+    for (int iTx=0; iTx<nTx; iTx++) {
         
         /* Prepare texture memory */
-        cuArrayCopy.srcPtr = make_cudaPitchedPtr(const_cast<float2 *>(dev_iqRaw)+iPart*nSamp*nRx*nTxPerPart, nSamp * sizeof(float2), nSamp, 1);
-        cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nRx*nTxInThisPart);
+        cuArrayCopy.srcPtr = make_cudaPitchedPtr(const_cast<float2 *>(dev_iqRaw)+iTx*nSamp*nRx, nSamp * sizeof(float2), nSamp, 1);
+        cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nRx);
         cudaMemcpy3D(&cuArrayCopy);
         
         /* Execute CUDA kernel */
-        iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
+        iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iTx*nZPix*nXPix, 
                                                                       dev_zPix, 
                                                                       dev_xPix, 
-                                                                      dev_foc       + iPart*nTxPerPart, 
-                                                                      dev_ang       + iPart*nTxPerPart, 
-                                                                      dev_centZ     + iPart*nTxPerPart, 
-                                                                      dev_centX     + iPart*nTxPerPart, 
-                                                                      dev_fn        + iPart*nTxPerPart, 
-                                                                      dev_initDel   + iPart*nTxPerPart, 
-                                                                      dev_elemFst   + iPart*nTxPerPart, 
-                                                                      dev_elemLst   + iPart*nTxPerPart, 
-                                                                      dev_rxElemOrig + iPart*nTxPerPart, 
-                                                                      dev_nSampOmit + iPart*nTxPerPart, 
-                                                                      dev_minRxTang + iPart*nTxPerPart, 
-                                                                      dev_maxRxTang + iPart*nTxPerPart, 
-                                                                      fs, sos, 
-                                                                      nZPix, nXPix, nSamp, nElem, nRx, nTxInThisPart);
+                                                                      dev_foc        + iTx, 
+                                                                      dev_ang        + iTx, 
+                                                                      dev_centZ      + iTx, 
+                                                                      dev_centX      + iTx, 
+                                                                      dev_fn         + iTx, 
+                                                                      dev_initDel    + iTx, 
+                                                                      dev_elemFst    + iTx, 
+                                                                      dev_elemLst    + iTx, 
+                                                                      dev_rxElemOrig + iTx, 
+                                                                      dev_nSampOmit  + iTx, 
+                                                                      dev_minRxTang  + iTx, 
+                                                                      dev_maxRxTang  + iTx, 
+                                                                      fs, sos, nZPix, nXPix, nSamp, nElem, nRx);
     }
     
     /* Wrap the output */
