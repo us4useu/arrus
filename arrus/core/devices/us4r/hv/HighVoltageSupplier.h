@@ -31,7 +31,7 @@ public:
         try {
             getIHV()->EnableHV();
             getIHV()->SetHVVoltage(us4RVoltages);
-        } catch (const ::arius::ValidationException &e) {
+        } catch (const ::arius::ValidationException &) {
             // Disable HV and Propage validation errors.
             try {
                 getIHV()->DisableHV();
@@ -39,7 +39,7 @@ public:
                 logger->log(LogSeverity::ERROR, format("Exception while disabling HV: {}", ee.what()));
             }
             throw;
-        } catch (const ::arius::AssertionException &e) {
+        } catch (const ::arius::AssertionException &) {
             // Disable HV and Propage validation errors.
             try {
                 getIHV()->DisableHV();
