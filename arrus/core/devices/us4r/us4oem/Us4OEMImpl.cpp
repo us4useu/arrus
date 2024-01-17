@@ -21,7 +21,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h"
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingBuilder.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -621,7 +621,7 @@ Us4OEMImpl::RxMappingSetting Us4OEMImpl::setRxMappings(const TxRxParametersSeque
             ++noRxNopId;
         }
     }
-    return RxMappingSetting{firingToRxMappingId, outputRxApertures, fcmBuilder.build(), rxMapId};
+    return Us4OEMRxMappingRegister{firingToRxMappingId, outputRxApertures, fcmBuilder.build(), rxMapId};
 }
 
 float Us4OEMImpl::getSamplingFrequency() { return Us4OEMImpl::SAMPLING_FREQUENCY; }
