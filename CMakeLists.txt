@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17.0)
 
-project(arrus LANGUAGES CXX)
+project(arrus LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
 set(PROJECT_VERSION 0.9.1)
@@ -104,6 +104,10 @@ endif()
 if(ARRUS_RUN_TESTS)
     include(tests)
     enable_testing()
+    set(CMAKE_C_FLAGS  "${CMAKE_CXX_FLAGS} -O0")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -O0")
+    include(CodeCoverage)
+    append_coverage_compiler_flags()
 endif()
 
 add_subdirectory(arrus/core)
