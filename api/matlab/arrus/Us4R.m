@@ -755,18 +755,17 @@ classdef Us4R < handle
                 for iFrame=1:nFrame
                     rxElemId = obj.seq.rxApOrig(obj.rec.bmodeFrames(iFrame)) - 2 + (1:obj.seq.rxApSize);
                     rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxTangZX = (obj.rec.xGrid(:).' - reshape(obj.sys.xElem(rxElemId),1,1,[])) ./ ...
-                               (obj.rec.zGrid(:)   - reshape(obj.sys.zElem(rxElemId),1,1,[]));
-                    rxTang = (rxTangZX - reshape(obj.sys.tangElem(rxElemId),1,1,[])) ./ ...
-                             (1 + rxTangZX.*reshape(obj.sys.tangElem(rxElemId),1,1,[]));
+                    rxElemId = reshape(rxElemId,1,1,[]);
+                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
+                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
+                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
+                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
                     obj.rec.bmodeRxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.bmodeRxTangLim(iFrame,1)),[],3);
                     obj.rec.bmodeRxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.bmodeRxTangLim(iFrame,2)),[],3);
                 end
             end
             
             obj.rec.colorRxTangLim = reshape(obj.rec.colorRxTangLim,[],2);
-            obj.rec.colorRxTangMin = [];
-            obj.rec.colorRxTangMax = [];
             if obj.rec.colorEnable
                 if size(obj.rec.colorRxTangLim,1) == 1
                     obj.rec.colorRxTangLim = obj.rec.colorRxTangLim.*ones(numel(obj.rec.colorFrames),1);
@@ -780,18 +779,17 @@ classdef Us4R < handle
                 for iFrame=1:nFrame
                     rxElemId = obj.seq.rxApOrig(obj.rec.colorFrames(iFrame)) - 2 + (1:obj.seq.rxApSize);
                     rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxTangZX = (obj.rec.xGrid(:).' - reshape(obj.sys.xElem(rxElemId),1,1,[])) ./ ...
-                               (obj.rec.zGrid(:)   - reshape(obj.sys.zElem(rxElemId),1,1,[]));
-                    rxTang = (rxTangZX - reshape(obj.sys.tangElem(rxElemId),1,1,[])) ./ ...
-                             (1 + rxTangZX.*reshape(obj.sys.tangElem(rxElemId),1,1,[]));
+                    rxElemId = reshape(rxElemId,1,1,[]);
+                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
+                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
+                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
+                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
                     obj.rec.colorRxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.colorRxTangLim(iFrame,1)),[],3);
                     obj.rec.colorRxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.colorRxTangLim(iFrame,2)),[],3);
                 end
             end
             
             obj.rec.vect0RxTangLim = reshape(obj.rec.vect0RxTangLim,[],2);
-            obj.rec.vect0RxTangMin = [];
-            obj.rec.vect0RxTangMax = [];
             if obj.rec.vectorEnable
                 if size(obj.rec.vect0RxTangLim,1) == 1
                     obj.rec.vect0RxTangLim = obj.rec.vect0RxTangLim.*ones(numel(obj.rec.vect0Frames),1);
@@ -805,18 +803,17 @@ classdef Us4R < handle
                 for iFrame=1:nFrame
                     rxElemId = obj.seq.rxApOrig(obj.rec.vect0Frames(iFrame)) - 2 + (1:obj.seq.rxApSize);
                     rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxTangZX = (obj.rec.xGrid(:).' - reshape(obj.sys.xElem(rxElemId),1,1,[])) ./ ...
-                               (obj.rec.zGrid(:)   - reshape(obj.sys.zElem(rxElemId),1,1,[]));
-                    rxTang = (rxTangZX - reshape(obj.sys.tangElem(rxElemId),1,1,[])) ./ ...
-                             (1 + rxTangZX.*reshape(obj.sys.tangElem(rxElemId),1,1,[]));
+                    rxElemId = reshape(rxElemId,1,1,[]);
+                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
+                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
+                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
+                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
                     obj.rec.vect0RxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.vect0RxTangLim(iFrame,1)),[],3);
                     obj.rec.vect0RxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.vect0RxTangLim(iFrame,2)),[],3);
                 end
             end
             
             obj.rec.vect1RxTangLim = reshape(obj.rec.vect1RxTangLim,[],2);
-            obj.rec.vect1RxTangMin = [];
-            obj.rec.vect1RxTangMax = [];
             if obj.rec.vectorEnable
                 if size(obj.rec.vect1RxTangLim,1) == 1
                     obj.rec.vect1RxTangLim = obj.rec.vect1RxTangLim.*ones(numel(obj.rec.vect1Frames),1);
@@ -830,10 +827,11 @@ classdef Us4R < handle
                 for iFrame=1:nFrame
                     rxElemId = obj.seq.rxApOrig(obj.rec.vect1Frames(iFrame)) - 2 + (1:obj.seq.rxApSize);
                     rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxTangZX = (obj.rec.xGrid(:).' - reshape(obj.sys.xElem(rxElemId),1,1,[])) ./ ...
-                               (obj.rec.zGrid(:)   - reshape(obj.sys.zElem(rxElemId),1,1,[]));
-                    rxTang = (rxTangZX - reshape(obj.sys.tangElem(rxElemId),1,1,[])) ./ ...
-                             (1 + rxTangZX.*reshape(obj.sys.tangElem(rxElemId),1,1,[]));
+                    rxElemId = reshape(rxElemId,1,1,[]);
+                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
+                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
+                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
+                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
                     obj.rec.vect1RxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.vect1RxTangLim(iFrame,1)),[],3);
                     obj.rec.vect1RxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.vect1RxTangLim(iFrame,2)),[],3);
                 end
