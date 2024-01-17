@@ -135,7 +135,7 @@ classdef Us4R < handle
                 error("ARRUS:IllegalArgument", ...
                       'Invalid sequence object, must be CustomTxRxSequence');
             end
-            
+
             if nargin>=3 && ~isempty(reconstructOperation) && ~isa(reconstructOperation,'Reconstruction')
                 error("ARRUS:IllegalArgument", ...
                       'Invalid reconstruction object, must be Reconstruction');
@@ -732,14 +732,6 @@ classdef Us4R < handle
                 obj.rec.bmodeFrames = 1:obj.seq.nTx;
             end
             
-            %% Resulting parameters
-            obj.rec.zSize	= length(obj.rec.zGrid);
-            obj.rec.xSize	= length(obj.rec.xGrid);
-            
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
-            end
-            
             %% Validate/adjust size of the RxTangLims
             obj.rec.bmodeRxTangLim = reshape(obj.rec.bmodeRxTangLim,[],2);
             if obj.rec.bmodeEnable
@@ -747,21 +739,6 @@ classdef Us4R < handle
                     obj.rec.bmodeRxTangLim = obj.rec.bmodeRxTangLim.*ones(numel(obj.rec.bmodeFrames),1);
                 elseif size(obj.rec.bmodeRxTangLim,1) ~= numel(obj.rec.bmodeFrames)
                     error("setRecParams: number of rows in bmodeRxTangLim must equal the length of bmodeFrames");
-                end
-                
-                nFrame = numel(obj.rec.bmodeFrames);
-                obj.rec.bmodeRxTangMin = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                obj.rec.bmodeRxTangMax = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                for iFrame=1:nFrame
-                    rxElemId = obj.seq.rxApOrig(obj.rec.bmodeFrames(iFrame)) - 2 + (1:obj.seq.rxApSize);
-                    rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxElemId = reshape(rxElemId,1,1,[]);
-                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
-                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
-                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
-                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
-                    obj.rec.bmodeRxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.bmodeRxTangLim(iFrame,1)),[],3);
-                    obj.rec.bmodeRxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.bmodeRxTangLim(iFrame,2)),[],3);
                 end
             end
             
@@ -772,21 +749,6 @@ classdef Us4R < handle
                 elseif size(obj.rec.colorRxTangLim,1) ~= numel(obj.rec.colorFrames)
                     error("setRecParams: number of rows in colorRxTangLim must equal the length of colorFrames");
                 end
-                
-                nFrame = numel(obj.rec.colorFrames);
-                obj.rec.colorRxTangMin = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                obj.rec.colorRxTangMax = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                for iFrame=1:nFrame
-                    rxElemId = obj.seq.rxApOrig(obj.rec.colorFrames(iFrame)) - 2 + (1:obj.seq.rxApSize);
-                    rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxElemId = reshape(rxElemId,1,1,[]);
-                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
-                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
-                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
-                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
-                    obj.rec.colorRxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.colorRxTangLim(iFrame,1)),[],3);
-                    obj.rec.colorRxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.colorRxTangLim(iFrame,2)),[],3);
-                end
             end
             
             obj.rec.vect0RxTangLim = reshape(obj.rec.vect0RxTangLim,[],2);
@@ -795,21 +757,6 @@ classdef Us4R < handle
                     obj.rec.vect0RxTangLim = obj.rec.vect0RxTangLim.*ones(numel(obj.rec.vect0Frames),1);
                 elseif size(obj.rec.vect0RxTangLim,1) ~= numel(obj.rec.vect0Frames)
                     error("setRecParams: number of rows in vector0RxTangLim must equal the length of vector0Frames");
-                end
-                
-                nFrame = numel(obj.rec.vect0Frames);
-                obj.rec.vect0RxTangMin = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                obj.rec.vect0RxTangMax = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                for iFrame=1:nFrame
-                    rxElemId = obj.seq.rxApOrig(obj.rec.vect0Frames(iFrame)) - 2 + (1:obj.seq.rxApSize);
-                    rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxElemId = reshape(rxElemId,1,1,[]);
-                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
-                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
-                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
-                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
-                    obj.rec.vect0RxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.vect0RxTangLim(iFrame,1)),[],3);
-                    obj.rec.vect0RxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.vect0RxTangLim(iFrame,2)),[],3);
                 end
             end
             
@@ -820,21 +767,14 @@ classdef Us4R < handle
                 elseif size(obj.rec.vect1RxTangLim,1) ~= numel(obj.rec.vect1Frames)
                     error("setRecParams: number of rows in vector1RxTangLim must equal the length of vector1Frames");
                 end
-                
-                nFrame = numel(obj.rec.vect1Frames);
-                obj.rec.vect1RxTangMin = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                obj.rec.vect1RxTangMax = nan(obj.rec.zSize,obj.rec.xSize,nFrame);
-                for iFrame=1:nFrame
-                    rxElemId = obj.seq.rxApOrig(obj.rec.vect1Frames(iFrame)) - 2 + (1:obj.seq.rxApSize);
-                    rxElemId = rxElemId(rxElemId >= 1 & rxElemId <= obj.sys.nElem);
-                    rxElemId = reshape(rxElemId,1,1,[]);
-                    rxTangZX = (obj.rec.xGrid(:).' - obj.sys.xElem(rxElemId)) ./ ...
-                               (obj.rec.zGrid(:)   - obj.sys.zElem(rxElemId));
-                    rxTang = (rxTangZX - obj.sys.tangElem(rxElemId)) ./ ...
-                             (1 + rxTangZX*obj.sys.tangElem(rxElemId));
-                    obj.rec.vect1RxTangMin(:,:,iFrame) = min(max(rxTang,obj.rec.vect1RxTangLim(iFrame,1)),[],3);
-                    obj.rec.vect1RxTangMax(:,:,iFrame) = max(min(rxTang,obj.rec.vect1RxTangLim(iFrame,2)),[],3);
-                end
+            end
+            
+            %% Resulting parameters
+            obj.rec.zSize	= length(obj.rec.zGrid);
+            obj.rec.xSize	= length(obj.rec.xGrid);
+            
+            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
+                [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
             end
             
             %% If GPU is available...
@@ -862,17 +802,9 @@ classdef Us4R < handle
                 obj.seq.rxApOrig       = gpuArray( int32(obj.seq.rxApOrig - 1));
                 obj.seq.nSampOmit      = gpuArray( int32(obj.seq.nSampOmit));
                 obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
-                obj.rec.bmodeRxTangMin = gpuArray(single(obj.rec.bmodeRxTangMin));
-                obj.rec.bmodeRxTangMax = gpuArray(single(obj.rec.bmodeRxTangMax));
                 obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
-                obj.rec.colorRxTangMin = gpuArray(single(obj.rec.colorRxTangMin));
-                obj.rec.colorRxTangMax = gpuArray(single(obj.rec.colorRxTangMax));
                 obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
-                obj.rec.vect0RxTangMin = gpuArray(single(obj.rec.vect0RxTangMin));
-                obj.rec.vect0RxTangMax = gpuArray(single(obj.rec.vect0RxTangMax));
                 obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
-                obj.rec.vect1RxTangMin = gpuArray(single(obj.rec.vect1RxTangMin));
-                obj.rec.vect1RxTangMax = gpuArray(single(obj.rec.vect1RxTangMax));
                 obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
                 obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
                 obj.seq.rxSampFreq     =          single(obj.seq.rxSampFreq);
@@ -1176,29 +1108,21 @@ classdef Us4R < handle
                 case 'bmode'
                     selFrames = obj.rec.bmodeFrames;
                     rxTangLim = obj.rec.bmodeRxTangLim;
-                    rxTangMin = obj.rec.bmodeRxTangMin;
-                    rxTangMax = obj.rec.bmodeRxTangMax;
                 case 'color'
                     selFrames = obj.rec.colorFrames;
                     rxTangLim = obj.rec.colorRxTangLim;
-                    rxTangMin = obj.rec.colorRxTangMin;
-                    rxTangMax = obj.rec.colorRxTangMax;
                 case 'vector0'
                     selFrames = obj.rec.vect0Frames;
                     rxTangLim = obj.rec.vect0RxTangLim;
-                    rxTangMin = obj.rec.vect0RxTangMin;
-                    rxTangMax = obj.rec.vect0RxTangMax;
                 case 'vector1'
                     selFrames = obj.rec.vect1Frames;
                     rxTangLim = obj.rec.vect1RxTangLim;
-                    rxTangMin = obj.rec.vect1RxTangMin;
-                    rxTangMax = obj.rec.vect1RxTangMax;
                 otherwise
                     error('runCudaReconstruction: invalid modality name.');
             end
             
             if ~obj.sys.interfEnable
-                iqLri	= iqRaw2LriTemp(iqRaw(:,:,selFrames), ...
+                iqLri	= iqRaw2Lri(iqRaw(:,:,selFrames), ...
                                     obj.sys.zElem, ...
                                     obj.sys.xElem, ...
                                     obj.sys.tangElem, ...
@@ -1215,8 +1139,8 @@ classdef Us4R < handle
                                     obj.seq.txApLstElem(selFrames), ...
                                     obj.seq.rxApOrig(selFrames), ...
                                     obj.seq.nSampOmit(selFrames)/obj.rec.dec, ...
-                                    rxTangMin, ...
-                                    rxTangMax, ...
+                                    rxTangLim(:,1).', ...
+                                    rxTangLim(:,2).', ...
                                     obj.seq.rxSampFreq/obj.rec.dec, ...
                                     obj.rec.sos);
             else
