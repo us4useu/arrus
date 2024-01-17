@@ -104,7 +104,17 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
     // us4oem ordinal number -> current frame idx
     std::vector<FrameNumber> currentFrameIdx(seqs.size(), 0);
     // For each operation
+    size_t frameIdx = 0;
     for(size_t opIdx = 0; opIdx < seqLength; ++opIdx) { // For each TX/RX
+	// Determine, if this is RX NOP.
+	bool isRxNOP = true;
+	for (size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx)	{
+	    if(!seqs[seqIdx][opIdx].isRxNOP()) {	
+		// Not an RX NOP.
+		isRxNOP = false;
+		break;
+	    }
+	}
         for(size_t seqIdx = 0; seqIdx < seqs.size(); ++seqIdx) { // for each OEM
             const auto &seq = seqs[seqIdx];
             const auto &op = seq[opIdx];
@@ -146,12 +156,12 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                         rxSubapertures[subapIdx-1][ch] = true;
                         // FC mapping
                         // -1 because subapIdx starts from one
-                        opDestOp(seqIdx, opIdx, opActiveChannel) = FrameNumber(currentFrameIdx[seqIdx] + subapIdx - 1);
+                        opDestOp(seqIdx, frameIdx, opActiveChannel) = FrameNumber(currentFrameIdx[seqIdx] + subapIdx - 1);
                         ARRUS_REQUIRES_TRUE_E(
                             opActiveChannel <= (std::numeric_limits<int8>::max)(),
                             arrus::ArrusException(
                                 "Number of active rx elements should not exceed 32."));
-                        opDestChannel(seqIdx, opIdx, opActiveChannel) =
+                        opDestChannel(seqIdx, frameIdx, opActiveChannel) =
                             static_cast<int8>(subopActiveChannels[subapIdx-1]);
                         ++opActiveChannel;
                         ++subopActiveChannels[subapIdx-1];
@@ -174,12 +184,12 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                 ChannelIdx opActiveChannel = 0;
                 for(auto bit : op.getRxAperture()) {
                     if(bit) {
-                        opDestOp(seqIdx, opIdx, opActiveChannel) = currentFrameIdx[seqIdx];
+                        opDestOp(seqIdx, frameIdx, opActiveChannel) = currentFrameIdx[seqIdx];
                         ARRUS_REQUIRES_TRUE_E(
                             opActiveChannel <= (std::numeric_limits<int8>::max)(),
                             arrus::ArrusException(
                                 "Number of active rx elements should not exceed 32."));
-                        opDestChannel(seqIdx, opIdx, opActiveChannel)
+                        opDestChannel(seqIdx, frameIdx, opActiveChannel)
                             = static_cast<int8>(opActiveChannel);
                         ++opActiveChannel;
                     }
@@ -208,6 +218,9 @@ splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
         currentFrameIdx[frameMetadataOem] = FrameNumber(maxSize);
 
         srcOpIdx.resize(maxSize, opIdx);
+	if(!isRxNOP) {
+           frameIdx++;
+	}
     }
 
     // Map to target TX delays (after splitting to sub-apertures).
