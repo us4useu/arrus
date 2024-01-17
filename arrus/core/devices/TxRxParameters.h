@@ -2,15 +2,15 @@
 #define ARRUS_CORE_DEVICES_TXRXPARAMETERS_H
 
 #include <gsl/gsl>
-#include <utility>
 #include <ostream>
+#include <utility>
 
+#include "arrus/common/format.h"
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/types.h"
-#include "arrus/common/format.h"
-#include "arrus/core/common/collections.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/core/common/collections.h"
 
 namespace arrus::devices::us4r {
 
@@ -18,19 +18,10 @@ class TxRxParameters {
 public:
     static const TxRxParameters US4OEM_NOP;
 
-    static TxRxParameters createRxNOPCopy(const TxRxParameters& op) {
-        return TxRxParameters(
-            op.txAperture,
-            op.txDelays,
-            op.txPulse,
-            BitMask(op.rxAperture.size(), false),
-            op.rxSampleRange,
-            op.rxDecimationFactor,
-            op.pri,
-            op.rxPadding,
-            op.rxDelay,
-            op.bitstreamId
-        );
+    static TxRxParameters createRxNOPCopy(const TxRxParameters &op) {
+        return TxRxParameters(op.txAperture, op.txDelays, op.txPulse, BitMask(op.rxAperture.size(), false),
+                              op.rxSampleRange, op.rxDecimationFactor, op.pri, op.rxPadding, op.rxDelay,
+                              op.bitstreamId);
     }
 
     /**
@@ -48,75 +39,44 @@ public:
      * @param pri
      * @param rxPadding how many 0-channels padd from the left and right
      */
-    TxRxParameters(std::vector<bool> txAperture,
-                   std::vector<float> txDelays,
-                   const ops::us4r::Pulse &txPulse,
-                   std::vector<bool> rxAperture,
-                   Interval<uint32> rxSampleRange,
-                   uint32 rxDecimationFactor, float pri,
-                   Tuple<ChannelIdx> rxPadding = {0, 0},
-                   float rxDelay = 0.0f,
+    TxRxParameters(std::vector<bool> txAperture, std::vector<float> txDelays, const ops::us4r::Pulse &txPulse,
+                   std::vector<bool> rxAperture, Interval<uint32> rxSampleRange, uint32 rxDecimationFactor, float pri,
+                   Tuple<ChannelIdx> rxPadding = {0, 0}, float rxDelay = 0.0f,
                    std::optional<BitstreamId> bitstreamId = std::nullopt)
-        : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)),
-          txPulse(txPulse),
+        : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
-          rxDecimationFactor(rxDecimationFactor), pri(pri),
-          rxPadding(std::move(rxPadding)), rxDelay(rxDelay), bitstreamId(bitstreamId),
-    {}
+          rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
+          bitstreamId(bitstreamId), {}
 
-    [[nodiscard]] const std::vector<bool> &getTxAperture() const {
-        return txAperture;
-    }
+    [[nodiscard]] const std::vector<bool> &getTxAperture() const { return txAperture; }
 
-    [[nodiscard]] const std::vector<float> &getTxDelays() const {
-        return txDelays;
-    }
+    [[nodiscard]] const std::vector<float> &getTxDelays() const { return txDelays; }
 
-    [[nodiscard]] const ops::us4r::Pulse &getTxPulse() const {
-        return txPulse;
-    }
+    [[nodiscard]] const ops::us4r::Pulse &getTxPulse() const { return txPulse; }
 
-    [[nodiscard]] const std::vector<bool> &getRxAperture() const {
-        return rxAperture;
-    }
+    [[nodiscard]] const std::vector<bool> &getRxAperture() const { return rxAperture; }
 
-    [[nodiscard]] const Interval<uint32> &getRxSampleRange() const {
-        return rxSampleRange;
-    }
+    [[nodiscard]] const Interval<uint32> &getRxSampleRange() const { return rxSampleRange; }
 
-    [[nodiscard]] uint32 getNumberOfSamples() const {
-        return rxSampleRange.end() - rxSampleRange.start();
-    }
+    [[nodiscard]] uint32 getNumberOfSamples() const { return rxSampleRange.end() - rxSampleRange.start(); }
 
-    [[nodiscard]] int32 getRxDecimationFactor() const {
-        return rxDecimationFactor;
-    }
+    [[nodiscard]] int32 getRxDecimationFactor() const { return rxDecimationFactor; }
 
-    [[nodiscard]] float getPri() const {
-        return pri;
-    }
+    [[nodiscard]] float getPri() const { return pri; }
 
-    [[nodiscard]] const Tuple<ChannelIdx> &getRxPadding() const {
-        return rxPadding;
-    }
+    [[nodiscard]] const Tuple<ChannelIdx> &getRxPadding() const { return rxPadding; }
 
-    [[nodiscard]] bool isNOP() const  {
-        auto atLeastOneTxActive = ::arrus::reduce(
-            std::begin(txAperture),
-            std::end(txAperture),
-            false, [](auto a, auto b) {return a | b;});
-        auto atLeastOneRxActive = ::arrus::reduce(
-            std::begin(rxAperture),
-            std::end(rxAperture),
-            false, [](auto a, auto b) {return a | b;});
+    [[nodiscard]] bool isNOP() const {
+        auto atLeastOneTxActive =
+            ::arrus::reduce(std::begin(txAperture), std::end(txAperture), false, [](auto a, auto b) { return a | b; });
+        auto atLeastOneRxActive =
+            ::arrus::reduce(std::begin(rxAperture), std::end(rxAperture), false, [](auto a, auto b) { return a | b; });
         return !atLeastOneTxActive && !atLeastOneRxActive;
     }
 
     [[nodiscard]] bool isRxNOP() const {
-        auto atLeastOneRxActive = ::arrus::reduce(
-            std::begin(rxAperture),
-            std::end(rxAperture),
-            false, [](auto a, auto b) {return a | b;});
+        auto atLeastOneRxActive =
+            ::arrus::reduce(std::begin(rxAperture), std::end(rxAperture), false, [](auto a, auto b) { return a | b; });
         return !atLeastOneRxActive;
     }
 
@@ -127,8 +87,7 @@ public:
     // TODO(pjarosik) consider removing the below setter (keep this class immutable).
     void setRxDelay(float delay) { this->rxDelay = delay; }
 
-    friend std::ostream &
-    operator<<(std::ostream &os, const TxRxParameters &parameters) {
+    friend std::ostream &operator<<(std::ostream &os, const TxRxParameters &parameters) {
         os << "Tx/Rx: ";
         os << "TX: ";
         os << "aperture: " << ::arrus::toString(parameters.getTxAperture())
@@ -138,12 +97,11 @@ public:
            << ", inverse: " << parameters.getTxPulse().isInverse();
         os << "; RX: ";
         os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
-        os << "sample range: " << parameters.getRxSampleRange().start() << ", "
-           << parameters.getRxSampleRange().end();
-        os << ", fs divider: " << parameters.getRxDecimationFactor()
-           << ", padding: " << parameters.getRxPadding()[0] << ", " << parameters.getRxPadding()[1];
+        os << "sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
+        os << ", fs divider: " << parameters.getRxDecimationFactor() << ", padding: " << parameters.getRxPadding()[0]
+           << ", " << parameters.getRxPadding()[1];
         os << ", rx delay: " << parameters.getRxDelay();
-        if(parameters.getBitstreamId().has_value()) {
+        if (parameters.getBitstreamId().has_value()) {
             os << ", bitstream id: " << parameters.getBitstreamId().value();
         }
         os << std::endl;
@@ -151,20 +109,14 @@ public:
     }
 
     bool operator==(const TxRxParameters &rhs) const {
-        return txAperture == rhs.txAperture &&
-               txDelays == rhs.txDelays &&
-               txPulse == rhs.txPulse &&
-               rxAperture == rhs.rxAperture &&
-               rxSampleRange == rhs.rxSampleRange &&
-               rxDecimationFactor == rhs.rxDecimationFactor &&
-               pri == rhs.pri &&
-               rxDelay == rhs.rxDelay &&
-               bitstreamId == rhs.bitstreamId;
+        return txAperture == rhs.txAperture && txDelays == rhs.txDelays && txPulse == rhs.txPulse
+            && rxAperture == rhs.rxAperture && rxSampleRange == rhs.rxSampleRange
+            && rxDecimationFactor == rhs.rxDecimationFactor && pri == rhs.pri && rxDelay == rhs.rxDelay
+            && bitstreamId == rhs.bitstreamId;
     }
 
-    bool operator!=(const TxRxParameters &rhs) const {
-        return !(rhs == *this);
-    }
+    bool operator!=(const TxRxParameters &rhs) const { return !(rhs == *this); }
+
 private:
     ::std::vector<bool> txAperture;
     ::std::vector<float> txDelays;
@@ -179,10 +131,8 @@ private:
     std::optional<BitstreamId> bitstreamId;
 };
 
-
 class TxRxParametersBuilder {
 public:
-
     explicit TxRxParametersBuilder(const TxRxParameters &params) {
         txAperture = params.getTxAperture();
         txDelays = params.getTxDelays();
@@ -216,21 +166,11 @@ public:
     }
 
     TxRxParameters build() {
-        if(!txPulse.has_value()) {
+        if (!txPulse.has_value()) {
             throw IllegalArgumentException("TX pulse definition is required");
         }
-        return TxRxParameters(
-            txAperture,
-            txDelays,
-            txPulse.value(),
-            rxAperture,
-            rxSampleRange,
-            rxDecimationFactor,
-            pri,
-            rxPadding,
-            rxDelay,
-            bitstreamId
-        );
+        return TxRxParameters(txAperture, txDelays, txPulse.value(), rxAperture, rxSampleRange, rxDecimationFactor, pri,
+                              rxPadding, rxDelay, bitstreamId);
     }
 
     void convertToNOP() {
@@ -241,22 +181,14 @@ public:
 
     void setTxAperture(const std::vector<bool> &value) { TxRxParametersBuilder::txAperture = value; }
     void setTxDelays(const std::vector<float> &value) { TxRxParametersBuilder::txDelays = value; }
-    void setTxPulse(const std::optional<::arrus::ops::us4r::Pulse> &value) {
-        TxRxParametersBuilder::txPulse = value;
-    }
+    void setTxPulse(const std::optional<::arrus::ops::us4r::Pulse> &value) { TxRxParametersBuilder::txPulse = value; }
     void setRxAperture(const std::vector<bool> &value) { TxRxParametersBuilder::rxAperture = value; }
-    void setRxSampleRange(const Interval<uint32> &value) {
-        TxRxParametersBuilder::rxSampleRange = value;
-    }
-    void setRxDecimationFactor(int32 value) {
-        TxRxParametersBuilder::rxDecimationFactor = value;
-    }
+    void setRxSampleRange(const Interval<uint32> &value) { TxRxParametersBuilder::rxSampleRange = value; }
+    void setRxDecimationFactor(int32 value) { TxRxParametersBuilder::rxDecimationFactor = value; }
     void setPri(float value) { TxRxParametersBuilder::pri = value; }
     void setRxPadding(const Tuple<ChannelIdx> &value) { TxRxParametersBuilder::rxPadding = value; }
     void setRxDelay(float value) { TxRxParametersBuilder::rxDelay = value; }
-    void setBitstreamId(const std::optional<BitstreamId> &value) {
-        TxRxParametersBuilder::bitstreamId = value;
-    }
+    void setBitstreamId(const std::optional<BitstreamId> &value) { TxRxParametersBuilder::bitstreamId = value; }
 
 private:
     ::std::vector<bool> txAperture;
@@ -276,25 +208,37 @@ class TxRxParametersSequenceBuilder;
 class TxRxParametersSequence {
 public:
     TxRxParametersSequence() = default;
-    explicit TxRxParametersSequence(const std::vector<TxRxParameters> &parameters) : parameters(parameters) {}
+    TxRxParametersSequence(std::vector<TxRxParameters> parameters, uint16 nRepeats, const std::optional<float> &sri)
+        : parameters(std::move(parameters)), nRepeats(nRepeats), sri(sri) {}
 
     [[nodiscard]] std::vector<TxRxParameters> getParameters() const { return parameters; }
+
+    const TxRxParameters &at(size_t i) const { return parameters.at(i); }
+    /**
+     * Returns the number of ops in the sequence.
+     */
+    size_t size() const { return parameters.size(); }
+    uint16 getNRepeats() const { return nRepeats; }
+    const std::optional<float> &getSri() const { return sri; }
 
     /**
      * Returns the number of actual ops, that is, a the number of ops excluding RxNOPs.
      */
     uint16 getNumberOfNoRxNOPs() const {
         uint16 res = 0;
-        for(const auto &param: parameters) {
-            if(!param.isRxNOP()) {
+        for (const auto &param : parameters) {
+            if (!param.isRxNOP()) {
                 ++res;
             }
         }
         return res;
     }
+
 private:
     friend TxRxParametersSequenceBuilder;
     std::vector<TxRxParameters> parameters;
+    uint16 nRepeats;
+    std::optional<float> sri;
 };
 
 class TxRxParametersSequenceBuilder {
@@ -307,14 +251,12 @@ public:
     }
 
     TxRxParametersSequenceBuilder &addEntries(const TxRxParametersSequence &sequence) {}
-    arrus::devices::us4r::TxRxParametersSequence build() {
-
-    }
+    arrus::devices::us4r::TxRxParametersSequence build() {}
 
 private:
     TxRxParametersSequence sequence;
 };
 
-}
+}// namespace arrus::devices::us4r
 
-#endif //ARRUS_CORE_DEVICES_TXRXPARAMETERS_H
+#endif//ARRUS_CORE_DEVICES_TXRXPARAMETERS_H

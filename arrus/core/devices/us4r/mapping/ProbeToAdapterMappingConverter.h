@@ -29,7 +29,7 @@ public:
         for (const auto &op : sequence.getOps()) {
             sequenceBuilder.addEntry(convert(op));
         }
-        return std::move(sequenceBuilder.build());
+        return sequenceBuilder.build();
     }
 
     TxRxParameters convert(const ops::us4r::TxRx &op) {

@@ -1,28 +1,35 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H
 
-#include <utility>
 #include <iostream>
 #include <unordered_set>
+#include <utility>
 
-#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-#include "arrus/common/format.h"
 #include "arrus/common/cache.h"
-#include "arrus/core/common/logging.h"
-#include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "arrus/common/format.h"
 #include "arrus/core/api/common/types.h"
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/common/logging.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
-#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
-#include "arrus/core/api/ops/us4r/tgc.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 #include "arrus/core/devices/us4r/DataTransfer.h"
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
-
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include "arrus/core/devices/TxRxParameters.h"
 
 namespace arrus::devices {
+
+
+// Helper classes.
+
+
+
+
 
 /**
  * Us4OEM wrapper implementation.
@@ -164,22 +171,16 @@ public:
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
-    std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
-    setRxMappings(const std::vector<TxRxParameters> &seq);
 
-    static float getRxTime(size_t nSamples, float samplingFrequency);
+
 
     std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
-
     void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
-
     float getTxRxTime(float rxTime) const;
-
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
     uint32_t getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const;
-
     // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
     void setPgaGainAfe(uint16 value, bool force);
@@ -226,6 +227,11 @@ private:
     std::vector<uint16> bitstreamOffsets;
     /** The size of each bitstream defined (the number of registers). */
     std::vector<uint16> bitstreamSizes;
+
+    void validate(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize);
+    size_t getNumberOfFirings(const std::vector<us4r::TxRxParametersSequence> &vector);
+    size_t getNumberOfTriggers(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize);
+    RxMappingSetting setRxMappings(const us4r::TxRxParametersSequence &seq, uint16 rxMapIdOffset);
 };
 
 }

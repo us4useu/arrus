@@ -3,7 +3,8 @@
 
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
-
+#include "arrus/core/devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h"
+#include "arrus/core/devices/us4r/mapping/Us4OEMSubapertureGenerator.h"
 #include <chrono>
 #include <future>
 #include <memory>
@@ -366,10 +367,12 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
                           const std::vector<NdArray> &txDelayProfiles) {
     // Convert to intermediate representation (TxRxParameters).
     ProbeToAdapterMappingConverter probeToAdapterConverter(probeToAdapterChannelMappings);
-    InterfaceToUs4OEMMappingConverter adapterToUs4OEMConverter(probeAdapterSettings.getChannelMapping());
-    SubapertureConverter subapertureConverter(Us4OEMImpl::N_RX_CHANNELS);
+    AdapterToUs4OEMMappingConverter adapterToUs4OEMConverter(probeAdapterSettings.getChannelMapping());
+    Us4OEMSubapertureGenerator subapertureGenerator(Us4OEMImpl::N_RX_CHANNELS);
 
-    Us4OEMSequences oemSequences;
+    using Us4OEMSequences = AdapterToUs4OEMMappingConverter::Us4OEMSequences;
+
+    Us4OEMSequences rawSequences;
 
     for (const auto &sequence : sequences) {
         // Convert the sequence to the us4R internal representation.
@@ -378,7 +381,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         // Split sequence between us4OEMs.
         auto oemLogicalSequences = adapterToUs4OEMConverter.convert(adapterSequence);
         // Split into us4OEM sub-apertures.
-        auto oemPhysicalSequences = subapertureConverter.convert(oemLogicalSequences);
+        auto oemPhysicalSequences = subapertureGenerator.convert(oemLogicalSequences);
         oemSequences.push_back(std::move(oemPhysicalSequences));
     }
     // Upload sequence on uO4OEMs.
