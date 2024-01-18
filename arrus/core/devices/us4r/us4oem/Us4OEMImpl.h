@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H
 
+#include "Us4OEMRxMappingRegisterBuilder.h"
+
 #include <iostream>
 #include <unordered_set>
 #include <utility>
@@ -20,16 +22,10 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
-#include "arrus/core/devices/TxRxParameters.h"
 
 namespace arrus::devices {
 
-
 // Helper classes.
-
-
-
-
 
 /**
  * Us4OEM wrapper implementation.
@@ -43,13 +39,13 @@ public:
     using Handle = std::unique_ptr<Us4OEMImpl>;
     using RawHandle = PtrHandle<Us4OEMImpl>;
 
-    using FiringIdx = uint16;
+    using FiringId = uint16;
     using OutputDType = int16;
     static constexpr framework::NdArray::DataType NdArrayDataType = framework::NdArray::DataType::INT16;
 
     // voltage, +/- [V] amplitude, (ref: technote)
     static constexpr Voltage MIN_VOLTAGE = 0;
-    static constexpr Voltage MAX_VOLTAGE = 90; // 180 vpp
+    static constexpr Voltage MAX_VOLTAGE = 90;// 180 vpp
 
     // TGC constants.
     static constexpr float TGC_ATTENUATION_RANGE = RxSettings::TGC_ATTENUATION_RANGE;
@@ -78,12 +74,12 @@ public:
     static constexpr uint32 MAX_NSAMPLES = 16384;
     // Data
     static constexpr size_t DDR_SIZE = 1ull << 32u;
-    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f; // [s]
+    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f;// [s]
     static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
-    static constexpr float MAX_PRI = 1.0f; // [s]
-    static constexpr float RX_TIME_EPSILON = 5e-6f; // [s]
+    static constexpr float MAX_PRI = 1.0f;         // [s]
+    static constexpr float RX_TIME_EPSILON = 5e-6f;// [s]
     // 2^14 descriptors * 2^12 (4096, minimum page size) bytes
-    static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14+12); // bytes
+    static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14 + 12);// bytes
 
     /**
      * Us4OEMImpl constructor.
@@ -94,43 +90,27 @@ public:
      *  exactly N_TX_CHANNELS numbers
      */
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
-               std::vector<uint8_t> channelMapping, RxSettings rxSettings,
-               std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
-               bool externalTrigger, bool acceptRxNops);
-
+               std::vector<uint8_t> channelMapping, RxSettings rxSettings, std::unordered_set<uint8_t> channelsMask,
+               Us4OEMSettings::ReprogrammingMode reprogrammingMode, bool externalTrigger, bool acceptRxNops);
     ~Us4OEMImpl() override;
 
     bool isMaster() override;
-
     void startTrigger() override;
-
     void stopTrigger() override;
-
     void syncTrigger() override;
-
-    std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
-    upload(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false,
-                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
-                    const std::vector<arrus::framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
-                    ) override;
+    Us4OEMUploadResult
+    upload(const us4r::TxParametersSequenceColl &sequences,
+           const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
+           ops::us4r::Scheme::WorkMode workMode,
+           const std::optional<ops::us4r::DigitalDownConversion> &ddc=std::nullopt,
+           const std::vector<framework::NdArray> &txDelays = std::vector<framework::NdArray>()) override;
 
     float getSamplingFrequency() override;
-
-    Interval<Voltage> getAcceptedVoltageRange() override {
-        return Interval<Voltage>(MIN_VOLTAGE, MAX_VOLTAGE);
-    }
-
     void start() override;
-
     void stop() override;
-
     void setTgcCurve(const RxSettings &cfg);
-
-    Ius4OEMRawHandle getIUs4oem() override;
-
+    Ius4OEMRawHandle getIUs4OEM() override;
     void enableSequencer() override;
-
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
@@ -143,40 +123,34 @@ public:
     uint32 getTxFirmwareVersion() override;
     uint32_t getTxOffset() override;
     uint32_t getOemVersion() override;
-
     void setTestPattern(RxTestPattern pattern) override;
-
     uint16_t getAfe(uint8_t address) override;
     void setAfe(uint8_t address, uint16_t value) override;
-
     void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc);
-
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients) override;
-
-    void disableAfeDemod() override {
-        ius4oem->AfeDemodDisable();
-    }
+    void disableAfeDemod() override { ius4oem->AfeDemodDisable(); }
     float getCurrentSamplingFrequency() const override;
-
     float getFPGAWallclock() override;
-
     const char *getSerialNumber() override;
-
     const char *getRevision() override;
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) override;
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &lengths) override;
-
+    void setHpfCornerFrequency(uint32_t frequency) override;
+    void disableHpf() override;
 private:
-    using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
+    using Us4OEMAperture = std::bitset<N_ADDR_CHANNELS>;
+    using Us4OEMChannelsGroupsMask = std::bitset<N_ACTIVE_CHANNEL_GROUPS>;
+    using BatchId = uint16;
+    using SequenceId = uint16;
+    using RepetitionId = uint16;
+    using OpId = uint16;
 
-
-
-
-    std::bitset<N_ADDR_CHANNELS> filterAperture(std::bitset<N_ADDR_CHANNELS> aperture);
-    void validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture);
     float getTxRxTime(float rxTime) const;
+    static float getRxTime(size_t nSamples, float samplingFrequency);
+    Us4OEMAperture filterAperture(Us4OEMAperture aperture);
+    void validateAperture(const Us4OEMAperture &aperture);
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
@@ -189,22 +163,42 @@ private:
     void setLpfCutoffAfe(uint32 value, bool force);
     void setActiveTerminationAfe(std::optional<uint16> param, bool force);
     void enableAfeDemod();
-    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float* firCoeffs, uint16_t firLength, float freq);
+    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq);
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);
     void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
     void setAfeDemodFrequency(float frequency);
     void setAfeDemodFrequency(float StartFrequency, float stopFrequency);
-    float getAfeDemodStartFrequency(void);
-    float getAfeDemodStopFrequency(void);
+    float getAfeDemodStartFrequency();
+    float getAfeDemodStopFrequency();
     void setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample);
-    void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length);
-    void writeAfeFIRCoeffs(const float* coeffs, uint16_t length);
+    void writeAfeFIRCoeffs(const int16_t *coeffs, uint16_t length);
+    void writeAfeFIRCoeffs(const float *coeffs, uint16_t length);
     void resetAfe();
-    void setHpfCornerFrequency(uint32_t frequency);
-    void disableHpf();
     void setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
                                  const std::vector<uint16_t> &periods);
+    void setCurrentSamplingFrequency(float fs) { this->currentSamplingFrequency = fs; }
+    void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId, size_t delaysId);
+    void setTgcCurve(const ops::us4r::TGCCurve &tgc);
+    void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
+                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                       const std::vector<arrus::framework::NdArray> &txDelays,
+                       Us4OEMRxMappingRegister rxMappingRegister);
+    size_t scheduleReceiveDDC(size_t outputAddress, uint16 startSample, uint16 endSample, uint16 entryId,
+                              const us4r::TxRxParameters &op, uint16 rxMapId,
+                              const std::optional<ops::us4r::DigitalDownConversion> &ddc);
+    size_t scheduleReceiveRF(size_t outputAddress, uint16 startSample, uint16 endSample, uint16 entryId,
+                             const us4r::TxRxParameters &op, uint16 rxMapId);
+    Us4OEMBuffer uploadAcquisition(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
+                                   const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                                   Us4OEMRxMappingRegister rxMappingRegister);
+    void uploadTriggersIOBS(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
+                            ops::us4r::Scheme::WorkMode workMode);
+
+    void validate(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize);
+    size_t getNumberOfFirings(const us4r::TxParametersSequenceColl &vector);
+    size_t getNumberOfTriggers(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize);
+    Us4OEMRxMappingRegister setRxMappings(const us4r::TxParametersSequenceColl &sequences);
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -228,12 +222,9 @@ private:
     /** The size of each bitstream defined (the number of registers). */
     std::vector<uint16> bitstreamSizes;
 
-    void validate(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize);
-    size_t getNumberOfFirings(const std::vector<us4r::TxRxParametersSequence> &vector);
-    size_t getNumberOfTriggers(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize);
-    RxMappingSetting setRxMappings(const us4r::TxRxParametersSequence &seq, uint16 rxMapIdOffset);
+
 };
 
-}
+}// namespace arrus::devices
 
-#endif //ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H
+#endif//ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPL_H

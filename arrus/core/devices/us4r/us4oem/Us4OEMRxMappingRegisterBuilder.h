@@ -1,6 +1,11 @@
-#ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPINGBUILDER_H
-#define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPINGBUILDER_H
+#ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPING_H
+#define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPING_H
 #include "Us4OEMImplBase.h"
+#include "arrus/common/utils.h"
+#include "arrus/core/common/hash.h"
+#include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
+
+#include <list>
 
 namespace arrus::devices {
 
@@ -16,7 +21,7 @@ public:
     using RxMap = std::vector<uint8>;
     using RxAperture = std::bitset<Us4OEMImplBase::N_ADDR_CHANNELS>;
 
-    std::vector<RxMap> getMappings() const { return mappings; }
+    const std::unordered_map<RxMapId, RxMap> &getMappings() const { return mappings; }
 
     RxMapId getMapId(SequenceId sequenceId, OpId opId) { return opToRxMappingId.at(std::make_pair(sequenceId, opId)); }
 
@@ -41,6 +46,7 @@ private:
 
     std::unordered_map<RxMapId, RxMap> mappings;
     std::unordered_map<std::pair<SequenceId, OpId>, RxMapId> opToRxMappingId;
+    // Rx apertures after taking into account possible conflicts in Rx channel mapping.
     std::unordered_map<std::pair<SequenceId, OpId>, RxAperture> rxApertures;
     std::vector<FrameChannelMapping::Handle> fcms;
 };
@@ -55,26 +61,24 @@ public:
 
     constexpr ChannelIdx N_CHANNELS = Us4OEMImplBase::N_RX_CHANNELS;
 
-    explicit Us4OEMRxMappingRegisterBuilder(bool acceptRxNops) : result(), acceptRxNops(acceptRxNops) {}
+    Us4OEMRxMappingRegisterBuilder(FrameChannelMapping::Us4OEMNumber oem, bool acceptRxNops,
+                                   const std::vector<uint8_t> &channelMapping,
+                                   const std::unordered_set<uint8_t> &channelsMask)
+        :oem(oem), acceptRxNops(acceptRxNops), channelMapping(channelMapping), channelsMask(channelsMask), result() {}
 
     void add(const std::vector<us4r::TxRxParametersSequence> &sequences) {
-        for(size_t sequenceId = 0; sequenceId < sequences.size(); ++sequenceId) {
+        for (size_t sequenceId = 0; sequenceId < sequences.size(); ++sequenceId) {
             add(sequenceId, sequences.at(sequenceId));
         }
     }
 
     void add(SequenceId sequenceId, const us4r::TxRxParametersSequence &sequence) {
-        // std::unordered_map<uint16, uint16> firingToRxMappingId;
-        // FC mapping
         auto numberOfOutputFrames = sequence.getNumberOfNoRxNOPs();
         if (acceptRxNops) {
             // We transfer all module frames due to possible metadata stored in the frame (if enabled).
             numberOfOutputFrames = ARRUS_SAFE_CAST(sequence.size(), ChannelIdx);
         }
         FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_CHANNELS);
-        // Rx apertures after taking into account possible conflicts in Rx channel mapping.
-        // std::vector<Us4OEMBitMask> outputRxApertures;
-
         OpId opId = 0;
         OpId noRxNopId = 0;
 
@@ -129,16 +133,16 @@ public:
             if (mappingIt == std::end(rxMappings)) {
                 ARRUS_REQUIRES_TRUE(rxMapping.size() == N_CHANNELS,
                                     format("Invalid size of the RX channel mapping: {}", rxMapping.size()));
-                ARRUS_REQUIRES_TRUE(rxMapId < 128,
+                ARRUS_REQUIRES_TRUE(currentMapId < 128,
                                     format("128 different rx mappings can be loaded only, oem: {}.", oem));
                 // - This is a brand-new mapping -- create it on us4OEM.
-                rxMappings.emplace(rxMapping, rxMapId);
-                result.insert(rxMapId, rxMapping);
-                result.insert(sequenceId, opId, rxMapId);
-                ++rxMapId;
+                rxMappings.emplace(rxMapping, currentMapId);
+                result.insert(currentMapId, rxMapping);
+                result.insert(sequenceId, opId, currentMapId);
+                ++currentMapId;
             } else {
                 // - Otherwise use the existing one.
-                result.insert(sequenceId, opId,mappingIt->second);
+                result.insert(sequenceId, opId, mappingIt->second);
             }
             ++opId;
             if (!isRxNop) {
@@ -180,11 +184,12 @@ private:
     bool acceptRxNops;
     std::vector<uint8_t> channelMapping;
     std::unordered_set<uint8_t> channelsMask;
+    // Genearted.
     std::unordered_map<std::vector<uint8>, uint16, ContainerHash<std::vector<uint8>>> rxMappings;
-    RxMapId rxMapId{0};
+    RxMapId currentMapId{0};
     Us4OEMRxMappingRegister result;
 };
 
 }// namespace arrus::devices
 
-#endif//ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPINGBUILDER_H
+#endif//ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPING_H

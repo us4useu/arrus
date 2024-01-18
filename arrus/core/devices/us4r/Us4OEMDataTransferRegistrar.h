@@ -40,7 +40,7 @@ public:
         if (dst->getNumberOfElements() % src.getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
         }
-        ius4oem = us4oem->getIUs4oem();
+        ius4oem = us4oem->getIUs4OEM();
         us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
         elementTransfers = groupPartsIntoTransfers(src.getElementParts());
 

@@ -89,7 +89,7 @@ class Us4RFactoryImpl : public Us4RFactory {
 
             std::vector<IUs4OEM*> ius4oems;
             for(auto &us4oem: us4oems) {
-                ius4oems.push_back(us4oem->getIUs4oem());
+                ius4oems.push_back(us4oem->getIUs4OEM());
             }
 
             auto backplane = getBackplane(settings.getDigitalBackplaneSettings(), settings.getHVSettings(), ius4oems);
@@ -104,7 +104,7 @@ class Us4RFactoryImpl : public Us4RFactory {
             auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false, us4r::IOSettings());
             std::vector<IUs4OEM*> ius4oems;
             for(auto &us4oem: us4oems) {
-                ius4oems.push_back(us4oem->getIUs4oem());
+                ius4oems.push_back(us4oem->getIUs4OEM());
             }
 
             auto backplane = getBackplane(settings.getDigitalBackplaneSettings(), settings.getHVSettings(), ius4oems);
@@ -236,7 +236,7 @@ class Us4RFactoryImpl : public Us4RFactory {
         if(settings.hasProbeConnectedCheckCapability()) {
             auto addr = settings.getProbeConnectedCheckCapabilityAddress();
             if(addr.getUs4OEM() == 0){
-                us4oems.at(addr.getUs4OEM())->getIUs4oem()->EnableProbeCheck(addr.getIO());
+                us4oems.at(addr.getUs4OEM())->getIUs4OEM()->EnableProbeCheck(addr.getIO());
             }
             else {
                 throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");

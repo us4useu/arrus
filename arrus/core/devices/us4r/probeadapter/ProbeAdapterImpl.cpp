@@ -329,10 +329,10 @@ Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() {
 void ProbeAdapterImpl::start() {
 //  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
-        us4oem->getIUs4oem()->DisableWaitOnReceiveOverflow();
-        us4oem->getIUs4oem()->DisableWaitOnTransferOverflow();
+        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
+        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
         // Reset tx subsystem pointers.
-        us4oem->getIUs4oem()->EnableTransmit();
+        us4oem->getIUs4OEM()->EnableTransmit();
         // Reset sequencer pointers.
         us4oem->enableSequencer();
     }

@@ -88,6 +88,7 @@ public:
     void setRxDelay(float delay) { this->rxDelay = delay; }
 
     friend std::ostream &operator<<(std::ostream &os, const TxRxParameters &parameters) {
+        os << std::scientific;
         os << "Tx/Rx: ";
         os << "TX: ";
         os << "aperture: " << ::arrus::toString(parameters.getTxAperture())
@@ -105,6 +106,7 @@ public:
             os << ", bitstream id: " << parameters.getBitstreamId().value();
         }
         os << std::endl;
+        os << std::fixed;
         return os;
     }
 
@@ -213,18 +215,13 @@ public:
 
     [[nodiscard]] std::vector<TxRxParameters> getParameters() const { return parameters; }
 
-    const TxRxParameters &at(size_t i) const { return parameters.at(i); }
-    /**
-     * Returns the number of ops in the sequence.
-     */
-    size_t size() const { return parameters.size(); }
-    uint16 getNRepeats() const { return nRepeats; }
-    const std::optional<float> &getSri() const { return sri; }
-
-    /**
-     * Returns the number of actual ops, that is, a the number of ops excluding RxNOPs.
-     */
-    uint16 getNumberOfNoRxNOPs() const {
+    [[nodiscard]] const TxRxParameters &at(size_t i) const { return parameters.at(i); }
+    /** Returns the number of ops in the sequence. */
+    [[nodiscard]] size_t size() const { return parameters.size(); }
+    [[nodiscard]] uint16 getNRepeats() const { return nRepeats; }
+    [[nodiscard]] const std::optional<float> &getSri() const { return sri; }
+    /**  Returns the number of actual ops, that is, a the number of ops excluding RxNOPs. */
+    [[nodiscard]] uint16 getNumberOfNoRxNOPs() const {
         uint16 res = 0;
         for (const auto &param : parameters) {
             if (!param.isRxNOP()) {
@@ -237,9 +234,11 @@ public:
 private:
     friend TxRxParametersSequenceBuilder;
     std::vector<TxRxParameters> parameters;
-    uint16 nRepeats;
-    std::optional<float> sri;
+    uint16 nRepeats{0};
+    std::optional<float> sri{0};
 };
+
+using TxParametersSequenceColl = std::vector<TxRxParametersSequence>;
 
 class TxRxParametersSequenceBuilder {
 public:

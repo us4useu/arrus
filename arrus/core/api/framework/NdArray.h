@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 #define ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 
+#include "arrus/common/asserts.h"
+
 #include <cstring>
 #include <sstream>
 #include <utility>
@@ -249,7 +251,10 @@ public:
 
     NdArray view() const { return NdArray{ptr, shape, dataType, placement}; }
 
-    NdArray slice(size_t i, int begin, int end) {
+    /**
+    * Returns a view to this array limited to begin:end on the index i.
+    */
+    NdArray slice(size_t i, int begin, int end) const {
         size_t multiplier = 1;
         for (size_t j = shape.size() - 1; j > i; --j) {
             multiplier *= shape[j];
@@ -259,6 +264,20 @@ public:
         }
         Shape newShape = shape.set(i, end - begin);
         return NdArray{((int16_t *) ptr) + multiplier * begin, newShape, dataType, placement};
+    }
+
+    /**
+     * Returns a view to this array with axis=0 set to the given value.
+     * For example, to get the jth row: array.row(j).
+     */
+    NdArray row(int value) const {
+        ARRUS_REQUIRES_TRUE_IAE(shape.size() == 2, "Only 2D arrays are supported.");
+        const size_t nRows = shape[0];
+        const size_t nColumns = shape[1];
+        ARRUS_REQUIRES_TRUE_IAE(value < nRows, "Accessing array out of bounds.");
+        const Shape newShape = {nColumns};
+        const size_t offsetBytes = value*nColumns*getDataTypeSize(dataType);
+        return NdArray{(char *) ptr+offsetBytes, newShape, dataType, placement};
     }
 
     const devices::DeviceId &getPlacement() const { return placement; }

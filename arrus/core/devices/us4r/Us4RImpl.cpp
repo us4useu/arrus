@@ -49,7 +49,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeImplBase:
 
     if (this->hasIOBitstreamAdressing) {
         // Add empty IOBitstream, to use for TX/RX between probe switching.
-        getMasterOEM()->getIUs4oem()->SetWaveformIODriveMode();
+        getMasterOEM()->getIUs4OEM()->SetWaveformIODriveMode();
         getMasterOEM()->addIOBitstream(
             {
                 0,
@@ -312,7 +312,7 @@ void Us4RImpl::start() {
     }
     this->state = State::START_IN_PROGRESS;
     for (auto &us4oem : us4oems) {
-        us4oem->getIUs4oem()->EnableInterrupts();
+        us4oem->getIUs4OEM()->EnableInterrupts();
     }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
@@ -329,13 +329,13 @@ void Us4RImpl::stopDevice() {
         logger->log(LogSeverity::DEBUG, "Stopping system.");
         this->getMasterOEM()->stop();
         for (auto &us4oem : us4oems) {
-            us4oem->getIUs4oem()->WaitForPendingTransfers();
-            us4oem->getIUs4oem()->WaitForPendingInterrupts();
+            us4oem->getIUs4OEM()->WaitForPendingTransfers();
+            us4oem->getIUs4OEM()->WaitForPendingInterrupts();
         }
         // Here all us4R IRQ threads should not work anymore.
         // Cleanup.
         for (auto &us4oem : us4oems) {
-            us4oem->getIUs4oem()->DisableInterrupts();
+            us4oem->getIUs4OEM()->DisableInterrupts();
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
@@ -637,7 +637,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4RBu
 void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc, Us4OEMImplBase *us4oem,
                                     Scheme::WorkMode workMode) {
     auto us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
-    auto ius4oem = us4oem->getIUs4oem();
+    auto ius4oem = us4oem->getIUs4OEM();
     const auto nElementsSrc = bufferSrc.getNumberOfElements();
     const size_t nElementsDst = bufferDst->getNumberOfElements();
     size_t elementSize = getUniqueUs4OEMBufferElementSize(bufferSrc);
@@ -702,8 +702,8 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
                 getMasterOEM()->syncTrigger();
@@ -714,8 +714,8 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-                us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -739,7 +739,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                 // Inform about free elements only once, in the master's callback.
                 if (isMaster) {
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                        us4oems[i]->getIUs4oem()->SyncReceive();
+                        us4oems[i]->getIUs4OEM()->SyncReceive();
                     }
                 }
             } catch (const std::exception &e) {
@@ -783,7 +783,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                 // Inform about free elements only once, in the master's callback.
                 if (isMaster) {
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                        us4oems[i]->getIUs4oem()->SyncTransfer();
+                        us4oems[i]->getIUs4OEM()->SyncTransfer();
                     }
                 }
             } catch (const std::exception &e) {
@@ -832,18 +832,18 @@ void Us4RImpl::setParameters(const Parameters &params) {
         if (key != "/sequence:0/txFocus") {
             throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
         }
-        this->us4oems[0]->getIUs4oem()->TriggerStop();
+        this->us4oems[0]->getIUs4OEM()->TriggerStop();
         try {
             for (auto &us4oem : us4oems) {
-                us4oem->getIUs4oem()->SetTxDelays(value);
+                us4oem->getIUs4OEM()->SetTxDelays(value);
             }
         } catch (...) {
             // Try resume.
-            this->us4oems[0]->getIUs4oem()->TriggerStart();
+            this->us4oems[0]->getIUs4OEM()->TriggerStart();
             throw;
         }
         // Everything OK, resume.
-        this->us4oems[0]->getIUs4oem()->TriggerStart();
+        this->us4oems[0]->getIUs4OEM()->TriggerStart();
     }
 }
 
