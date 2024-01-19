@@ -12,6 +12,24 @@
 
 namespace arrus::framework {
 
+class NdArrayDef {
+public:
+    /** A list of currently supported data types of the output buffer.*/
+    enum class DataType { BOOL, UINT8, INT8, UINT16, INT16, UINT32, INT32, FLOAT32, FLOAT64 };
+    /** Array shape. */
+    using Shape = Tuple<size_t>;
+
+    NdArrayDef(const Shape &shape, DataType dataType) : shape(shape), dataType(dataType) {}
+
+    [[nodiscard]] DataType getDataType() const { return dataType; }
+
+    [[nodiscard]] const Shape &getShape() const { return shape; }
+
+private:
+    Shape shape;
+    DataType dataType;
+};
+
 /**
  * N-dimensional array.
  *
@@ -24,7 +42,8 @@ namespace arrus::framework {
 class NdArray {
 public:
     /** A list of currently supported data types of the output buffer.*/
-    enum class DataType { BOOL, UINT8, INT8, UINT16, INT16, UINT32, INT32, FLOAT32, FLOAT64 };
+    using DataType = NdArrayDef::DataType;
+    using Shape = NdArrayDef::Shape;
 
     static size_t getDataTypeSize(DataType type) {
         switch (type) {
@@ -49,13 +68,10 @@ public:
         devices::DeviceId placement{devices::DeviceType::CPU, 0};
         NdArray result{shape, dataType, placement};
         if (!vector.empty()) {
-            std::memcpy(result.ptr, (char*)vector.data(), result.nBytes);
+            std::memcpy(result.ptr, (char *) vector.data(), result.nBytes);
         }
         return std::move(result);
     }
-
-    /** Array shape. */
-    typedef Tuple<size_t> Shape;
 
     NdArray() : ptr(nullptr), placement(devices::DeviceId(devices::DeviceType::CPU, 0)) {}
 
@@ -125,6 +141,8 @@ public:
         return *this;
     }
 
+    NdArrayDef getDef() { return NdArrayDef{shape, dataType}; }
+
     NdArray &operator=(const NdArray &rhs) noexcept {
         if (this == &rhs) {
             return *this;
@@ -186,9 +204,8 @@ public:
         size_t width = this->shape[0];
         if (column >= width) {
             throw IllegalArgumentException("Accessing arrays out of bounds, "
-                                           "dimensions: " + std::to_string(width) + ", " +
-                                           + "indices: " + std::to_string(column));
-
+                                           "dimensions: "
+                                           + std::to_string(width) + ", " + +"indices: " + std::to_string(column));
         }
         T *dst = static_cast<T *>(ptr) + column;
         return *dst;
@@ -210,8 +227,7 @@ public:
         return *dst;
     }
 
-    NdArray operator[](const NdArray& indices) {
-    }
+    NdArray operator[](const NdArray &indices) {}
 
     template<typename T> void set(size_t row, size_t column, T value) {
         if (this->shape.size() != 2) {
@@ -276,8 +292,8 @@ public:
         const size_t nColumns = shape[1];
         ARRUS_REQUIRES_TRUE_IAE(value < nRows, "Accessing array out of bounds.");
         const Shape newShape = {nColumns};
-        const size_t offsetBytes = value*nColumns*getDataTypeSize(dataType);
-        return NdArray{(char *) ptr+offsetBytes, newShape, dataType, placement};
+        const size_t offsetBytes = value * nColumns * getDataTypeSize(dataType);
+        return NdArray{(char *) ptr + offsetBytes, newShape, dataType, placement};
     }
 
     const devices::DeviceId &getPlacement() const { return placement; }
@@ -300,12 +316,14 @@ public:
 
     template<typename T> std::vector<T> toVector() {
         // TODO verify if this is the same data type
-        if(shape.size() != 1) {
+        if (shape.size() != 1) {
             throw IllegalArgumentException("toVector method works only for 1D arrays.");
         }
         size_t n = shape.size();
         std::vector<T> result(n);
-        for(size_t i = 0; i < n; ++i) { result[i] = get<T>(i); }
+        for (size_t i = 0; i < n; ++i) {
+            result[i] = get<T>(i);
+        }
         return std::move(result);
     }
 
@@ -330,10 +348,7 @@ template<> inline NdArray::DataType NdArray::getDataType<int32>() { return DataT
 template<> inline NdArray::DataType NdArray::getDataType<float32>() { return DataType::FLOAT32; }
 template<> inline NdArray::DataType NdArray::getDataType<double>() { return DataType::FLOAT64; }
 
-template<typename T>
-NdArray asarray(std::vector<T> vec) {
-    return std::move(NdArray::asarray<T>(vec));
-}
+template<typename T> NdArray asarray(std::vector<T> vec) { return std::move(NdArray::asarray<T>(vec)); }
 
 }// namespace arrus::framework
 

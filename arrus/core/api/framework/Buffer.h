@@ -19,18 +19,40 @@ public:
 
     virtual ~BufferElement() = default;
 
-    /**
-     * Releases given buffer element for further data acquisitions.
-     */
     virtual void release() = 0;
 
     /**
-     * Returns output data array.
+     * Returns output data, with the ordinal 0.
+     *
+     * In some cases (e.g. when running a sequence of TX/RX sequences)
+     * the system/process can produce a tuple of arrays. This method
+     * is kept for backward compatibility, and always gives the access
+     * to the first element of the tuple.
+     *
+     * @return NdArray with data
      */
     virtual NdArray& getData() = 0;
 
     /**
-     * @return size of the element in bytes
+     * Returns output data, with the given ordinal.
+     *
+     * In some cases (e.g. when running a sequence of TX/RX sequences)
+     * the system/process can produce a tuple of arrays. This method
+     * allows to choose the element of the tuple.
+     *
+     * @param ordinal tuple element number
+     * @return NdArray with data
+     */
+    virtual NdArray& getData(size_t ordinal);
+
+    /**
+     * Returns the size of this buffer element.
+     *
+     * NOTE: the size is equal to the sum of the sizes of all subelements
+     * (e.g. in case of an element that stores a tuple of NdArrays, this
+     * method will return the sum of all NdArrays in that tuple).
+     *
+     * @return size of the whole element in bytes
      */
     virtual size_t getSize() = 0;
 

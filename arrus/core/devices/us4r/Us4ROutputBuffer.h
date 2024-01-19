@@ -101,7 +101,7 @@ public:
 
 private:
     std::mutex mutex;
-    framework::NdArray data;
+    Tuple<framework::NdArray> data;
     size_t size;
     // How many times given element was signaled by i-th us4OEM.
     std::vector<int> signalCounter;
@@ -114,7 +114,6 @@ private:
     size_t position;
     State state{State::FREE};
 };
-
 /**
  * Us4R system's output circular FIFO buffer.
  *
@@ -144,14 +143,13 @@ public:
      *  us4oem output. That is, the i-th value describes how many bytes will
      *  be written by i-th us4oem to generate a single buffer element.
      */
-    Us4ROutputBuffer(const std::vector<size_t> &us4oemOutputSizes, const framework::NdArray::Shape &elementShape,
-                     const framework::NdArray::DataType elementDataType, const unsigned nElements, bool stopOnOverflow)
-        : elementSize(0) {
+    Us4ROutputBuffer(const Tuple<framework::NdArrayDef> &arrays, const std::vector<size_t> &us4oemOutputSizes,
+                     const unsigned nElements, bool stopOnOverflow): elementSize(0) {
         ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
                             "Currently Us4R data buffer supports up to 16 us4oem modules.");
 
-        size_t nus4oems = us4oemOutputSizes.size();
-        Us4ROutputBufferElement::AccumulatorType filledAccumulator((1ul << nus4oems) - 1);
+        size_t noems = us4oemOutputSizes.size();
+        Us4ROutputBufferElement::AccumulatorType filledAccumulator((1ul << noems) - 1);
         // Calculate us4oem write offsets for each buffer element.
         size_t us4oemOffset = 0;
         Ordinal us4oemOrdinal = 0;
@@ -174,8 +172,8 @@ public:
 
         for (unsigned i = 0; i < nElements; ++i) {
             auto elementAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + i * elementSize);
-            elements.push_back(std::make_shared<Us4ROutputBufferElement>(elementAddress, elementSize, elementShape,
-                                                                         elementDataType, filledAccumulator, i));
+            elements.push_back(std::make_shared<Us4ROutputBufferElement>(
+                elementAddress, elementSize, , filledAccumulator, i));
         }
         this->initialize();
         this->stopOnOverflow = stopOnOverflow;
