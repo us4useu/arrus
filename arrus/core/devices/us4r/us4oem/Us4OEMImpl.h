@@ -40,8 +40,8 @@ public:
     using RawHandle = PtrHandle<Us4OEMImpl>;
 
     using FiringId = uint16;
-    using OutputDType = int16;
-    static constexpr framework::NdArray::DataType NdArrayDataType = framework::NdArray::DataType::INT16;
+    using RawDataType = int16;
+    static constexpr framework::NdArray::DataType DataType = framework::NdArray::DataType::INT16;
 
     // voltage, +/- [V] amplitude, (ref: technote)
     static constexpr Voltage MIN_VOLTAGE = 0;

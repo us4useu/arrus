@@ -343,7 +343,7 @@ size_t Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, uint16 startSample, 
     // Number of samples to be set on IUs4OEM::ScheduleReceive
     const size_t nSamplesRaw = nSamples * 2;
     // Number of bytes a single sample takes (e.g. RF: a single int16, IQ: a pair of int16)
-    const size_t sampleSize = 2 * sizeof(OutputDType);
+    const size_t sampleSize = 2 * sizeof(RawDataType);
     const size_t nBytes = nSamples * N_RX_CHANNELS * sampleSize;
 
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, DDR_SIZE,
@@ -359,7 +359,7 @@ size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint16 startSample, u
     const uint32 sampleOffset = ius4oem->GetTxOffset();
     const size_t nSamples = endSample - startSample;
     const size_t nSamplesRaw = nSamples;
-    const size_t sampleSize = sizeof(OutputDType);
+    const size_t sampleSize = sizeof(RawDataType);
     const size_t nBytes = nSamples * N_RX_CHANNELS * sampleSize;
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, DDR_SIZE,
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
@@ -425,7 +425,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
                         rxBufferElementParts.emplace_back(outputAddress, partSize, entryId);
                     }
                     if (!op.isRxNOP() || acceptRxNops) {
-                        // Also, allows rx nops.
+                        // Also, allows rx nops for OEM that is acceptable, in order to acquire frame metadata.
                         // For example, the master module gathers frame metadata, so we cannot miss any of it.
                         // In all other cases, all RX nops are just overwritten.
                         outputAddress += nBytes;
@@ -445,7 +445,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
         } else {
             shape = {totalSamples, N_RX_CHANNELS};
         }
-        rxBufferElements.emplace_back(srcAddress, size, entryId, shape, NdArrayDataType);
+        rxBufferElements.emplace_back(srcAddress, size, entryId, shape, DataType);
     }
     return Us4OEMBuffer(rxBufferElements, rxBufferElementParts);
 }
