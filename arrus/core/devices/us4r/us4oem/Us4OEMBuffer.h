@@ -8,10 +8,16 @@
 
 namespace arrus::devices {
 
+/**
+ * A single Us4OEM element part currently corresponds to a single sequencer
+ * output, that is, a single RF frame (number of samples, number of us4OEM RX channels e.g. 32).
+ * Note: the size can be 0 -- this kind of Part is to inform
+ * that no transfer is performed in the given sequencer entry.
+ */
 class Us4OEMBufferElementPart {
 public:
-    Us4OEMBufferElementPart(size_t address, size_t size, uint16 firing)
-            : address(address), size(size), firing(firing) {}
+    Us4OEMBufferElementPart(size_t address, size_t size, uint16 entryId)
+            : address(address), size(size), entryId(entryId) {}
 
     size_t getAddress() const {
         return address;
@@ -19,14 +25,14 @@ public:
     size_t getSize() const {
         return size;
     }
-    uint16 getFiring() const {
-        return firing;
+    uint16 getEntryId() const {
+        return entryId;
     }
 
 private:
     size_t address;
     size_t size;
-    uint16 firing;
+    uint16 entryId;
 };
 
 /**

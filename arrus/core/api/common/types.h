@@ -25,6 +25,12 @@ typedef std::vector<bool> BitMask;
 using Voltage = uint8;
 using BitstreamId = uint16;
 
+// ultrasound output dimensions.
+using BatchId = uint16;
+using SequenceId = uint16;
+using RepetitionId = uint16;
+using OpId = uint16;
+
 template<typename T> using PtrHandle = T *;
 
 }

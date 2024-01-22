@@ -142,10 +142,6 @@ public:
 private:
     using Us4OEMAperture = std::bitset<N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<N_ACTIVE_CHANNEL_GROUPS>;
-    using BatchId = uint16;
-    using SequenceId = uint16;
-    using RepetitionId = uint16;
-    using OpId = uint16;
 
     float getTxRxTime(float rxTime) const;
     static float getRxTime(size_t nSamples, float samplingFrequency);

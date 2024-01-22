@@ -165,7 +165,7 @@ public:
         elementSize = us4oemOffset;
         // Allocate buffer with an appropriate size.
         dataBuffer =
-            reinterpret_cast<DataType *>(operator new[](elementSize * nElements, std::align_val_t(DATA_ALIGNMENT)));
+            reinterpret_cast<DataType *>(operator new[](elementSize*nElements, std::align_val_t(DATA_ALIGNMENT)));
         getDefaultLogger()->log(LogSeverity::DEBUG,
                                 ::arrus::format("Allocated {} ({}, {}) bytes of memory, address: {}",
                                                 elementSize * nElements, elementSize, nElements, (size_t) dataBuffer));
@@ -204,8 +204,15 @@ public:
         return std::static_pointer_cast<BufferElement>(elements[i]);
     }
 
-    uint8 *getAddress(uint16 elementNumber, Ordinal us4oem) {
-        return reinterpret_cast<uint8 *>(this->elements[elementNumber]->getAddress()) + us4oemOffsets[us4oem];
+    /**
+     * Return na address of the part of the given buffer element, for the given tuple element,
+     * produced by the given us4OEM.
+     */
+    uint8 *getAddress(uint16 bufferElementId, uint16 tupleElementId, Ordinal us4oem) {
+        auto address = reinterpret_cast<uint8 *>(this->elements[bufferElementId]->getAddress());
+        address += tupleElementOffsets[tupleElementId];
+        address += us4oemOffsets[us4oem];
+        return address;
     }
 
     uint8 *getAddressUnsafe(uint16 elementNumber, Ordinal us4oem) {

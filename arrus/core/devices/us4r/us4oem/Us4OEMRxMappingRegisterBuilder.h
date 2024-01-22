@@ -15,8 +15,6 @@ class Us4OEMRxMappingRegister {
 public:
     friend class Us4OemRxMappingRegisterBuilder;
 
-    using SequenceId = uint16;
-    using OpId = uint16;
     using RxMapId = uint16;
     using RxMap = std::vector<uint8>;
     using RxAperture = std::bitset<Us4OEMImplBase::N_ADDR_CHANNELS>;
@@ -54,8 +52,6 @@ private:
 class Us4OEMRxMappingRegisterBuilder {
 public:
     using RxAperture = Us4OEMRxMappingRegister::RxAperture;
-    using SequenceId = Us4OEMRxMappingRegister::SequenceId;
-    using OpId = Us4OEMRxMappingRegister::OpId;
     using RxMapId = Us4OEMRxMappingRegister::RxMapId;
     using RxMap = Us4OEMRxMappingRegister::RxMap;
 

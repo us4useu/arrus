@@ -90,14 +90,13 @@ public:
         size_t size = 0;
         uint16 firing = 0; // the firing that finishes given transfer
         for(auto &part: parts) {
-            // Assumption: size of each part is less than the possible maximum
             if(size + part.getSize() > MAX_TRANSFER_SIZE) {
                 transfers.emplace_back(address, size, firing);
                 address = part.getAddress();
                 size = 0;
             }
             size += part.getSize();
-            firing = part.getFiring();
+            firing = part.getEntryId();
         }
         if(size > 0) {
             transfers.emplace_back(address, size, firing);
