@@ -4,6 +4,14 @@ Release notes
 0.9.x
 -----
 
+0.9.2
+
+- core (C++):
+
+    - updated us4r-api to 0.10.2:
+
+        - Fixed FPGA decimation setting when hardware DDC not used #US4R-398.
+
 0.9.1
 
 - core (C++):
