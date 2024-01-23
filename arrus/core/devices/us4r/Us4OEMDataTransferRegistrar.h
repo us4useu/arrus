@@ -106,14 +106,17 @@ public:
 
     void pageLockDstMemory() {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
-            uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
-            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
-            for(auto &transfer: elementTransfers) {
-                uint8 *dst = addressDst + transfer.address;
-                size_t src = addressSrc + transfer.address;
-                size_t size = transfer.size;
-                ius4oem->PrepareHostBuffer(dst, size, src, false);
+            for (SequenceId seqId = 0; seqId < nSequences; ++seqId) {
+                uint8 *addressDst = dstBuffer->getAddress(dstIdx, seqId, us4oemOrdinal);
+                size_t addressSrc = srcBuffer.getElement(srcIdx, seqId).getAddress(); // byte-addressed
+                for(auto &transfer: elementTransfers) {
+                    uint8 *dst = addressDst + transfer.address;
+                    size_t src = addressSrc + transfer.address;
+                    size_t size = transfer.size;
+                    ius4oem->PrepareHostBuffer(dst, size, src, false);
+                }
             }
+
         }
     }
 
