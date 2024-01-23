@@ -208,9 +208,9 @@ public:
      * Return na address of the part of the given buffer element, for the given tuple element,
      * produced by the given us4OEM.
      */
-    uint8 *getAddress(uint16 bufferElementId, uint16 tupleElementId, Ordinal us4oem) {
+    uint8 *getAddress(uint16 bufferElementId, uint16 arrayId, Ordinal us4oem) {
         auto address = reinterpret_cast<uint8 *>(this->elements[bufferElementId]->getAddress());
-        address += tupleElementOffsets[tupleElementId];
+        address += tupleElementOffsets[arrayId];
         address += us4oemOffsets[us4oem];
         return address;
     }

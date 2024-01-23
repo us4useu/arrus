@@ -9,7 +9,7 @@
 namespace arrus::devices {
 
 /**
- * A single Us4OEM element part currently corresponds to a single sequencer
+ * A single Us4OEM element part currently corresponds to a single entry sequencer
  * output, that is, a single RF frame (number of samples, number of us4OEM RX channels e.g. 32).
  * Note: the size can be 0 -- this kind of Part is to inform
  * that no transfer is performed in the given sequencer entry.
@@ -79,6 +79,8 @@ private:
     framework::NdArray::DataType dataType;
 };
 
+class Us4OEMBufferBuilder;
+
 /**
  * A class describing a structure of a buffer that is located in the Us4OEM
  * memory.
@@ -110,7 +112,17 @@ public:
 
 private:
     std::vector<Us4OEMBufferElement> elements;
-    std::vector<Us4OEMBufferElementPart> elementParts;
+    std::unordered_map<SequenceId, std::vector<Us4OEMBufferElementPart>> elementParts;
+};
+
+class Us4OEMBufferBuilder {
+public:
+    void add() {
+
+    }
+private:
+    std::vector<Us4OEMBufferElement> elements;
+    std::unordered_map<SequenceId, std::vector<Us4OEMBufferElementPart>> elementParts;
 };
 
 }
