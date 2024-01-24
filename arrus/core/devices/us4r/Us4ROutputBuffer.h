@@ -208,9 +208,8 @@ public:
      * Return na address of the part of the given buffer element, for the given tuple element,
      * produced by the given us4OEM.
      */
-    uint8 *getAddress(uint16 bufferElementId, uint16 arrayId, Ordinal us4oem) {
+    uint8 *getAddress(uint16 bufferElementId, Ordinal us4oem) {
         auto address = reinterpret_cast<uint8 *>(this->elements[bufferElementId]->getAddress());
-        address += tupleElementOffsets[arrayId];
         address += us4oemOffsets[us4oem];
         return address;
     }
@@ -300,6 +299,14 @@ public:
             }
         }
         return result;
+    }
+    /**
+     * Returns relatative address of the element area dedicated for the given array, given OEM.
+     * The addres is relative to the beginning of the whole element (i.e. array 0, oem 0, where
+     * 0 is the first non-empty array).
+     */
+    size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {
+        // TODO(pjarosik) NYI
     }
 
 private:
