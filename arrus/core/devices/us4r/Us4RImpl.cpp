@@ -264,9 +264,9 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> Us4RImpl::upload(const S
     // Calculate how much of the data each Us4OEM produces.
     auto &element = rxBuffer->getElement(0);
     // a vector, where value[i] contains a size that is produced by a single us4oem.
-    std::vector<size_t> us4oemComponentSize(element.getNumberOfUs4oems(), 0);
+    std::vector<size_t> us4oemComponentSize(element.getNumberOfUs4OEMs(), 0);
     int i = 0;
-    for (auto &component : element.getUs4oemComponents()) {
+    for (auto &component : element.getUs4OEMElements()) {
         us4oemComponentSize[i++] = component.getSize();
     }
     auto &shape = element.getShape();

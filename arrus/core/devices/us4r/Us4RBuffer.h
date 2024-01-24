@@ -12,26 +12,25 @@ namespace arrus::devices {
 
 class Us4RBufferElement {
 public:
-    explicit Us4RBufferElement(std::vector<Us4OEMBufferElement> us4oemComponents)
-    : us4oemComponents(std::move(us4oemComponents)) {
+    explicit Us4RBufferElement(std::vector<Us4OEMBufferElement> elements): elements(std::move(elements)) {
         // Intentionally copying input shape.
-        std::vector<size_t> shapeInternal = this->us4oemComponents[0].getElementShape().getValues();
+        std::vector<size_t> shapeInternal = this->elements[0].getElementShape().getValues();
         // It's always the last axis, regardless IQ vs RF data.
         size_t channelAxis = shapeInternal.size()-1;
 
         auto nChannels = static_cast<unsigned>(shapeInternal[channelAxis]);
         unsigned nSamples = 0;
-        framework::NdArray::DataType dataType = this->us4oemComponents[0].getDataType();
+        framework::NdArray::DataType dataType = this->elements[0].getDataType();
 
         // Sum buffer us4oem component number of samples to determine buffer element shape.
-        for(auto& component: this->us4oemComponents) {
+        for(auto& component: this->elements) {
             auto &componentShape = component.getElementShape();
             // Verify if we have the same number of channels for each component
             if(nChannels != componentShape.get(channelAxis)) {
-                throw IllegalArgumentException("Each Us4R buffer component should have the same number of channels.");
+                throw IllegalArgumentException("Each us4OEM buffer element should have the same number of channels.");
             }
             if(dataType != component.getDataType()) {
-                throw IllegalArgumentException("Each Us4R buffer element component should have the same data type.");
+                throw IllegalArgumentException("Each us4OEM buffer element component should have the same data type.");
             }
             nSamples += static_cast<unsigned>(componentShape.get(0));
         }
@@ -42,16 +41,16 @@ public:
         elementDataType = dataType;
     }
 
-    [[nodiscard]] const Us4OEMBufferElement &getUs4oemComponent(const size_t ordinal) const {
-        return us4oemComponents[ordinal];
+    [[nodiscard]] const Us4OEMBufferElement &getUs4OEMElement(const size_t ordinal) const {
+        return elements[ordinal];
     }
 
-    [[nodiscard]] const std::vector<Us4OEMBufferElement> &getUs4oemComponents() const {
-        return us4oemComponents;
+    [[nodiscard]] const std::vector<Us4OEMBufferElement> &getUs4OEMElements() const {
+        return elements;
     }
 
-    [[nodiscard]] size_t getNumberOfUs4oems() const {
-        return us4oemComponents.size();
+    [[nodiscard]] size_t getNumberOfUs4OEMs() const {
+        return elements.size();
     }
 
     [[nodiscard]] const framework::NdArray::Shape &getShape() const {
@@ -63,7 +62,7 @@ public:
     }
 
 private:
-    std::vector<Us4OEMBufferElement> us4oemComponents;
+    std::vector<Us4OEMBufferElement> elements;
     framework::NdArray::Shape elementShape{0, 0};
     framework::NdArray::DataType elementDataType;
 };
@@ -72,8 +71,13 @@ class Us4RBuffer {
 public:
     using Handle = std::unique_ptr<Us4RBuffer>;
 
-    explicit Us4RBuffer(std::vector<Us4RBufferElement> elements,
-                        std::vector<std::vector<Us4OEMBufferElementPart>> parts)
+    /**
+     * Abstraction of the whole Us4R buffer.
+     *
+     * @param elements us4R elements
+     * @param parts all parts of all arrays of a single element, parts[i] are the parts of the us4OEM:i buffer
+     */
+    explicit Us4RBuffer(std::vector<Us4RBufferElement> elements, std::vector<Us4OEMBufferElementParts> parts)
     : elements(std::move(elements)), parts(std::move(parts)) {}
 
     [[nodiscard]] const Us4RBufferElement &getElement(const size_t i) const {
@@ -90,7 +94,7 @@ public:
 
     size_t getElementSize() {
         size_t result = 0;
-        for(auto &element: elements[0].getUs4oemComponents()) {
+        for(auto &element: elements[0].getUs4OEMElements()) {
             result += element.getSize();
         }
         return result;
@@ -99,21 +103,21 @@ public:
     [[nodiscard]] Us4OEMBuffer getUs4oemBuffer(Ordinal ordinal) const {
         std::vector<Us4OEMBufferElement> us4oemBufferElements;
         for(const auto &element : elements) {
-            us4oemBufferElements.push_back(element.getUs4oemComponent(ordinal));
+            us4oemBufferElements.push_back(element.getUs4OEMElement(ordinal));
         }
         return Us4OEMBuffer{us4oemBufferElements, parts[ordinal]};
     }
 
 private:
     std::vector<Us4RBufferElement> elements;
-    std::vector<std::vector<Us4OEMBufferElementPart>> parts;
+    std::vector<Us4OEMBufferElementParts> parts;
 };
 
 class Us4RBufferBuilder {
 public:
     void pushBack(const Us4OEMBuffer &us4oemBuffer) {
         if(!elements.empty() && elements.size() != us4oemBuffer.getNumberOfElements()) {
-            throw arrus::ArrusException("Each Us4OEM rx buffer should have the same number of elements.");
+            throw ArrusException("Each Us4OEM rx buffer should have the same number of elements.");
         }
         if(elements.empty()) {
             elements = std::vector<std::vector<Us4OEMBufferElement>>{us4oemBuffer.getNumberOfElements()};

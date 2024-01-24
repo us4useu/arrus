@@ -35,6 +35,10 @@ private:
     uint16 arrayId;
     uint16 entryId;
 };
+// A single array consits of multiple parts (frames).
+using Us4OEMBufferArrayParts = std::vector<Us4OEMBufferElementPart>;
+// A single element consists of 0 or more arrays.
+using Us4OEMBufferElementParts = std::vector<Us4OEMBufferArrayParts>;
 
 /**
  * A description of a single us4oem buffer element (which is now a batch of sequences).
@@ -47,10 +51,8 @@ private:
 class Us4OEMBufferElement {
 public:
 
-    Us4OEMBufferElement(size_t address, size_t size, uint16 firing, framework::NdArray::Shape elementShape,
-                        framework::NdArray::DataType dataType)
-                        : address(address), size(size), firing(firing), elementShape(std::move(elementShape)),
-                        dataType(dataType) {}
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing, Tuple<framework::NdArrayDef> arrays)
+                        : address(address), size(size), firing(firing), arrays(std::move(arrays)) {}
 
     [[nodiscard]] size_t getAddress() const {
         return address;
@@ -64,20 +66,15 @@ public:
         return firing;
     }
 
-    [[nodiscard]] const framework::NdArray::Shape &getElementShape() const {
-        return elementShape;
-    }
-
-    [[nodiscard]] framework::NdArray::DataType getDataType() const {
-        return dataType;
+    const framework::NdArrayDef &getArray(ArrayId id) {
+        return arrays.get(id);
     }
 
 private:
     size_t address;
     size_t size;
     uint16 firing;
-    framework::NdArray::Shape elementShape;
-    framework::NdArray::DataType dataType;
+    Tuple<framework::NdArrayDef> arrays;
 };
 
 class Us4OEMBufferBuilder;
