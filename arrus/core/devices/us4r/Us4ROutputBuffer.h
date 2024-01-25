@@ -424,21 +424,20 @@ public:
 
     void setStopOnOverflow(bool value) { stopOnOverflow = value; }
 
-    void setLayout(const Us4RBuffer &src) {
+    void setLayout(const std::vector<Us4OEMBuffer> &buffers) {
         std::vector<Us4ROutputBufferArrayDef> result;
-        // Calculate shape of each array.
-        std::vector<framework::NdArrayDef> arrayDefs = getArrayDefs(src);
-
+        // Array -> shape
+        std::vector<framework::NdArrayDef> defs = getArrayDefs(buffers);
         // Array -> OEM -> size
-        std::vector<std::vector<size_t>> oemSizes;
-
-        for (const auto &arrayDef : src.getArrayDefs().getValues()) {
-            framework::NdArrayDef def = arrayDef.getDefinition();
-            size_t adddress = arrayDef.getAddress();
-            std::vector<size_t> oemSizes = arrayDef.getOEMSizes();
-            defs.emplace_back(def, adddress, oemSizes);
+        std::vector<std::vector<size_t>> oemSizes = getOEMSizes(buffers);
+        ARRUS_REQUIRES_TRUE_E(defs.size() == oemSizes.size(), std::runtime_error("Error on buffer builder:"
+                                                                                 " oemSizes size != defs size"));
+        size_t address = 0;
+        for (ArrayId arrayId = 0; arrayId < defs.size(); ++arrayId) {
+            result.emplace_back(defs[arrayId], address, oemSizes[arrayId]);
+            address += defs[arrayId].getSize();
         }
-        arrayDefs = Tuple<Us4ROutputBufferArrayDef>{result};
+        arrayDefs = Tuple<Us4ROutputBufferArrayDef>(result);
     }
 
     Us4ROutputBuffer::Handle build() {
@@ -446,8 +445,23 @@ public:
     }
 
 private:
-    std::vector<framework::NdArrayDef> getArrayDefs(const Us4RBuffer &src) {
-        std::vector<framework::NdArrayDef::Shape> shapes;
+    std::vector<framework::NdArrayDef> getArrayDefs(const std::vector<Us4OEMBuffer> &buffers) {
+        // Array -> OEM -> shape
+        std::vector<std::vector<framework::NdArrayDef::Shape>> partShapes;
+
+        for (Ordinal oem = 0; oem < (Ordinal) buffers.size(); ++oem) {
+            const auto &oemBuffer = buffers.at(oem);
+            for(ArrayId arrayId = 0; arrayId < (ArrayId)oemBuffer.getNumberOfArrays(); ++arrayId) {
+                if(arrayId >= partShapes.size()) {
+                    partShapes.push_back(std::vector<framework::NdArrayDef::Shape>{});
+                }
+                if(oem >= partShapes[oem].size()) {
+                    partShapes.push_back()
+                }
+            }
+        }
+
+        // Concatenate shapes. If shape is empty (empty array), skip.
 
         for (Ordinal oem = 0; oem < (Ordinal) (src.getNumberOfOEMs()); ++oem) {
             const auto &oemBuffer = src.getUs4OEMBuffer(oem);
@@ -480,6 +494,10 @@ private:
             elementShape = framework::NdArray::Shape{shapeInternal};
             elementDataType = dataType;
         }
+    }
+
+    std::vector<std::vector<size_t>> getOEMSizes(const std::vector<Us4OEMBuffer> &buffers) {
+
     }
 
     Tuple<Us4ROutputBufferArrayDef> arrayDefs;

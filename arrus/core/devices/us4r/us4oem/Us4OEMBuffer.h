@@ -111,6 +111,8 @@ public:
 
     [[nodiscard]] ArrayId getNumberOfArrays() const { return ARRUS_SAFE_CAST(arrayDefs.size(), ArrayId); }
 
+    [[nodiscard]] const std::vector<Us4OEMBufferArrayDef> &getArrayDefs() const { return arrayDefs; }
+
     [[nodiscard]] const Us4OEMBufferArrayParts &getParts(ArrayId arrayId) const {
         ARRUS_REQUIRES_TRUE_IAE(arrayId < arrayDefs.size(), "Array number out of the bounds.");
         return arrayDefs.at(arrayId).getParts();
