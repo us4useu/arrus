@@ -12,14 +12,18 @@ namespace arrus::devices {
 
 class Transfer {
 public:
-    Transfer(size_t address, size_t size, uint16 firing) : address(address), size(size), firing(firing) {}
+    Transfer(size_t destination, size_t source, size_t size, uint16 firing)
+        : destination(destination), source(source), size(size), firing(firing) {}
 
     bool operator==(const Transfer &rhs) const {
-        return address == rhs.address && size == rhs.size && firing == rhs.firing;
+        return source == rhs.source && destination == rhs.destination && size == rhs.size && firing == rhs.firing;
     }
     bool operator!=(const Transfer &rhs) const { return !(rhs == *this); }
 
-    size_t address{0};
+    /** Destination address, relative to the beginning of the element. */
+    size_t destination{0};
+    /** Source address, relative to the beginning of the element. */
+    size_t source{0};
     size_t size{0};
     uint16 firing{0};
 };
@@ -63,6 +67,9 @@ public:
             // nTransferDst == nTransferSrc
             strategy = 0;
         }
+        this->logger->log(LogSeverity::DEBUG, format("Us4OEM:{}, transfer strategy: {}",
+                                                     us4oem->getDeviceId().getOrdinal(),
+                                                     strategy));
     }
 
     [[nodiscard]] size_t getNumberOfTransfers() const {
@@ -71,7 +78,7 @@ public:
     }
 
     void registerTransfers() {
-        // Page-lock all host dest points.
+        // Page-lock all host dst points.
         pageLockDstMemory();
 
         // Send page descriptors to us4OEM DMA.
@@ -86,41 +93,45 @@ public:
 
     /**
      * Creates for each array to be produced by the given OEM.
+     * NOTE: this method returns source/destination addresses relative to the beginning of each element
+     * (we assume that each element has exactly the same transfer layout).
      *
      * The ArrayTransfers will be empty if a given OEM does not produce data for the selected array.
      *
      * This method required that each array part has size <= MAX_TRANSFER_SIZE.
      */
-    static std::vector<ArrayTransfers> createTransfers(const Us4ROutputBuffer *dst, const Us4OEMBuffer &buffer,
+    static std::vector<ArrayTransfers> createTransfers(const Us4ROutputBuffer *dst, const Us4OEMBuffer &src,
                                                        Ordinal oem) {
         std::vector<ArrayTransfers> result;
 
-        for (ArrayId arrayId = 0; arrayId < buffer.getNumberOfArrays(); ++arrayId) {
+        for (ArrayId arrayId = 0; arrayId < src.getNumberOfArrays(); ++arrayId) {
+            // Determines transfers for the part of this array, produced by the given OEM.
             ArrayTransfers transfers;
-            auto &parts = buffer.getParts(arrayId);
+            auto &parts = src.getParts(arrayId);
             if (parts.empty()) {
                 // this OEM does not produce data for this array
                 result.push_back(transfers);
             } else {
                 // This OEM produces some data for this array.
-                size_t address = dst->getArrayAddressRelative(arrayId, oem);
+                size_t source = src.getArrayAddressRelative(arrayId);
+                size_t destination = dst->getArrayAddressRelative(arrayId, oem);
                 size_t size = 0;
-                uint16 firing = parts[0].getEntryId();// the firing that finishes given transfer
+                uint16 firing = parts[0].getEntryId(); // the firing that finishes given transfer
                 for (auto &part : parts) {
                     ARRUS_REQUIRES_TRUE_E(part.getSize() <= MAX_TRANSFER_SIZE,
                                           ArrusException(format("A single frame cannot exceed {} bytes, got: {}",
                                                                 part.getSize(), MAX_TRANSFER_SIZE)));
 
                     if (size + part.getSize() > MAX_TRANSFER_SIZE) {
-                        transfers.emplace_back(address, size, firing);
-                        address = part.getAddress();
+                        transfers.emplace_back(destination, source, size, firing);
+                        source = part.getAddress();
                         size = 0;
                     }
                     size += part.getSize();
                     firing = part.getEntryId();
                 }
                 if (size > 0) {
-                    transfers.emplace_back(address, size, firing);
+                    transfers.emplace_back(destination, source, size, firing);
                 }
             }
         }
@@ -129,12 +140,12 @@ public:
 
     void pageLockDstMemory() {
         for (uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx + 1) % srcNElements) {
-            uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
-            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress();// byte-addressed
+            uint8 *addressDst = dstBuffer->getAddress(dstIdx);
+            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
             for (const auto &arrayTransfers : elementTransfers) {
                 for (auto &transfer : arrayTransfers) {
-                    uint8 *dst = addressDst + transfer.address;
-                    size_t src = addressSrc + transfer.address;
+                    uint8 *dst = addressDst + transfer.destination;
+                    size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
                     ius4oem->PrepareHostBuffer(dst, size, src, false);
                 }
@@ -144,12 +155,12 @@ public:
 
     void pageUnlockDstMemory() {
         for (uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx + 1) % srcNElements) {
-            uint8 *addressDst = dstBuffer->getAddressUnsafe(dstIdx, us4oemOrdinal);
+            uint8 *addressDst = dstBuffer->getAddressUnsafe(dstIdx);
             size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress();// byte-addressed
             for (const auto &arrayTransfers : elementTransfers) {
                 for (auto &transfer : arrayTransfers) {
-                    uint8 *dst = addressDst + transfer.address;
-                    size_t src = addressSrc + transfer.address;
+                    uint8 *dst = addressDst + transfer.destination;
+                    size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
                     ius4oem->ReleaseTransferRxBufferToHost(dst, size, src);
                 }
@@ -160,13 +171,13 @@ public:
     void programTransfers(size_t nSrcPoints, size_t nDstPoints) {
         size_t transferIdx = 0;// global transfer idx
         for (uint16 dstIdx = 0, srcIdx = 0; dstIdx < nDstPoints; ++dstIdx, srcIdx = (srcIdx + 1) % nSrcPoints) {
-            uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
+            uint8 *addressDst = dstBuffer->getAddress(dstIdx);
             size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress();// byte-addressed
             for (const auto &arrayTransfers : elementTransfers) {
                 for (size_t localIdx = 0; localIdx < arrayTransfers.size(); ++localIdx, ++transferIdx) {
                     auto &transfer = arrayTransfers[localIdx];
-                    uint8 *dst = addressDst + transfer.address;
-                    size_t src = addressSrc + transfer.address;
+                    uint8 *dst = addressDst + transfer.destination;
+                    size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
                     ius4oem->PrepareTransferRXBufferToHost(transferIdx, dst, size, src, false);
                 }
@@ -191,12 +202,12 @@ public:
     currentTransferIdx = (int16) ((currentTransferIdx + srcNTransfers) % dstNTransfers);                               \
     ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, currentTransferIdx, nullptr);
 
-// Strategy 2: change transfer definition, so in the next call this transfer will write to subsequent dst element
+// Strategy 2: re-program transfer, so in the next call this transfer will write to subsequent dst element
 // (nDst > 256)
 #define ARRUS_ON_NEW_DATA_CALLBACK_strategy_2                                                                          \
     uint16 nextElementIdx = (int16) ((currentDstIdx + srcNElements) % dstNElements);                                   \
-    auto nextDstAddress = dstBuffer->getAddress(nextElementIdx, us4oemOrdinal);                                        \
-    nextDstAddress += transfer.address;                                                                                \
+    auto nextDstAddress = dstBuffer->getAddress(nextElementIdx);                                        \
+    nextDstAddress += transfer.destination;                                                                                \
     ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src, false);
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy)                                                                   \
@@ -211,11 +222,12 @@ public:
             logger->log(LogSeverity::ERROR, format("Us4OEM {}: callback unknown exception.", us4oemOrdinal));          \
         }                                                                                                              \
     }
+
     void scheduleTransfers() {
         // Schedule transfers only from the start points (nSrc calls), dst pointers will be incremented
         // appropriately (if necessary).
         size_t transferIdx = 0; // global transfer idx
-        uint16 elementFirstFiring = 0;
+        uint16 elementFirstFiring = 0; // NOTE: global, counted from 0
         for (int16 srcIdx = 0; srcIdx < ARRUS_SAFE_CAST(srcNElements, int16); ++srcIdx) {
             const auto& element = srcBuffer.getElement(srcIdx);
             size_t addressSrc = element.getAddress();// bytes addressed
@@ -224,7 +236,7 @@ public:
             for(const auto &arrayTransfers: elementTransfers) {
                 for (size_t localIdx = 0; localIdx < arrayTransfers.size(); ++localIdx) {
                     auto &transfer = arrayTransfers[localIdx];
-                    size_t src = addressSrc + transfer.address;
+                    size_t src = addressSrc + transfer.source; // used by callback strategy 2
                     size_t transferSize = transfer.size;
                     // transfer.firing - firing offset within element
                     uint16 transferLastFiring = elementFirstFiring + transfer.firing;
