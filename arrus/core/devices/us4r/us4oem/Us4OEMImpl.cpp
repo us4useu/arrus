@@ -387,7 +387,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
 
     std::vector<Us4OEMBufferElement> rxBufferElements;
     // Assumption: all elements consists of the same parts.
-    std::vector<Us4OEMBufferElementPart> rxBufferElementParts;
+    std::vector<Us4OEMBufferArrayPart> rxBufferElementParts;
 
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
     size_t outputAddress = 0;

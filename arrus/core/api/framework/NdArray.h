@@ -16,14 +16,32 @@ class NdArrayDef {
 public:
     /** A list of currently supported data types of the output buffer.*/
     enum class DataType { BOOL, UINT8, INT8, UINT16, INT16, UINT32, INT32, FLOAT32, FLOAT64 };
+
+    static size_t getDataTypeSize(DataType type) {
+        switch (type) {
+        case DataType::BOOL: return sizeof(bool);
+        case DataType::UINT8: return sizeof(uint8);
+        case DataType::INT8: return sizeof(int8);
+        case DataType::UINT16: return sizeof(uint16);
+        case DataType::INT16: return sizeof(int16);
+        case DataType::UINT32: return sizeof(uint32);
+        case DataType::INT32: return sizeof(int32);
+        case DataType::FLOAT32: return sizeof(float32);
+        case DataType::FLOAT64: return sizeof(float64);
+        default: throw IllegalArgumentException("Unsupported data type");
+        }
+    }
+
     /** Array shape. */
     using Shape = Tuple<size_t>;
 
-    NdArrayDef(const Shape &shape, DataType dataType) : shape(shape), dataType(dataType) {}
+    NdArrayDef(Shape shape, DataType dataType) : shape(std::move(shape)), dataType(dataType) {}
 
     [[nodiscard]] DataType getDataType() const { return dataType; }
 
     [[nodiscard]] const Shape &getShape() const { return shape; }
+
+    size_t getSize() {return shape.product()*getDataTypeSize(dataType); }
 
 private:
     Shape shape;
@@ -46,18 +64,7 @@ public:
     using Shape = NdArrayDef::Shape;
 
     static size_t getDataTypeSize(DataType type) {
-        switch (type) {
-        case DataType::BOOL: return sizeof(bool);
-        case DataType::UINT8: return sizeof(uint8);
-        case DataType::INT8: return sizeof(int8);
-        case DataType::UINT16: return sizeof(uint16);
-        case DataType::INT16: return sizeof(int16);
-        case DataType::UINT32: return sizeof(uint32);
-        case DataType::INT32: return sizeof(int32);
-        case DataType::FLOAT32: return sizeof(float32);
-        case DataType::FLOAT64: return sizeof(float64);
-        default: throw IllegalArgumentException("Unsupported data type");
-        }
+        return NdArrayDef::getDataTypeSize(type);
     }
 
     template<typename T> static DataType getDataType() { throw IllegalArgumentException("Unsupported data type."); }

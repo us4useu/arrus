@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4ROUTPUTBUFFER_H
 #define ARRUS_CORE_DEVICES_US4R_US4ROUTPUTBUFFER_H
 
+#include "Us4RBuffer.h"
+
 #include <chrono>
 #include <condition_variable>
 #include <gsl/span>
@@ -22,18 +24,43 @@ using ::arrus::framework::BufferElement;
 class Us4ROutputBuffer;
 
 /**
+ * This class defines the layout of each output array.
+ */
+class Us4ROutputBufferArrayDef {
+public:
+    Us4ROutputBufferArrayDef(framework::NdArrayDef definition, size_t address, std::vector<size_t> oemSizes)
+        : definition(std::move(definition)), address(address), oemSizes(std::move(oemSizes)) {}
+
+    size_t getAddress() const { return address; }
+    const framework::NdArrayDef &getDefinition() const { return definition; }
+    size_t getSize() { return definition.getSize(); }
+    /*** Returns address of data produced by the given OEM, relative to the beginning of the element. */
+    size_t getOEMAddress(Ordinal oem) { return address + oemAddresses[oem]; }
+    /** Returns the size of this array data produced by the given OEM */
+    size_t getOEMSize(Ordinal oem) {
+        ARRUS_REQUIRES_TRUE(oem < oemSizes.size(), "OEM outside of range");
+        return oemSizes.at(oem);
+    }
+
+private:
+    framework::NdArrayDef definition;
+    /** Array address, relative to the beginning of the parent element */
+    size_t address;
+    std::vector<size_t> oemSizes;
+    /** The part of array the given OEM, relative to the beginning of the array. */
+    std::vector<size_t> oemAddresses;
+};
+
+/**
  * Buffer element owns the data arrrays, which then are returned to user.
  */
 class Us4ROutputBufferElement : public BufferElement {
 public:
-    using AccumulatorType = uint16;
+    using Accumulator = uint16;
     using SharedHandle = std::shared_ptr<Us4ROutputBufferElement>;
 
-    Us4ROutputBufferElement(int16 *address, size_t size, const framework::NdArray::Shape &elementShape,
-                            const framework::NdArray::DataType elementDataType, AccumulatorType filledAccumulator,
-                            size_t position)
-        : data(address, elementShape, elementDataType, DeviceId(DeviceType::Us4R, 0)), size(size),
-          filledAccumulator(filledAccumulator), position(position) {}
+    Us4ROutputBufferElement(size_t position, Tuple<framework::NdArray> arrays, Accumulator filledAccumulator)
+        : position(position), arrays(arrays), filledAccumulator(filledAccumulator) {}
 
     void release() override {
         std::unique_lock<std::mutex> guard(mutex);
@@ -42,23 +69,30 @@ public:
         this->state = State::FREE;
     }
 
-    int16 *getAddress() {
+    int16 *getAddress(ArrayId id) {
         validateState();
-        return data.get<int16>();
+        return arrays.getMutable(id).get<int16>();
     }
+
+    /** TODO Deprecated, use getAddress(arrayId) */
+    int16 *getAddress() { return getAddress(0); }
 
     /**
      * This method allows to read element's address regardless of it's state.
      * This method can be used e.g. in a clean-up procedures, that may
      * be called even after some buffer overflow.
-     * @return
+     * TODO deprecated, use getAddressUnsafe(arrayId)
      */
-    int16 *getAddressUnsafe() { return data.get<int16>(); }
+    int16 *getAddressUnsafe(ArrayId id) { return arrays.getMutable(id).get<int16>(); }
 
-    framework::NdArray &getData() override {
+    int16 *getAddressUnsafe() { return getAddressUnsafe(0); }
+
+    framework::NdArray &getData(ArrayId id) override {
         validateState();
-        return data;
+        return arrays.getMutable(id);
     }
+
+    framework::NdArray &getData() override { return getData(0); }
 
     size_t getSize() override { return size; }
 
@@ -73,7 +107,7 @@ public:
 
     void signal(Ordinal n) {
         std::unique_lock<std::mutex> guard(mutex);
-        AccumulatorType us4oemPattern = 1ul << n;
+        Accumulator us4oemPattern = 1ul << n;
         if ((accumulator & us4oemPattern) != 0) {
             throw IllegalStateException("Detected data overflow, buffer is in invalid state.");
         }
@@ -92,7 +126,7 @@ public:
 
     void validateState() const {
         if (getState() == State::INVALID) {
-            throw ::arrus::IllegalStateException(
+            throw IllegalStateException(
                 "The buffer is in invalid state (probably some data transfer overflow happened).");
         }
     }
@@ -101,25 +135,27 @@ public:
 
 private:
     std::mutex mutex;
-    Tuple<framework::NdArray> data;
+    size_t position;
+    Tuple<framework::NdArray> arrays;
+    /** A pattern of the filled accumulator, which indicates that the hole element is ready. */
+    Accumulator filledAccumulator;
+    /** Size of the whole element (i.e. the sum of all arrays). */
     size_t size;
     // How many times given element was signaled by i-th us4OEM.
     std::vector<int> signalCounter;
     // How many times given element should be signaled by i-th us4OEM, to consider it as ready.
     std::vector<int> elementReadyCounters;
-    AccumulatorType accumulator;
-    /** A pattern of the filled accumulator, which indicates that the hole element is ready. */
-    AccumulatorType filledAccumulator;
+    Accumulator accumulator;
     std::function<void()> releaseFunction;
-    size_t position;
     State state{State::FREE};
 };
+
 /**
  * Us4R system's output circular FIFO buffer.
  *
  * The buffer has the following relationships:
  * - buffer contains **elements**
- * - the **element** is filled by many us4oems (with given ordinal)
+ * - the **element** is filled by many us4oems
  *
  * A single element is the output of a single data transfer (the result of running a complete sequence once).
  *
@@ -133,54 +169,41 @@ private:
  */
 class Us4ROutputBuffer : public framework::DataBuffer {
 public:
-    static constexpr size_t DATA_ALIGNMENT = 4096;
+    static constexpr size_t ALIGNMENT = 4096;
     using DataType = int16;
+    using Accumulator = Us4ROutputBufferElement::Accumulator;
 
     /**
      * Buffer's constructor.
      *
-     * @param us4oemOutputSizes number of bytes to allocate for each of the
-     *  us4oem output. That is, the i-th value describes how many bytes will
-     *  be written by i-th us4oem to generate a single buffer element.
+     * @param noems: the total number of OEMs, regardless of whether that OEM produces data or not
+     *
      */
-    Us4ROutputBuffer(const Tuple<framework::NdArrayDef> &arrays, const std::vector<size_t> &us4oemOutputSizes,
-                     const unsigned nElements, bool stopOnOverflow): elementSize(0) {
-        ARRUS_REQUIRES_TRUE(us4oemOutputSizes.size() <= 16,
-                            "Currently Us4R data buffer supports up to 16 us4oem modules.");
+    Us4ROutputBuffer(const Tuple<Us4ROutputBufferArrayDef> &arrays, const unsigned nElements, bool stopOnOverflow,
+                     size_t noems)
+        : elementSize(0), stopOnOverflow(stopOnOverflow) {
 
-        size_t noems = us4oemOutputSizes.size();
-        Us4ROutputBufferElement::AccumulatorType filledAccumulator((1ul << noems) - 1);
-        // Calculate us4oem write offsets for each buffer element.
-        size_t us4oemOffset = 0;
-        Ordinal us4oemOrdinal = 0;
-        for (auto s : us4oemOutputSizes) {
-            us4oemOffsets.emplace_back(us4oemOffset);
-            us4oemOffset += s;
-            if (s == 0) {
-                // We should not expect any response from modules, which do not acquire any data.
-                filledAccumulator &= ~(1ul << us4oemOrdinal);
-            }
-            ++us4oemOrdinal;
-        }
-        elementSize = us4oemOffset;
-        // Allocate buffer with an appropriate size.
-        dataBuffer =
-            reinterpret_cast<DataType *>(operator new[](elementSize*nElements, std::align_val_t(DATA_ALIGNMENT)));
-        getDefaultLogger()->log(LogSeverity::DEBUG,
-                                ::arrus::format("Allocated {} ({}, {}) bytes of memory, address: {}",
-                                                elementSize * nElements, elementSize, nElements, (size_t) dataBuffer));
+        ARRUS_REQUIRES_TRUE(noems <= 16, "Currently Us4R data buffer supports up to 16 OEMs.");
 
-        for (unsigned i = 0; i < nElements; ++i) {
-            auto elementAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + i * elementSize);
-            elements.push_back(std::make_shared<Us4ROutputBufferElement>(
-                elementAddress, elementSize, , filledAccumulator, i));
+        Accumulator elementReadyPattern = createElementReadyPattern(arrays, noems);
+        size_t elementSize = calculateElementSize(arrays);
+        try {
+            size_t totalSize = elementSize * nElements;
+            getDefaultLogger()->log(
+                LogSeverity::DEBUG,
+                format("Allocating {} ({}, {}) bytes of memory", totalSize, elementSize, nElements));
+            dataBuffer = reinterpret_cast<DataType *>(operator new[](totalSize, std::align_val_t(ALIGNMENT)));
+            getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
+            elements = createElements(dataBuffer, arrays, elementReadyPattern, nElements, elementSize);
+        } catch (...) {
+            ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+            getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
         }
         this->initialize();
-        this->stopOnOverflow = stopOnOverflow;
     }
 
     ~Us4ROutputBuffer() override {
-        ::operator delete[](dataBuffer, std::align_val_t(DATA_ALIGNMENT));
+        ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
@@ -205,17 +228,14 @@ public:
     }
 
     /**
-     * Return na address of the part of the given buffer element, for the given tuple element,
-     * produced by the given us4OEM.
+     * Return address (beginning) of the given buffer element.
      */
-    uint8 *getAddress(uint16 bufferElementId, Ordinal us4oem) {
-        auto address = reinterpret_cast<uint8 *>(this->elements[bufferElementId]->getAddress());
-        address += us4oemOffsets[us4oem];
-        return address;
+    uint8 *getAddress(uint16 bufferElementId) {
+        return reinterpret_cast<uint8 *>(this->elements[bufferElementId]->getAddress());
     }
 
-    uint8 *getAddressUnsafe(uint16 elementNumber, Ordinal us4oem) {
-        return reinterpret_cast<uint8 *>(this->elements[elementNumber]->getAddressUnsafe()) + us4oemOffsets[us4oem];
+    uint8 *getAddressUnsafe(uint16 elementNumber) {
+        return reinterpret_cast<uint8 *>(this->elements[elementNumber]->getAddressUnsafe());
     }
 
     /**
@@ -305,9 +325,7 @@ public:
      * The addres is relative to the beginning of the whole element (i.e. array 0, oem 0, where
      * 0 is the first non-empty array).
      */
-    size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {
-        // TODO(pjarosik) NYI
-    }
+    size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {}
 
 private:
     /**
@@ -324,6 +342,60 @@ private:
         }
     }
 
+    /**
+     * Creates the expected value of the pattern when all the data was properly transferred to this buffer.
+     */
+    static Accumulator createElementReadyPattern(const Tuple<Us4ROutputBufferArrayDef> &arrays, size_t noems) {
+        // accumulator for each array
+        std::vector<Accumulator> accumulators;
+        for (auto &array : arrays) {
+            Accumulator accumulator((1ul << noems) - 1);
+            for (size_t oem = 0; oem < noems; ++oem) {
+                if (array.getOEMSize(oem) == 0) {
+                    accumulator &= ~(1ul << oem);
+                }
+            }
+            accumulators.push_back(accumulator);
+        }
+        // OEM is active when at least array is produced by this OEM.
+        Accumulator result = 0;
+        for (const auto &a : accumulators) {
+            result = result | a;
+        }
+        return result;
+    }
+
+    /**
+     * Returns the size of the whole element, i.e. the sum of the sizes of all arrays (the number of bytes).
+     */
+    static size_t calculateElementSize(const Tuple<Us4ROutputBufferArrayDef> &arrays) {
+        size_t result = 0;
+        for (auto &array : arrays) {
+            result += array.getSize();
+        }
+        return result;
+    }
+
+    std::vector<Us4ROutputBufferElement::SharedHandle> createElements(int16 *baseAddress,
+                                                                      const Tuple<Us4ROutputBufferArrayDef> &arrayDefs,
+                                                                      uint16 elementReadyPattern, unsigned nElements,
+                                                                      size_t elementSize) {
+        for (unsigned i = 0; i < nElements; ++i) {
+            std::vector<framework::NdArray> arraysVector;
+            for (const Us4ROutputBufferArrayDef &arrayDef : arrayDefs) {
+                size_t elementOffset = i * elementSize;
+                size_t arrayOffset = elementOffset + arrayDef.getAddress();
+                auto arrayAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + arrayOffset);
+                auto def = arrayDef.getDefinition();
+                DeviceId deviceId(DeviceType::Us4R, 0);
+                framework::NdArray array{arrayAddress, def.getShape(), def.getDataType(), deviceId};
+                arraysVector.emplace_back(std::move(array));
+            }
+            Tuple<framework::NdArray> arrays = Tuple<framework::NdArray>{arraysVector};
+            elements.push_back(std::make_shared<Us4ROutputBufferElement>(i, arrays, elementReadyPattern));
+        }
+    }
+
     std::mutex mutex;
     /** A size of a single element IN number of BYTES. */
     size_t elementSize;
@@ -331,8 +403,10 @@ private:
     int16 *dataBuffer;
     /** Host buffer elements */
     std::vector<Us4ROutputBufferElement::SharedHandle> elements;
-    /** Relative addresses where us4oem modules will write. IN NUMBER OF BYTES. */
-    std::vector<size_t> us4oemOffsets;
+    /** Array offsets, in bytes. The is an offset relative to the beginning of each element. */
+    std::vector<size_t> arrayOffsets;
+    /** OEM data offset, relative to the beginning of array, in bytes. */
+    std::vector<size_t> arrayOEMOffsets;
     // Callback that should be called once new data arrive.
     framework::OnNewDataCallback onNewDataCallback;
     framework::OnOverflowCallback onOverflowCallback{[]() {}};
@@ -342,6 +416,76 @@ private:
     enum class State { RUNNING, SHUTDOWN, INVALID };
     State state{State::RUNNING};
     bool stopOnOverflow{true};
+};
+
+class Us4ROutputBufferBuilder {
+public:
+    void setNumberOfElements(unsigned value) { nElements = value; }
+
+    void setStopOnOverflow(bool value) { stopOnOverflow = value; }
+
+    void setLayout(const Us4RBuffer &src) {
+        std::vector<Us4ROutputBufferArrayDef> result;
+        // Calculate shape of each array.
+        std::vector<framework::NdArrayDef> arrayDefs = getArrayDefs(src);
+
+        // Array -> OEM -> size
+        std::vector<std::vector<size_t>> oemSizes;
+
+        for (const auto &arrayDef : src.getArrayDefs().getValues()) {
+            framework::NdArrayDef def = arrayDef.getDefinition();
+            size_t adddress = arrayDef.getAddress();
+            std::vector<size_t> oemSizes = arrayDef.getOEMSizes();
+            defs.emplace_back(def, adddress, oemSizes);
+        }
+        arrayDefs = Tuple<Us4ROutputBufferArrayDef>{result};
+    }
+
+    Us4ROutputBuffer::Handle build() {
+        return std::make_unique<Us4ROutputBuffer>(arrayDefs, nElements, stopOnOverflow, noems);
+    }
+
+private:
+    std::vector<framework::NdArrayDef> getArrayDefs(const Us4RBuffer &src) {
+        std::vector<framework::NdArrayDef::Shape> shapes;
+
+        for (Ordinal oem = 0; oem < (Ordinal) (src.getNumberOfOEMs()); ++oem) {
+            const auto &oemBuffer = src.getUs4OEMBuffer(oem);
+            // For each OEM array
+            std::vector<size_t> shapeInternal = this->elements[0].getElementShape().getValues();
+            // It's always the last axis, regardless IQ vs RF data.
+            size_t channelAxis = shapeInternal.size() - 1;
+
+            auto nChannels = static_cast<unsigned>(shapeInternal[channelAxis]);
+            unsigned nSamples = 0;
+            framework::NdArray::DataType dataType = this->elements[0].getDataType();
+
+            // Sum buffer us4oem component number of samples to determine buffer element shape.
+            for (auto &component : this->elements) {
+                auto &componentShape = component.getElementShape();
+                // Verify if we have the same number of channels for each component
+                if (nChannels != componentShape.get(channelAxis)) {
+                    throw IllegalArgumentException(
+                        "Each us4OEM buffer element should have the same number of channels.");
+                }
+                if (dataType != component.getDataType()) {
+                    throw IllegalArgumentException(
+                        "Each us4OEM buffer element component should have the same data type.");
+                }
+                nSamples += static_cast<unsigned>(componentShape.get(0));
+            }
+            shapeInternal[0] = nSamples;
+            // Possibly another dimension: 2 (DDC I/Q)
+            shapeInternal[channelAxis] = nChannels;
+            elementShape = framework::NdArray::Shape{shapeInternal};
+            elementDataType = dataType;
+        }
+    }
+
+    Tuple<Us4ROutputBufferArrayDef> arrayDefs;
+    unsigned noems{0};
+    unsigned nElements{0};
+    bool stopOnOverflow{false};
 };
 
 }// namespace arrus::devices

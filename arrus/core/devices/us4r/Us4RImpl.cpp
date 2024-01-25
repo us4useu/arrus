@@ -261,16 +261,6 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> Us4RImpl::upload(const S
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
-    // Calculate how much of the data each Us4OEM produces.
-    auto &element = rxBuffer->getElement(0);
-    // a vector, where value[i] contains a size that is produced by a single us4oem.
-    std::vector<size_t> us4oemComponentSize(element.getNumberOfUs4OEMs(), 0);
-    int i = 0;
-    for (auto &component : element.getUs4OEMElements()) {
-        us4oemComponentSize[i++] = component.getSize();
-    }
-    auto &shape = element.getShape();
-    auto dataType = element.getDataType();
     // If the output buffer already exists - remove it.
     if (this->buffer) {
         // The buffer should be already unregistered (after stopping the device).
@@ -623,7 +613,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4RBu
         transferRegistrar.resize(us4oems.size());
     }
     for (auto &us4oem : us4oems) {
-        auto us4oemBuffer = us4rDDRBuffer->getUs4oemBuffer(us4oemOrdinal);
+        auto us4oemBuffer = us4rDDRBuffer->getUs4OEMBuffer(us4oemOrdinal);
         this->registerOutputBuffer(outputBuffer, us4oemBuffer, us4oem.get(), workMode);
         ++us4oemOrdinal;
     }

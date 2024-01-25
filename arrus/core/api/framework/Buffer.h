@@ -22,6 +22,18 @@ public:
     virtual void release() = 0;
 
     /**
+     * Returns output data, with the given id (ordinal).
+     *
+     * In some cases (e.g. when running a sequence of TX/RX sequences)
+     * the system/process can produce a tuple of arrays. This method
+     * is kept for backward compatibility, and always gives the access
+     * to the first element of the tuple.
+     *
+     * @return NdArray with data
+     */
+    virtual NdArray& getData(ArrayId id) = 0;
+
+    /**
      * Returns output data, with the ordinal 0.
      *
      * In some cases (e.g. when running a sequence of TX/RX sequences)

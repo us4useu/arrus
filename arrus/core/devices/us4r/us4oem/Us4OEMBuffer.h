@@ -17,17 +17,20 @@ namespace arrus::devices {
  * Note: the size can be 0 -- this kind of Part is to inform
  * that no transfer is performed in the given sequencer entry.
  */
-class Us4OEMBufferElementPart {
+class Us4OEMBufferArrayPart {
 public:
-    Us4OEMBufferElementPart(size_t address, size_t size, uint16 arrayId, uint16 entryId)
+    Us4OEMBufferArrayPart(size_t address, size_t size, uint16 arrayId, uint16 entryId)
         : address(address), size(size), arrayId(arrayId), entryId(entryId) {}
 
-    size_t getAddress() const { return address;}
+    /** Returns address of this part, relative to the beginning of the array */
+    size_t getAddress() const { return address; }
+
     size_t getSize() const { return size; }
 
     uint16 getArrayId() const { return arrayId; }
 
-    uint16 getEntryId() const {return entryId;}
+    /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries) */
+    uint16 getEntryId() const { return entryId; }
 
 private:
     size_t address;
@@ -36,12 +39,33 @@ private:
     uint16 entryId;
 };
 // A single array consits of multiple parts (frames).
-using Us4OEMBufferArrayParts = std::vector<Us4OEMBufferElementPart>;
+using Us4OEMBufferArrayParts = std::vector<Us4OEMBufferArrayPart>;
 // A single element consists of 0 or more arrays.
 using Us4OEMBufferElementParts = std::vector<Us4OEMBufferArrayParts>;
 
+
+class Us4OEMBufferArrayDef {
+public:
+    size_t getAddress() const { return address; }
+    const framework::NdArrayDef &getDefinition() const { return definition; }
+    const Us4OEMBufferArrayParts &getParts() const { return parts; }
+    /** The number of bytes this OEM produces. */
+    size_t getSize() {
+        size_t result = 0;
+        for(const auto &part: parts) {
+            result += part.getSize();
+        }
+        return result;
+    }
+private:
+    /** Array address, relative to the buffer element address. */
+    size_t address;
+    framework::NdArrayDef definition;
+    Us4OEMBufferArrayParts parts;
+};
+
 /**
- * A description of a single us4oem buffer element (which is now a batch of sequences).
+ * A description of a single us4oem buffer element (which is a tuple of batches of sequences).
  *
  * An element is described by:
  * - src address
@@ -50,31 +74,19 @@ using Us4OEMBufferElementParts = std::vector<Us4OEMBufferArrayParts>;
  */
 class Us4OEMBufferElement {
 public:
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing)
+        : address(address), size(size), firing(firing) {}
 
-    Us4OEMBufferElement(size_t address, size_t size, uint16 firing, Tuple<framework::NdArrayDef> arrays)
-                        : address(address), size(size), firing(firing), arrays(std::move(arrays)) {}
+    [[nodiscard]] size_t getAddress() const { return address; }
 
-    [[nodiscard]] size_t getAddress() const {
-        return address;
-    }
+    [[nodiscard]] size_t getSize() const { return size; }
 
-    [[nodiscard]] size_t getSize() const {
-        return size;
-    }
-
-    [[nodiscard]] uint16 getFiring() const {
-        return firing;
-    }
-
-    const framework::NdArrayDef &getArray(ArrayId id) {
-        return arrays.get(id);
-    }
+    [[nodiscard]] uint16 getFiring() const { return firing; }
 
 private:
     size_t address;
     size_t size;
     uint16 firing;
-    Tuple<framework::NdArrayDef> arrays;
 };
 
 class Us4OEMBufferBuilder;
@@ -88,54 +100,44 @@ class Us4OEMBufferBuilder;
  */
 class Us4OEMBuffer {
 public:
-    explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements,
-                          std::vector<std::vector<Us4OEMBufferElementPart>> elementParts)
-        : elements(std::move(elements)), arrayParts(std::move(elementParts)) {}
+    explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements, std::vector<Us4OEMBufferArrayDef> arrayDefs)
+        : elements(std::move(elements)), arrayDefs(std::move(arrayDefs)) {}
 
-    [[nodiscard]] const Us4OEMBufferElement &getElement(size_t i) const {
-        return elements[i];
+    [[nodiscard]] const Us4OEMBufferElement &getElement(size_t i) const { return elements[i]; }
+
+    [[nodiscard]] size_t getNumberOfElements() const { return elements.size(); }
+
+    [[nodiscard]] const std::vector<Us4OEMBufferElement> &getElements() const { return elements; }
+
+    [[nodiscard]] ArrayId getNumberOfArrays() const { return ARRUS_SAFE_CAST(arrayDefs.size(), ArrayId); }
+
+    [[nodiscard]] const Us4OEMBufferArrayParts &getParts(ArrayId arrayId) const {
+        ARRUS_REQUIRES_TRUE_IAE(arrayId < arrayDefs.size(), "Array number out of the bounds.");
+        return arrayDefs.at(arrayId).getParts();
     }
 
-    [[nodiscard]] size_t getNumberOfElements() const {
-        return elements.size();
-    }
-
-    [[nodiscard]] const std::vector<Us4OEMBufferElement> &getElements() const {
-        return elements;
-    }
-
-    [[nodiscard]] ArrayId getNumberOfArrays() const {
-        return ARRUS_SAFE_CAST(arrayParts.size(), ArrayId);
-    }
-
-    [[nodiscard]] const std::vector<Us4OEMBufferElementPart> &getParts(ArrayId arrayId) const {
-        ARRUS_REQUIRES_TRUE_IAE(arrayId < arrayParts.size(), "Array number out of the bounds.");
-        return arrayParts.at(arrayId);
-    }
+    /** array id -> array address, relative to the beginning of an element */
+    [[nodiscard]] size_t getArrayAddressRelative(uint16 arrayId) const { return arrayDefs.at(arrayId).getAddress(); }
 
 private:
     std::vector<Us4OEMBufferElement> elements;
-    /** array Id -> list of array parts (frames) */
-    std::vector<std::vector<Us4OEMBufferElementPart>> arrayParts;
+    /** Array id -> array defintion (NdArray defintion + parts) */
+    std::vector<Us4OEMBufferArrayDef> arrayDefs;
 };
 
 class Us4OEMBufferBuilder {
 public:
-    void add(Us4OEMBufferElement element) {
-        elements.emplace_back(std::move(element));
-    }
+    void add(Us4OEMBufferElement element) { elements.emplace_back(std::move(element)); }
 
-    void add(Us4OEMBufferElementPart part) {
-        if(mapContains(part.getArrayId())) {
-
-        }
+    void add(Us4OEMBufferArrayPart part) {
+        if (mapContains(part.getArrayId())) {}
     }
 
 private:
     std::vector<Us4OEMBufferElement> elements;
-    std::vector<std::vector<Us4OEMBufferElementPart>> parts;
+    std::vector<std::vector<Us4OEMBufferArrayPart>> parts;
 };
 
-}
+}// namespace arrus::devices
 
-#endif //ARRUS_ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMBUFFER_H
+#endif//ARRUS_ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMBUFFER_H
