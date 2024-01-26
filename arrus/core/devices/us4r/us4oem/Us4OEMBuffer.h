@@ -43,20 +43,20 @@ using Us4OEMBufferArrayParts = std::vector<Us4OEMBufferArrayPart>;
 // A single element consists of 0 or more arrays.
 using Us4OEMBufferElementParts = std::vector<Us4OEMBufferArrayParts>;
 
-
 class Us4OEMBufferArrayDef {
 public:
     size_t getAddress() const { return address; }
     const framework::NdArrayDef &getDefinition() const { return definition; }
     const Us4OEMBufferArrayParts &getParts() const { return parts; }
     /** The number of bytes this OEM produces. */
-    size_t getSize() {
+    [[nodiscard]] size_t getSize() const {
         size_t result = 0;
-        for(const auto &part: parts) {
+        for (const auto &part : parts) {
             result += part.getSize();
         }
         return result;
     }
+
 private:
     /** Array address, relative to the buffer element address. */
     size_t address;
@@ -74,8 +74,7 @@ private:
  */
 class Us4OEMBufferElement {
 public:
-    Us4OEMBufferElement(size_t address, size_t size, uint16 firing)
-        : address(address), size(size), firing(firing) {}
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing) : address(address), size(size), firing(firing) {}
 
     [[nodiscard]] size_t getAddress() const { return address; }
 
@@ -97,6 +96,10 @@ class Us4OEMBufferBuilder;
  * - All elements are assumed to have the same number of arrays.
  * - All elements are assumed to have the same parts.
  * - All part addresses are relative to the beginning of each element.
+ *
+ * NOTE: all OEM buffers should have the same number of array definitions, regardless
+ * of whether this OEM acquires some data or not. For empty arrays, the array def should
+ * indicate empty array.
  */
 class Us4OEMBuffer {
 public:

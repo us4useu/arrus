@@ -83,6 +83,10 @@ public:
         return !(rhs == *this);
     }
 
+    bool empty() const {
+        return values.empty();
+    }
+
 private:
     std::vector<T> values;
 };

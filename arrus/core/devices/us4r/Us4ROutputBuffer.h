@@ -170,6 +170,7 @@ private:
 class Us4ROutputBuffer : public framework::DataBuffer {
 public:
     static constexpr size_t ALIGNMENT = 4096;
+    static constexpr framework::NdArrayDef::DataType ARRAY_DATA_TYPE = framework::NdArrayDef::DataType::INT16;
     using DataType = int16;
     using Accumulator = Us4ROutputBufferElement::Accumulator;
 
@@ -424,18 +425,48 @@ public:
 
     void setStopOnOverflow(bool value) { stopOnOverflow = value; }
 
-    void setLayout(const std::vector<Us4OEMBuffer> &buffers) {
+    void setLayoutTo(const std::vector<Us4OEMBuffer> &buffers) {
+        if (buffers.empty() || buffers.at(0).getNumberOfArrays() == 0) {
+            // No arrays are acquired here.
+            return;
+        }
+        ArrayId nArrays = buffers.at(0).getNumberOfArrays();
+        Ordinal noems = buffers.size();
+
         std::vector<Us4ROutputBufferArrayDef> result;
         // Array -> shape
-        std::vector<framework::NdArrayDef> defs = getArrayDefs(buffers);
+        std::vector<framework::NdArrayDef::Shape> shapes(nArrays);
+        // Array -> OEM -> shape
+        std::vector<std::vector<framework::NdArrayDef::Shape>> partShapes(nArrays);
         // Array -> OEM -> size
-        std::vector<std::vector<size_t>> oemSizes = getOEMSizes(buffers);
-        ARRUS_REQUIRES_TRUE_E(defs.size() == oemSizes.size(), std::runtime_error("Error on buffer builder:"
-                                                                                 " oemSizes size != defs size"));
+        std::vector<std::vector<size_t>> oemSizes(nArrays);
+        for (auto &v : partShapes) {
+            v.resize(noems);
+        }
+        for (auto &v : oemSizes) {
+            v.resize(noems);
+        }
+        // Transpose
+        for (Ordinal oem = 0; oem < (Ordinal) buffers.size(); ++oem) {
+            const auto &buffer = buffers.at(oem);
+            for (ArrayId arrayId = 0; arrayId < buffer.getNumberOfArrays(); ++arrayId) {
+                const auto &oemArrayDef = buffer.getArrayDefs().at(arrayId);
+                const auto ndarrayDef = oemArrayDef.getDefinition();
+                ARRUS_REQUIRES_TRUE(ndarrayDef.getDataType() == Us4ROutputBuffer::ARRAY_DATA_TYPE,
+                                    "Unexpected OEM array data type.");
+                partShapes[arrayId][oem] = ndarrayDef.getShape();
+                oemSizes[arrayId][oem] = oemArrayDef.getSize();
+            }
+        }
+        // Concatenate shapes
+        for (const auto &arrayShapes : partShapes) {
+            shapes.emplace_back(std::move(concatenate(arrayShapes)));
+        }
         size_t address = 0;
-        for (ArrayId arrayId = 0; arrayId < defs.size(); ++arrayId) {
-            result.emplace_back(defs[arrayId], address, oemSizes[arrayId]);
-            address += defs[arrayId].getSize();
+        for (ArrayId arrayId = 0; arrayId < nArrays; ++arrayId) {
+            framework::NdArrayDef definition{shapes[arrayId], Us4ROutputBuffer::ARRAY_DATA_TYPE};
+            result.emplace_back(definition, address, oemSizes[arrayId]);
+            address = definition.getSize();
         }
         arrayDefs = Tuple<Us4ROutputBufferArrayDef>(result);
     }
@@ -445,60 +476,41 @@ public:
     }
 
 private:
-    std::vector<framework::NdArrayDef> getArrayDefs(const std::vector<Us4OEMBuffer> &buffers) {
-        // Array -> OEM -> shape
-        std::vector<std::vector<framework::NdArrayDef::Shape>> partShapes;
-
-        for (Ordinal oem = 0; oem < (Ordinal) buffers.size(); ++oem) {
-            const auto &oemBuffer = buffers.at(oem);
-            for(ArrayId arrayId = 0; arrayId < (ArrayId)oemBuffer.getNumberOfArrays(); ++arrayId) {
-                if(arrayId >= partShapes.size()) {
-                    partShapes.push_back(std::vector<framework::NdArrayDef::Shape>{});
-                }
-                if(oem >= partShapes[oem].size()) {
-                    partShapes.push_back()
-                }
-            }
+    /**
+     * Concatenates shapes. If shape is empty (empty array), skip.
+     */
+    framework::NdArrayDef::Shape concatenate(const std::vector<framework::NdArrayDef::Shape> &parts) {
+        // Find first non-empty shape and use it as a starting point.
+        auto start = std::find(std::begin(parts), std::end(parts), [](const auto &shape) { shape.empty(); });
+        if(start == std::end(parts)) {
+            // all parts empty, return empty shape
+            return framework::NdArrayDef::Shape{};
         }
-
-        // Concatenate shapes. If shape is empty (empty array), skip.
-
-        for (Ordinal oem = 0; oem < (Ordinal) (src.getNumberOfOEMs()); ++oem) {
-            const auto &oemBuffer = src.getUs4OEMBuffer(oem);
-            // For each OEM array
-            std::vector<size_t> shapeInternal = this->elements[0].getElementShape().getValues();
-            // It's always the last axis, regardless IQ vs RF data.
-            size_t channelAxis = shapeInternal.size() - 1;
-
-            auto nChannels = static_cast<unsigned>(shapeInternal[channelAxis]);
-            unsigned nSamples = 0;
-            framework::NdArray::DataType dataType = this->elements[0].getDataType();
-
+        size_t pos = std::distance(std::begin(parts), start);
+        auto reference = *start; // intentional copy
+        // It's always the last axis, regardless IQ vs RF data.
+        size_t channelAxis = reference.size() - 1;
+        auto nChannels = static_cast<unsigned>(reference[channelAxis]);
+        unsigned nSamples = 0;
+        for (size_t i = pos+1; i < parts.size(); ++i) {
             // Sum buffer us4oem component number of samples to determine buffer element shape.
-            for (auto &component : this->elements) {
-                auto &componentShape = component.getElementShape();
-                // Verify if we have the same number of channels for each component
-                if (nChannels != componentShape.get(channelAxis)) {
-                    throw IllegalArgumentException(
-                        "Each us4OEM buffer element should have the same number of channels.");
-                }
-                if (dataType != component.getDataType()) {
-                    throw IllegalArgumentException(
-                        "Each us4OEM buffer element component should have the same data type.");
-                }
-                nSamples += static_cast<unsigned>(componentShape.get(0));
+                    auto &componentShape = component.getElementShape();
+                    // Verify if we have the same number of channels for each component
+                    if (nChannels != componentShape.get(channelAxis)) {
+                        throw IllegalArgumentException(
+                            "Each us4OEM buffer element should have the same number of channels.");
+                    }
+                    nSamples += static_cast<unsigned>(componentShape.get(0));
+                shapeInternal[0] = nSamples;
+                // Possibly another dimension: 2 (DDC I/Q)
+                shapeInternal[channelAxis] = nChannels;
+                elementShape = framework::NdArray::Shape{shapeInternal};
+                elementDataType = dataType;
             }
-            shapeInternal[0] = nSamples;
-            // Possibly another dimension: 2 (DDC I/Q)
-            shapeInternal[channelAxis] = nChannels;
-            elementShape = framework::NdArray::Shape{shapeInternal};
-            elementDataType = dataType;
         }
     }
 
-    std::vector<std::vector<size_t>> getOEMSizes(const std::vector<Us4OEMBuffer> &buffers) {
-
-    }
+    std::vector<std::vector<size_t>> getOEMSizes(const std::vector<Us4OEMBuffer> &buffers) {}
 
     Tuple<Us4ROutputBufferArrayDef> arrayDefs;
     unsigned noems{0};
