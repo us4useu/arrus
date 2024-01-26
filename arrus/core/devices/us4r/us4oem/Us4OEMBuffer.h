@@ -45,6 +45,9 @@ using Us4OEMBufferElementParts = std::vector<Us4OEMBufferArrayParts>;
 
 class Us4OEMBufferArrayDef {
 public:
+    Us4OEMBufferArrayDef(size_t address, framework::NdArrayDef definition, Us4OEMBufferArrayParts parts)
+        : address(address), definition(std::move(definition)), parts(std::move(parts)) {}
+
     size_t getAddress() const { return address; }
     const framework::NdArrayDef &getDefinition() const { return definition; }
     const Us4OEMBufferArrayParts &getParts() const { return parts; }
@@ -132,14 +135,24 @@ private:
 
 class Us4OEMBufferBuilder {
 public:
-    void add(Us4OEMBufferElement element) { elements.emplace_back(std::move(element)); }
+
+    void add(Us4OEMBufferElement element) { elements.emplace_back(element); }
 
     void add(Us4OEMBufferArrayPart part) {
         if (mapContains(part.getArrayId())) {}
     }
 
+    void add(Us4OEMBufferArrayDef def) {
+
+    }
+
+    Us4OEMBuffer build() {
+        return Us4OEMBuffer{elements, parts};
+    }
+
 private:
     std::vector<Us4OEMBufferElement> elements;
+    // Array -> parts
     std::vector<std::vector<Us4OEMBufferArrayPart>> parts;
 };
 

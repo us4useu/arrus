@@ -385,19 +385,18 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
     using RepetitionId = uint16;
     using OpId = uint16;
 
-    std::vector<Us4OEMBufferElement> rxBufferElements;
-    // Assumption: all elements consists of the same parts.
-    std::vector<Us4OEMBufferArrayPart> rxBufferElementParts;
+    Us4OEMBufferBuilder builder;
 
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
     size_t outputAddress = 0;
-    size_t transferAddressStart = 0;
+    size_t arrayStartAddress = 0;
     uint16 entryId = 0;
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
         unsigned int totalSamples = 0;// Total number of samples in a single batch.
         for (SequenceId seqId = 0; seqId < nSequences; ++seqId) {
             // SEQUENCES
+            Us4OEMBufferArrayParts parts;
             const auto &seq = sequences.at(seqId);
             for (RepetitionId repeatId = 0; repeatId < seq.getNRepeats(); ++repeatId) {
                 // REPETITIONS
@@ -422,7 +421,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
                         // Otherwise, make an empty part (i.e. partSize = 0).
                         // (note: the firing number will be needed for transfer configuration to release element in
                         // us4oem sequencer).
-                        rxBufferElementParts.emplace_back(outputAddress, partSize, entryId);
+                        parts.emplace_back(outputAddress, partSize, seqId, entryId);
                     }
                     if (!op.isRxNOP() || acceptRxNops) {
                         // Also, allows rx nops for OEM that is acceptable, in order to acquire frame metadata.
@@ -433,21 +432,18 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
                     }
                 }
             }
+            framework::NdArray::Shape shape;
+            if (isDDCOn) {
+                shape = {totalSamples, 2, N_RX_CHANNELS};
+            } else {
+                shape = {totalSamples, N_RX_CHANNELS};
+            }
+            auto address = arrayStartAddress;
+            arrayStartAddress = outputAddress;
+            builder.add(Us4OEMBufferArrayDef{address, framework::NdArrayDef{shape, DataType}, parts});
         }
-        // The size of the chunk, in the number of BYTES.
-        auto size = outputAddress - transferAddressStart;
-        // Where the chunk starts.
-        auto srcAddress = transferAddressStart;
-        transferAddressStart = outputAddress;
-        framework::NdArray::Shape shape;
-        if (isDDCOn) {
-            shape = {totalSamples, 2, N_RX_CHANNELS};
-        } else {
-            shape = {totalSamples, N_RX_CHANNELS};
-        }
-        rxBufferElements.emplace_back(srcAddress, size, entryId, shape, DataType);
     }
-    return Us4OEMBuffer(rxBufferElements, rxBufferElementParts);
+    return builder.build();
 }
 
 void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
