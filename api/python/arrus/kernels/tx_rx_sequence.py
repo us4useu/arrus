@@ -234,14 +234,17 @@ def get_tx_delays_for_focuses(
     is_all_empty_tx_aperture = np.asarray([
         len(d) == 0 for d in normalized_tx_delays
     ]).all()
+
+    non_empty_rx_ops = [i for i, op in enumerate(seq_with_masks.ops) if np.sum(op.rx.aperture) > 0]
+
     if is_all_empty_tx_aperture:
         tx_center_delay = None
     else:
-        tx_center_delay = np.nanmax(normalized_tx_center_delays)
+        tx_center_delay = np.nanmax(np.asarray(normalized_tx_center_delays)[non_empty_rx_ops])
     equalized_tx_delays = []
-    for i, op in enumerate(sequence.ops):
+    for i, (op, op_with_mask) in enumerate(zip(sequence.ops, seq_with_masks.ops)):
         d = normalized_tx_delays[i]
-        if len(d) > 0:
+        if len(d) > 0 and np.sum(op_with_mask.rx.aperture) > 0:
             # Non-empty delays.
             d = d - normalized_tx_center_delays[i] + tx_center_delay
         equalized_tx_delays.append(d)
@@ -358,7 +361,7 @@ def set_aperture_masks(sequence, probe) -> TxRxSequence:
 def __get_aperture_mask_with_padding(center_element, size, probe_model):
     n_elem = probe_model.n_elements
     if size == 0:
-        return np.zeros(size).astype(bool), (0, 0)
+        return np.zeros(n_elem).astype(bool), (0, 0)
     if size is None:
         size = n_elem
     left_half_size = (size - 1) / 2  # e.g. size 32 -> 15, size 33 -> 16

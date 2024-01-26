@@ -30,6 +30,7 @@ from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
 from arrus.ops.us4r import TxRxSequence
 from arrus.ops.imaging import SimpleTxRxSequence
+import arrus.ops.us4r
 
 def is_package_available(package_name):
     return importlib.util.find_spec(package_name) is not None
@@ -2137,23 +2138,27 @@ class ReconstructLri(Operation):
                 fs=const_metadata.data_description.sampling_frequency
             )
         elif isinstance(seq, TxRxSequence):
+            # Reference TX/RX ops
+            ops = [op for op in seq.ops
+                   if op.rx.aperture.size is None or op.rx.aperture.size > 0]
+            seq = dataclasses.replace(seq, ops=ops)
             self._assert_unique(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
             self._assert_unique(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
             self._assert_unique(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
             self._assert_unique(seq, lambda op: op.rx.sample_range, "sample_range")
             self._assert_unique(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
-            # Reference TX/RX ops
-            rx_op = seq.ops[0].rx
-            tx_op = seq.ops[0].tx
+
+            rx_op = ops[0].rx
+            tx_op = ops[0].tx
             rx_sample_range = rx_op.sample_range
-            angles = np.asarray([op.tx.angle for op in seq.ops])
-            focus = np.asarray([op.tx.focus for op in seq.ops])
+            angles = np.asarray([op.tx.angle for op in ops])
+            focus = np.asarray([op.tx.focus for op in ops])
             if tx_op.angle is None and tx_op.focus is None:
                 raise ValueError("It is required to provide sequence with "
                                  "transmit angles in order to run "
                                  "the ReconstructLri operator.")
-            tx_apertures = [op.tx.aperture for op in seq.ops]
-            rx_apertures = [op.rx.aperture for op in seq.ops]
+            tx_apertures = [op.tx.aperture for op in ops]
+            rx_apertures = [op.rx.aperture for op in ops]
             tx_centers = arrus.kernels.tx_rx_sequence.get_apertures_center_elements(
                 apertures=tx_apertures, probe_model=probe_model
             )
