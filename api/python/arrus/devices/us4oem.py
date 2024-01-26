@@ -1,8 +1,53 @@
 import ctypes
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.core
+import numpy as np
 
 DEVICE_TYPE = DeviceType("Us4OEM")
+
+
+class HVPSMeasurement:
+    """
+    HVPS measurement.
+    """
+    def __init__(self, hvps_measurement_core):
+        parameters = [
+            (0, "PLUS", "VOLTAGE"),
+            (0, "PLUS", "CURRENT"),
+            (1, "PLUS", "VOLTAGE"),
+            (1, "PLUS", "CURRENT"),
+            (0, "MINUS", "VOLTAGE"),
+            (0, "MINUS", "CURRENT"),
+            (1, "MINUS", "VOLTAGE"),
+            (1, "MINUS", "CURRENT"),
+        ]
+        self._values = {}
+        self._array = []
+        for p in parameters:
+            level, polarity, unit = p
+            m = hvps_measurement_core.get(level, polarity, unit)
+            self._values[p] = m
+            self._array.append(m)
+        self._array = np.stack(self._array)
+
+    def get(self, level: int, polarity: str, unit: str):
+        return self._values[(level, polarity.upper(), unit.upper())]
+
+    def get_array(self) -> np.ndarrray:
+        return self._array
+
+    def _polarity_str2enum(self, value: str):
+        return {
+            "PLUS": arrus.core.HVPSMeasurement.PLUS,
+            "MINUS": arrus.core.HVPSMeasurement.MINUS
+        }[value]
+
+    def _unit_str2enum(self, value: str):
+        return {
+            "VOLTAGE": arrus.core.HVPSMeasurement.VOLTAGE,
+            "CURRENT": arrus.core.HVPSMeasurement.CURRENT
+        }[value]
+
 
 
 class Us4OEM(Device):
@@ -56,3 +101,9 @@ class Us4OEM(Device):
         Returns revision number of the device.
         """
         return self._handle.getRevision()
+
+    def get_hvps_measurement(self) -> HVPSMeasurement:
+        return HVPSMeasurement(self._handle.getHVPSMeasurement())
+
+    def set_hvps_sync_measurement(self, n_samples: int, frequency: float) -> float:
+        return self._handle.setHVPSSyncMeasurement(n_samples, frequency)

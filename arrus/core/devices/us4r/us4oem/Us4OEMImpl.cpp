@@ -883,4 +883,21 @@ const char *Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_st
 
 const char *Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
+HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
+    auto m = ius4oem->GetHVPSMeasurements();
+    HVPSMeasurementBuilder builder;
+    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, std::get<0>(m));
+    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, std::get<1>(m));
+    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, std::get<2>(m));
+    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, std::get<3>(m));
+    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, std::get<4>(m));
+    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, std::get<5>(m));
+    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, std::get<6>(m));
+    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, std::get<7>(m));
+    return builder.build();
+}
+float Us4OEMImpl::SetHVPSSyncMeasurement(uint16_t nSamples, float frequency) {
+    return ius4oem->SetHVPSSyncMeasurement(nSamples, frequency);
+}
+
 }// namespace arrus::devices

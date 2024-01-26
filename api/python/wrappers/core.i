@@ -40,6 +40,7 @@ using namespace ::arrus;
 
 %feature("valuewrapper", "1");
 %include "arrus/core/api/devices/us4r/HVVoltage.h"
+%include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
 %feature("valuewrapper", "0");
 
 // TODO try not declaring explicitly the below types
