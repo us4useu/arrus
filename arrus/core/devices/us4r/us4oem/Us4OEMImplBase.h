@@ -50,7 +50,7 @@ public:
 
     HVPSMeasurement getHVPSMeasurement() override = 0;
 
-    float SetHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
+    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

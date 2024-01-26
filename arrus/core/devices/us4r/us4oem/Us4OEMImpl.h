@@ -160,7 +160,7 @@ public:
 
     HVPSMeasurement getHVPSMeasurement() override;
 
-    float SetHVPSSyncMeasurement(uint16_t nSamples, float frequency) override;
+    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;

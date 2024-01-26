@@ -896,7 +896,7 @@ HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
     builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, std::get<7>(m));
     return builder.build();
 }
-float Us4OEMImpl::SetHVPSSyncMeasurement(uint16_t nSamples, float frequency) {
+float Us4OEMImpl::setHVPSSyncMeasurement(uint16_t nSamples, float frequency) {
     return ius4oem->SetHVPSSyncMeasurement(nSamples, frequency);
 }
 

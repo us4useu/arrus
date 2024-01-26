@@ -174,7 +174,7 @@ public:
      * :param frequency: Requested sampling frequency.
      * :return: Actual sampling frequency
      */
-    virtual float SetHVPSSyncMeasurement(uint16_t nSamples, float frequency) = 0;
+    virtual float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

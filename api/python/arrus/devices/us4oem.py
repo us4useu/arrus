@@ -12,28 +12,35 @@ class HVPSMeasurement:
     """
     def __init__(self, hvps_measurement_core):
         parameters = [
-            (0, "PLUS", "VOLTAGE"),
-            (0, "PLUS", "CURRENT"),
-            (1, "PLUS", "VOLTAGE"),
-            (1, "PLUS", "CURRENT"),
-            (0, "MINUS", "VOLTAGE"),
-            (0, "MINUS", "CURRENT"),
-            (1, "MINUS", "VOLTAGE"),
-            (1, "MINUS", "CURRENT"),
+            ("PLUS", 0, "VOLTAGE"),
+            ("PLUS", 0, "CURRENT"),
+            ("PLUS", 1, "VOLTAGE"),
+            ("PLUS", 1, "CURRENT"),
+            ("MINUS",0, "VOLTAGE"),
+            ("MINUS",0, "CURRENT"),
+            ("MINUS",1, "VOLTAGE"),
+            ("MINUS",1, "CURRENT"),
         ]
         self._values = {}
         self._array = []
         for p in parameters:
-            level, polarity, unit = p
-            m = hvps_measurement_core.get(level, polarity, unit)
+            polarity, level, unit = p
+            polarity = self._polarity_str2enum(polarity)
+            unit = self._unit_str2enum(unit)
+            m = hvps_measurement_core.get(polarity, level, unit)
             self._values[p] = m
             self._array.append(m)
         self._array = np.stack(self._array)
+        self._array = self._array.reshape(2, 2, 2, -1)
 
-    def get(self, level: int, polarity: str, unit: str):
-        return self._values[(level, polarity.upper(), unit.upper())]
+    def get(self, polarity: str, level: int, unit: str):
+        return self._values[(polarity.upper(), level, unit.upper())]
 
-    def get_array(self) -> np.ndarrray:
+    def get_array(self) -> np.ndarray:
+        """
+        Returns the measurement as numpy array.
+        The output shape is (polarity, level, unit, sample)
+        """
         return self._array
 
     def _polarity_str2enum(self, value: str):
