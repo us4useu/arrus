@@ -41,7 +41,7 @@ public:
 
     [[nodiscard]] const Shape &getShape() const { return shape; }
 
-    size_t getSize() {return shape.product()*getDataTypeSize(dataType); }
+    size_t getSize() const {return shape.product()*getDataTypeSize(dataType); }
 
 private:
     Shape shape;

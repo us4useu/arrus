@@ -29,15 +29,21 @@ class Us4ROutputBuffer;
 class Us4ROutputBufferArrayDef {
 public:
     Us4ROutputBufferArrayDef(framework::NdArrayDef definition, size_t address, std::vector<size_t> oemSizes)
-        : definition(std::move(definition)), address(address), oemSizes(std::move(oemSizes)) {}
+        : definition(std::move(definition)), address(address), oemSizes(std::move(oemSizes)) {
+            size_t oemAddress = 0;
+            for(const auto size: this->oemSizes) {
+                oemAddresses.push_back(oemAddress);
+                oemAddress += size;
+            }
+        }
 
     size_t getAddress() const { return address; }
     const framework::NdArrayDef &getDefinition() const { return definition; }
-    size_t getSize() { return definition.getSize(); }
+    size_t getSize() const { return definition.getSize(); }
     /*** Returns address of data produced by the given OEM, relative to the beginning of the element. */
-    size_t getOEMAddress(Ordinal oem) { return address + oemAddresses[oem]; }
+    size_t getOEMAddress(Ordinal oem) const { return address + oemAddresses[oem]; }
     /** Returns the size of this array data produced by the given OEM */
-    size_t getOEMSize(Ordinal oem) {
+    size_t getOEMSize(Ordinal oem) const {
         ARRUS_REQUIRES_TRUE(oem < oemSizes.size(), "OEM outside of range");
         return oemSizes.at(oem);
     }
@@ -173,6 +179,7 @@ public:
     static constexpr framework::NdArrayDef::DataType ARRAY_DATA_TYPE = framework::NdArrayDef::DataType::INT16;
     using DataType = int16;
     using Accumulator = Us4ROutputBufferElement::Accumulator;
+    using Elements = std::vector<Us4ROutputBufferElement::SharedHandle>;
 
     /**
      * Buffer's constructor.
@@ -195,7 +202,7 @@ public:
                 format("Allocating {} ({}, {}) bytes of memory", totalSize, elementSize, nElements));
             dataBuffer = reinterpret_cast<DataType *>(operator new[](totalSize, std::align_val_t(ALIGNMENT)));
             getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
-            elements = createElements(dataBuffer, arrays, elementReadyPattern, nElements, elementSize);
+            createElements(arrays, elementReadyPattern, nElements, elementSize);
         } catch (...) {
             ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
             getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
@@ -326,7 +333,9 @@ public:
      * The addres is relative to the beginning of the whole element (i.e. array 0, oem 0, where
      * 0 is the first non-empty array).
      */
-    size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {}
+    [[nodiscard]] size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {
+        return arrayDefs.get(arrayId).getOEMAddress(oem);
+    }
 
 private:
     /**
@@ -377,10 +386,8 @@ private:
         return result;
     }
 
-    std::vector<Us4ROutputBufferElement::SharedHandle> createElements(int16 *baseAddress,
-                                                                      const Tuple<Us4ROutputBufferArrayDef> &arrayDefs,
-                                                                      uint16 elementReadyPattern, unsigned nElements,
-                                                                      size_t elementSize) {
+    void createElements(const Tuple<Us4ROutputBufferArrayDef> &arrayDefs, uint16 elementReadyPattern,
+                        unsigned nElements, size_t elementSize) {
         for (unsigned i = 0; i < nElements; ++i) {
             std::vector<framework::NdArray> arraysVector;
             for (const Us4ROutputBufferArrayDef &arrayDef : arrayDefs) {
@@ -417,6 +424,7 @@ private:
     enum class State { RUNNING, SHUTDOWN, INVALID };
     State state{State::RUNNING};
     bool stopOnOverflow{true};
+    const Tuple<Us4ROutputBufferArrayDef> &arrayDefs;
 };
 
 class Us4ROutputBufferBuilder {
@@ -478,38 +486,30 @@ public:
 private:
     /**
      * Concatenates shapes. If shape is empty (empty array), skip.
+     * @param parts: parts of a given array of a given OEM
      */
-    // framework::NdArrayDef::Shape concatenate(const std::vector<framework::NdArrayDef::Shape> &parts) {
-    //     // Find first non-empty shape and use it as a starting point.
-    //     auto start = std::find(std::begin(parts), std::end(parts), [](const auto &shape) { shape.empty(); });
-    //     if(start == std::end(parts)) {
-    //         // all parts empty, return empty shape
-    //         return framework::NdArrayDef::Shape{};
-    //     }
-    //     size_t pos = std::distance(std::begin(parts), start);
-    //     auto reference = *start; // intentional copy
-    //     // It's always the last axis, regardless IQ vs RF data.
-    //     size_t channelAxis = reference.size() - 1;
-    //     auto nChannels = static_cast<unsigned>(reference[channelAxis]);
-    //     unsigned nSamples = 0;
-    //     for (size_t i = pos+1; i < parts.size(); ++i) {
-    //         // Sum buffer us4oem component number of samples to determine buffer element shape.
-    //                 auto &componentShape = component.getElementShape();
-    //                 // Verify if we have the same number of channels for each component
-    //                 if (nChannels != componentShape.get(channelAxis)) {
-    //                     throw IllegalArgumentException(
-    //                         "Each us4OEM buffer element should have the same number of channels.");
-    //                 }
-    //                 nSamples += static_cast<unsigned>(componentShape.get(0));
-    //             shapeInternal[0] = nSamples;
-    //             // Possibly another dimension: 2 (DDC I/Q)
-    //             shapeInternal[channelAxis] = nChannels;
-    //             elementShape = framework::NdArray::Shape{shapeInternal};
-    //             elementDataType = dataType;
-    //         }
-    //     }
-    // }
-
+    framework::NdArrayDef::Shape concatenate(const std::vector<framework::NdArrayDef::Shape> &parts) {
+        // Find first non-empty shape and use it as a starting point.
+        auto start = std::find(std::begin(parts), std::end(parts), [](const auto &shape) { shape.empty(); });
+        if (start == std::end(parts)) {
+            // all parts empty, return empty shape
+            return framework::NdArrayDef::Shape{};
+        }
+        size_t pos = std::distance(std::begin(parts), start);
+        auto ref = start->getValues();
+        size_t chAx = ref.size() - 1;
+        constexpr size_t sampAx = 0;
+        auto nCh = static_cast<unsigned>(ref[chAx]);
+        unsigned nSamples = 0;
+        for (size_t i = pos + 1; i < parts.size(); ++i) {
+            const auto &part = parts.at(i);
+            ARRUS_REQUIRES_TRUE_IAE(nCh == part.get(chAx),
+                                    "Each us4OEM buffer element should have the same number of channels.");
+            nSamples += static_cast<unsigned>(part.get(sampAx));
+        }
+        ref[sampAx] = nSamples;
+        return framework::NdArray::Shape{ref};
+    }
     Tuple<Us4ROutputBufferArrayDef> arrayDefs;
     unsigned noems{0};
     unsigned nElements{0};
