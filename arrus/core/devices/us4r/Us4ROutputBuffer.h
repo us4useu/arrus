@@ -479,38 +479,36 @@ private:
     /**
      * Concatenates shapes. If shape is empty (empty array), skip.
      */
-    framework::NdArrayDef::Shape concatenate(const std::vector<framework::NdArrayDef::Shape> &parts) {
-        // Find first non-empty shape and use it as a starting point.
-        auto start = std::find(std::begin(parts), std::end(parts), [](const auto &shape) { shape.empty(); });
-        if(start == std::end(parts)) {
-            // all parts empty, return empty shape
-            return framework::NdArrayDef::Shape{};
-        }
-        size_t pos = std::distance(std::begin(parts), start);
-        auto reference = *start; // intentional copy
-        // It's always the last axis, regardless IQ vs RF data.
-        size_t channelAxis = reference.size() - 1;
-        auto nChannels = static_cast<unsigned>(reference[channelAxis]);
-        unsigned nSamples = 0;
-        for (size_t i = pos+1; i < parts.size(); ++i) {
-            // Sum buffer us4oem component number of samples to determine buffer element shape.
-                    auto &componentShape = component.getElementShape();
-                    // Verify if we have the same number of channels for each component
-                    if (nChannels != componentShape.get(channelAxis)) {
-                        throw IllegalArgumentException(
-                            "Each us4OEM buffer element should have the same number of channels.");
-                    }
-                    nSamples += static_cast<unsigned>(componentShape.get(0));
-                shapeInternal[0] = nSamples;
-                // Possibly another dimension: 2 (DDC I/Q)
-                shapeInternal[channelAxis] = nChannels;
-                elementShape = framework::NdArray::Shape{shapeInternal};
-                elementDataType = dataType;
-            }
-        }
-    }
-
-    std::vector<std::vector<size_t>> getOEMSizes(const std::vector<Us4OEMBuffer> &buffers) {}
+    // framework::NdArrayDef::Shape concatenate(const std::vector<framework::NdArrayDef::Shape> &parts) {
+    //     // Find first non-empty shape and use it as a starting point.
+    //     auto start = std::find(std::begin(parts), std::end(parts), [](const auto &shape) { shape.empty(); });
+    //     if(start == std::end(parts)) {
+    //         // all parts empty, return empty shape
+    //         return framework::NdArrayDef::Shape{};
+    //     }
+    //     size_t pos = std::distance(std::begin(parts), start);
+    //     auto reference = *start; // intentional copy
+    //     // It's always the last axis, regardless IQ vs RF data.
+    //     size_t channelAxis = reference.size() - 1;
+    //     auto nChannels = static_cast<unsigned>(reference[channelAxis]);
+    //     unsigned nSamples = 0;
+    //     for (size_t i = pos+1; i < parts.size(); ++i) {
+    //         // Sum buffer us4oem component number of samples to determine buffer element shape.
+    //                 auto &componentShape = component.getElementShape();
+    //                 // Verify if we have the same number of channels for each component
+    //                 if (nChannels != componentShape.get(channelAxis)) {
+    //                     throw IllegalArgumentException(
+    //                         "Each us4OEM buffer element should have the same number of channels.");
+    //                 }
+    //                 nSamples += static_cast<unsigned>(componentShape.get(0));
+    //             shapeInternal[0] = nSamples;
+    //             // Possibly another dimension: 2 (DDC I/Q)
+    //             shapeInternal[channelAxis] = nChannels;
+    //             elementShape = framework::NdArray::Shape{shapeInternal};
+    //             elementDataType = dataType;
+    //         }
+    //     }
+    // }
 
     Tuple<Us4ROutputBufferArrayDef> arrayDefs;
     unsigned noems{0};
