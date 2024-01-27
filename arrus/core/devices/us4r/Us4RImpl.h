@@ -18,7 +18,6 @@
 #include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
-#include "arrus/core/devices/us4r/Us4RBuffer.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
@@ -35,9 +34,7 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
-             std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane);
-    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, ProbeImplBase::Handle &probe,
+    Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
              const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
@@ -63,8 +60,6 @@ public:
         auto ordinal = deviceId.getOrdinal();
         switch (deviceId.getDeviceType()) {
         case DeviceType::Us4OEM: return getUs4OEM(ordinal);
-        case DeviceType::ProbeAdapter: return getProbeAdapter(ordinal);
-        case DeviceType::Probe: return getProbe(ordinal);
         default: throw DeviceNotFoundException(deviceId);
         }
     }
@@ -76,22 +71,12 @@ public:
         return us4oems.at(ordinal).get();
     }
 
-    ProbeAdapter::RawHandle getProbeAdapter(Ordinal ordinal) override {
-        if (ordinal > 0 || !probeAdapter.has_value()) {
-            throw DeviceNotFoundException(DeviceId(DeviceType::ProbeAdapter, ordinal));
-        }
-        return probeAdapter.value().get();
+    ProbeModel getProbeModel(Ordinal ordinal) override {
+        return probeSettings.at(ordinal).getModel();
     }
 
-    Probe::RawHandle getProbe(Ordinal ordinal) override {
-        if (ordinal > 0 || !probe.has_value()) {
-            throw DeviceNotFoundException(DeviceId(DeviceType::Probe, ordinal));
-        }
-        return probe.value().get();
-    }
-
-    std::pair<std::shared_ptr<arrus::framework::Buffer>, std::shared_ptr<arrus::session::Metadata>>
-    upload(const ::arrus::ops::us4r::Scheme &scheme) override;
+    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+    upload(const ops::us4r::Scheme &scheme) override;
 
     void start() override;
 
@@ -147,16 +132,17 @@ public:
     void setParameters(const Parameters &parameters) override;
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &periods) override;
+    std::vector<std::vector<uint8_t>> getOEMMappings() const;
+    Ordinal getFrameMetadataOEM(const us4r::IOSettings &settings);
 
 private:
     void stopDevice();
 
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
-                    arrus::ops::us4r::Scheme::WorkMode workMode,
-                    const std::optional<arrus::ops::us4r::DigitalDownConversion> &ddc,
-                    const std::vector<arrus::framework::NdArray> &txDelayProfiles);
-    us4r::TxRxParametersSequence createSequencePreamble(const ops::us4r::TxRxSequence &sequence);
+                    ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                    const std::vector<framework::NdArray> &txDelayProfiles);
+    us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
     us4r::TxRxParametersSequence convertToInternalSequence(const ops::us4r::TxRxSequence &sequence);
 
     /**
@@ -169,8 +155,6 @@ private:
     void disableAfeDemod();
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients);
-
-    ProbeImplBase::RawHandle getProbeImpl() { return probe.value().get(); }
 
     void registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuffer &bufferSrc,
                               Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
@@ -189,8 +173,6 @@ private:
     std::mutex deviceStateMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
-    // Sub-components.
-    ProbeImplBase::Handle probe;
     std::optional<DigitalBackplane::Handle> digitalBackplane;
     std::vector<HighVoltageSupplier::Handle> hv;
     // Settings.
@@ -198,17 +180,18 @@ private:
     // AFE parameters.
     std::mutex afeParamsMutex;
     std::optional<RxSettings> rxSettings;
-    std::vector<ProbeSettings::ChannelMapping> probeToAdapterChannelMappings;
+    std::vector<ProbeSettings> probeSettings;
     ProbeAdapterSettings probeAdapterSettings;
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
     // Buffers.
-    std::unique_ptr<Us4RBuffer> us4rBuffer;
+    std::vector<Us4OEMBuffer> us4OemBuffers;
     std::shared_ptr<Us4ROutputBuffer> buffer;
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
     // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
+    Ordinal frameMetadataOEM{0};
 };
 
 }// namespace arrus::devices

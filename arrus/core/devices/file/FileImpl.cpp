@@ -192,11 +192,11 @@ void FileImpl::trigger() {
     throw std::runtime_error("File::trigger: NYI");
 }
 
-Probe *FileImpl::getProbe(Ordinal ordinal) {
+ProbeModel FileImpl::getProbeModel(Ordinal ordinal) {
     if(ordinal > 0) {
-        throw arrus::IllegalArgumentException("Probe with ordinal > 0 is not available in the File device.");
+        throw IllegalArgumentException("Probe with ordinal > 0 is not available in the File device.");
     }
-    return probe.get();
+    return probe->getModel();
 }
 
 void FileImpl::setParameters(const Parameters &params) {

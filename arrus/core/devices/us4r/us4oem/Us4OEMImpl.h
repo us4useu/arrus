@@ -98,10 +98,10 @@ public:
     void startTrigger() override;
     void stopTrigger() override;
     void syncTrigger() override;
+    void setTgcCurve(const std::vector<us4r::TxRxParametersSequence> & sequences);
     Us4OEMUploadResult
     upload(const us4r::TxParametersSequenceColl &sequences,
-           const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-           ops::us4r::Scheme::WorkMode workMode,
+           uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
            const std::optional<ops::us4r::DigitalDownConversion> &ddc=std::nullopt,
            const std::vector<framework::NdArray> &txDelays = std::vector<framework::NdArray>()) override;
 

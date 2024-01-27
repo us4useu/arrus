@@ -49,12 +49,12 @@ public:
     virtual float getCurrentSamplingFrequency() const = 0;
 
     /**
-     * Returns a handle to a probe identified by given ordinal number.
+     * Returns probe model identified by given ordinal number.
      *
      * @param ordinal ordinal number of the probe to get
-     * @return a handle to the probe
+     * @return probe model description
      */
-    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) = 0;
+    virtual ProbeModel getProbeModel(Ordinal ordinal) = 0;
 
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;

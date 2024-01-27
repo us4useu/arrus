@@ -212,8 +212,7 @@ void Us4OEMImpl::setHpfCornerFrequency(uint32_t frequency) {
     case 80'000: coefficient = 8; break;
     case 40'000: coefficient = 9; break;
     case 20'000: coefficient = 10; break;
-    default:
-        throw IllegalArgumentException(format("Unsupported HPF corner frequency: {}", frequency));
+    default: throw IllegalArgumentException(format("Unsupported HPF corner frequency: {}", frequency));
     }
     ius4oem->AfeEnableHPF();
     ius4oem->AfeSetHPFCornerFrequency(coefficient);
@@ -223,13 +222,12 @@ void Us4OEMImpl::disableHpf() { ius4oem->AfeDisableHPF(); }
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
-Us4OEMUploadResult
-Us4OEMImpl::upload(const TxParametersSequenceColl &sequences, const TGCCurve &tgc, uint16 rxBufferSize,
-                   Scheme::WorkMode workMode, const std::optional<DigitalDownConversion> &ddc,
-                   const std::vector<arrus::framework::NdArray> &txDelays) {
+Us4OEMUploadResult Us4OEMImpl::upload(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
+                                      Scheme::WorkMode workMode, const std::optional<DigitalDownConversion> &ddc,
+                                      const std::vector<arrus::framework::NdArray> &txDelays) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
-    setTgcCurve(tgc);
+    setTgcCurve(sequences);
     ius4oem->SetNumberOfFirings(getNumberOfFirings(sequences));
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
@@ -571,6 +569,18 @@ void Us4OEMImpl::start() { this->startTrigger(); }
 void Us4OEMImpl::stop() { this->stopTrigger(); }
 
 void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
+
+void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequences) {
+    // Make sure all TGC curve are the same.
+    if (sequences.empty()) {
+        return;
+    }
+    auto allCurvesTheSame =
+        std::accumulate(std::begin(sequences), std::end(sequences), false,
+                        [](const auto &a, const auto &b) { a.getTgcCurve() == b.getTgcCurve(); });
+    ARRUS_REQUIRES_TRUE_IAE(allCurvesTheSame, "TGC curves for all sequences should be exactly the same.");
+    setTgcCurve(sequences.at(0).getTgcCurve());
+}
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
 

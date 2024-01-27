@@ -20,7 +20,7 @@ public:
     void trigger() override = 0;
     float getSamplingFrequency() const override = 0;
     float getCurrentSamplingFrequency() const override = 0;
-    arrus::devices::Probe *getProbe(Ordinal ordinal) override = 0;
+    ProbeModel getProbeModel(Ordinal ordinal) override = 0;
 };
 
 }

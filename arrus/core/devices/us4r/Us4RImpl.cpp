@@ -2,9 +2,8 @@
 #include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
 #include "arrus/core/common/interpolate.h"
-#include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h"
-#include "arrus/core/devices/us4r/mapping/Us4OEMSubapertureGenerator.h"
+#include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include <chrono>
 #include <future>
 #include <memory>
@@ -22,24 +21,18 @@ using namespace ::arrus::ops::us4r;
 using namespace ::arrus::session;
 using namespace ::arrus::devices::us4r;
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<HighVoltageSupplier::Handle> hv,
-                   std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane)
-    : Us4R(id), logger{getLoggerFactory()->getLogger()}, us4oems(std::move(us4oems)),
-      digitalBackplane(std::move(backplane)), hv(std::move(hv)), channelsMask(std::move(channelsMask)) {
-    INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-}
-
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeImplBase::Handle &probe,
-                   ProbeSettings::ChannelMapping probeChannelMapping, ProbeAdapterSettings probeAdapterSettings,
-                   std::vector<HighVoltageSupplier::Handle> hv, const RxSettings &rxSettings,
-                   std::vector<unsigned short> channelsMask, std::optional<DigitalBackplane::Handle> backplane,
-                   std::vector<Bitstream> bitstreams, bool hasIOBitstreamAddressing)
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
+                   ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
+                   const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
+                   std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
+                   bool hasIOBitstreamAddressing, const IOSettings &ioSettings)
     : Us4R(id) {
 
     this->logger = getLoggerFactory()->getLogger();
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     this->us4oems = std::move(us4oems);
-    this->probe = std::move(probe);
+    this->probeSettings = std::move(probeSettings);
+    this->probeAdapterSettings = std::move(probeAdapterSettings);
     this->digitalBackplane = std::move(backplane);
     this->hv = std::move(hv);
     this->rxSettings = rxSettings;
@@ -62,6 +55,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeImplBase:
     for (auto &bitstream : this->bitstreams) {
         getMasterOEM()->addIOBitstream(bitstream.getLevels(), bitstream.getPeriods());
     }
+    this->frameMetadataOEM = getFrameMetadataOEM(ioSettings);
 }
 
 std::vector<std::pair<std::string, float>> Us4RImpl::logVoltages(bool isHV256) {
@@ -351,56 +345,101 @@ Us4RImpl::~Us4RImpl() {
     }
 }
 
-std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
     // Convert to intermediate representation (TxRxParameters).
-    ProbeToAdapterMappingConverter probeToAdapterConverter(probeToAdapterChannelMappings);
-    AdapterToUs4OEMMappingConverter adapterToUs4OEMConverter(probeAdapterSettings.getChannelMapping());
-    Us4OEMSubapertureGenerator subapertureGenerator(Us4OEMImpl::N_RX_CHANNELS);
+    auto noems = ARRUS_SAFE_CAST(this->us4oems.size(), Ordinal);
+    auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
+    // Sequence id -> converter
+    std::vector<ProbeToAdapterMappingConverter> probe2Adapter;
+    // Sequence id -> converter
+    std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
+    // Convert API sequences to internal representation.
+    std::vector<TxRxParametersSequence> seqs;
+    std::transform(std::begin(sequences), std::end(sequences), std::back_inserter(seqs), convertToInternalSequence);
+    // Initialize converters.
 
-    using Us4OEMSequences = AdapterToUs4OEMMappingConverter::Us4OEMSequences;
-
-    Us4OEMSequences rawSequences;
-
-    for (const auto &sequence : sequences) {
-        // Convert the sequence to the us4R internal representation.
-        // Map from probe to adapter channels.
-        auto adapterSequence = probeToAdapterConverter.convert(sequence);
-        // Split sequence between us4OEMs.
-        auto oemLogicalSequences = adapterToUs4OEMConverter.convert(adapterSequence);
-        // Split into us4OEM sub-apertures.
-        auto oemPhysicalSequences = subapertureGenerator.convert(oemLogicalSequences);
-        oemSequences.push_back(std::move(oemPhysicalSequences));
+    auto oemMappings = getOEMMappings();
+    for (SequenceId sId = 0; sId < nSequences; ++sId) {
+        auto s = seqs.at(sId);
+        const auto &txProbeId = s.getTxProbeId();
+        const auto &rxProbeId = s.getRxProbeId();
+        const auto &txProbeSettings = probeSettings.at(txProbeId.getOrdinal());
+        const auto &rxProbeSettings = probeSettings.at(rxProbeId.getOrdinal());
+        auto nAdapterChannels = probeAdapterSettings.getNumberOfChannels();
+        // Find the correct probe TX, RX ordinal
+        probe2Adapter.emplace_back(
+            ProbeToAdapterMappingConverter{txProbeId, rxProbeId, txProbeSettings, rxProbeSettings, nAdapterChannels});
+        adapter2OEM.emplace_back(
+            AdapterToUs4OEMMappingConverter{probeAdapterSettings, noems, oemMappings, frameMetadataOEM});
     }
-    // Upload sequence on uO4OEMs.
-    for (auto [ordinal, sequence] : oemSequences) {
-        us4oems[ordinal]->upload();
+
+    using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
+    // OEM -> list of sequences to upload on the OEM
+    auto sequencesByOEM = std::vector{noems, OEMSequences{}};
+    // Convert probe sequence -> OEM Sequences
+    for (SequenceId sId = 0; sId < nSequences; ++sId) {
+        const auto &s = seqs.at(sId);
+        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
+        auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
+        for (Ordinal oem = 0; oem < noems; ++oem) {
+            sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
+        }
     }
-    // Update metadata (FCM in particular).
+    std::vector<Us4OEMBuffer> buffers;
+    // Sequence id -> the probe-level FCM.
+    std::vector<FrameChannelMapping::Handle> fcms;
+    // Sequence id, OEM -> FCM
+    auto oemFCMs = std::vector{nSequences, std::vector<FrameChannelMapping::RawHandle>{noems}};
+    for (Ordinal oem = 0; oem < noems; ++oem) {
+        // TODO Consider implementing dynamic change of delay profiles
+        auto uploadResult =
+            us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc, std::vector<NdArray>{});
+        buffers.emplace_back(uploadResult.getBufferDescription());
+        for (SequenceId sId = 0; sId < nSequences; ++sId) {
+            oemFCMs[sId][oem] = uploadResult.getFCM(sId);
+        }
+    }
+    // Convert FCMs to probe-level apertures.
+    for (SequenceId sId = 0; sId < nSequences; ++sId) {
+        auto adapterFCM = adapter2OEM.at(sId).convert(oemFCMs[sId]);
+        auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
+        fcms.emplace_back(std::move(probeFCM));
+    }
+    return std::make_pair(std::move(buffers), std::move(fcms));
 }
 
-TxRxParametersSequence Us4RImpl::createSequencePreamble(const TxRxSequence &sequence) {
-    TxRxParametersSequenceBuilder preambleBuilder;
-    if (hasIOBitstreamAdressing) {
-        // emplace a single, short op, for bitstream pattern switching only
-
-        ARRUS_REQUIRES_TRUE(!sequence.getOps().empty(), "The sequence should have at least one TX/RX defined.");
-        TxRxParametersBuilder entryBuilder(sequence.getOps().at(0));
-        // No TX/RX
-        entryBuilder.convertToNOP();
-        // Bitstream only.
-        entryBuilder.setBitstreamId(BitstreamId(1));
-        // NOTE: 2ms is an aribtrary value (should work at least for 576-channel MUX board).
-        entryBuilder.setPri(2000e-6f);
-        preambleBuilder.addEntry((entryBuilder.build()));
-    }
+TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
+    ARRUS_REQUIRES_TRUE(!sequence.getOps().empty(), "The sequence should have at least one TX/RX defined.");
+    // Make sure that all ops in the sequence use the same bitstream
+    auto rxProbe = sequence.getRxProbeId().getOrdinal();
+    auto txProbe = sequence.getTxProbeId().getOrdinal();
+    ARRUS_REQUIRES_TRUE_IAE(
+        probeSettings.at(rxProbe).getBitstreamId() == probeSettings.at(txProbe).getBitstreamId(),
+        format("All probes used within a single sequence should be connected with the same bitstream ID, "
+               "incorrect probes: {}, {}",
+               txProbe, rxProbe));
+    auto bitstreamId = probeSettings.at(rxProbe).getBitstreamId();
+    TxRxParametersBuilder preambleBuilder(sequence.getOps().at(0));
+    // emplace a single, short op, for bitstream pattern switching only
+    // No TX/RX
+    preambleBuilder.convertToNOP();
+    // Bitstream only.
+    preambleBuilder.setBitstreamId(bitstreamId);
+    // NOTE: 2ms is an aribtrary value (should work at least for 576-channel MUX board).
+    preambleBuilder.setPri(2000e-6f);
     return preambleBuilder.build();
 }
 
 TxRxParametersSequence Us4RImpl::convertToInternalSequence(const TxRxSequence &sequence) {
     TxRxParametersSequenceBuilder sequenceBuilder;
+    sequenceBuilder.setCommon(sequence);
+    if (hasIOBitstreamAdressing) {
+        auto preamble = createBitstreamSequenceSelectPreamble(sequence);
+        sequenceBuilder.addEntry(preamble);
+    }
     for (const auto &txrx : sequence.getOps()) {
         TxRxParametersBuilder builder(txrx);
         if (hasIOBitstreamAdressing) {
@@ -844,6 +883,28 @@ BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const s
 void Us4RImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8_t> &levels,
                               const std::vector<uint16_t> &periods) {
     this->us4oems[0]->setIOBitstream(bitstreamId, levels, periods);
+}
+
+std::vector<std::vector<uint8_t>> Us4RImpl::getOEMMappings() const {
+    std::vector<std::vector<uint8_t>> mappings;
+    for (auto &us4oem : us4oems) {
+        mappings.push_back(us4oem->getChannelMapping());
+    }
+    return std::move(mappings);
+}
+
+Ordinal Us4RImpl::getFrameMetadataOEM(const IOSettings &settings) {
+    if (!settings.hasFrameMetadataCapability()) {
+        return 0;// By default us4OEM:0 is considered to provide frame metadata
+    } else {
+        std::unordered_set<Ordinal> oems = settings.getFrameMetadataCapabilityOEMs();
+        if (oems.size() != 1) {
+            throw ::arrus::IllegalArgumentException("Exactly one OEM should be set for the pulse counter capability.");
+        } else {
+            // Only a single OEM.
+            return *std::begin(oems);
+        }
+    }
 }
 
 }// namespace arrus::devices

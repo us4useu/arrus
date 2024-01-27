@@ -25,24 +25,19 @@ public:
      */
     Rx(std::vector<bool> aperture, std::pair<unsigned int, unsigned int> sampleRange,
        unsigned int downsamplingFactor = 1,
-       std::pair<unsigned short, unsigned short> padding = {(ChannelIdx)0, (ChannelIdx) 0},
+       std::pair<unsigned short, unsigned short> padding = {(ChannelIdx) 0, (ChannelIdx) 0},
        devices::DeviceId placement = devices::DeviceId(devices::DeviceType::Probe, 0))
-        : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)),
-          downsamplingFactor(downsamplingFactor),
-          padding(std::move(padding)),
-          placement(placement) {}
-
-    const std::vector<bool> &getAperture() const {
-        return aperture;
+        : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)), downsamplingFactor(downsamplingFactor),
+          padding(std::move(padding)), placement(placement) {
+        ARRUS_REQUIRES_TRUE_IAE(placement.getDeviceType() == devices::DeviceType::Probe,
+                                "Only probe can be set as a placement for TX.");
     }
 
-    const std::pair<unsigned, unsigned> &getSampleRange() const {
-        return sampleRange;
-    }
+    const std::vector<bool> &getAperture() const { return aperture; }
 
-    unsigned getDownsamplingFactor() const {
-        return downsamplingFactor;
-    }
+    const std::pair<unsigned, unsigned> &getSampleRange() const { return sampleRange; }
+
+    unsigned getDownsamplingFactor() const { return downsamplingFactor; }
 
     const std::pair<unsigned short, unsigned short> &getPadding() const { return padding; }
 
@@ -56,6 +51,6 @@ private:
     devices::DeviceId placement;
 };
 
-}
+}// namespace arrus::ops::us4r
 
-#endif //ARRUS_CORE_API_OPS_US4R_RX_H
+#endif//ARRUS_CORE_API_OPS_US4R_RX_H

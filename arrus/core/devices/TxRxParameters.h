@@ -10,6 +10,7 @@
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/core/common/aperture.h"
 #include "arrus/core/common/collections.h"
 
 namespace arrus::devices::us4r {
@@ -210,8 +211,11 @@ class TxRxParametersSequenceBuilder;
 class TxRxParametersSequence {
 public:
     TxRxParametersSequence() = default;
-    TxRxParametersSequence(std::vector<TxRxParameters> parameters, uint16 nRepeats, const std::optional<float> &sri)
-        : parameters(std::move(parameters)), nRepeats(nRepeats), sri(sri) {}
+    TxRxParametersSequence(const std::vector<TxRxParameters> &parameters, const uint16 nRepeats,
+                           const std::optional<float> &sri, const ops::us4r::TGCCurve &tgcCurve,
+                           const DeviceId &txProbeId, const DeviceId &rxProbeId)
+        : parameters(parameters), nRepeats(nRepeats), sri(sri), tgcCurve(tgcCurve), txProbeId(txProbeId),
+          rxProbeId(rxProbeId) {}
 
     [[nodiscard]] std::vector<TxRxParameters> getParameters() const { return parameters; }
 
@@ -220,6 +224,10 @@ public:
     [[nodiscard]] size_t size() const { return parameters.size(); }
     [[nodiscard]] uint16 getNRepeats() const { return nRepeats; }
     [[nodiscard]] const std::optional<float> &getSri() const { return sri; }
+    ops::us4r::TGCCurve getTgcCurve() const { return tgcCurve; }
+    const DeviceId &getTxProbeId() const { return txProbeId; }
+    const DeviceId &getRxProbeId() const { return rxProbeId; }
+
     /**  Returns the number of actual ops, that is, a the number of ops excluding RxNOPs. */
     [[nodiscard]] uint16 getNumberOfNoRxNOPs() const {
         uint16 res = 0;
@@ -231,11 +239,45 @@ public:
         return res;
     }
 
+    /**
+     * Returns a single a unique RX aperture size, or throws IllegalStateException if the are more a .
+     */
+    ChannelIdx getRxApertureSize() const {
+        std::unordered_set<ChannelIdx> s;
+        auto toApertureSize = [](const TxRxParameters &params) {
+            auto padding = params.getRxPadding().sum();
+            return getNumberOfActiveChannels(params.getRxAperture()) + padding;
+        };
+        std::transform(std::begin(parameters), std::end(parameters), std::inserter(s, std::begin(s)), toApertureSize);
+        ARRUS_REQUIRES_TRUE_E(s.size() == 1, "All TX/RXs should have the same RX aperture size "
+                                             "and the sequence should not be empty.");
+        return *std::begin(s);
+    }
+
+    const std::optional<TxRxParameters> &getFirstRxOp() const {
+        for (auto &op : getParameters()) {
+            if (!op.isRxNOP()) {
+                return op;
+            }
+        }
+        return std::nullopt;
+    }
+
+    void reserve(size_t n) { parameters.reserve(n); }
+
+    const TxRxParameters &getLastOp() const {
+        ARRUS_REQUIRES_TRUE(parameters.size() != 0, "Array should not be empty");
+        return parameters[parameters.size() - 1];
+    }
+
 private:
     friend TxRxParametersSequenceBuilder;
     std::vector<TxRxParameters> parameters;
     uint16 nRepeats{0};
     std::optional<float> sri{0};
+    ops::us4r::TGCCurve tgcCurve;
+    DeviceId txProbeId{DeviceType::Probe, 0};
+    DeviceId rxProbeId{DeviceType::Probe, 0};
 };
 
 using TxParametersSequenceColl = std::vector<TxRxParametersSequence>;
@@ -244,13 +286,46 @@ class TxRxParametersSequenceBuilder {
 public:
     TxRxParametersSequenceBuilder() = default;
 
+    TxRxParametersSequenceBuilder &setCommon(const ops::us4r::TxRxSequence &s) {
+        sequence.nRepeats = s.getNRepeats();
+        sequence.sri = s.getSri();
+        sequence.tgcCurve = s.getTgcCurve();
+        sequence.txProbeId = s.getTxProbeId();
+        sequence.rxProbeId = s.getRxProbeId();
+        return *this;
+    }
+
+    TxRxParametersSequenceBuilder &setCommon(const TxRxParametersSequence &s) {
+        sequence.nRepeats = s.getNRepeats();
+        sequence.sri = s.getSri();
+        sequence.tgcCurve = s.getTgcCurve();
+        sequence.txProbeId = s.getTxProbeId();
+        sequence.rxProbeId = s.getRxProbeId();
+        return *this;
+    }
+
     TxRxParametersSequenceBuilder &addEntry(const TxRxParameters &params) {
         sequence.parameters.push_back(params);
         return *this;
     }
 
-    TxRxParametersSequenceBuilder &addEntries(const TxRxParametersSequence &sequence) {}
-    arrus::devices::us4r::TxRxParametersSequence build() {}
+    TxRxParametersSequenceBuilder &addEntry(const ops::us4r::TxRx &op) {
+        TxRxParametersBuilder builder(op);
+        return addEntry(builder.build());
+    }
+
+    TxRxParametersSequenceBuilder &resize(size_t n, const TxRxParameters &params) {
+        sequence.parameters.resize(n, params);
+        return *this;
+    }
+
+    TxRxParametersSequence build() {
+        auto tmp = std::move(sequence);
+        sequence = TxRxParametersSequence{};
+        return std::move(tmp);
+    }
+
+    const TxRxParametersSequence &getCurrent() const { return sequence; }
 
 private:
     TxRxParametersSequence sequence;

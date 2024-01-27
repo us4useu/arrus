@@ -43,22 +43,14 @@ public:
     virtual Us4OEM *getUs4OEM(Ordinal ordinal) = 0;
 
     /**
-     * Returns a handle to an adapter identified by given ordinal number.
-     *
-     * @param ordinal ordinal number of the adapter to get
-     * @return a handle to the adapter device
-     */
-    virtual ProbeAdapter::RawHandle getProbeAdapter(Ordinal ordinal) = 0;
-
-    /**
-     * Returns a handle to a probe identified by given ordinal number.
+     * Returns a probe model identified by given ordinal number.
      *
      * @param ordinal ordinal number of the probe to get
-     * @return a handle to the probe
+     * @return probe model
      */
-    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) override = 0;
+    ProbeModel getProbeModel(Ordinal ordinal) override = 0;
 
-    virtual std::pair<
+    std::pair<
         std::shared_ptr<arrus::framework::Buffer>,
         std::shared_ptr<arrus::session::Metadata>
     >

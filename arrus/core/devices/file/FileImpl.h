@@ -45,7 +45,7 @@ public:
     float getCurrentSamplingFrequency() const override;
     std::pair<arrus::framework::Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
     upload(const ops::us4r::Scheme &scheme) override;
-    Probe *getProbe(Ordinal ordinal) override;
+    ProbeModel getProbeModel(Ordinal ordinal) override;
     void setParameters(const Parameters &params) override;
 
 
