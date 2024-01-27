@@ -91,7 +91,8 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> FileImpl::u
     this->buffer = std::make_shared<FileBuffer>(this->settings.getNFrames(), this->frameShape);
     // Metadata
     MetadataBuilder metadataBuilder;
-    return std::make_pair(this->buffer, metadataBuilder.buildPtr());
+    std::vector<Metadata::SharedHandle> metadatas = { metadataBuilder.buildPtr() };
+    return std::make_pair(this->buffer, std::move(metadatas));
 }
 
 void FileImpl::start() {
