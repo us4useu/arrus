@@ -28,33 +28,32 @@ std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) 
     file.seekg(0, std::ios::end);
     std::streampos fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
-    logger->log(LogSeverity::INFO, format("Input file size: {} MiB", float(fileSize)/(1<<20)));
-    if(fileSize == 0) {
+    logger->log(LogSeverity::INFO, format("Input file size: {} MiB", float(fileSize) / (1 << 20)));
+    if (fileSize == 0) {
         throw ArrusException("Empty input file. Is your input file correct?");
     }
-    if(fileSize % sizeof(int16_t) != 0) {
+    if (fileSize % sizeof(int16_t) != 0) {
         throw ArrusException("Invalid input data size: the number of read bytes is not divisible by 2 (int16_t). "
                              "Is your input file correct?");
     }
     std::vector<int16_t> all(fileSize / sizeof(int16_t));
-    if(all.size() % settings.getNFrames() != 0) {
-        throw ArrusException(format(
-            "Invalid input data size: the number of int16_t values {} is not divisible by {}. "
-            "(the number of declared frames). Is your input file correct?",
-            all.size(), settings.getNFrames()));
+    if (all.size() % settings.getNFrames() != 0) {
+        throw ArrusException(format("Invalid input data size: the number of int16_t values {} is not divisible by {}. "
+                                    "(the number of declared frames). Is your input file correct?",
+                                    all.size(), settings.getNFrames()));
     }
-    file.read((char*)all.data(), fileSize);
-    size_t frameSize = all.size()/settings.getNFrames();
+    file.read((char *) all.data(), fileSize);
+    size_t frameSize = all.size() / settings.getNFrames();
     std::vector<Frame> result;
-    for(size_t i = 0; i < settings.getNFrames(); ++i) {
-        Frame frame(std::begin(all)+i*frameSize, std::begin(all)+(i+1)*frameSize);
+    for (size_t i = 0; i < settings.getNFrames(); ++i) {
+        Frame frame(std::begin(all) + i * frameSize, std::begin(all) + (i + 1) * frameSize);
         result.push_back(std::move(frame));
     }
     logger->log(LogSeverity::INFO, "Data ready.");
     return result;
 }
 
-std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const ops::us4r::Scheme &scheme) {
+std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> FileImpl::upload(const ops::us4r::Scheme &scheme) {
     this->currentScheme = scheme;
     auto &seq = this->currentScheme->getTxRxSequence();
 

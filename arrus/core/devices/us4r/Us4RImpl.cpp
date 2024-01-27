@@ -21,7 +21,7 @@ using namespace ::arrus::ops::us4r;
 using namespace ::arrus::session;
 using namespace ::arrus::devices::us4r;
 
-Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
+Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
                    ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
                    const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
@@ -233,7 +233,18 @@ void Us4RImpl::disableHV() {
     }
 }
 
-std::pair<Buffer::SharedHandle, Metadata::SharedHandle> Us4RImpl::upload(const Scheme &scheme) {
+void Us4RImpl::cleanupBuffers() {
+    // The buffer should be already unregistered (after stopping the device).
+    this->buffer->shutdown();
+    // We must be sure here, that there is no thread working on the us4rBuffer here.
+    if (!this->oemBuffers.empty()) {
+        unregisterOutputBuffer();
+        this->oemBuffers.clear();
+    }
+    this->buffer.reset();
+}
+
+std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::upload(const Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferSize = scheme.getRxBufferSize();
     auto workMode = scheme.getWorkMode();
@@ -247,38 +258,32 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> Us4RImpl::upload(const S
                    hostBufferNElements, rxBufferNElements)));
 
     std::unique_lock<std::mutex> guard(deviceStateMutex);
-    if (this->state == State::STARTED) {
-        throw IllegalStateException("The device is running, uploading sequence is forbidden.");
-    }
-
-    auto [rxBuffer, fcm] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+    ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
+                          IllegalStateException("The device is running, uploading sequence is forbidden."));
+    auto [buffers, fcms] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
-    ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // If the output buffer already exists - remove it.
     if (this->buffer) {
-        // The buffer should be already unregistered (after stopping the device).
-        this->buffer->shutdown();
-        // We must be sure here, that there is no thread working on the us4rBuffer here.
-        if (this->us4rBuffer) {
-            unregisterOutputBuffer();
-            this->us4rBuffer.reset();
-        }
-        this->buffer.reset();
+        cleanupBuffers();
     }
     // Create output buffer.
-    this->buffer =
-        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferSize, stopOnOverflow);
-    registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
-
+    Us4ROutputBufferBuilder builder;
+    this->buffer = builder.setNumberOfElements(scheme.getOutputBuffer().getNumberOfElements())
+                       .setStopOnOverflow(stopOnOverflow)
+                       .setLayoutTo(buffers)
+                       .build();
+    registerOutputBuffer(this->buffer.get(), buffers, workMode);
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
-    // TODO implement Us4RBuffer move constructor.
-    this->us4rBuffer = std::move(rxBuffer);
-
+    this->oemBuffers = std::move(buffers);
     // Metadata
-    MetadataBuilder metadataBuilder;
-    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
-    return {this->buffer, metadataBuilder.buildPtr()};
+    std::vector<Metadata::SharedHandle> metadatas;
+    for (auto &fcm : fcms) {
+        MetadataBuilder metadataBuilder;
+        metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+        metadatas.emplace_back(std::move(metadataBuilder.buildPtr()));
+    }
+    return {this->buffer, metadatas};
 }
 
 void Us4RImpl::start() {
@@ -331,13 +336,8 @@ Us4RImpl::~Us4RImpl() {
         getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
         this->stopDevice();
         // TODO: the below should be part of session handler
-        if (this->buffer != nullptr) {
-            this->buffer->shutdown();
-            // We must be sure here, that there is no thread working on the us4rBuffer here.
-            if (this->us4rBuffer) {
-                unregisterOutputBuffer();
-                this->us4rBuffer.reset();
-            }
+        if (this->buffer) {
+            cleanupBuffers();
         }
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch (const std::exception &e) {
@@ -644,17 +644,17 @@ void Us4RImpl::setAfe(uint8_t reg, uint16_t val) {
     }
 }
 
-void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const Us4RBuffer::Handle &us4rDDRBuffer,
+void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<Us4OEMBuffer> &srcBuffers,
                                     Scheme::WorkMode workMode) {
-    Ordinal us4oemOrdinal = 0;
+    Ordinal o = 0;
 
     if (transferRegistrar.size() < us4oems.size()) {
         transferRegistrar.resize(us4oems.size());
     }
     for (auto &us4oem : us4oems) {
-        auto us4oemBuffer = us4rDDRBuffer->getUs4OEMBuffer(us4oemOrdinal);
+        auto us4oemBuffer = srcBuffers.at(o);
         this->registerOutputBuffer(outputBuffer, us4oemBuffer, us4oem.get(), workMode);
-        ++us4oemOrdinal;
+        ++o;
     }
 }
 

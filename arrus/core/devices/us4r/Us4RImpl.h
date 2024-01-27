@@ -34,11 +34,11 @@ public:
 
     ~Us4RImpl() override;
 
-    Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
+    Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
              const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
-             bool hasIOBitstreamAddressing);
+             bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -71,11 +71,9 @@ public:
         return us4oems.at(ordinal).get();
     }
 
-    ProbeModel getProbeModel(Ordinal ordinal) override {
-        return probeSettings.at(ordinal).getModel();
-    }
+    ProbeModel getProbeModel(Ordinal ordinal) override { return probeSettings.at(ordinal).getModel(); }
 
-    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+    std::pair<Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ops::us4r::Scheme &scheme) override;
 
     void start() override;
@@ -88,6 +86,7 @@ public:
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;
+    void cleanupBuffers();
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
     void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
@@ -124,8 +123,8 @@ public:
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
 
-    void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
-                              ::arrus::ops::us4r::Scheme::WorkMode workMode);
+    void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<Us4OEMBuffer> &srcBuffers,
+                              arrus::ops::us4r::Scheme::WorkMode workMode);
     void unregisterOutputBuffer();
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
@@ -185,7 +184,7 @@ private:
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
     // Buffers.
-    std::vector<Us4OEMBuffer> us4OemBuffers;
+    std::vector<Us4OEMBuffer> oemBuffers;
     std::shared_ptr<Us4ROutputBuffer> buffer;
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
     // Other.

@@ -15,6 +15,7 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/common/logging.h"
+#include "us4oem/Us4OEMBuffer.h"
 
 namespace arrus::devices {
 
@@ -175,6 +176,8 @@ private:
  */
 class Us4ROutputBuffer : public framework::DataBuffer {
 public:
+    using Handle = std::unique_ptr<Us4ROutputBuffer>;
+    using SharedHandle = std::shared_ptr<Us4ROutputBuffer>;
     static constexpr size_t ALIGNMENT = 4096;
     static constexpr framework::NdArrayDef::DataType ARRAY_DATA_TYPE = framework::NdArrayDef::DataType::INT16;
     using DataType = int16;
@@ -429,14 +432,20 @@ private:
 
 class Us4ROutputBufferBuilder {
 public:
-    void setNumberOfElements(unsigned value) { nElements = value; }
+    Us4ROutputBufferBuilder &setNumberOfElements(unsigned value) {
+        nElements = value;
+        return *this;
+    }
 
-    void setStopOnOverflow(bool value) { stopOnOverflow = value; }
+    Us4ROutputBufferBuilder &setStopOnOverflow(bool value) {
+        stopOnOverflow = value;
+        return *this;
+    }
 
-    void setLayoutTo(const std::vector<Us4OEMBuffer> &buffers) {
+    Us4ROutputBufferBuilder &setLayoutTo(const std::vector<Us4OEMBuffer> &buffers) {
         if (buffers.empty() || buffers.at(0).getNumberOfArrays() == 0) {
             // No arrays are acquired here.
-            return;
+            return *this;
         }
         ArrayId nArrays = buffers.at(0).getNumberOfArrays();
         Ordinal noems = buffers.size();
@@ -477,10 +486,11 @@ public:
             address = definition.getSize();
         }
         arrayDefs = Tuple<Us4ROutputBufferArrayDef>(result);
+        return *this;
     }
 
-    Us4ROutputBuffer::Handle build() {
-        return std::make_unique<Us4ROutputBuffer>(arrayDefs, nElements, stopOnOverflow, noems);
+    Us4ROutputBuffer::SharedHandle build() {
+        return std::make_shared<Us4ROutputBuffer>(arrayDefs, nElements, stopOnOverflow, noems);
     }
 
 private:

@@ -13,7 +13,7 @@ public:
     ~File() override = default;
     using Device::getDeviceId; // required by SWIG wrapper
 
-    std::pair<std::shared_ptr<arrus::framework::Buffer>, std::shared_ptr<arrus::session::Metadata>>
+    std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ops::us4r::Scheme &scheme) override = 0;
     void start() override = 0;
     void stop() override = 0;

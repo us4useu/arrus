@@ -50,10 +50,7 @@ public:
      */
     ProbeModel getProbeModel(Ordinal ordinal) override = 0;
 
-    std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::session::Metadata>
-    >
+    std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override = 0;
 
     /**

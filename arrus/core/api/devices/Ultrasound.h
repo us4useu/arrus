@@ -27,10 +27,7 @@ public:
 
     ~Ultrasound() override = default;
 
-    virtual std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::session::Metadata>
-    >
+    virtual std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 
     virtual void start() = 0;
