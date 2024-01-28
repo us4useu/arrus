@@ -89,7 +89,7 @@ public:
      * @param channelMapping a vector of N_TX_CHANNELS destination channels; must contain
      *  exactly N_TX_CHANNELS numbers
      */
-    Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
+    Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                std::vector<uint8_t> channelMapping, RxSettings rxSettings, std::unordered_set<uint8_t> channelsMask,
                Us4OEMSettings::ReprogrammingMode reprogrammingMode, bool externalTrigger, bool acceptRxNops);
     ~Us4OEMImpl() override;
@@ -176,6 +176,7 @@ private:
     void setCurrentSamplingFrequency(float fs) { this->currentSamplingFrequency = fs; }
     void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId, size_t delaysId);
     void setTgcCurve(const ops::us4r::TGCCurve &tgc);
+    Us4OEMChannelsGroupsMask getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture);
     void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                        const std::vector<arrus::framework::NdArray> &txDelays,
@@ -198,7 +199,6 @@ private:
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
-    std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
     // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
     std::vector<uint8_t> channelMapping;
     std::unordered_set<uint8_t> channelsMask;

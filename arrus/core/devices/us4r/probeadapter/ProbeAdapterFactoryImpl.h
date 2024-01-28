@@ -16,9 +16,7 @@ public:
     getProbeAdapter(const ProbeAdapterSettings &settings,
                     const std::vector<Us4OEMImplBase::RawHandle> &us4oems) override {
         const DeviceId id(DeviceType::ProbeAdapter, 0);
-        ProbeAdapterSettingsValidator validator(id.getOrdinal());
-        validator.validate(settings);
-        validator.throwOnErrors();
+
 
         return std::make_unique<ProbeAdapterImpl>(
             id,

@@ -93,7 +93,7 @@ private:
     bool isMaster{false};
 };
 
-Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &activeChannelGroups,
+Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                        std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                        std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
                        bool externalTrigger = false, bool acceptRxNops = false)
@@ -104,16 +104,6 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, const BitMask &active
       revision([this]() { return this->ius4oem->GetRevisionNumber(); }), acceptRxNops(acceptRxNops) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-
-    // This class stores reordered active groups of channels,
-    // as presented in the IUs4OEM docs.
-    static const std::vector<ChannelIdx> acgRemap = {0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15};
-    auto acg = ::arrus::permute(activeChannelGroups, acgRemap);
-    ARRUS_REQUIRES_TRUE(acg.size() == activeChannelGroups.size(),
-                        arrus::format("Invalid number of active channels mask elements; the input has {}, expected: {}",
-                                      acg.size(), activeChannelGroups.size()));
-    this->activeChannelGroups = ::arrus::toBitset<N_ACTIVE_CHANNEL_GROUPS>(acg);
-
     if (this->channelsMask.empty()) {
         this->logger->log(LogSeverity::INFO,
                           ::arrus::format("No channel masking will be applied for {}", ::arrus::toString(id)));
@@ -246,6 +236,19 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
     this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc)->build();
     setTgcCurve(this->rxSettings);
 }
+Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture) {
+    std::vector<bool> result(N_ADDR_CHANNELS, false);
+    for(ChannelIdx ch = 0; ch < N_ADDR_CHANNELS; ++ch) {
+        ChannelIdx groupNr = ch / ACTIVE_CHANNEL_GROUP_SIZE;
+        if(txAperture.test(ch) || rxAperture.test(ch)) {
+            result[groupNr] = true;
+        }
+    }
+    static const std::vector<ChannelIdx> acgRemap = {0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15};
+    auto acg = permute(result, acgRemap);
+    return ::arrus::toBitset<N_ACTIVE_CHANNEL_GROUPS>(acg);
+}
+
 void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                const std::optional<DigitalDownConversion> &ddc,
                                const std::vector<arrus::framework::NdArray> &txDelays,
@@ -277,7 +280,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             validateAperture(rxAperture);
             // Common
             float txrxTime = getTxRxTime(rxTime);
-            Us4OEMChannelsGroupsMask channelsGroups = op.isNOP() ? emptyChannelGroups : activeChannelGroups;
+            Us4OEMChannelsGroupsMask channelsGroups = op.isNOP() ? emptyChannelGroups : getActiveChannelGroups(txAperture, rxAperture);
             ARRUS_REQUIRES_TRUE_IAE(txrxTime <= op.getPri(),
                                     format("Total time required for a single TX/RX ({}) should not exceed PRI ({})",
                                            txrxTime, op.getPri()));

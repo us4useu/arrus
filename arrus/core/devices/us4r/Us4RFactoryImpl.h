@@ -82,9 +82,12 @@ class Us4RFactoryImpl : public Us4RFactory {
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
                 [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
-            // Create adapter.
-            ProbeAdapterImplBase::Handle adapter = probeAdapterFactory->getProbeAdapter(adapterSettings, us4oemPtrs);
-            // Create probe.
+            // validate probe and adapter settings
+            ProbeAdapterSettingsValidator validator(id.getOrdinal());
+            validator.validate(adapterSettings);
+            validator.throwOnErrors();
+            probeSettings
+
             ProbeImplBase::Handle probe = probeFactory->getProbe(probeSettings, adapter.get());
 
             std::vector<IUs4OEM*> ius4oems;
@@ -100,17 +103,7 @@ class Us4RFactoryImpl : public Us4RFactory {
                                               probeSettings.getBitstreamId().has_value()
                                               );
         } else {
-            // Custom Us4OEMs only
-            auto[us4oems, masterIUs4OEM] = getUs4OEMs(settings.getUs4OEMSettings(), false, us4r::IOSettings());
-            std::vector<IUs4OEM*> ius4oems;
-            for(auto &us4oem: us4oems) {
-                ius4oems.push_back(us4oem->getIUs4OEM());
-            }
-
-            auto backplane = getBackplane(settings.getDigitalBackplaneSettings(), settings.getHVSettings(), ius4oems);
-            auto hv = getHV(settings.getHVSettings(), ius4oems, backplane);
-            return std::make_unique<Us4RImpl>(id, std::move(us4oems), std::move(hv), settings.getChannelsMask(),
-                                              std::move(backplane));
+            throw IllegalArgumentException("Custom OEM configuration is no longer available.");
         }
     }
 
