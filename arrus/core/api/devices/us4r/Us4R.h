@@ -5,8 +5,6 @@
 
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
-#include "arrus/core/api/devices/probe/Probe.h"
-#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/framework/Buffer.h"
@@ -41,14 +39,6 @@ public:
      * @return a handle to the us4oem module
      */
     virtual Us4OEM *getUs4OEM(Ordinal ordinal) = 0;
-
-    /**
-     * Returns a probe model identified by given ordinal number.
-     *
-     * @param ordinal ordinal number of the probe to get
-     * @return probe model
-     */
-    ProbeModel getProbeModel(Ordinal ordinal) override = 0;
 
     std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override = 0;
@@ -217,7 +207,7 @@ public:
     virtual void stop() override = 0;
     virtual void trigger() override = 0;
 
-    virtual std::vector<unsigned short> getChannelsMask() = 0;
+    virtual std::vector<unsigned short> getChannelsMask(Ordinal probeNumber) = 0;
 
     /**
      * Returns the number of us4OEM modules that are used in this us4R system.

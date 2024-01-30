@@ -301,9 +301,9 @@ class Us4R(Device, Ultrasound):
             sampling_frequency=self.sampling_frequency
         )
 
-    def get_data_description(self, upload_result, sequence):
+    def get_data_description(self, upload_result, sequence, array_id):
         # Prepare data buffer and constant context metadata
-        fcm = arrus.core.getFrameChannelMapping(upload_result)
+        fcm = arrus.core.getFrameChannelMapping(array_id, upload_result)
         fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
             arrus.utils.core.convert_fcm_to_np_arrays(fcm, self.n_us4oems)
         fcm = arrus.devices.us4r.FrameChannelMapping(

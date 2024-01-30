@@ -1,8 +1,6 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4ROUTPUTBUFFER_H
 #define ARRUS_CORE_DEVICES_US4R_US4ROUTPUTBUFFER_H
 
-#include "Us4RBuffer.h"
-
 #include <chrono>
 #include <condition_variable>
 #include <gsl/span>
@@ -190,9 +188,9 @@ public:
      * @param noems: the total number of OEMs, regardless of whether that OEM produces data or not
      *
      */
-    Us4ROutputBuffer(const Tuple<Us4ROutputBufferArrayDef> &arrays, const unsigned nElements, bool stopOnOverflow,
+    Us4ROutputBuffer(Tuple<Us4ROutputBufferArrayDef> arrays, const unsigned nElements, bool stopOnOverflow,
                      size_t noems)
-        : elementSize(0), stopOnOverflow(stopOnOverflow) {
+        : elementSize(0), stopOnOverflow(stopOnOverflow), arrayDefs(std::move(arrays)) {
 
         ARRUS_REQUIRES_TRUE(noems <= 16, "Currently Us4R data buffer supports up to 16 OEMs.");
 
@@ -361,7 +359,7 @@ private:
     static Accumulator createElementReadyPattern(const Tuple<Us4ROutputBufferArrayDef> &arrays, size_t noems) {
         // accumulator for each array
         std::vector<Accumulator> accumulators;
-        for (auto &array : arrays) {
+        for (auto &array : arrays.getValues()) {
             Accumulator accumulator((1ul << noems) - 1);
             for (size_t oem = 0; oem < noems; ++oem) {
                 if (array.getOEMSize(oem) == 0) {
@@ -383,7 +381,7 @@ private:
      */
     static size_t calculateElementSize(const Tuple<Us4ROutputBufferArrayDef> &arrays) {
         size_t result = 0;
-        for (auto &array : arrays) {
+        for (auto &array : arrays.getValues()) {
             result += array.getSize();
         }
         return result;
@@ -393,7 +391,7 @@ private:
                         unsigned nElements, size_t elementSize) {
         for (unsigned i = 0; i < nElements; ++i) {
             std::vector<framework::NdArray> arraysVector;
-            for (const Us4ROutputBufferArrayDef &arrayDef : arrayDefs) {
+            for (const Us4ROutputBufferArrayDef &arrayDef : arrayDefs.getValues()) {
                 size_t elementOffset = i * elementSize;
                 size_t arrayOffset = elementOffset + arrayDef.getAddress();
                 auto arrayAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + arrayOffset);
@@ -427,16 +425,11 @@ private:
     enum class State { RUNNING, SHUTDOWN, INVALID };
     State state{State::RUNNING};
     bool stopOnOverflow{true};
-    const Tuple<Us4ROutputBufferArrayDef> &arrayDefs;
+    Tuple<Us4ROutputBufferArrayDef> arrayDefs;
 };
 
 class Us4ROutputBufferBuilder {
 public:
-    Us4ROutputBufferBuilder &setNumberOfElements(unsigned value) {
-        nElements = value;
-        return *this;
-    }
-
     Us4ROutputBufferBuilder &setStopOnOverflow(bool value) {
         stopOnOverflow = value;
         return *this;
@@ -500,7 +493,7 @@ private:
      */
     framework::NdArrayDef::Shape concatenate(const std::vector<framework::NdArrayDef::Shape> &parts) {
         // Find first non-empty shape and use it as a starting point.
-        auto start = std::find(std::begin(parts), std::end(parts), [](const auto &shape) { shape.empty(); });
+        auto start = std::find_if(std::begin(parts), std::end(parts), [](const auto &shape) { return !shape.empty(); });
         if (start == std::end(parts)) {
             // all parts empty, return empty shape
             return framework::NdArrayDef::Shape{};

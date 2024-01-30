@@ -18,9 +18,15 @@ public:
      * Probe <-> adapter (and adapter to probe) mapping converter.
      */
     ProbeToAdapterMappingConverter(const DeviceId &probeTxId, const DeviceId &probeRxId, ProbeSettings probeTx,
-                                   ProbeSettings probeRx, const ChannelIdx adapterNChannels)
+                                   ProbeSettings probeRx, std::vector<ChannelIdx> txProbeMask,
+                                   std::vector<ChannelIdx> rxProbeMask, const ChannelIdx adapterNChannels)
         : probeTxId(probeTxId), probeRxId(probeRxId), probeTx(std::move(probeTx)), probeRx(std::move(probeRx)),
-          adapterNChannels(adapterNChannels) {}
+          adapterNChannels(adapterNChannels) {
+        std::copy(std::begin(txProbeMask), std::end(txProbeMask),
+                  std::inserter(this->txProbeMask, std::begin(this->txProbeMask)));
+        std::copy(std::begin(rxProbeMask), std::end(rxProbeMask),
+                  std::inserter(this->rxProbeMask, std::begin(this->rxProbeMask)));
+    }
 
     std::pair<TxRxParametersSequence, std::vector<NdArray>>
     convert(SequenceId id, const TxRxParametersSequence &sequence, const std::vector<NdArray> &txDelayProfiles) {
@@ -44,12 +50,14 @@ public:
         auto nElementsTx = probeTx.getModel().getNumberOfElements().product();
 
         size_t opIdx = 0;
+        // Pre-process: mask TX/RX probe channels
+
         // Probe sequence -> adapter sequence
         for (const auto &op : sequence.getParameters()) {
             TxRxParametersBuilder paramBuilder(op);
             std::vector<ChannelIdx> rxApertureChannelMapping;
 
-            // Adapte channel apertures/delays.
+            // Adapter channel apertures/delays.
             BitMask txAperture(adapterNChannels);
             BitMask rxAperture(adapterNChannels);
             std::vector<float> txDelays(adapterNChannels);
@@ -61,17 +69,18 @@ public:
             // TX
             for (size_t pch = 0; pch < op.getTxAperture().size(); ++pch) {
                 auto achTx = probeTx.getChannelMapping().at(pch);
-                txAperture[achTx] = op.getTxAperture()[pch];
-                txDelays[achTx] = op.getTxDelays()[pch];
+                txAperture[achTx] = getMaskedOrZero(op.getTxAperture().at(pch), pch, txProbeMask);
+                txDelays[achTx] = getMaskedOrZero(op.getTxDelays().at(pch), pch, txProbeMask);
                 size_t nTxDelayProfiles = txDelayProfiles.size();
                 for (size_t i = 0; i < nTxDelayProfiles; ++i) {
-                    adapterTxDelayProfiles[i].set(opIdx, achTx, txDelayProfiles[i].get<float>(opIdx, pch));
+                    auto delay = getMaskedOrZero(txDelayProfiles[i].get<float>(opIdx, pch), pch, txProbeMask);
+                    adapterTxDelayProfiles[i].set(opIdx, achTx, delay);
                 }
             }
             // RX
             for (size_t pch = 0; pch < op.getTxAperture().size(); ++pch) {
                 auto achRx = probeRx.getChannelMapping().at(pch);
-                rxAperture[achRx] = op.getRxAperture()[pch];
+                rxAperture[achRx] = getMaskedOrZero(op.getRxAperture().at(pch), pch, rxProbeMask);
                 if (op.getRxAperture()[pch]) {
                     rxApertureChannelMapping.push_back(achRx);
                 }
@@ -145,9 +154,22 @@ public:
         return builder.build();
     }
 
+    template<typename T>
+    T getMaskedOrZero(T value, ChannelIdx channel, std::unordered_set<ChannelIdx> mask) {
+        if(setContains(mask, channel)) {
+            return value;
+        }
+        else {
+            return T(0);
+        }
+    }
+
+
+
 private:
     DeviceId probeTxId, probeRxId;
     ProbeSettings probeTx, probeRx;
+    std::unordered_set<ChannelIdx> txProbeMask, rxProbeMask;
     ChannelIdx adapterNChannels;
 
     // FCM temporary objects.

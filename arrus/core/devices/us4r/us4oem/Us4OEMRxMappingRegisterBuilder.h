@@ -9,43 +9,61 @@
 
 namespace arrus::devices {
 
-class Us4OemRxMappingRegisterBuilder;
+class Us4OEMRxMappingRegisterBuilder;
 
 class Us4OEMRxMappingRegister {
 public:
-    friend class Us4OemRxMappingRegisterBuilder;
-
     using RxMapId = uint16;
     using RxMap = std::vector<uint8>;
     using RxAperture = std::bitset<Us4OEMImplBase::N_ADDR_CHANNELS>;
 
+    // Disable copy constructor (fcms is not copiable)
+    Us4OEMRxMappingRegister(const Us4OEMRxMappingRegister &other) = delete;
+    Us4OEMRxMappingRegister &operator=(const Us4OEMRxMappingRegister &other) = delete;
+
+    Us4OEMRxMappingRegister(Us4OEMRxMappingRegister &&other) noexcept
+        : mappings(std::move(other.mappings)), opToRxMappingId(std::move(other.opToRxMappingId)),
+          rxApertures(std::move(other.rxApertures)), fcms(std::move(other.fcms)) {}
+
+    Us4OEMRxMappingRegister &operator=(Us4OEMRxMappingRegister &&other) noexcept {
+        if (this == &other)
+            return *this;
+        mappings = std::move(other.mappings);
+        opToRxMappingId = std::move(other.opToRxMappingId);
+        rxApertures = std::move(other.rxApertures);
+        fcms = std::move(other.fcms);
+        return *this;
+    }
+
     const std::unordered_map<RxMapId, RxMap> &getMappings() const { return mappings; }
 
-    RxMapId getMapId(SequenceId sequenceId, OpId opId) { return opToRxMappingId.at(std::make_pair(sequenceId, opId)); }
+    RxMapId getMapId(SequenceId sequenceId, OpId opId) const { return opToRxMappingId.at(std::make_pair(sequenceId, opId)); }
 
-    const RxAperture &getRxAperture(SequenceId sequenceId, OpId opId) {
+    RxAperture getRxAperture(SequenceId sequenceId, OpId opId) const {
         return opToRxMappingId.at(std::make_pair(sequenceId, opId));
     }
     std::vector<FrameChannelMapping::Handle> acquireFCMs() { return std::move(fcms); }
 
 private:
+    friend class Us4OEMRxMappingRegisterBuilder;
+
     Us4OEMRxMappingRegister() = default;
 
     void insert(SequenceId sequenceId, OpId opId, RxAperture aperture) {
-        rxApertures.emplace({sequenceId, opId}, std::move(aperture));
+        rxApertures.emplace(std::make_pair(sequenceId, opId), aperture);
     }
     void insert(SequenceId sequenceId, OpId opId, RxMapId rxMapId) {
-        opToRxMappingId.emplace({sequenceId, opId}, rxMapId);
+        opToRxMappingId.emplace(std::make_pair(sequenceId, opId), rxMapId);
     }
 
     void insert(RxMapId id, RxMap rxMap) { mappings.emplace(id, std::move(rxMap)); }
 
-    void push_back(FrameChannelMapping::Handle fcm) { fcms.push_back(fcm); }
+    void push_back(FrameChannelMapping::Handle fcm) { fcms.push_back(std::move(fcm)); }
 
     std::unordered_map<RxMapId, RxMap> mappings;
-    std::unordered_map<std::pair<SequenceId, OpId>, RxMapId> opToRxMappingId;
+    std::unordered_map<std::pair<SequenceId, OpId>, RxMapId, PairHash<SequenceId, OpId>> opToRxMappingId;
     // Rx apertures after taking into account possible conflicts in Rx channel mapping.
-    std::unordered_map<std::pair<SequenceId, OpId>, RxAperture> rxApertures;
+    std::unordered_map<std::pair<SequenceId, OpId>, RxAperture, PairHash<SequenceId, OpId>> rxApertures;
     std::vector<FrameChannelMapping::Handle> fcms;
 };
 
@@ -55,12 +73,11 @@ public:
     using RxMapId = Us4OEMRxMappingRegister::RxMapId;
     using RxMap = Us4OEMRxMappingRegister::RxMap;
 
-    constexpr ChannelIdx N_CHANNELS = Us4OEMImplBase::N_RX_CHANNELS;
+    static constexpr ChannelIdx N_CHANNELS = Us4OEMImplBase::N_RX_CHANNELS;
 
     Us4OEMRxMappingRegisterBuilder(FrameChannelMapping::Us4OEMNumber oem, bool acceptRxNops,
-                                   const std::vector<uint8_t> &channelMapping,
-                                   const std::unordered_set<uint8_t> &channelsMask)
-        :oem(oem), acceptRxNops(acceptRxNops), channelMapping(channelMapping), channelsMask(channelsMask), result() {}
+                                   const std::vector<uint8_t> &channelMapping)
+        : oem(oem), acceptRxNops(acceptRxNops), channelMapping(channelMapping) {}
 
     void add(const std::vector<us4r::TxRxParametersSequence> &sequences) {
         for (size_t sequenceId = 0; sequenceId < sequences.size(); ++sequenceId) {
@@ -99,7 +116,7 @@ public:
                     // Physical channel number, values 0-31
                     auto rxChannel = channelMapping[channel];
                     rxChannel = rxChannel % N_CHANNELS;
-                    if (!setContains(channelsUsed, rxChannel) && !setContains(this->channelsMask, channel)) {
+                    if (!setContains(channelsUsed, rxChannel)) {
                         // This channel is OK.
                         // STRATEGY: if there are conflicting/masked rx channels, keep the
                         // first one (with the lowest channel number), turn off all
@@ -179,7 +196,6 @@ private:
     FrameChannelMapping::Us4OEMNumber oem;
     bool acceptRxNops;
     std::vector<uint8_t> channelMapping;
-    std::unordered_set<uint8_t> channelsMask;
     // Genearted.
     std::unordered_map<std::vector<uint8>, uint16, ContainerHash<std::vector<uint8>>> rxMappings;
     RxMapId currentMapId{0};

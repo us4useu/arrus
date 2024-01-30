@@ -234,8 +234,6 @@ public:
         return *dst;
     }
 
-    NdArray operator[](const NdArray &indices) {}
-
     template<typename T> void set(size_t row, size_t column, T value) {
         if (this->shape.size() != 2) {
             throw IllegalArgumentException("The array is expected to be 2D.");
@@ -293,7 +291,7 @@ public:
      * Returns a view to this array with axis=0 set to the given value.
      * For example, to get the jth row: array.row(j).
      */
-    NdArray row(int value) const {
+    NdArray row(size_t value) const {
         ARRUS_REQUIRES_TRUE_IAE(shape.size() == 2, "Only 2D arrays are supported.");
         const size_t nRows = shape[0];
         const size_t nColumns = shape[1];
@@ -331,7 +329,7 @@ public:
         for (size_t i = 0; i < n; ++i) {
             result[i] = get<T>(i);
         }
-        return std::move(result);
+        return result;
     }
 
 private:

@@ -74,7 +74,7 @@ public:
 
     [[nodiscard]] size_t getNumberOfTransfers() const {
         return std::accumulate(std::begin(elementTransfers), std::end(elementTransfers), 0,
-                               [](const auto &a, const auto &b) { return a.size() + b.size(); });
+                               [](const auto &a, const auto &b) { return a + b.size(); });
     }
 
     void registerTransfers() {
@@ -228,7 +228,7 @@ public:
         // appropriately (if necessary).
         size_t transferIdx = 0; // global transfer idx
         uint16 elementFirstFiring = 0; // NOTE: global, counted from 0
-        for (int16 srcIdx = 0; srcIdx < ARRUS_SAFE_CAST(srcNElements, int16); ++srcIdx) {
+        for (int16 srcIdx = 0; srcIdx < int16(srcNElements); ++srcIdx) {
             const auto& element = srcBuffer.getElement(srcIdx);
             size_t addressSrc = element.getAddress();// bytes addressed
             uint16 elementLastFiring = element.getFiring();

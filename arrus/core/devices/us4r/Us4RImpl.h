@@ -15,12 +15,10 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/probe/ProbeImplBase.h"
 #include "arrus/core/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
-#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/utils.h"
 
@@ -36,7 +34,7 @@ public:
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
-             const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
+             const RxSettings &rxSettings, std::vector<std::vector<unsigned short>> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
              bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings);
 
@@ -71,8 +69,6 @@ public:
         return us4oems.at(ordinal).get();
     }
 
-    ProbeModel getProbeModel(Ordinal ordinal) override { return probeSettings.at(ordinal).getModel(); }
-
     std::pair<Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ops::us4r::Scheme &scheme) override;
 
@@ -82,7 +78,6 @@ public:
 
     void trigger() override;
 
-    Interval<Voltage> getAcceptedVoltageRange();
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;
@@ -107,7 +102,6 @@ public:
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
-    std::vector<unsigned short> getChannelsMask() override;
     std::vector<std::pair<std::string, float>> logVoltages(bool isUS4PSC);
     void checkVoltage(Voltage voltage, float tolerance, int retries, bool isUS4PSC);
     unsigned char getVoltage() override;
@@ -133,6 +127,13 @@ public:
                         const std::vector<uint16_t> &periods) override;
     std::vector<std::vector<uint8_t>> getOEMMappings() const;
     Ordinal getFrameMetadataOEM(const us4r::IOSettings &settings);
+
+    std::vector<unsigned short> getChannelsMask(Ordinal probeNumber) override;
+    int getNumberOfProbes() override;
+
+    Probe::RawHandle getProbe(Ordinal ordinal) override {
+        return probes.at(ordinal).get();
+    }
 
 private:
     void stopDevice();
@@ -179,9 +180,10 @@ private:
     // AFE parameters.
     std::mutex afeParamsMutex;
     std::optional<RxSettings> rxSettings;
+    std::vector<Probe::Handle> probes;
     std::vector<ProbeSettings> probeSettings;
     ProbeAdapterSettings probeAdapterSettings;
-    std::vector<unsigned short> channelsMask;
+    std::vector<std::vector<ChannelIdx>> channelsMask;
     bool stopOnOverflow{true};
     // Buffers.
     std::vector<Us4OEMBuffer> oemBuffers;

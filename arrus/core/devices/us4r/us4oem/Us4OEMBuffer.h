@@ -136,24 +136,22 @@ private:
 class Us4OEMBufferBuilder {
 public:
 
-    void add(Us4OEMBufferElement element) { elements.emplace_back(element); }
-
-    void add(Us4OEMBufferArrayPart part) {
-        if (mapContains(part.getArrayId())) {}
+    void add(Us4OEMBufferArrayDef def) {
+        arrays.emplace_back(def);
     }
 
-    void add(Us4OEMBufferArrayDef def) {
-
+    void add(Us4OEMBufferElement element) {
+        elements.emplace_back(element);
     }
 
     Us4OEMBuffer build() {
-        return Us4OEMBuffer{elements, parts};
+        return Us4OEMBuffer{elements, arrays};
     }
 
 private:
     std::vector<Us4OEMBufferElement> elements;
     // Array -> parts
-    std::vector<std::vector<Us4OEMBufferArrayPart>> parts;
+    std::vector<Us4OEMBufferArrayDef> arrays;
 };
 
 }// namespace arrus::devices

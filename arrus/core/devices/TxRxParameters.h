@@ -41,13 +41,13 @@ public:
      * @param rxPadding how many 0-channels padd from the left and right
      */
     TxRxParameters(std::vector<bool> txAperture, std::vector<float> txDelays, const ops::us4r::Pulse &txPulse,
-                   std::vector<bool> rxAperture, Interval<uint32> rxSampleRange, uint32 rxDecimationFactor, float pri,
+                   std::vector<bool> rxAperture, Interval<uint32> rxSampleRange, int32 rxDecimationFactor, float pri,
                    Tuple<ChannelIdx> rxPadding = {0, 0}, float rxDelay = 0.0f,
                    std::optional<BitstreamId> bitstreamId = std::nullopt)
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
-          bitstreamId(bitstreamId), {}
+          bitstreamId(bitstreamId) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const { return txAperture; }
 
@@ -228,6 +228,9 @@ public:
     const DeviceId &getTxProbeId() const { return txProbeId; }
     const DeviceId &getRxProbeId() const { return rxProbeId; }
 
+    auto begin() const { return std::begin(parameters); }
+    auto end() const { return std::end(parameters); }
+
     /**  Returns the number of actual ops, that is, a the number of ops excluding RxNOPs. */
     [[nodiscard]] uint16 getNumberOfNoRxNOPs() const {
         uint16 res = 0;
@@ -254,7 +257,7 @@ public:
         return *std::begin(s);
     }
 
-    const std::optional<TxRxParameters> &getFirstRxOp() const {
+    const std::optional<TxRxParameters> getFirstRxOp() const {
         for (auto &op : getParameters()) {
             if (!op.isRxNOP()) {
                 return op;
@@ -322,7 +325,7 @@ public:
     TxRxParametersSequence build() {
         auto tmp = std::move(sequence);
         sequence = TxRxParametersSequence{};
-        return std::move(tmp);
+        return tmp;
     }
 
     const TxRxParametersSequence &getCurrent() const { return sequence; }

@@ -2,6 +2,7 @@
 #include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
 #include "arrus/core/common/interpolate.h"
+#include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include <chrono>
@@ -23,22 +24,24 @@ using namespace ::arrus::devices::us4r;
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
                    ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
-                   const RxSettings &rxSettings, std::vector<unsigned short> channelsMask,
+                   const RxSettings &rxSettings, std::vector<std::vector<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
                    bool hasIOBitstreamAddressing, const IOSettings &ioSettings)
-    : Us4R(id) {
+    : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
 
     this->logger = getLoggerFactory()->getLogger();
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     this->us4oems = std::move(us4oems);
-    this->probeSettings = std::move(probeSettings);
-    this->probeAdapterSettings = std::move(probeAdapterSettings);
     this->digitalBackplane = std::move(backplane);
     this->hv = std::move(hv);
     this->rxSettings = rxSettings;
     this->channelsMask = std::move(channelsMask);
     this->bitstreams = std::move(bitstreams);
     this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
+    for(size_t i = 0; i < this->probeSettings.size(); ++i) {
+        const auto &s = this->probeSettings.at(i).getModel();
+        this->probes.push_back(std::make_unique<ProbeImpl>(DeviceId{DeviceType::Probe, Ordinal(i)}, s));
+    }
 
     if (this->hasIOBitstreamAdressing) {
         // Add empty IOBitstream, to use for TX/RX between probe switching.
@@ -51,11 +54,16 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                 1,
             });
     }
-
     for (auto &bitstream : this->bitstreams) {
         getMasterOEM()->addIOBitstream(bitstream.getLevels(), bitstream.getPeriods());
     }
     this->frameMetadataOEM = getFrameMetadataOEM(ioSettings);
+    // Log what probes will be masked
+    for (size_t i = 0; i < this->channelsMask.size(); ++i) {
+        const auto &mask = this->channelsMask.at(i);
+        this->logger->log(LogSeverity::INFO,
+                          format("The following Probe:{} channels will be masked: {}", i, arrus::toString(mask)));
+    }
 }
 
 std::vector<std::pair<std::string, float>> Us4RImpl::logVoltages(bool isHV256) {
@@ -133,11 +141,12 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     // Validate.
-    auto voltageRange = this->getAcceptedVoltageRange();
-
-    // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
-    auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
-    auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
+    Voltage minVoltage = 5, maxVoltage = 90;
+    for(const auto &probeSetting: probeSettings) {
+        auto probeRange = probeSetting.getModel().getVoltageRange();
+        minVoltage = std::max<Voltage>(probeRange.start(), minVoltage);
+        maxVoltage = std::min<Voltage>(probeRange.end(), maxVoltage);
+    }
 
     if (voltage < minVoltage || voltage > maxVoltage) {
         throw IllegalArgumentException(
@@ -251,11 +260,11 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
 
     unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
-    ARRUS_REQUIRES_EQUAL_IAE(
-        (hostBufferSize % rxBufferSize), 0,
+    ARRUS_REQUIRES_TRUE_E(
+        (hostBufferSize % rxBufferSize) == 0,
         IllegalArgumentException(
             format("The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
-                   hostBufferNElements, rxBufferNElements)));
+                   hostBufferSize, rxBufferSize)));
 
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
@@ -269,8 +278,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     }
     // Create output buffer.
     Us4ROutputBufferBuilder builder;
-    this->buffer = builder.setNumberOfElements(scheme.getOutputBuffer().getNumberOfElements())
-                       .setStopOnOverflow(stopOnOverflow)
+    this->buffer = builder.setStopOnOverflow(stopOnOverflow)
                        .setLayoutTo(buffers)
                        .build();
     registerOutputBuffer(this->buffer.get(), buffers, workMode);
@@ -358,7 +366,8 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs;
-    std::transform(std::begin(sequences), std::end(sequences), std::back_inserter(seqs), convertToInternalSequence);
+    std::transform(std::begin(sequences), std::end(sequences), std::back_inserter(seqs),
+        [this](const auto &seq){return convertToInternalSequence(seq);});
     // Initialize converters.
 
     auto oemMappings = getOEMMappings();
@@ -368,10 +377,12 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         const auto &rxProbeId = s.getRxProbeId();
         const auto &txProbeSettings = probeSettings.at(txProbeId.getOrdinal());
         const auto &rxProbeSettings = probeSettings.at(rxProbeId.getOrdinal());
+        const auto &txProbeMask = channelsMask.at(txProbeId.getOrdinal());
+        const auto rxProbeMask = channelsMask.at(txProbeId.getOrdinal());
         auto nAdapterChannels = probeAdapterSettings.getNumberOfChannels();
         // Find the correct probe TX, RX ordinal
-        probe2Adapter.emplace_back(
-            ProbeToAdapterMappingConverter{txProbeId, rxProbeId, txProbeSettings, rxProbeSettings, nAdapterChannels});
+        probe2Adapter.emplace_back(ProbeToAdapterMappingConverter{
+            txProbeId, rxProbeId, txProbeSettings, rxProbeSettings, txProbeMask, rxProbeMask, nAdapterChannels});
         adapter2OEM.emplace_back(
             AdapterToUs4OEMMappingConverter{probeAdapterSettings, noems, oemMappings, frameMetadataOEM});
     }
@@ -577,8 +588,6 @@ void Us4RImpl::checkState() const {
         us4oem->checkState();
     }
 }
-
-std::vector<unsigned short> Us4RImpl::getChannelsMask() { return channelsMask; }
 
 void Us4RImpl::setStopOnOverflow(bool value) {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
@@ -890,7 +899,7 @@ std::vector<std::vector<uint8_t>> Us4RImpl::getOEMMappings() const {
     for (auto &us4oem : us4oems) {
         mappings.push_back(us4oem->getChannelMapping());
     }
-    return std::move(mappings);
+    return mappings;
 }
 
 Ordinal Us4RImpl::getFrameMetadataOEM(const IOSettings &settings) {
@@ -906,5 +915,8 @@ Ordinal Us4RImpl::getFrameMetadataOEM(const IOSettings &settings) {
         }
     }
 }
+std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) { return channelsMask.at(probeNumber); }
+
+int Us4RImpl::getNumberOfProbes() { return probeSettings.size(); }
 
 }// namespace arrus::devices

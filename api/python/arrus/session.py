@@ -146,8 +146,8 @@ class Session(AbstractSession):
         us_device.set_tgc_and_context(sequences, self.medium)
         metadatas = {}
 
-        for raw_seq, seq in zip(raw_seqs, sequences):
-            data_description = us_device.get_data_description(upload_result, raw_seq)
+        for i, (raw_seq, seq) in enumerate(zip(raw_seqs, sequences)):
+            data_description = us_device.get_data_description(upload_result, raw_seq, array_id=i)
             # -- Constant metadata
             # --- Frame acquisition context
             fac = self._create_frame_acquisition_context(

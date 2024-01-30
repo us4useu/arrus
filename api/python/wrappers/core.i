@@ -295,8 +295,8 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
     return res;
 }
 
-std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arrus::session::UploadResult* uploadResult) {
-    return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
+std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(size_t arrayId, arrus::session::UploadResult* uploadResult) {
+    return uploadResult->getConstMetadata(arrayId)->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
 }
 
 std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {

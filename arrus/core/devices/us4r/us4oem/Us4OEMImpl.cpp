@@ -93,25 +93,16 @@ private:
     bool isMaster{false};
 };
 
-Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
-                       std::vector<uint8_t> channelMapping, RxSettings rxSettings,
-                       std::unordered_set<uint8_t> channelsMask, Us4OEMSettings::ReprogrammingMode reprogrammingMode,
-                       bool externalTrigger = false, bool acceptRxNops = false)
+Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> channelMapping, RxSettings rxSettings,
+                       Us4OEMSettings::ReprogrammingMode reprogrammingMode, bool externalTrigger = false,
+                       bool acceptRxNops = false)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
-      channelMapping(std::move(channelMapping)), channelsMask(std::move(channelsMask)),
-      reprogrammingMode(reprogrammingMode), rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
+      channelMapping(std::move(channelMapping)), reprogrammingMode(reprogrammingMode),
+      rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
       serialNumber([this]() { return this->ius4oem->GetSerialNumber(); }),
       revision([this]() { return this->ius4oem->GetRevisionNumber(); }), acceptRxNops(acceptRxNops) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-    if (this->channelsMask.empty()) {
-        this->logger->log(LogSeverity::INFO,
-                          ::arrus::format("No channel masking will be applied for {}", ::arrus::toString(id)));
-    } else {
-        this->logger->log(
-            LogSeverity::INFO,
-            ::arrus::format("Following us4oem channels will be turned off: {}", ::arrus::toString(this->channelsMask)));
-    }
     setTestPattern(RxTestPattern::OFF);
     disableAfeDemod();
     setRxSettingsPrivate(this->rxSettings, true);
@@ -209,6 +200,7 @@ void Us4OEMImpl::setHpfCornerFrequency(uint32_t frequency) {
 }
 
 void Us4OEMImpl::disableHpf() { ius4oem->AfeDisableHPF(); }
+Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltage>{0, 90}; }
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
@@ -236,11 +228,12 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
     this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc)->build();
     setTgcCurve(this->rxSettings);
 }
-Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture) {
+Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us4OEMAperture &txAperture,
+                                                                        const Us4OEMAperture &rxAperture) {
     std::vector<bool> result(N_ADDR_CHANNELS, false);
-    for(ChannelIdx ch = 0; ch < N_ADDR_CHANNELS; ++ch) {
+    for (ChannelIdx ch = 0; ch < N_ADDR_CHANNELS; ++ch) {
         ChannelIdx groupNr = ch / ACTIVE_CHANNEL_GROUP_SIZE;
-        if(txAperture.test(ch) || rxAperture.test(ch)) {
+        if (txAperture.test(ch) || rxAperture.test(ch)) {
             result[groupNr] = true;
         }
     }
@@ -252,7 +245,7 @@ Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us
 void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                const std::optional<DigitalDownConversion> &ddc,
                                const std::vector<arrus::framework::NdArray> &txDelays,
-                               Us4OEMRxMappingRegister rxMappingRegister) {
+                               const Us4OEMRxMappingRegister &rxMappingRegister) {
     using SequenceId = uint16;
     using OpId = uint16;
 
@@ -280,7 +273,8 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             validateAperture(rxAperture);
             // Common
             float txrxTime = getTxRxTime(rxTime);
-            Us4OEMChannelsGroupsMask channelsGroups = op.isNOP() ? emptyChannelGroups : getActiveChannelGroups(txAperture, rxAperture);
+            Us4OEMChannelsGroupsMask channelsGroups =
+                op.isNOP() ? emptyChannelGroups : getActiveChannelGroups(txAperture, rxAperture);
             ARRUS_REQUIRES_TRUE_IAE(txrxTime <= op.getPri(),
                                     format("Total time required for a single TX/RX ({}) should not exceed PRI ({})",
                                            txrxTime, op.getPri()));
@@ -378,7 +372,7 @@ size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint16 startSample, u
 */
 Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
                                            const std::optional<DigitalDownConversion> &ddc,
-                                           Us4OEMRxMappingRegister rxMappingRegister) {
+                                           const Us4OEMRxMappingRegister &rxMappingRegister) {
     bool isDDCOn = ddc.has_value();
 
     using BatchId = uint16;
@@ -391,6 +385,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
     size_t outputAddress = 0;
     size_t arrayStartAddress = 0;
+    size_t elementStartAddress = 0;
     uint16 entryId = 0;
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
@@ -439,10 +434,14 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
             } else {
                 shape = {totalSamples, N_RX_CHANNELS};
             }
-            auto address = arrayStartAddress;
-            arrayStartAddress = outputAddress;
-            builder.add(Us4OEMBufferArrayDef{address, framework::NdArrayDef{shape, DataType}, parts});
+            if (batchId == 0) {
+                // Gather element layout.
+                builder.add(Us4OEMBufferArrayDef{arrayStartAddress, framework::NdArrayDef{shape, DataType}, parts});
+                arrayStartAddress = outputAddress;
+            }
         }
+        builder.add(Us4OEMBufferElement{elementStartAddress, outputAddress-elementStartAddress, entryId});
+        elementStartAddress = outputAddress;
     }
     return builder.build();
 }
@@ -537,34 +536,19 @@ float Us4OEMImpl::getTxRxTime(float rxTime) const {
 
 Us4OEMRxMappingRegister Us4OEMImpl::setRxMappings(const TxParametersSequenceColl &sequences) {
     Us4OEMRxMappingRegisterBuilder builder{static_cast<FrameChannelMapping::Us4OEMNumber>(getDeviceId().getOrdinal()),
-                                           acceptRxNops, channelMapping, channelsMask};
+                                           acceptRxNops, channelMapping};
     builder.add(sequences);
     auto mappingRegister = builder.build();
     for (auto const &[mapId, map] : mappingRegister.getMappings()) {
         ius4oem->SetRxChannelMapping(map, mapId);
     }
-    return std::move(mappingRegister);
+    return mappingRegister;
 }
 
 float Us4OEMImpl::getSamplingFrequency() { return Us4OEMImpl::SAMPLING_FREQUENCY; }
 
 float Us4OEMImpl::getRxTime(size_t nSamples, float samplingFrequency) {
     return std::max(MIN_RX_TIME, (float) nSamples / samplingFrequency + RX_TIME_EPSILON);
-}
-
-Us4OEMImpl::Us4OEMAperture Us4OEMImpl::filterAperture(Us4OEMImpl::Us4OEMAperture aperture) {
-    for (auto channel : this->channelsMask) {
-        aperture[channel] = false;
-    }
-    return aperture;
-}
-
-void Us4OEMImpl::validateAperture(const std::bitset<N_ADDR_CHANNELS> &aperture) {
-    for (auto channel : this->channelsMask) {
-        if (aperture[channel]) {
-            throw IllegalArgumentException(::arrus::format("Attempted to set masked channel: {}", channel));
-        }
-    }
 }
 
 void Us4OEMImpl::start() { this->startTrigger(); }
@@ -578,9 +562,15 @@ void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequence
     if (sequences.empty()) {
         return;
     }
-    auto allCurvesTheSame =
-        std::accumulate(std::begin(sequences), std::end(sequences), false,
-                        [](const auto &a, const auto &b) { a.getTgcCurve() == b.getTgcCurve(); });
+    bool allCurvesTheSame = true;
+    const auto &referenceCurve = sequences.at(0).getTgcCurve();
+    for(size_t i = 1; i < sequences.size(); ++i) {
+        const auto &s = sequences.at(i).getTgcCurve();
+        if(s == referenceCurve) {
+            allCurvesTheSame = false;
+            break;
+        }
+    }
     ARRUS_REQUIRES_TRUE_IAE(allCurvesTheSame, "TGC curves for all sequences should be exactly the same.");
     setTgcCurve(sequences.at(0).getTgcCurve());
 }
@@ -616,18 +606,47 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
         }
         if (applyCharacteristic) {
             // TGC characteristic, experimentally verified.
-            static const std::vector<float> tgcChar = {
-                0.0f, 2.4999999999986144e-05f, 5.00000000000167e-05f, 7.500000000000284e-05f,
-                0.0005999999999999784f, 0.0041999999999999815f, 0.01200000000000001f, 0.020624999999999984f,
-                0.03085f, 0.04424999999999999f, 0.06269999999999998f, 0.08455000000000004f,
-                0.11172500000000003f, 0.14489999999999997f, 0.173325f, 0.19654999999999995f,
-                0.22227499999999994f, 0.252475f, 0.28857499999999997f, 0.3149f,
-                0.341275f, 0.370925f, 0.406625f, 0.44225000000000003f,
-                0.4710750000000001f, 0.501125f, 0.538575f, 0.5795999999999999f,
-                0.6115f, 0.642f, 0.677075f, 0.7185f,
-                0.756725f, 0.7885f, 0.8234f, 0.8618499999999999f,
-                0.897375f, 0.92415f, 0.952075f, 0.9814f, 1.0f
-            };
+            static const std::vector<float> tgcChar = {0.0f,
+                                                       2.4999999999986144e-05f,
+                                                       5.00000000000167e-05f,
+                                                       7.500000000000284e-05f,
+                                                       0.0005999999999999784f,
+                                                       0.0041999999999999815f,
+                                                       0.01200000000000001f,
+                                                       0.020624999999999984f,
+                                                       0.03085f,
+                                                       0.04424999999999999f,
+                                                       0.06269999999999998f,
+                                                       0.08455000000000004f,
+                                                       0.11172500000000003f,
+                                                       0.14489999999999997f,
+                                                       0.173325f,
+                                                       0.19654999999999995f,
+                                                       0.22227499999999994f,
+                                                       0.252475f,
+                                                       0.28857499999999997f,
+                                                       0.3149f,
+                                                       0.341275f,
+                                                       0.370925f,
+                                                       0.406625f,
+                                                       0.44225000000000003f,
+                                                       0.4710750000000001f,
+                                                       0.501125f,
+                                                       0.538575f,
+                                                       0.5795999999999999f,
+                                                       0.6115f,
+                                                       0.642f,
+                                                       0.677075f,
+                                                       0.7185f,
+                                                       0.756725f,
+                                                       0.7885f,
+                                                       0.8234f,
+                                                       0.8618499999999999f,
+                                                       0.897375f,
+                                                       0.92415f,
+                                                       0.952075f,
+                                                       0.9814f,
+                                                       1.0f};
             // the below is simply linspace(0, 1, 41)
             static const std::vector<float> tgcCharPoints = {
                 0.0f,  0.025f, 0.05f, 0.075f, 0.1f,  0.125f, 0.15f, 0.175f, 0.2f,  0.225f, 0.25f, 0.275f, 0.3f,  0.325f,
@@ -854,15 +873,15 @@ void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vect
 
 size_t Us4OEMImpl::getNumberOfTriggers(const TxParametersSequenceColl &sequences, uint16 rxBufferSize) {
     return std::accumulate(std::begin(sequences), std::end(sequences), 0,
-                           [=](const TxRxParametersSequence &a, const TxRxParametersSequence &b) {
-                               return (a.size() * a.getNRepeats() + b.size() * b.getNRepeats()) * rxBufferSize;
+                           [=](const auto &a, const auto &b) {
+                               return a + b.size()*b.getNRepeats()*rxBufferSize;
                            });
 }
 
 size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> &sequences) {
     return std::accumulate(
         std::begin(sequences), std::end(sequences), 0,
-        [](const TxRxParametersSequence &a, const TxRxParametersSequence &b) { return a.size() + b.size(); });
+        [](const auto &a, const auto &b) { return a + b.size(); });
 }
 
 void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
@@ -871,7 +890,7 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
     for (uint8 ch = 0; ch < ARRUS_SAFE_CAST(txAperture.size(), uint8); ++ch) {
         bool bit = txAperture.at(ch);
         float delay = 0.0f;
-        if (bit && !setContains(this->channelsMask, ch)) {
+        if (bit) {
             delay = delays.at(ch);
         }
         ius4oem->SetTxDelay(ch, delay, firingId, delaysId);

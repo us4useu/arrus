@@ -15,8 +15,8 @@ namespace arrus::devices {
  */
 class Us4OEMUploadResult {
 public:
-    Us4OEMUploadResult(Us4OEMBuffer bufferDescription, const std::vector<FrameChannelMapping::Handle> &fcms)
-        : bufferDescription(std::move(bufferDescription)), fcms(fcms) {}
+    Us4OEMUploadResult(Us4OEMBuffer bufferDescription, std::vector<FrameChannelMapping::Handle> fcms)
+        : bufferDescription(std::move(bufferDescription)), fcms(std::move(fcms)) {}
 
     [[nodiscard]] const Us4OEMBuffer &getBufferDescription() const { return bufferDescription; }
     FrameChannelMapping::RawHandle getFCM(size_t sequenceId) { return fcms.at(sequenceId).get(); }

@@ -5,8 +5,9 @@
 
 
 #include "arrus/core/api/devices/Device.h"
-#include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/probe/Probe.h"
+#include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/probe/ProbeModel.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
@@ -46,12 +47,12 @@ public:
     virtual float getCurrentSamplingFrequency() const = 0;
 
     /**
-     * Returns probe model identified by given ordinal number.
+     * Returns probe identified by given ordinal number.
      *
      * @param ordinal ordinal number of the probe to get
-     * @return probe model description
+     * @return probe handle
      */
-    virtual ProbeModel getProbeModel(Ordinal ordinal) = 0;
+    virtual Probe::RawHandle getProbe(Ordinal ordinal) = 0;
 
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;

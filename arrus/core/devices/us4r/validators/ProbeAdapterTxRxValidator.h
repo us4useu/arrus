@@ -29,9 +29,9 @@ public:
             if (!op.isRxNOP()) {
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
                                               "Each Rx should acquire the same number of samples.");
-                size_t currActiveRxChannels = std::accumulate(std::begin(txRxs[firing].getRxAperture()),
-                                                              std::end(txRxs[firing].getRxAperture()), 0);
-                currActiveRxChannels += txRxs[firing].getRxPadding().sum();
+                size_t currActiveRxChannels = std::accumulate(std::begin(txRxs.at(firing).getRxAperture()),
+                                                              std::end(txRxs.at(firing).getRxAperture()), 0);
+                currActiveRxChannels += txRxs.at(firing).getRxPadding().sum();
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(currActiveRxChannels == nActiveRxChannels,
                                               "Each rx aperture should have the same size.");
             }

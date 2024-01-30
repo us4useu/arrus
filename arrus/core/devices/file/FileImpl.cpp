@@ -61,17 +61,17 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> FileImpl::u
     // NOTE: assuming that each RX has the same number of channels and samples.
     size_t nTx = seq.getOps().size();
     auto [startSample, stopSample] = seq.getOps().at(0).getRx().getSampleRange();
-    size_t nSamples = stopSample-startSample;
+    size_t nSamples = stopSample - startSample;
     auto &rxAperture = seq.getOps()[0].getRx().getAperture();
     size_t nRx = std::accumulate(std::begin(rxAperture), std::end(rxAperture), 0);
     nRx += seq.getOps()[0].getRx().getPadding().first;
     nRx += seq.getOps()[0].getRx().getPadding().second;
-    size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
+    size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1;// I/Q or raw data.
     this->frameShape = NdArray::Shape{1, nTx, nRx, nSamples, nValues};
     this->txBegin = 0;
-    this->txEnd = (int)nTx;
+    this->txEnd = (int) nTx;
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
-    if(this->frameShape.product() != dataset.at(0).size()) {
+    if (this->frameShape.product() != dataset.at(0).size()) {
         throw ArrusException(
             format("The provided sequence (output dimensions: nTx: {}, nRx: {}, nSamples: {}, nComponents: {})) "
                    "does not correspond to the data from the file (number of int16_t values: {}). "
@@ -80,19 +80,26 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> FileImpl::u
     }
 
     // Determine current sampling frequency
-    if(this->currentScheme->getDigitalDownConversion().has_value()) {
+    if (this->currentScheme->getDigitalDownConversion().has_value()) {
         auto dec = this->currentScheme->getDigitalDownConversion().value().getDecimationFactor();
-        this->currentFs = this->getSamplingFrequency()/dec;
-    }
-    else {
+        this->currentFs = this->getSamplingFrequency() / dec;
+    } else {
         auto dec = seq.getOps().at(0).getRx().getDownsamplingFactor();
-        this->currentFs = this->getSamplingFrequency()/dec;
+        this->currentFs = this->getSamplingFrequency() / dec;
     }
     this->buffer = std::make_shared<FileBuffer>(this->settings.getNFrames(), this->frameShape);
     // Metadata
     MetadataBuilder metadataBuilder;
-    std::vector<Metadata::SharedHandle> metadatas = { metadataBuilder.buildPtr() };
+    std::vector<Metadata::SharedHandle> metadatas = {metadataBuilder.buildPtr()};
     return std::make_pair(this->buffer, std::move(metadatas));
+}
+Probe::RawHandle FileImpl::getProbe(Ordinal ordinal) {
+    if(ordinal == 0) {
+        return probe.get();
+    }
+    else {
+        throw IllegalArgumentException("Probe ordinal outside of acceptable range.");
+    }
 }
 
 void FileImpl::start() {
@@ -190,13 +197,6 @@ void FileImpl::consumer() {
 
 void FileImpl::trigger() {
     throw std::runtime_error("File::trigger: NYI");
-}
-
-ProbeModel FileImpl::getProbeModel(Ordinal ordinal) {
-    if(ordinal > 0) {
-        throw IllegalArgumentException("Probe with ordinal > 0 is not available in the File device.");
-    }
-    return probe->getModel();
 }
 
 void FileImpl::setParameters(const Parameters &params) {

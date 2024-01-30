@@ -45,7 +45,7 @@ public:
     float getCurrentSamplingFrequency() const override;
     std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ops::us4r::Scheme &scheme) override;
-    ProbeModel getProbeModel(Ordinal ordinal) override;
+    Probe::RawHandle getProbe(Ordinal ordinal) override;
     void setParameters(const Parameters &params) override;
 
 
@@ -67,7 +67,7 @@ private:
     std::optional<ops::us4r::Scheme> currentScheme;
     float currentFs;
     std::shared_ptr<FileBuffer> buffer;
-    std::unique_ptr<FileProbe> probe;
+    FileProbe::Handle probe;
 
     std::mutex parametersMutex;
     std::optional<int> pendingSliceBegin;

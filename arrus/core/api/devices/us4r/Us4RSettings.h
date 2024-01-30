@@ -20,26 +20,12 @@ class Us4RSettings {
 public:
     using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
 
-    /**
-     * TODO deprecated, will be removed in 0.11.0
-     */
-    explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
-                          std::optional<Ordinal> nUs4OEMs = std::nullopt,
-                          std::vector<Ordinal> adapterToUs4RModuleNumber = {},
-                          int txFrequencyRange = 1,
-                          std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
-                          )
-        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)),
-          nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
-          txFrequencyRange(txFrequencyRange), digitalBackplaneSettings(std::move(digitalBackplaneSettings))
-          {}
-
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,
         std::vector<ProbeSettings> probeSettings,
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
-        std::vector<ChannelIdx> channelsMask,
+        std::vector<std::vector<ChannelIdx>> channelsMask,
         std::vector<std::vector<uint8>> us4oemChannelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
@@ -68,7 +54,7 @@ public:
         ProbeSettings probeSettings,
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
-        std::vector<ChannelIdx> channelsMask,
+        std::vector<ChannelIdx> probe0ChannelsMask,
         std::vector<std::vector<uint8>> us4oemChannelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
@@ -82,7 +68,7 @@ public:
                 std::vector<ProbeSettings>{std::move(probeSettings)},
                 std::move(rxSettings),
                 std::move(hvSettings),
-                std::move(channelsMask),
+                {std::move(probe0ChannelsMask)},
                 std::move(us4oemChannelsMask),
                 reprogrammingMode,
                 nUs4OEMs,
@@ -135,7 +121,19 @@ public:
         return hvSettings;
     }
 
+    /**
+     * Returns channels mask to be applied for Probe:0 TX/RX apertures.
+     * DEPRECATED (v0.11.0): please use getChannelsMask(probeNr).
+     */
     const std::vector<ChannelIdx> &getChannelsMask() const {
+        return getChannelsMaskForProbe(0);
+    }
+
+    const std::vector<ChannelIdx> &getChannelsMaskForProbe(Ordinal probeNr) const {
+        return channelsMask.at(probeNr);
+    }
+
+    const std::vector<std::vector<ChannelIdx>> &getChannelsMaskForAllProbes() const {
         return channelsMask;
     }
 
@@ -186,7 +184,7 @@ private:
     std::optional<HVSettings> hvSettings;
     /** A list of channels that should be turned off in the us4r system.
      * Note that the **channel numbers start from 0**.*/
-    std::vector<ChannelIdx> channelsMask;
+    std::vector<std::vector<ChannelIdx>> channelsMask;
     /** A list of channels masks to apply on given us4oems.
      * Currently us4oem channels are used for double check only.
      * The administrator has to provide us4oem channels masks that confirms to

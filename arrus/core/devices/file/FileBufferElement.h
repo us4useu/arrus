@@ -71,13 +71,14 @@ public:
     }
 
     arrus::framework::NdArray &getData() override { return dataView; }
-    framework::NdArray &getData(size_t ordinal) override {
+    framework::NdArray &getData(ArrayId) override {
         throw ArrusException("get data (ordinal) for file device is not implemented.");
     }
     arrus::framework::NdArray &getAllData() {return ndarray; }
     size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }
     State getState() const override { return state; }
+
 private:
     std::mutex stateMutex;
     std::condition_variable readyForWrite;

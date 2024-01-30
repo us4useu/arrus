@@ -90,7 +90,7 @@ public:
      *  exactly N_TX_CHANNELS numbers
      */
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
-               std::vector<uint8_t> channelMapping, RxSettings rxSettings, std::unordered_set<uint8_t> channelsMask,
+               std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                Us4OEMSettings::ReprogrammingMode reprogrammingMode, bool externalTrigger, bool acceptRxNops);
     ~Us4OEMImpl() override;
 
@@ -139,6 +139,8 @@ public:
                         const std::vector<uint16_t> &lengths) override;
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
+    Interval<Voltage> getAcceptedVoltageRange() override;
+
 private:
     using Us4OEMAperture = std::bitset<N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<N_ACTIVE_CHANNEL_GROUPS>;
@@ -180,7 +182,7 @@ private:
     void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                        const std::vector<arrus::framework::NdArray> &txDelays,
-                       Us4OEMRxMappingRegister rxMappingRegister);
+                       const Us4OEMRxMappingRegister &rxMappingRegister);
     size_t scheduleReceiveDDC(size_t outputAddress, uint16 startSample, uint16 endSample, uint16 entryId,
                               const us4r::TxRxParameters &op, uint16 rxMapId,
                               const std::optional<ops::us4r::DigitalDownConversion> &ddc);
@@ -188,7 +190,7 @@ private:
                              const us4r::TxRxParameters &op, uint16 rxMapId);
     Us4OEMBuffer uploadAcquisition(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
                                    const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                                   Us4OEMRxMappingRegister rxMappingRegister);
+                                   const Us4OEMRxMappingRegister &rxMappingRegister);
     void uploadTriggersIOBS(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
                             ops::us4r::Scheme::WorkMode workMode);
 
@@ -201,7 +203,6 @@ private:
     IUs4OEMHandle ius4oem;
     // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
     std::vector<uint8_t> channelMapping;
-    std::unordered_set<uint8_t> channelsMask;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
     /** Current RX settings */
     RxSettings rxSettings;

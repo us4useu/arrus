@@ -118,20 +118,20 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
         }
     }
     // io capabilities
-    if(proto.has_io_settings()) {
+    if (proto.has_io_settings()) {
         auto &ioSettingsProto = proto.io_settings();
         arrus::devices::us4r::IOSettingsBuilder settingsBuilder;
-        for(auto &entry: ioSettingsProto.capabilities()) {
+        for (auto &entry : ioSettingsProto.capabilities()) {
             // Convert to arrus IO address.
             std::vector<arrus::devices::us4r::IOAddress> addresses;
-            for(auto addressProto: entry.addresses()) {
+            for (auto addressProto : entry.addresses()) {
                 Ordinal us4oem = ARRUS_SAFE_CAST(addressProto.us4oem(), Ordinal);
                 uint8_t io = ARRUS_SAFE_CAST(addressProto.io(), uint8_t);
                 addresses.emplace_back(us4oem, io);
             }
             arrus::devices::us4r::IOAddressSet addressSet(addresses);
-            if(addressSet.size() > 0) {
-                switch(entry.capability()) {
+            if (addressSet.size() > 0) {
+                switch (entry.capability()) {
                 case arrus::proto::IOCapability::PROBE_CONNECTED_CHECK:
                     settingsBuilder.setProbeConnectedCheckCapability(addressSet);
                     break;
@@ -144,8 +144,7 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
             }
         }
         return ProbeAdapterSettings(id, nChannels, channelMapping, settingsBuilder.build());
-    }
-    else {
+    } else {
         return ProbeAdapterSettings(id, nChannels, channelMapping);
     }
 }
@@ -237,7 +236,6 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
     return result;
 }
 
-
 RxSettings readRxSettings(const proto::RxSettings &proto) {
     std::optional<uint16> dtgcAtt;
     if (proto.dtgcAttenuation__case() == proto::RxSettings::kDtgcAttenuation) {
@@ -275,25 +273,26 @@ ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, c
     }
 }
 
-proto::ProbeToAdapterConnection getUniqueConnection(const proto::ProbeModel_Id &probeId,
-    std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> &connections) {
+proto::ProbeToAdapterConnection
+getUniqueConnection(const proto::ProbeModel_Id &probeId,
+                    std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> &connections) {
     std::string key = SettingsDictionary::convertProtoIdToString(probeId);
     ProbeModelId id{probeId.manufacturer(), probeId.name()};
-    if(connections.count(key) > 1) {
+    if (connections.count(key) > 1) {
         throw IllegalArgumentException(
             format("Multiple probe to adapter connection definitions for probe: {}", id.toString()));
     }
     auto it = connections.find(key);
-    if(it == std::end(connections)) {
-        throw IllegalArgumentException(format(
-            "No definition found for probe {}, but the probe is used in the probe to adapter connections list. ",
-            id.toString()));
+    if (it == std::end(connections)) {
+        throw IllegalArgumentException(
+            format("No definition found for probe {}, but the probe is used in the probe to adapter connections list. ",
+                   id.toString()));
     }
     return it->second;
 }
 
 std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4r, const ProbeAdapterModelId &adapterId,
-                                     const SettingsDictionary &dictionary) {
+                                                  const SettingsDictionary &dictionary) {
     // Read and index by probe to adapter connections
     std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> connections =
         indexProbeToAdapterConnections(us4r.probe_to_adapter_connection());
@@ -302,19 +301,19 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
 
     int nProbes = us4r.probe_id_size() + us4r.probe_size();
     ARRUS_REQUIRES_TRUE(us4r.probe_to_adapter_connection_size() == 0
-                        || (us4r.probe_to_adapter_connection_size() == nProbes),
+                            || (us4r.probe_to_adapter_connection_size() == nProbes),
                         "You should skip probe to adapter connections list, or provide the same number of "
                         "probe to adapter connections and probe definitions in the configuration file.");
 
-    for(auto &probeId: us4r.probe_id()) {
+    for (auto &probeId : us4r.probe_id()) {
         ProbeModelId id{probeId.manufacturer(), probeId.name()};
         ProbeModel model = dictionary.getProbeModel(id);
-        if(us4r.probe_to_adapter_connection_size() > 0) {
+        if (us4r.probe_to_adapter_connection_size() > 0) {
             // If there are some probe to adapter connections: use only them.
             auto connection = getUniqueConnection(probeId, connections);
             std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(connection);
             std::optional<BitstreamId> bitstreamId;
-            if(connection.has_bitstream_id()) {
+            if (connection.has_bitstream_id()) {
                 bitstreamId = ARRUS_SAFE_CAST(connection.bitstream_id().ordinal(), uint16_t);
             }
             result.emplace_back(model, channelMapping, bitstreamId);
@@ -324,20 +323,19 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
         }
     }
 
-    for(auto &probe: us4r.probe()) {
+    for (auto &probe : us4r.probe()) {
         ProbeModel model = readProbeModel(probe);
-        const auto& probeId = probe.id();
+        const auto &probeId = probe.id();
         proto::ProbeToAdapterConnection connection;
-        if(us4r.probe_to_adapter_connection_size() == 1) {
+        if (us4r.probe_to_adapter_connection_size() == 1) {
             // Also a single probe (see the verification above).
             connection = *std::begin(us4r.probe_to_adapter_connection());
-        }
-        else {
+        } else {
             connection = getUniqueConnection(probeId, connections);
-        }
+       }
         std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(connection);
         std::optional<BitstreamId> bitstreamId;
-        if(connection.has_bitstream_id()) {
+        if (connection.has_bitstream_id()) {
             bitstreamId = ARRUS_SAFE_CAST(connection.bitstream_id().ordinal(), uint16_t);
         }
         result.emplace_back(model, channelMapping, bitstreamId);
@@ -345,20 +343,22 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
     return result;
 }
 
-template<typename T> std::vector<T> readChannelsMask(const proto::Us4RSettings_ChannelsMask &mask) {
-    auto &channels = mask.channels();
-
-    // validate
-    for (auto channel : channels) {
-        ARRUS_REQUIRES_DATA_TYPE(channel, T,
-                                 arrus::format("Channel mask should contain only values from uint16 range "
-                                               "(found: '{}')",
-                                               channel));
-    }
-    std::vector<T> result;
-
-    for (auto channel : channels) {
-        result.push_back(static_cast<T>(channel));
+template<typename T> std::vector<std::vector<T>> readChannelsMask(const proto::Us4RSettings &us4r) {
+    std::vector<std::vector<T>> result;
+    for (const auto mask : us4r.channels_mask()) {
+        auto &channels = mask.channels();
+        // validate
+        for (auto channel : channels) {
+            ARRUS_REQUIRES_DATA_TYPE(channel, T,
+                                     arrus::format("Channel mask should contain only values from uint16 range "
+                                                   "(found: '{}')",
+                                                   channel));
+        }
+        std::vector<T> probeMask;
+        for (auto channel : channels) {
+            probeMask.push_back(static_cast<T>(channel));
+        }
+        result.emplace_back(std::move(probeMask));
     }
     return result;
 }
@@ -375,31 +375,25 @@ ProbeModel readProbeModel(const proto::FileSettings &file, const SettingsDiction
         } catch (std::out_of_range &) {
             throw IllegalArgumentException(format("Probe model with id {} not found.", id.toString()));
         }
-    }
-    else {
+    } else {
         throw std::runtime_error("NYI");
     }
 }
 
 FileSettings readFileSettings(const proto::FileSettings &file, const SettingsDictionary &dictionary) {
-    return FileSettings{
-        file.filepath(),
-        file.n_frames(),
-        readProbeModel(file, dictionary)
-    };
+    return FileSettings{file.filepath(), file.n_frames(), readProbeModel(file, dictionary)};
 }
 
-std::vector<Bitstream> readBitstreams(const ::google::protobuf::RepeatedPtrField<::arrus::proto::Bitstream>& bitstreams) {
+std::vector<Bitstream>
+readBitstreams(const ::google::protobuf::RepeatedPtrField<::arrus::proto::Bitstream> &bitstreams) {
     std::vector<Bitstream> result;
-    for(auto &b: bitstreams) {
+    for (auto &b : bitstreams) {
         std::vector<uint8> levels;
         std::vector<uint16> periods;
-        std::transform(std::begin(b.levels()), std::end(b.levels()), std::back_inserter(levels), [](auto v) {
-            return (uint8)v;
-        });
-        std::transform(std::begin(b.periods()), std::end(b.periods()), std::back_inserter(periods), [](auto v) {
-          return (uint16)v;
-        });
+        std::transform(std::begin(b.levels()), std::end(b.levels()), std::back_inserter(levels),
+                       [](auto v) { return (uint8) v; });
+        std::transform(std::begin(b.periods()), std::end(b.periods()), std::back_inserter(periods),
+                       [](auto v) { return (uint16) v; });
         result.emplace_back(levels, periods);
     }
     return result;
@@ -419,7 +413,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         ARRUS_REQUIRES_NON_EMPTY_IAE(name);
         hvSettings = HVSettings(HVModelId(manufacturer, name));
     }
-    if(us4r.has_digital_backplane()) {
+    if (us4r.has_digital_backplane()) {
         auto &manufacturer = us4r.digital_backplane().model_id().manufacturer();
         auto &name = us4r.digital_backplane().model_id().name();
         ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
@@ -439,68 +433,31 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         }
     }
     if (!us4r.us4oems().empty()) {
-        // Us4OEMs are provided.
-        std::vector<Us4OEMSettings> us4oemSettings;
-
-        std::vector<std::unordered_set<uint8>> us4oemChannelsMask;
-        us4oemChannelsMask.resize(us4r.us4oems().size());
-
-        if (!us4r.us4oem_channels_mask().empty() && us4r.us4oems().size() != us4r.us4oem_channels_mask().size()) {
-            throw ::arrus::IllegalArgumentException("The number of us4oem channels masks should be the "
-                                                    "same as the number of us4oems.");
-        }
-
-        int i = 0;
-        for (auto &mask : us4r.us4oem_channels_mask()) {
-            auto channelsMask = readChannelsMask<uint8>(mask);
-            us4oemChannelsMask[i] = std::unordered_set<uint8>(std::begin(channelsMask), std::end(channelsMask));
-            ++i;
-        }
-
-        for (auto const &us4oem : us4r.us4oems()) {
-            auto rxSettings = readRxSettings(us4oem.rx_settings());
-            auto channelMapping =
-                castTo<ChannelIdx>(std::begin(us4oem.channel_mapping()), std::end(us4oem.channel_mapping()));
-            auto activeChannelGroups =
-                castTo<bool>(std::begin(us4oem.active_channel_groups()), std::end(us4oem.active_channel_groups()));
-            Us4OEMSettings::ReprogrammingMode reprogrammingMode =
-                convertToReprogrammingMode(us4oem.reprogramming_mode());
-            us4oemSettings.emplace_back(channelMapping, activeChannelGroups, rxSettings, us4oemChannelsMask[i],
-                                        reprogrammingMode);
-        }
-        return Us4RSettings(us4oemSettings, hvSettings, nUs4OEMs, adapterToUs4RModuleNr, txFrequencyRange,
-                            digitalBackplaneSettings);
+        throw IllegalArgumentException("Us4OEM specific configuration is not supported since 0.11.0");
     } else {
         ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
-        std::vector<ProbeSettings> probeSettings = readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
+        std::vector<ProbeSettings> probeSettings =
+            readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
         RxSettings rxSettings = readRxSettings(us4r.rx_settings());
 
-        // ensure that user provided channels mask
-        // TODO(pjarosik) consider removing this check in the future
-        if (!us4r.has_channels_mask()) {
-            throw IllegalArgumentException("Us4r settings field 'channels_mask' is required. "
-                                           "Set empty array of channels if you want to turn off channel masking.");
-        }
-
-        if (us4r.us4oem_channels_mask().empty()) {
-            throw IllegalArgumentException("Us4r settings field 'us4oem_channels_mask is required. "
-                                           "Set empty array of channels for each of the module explicitly if you want "
-                                           "to turn of channel masking.");
-        }
-
-        std::vector<ChannelIdx> channelsMask = readChannelsMask<ChannelIdx>(us4r.channels_mask());
+        std::vector<std::vector<ChannelIdx>> channelsMask = readChannelsMask<ChannelIdx>(us4r);
         std::vector<std::vector<uint8>> us4oemChannelsMask;
-        for (auto &mask : us4r.us4oem_channels_mask()) {
-            us4oemChannelsMask.push_back(readChannelsMask<uint8>(mask));
-        }
         auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
         std::vector<Bitstream> bitstreams = readBitstreams(us4r.bitstreams());
 
-        return {adapterSettings,       probeSettings,           rxSettings,        hvSettings,
-                channelsMask,          us4oemChannelsMask,      reprogrammingMode, nUs4OEMs,
-                adapterToUs4RModuleNr, us4r.external_trigger(), txFrequencyRange,
-                digitalBackplaneSettings, bitstreams
-        };
+        return {adapterSettings,
+                probeSettings,
+                rxSettings,
+                hvSettings,
+                channelsMask,
+                us4oemChannelsMask,
+                reprogrammingMode,
+                nUs4OEMs,
+                adapterToUs4RModuleNr,
+                us4r.external_trigger(),
+                txFrequencyRange,
+                digitalBackplaneSettings,
+                bitstreams};
     }
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

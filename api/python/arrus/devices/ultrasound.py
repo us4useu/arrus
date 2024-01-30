@@ -36,7 +36,7 @@ class Ultrasound(ABC):
         pass
 
     @abstractmethod
-    def get_data_description(self, upload_result, sequence):
+    def get_data_description(self, upload_result, sequence, array_id):
         """
         DEPRECATED: This method will be removed after moving most of the
         session-related code to the ARRUS core.
