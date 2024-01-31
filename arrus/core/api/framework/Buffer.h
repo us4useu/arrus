@@ -36,26 +36,12 @@ public:
     /**
      * Returns output data, with the ordinal 0.
      *
-     * In some cases (e.g. when running a sequence of TX/RX sequences)
-     * the system/process can produce a tuple of arrays. This method
-     * is kept for backward compatibility, and always gives the access
-     * to the first element of the tuple.
+     * See also getData(ArrayId ordinal).
      *
      * @return NdArray with data
      */
     virtual NdArray& getData() = 0;
 
-    /**
-     * Returns output data, with the given ordinal.
-     *
-     * In some cases (e.g. when running a sequence of TX/RX sequences)
-     * the system/process can produce a tuple of arrays. This method
-     * allows to choose the element of the tuple.
-     *
-     * @param ordinal tuple element number
-     * @return NdArray with data
-     */
-    virtual NdArray& getData(size_t ordinal);
 
     /**
      * Returns the size of this buffer element.

@@ -345,7 +345,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
 
 template<typename T> std::vector<std::vector<T>> readChannelsMask(const proto::Us4RSettings &us4r) {
     std::vector<std::vector<T>> result;
-    for (const auto mask : us4r.channels_mask()) {
+    for (const auto &mask : us4r.channels_mask()) {
         auto &channels = mask.channels();
         // validate
         for (auto channel : channels) {

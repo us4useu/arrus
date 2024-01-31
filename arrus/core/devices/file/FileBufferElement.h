@@ -21,7 +21,7 @@ public:
         this->position = position;
     }
 
-    ~FileBufferElement() {
+    ~FileBufferElement() override {
         delete data;
     }
 
@@ -70,7 +70,7 @@ public:
         this->dataView = ndarray.slice(i, begin, end);
     }
 
-    arrus::framework::NdArray &getData() override { return dataView; }
+    framework::NdArray &getData() override { return dataView; }
     framework::NdArray &getData(ArrayId) override {
         throw ArrusException("get data (ordinal) for file device is not implemented.");
     }

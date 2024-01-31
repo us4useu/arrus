@@ -147,8 +147,6 @@ private:
 
     float getTxRxTime(float rxTime) const;
     static float getRxTime(size_t nSamples, float samplingFrequency);
-    Us4OEMAperture filterAperture(Us4OEMAperture aperture);
-    void validateAperture(const Us4OEMAperture &aperture);
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */

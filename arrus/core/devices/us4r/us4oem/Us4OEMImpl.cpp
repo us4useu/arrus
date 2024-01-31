@@ -261,16 +261,14 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                         format("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId,
                                ::arrus::toString(op)));
             // TX
-            auto txAperture = filterAperture(arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture()));
+            auto txAperture = arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture());
             auto nTxHalfPeriods = static_cast<uint8>(op.getTxPulse().getNPeriods() * 2);
-            validateAperture(txAperture);
             // RX
-            auto rxAperture = filterAperture(rxMappingRegister.getRxAperture(sequenceId, opId));
+            auto rxAperture = rxMappingRegister.getRxAperture(sequenceId, opId);
             auto [startSample, endSample] = op.getRxSampleRange().asPair();
             float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float) op.getRxDecimationFactor();
             setCurrentSamplingFrequency(SAMPLING_FREQUENCY / decimationFactor);
             float rxTime = getRxTime(endSample, getCurrentSamplingFrequency());
-            validateAperture(rxAperture);
             // Common
             float txrxTime = getTxRxTime(rxTime);
             Us4OEMChannelsGroupsMask channelsGroups =
