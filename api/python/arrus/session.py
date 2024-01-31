@@ -165,9 +165,7 @@ class Session(AbstractSession):
         if processings is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
-
-            input_buffer = GPUBuffer()
-
+            runner_processings = []
             for i, processing in enumerate(processings):
                 if isinstance(processing, _imaging.Pipeline):
                     # Wrap Pipeline into the Processing object.
@@ -178,15 +176,15 @@ class Session(AbstractSession):
                         extract_metadata=False
                     )
                 if isinstance(processing, _imaging.Processing):
-                    processing = arrus.utils.imaging.ProcessingRunner(
-                        buffer, metadatas[f"Sequence:{i}"], processing,
-                        output_nr=i
-                    )
-                    outputs = processing.outputs
+                    runner_processings.append(processing)
                 else:
                     raise ValueError("Unsupported type of processing: "
                                     f"{type(processings)}")
-            self._current_processing = processings
+            processing_runner = arrus.utils.imaging.ProcessingRunner(
+                buffer, metadatas, runner_processings,
+            )
+            outputs = processing_runner.outputs
+            self._current_processing = processing_runner
         else:
             # Device buffer and const_metadata
             outputs = buffer, metadatas

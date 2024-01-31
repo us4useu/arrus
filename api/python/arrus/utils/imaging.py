@@ -209,27 +209,26 @@ class ProcessingRunner:
         READY = 1
         CLOSED = 2
 
-    def __init__(self, input_buffer, const_metadata, processing, output_nr=0):
+    def __init__(self, input_buffer, const_metadatas, processings):
         import cupy as cp
         # Initialize pipeline.
         self.cp = cp
-        self.output_nr = output_nr  # The number of element output
         # Pin input buffer.
         self.input_buffer = self.__register_buffer(input_buffer)
         default_buffer = ProcessingBuffer(size=2, type="locked")
 
-        in_buffer_spec = processing.input_buffer
-        out_buffer_spec = processing.output_buffer
+        in_buffer_spec = processings.input_buffer
+        out_buffer_spec = processings.output_buffer
         in_buffer_spec = in_buffer_spec if in_buffer_spec is not None else default_buffer
         out_buffer_spec = out_buffer_spec if out_buffer_spec is not None else default_buffer
         self.gpu_buffer = Buffer(n_elements=in_buffer_spec.size,
-                                 shape=const_metadata.input_shape,
-                                 dtype=const_metadata.dtype, math_pkg=cp,
+                                 shape=const_metadatas.input_shape,
+                                 dtype=const_metadatas.dtype, math_pkg=cp,
                                  type=in_buffer_spec.type)
-        self.pipeline = processing.pipeline
+        self.pipeline = processings.pipeline
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
-        self.out_metadata = processing.pipeline.prepare(const_metadata)
+        self.out_metadata = processings.pipeline.prepare(const_metadatas)
         self.out_buffers = [Buffer(n_elements=out_buffer_spec.size, shape=m.input_shape,
                                    dtype=m.dtype, math_pkg=np,
                                    type=out_buffer_spec.type)
@@ -241,9 +240,9 @@ class ProcessingRunner:
         if not isinstance(self.out_buffers, Iterable):
             self.out_buffers = (self.out_buffers,)
         self._process_lock = threading.Lock()
-        if processing.callback is not None:
+        if processings.callback is not None:
             self.user_out_buffer = None
-            self.callback = processing.callback
+            self.callback = processings.callback
         else:
             self.user_out_buffer = queue.Queue(maxsize=1)
             self.callback = self.default_callback
@@ -251,14 +250,14 @@ class ProcessingRunner:
         self._out_i = [0] * len(self.out_buffers)
         self.i = 0
         # Metadata extraction.
-        self.is_extract_metadata = processing.extract_metadata
+        self.is_extract_metadata = processings.extract_metadata
         if self.is_extract_metadata:
             self.metadata_extractor = ExtractMetadata()
-            self.metadata_extractor.prepare(const_metadata)
+            self.metadata_extractor.prepare(const_metadatas)
         self.input_buffer.append_on_new_data_callback(self.process, self.output_nr)
-        if processing.on_buffer_overflow_callback is not None:
+        if processings.on_buffer_overflow_callback is not None:
             self.input_buffer.append_on_buffer_overflow_callback(
-                processing.on_buffer_overflow_callback)
+                processings.on_buffer_overflow_callback)
         self._state = ProcessingRunner.State.READY
         self._state_lock = threading.Lock()
 
