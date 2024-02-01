@@ -906,10 +906,10 @@ void Us4OEMImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8
                                 const std::vector<uint16_t> &periods) {
     ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
     ARRUS_REQUIRES_TRUE(bitstreamId < bitstreamOffsets.size(), "The bitstream with the given id does not exists.");
-    if(bitstreamId == bitstreamOffsets.size()-1) {
-        // Allow to change the last bitstream size.
+    if(bitstreamId != bitstreamOffsets.size()-1) { 
         ARRUS_REQUIRES_EQUAL_IAE(levels.size(), bitstreamSizes.at(bitstreamId));
     }
+    // Allow to change the size of the last bitstream.
     setIOBitstreamForOffset(bitstreamOffsets.at(bitstreamId), levels, periods);
     bitstreamSizes[bitstreamId] = static_cast<uint16>(levels.size());
 }
