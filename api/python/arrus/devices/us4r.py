@@ -285,7 +285,7 @@ class Us4R(Device, Ultrasound):
 
     def get_dto(self):
         import arrus.utils.core
-        n_probes = self._handle.get_number_of_probes()
+        n_probes = self._handle.getNumberOfProbes()
         probes = []
         for i in range(n_probes):
             probe_model = arrus.utils.core.convert_to_py_probe_model(

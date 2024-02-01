@@ -142,6 +142,10 @@ public:
 
     [[nodiscard]] State getState() const override { return this->state; }
 
+    uint16 getNumberOfArrays() const override {
+        return ARRUS_SAFE_CAST(arrays.size(), ArrayId);
+    }
+
 private:
     std::mutex mutex;
     size_t position;
@@ -340,10 +344,6 @@ public:
      */
     [[nodiscard]] size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {
         return arrayDefs.get(arrayId).getOEMAddress(oem);
-    }
-
-    uint16 getNumberOfArrays() const override {
-        return ARRUS_SAFE_CAST(arrayDefs.size(), ArrayId);
     }
 
 private:

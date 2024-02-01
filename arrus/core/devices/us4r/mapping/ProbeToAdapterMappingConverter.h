@@ -39,6 +39,7 @@ public:
         // set tx rx sequence
         OpId nOps = ARRUS_SAFE_CAST(sequence.size(), OpId);
         TxRxParametersSequenceBuilder seqBuilder;
+        seqBuilder.setCommon(sequence);
         // std::vector<TxRxParameters> adapterSeq;
         std::vector<NdArray> adapterTxDelayProfiles;
         NdArray::Shape outputProfileShape = {nOps, adapterNChannels};
@@ -156,7 +157,7 @@ public:
 
     template<typename T>
     T getMaskedOrZero(T value, ChannelIdx channel, std::unordered_set<ChannelIdx> mask) {
-        if(setContains(mask, channel)) {
+        if(!setContains(mask, channel)) {
             return value;
         }
         else {

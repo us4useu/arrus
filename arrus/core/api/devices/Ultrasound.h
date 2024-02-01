@@ -3,10 +3,9 @@
 
 #include <memory>
 
-
 #include "arrus/core/api/devices/Device.h"
-#include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/framework/Buffer.h"
@@ -20,7 +19,7 @@ namespace arrus::devices {
 /**
  * An interface to the ultrasound device.
  */
-class Ultrasound: public Device {
+class Ultrasound : public Device {
 public:
     using Handle = std::unique_ptr<Ultrasound>;
 
@@ -52,7 +51,12 @@ public:
      * @param ordinal ordinal number of the probe to get
      * @return probe handle
      */
-    virtual Probe::RawHandle getProbe(Ordinal ordinal) = 0;
+    virtual Probe *getProbe(Ordinal ordinal) = 0;
+
+    /**
+     * Returns the number of probes that are connected to the system.
+     */
+    virtual int getNumberOfProbes() const = 0;
 
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;

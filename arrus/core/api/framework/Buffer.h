@@ -59,6 +59,11 @@ public:
     virtual size_t getPosition() = 0;
 
     virtual State getState() const = 0;
+
+    /**
+     * Returns the number of arrays each element of this buffer contains.
+     */
+    virtual uint16 getNumberOfArrays() const = 0;
 };
 
 /**
@@ -83,8 +88,6 @@ public:
      * @return a pointer to the buffer element
      */
     virtual std::shared_ptr<BufferElement> getElement(size_t i) = 0;
-
-
 
     /**
      * Returns size of a single buffer element, that is the number of values of a given data type.

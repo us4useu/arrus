@@ -47,7 +47,7 @@ public:
     upload(const ops::us4r::Scheme &scheme) override;
     Probe::RawHandle getProbe(Ordinal ordinal) override;
     void setParameters(const Parameters &params) override;
-
+    int getNumberOfProbes() const override;
 
 private:
     using Frame = std::vector<int16_t>;

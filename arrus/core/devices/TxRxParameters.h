@@ -99,7 +99,7 @@ public:
            << ", inverse: " << parameters.getTxPulse().isInverse();
         os << "; RX: ";
         os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
-        os << "sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
+        os << ", sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
         os << ", fs divider: " << parameters.getRxDecimationFactor() << ", padding: " << parameters.getRxPadding()[0]
            << ", " << parameters.getRxPadding()[1];
         os << ", rx delay: " << parameters.getRxDelay();
@@ -271,6 +271,18 @@ public:
     const TxRxParameters &getLastOp() const {
         ARRUS_REQUIRES_TRUE(parameters.size() != 0, "Array should not be empty");
         return parameters[parameters.size() - 1];
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const TxRxParametersSequence &sequence) {
+        os << "Sequence: ";
+        for(const auto &param: sequence.getParameters()) {
+            os << param << ", ";
+        }
+        os << " n repeats: " << sequence.getNRepeats() << ", ";
+        os << " SRI: " << arrus::toString(sequence.getSri()) << ", ";
+        os << " TGC curve: " << arrus::toString(sequence.getTgcCurve());
+        os << std::endl;
+        return os;
     }
 
 private:

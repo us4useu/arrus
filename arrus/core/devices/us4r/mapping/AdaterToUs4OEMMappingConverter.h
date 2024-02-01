@@ -140,6 +140,7 @@ public:
         SequenceByOEM fullApSeq(noems);// TX/RX sequences before splitting RX apertures.
         for (Ordinal oem = 0; oem < noems; ++oem) {
             us4r::TxRxParametersSequenceBuilder seqBuilder;
+            seqBuilder.setCommon(seq);
             uint16 i = 0;
             for (const auto &op : seq) {
                 us4r::TxRxParametersBuilder paramsBuilder{op};
@@ -150,6 +151,7 @@ public:
                 seqBuilder.addEntry(paramsBuilder.build());
                 ++i;
             }
+            fullApSeq.at(oem) = seqBuilder.build();
             // keep operations with empty tx or rx aperture - they are still a part of the larger operation
         }
         // creating 32-element subapertures

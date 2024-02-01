@@ -217,7 +217,7 @@ public:
     /**
      * Returns the number of probes that are connected to the system.
      */
-    virtual int getNumberOfProbes() = 0;
+    int getNumberOfProbes() const = 0;
 
     /**
      * Returns NOMINAL us4R device sampling frequency.
@@ -299,6 +299,14 @@ public:
     virtual const char* getBackplaneRevision() = 0;
 
     virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
+
+    /**
+     * Returns probe identified by given ordinal number.
+     *
+     * @param ordinal ordinal number of the probe to get
+     * @return probe handle
+     */
+    Probe* getProbe(Ordinal ordinal) override = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

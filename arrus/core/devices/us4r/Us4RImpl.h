@@ -129,7 +129,7 @@ public:
     Ordinal getFrameMetadataOEM(const us4r::IOSettings &settings);
 
     std::vector<unsigned short> getChannelsMask(Ordinal probeNumber) override;
-    int getNumberOfProbes() override;
+    int getNumberOfProbes() const override;
 
     Probe::RawHandle getProbe(Ordinal ordinal) override {
         return probes.at(ordinal).get();

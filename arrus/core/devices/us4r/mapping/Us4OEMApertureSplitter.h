@@ -61,7 +61,7 @@ public:
             ARRUS_REQUIRES_EQUAL_IAE(seqLength, seq.size());
         }
         Ordinal noems = ARRUS_SAFE_CAST(sequences.size(), Ordinal);
-        SequenceBuilderByOEM sequenceBuilders;
+        SequenceBuilderByOEM sequenceBuilders(noems);
         // Initialize builders.
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequenceBuilders.at(oem).setCommon(sequences.at(oem));

@@ -61,8 +61,14 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     // Log what probes will be masked
     for (size_t i = 0; i < this->channelsMask.size(); ++i) {
         const auto &mask = this->channelsMask.at(i);
-        this->logger->log(LogSeverity::INFO,
-                          format("The following Probe:{} channels will be masked: {}", i, arrus::toString(mask)));
+        if(mask.empty()) {
+            this->logger->log(LogSeverity::INFO, format("No channel masking applied on Probe:{}", i));
+        } else {
+            this->logger->log(LogSeverity::INFO,
+                          format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
+        }
+
+
     }
 }
 
@@ -393,9 +399,12 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     // Convert probe sequence -> OEM Sequences
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
+        std::cout << "PROBE: " << s << std::endl;
         auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
+        std::cout << "ADAPTER: " << as << std::endl;
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
         for (Ordinal oem = 0; oem < noems; ++oem) {
+            std::cout << "OEM:" << oem << " " << oemSeqs.at(oem) << std::endl;
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
         }
     }
@@ -917,6 +926,6 @@ Ordinal Us4RImpl::getFrameMetadataOEM(const IOSettings &settings) {
 }
 std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) { return channelsMask.at(probeNumber); }
 
-int Us4RImpl::getNumberOfProbes() { return probeSettings.size(); }
+int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
 
 }// namespace arrus::devices

@@ -3,8 +3,7 @@ import numpy as np
 import math
 from typing import Tuple
 
-from arrus.core import DeviceId
-from arrus.devices.device import DeviceType
+from arrus.devices.device import DeviceType, DeviceId
 
 DEVICE_TYPE = DeviceType("Probe")
 

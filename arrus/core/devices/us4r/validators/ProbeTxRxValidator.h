@@ -29,7 +29,7 @@ public:
     }
 
 private:
-    const ProbeModel &probeTx, probeRx;
+    ProbeModel probeTx, probeRx;
 };
 }// namespace arrus::devices
 

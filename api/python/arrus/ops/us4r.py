@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 import numpy as np
 from arrus.ops.operation import Operation
-from typing import Iterable, Dict, Union, List, Callable, Sequence
+from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional
 from arrus.framework import Constant
+from arrus.devices.device import parse_device_id, DeviceId
 
 
 @dataclass(frozen=True)
@@ -78,12 +79,12 @@ class Tx(Operation):
     :param speed_of_sound: assumed speed of sound [m/s]
     :param placement: id of the probe that should do perform TX
     """
-    aperture: typing.Union[np.ndarray, Aperture]
+    aperture: Union[np.ndarray, Aperture]
     excitation: Pulse
-    delays: typing.Optional[np.ndarray] = None
-    focus: typing.Optional[float] = None
-    angle: typing.Optional[float] = None
-    speed_of_sound: typing.Optional[float] = None
+    delays: Optional[np.ndarray] = None
+    focus: Optional[float] = None
+    angle: Optional[float] = None
+    speed_of_sound: Optional[float] = None
     placement: str = "Probe:0"
 
     def __post_init__(self):
@@ -147,7 +148,7 @@ class Rx(Operation):
       tx aperture center delay and burst factor.
     :param placement: id of the probe that should do this RX
     """
-    aperture: typing.Union[np.ndarray, Aperture]
+    aperture: Union[np.ndarray, Aperture]
     sample_range: tuple
     downsampling_factor: int = 1
     padding: tuple = (0, 0)
@@ -188,8 +189,8 @@ class TxRxSequence:
         frames. When None, the time between consecutive RF frames is \
         determined by the total pri only. [s]
     """
-    ops: typing.List[TxRx]
-    tgc_curve: typing.Union[np.ndarray, Iterable] = field(
+    ops: List[TxRx]
+    tgc_curve: Union[np.ndarray, Iterable] = field(
         default_factory=lambda: [])
     sri: float = None
     n_repeats: int = 1
@@ -220,6 +221,22 @@ class TxRxSequence:
         if len(sample_range) > 1:
             raise ValueError("All TX/RXs should acquire the same sample range.")
         return next(iter(sample_range))
+
+    def get_tx_probe_id_unique(self) -> DeviceId:
+        tx_probe_ids = {parse_device_id(op.tx.placement) for op in self.ops}
+        if(len(tx_probe_ids)) > 1:
+            raise ValueError(f"All TX/Rxs within this sequence: {self.name} "
+                             f"are expected to use the same TX probe, found: "
+                             f"{tx_probe_ids}")
+        return next(iter(tx_probe_ids))
+
+    def get_rx_probe_id_unique(self) -> DeviceId:
+        rx_probe_ids = {parse_device_id(op.rx.placement) for op in self.ops}
+        if(len(rx_probe_ids)) > 1:
+            raise ValueError(f"All TX/Rxs within this sequence: {self.name} "
+                             f"are expected to use the same RX probe, found: "
+                             f"{rx_probe_ids}")
+        return next(iter(rx_probe_ids))
 
 
 @dataclass(frozen=True)

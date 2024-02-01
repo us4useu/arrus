@@ -11,6 +11,8 @@ using namespace arrus::framework;
 // Impl.
 class Scheme::Impl {
 public:
+    Impl() = default;
+
     Impl(std::vector<TxRxSequence> txRxSequences, uint16 rxBufferSize,
          const DataBufferSpec &outputBuffer, WorkMode workMode,
          std::optional<DigitalDownConversion> ddc, const std::vector<NdArray> &constants)
@@ -35,17 +37,21 @@ public:
     [[nodiscard]] WorkMode getWorkMode() const { return workMode; }
     [[nodiscard]] const std::optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
     [[nodiscard]] const std::vector<NdArray> &getConstants() const { return constants; }
-    std::vector<TxRxSequence> const &getTxRxSequences() const {return txRxSequences;}
+    std::vector<TxRxSequence> const &getTxRxSequences() const { return txRxSequences; }
 
 private:
     friend class SchemeBuilder;
     std::vector<TxRxSequence> txRxSequences;
     uint16 rxBufferSize{2};
-    ::arrus::framework::DataBufferSpec outputBuffer;
+    DataBufferSpec outputBuffer;
     WorkMode workMode{WorkMode::HOST};
     std::optional<DigitalDownConversion> ddc;
-    std::vector<arrus::framework::NdArray> constants;
+    std::vector<NdArray> constants;
 };
+
+Scheme::Scheme() {
+    this->impl = UniqueHandle<Impl>::create();
+}
 
 // Scheme
 Scheme::Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const DataBufferSpec &outputBuffer, WorkMode workMode,
@@ -57,14 +63,14 @@ Scheme::Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const DataBufferS
 }
 Scheme::Scheme(const Scheme &o) = default;
 Scheme::Scheme(Scheme &&o)  noexcept = default;
-Scheme::~Scheme() {}
+Scheme::~Scheme() = default;
 Scheme &Scheme::operator=(const Scheme &o) = default;
 Scheme &Scheme::operator=(Scheme &&o) noexcept = default;
 
 const TxRxSequence & Scheme::getTxRxSequence() const {return impl->getTxRxSequence(); }
 const TxRxSequence & Scheme::getTxRxSequence(size_t ordinal) const {return impl->getTxRxSequence(ordinal); }
 const std::vector<TxRxSequence> &Scheme::getTxRxSequences() const {return impl->getTxRxSequences();}
-const std::vector<arrus::framework::NdArray> & Scheme::getConstants() const {return impl->getConstants(); }
+const std::vector<NdArray> & Scheme::getConstants() const {return impl->getConstants(); }
 const std::optional<DigitalDownConversion> & Scheme::getDigitalDownConversion() const { return impl->getDigitalDownConversion(); }
 Scheme::WorkMode Scheme::getWorkMode() const { return impl->getWorkMode(); }
 uint16 Scheme::getRxBufferSize() const { return impl->getRxBufferSize(); }
@@ -82,7 +88,7 @@ SchemeBuilder & SchemeBuilder::addSequence(TxRxSequence sequence) {
     return *this;
 }
 
-SchemeBuilder& SchemeBuilder::withOutputBufferDefinition(framework::DataBufferSpec spec) {
+SchemeBuilder& SchemeBuilder::withOutputBufferDefinition(DataBufferSpec spec) {
     this->scheme.impl->outputBuffer = spec;
     return *this;
 }

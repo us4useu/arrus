@@ -74,6 +74,10 @@ public:
     framework::NdArray &getData(ArrayId) override {
         throw ArrusException("get data (ordinal) for file device is not implemented.");
     }
+    uint16 getNumberOfArrays() const override {
+        return 1;
+    }
+
     arrus::framework::NdArray &getAllData() {return ndarray; }
     size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }

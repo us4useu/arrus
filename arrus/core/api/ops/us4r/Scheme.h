@@ -76,7 +76,7 @@ public:
      * TODO(0.12.0) Deprecated: please use Scheme::create instead
      */
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
-           WorkMode workMode, const std::vector<arrus::framework::NdArray> &constants)
+           WorkMode workMode, const std::vector<framework::NdArray> &constants)
         : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, constants) {}
 
     Scheme(const Scheme &o);
@@ -99,17 +99,20 @@ public:
 
 private:
     friend class SchemeBuilder;
-    Scheme() = default;
+    Scheme();
     class Impl;
     UniqueHandle<Impl> impl;
 };
 
 class SchemeBuilder {
+public:
+    SchemeBuilder() = default;
     SchemeBuilder& addSequence(TxRxSequence sequence);
     SchemeBuilder& withOutputBufferDefinition(framework::DataBufferSpec spec);
     SchemeBuilder& withRxBufferSize(uint16 rxBufferSize);
     SchemeBuilder& withWorkMode(Scheme::WorkMode mode);
     SchemeBuilder& withDigitalDownConversion(DigitalDownConversion ddc);
+    // TODO support constants
 
     Scheme build();
 private:

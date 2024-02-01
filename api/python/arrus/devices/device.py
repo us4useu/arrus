@@ -1,7 +1,7 @@
 """ Arrus device handle. """
 import abc
 import dataclasses
-from collections import Sequence
+from typing import Sequence
 
 
 @dataclasses.dataclass(frozen=True)

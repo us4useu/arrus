@@ -201,26 +201,27 @@ void FileImpl::trigger() {
 
 void FileImpl::setParameters(const Parameters &params) {
     std::unique_lock<std::mutex> lock(parametersMutex);
-    for(auto &item: params.items()) {
+    for (auto &item : params.items()) {
         auto &key = item.first;
         auto value = item.second;
-        if(key == "/sequence:0/begin") {
-            if(value < 0) {
+        if (key == "/sequence:0/begin") {
+            if (value < 0) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be not less than 0", key));
             }
             pendingSliceBegin = value;
-        }
-        else if(key == "/sequence:0/end") {
-            int currentNTx = (int)frameShape.get(1);
-            if(value >= currentNTx) {
+        } else if (key == "/sequence:0/end") {
+            int currentNTx = (int) frameShape.get(1);
+            if (value >= currentNTx) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be less than {}", key, currentNTx));
             }
             pendingSliceEnd = value;
-        }
-        else {
+        } else {
             throw ::arrus::IllegalArgumentException("Unsupported setting: " + key);
         }
     }
+}
+int FileImpl::getNumberOfProbes() const {
+    return 1;
 }
 
 float FileImpl::getSamplingFrequency() const { return 65e6; }
