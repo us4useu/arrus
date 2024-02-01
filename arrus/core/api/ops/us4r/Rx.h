@@ -29,8 +29,9 @@ public:
        devices::DeviceId placement = devices::DeviceId(devices::DeviceType::Probe, 0))
         : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)), downsamplingFactor(downsamplingFactor),
           padding(std::move(padding)), placement(placement) {
-        ARRUS_REQUIRES_TRUE_IAE(placement.getDeviceType() == devices::DeviceType::Probe,
-                                "Only probe can be set as a placement for TX.");
+        if(placement.getDeviceType() != devices::DeviceType::Probe) {
+            throw IllegalArgumentException("Only probe can be set as a placement for RX.");
+        }
     }
 
     const std::vector<bool> &getAperture() const { return aperture; }

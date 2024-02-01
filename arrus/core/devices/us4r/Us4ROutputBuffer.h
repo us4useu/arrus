@@ -29,12 +29,12 @@ class Us4ROutputBufferArrayDef {
 public:
     Us4ROutputBufferArrayDef(framework::NdArrayDef definition, size_t address, std::vector<size_t> oemSizes)
         : definition(std::move(definition)), address(address), oemSizes(std::move(oemSizes)) {
-            size_t oemAddress = 0;
-            for(const auto size: this->oemSizes) {
-                oemAddresses.push_back(oemAddress);
-                oemAddress += size;
-            }
+        size_t oemAddress = 0;
+        for (const auto size : this->oemSizes) {
+            oemAddresses.push_back(oemAddress);
+            oemAddress += size;
         }
+    }
 
     size_t getAddress() const { return address; }
     const framework::NdArrayDef &getDefinition() const { return definition; }
@@ -65,7 +65,11 @@ public:
     using SharedHandle = std::shared_ptr<Us4ROutputBufferElement>;
 
     Us4ROutputBufferElement(size_t position, Tuple<framework::NdArray> arrays, Accumulator filledAccumulator)
-        : position(position), arrays(arrays), filledAccumulator(filledAccumulator) {}
+        : position(position), arrays(arrays), filledAccumulator(filledAccumulator) {
+        const auto &arr = arrays.getValues();
+        size = std::accumulate(std::begin(arr), std::end(arr), 0,
+                               [](const auto &s, const framework::NdArray &b) { return s + b.nbytes(); });
+    }
 
     void release() override {
         std::unique_lock<std::mutex> guard(mutex);
@@ -336,6 +340,10 @@ public:
      */
     [[nodiscard]] size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {
         return arrayDefs.get(arrayId).getOEMAddress(oem);
+    }
+
+    uint16 getNumberOfArrays() const override {
+        return ARRUS_SAFE_CAST(arrayDefs.size(), ArrayId);
     }
 
 private:

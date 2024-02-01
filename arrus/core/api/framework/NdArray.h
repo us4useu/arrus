@@ -37,9 +37,9 @@ public:
 
     NdArrayDef(Shape shape, DataType dataType) : shape(std::move(shape)), dataType(dataType) {}
 
-    [[nodiscard]] DataType getDataType() const { return dataType; }
+    DataType getDataType() const { return dataType; }
 
-    [[nodiscard]] const Shape &getShape() const { return shape; }
+    const Shape &getShape() const { return shape; }
 
     size_t getSize() const {return shape.product()*getDataTypeSize(dataType); }
 
@@ -75,7 +75,7 @@ public:
         devices::DeviceId placement{devices::DeviceType::CPU, 0};
         NdArray result{shape, dataType, placement};
         if (!vector.empty()) {
-            std::memcpy(result.ptr, (char *) vector.data(), result.nBytes);
+            std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
         }
         return std::move(result);
     }
@@ -86,44 +86,44 @@ public:
         : shape(std::move(shape)), dataType(dataType), placement(std::move(placement)), isView(false),
           name(std::move(name)) {
 
-        this->nBytes = this->shape.product() * getDataTypeSize(this->dataType);
-        this->ptr = new char[this->nBytes];
-        std::memset((char *) (this->ptr), 0, this->nBytes);
+        this->sizeBytes = this->shape.product() * getDataTypeSize(this->dataType);
+        this->ptr = new char[this->sizeBytes];
+        std::memset((char *) (this->ptr), 0, this->sizeBytes);
     }
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement)
         : ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement), isView(true) {
-        this->nBytes = this->shape.product() * getDataTypeSize(this->dataType);
+        this->sizeBytes = this->shape.product() * getDataTypeSize(this->dataType);
     }
 
     NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement, std::string name,
             bool isView)
         : shape(std::move(shape)), dataType(dataType), placement(placement), isView(isView), name(std::move(name)) {
-        this->nBytes = this->shape.product() * getDataTypeSize(this->dataType);
+        this->sizeBytes = this->shape.product() * getDataTypeSize(this->dataType);
         if (isView) {
             this->ptr = ptr;
         } else {
-            this->ptr = new char[this->nBytes];
-            std::memcpy(this->ptr, ptr, this->nBytes);
+            this->ptr = new char[this->sizeBytes];
+            std::memcpy(this->ptr, ptr, this->sizeBytes);
         }
     }
 
     NdArray(const NdArray &other)
         : shape(std::move(other.shape)), dataType(other.dataType), placement(other.placement), isView(other.isView),
-          name(other.name), nBytes(other.nBytes) {
+          name(other.name), sizeBytes(other.sizeBytes) {
         if (other.isView) {
             this->ptr = other.ptr;
         } else {
-            this->ptr = new char[this->nBytes];
-            std::memcpy(this->ptr, other.ptr, this->nBytes);
+            this->ptr = new char[this->sizeBytes];
+            std::memcpy(this->ptr, other.ptr, this->sizeBytes);
         }
     }
 
     NdArray(NdArray &&other)
         : ptr(other.ptr), shape(std::move(other.shape)), dataType(other.dataType), placement(other.placement),
-          isView(other.isView), name(other.name), nBytes(other.nBytes) {
+          isView(other.isView), name(other.name), sizeBytes(other.sizeBytes) {
         other.ptr = nullptr;
-        other.nBytes = 0;
+        other.sizeBytes = 0;
     }
 
     NdArray &operator=(NdArray &&rhs) noexcept {
@@ -137,13 +137,13 @@ public:
 
         if (!this->isView) {
             delete (char *) this->ptr;
-            this->nBytes = 0;
+            this->sizeBytes = 0;
         }
         this->ptr = rhs.ptr;
-        this->nBytes = rhs.nBytes;
+        this->sizeBytes = rhs.sizeBytes;
         this->isView = rhs.isView;
         rhs.ptr = nullptr;
-        rhs.nBytes = 0;
+        rhs.sizeBytes = 0;
 
         return *this;
     }
@@ -161,14 +161,14 @@ public:
 
         if (!this->isView) {
             delete (char *) this->ptr;
-            this->nBytes = 0;
+            this->sizeBytes = 0;
         }
         if (!rhs.isView) {
-            this->nBytes = rhs.nBytes;
-            this->ptr = new char[this->nBytes];
-            std::memcpy(this->ptr, rhs.ptr, this->nBytes);
+            this->sizeBytes = rhs.sizeBytes;
+            this->ptr = new char[this->sizeBytes];
+            std::memcpy(this->ptr, rhs.ptr, this->sizeBytes);
         } else {
-            this->nBytes = rhs.nBytes;
+            this->sizeBytes = rhs.sizeBytes;
             this->ptr = rhs.ptr;
         }
         this->isView = rhs.isView;
@@ -182,7 +182,7 @@ public:
     }
 
     virtual ~NdArray() {
-        if (!isView && this->ptr != nullptr && this->nBytes > 0) {
+        if (!isView && this->ptr != nullptr && this->sizeBytes > 0) {
             // NOTE: migration to new framework API: the non-view ndarrays will have the char* ptr property.
             delete[] (char *) ptr;
         }
@@ -332,6 +332,10 @@ public:
         return result;
     }
 
+    size_t nbytes() const {
+        return sizeBytes;
+    }
+
 private:
     void *ptr;
     Shape shape;
@@ -339,7 +343,7 @@ private:
     devices::DeviceId placement;
     bool isView;
     std::string name{};
-    size_t nBytes;
+    size_t sizeBytes;
 };
 
 // Specialziations.

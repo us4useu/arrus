@@ -173,9 +173,7 @@ class BufferElementLockBased:
 
 
 class Buffer:
-
-    def __init__(self, n_elements, shape, dtype, math_pkg, type="locked"):
-        element_type = None
+    def __init__(self, name: str, n_elements, shape, dtype, math_pkg, type="locked"):
         if type == "locked":
             element_type = BufferElementLockBased
         elif type == "async":
@@ -185,6 +183,7 @@ class Buffer:
         self.input_array = [math_pkg.zeros(shape, dtype=dtype) for _ in range(n_elements)]
         self.elements = [element_type(i, data) for i, data in enumerate(self.input_array)]
         self.n_elements = n_elements
+        self.name = name
 
     def acquire(self, pos):
         element = self.elements[pos]
@@ -203,79 +202,120 @@ class ProcessingRunner:
 
     Currently, the input buffer should be located in CPU device,
     output buffer should be located on GPU.
+
+    :param processings: sequence of processings
+    :param metadatas: sequence of metadata objects
     """
 
     class State(Enum):
         READY = 1
         CLOSED = 2
 
-    def __init__(self, input_buffer, const_metadatas, processings):
+    def __init__(self, input_buffer, metadatas, processings):
         import cupy as cp
         # Initialize pipeline.
         self.cp = cp
-        # Pin input buffer.
+        # Pin input (host) buffer.
         self.input_buffer = self.__register_buffer(input_buffer)
-        default_buffer = ProcessingBuffer(size=2, type="locked")
+        DEFAULT_BUFF = ProcessingBuffer(size=2, type="locked")
 
-        in_buffer_spec = processings.input_buffer
-        out_buffer_spec = processings.output_buffer
-        in_buffer_spec = in_buffer_spec if in_buffer_spec is not None else default_buffer
-        out_buffer_spec = out_buffer_spec if out_buffer_spec is not None else default_buffer
-        self.gpu_buffer = Buffer(n_elements=in_buffer_spec.size,
-                                 shape=const_metadatas.input_shape,
-                                 dtype=const_metadatas.dtype, math_pkg=cp,
-                                 type=in_buffer_spec.type)
-        self.pipeline = processings.pipeline
+        self.in_buffers_gpu = []
+        self.pipelines = []
+        self.out_metadatas = []  #  sequence array, pipeline array -> metadata
+        self.out_buffers = []  # sequence array, pipeline array -> buffer
+        # host PC -> GPU RAM stream
         self.data_stream = cp.cuda.Stream(non_blocking=True)
+        # kernel execution stream
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
-        self.out_metadata = processings.pipeline.prepare(const_metadatas)
-        self.out_buffers = [Buffer(n_elements=out_buffer_spec.size, shape=m.input_shape,
-                                   dtype=m.dtype, math_pkg=np,
-                                   type=out_buffer_spec.type)
-                            for m in self.out_metadata]
-        # Wait for all the initialization done in by the Pipeline.
+
+        self.n_arrays = len(metadatas)
+        n_gpu_buffer_elements = [p.input_buffer.size if p.input_buffer is not None else DEFAULT_BUFF.size
+                                 for p in processings]
+
+        if len(n_gpu_buffer_elements) > 1:
+            raise ValueError("Each GPU buffer should have exactly the same "
+                             "number of elements")
+        self.n_gpu_buffer_elements = next(iter(n_gpu_buffer_elements))
+
+        # Prepare buffers and initialize pipelines.
+        for metadata, processing in zip(metadatas, processings):
+            in_buffer_def = processing.input_buffer
+            out_buffer_def = processing.output_buffer
+            in_buffer_def = in_buffer_def if in_buffer_def is not None else DEFAULT_BUFF
+            out_buffer_def = out_buffer_def if out_buffer_def is not None else DEFAULT_BUFF
+            gpu_buffer = Buffer(
+                name=f"{metadata.context.sequence.name}/Output:0",
+                n_elements=in_buffer_def.size,
+                type=in_buffer_def.type,
+                shape=metadata.input_shape,
+                dtype=metadata.dtype,
+                math_pkg=cp)
+            pipeline = processing.pipeline
+
+            out_metadata = pipeline.prepare(metadata)
+            outs = [Buffer(
+                name=m.name,
+                n_elements=out_buffer_def.size,
+                type=out_buffer_def.type,
+                shape=m.input_shape,
+                dtype=m.dtype,
+                math_pkg=np)
+                for m in out_metadata]
+
+            self.out_metadatas.extend(out_metadata)
+            self.out_buffers.append(outs)
+
+            self.in_buffers_gpu.append(gpu_buffer)
+            self.pipelines.append(pipeline)
+
         cp.cuda.Stream.null.synchronize()
         # Pin output buffers.
         self.out_buffers = self.__register_buffer(self.out_buffers)
         if not isinstance(self.out_buffers, Iterable):
             self.out_buffers = (self.out_buffers,)
-        self._process_lock = threading.Lock()
-        if processings.callback is not None:
+
+        # The below checks, if all processings have the callback,
+        # or None of them
+        is_callback = {p.callback is not None for p in processings}
+        if len(is_callback) > 1:
+            raise ValueError(
+                "Within a single scheme, all processings should be "
+                "defined using Pipelines or callbacks only - "
+                "mixing these two concepts is not allowed.")
+        is_callback = next(iter(is_callback))
+        if is_callback:
             self.user_out_buffer = None
             self.callback = processings.callback
         else:
             self.user_out_buffer = queue.Queue(maxsize=1)
-            self.callback = self.default_callback
+            self.callback = self.default_processing_output_callback
         self._gpu_i = 0
-        self._out_i = [0] * len(self.out_buffers)
-        self.i = 0
-        # Metadata extraction.
-        self.is_extract_metadata = processings.extract_metadata
-        if self.is_extract_metadata:
-            self.metadata_extractor = ExtractMetadata()
-            self.metadata_extractor.prepare(const_metadatas)
-        self.input_buffer.append_on_new_data_callback(self.process, self.output_nr)
+        self._out_i = [[0]*len(self.out_buffers)]*len(self.n_arrays)
+
+        self.input_buffer.append_on_new_data_callback(self.process)
         if processings.on_buffer_overflow_callback is not None:
             self.input_buffer.append_on_buffer_overflow_callback(
                 processings.on_buffer_overflow_callback)
         self._state = ProcessingRunner.State.READY
+        self._process_lock = threading.Lock()
         self._state_lock = threading.Lock()
 
     @property
     def outputs(self):
-        const_metadata = None
-        if len(self.out_metadata) == 1:
-            const_metadata = self.out_metadata[0]
+        if len(self.out_metadatas) == 1:
+            # Backward compatibility
+            const_metadata = self.out_metadatas[0]
         else:
-            const_metadata = self.out_metadata
+            const_metadata = self.out_metadatas
+
         if self.user_out_buffer is not None:
             return self.user_out_buffer, const_metadata
         else:
             return const_metadata
 
-    def default_callback(self, elements):
+    def default_processing_output_callback(self, elements):
         try:
-            user_elements = [None] * len(elements)
+            user_elements = [None]*len(elements)
             for i, element in enumerate(elements):
                 user_elements[i] = element.data.copy()
                 element.release()
@@ -289,34 +329,29 @@ class ProcessingRunner:
             print("Unknown exception")
 
     def process(self, input_element):
+        out_elements = []
         with self._process_lock:
-            if self.is_extract_metadata:
-                metadata = self.metadata_extractor.process(input_element.data)
-            gpu_element = self.gpu_buffer.acquire(self._gpu_i)
-            gpu_array = gpu_element.data
-            self._gpu_i = (self._gpu_i + 1) % self.gpu_buffer.n_elements
-            gpu_array.set(input_element.data, stream=self.data_stream)
-            self.data_stream.launch_host_func(self.__release, input_element)
-
-            gpu_data_ready_event = self.data_stream.record()
-            self.processing_stream.wait_event(gpu_data_ready_event)
-
-            out_elements = []
-            with self.processing_stream:
-                results = self.pipeline(gpu_array)
-                # Write each result gpu array to given output array
-                for i, (result, out_buffer) in enumerate(zip(results, self.out_buffers)):
-                    out_i = self._out_i[i]
-                    out_element = out_buffer.elements[out_i]
-                    self._out_i[i] = (out_i + 1) % out_buffer.n_elements
-                    out_element.acquire()
-                    # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
-                    out_element.data[:] = result.get()
-                    out_elements.append(out_element)
-            if self.is_extract_metadata:
-                out_elements.insert(0, metadata)
-            self.__release(gpu_element)
+            for array_id, array in enumerate(input_element.arrays):
+                gpu_element = self.in_buffers_gpu[array_id].acquire(self._gpu_i)
+                gpu_array = gpu_element.data
+                gpu_array.set(input_element.data, stream=self.data_stream)
+                self.data_stream.launch_host_func(self.__release, input_element)
+                gpu_data_ready_event = self.data_stream.record()
+                self.processing_stream.wait_event(gpu_data_ready_event)
+                with self.processing_stream:
+                    results = self.pipelines[array_id](gpu_array)
+                    # Write each result gpu array to the given output array
+                    for element_id, (result, out_buffer) in enumerate(zip(results, self.out_buffers[array_id])):
+                        out_i = self._out_i[array_id][element_id]
+                        out_element = out_buffer.elements[out_i]
+                        self._out_i[array_id][element_id] = (out_i + 1) % out_buffer[array_id].n_elements
+                        out_element.acquire()
+                        # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
+                        out_element.data[:] = result.get()
+                        out_elements.append(out_element)
+                self.__release(gpu_element)
             self.callback(out_elements)
+            self._gpu_i = (self._gpu_i+1) % self.n_gpu_buffer_elements
 
     def close(self):
         with self._state_lock:
@@ -340,8 +375,7 @@ class ProcessingRunner:
             buffers = (buffers,)
         for buffer in buffers:
             for element in buffer.elements:
-                cp.cuda.runtime.hostRegister(element.data.ctypes.data,
-                                             element.size, 1)
+                cp.cuda.runtime.hostRegister(element.data.ctypes.data, element.size, 1)
         if len(buffers) == 1:
             buffers = next(iter(buffers))
         return buffers
@@ -578,7 +612,11 @@ class Pipeline:
             self._is_last_endpoint = False
         else:
             self._is_last_endpoint = True
+        # Set metadata name
+        for i, m in enumerate(metadatas):
+            m._name = f"{self.name}/Output:{i}"
         return metadatas
+
 
     def set_placement(self, device):
         """
@@ -653,6 +691,10 @@ class Pipeline:
 
 @dataclasses.dataclass(frozen=True)
 class ProcessingBuffer:
+    """
+    :param size: the number of elements in the buffer
+    :param type: buffer type ('locked')
+    """
     size: int
     type: str
     # TODO: placement
@@ -666,7 +708,6 @@ class Processing:
     def __init__(
             self, pipeline: Pipeline,
             callback: Callable[[Sequence[Union[BufferElement, BufferElementLockBased]]], None] = None,
-            extract_metadata: bool = False,
             input_buffer: ProcessingBuffer = None,
             output_buffer: ProcessingBuffer = None,
             on_buffer_overflow_callback=None):
@@ -674,7 +715,6 @@ class Processing:
         self._pipeline_name = _get_default_op_name(self.pipeline, 0)
         self._pipeline_param_names, self._param_defs = self._determine_params()
         self.callback = callback
-        self.extract_metadata = extract_metadata
         self.input_buffer = input_buffer
         self.output_buffer = output_buffer
         self.on_buffer_overflow_callback = on_buffer_overflow_callback

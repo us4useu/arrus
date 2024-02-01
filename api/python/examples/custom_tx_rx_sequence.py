@@ -92,15 +92,15 @@ def main():
         )
         # Upload the scheme on the us4r-lite device.
         buffer, metadata = sess.upload(scheme)
-        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
+        # us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
         # Created 2D image display.
-        display = Display2D(metadata=metadata, value_range=(-100, 100))
+        # display = Display2D(metadata=metadata, value_range=(-100, 100))
         # Start the scheme.
-        sess.start_scheme()
+        # sess.start_scheme()
         # Start the 2D display.
         # The 2D display will consume data put the the input queue.
         # The below function blocks current thread until the window is closed.
-        display.start(buffer)
+        # display.start(buffer)
 
         print("Display closed, stopping the script.")
 

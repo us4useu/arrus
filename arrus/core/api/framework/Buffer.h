@@ -42,7 +42,6 @@ public:
      */
     virtual NdArray& getData() = 0;
 
-
     /**
      * Returns the size of this buffer element.
      *
@@ -84,6 +83,8 @@ public:
      * @return a pointer to the buffer element
      */
     virtual std::shared_ptr<BufferElement> getElement(size_t i) = 0;
+
+
 
     /**
      * Returns size of a single buffer element, that is the number of values of a given data type.

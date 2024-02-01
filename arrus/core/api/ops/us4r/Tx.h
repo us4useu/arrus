@@ -24,8 +24,9 @@ public:
 	 */
     Tx(std::vector<bool> aperture, std::vector<float> delays, const Pulse &excitation, devices::DeviceId placement)
         : aperture(std::move(aperture)), delays(std::move(delays)), excitation(excitation), placement(placement) {
-        ARRUS_REQUIRES_TRUE_IAE(placement.getDeviceType() == devices::DeviceType::Probe,
-                                "Only probe can be set as a placement for TX.");
+        if(placement.getDeviceType() != devices::DeviceType::Probe) {
+            throw IllegalArgumentException("Only probe can be set as a placement for TX.");
+        }
     }
 
     Tx(std::vector<bool> aperture, std::vector<float> delays, const Pulse &excitation)
