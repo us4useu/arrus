@@ -282,7 +282,10 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     }
     // Create output buffer.
     Us4ROutputBufferBuilder builder;
-    this->buffer = builder.setStopOnOverflow(stopOnOverflow).setLayoutTo(buffers).build();
+    this->buffer = builder.setStopOnOverflow(stopOnOverflow)
+                          .setNumberOfElements(scheme.getOutputBuffer().getNumberOfElements())
+                          .setLayoutTo(buffers)
+                          .build();
     registerOutputBuffer(this->buffer.get(), buffers, workMode);
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
     this->oemBuffers = std::move(buffers);

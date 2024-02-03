@@ -443,6 +443,11 @@ public:
         return *this;
     }
 
+    Us4ROutputBufferBuilder &setNumberOfElements(unsigned n) {
+        nElements = n;
+        return *this;
+    }
+
     Us4ROutputBufferBuilder &setLayoutTo(const std::vector<Us4OEMBuffer> &buffers) {
         if (buffers.empty() || buffers.at(0).getNumberOfArrays() == 0) {
             // No arrays are acquired here.
