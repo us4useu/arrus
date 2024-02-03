@@ -477,8 +477,8 @@ public:
                 const auto ndarrayDef = oemArrayDef.getDefinition();
                 ARRUS_REQUIRES_TRUE(ndarrayDef.getDataType() == Us4ROutputBuffer::ARRAY_DATA_TYPE,
                                     "Unexpected OEM array data type.");
-                partShapes[arrayId][oem] = ndarrayDef.getShape();
-                oemSizes[arrayId][oem] = oemArrayDef.getSize();
+                partShapes.at(arrayId).at(oem) = ndarrayDef.getShape();
+                oemSizes.at(arrayId).at(oem) = oemArrayDef.getSize();
             }
         }
         // Concatenate shape of each array (concatenate array elements produced by each us4OEM)
@@ -517,14 +517,12 @@ private:
         size_t chAx = ref.size() - 1;
         constexpr size_t sampAx = 0;
         auto nCh = static_cast<unsigned>(ref[chAx]);
-        unsigned nSamples = 0;
         for (size_t i = pos + 1; i < parts.size(); ++i) {
             const auto &part = parts.at(i);
             ARRUS_REQUIRES_TRUE_IAE(nCh == part.get(chAx),
                                     "Each us4OEM buffer element should have the same number of channels.");
-            nSamples += static_cast<unsigned>(part.get(sampAx));
+            ref[sampAx] += static_cast<unsigned>(part.get(sampAx));
         }
-        ref[sampAx] = nSamples;
         return framework::NdArray::Shape{ref};
     }
     Tuple<Us4ROutputBufferArrayDef> arrayDefs;

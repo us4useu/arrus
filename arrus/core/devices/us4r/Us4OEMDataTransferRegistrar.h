@@ -51,9 +51,9 @@ public:
         dstNElements = dst->getNumberOfElements();
         nTransfersPerElement = getNumberOfTransfers();
         // Number of transfer src points.
-        srcNTransfers = nTransfersPerElement*srcNElements;// Should be <= 256
+        srcNTransfers = nTransfersPerElement * srcNElements;// Should be <= 256
         // Number of transfer dst points.
-        dstNTransfers = nTransfersPerElement*dstNElements;// Can be > 256
+        dstNTransfers = nTransfersPerElement * dstNElements;// Can be > 256
 
         ARRUS_REQUIRES_AT_MOST(srcNTransfers, MAX_N_TRANSFERS, "Exceeded maximum number of transfers.");
 
@@ -67,9 +67,8 @@ public:
             // nTransferDst == nTransferSrc
             strategy = 0;
         }
-        this->logger->log(LogSeverity::DEBUG, format("Us4OEM:{}, transfer strategy: {}",
-                                                     us4oem->getDeviceId().getOrdinal(),
-                                                     strategy));
+        this->logger->log(LogSeverity::DEBUG,
+                          format("Us4OEM:{}, transfer strategy: {}", us4oem->getDeviceId().getOrdinal(), strategy));
     }
 
     [[nodiscard]] size_t getNumberOfTransfers() const {
@@ -116,7 +115,7 @@ public:
                 size_t source = src.getArrayAddressRelative(arrayId);
                 size_t destination = dst->getArrayAddressRelative(arrayId, oem);
                 size_t size = 0;
-                uint16 firing = parts[0].getEntryId(); // the firing that finishes given transfer
+                uint16 firing = parts[0].getEntryId();// the firing that finishes given transfer
                 for (auto &part : parts) {
                     ARRUS_REQUIRES_TRUE_E(part.getSize() <= MAX_TRANSFER_SIZE,
                                           ArrusException(format("A single frame cannot exceed {} bytes, got: {}",
@@ -133,6 +132,7 @@ public:
                 if (size > 0) {
                     transfers.emplace_back(destination, source, size, firing);
                 }
+                result.emplace_back(transfers);
             }
         }
         return result;
@@ -141,7 +141,7 @@ public:
     void pageLockDstMemory() {
         for (uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx + 1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx);
-            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
+            size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress();// byte-addressed
             for (const auto &arrayTransfers : elementTransfers) {
                 for (auto &transfer : arrayTransfers) {
                     uint8 *dst = addressDst + transfer.destination;
@@ -206,8 +206,8 @@ public:
 // (nDst > 256)
 #define ARRUS_ON_NEW_DATA_CALLBACK_strategy_2                                                                          \
     uint16 nextElementIdx = (int16) ((currentDstIdx + srcNElements) % dstNElements);                                   \
-    auto nextDstAddress = dstBuffer->getAddress(nextElementIdx);                                        \
-    nextDstAddress += transfer.destination;                                                                                \
+    auto nextDstAddress = dstBuffer->getAddress(nextElementIdx);                                                       \
+    nextDstAddress += transfer.destination;                                                                            \
     ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src, false);
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy)                                                                   \
@@ -226,17 +226,17 @@ public:
     void scheduleTransfers() {
         // Schedule transfers only from the start points (nSrc calls), dst pointers will be incremented
         // appropriately (if necessary).
-        size_t transferIdx = 0; // global transfer idx
-        uint16 elementFirstFiring = 0; // NOTE: global, counted from 0
+        size_t transferIdx = 0;       // global transfer idx
+        uint16 elementFirstFiring = 0;// NOTE: global, counted from 0
         for (int16 srcIdx = 0; srcIdx < int16(srcNElements); ++srcIdx) {
-            const auto& element = srcBuffer.getElement(srcIdx);
+            const auto &element = srcBuffer.getElement(srcIdx);
             size_t addressSrc = element.getAddress();// bytes addressed
             uint16 elementLastFiring = element.getFiring();
             // for each element's part transfer:
-            for(const auto &arrayTransfers: elementTransfers) {
+            for (const auto &arrayTransfers : elementTransfers) {
                 for (size_t localIdx = 0; localIdx < arrayTransfers.size(); ++localIdx) {
                     auto &transfer = arrayTransfers[localIdx];
-                    size_t src = addressSrc + transfer.source; // used by callback strategy 2
+                    size_t src = addressSrc + transfer.source;// used by callback strategy 2
                     size_t transferSize = transfer.size;
                     // transfer.firing - firing offset within element
                     uint16 transferLastFiring = elementFirstFiring + transfer.firing;

@@ -251,7 +251,6 @@ class ProcessingRunner:
                 dtype=metadata.dtype,
                 math_pkg=cp)
             pipeline = processing.pipeline
-
             out_metadata = pipeline.prepare(metadata)
             outs = [Buffer(
                 name=m.name,
