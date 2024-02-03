@@ -66,7 +66,7 @@ class DataBufferElement:
         arrays = []
         for i in range(element.getNumberOfArrays()):
             ndarray = element.getData(i)
-            if ndarray.getDataType() != arrus.core.NdArray.DataType_INT16:
+            if ndarray.getDataType() != arrus.core.NdArrayDef.DataType_INT16:
                 raise ValueError("Currently output data type int16 is supported only.")
             addr = arrus.core.castToInt(ndarray.getInt16())
             ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))

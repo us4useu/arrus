@@ -202,8 +202,8 @@ public:
 
         ARRUS_REQUIRES_TRUE(noems <= 16, "Currently Us4R data buffer supports up to 16 OEMs.");
 
-        Accumulator elementReadyPattern = createElementReadyPattern(arrays, noems);
-        size_t elementSize = calculateElementSize(arrays);
+        Accumulator elementReadyPattern = createElementReadyPattern(arrayDefs, noems);
+        size_t elementSize = calculateElementSize(arrayDefs);
         try {
             size_t totalSize = elementSize * nElements;
             getDefaultLogger()->log(
@@ -211,7 +211,7 @@ public:
                 format("Allocating {} ({}, {}) bytes of memory", totalSize, elementSize, nElements));
             dataBuffer = reinterpret_cast<DataType *>(operator new[](totalSize, std::align_val_t(ALIGNMENT)));
             getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
-            createElements(arrays, elementReadyPattern, nElements, elementSize);
+            createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
             ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
             getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
@@ -458,7 +458,7 @@ public:
 
         std::vector<Us4ROutputBufferArrayDef> result;
         // Array -> shape
-        std::vector<framework::NdArrayDef::Shape> shapes(nArrays);
+        std::vector<framework::NdArrayDef::Shape> shapes;
         // Array -> OEM -> shape
         std::vector<std::vector<framework::NdArrayDef::Shape>> partShapes(nArrays);
         // Array -> OEM -> size
@@ -481,16 +481,17 @@ public:
                 oemSizes[arrayId][oem] = oemArrayDef.getSize();
             }
         }
-        // Concatenate shapes
+        // Concatenate shape of each array (concatenate array elements produced by each us4OEM)
         for (const auto &arrayShapes : partShapes) {
             shapes.emplace_back(std::move(concatenate(arrayShapes)));
         }
         size_t address = 0;
         for (ArrayId arrayId = 0; arrayId < nArrays; ++arrayId) {
-            framework::NdArrayDef definition{shapes[arrayId], Us4ROutputBuffer::ARRAY_DATA_TYPE};
-            result.emplace_back(definition, address, oemSizes[arrayId]);
+            framework::NdArrayDef definition{shapes.at(arrayId), Us4ROutputBuffer::ARRAY_DATA_TYPE};
+            result.emplace_back(definition, address, oemSizes.at(arrayId));
             address = definition.getSize();
         }
+
         arrayDefs = Tuple<Us4ROutputBufferArrayDef>(result);
         return *this;
     }

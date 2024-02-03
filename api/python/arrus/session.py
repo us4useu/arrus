@@ -41,11 +41,11 @@ class AbstractSession(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_device(self, id: str):
+    def get_device(self, path: str):
         """
         Returns a device located at given path.
 
-        :param id: a path to a device, for example '/Us4R:0'
+        :param path: a path to a device, for example '/Us4R:0'
         :return: a device located in a given path.
         """
         raise ValueError("Tried to access an abstract method.")
@@ -144,14 +144,14 @@ class Session(AbstractSession):
         # Constant metadata
         # NOTE: the below should be called after session_handle.upload()
         us_device.set_tgc_and_context(sequences, self.medium)
-        metadatas = {}
+        metadatas = []
 
         for i, (raw_seq, seq) in enumerate(zip(raw_seqs, sequences)):
             data_description = us_device.get_data_description(upload_result, raw_seq, array_id=i)
             # -- Constant metadata
             # --- Frame acquisition context
             fac = self._create_frame_acquisition_context(
-                sequences, raw_seq, us_device_dto, medium, tx_delay_constants)
+                seq, raw_seq, us_device_dto, medium, tx_delay_constants)
             input_shape = buffer.elements[0].data.shape
             is_iq_data = scheme.digital_down_conversion is not None
             const_metadata = arrus.metadata.ConstMetadata(
@@ -159,7 +159,7 @@ class Session(AbstractSession):
                 input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
                 version=arrus.__version__
             )
-            metadatas[seq.name] = const_metadata
+            metadatas.append(const_metadata)
 
         # numpy/cupy processing initialization
         if processings is not None:
@@ -173,7 +173,6 @@ class Session(AbstractSession):
                     processing = _imaging.Processing(
                         pipeline=processing,
                         callback=None,
-                        extract_metadata=False
                     )
                 if isinstance(processing, _imaging.Processing):
                     runner_processings.append(processing)
