@@ -438,7 +438,9 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
                 arrayStartAddress = outputAddress;
             }
         }
-        builder.add(Us4OEMBufferElement{elementStartAddress, outputAddress-elementStartAddress, entryId});
+        // entryId-1, because the firing should point to the last firing of this element
+        ARRUS_REQUIRES_TRUE(entryId > 0, "Empty sequences are not supported");
+        builder.add(Us4OEMBufferElement{elementStartAddress, outputAddress-elementStartAddress, (uint16)(entryId-1)});
         elementStartAddress = outputAddress;
     }
     return builder.build();
