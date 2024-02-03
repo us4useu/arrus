@@ -269,9 +269,13 @@ class ProcessingRunner:
 
         cp.cuda.Stream.null.synchronize()
         # Pin output buffers.
-        self.out_buffers = self.__register_buffer(self.out_buffers)
-        if not isinstance(self.out_buffers, Iterable):
-            self.out_buffers = (self.out_buffers,)
+        new_out_buffers = []
+        for in_array_out_buffers in self.out_buffers:
+            b = self.__register_buffer(in_array_out_buffers)
+            if not isinstance(b, Iterable):
+                b = (b,)
+            new_out_buffers.append(b)
+        self.out_buffers = new_out_buffers
 
         # The below checks, if all processings have the callback,
         # or None of them
@@ -284,17 +288,29 @@ class ProcessingRunner:
         is_callback = next(iter(is_callback))
         if is_callback:
             self.user_out_buffer = None
-            self.callback = processings.callback
+            cbks = [p.callback for p in processings if p.callback is not None]
+            def master_callback():
+                for c in overflow_callbacks:
+                    c()
+            self.callback = master_callback
         else:
             self.user_out_buffer = queue.Queue(maxsize=1)
             self.callback = self.default_processing_output_callback
         self._gpu_i = 0
-        self._out_i = [[0]*len(self.out_buffers)]*len(self.n_arrays)
+        self._out_i = [[0]*len(ob) for ob in self.out_buffers]
 
         self.input_buffer.append_on_new_data_callback(self.process)
-        if processings.on_buffer_overflow_callback is not None:
+
+        overflow_callbacks = [p.on_buffer_overflow_callback
+                              for p in processings
+                              if p.on_buffer_overflow_callback is not None]
+        if overflow_callbacks:
+            def master_overflow_callback():
+                for c in overflow_callbacks:
+                    c()
             self.input_buffer.append_on_buffer_overflow_callback(
-                processings.on_buffer_overflow_callback)
+                master_overflow_callback)
+
         self._state = ProcessingRunner.State.READY
         self._process_lock = threading.Lock()
         self._state_lock = threading.Lock()
