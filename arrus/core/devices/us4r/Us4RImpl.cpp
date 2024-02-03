@@ -38,7 +38,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     this->channelsMask = std::move(channelsMask);
     this->bitstreams = std::move(bitstreams);
     this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
-    for(size_t i = 0; i < this->probeSettings.size(); ++i) {
+    for (size_t i = 0; i < this->probeSettings.size(); ++i) {
         const auto &s = this->probeSettings.at(i).getModel();
         this->probes.push_back(std::make_unique<ProbeImpl>(DeviceId{DeviceType::Probe, Ordinal(i)}, s));
     }
@@ -61,14 +61,12 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     // Log what probes will be masked
     for (size_t i = 0; i < this->channelsMask.size(); ++i) {
         const auto &mask = this->channelsMask.at(i);
-        if(mask.empty()) {
+        if (mask.empty()) {
             this->logger->log(LogSeverity::INFO, format("No channel masking applied on Probe:{}", i));
         } else {
             this->logger->log(LogSeverity::INFO,
-                          format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
+                              format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
         }
-
-
     }
 }
 
@@ -148,7 +146,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     // Validate.
     Voltage minVoltage = 5, maxVoltage = 90;
-    for(const auto &probeSetting: probeSettings) {
+    for (const auto &probeSetting : probeSettings) {
         auto probeRange = probeSetting.getModel().getVoltageRange();
         minVoltage = std::max<Voltage>(probeRange.start(), minVoltage);
         maxVoltage = std::min<Voltage>(probeRange.end(), maxVoltage);
@@ -284,9 +282,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     }
     // Create output buffer.
     Us4ROutputBufferBuilder builder;
-    this->buffer = builder.setStopOnOverflow(stopOnOverflow)
-                       .setLayoutTo(buffers)
-                       .build();
+    this->buffer = builder.setStopOnOverflow(stopOnOverflow).setLayoutTo(buffers).build();
     registerOutputBuffer(this->buffer.get(), buffers, workMode);
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
     this->oemBuffers = std::move(buffers);
@@ -373,7 +369,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs;
     std::transform(std::begin(sequences), std::end(sequences), std::back_inserter(seqs),
-        [this](const auto &seq){return convertToInternalSequence(seq);});
+                   [this](const auto &seq) { return convertToInternalSequence(seq); });
     // Initialize converters.
 
     auto oemMappings = getOEMMappings();
@@ -399,12 +395,9 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     // Convert probe sequence -> OEM Sequences
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
-        std::cout << "PROBE: " << s << std::endl;
         auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
-        std::cout << "ADAPTER: " << as << std::endl;
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
         for (Ordinal oem = 0; oem < noems; ++oem) {
-            std::cout << "OEM:" << oem << " " << oemSeqs.at(oem) << std::endl;
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
         }
     }
@@ -412,19 +405,21 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     // Sequence id -> the probe-level FCM.
     std::vector<FrameChannelMapping::Handle> fcms;
     // Sequence id, OEM -> FCM
-    auto oemFCMs = std::vector{nSequences, std::vector<FrameChannelMapping::RawHandle>{noems}};
+    std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
+    for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
         // TODO Consider implementing dynamic change of delay profiles
         auto uploadResult =
             us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc, std::vector<NdArray>{});
         buffers.emplace_back(uploadResult.getBufferDescription());
+        auto oemFCM = uploadResult.acquireFCMs();
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
-            oemFCMs[sId][oem] = uploadResult.getFCM(sId);
+            oemsFCMs.at(sId).emplace_back(std::move(oemFCM.at(sId)));
         }
     }
     // Convert FCMs to probe-level apertures.
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
-        auto adapterFCM = adapter2OEM.at(sId).convert(oemFCMs[sId]);
+        auto adapterFCM = adapter2OEM.at(sId).convert(oemsFCMs.at(sId));
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }

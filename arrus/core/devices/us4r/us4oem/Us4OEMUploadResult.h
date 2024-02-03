@@ -20,6 +20,8 @@ public:
 
     [[nodiscard]] const Us4OEMBuffer &getBufferDescription() const { return bufferDescription; }
     FrameChannelMapping::RawHandle getFCM(size_t sequenceId) { return fcms.at(sequenceId).get(); }
+    /** NOTE: THIS FUNCTIONS MAKES this->fcms no more usable !!! */
+    std::vector<FrameChannelMapping::Handle> acquireFCMs() {return std::move(fcms); }
 private:
     Us4OEMBuffer bufferDescription;
     // Sequence id -> FCM.

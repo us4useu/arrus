@@ -59,6 +59,9 @@ public:
     using FrameNumber = uint16;
     constexpr static int8 UNAVAILABLE = -1;
 
+    FrameChannelMapping() = default;
+    FrameChannelMapping(const FrameChannelMapping&) = default;
+    FrameChannelMapping(FrameChannelMapping&&) = default;
 
     /**
      * Returns us4oem module number, physical frame number and channel number for a given,

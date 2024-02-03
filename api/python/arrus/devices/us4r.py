@@ -358,13 +358,15 @@ class Us4R(Device, Ultrasound):
                         "sequence when setting linear TGC.")
                 c = medium.speed_of_sound
                 tgc_contexts.add(
-                    arrus.kernels.tgc.TgcContext(
+                    arrus.kernels.tgc.TgcCalculationContext(
                         end_sample=sample_range[1],
                         speed_of_sound=c
                     )
                 )
                 # Determine TGC.
-                tgcs.add(seq.tgc_curve)
+                # Make the curve hashable.
+                curve = tuple(seq.tgc_curve.tolist())
+                tgcs.add(curve)
             else:
                 raise ValueError(f"Unsupported type of TX/RX sequence: "
                                  f"{type(seq)}")
@@ -378,7 +380,7 @@ class Us4R(Device, Ultrasound):
             raise ValueError("The TGC curve should be unique for all "
                              "TX/RX sequences. Detected TGC curves: "
                              f"{tgcs}")
-        return next(iter(tgc_contexts)), next(iter(tgcs))
+        return next(iter(tgc_contexts)), np.array(next(iter(tgcs)))
 
 
 # ------------------------------------------ LEGACY MOCK

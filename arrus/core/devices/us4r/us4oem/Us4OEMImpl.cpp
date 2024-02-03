@@ -259,7 +259,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             auto const &op = sequence.at(opId);
             logger->log(LogSeverity::TRACE,
                         format("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId,
-                               ::arrus::toString(op)));
+				op.isNOP(), ::arrus::toString(op)));
             // TX
             auto txAperture = arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture());
             auto nTxHalfPeriods = static_cast<uint8>(op.getTxPulse().getNPeriods() * 2);
@@ -268,7 +268,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             auto [startSample, endSample] = op.getRxSampleRange().asPair();
             float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float) op.getRxDecimationFactor();
             setCurrentSamplingFrequency(SAMPLING_FREQUENCY / decimationFactor);
-            float rxTime = getRxTime(endSample, getCurrentSamplingFrequency());
+            float rxTime = getRxTime(endSample, this->currentSamplingFrequency);
             // Common
             float txrxTime = getTxRxTime(rxTime);
             Us4OEMChannelsGroupsMask channelsGroups =

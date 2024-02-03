@@ -42,7 +42,7 @@ public:
         std::unordered_map<Ordinal, std::vector<std::vector<float>>> txDelaysList;
         std::unordered_map<Ordinal, std::vector<framework::NdArray>> txDelayProfilesList;
         // Here is an assumption, that each operation has the same size rx aperture, except RX nops.
-        auto nFrames = seq.getNumberOfNoRxNOPs();
+        nFrames = seq.getNumberOfNoRxNOPs();
         // find the first non rx NOP and use it to determine rxApertureSize
 
         // -- Frame channel mapping stuff related to splitting each operation between available
@@ -155,23 +155,23 @@ public:
             // keep operations with empty tx or rx aperture - they are still a part of the larger operation
         }
         // creating 32-element subapertures
-        auto splitResult = splitter.split(fullApSeq, txDelayProfilesList);
+        splitResult = splitter.split(fullApSeq, txDelayProfilesList);
         return std::make_pair(splitResult.sequences, splitResult.delayProfiles);
     }
 
     /**
      * @param fcms OEM Ordinal -> FCM
      */
-    FrameChannelMapping::Handle convert(const std::vector<FrameChannelMapping::RawHandle> &fcms) {
+    FrameChannelMapping::Handle convert(const std::vector<FrameChannelMapping::Handle> &fcms) {
         uint32 currentFrameOffset = 0;
         std::vector<uint32> frameOffsets(static_cast<unsigned int>(noems), 0);
         std::vector<uint32> numberOfFrames(static_cast<unsigned int>(noems), 0);
 
         for (Ordinal oem = 0; oem < noems; ++oem) {
-            auto fcm = fcms.at(oem);
-            frameOffsets[oem] = currentFrameOffset;
-            currentFrameOffset += fcm->getNumberOfLogicalFrames() * batchSize;
-            numberOfFrames[oem] = fcm->getNumberOfLogicalFrames() * batchSize;
+            const auto &fcm = fcms.at(oem);
+            frameOffsets.at(oem) = currentFrameOffset;
+            currentFrameOffset += fcm->getNumberOfLogicalFrames()*batchSize;
+            numberOfFrames.at(oem) = fcm->getNumberOfLogicalFrames()*batchSize;
         }
 
         // generate FrameChannelMapping for the adapter output.

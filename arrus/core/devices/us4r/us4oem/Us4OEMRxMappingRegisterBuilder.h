@@ -136,7 +136,6 @@ public:
             }
             // Register aperture.
             result.insert(sequenceId, opId, outputRxAperture);
-            result.push_back(std::move(fcmBuilder.build()));
 
             // GENERATE RX MAPPING.
             std::vector<uint8> rxMapping = buildMapping(mapping, channelsUsed);
@@ -162,6 +161,7 @@ public:
                 ++noRxNopId;
             }
         }
+        result.push_back(std::move(fcmBuilder.build()));
     }
 
     Us4OEMRxMappingRegister build() { return std::move(result); }
