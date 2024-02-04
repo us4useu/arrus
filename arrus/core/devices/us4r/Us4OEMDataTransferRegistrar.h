@@ -234,7 +234,7 @@ public:
             uint16 elementLastFiring = element.getFiring();
             // for each element's part transfer:
             for (const auto &arrayTransfers : elementTransfers) {
-                for (size_t localIdx = 0; localIdx < arrayTransfers.size(); ++localIdx) {
+                for (size_t localIdx = 0; localIdx < arrayTransfers.size(); ++localIdx, ++transferIdx) {
                     auto &transfer = arrayTransfers[localIdx];
                     size_t src = addressSrc + transfer.source;// used by callback strategy 2
                     size_t transferSize = transfer.size;

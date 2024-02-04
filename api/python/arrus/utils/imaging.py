@@ -350,7 +350,9 @@ class ProcessingRunner:
                 gpu_element = self.in_buffers_gpu[array_id].acquire(self._gpu_i)
                 gpu_array = gpu_element.data
                 gpu_array.set(input_element.data, stream=self.data_stream)
-                self.data_stream.launch_host_func(self.__release, input_element)
+                if array_id == self.n_arrays-1:
+                    # Last array.
+                    self.data_stream.launch_host_func(self.__release, input_element)
                 gpu_data_ready_event = self.data_stream.record()
                 self.processing_stream.wait_event(gpu_data_ready_event)
                 with self.processing_stream:
@@ -359,7 +361,7 @@ class ProcessingRunner:
                     for element_id, (result, out_buffer) in enumerate(zip(results, self.out_buffers[array_id])):
                         out_i = self._out_i[array_id][element_id]
                         out_element = out_buffer.elements[out_i]
-                        self._out_i[array_id][element_id] = (out_i + 1) % out_buffer[array_id].n_elements
+                        self._out_i[array_id][element_id] = (out_i + 1) % out_buffer.n_elements
                         out_element.acquire()
                         # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
                         out_element.data[:] = result.get()
@@ -374,7 +376,8 @@ class ProcessingRunner:
                 # Already closed.
                 return
             self.__unregister_buffer(self.input_buffer)
-            self.__unregister_buffer(self.out_buffers)
+            for in_array_out_buffers in self.out_buffers:
+                self.__unregister_buffer(in_array_out_buffers)
             self._state = ProcessingRunner.State.CLOSED
 
     def sync(self):

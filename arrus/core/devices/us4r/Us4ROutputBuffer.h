@@ -454,7 +454,7 @@ public:
             return *this;
         }
         ArrayId nArrays = buffers.at(0).getNumberOfArrays();
-        Ordinal noems = buffers.size();
+        noems = buffers.size();
 
         std::vector<Us4ROutputBufferArrayDef> result;
         // Array -> shape

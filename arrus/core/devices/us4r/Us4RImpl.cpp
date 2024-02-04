@@ -316,6 +316,15 @@ void Us4RImpl::start() {
     for (auto &us4oem : us4oems) {
         us4oem->getIUs4OEM()->EnableInterrupts();
     }
+    //  EnableSequencer resets position of the us4oem sequencer.
+    for(auto &us4oem: this->us4oems) {
+        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
+        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
+        // Reset tx subsystem pointers.
+        us4oem->getIUs4OEM()->EnableTransmit();
+        // Reset sequencer pointers.
+        us4oem->enableSequencer();
+    }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
 }
