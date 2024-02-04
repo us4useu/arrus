@@ -40,7 +40,7 @@ public:
     RxMapId getMapId(SequenceId sequenceId, OpId opId) const { return opToRxMappingId.at(std::make_pair(sequenceId, opId)); }
 
     RxAperture getRxAperture(SequenceId sequenceId, OpId opId) const {
-        return opToRxMappingId.at(std::make_pair(sequenceId, opId));
+        return rxApertures.at(std::make_pair(sequenceId, opId));
     }
     std::vector<FrameChannelMapping::Handle> acquireFCMs() { return std::move(fcms); }
 
