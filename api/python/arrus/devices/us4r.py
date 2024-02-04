@@ -1,7 +1,7 @@
 import dataclasses
 import numpy as np
 
-from arrus.devices.device import Device, DeviceId, DeviceType
+from arrus.devices.device import Device, DeviceId, DeviceType, parse_device_id
 from arrus.devices.ultrasound import Ultrasound
 import arrus.exceptions
 import arrus.devices.probe
@@ -336,7 +336,7 @@ class Us4R(Device, Ultrasound):
                     speed_of_sound=c
                 )
                 tgc_contexts.add(
-                    arrus.kernels.tgc.TgcContext(
+                    arrus.kernels.tgc.TgcCalculationContext(
                         end_sample=sample_range[1],
                         speed_of_sound=c
                     )
@@ -380,7 +380,10 @@ class Us4R(Device, Ultrasound):
             raise ValueError("The TGC curve should be unique for all "
                              "TX/RX sequences. Detected TGC curves: "
                              f"{tgcs}")
-        return next(iter(tgc_contexts)), np.array(next(iter(tgcs)))
+        tgc = next(iter(tgcs))
+        if isinstance(tgc, Iterable):
+            tgc = np.array(tgc)
+        return next(iter(tgc_contexts)), tgc
 
 
 # ------------------------------------------ LEGACY MOCK
@@ -391,7 +394,9 @@ class Us4RDTO:
     # TODO(0.12.0) make id obligatory (will break previous const metadata)
     device_id: DeviceId = DeviceId(DEVICE_TYPE, 0)
 
-    def get_probe_by_id(self, id: DeviceId) -> ProbeDTO:
+    def get_probe_by_id(self, id: Union[DeviceId, str]) -> ProbeDTO:
+        if isinstance(id, str):
+            id = parse_device_id(id)
         probes = self.probe
         if not isinstance(probes, Iterable):
             probes = (probes, )

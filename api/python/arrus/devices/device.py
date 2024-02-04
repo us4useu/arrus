@@ -14,6 +14,9 @@ class DeviceId:
     device_type: object
     ordinal: int
 
+    def __str__(self):
+        return f"{self.device_type}:{self.ordinal}"
+
 
 def split_device_id_str(s):
     """

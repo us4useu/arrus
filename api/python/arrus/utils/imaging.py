@@ -1163,7 +1163,8 @@ class RxBeamformingPhasedScanning(Operation):
         import cupy as cp
         if self.num_pkg != cp:
             raise ValueError("Phased scanning is implemented for GPU only.")
-        probe_model = const_metadata.context.device.probe.model
+        seq = const_metadata.context.sequence
+        probe_model = get_unique_probe_model(const_metadata)
         if probe_model.is_convex_array():
             raise ValueError("Phased array scanning is implemented for "
                              "linear phased arrays only.")
@@ -1174,7 +1175,6 @@ class RxBeamformingPhasedScanning(Operation):
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
         self.output_buffer = cp.zeros((self.n_seq, self.n_tx, self.n_samples), dtype=cp.complex64)
 
-        seq = const_metadata.context.sequence
         self.tx_angles = cp.asarray(seq.angles, dtype=cp.float32)
 
         device_fs = const_metadata.context.device.sampling_frequency
@@ -1220,7 +1220,8 @@ class RxBeamformingPhasedScanning(Operation):
                           int((self.n_seq - 1) // n_seq_block_size + 1))
         # xElemConst
         # Get aperture origin (for the given aperture center element/aperture center)
-        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(
+            probe_model, seq)
         # There is a single TX and RX aperture center for all TX/RXs
         rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
         rx_aperture_origin = _get_rx_aperture_origin(
@@ -1279,8 +1280,8 @@ class RxBeamformingLin(Operation):
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         self._set_interpolator()
         context = const_metadata.context
-        probe_model = const_metadata.context.device.probe.model
         seq = const_metadata.context.sequence
+        probe_model = get_unique_probe_model(const_metadata)
         raw_seq = const_metadata.context.raw_sequence
         medium = const_metadata.context.medium
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
@@ -1491,7 +1492,7 @@ class ScanConversion(Operation):
         self.num_pkg = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
 
         new_signal_description = dataclasses.replace(
             const_metadata.data_description,
@@ -1543,7 +1544,7 @@ class ScanConversion(Operation):
         if not isinstance(seq, arrus.ops.imaging.LinSequence):
             raise ValueError("Scan conversion works only with LinSequence.")
         medium = const_metadata.context.medium
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
         n_elements = probe.n_elements
@@ -1590,7 +1591,7 @@ class ScanConversion(Operation):
         else:
             import cupyx.scipy.ndimage
             self.interpolator = cupyx.scipy.ndimage.map_coordinates
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
 
@@ -1664,7 +1665,7 @@ class ScanConversion(Operation):
         return self.output_buffer
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         data_desc = const_metadata.data_description
 
         self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
@@ -2172,7 +2173,7 @@ class ReconstructLri(Operation):
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
         seq = const_metadata.context.sequence
         self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
-        probe_model = const_metadata.context.device.probe.model
+        probe_model = get_unique_probe_model(const_metadata)
 
         if isinstance(seq, SimpleTxRxSequence):
             rx_op = seq
@@ -2185,8 +2186,7 @@ class ReconstructLri(Operation):
             # TX aperture description
             # Convert the sequence to the positions of the aperture centers
             tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
-                probe_model,
-                seq)
+                probe_model, seq)
             tx_centers, tx_sizes = tx_rx_params["tx_ap_cent"], tx_rx_params["tx_ap_size"]
             rx_centers, rx_sizes = tx_rx_params["rx_ap_cent"], tx_rx_params["rx_ap_size"]
 
@@ -2858,7 +2858,7 @@ class ReconstructLri3D(Operation):
         ref_tx_rx = seq.ops[0]
         ref_tx = ref_tx_rx.tx
         ref_rx = ref_tx_rx.rx
-        probe_model = const_metadata.context.device.probe.model
+        probe_model = get_unique_probe_model(const_metadata)
         acq_fs = (const_metadata.context.device.sampling_frequency / ref_rx.downsampling_factor)
         start_sample = ref_rx.sample_range[0]
 
@@ -2889,7 +2889,6 @@ class ReconstructLri3D(Operation):
 
         # Probe description
         # TODO specific for Vermon mat-3d probe.
-        probe_model = const_metadata.context.device.probe.model
         pitch = probe_model.pitch
         self.n_elements = 32
         n_rows_x = self.n_elements
@@ -3098,7 +3097,7 @@ class DelayAndSumLUT(Operation):
 
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
-        probe_model = const_metadata.context.device.probe.model
+        probe_model = get_unique_probe_model(const_metadata)
 
         if self.output_type == "hri":
             self._kernel = self._kernel_module.get_function("delayAndSumLutHri")
@@ -3180,3 +3179,19 @@ class RunForDlPackCapsule(Operation):
         return self.callback(dlpack_capsule)
 
 
+def get_unique_probe_model(const_metadata):
+    seq = const_metadata.context.sequence
+    if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
+        if seq.tx_placement != seq.rx_placement:
+            raise ValueError("TX and RX should be done on the same Probe.")
+        placement = seq.tx_placement
+    elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
+        placements_tx = {op.tx.placement for op in seq.ops}
+        placements_rx = {op.rx.placement for op in seq.ops}
+        placements = placements_tx + placements_rx
+        if len(placements) != 1:
+            raise ValueError("TX and RX should be done on the same Probe.")
+        placement = next(iter(placements))
+    else:
+        raise ValueError(f"Unsupported sequence type: {seq}")
+    return const_metadata.context.device.get_probe_by_id(placement).model
