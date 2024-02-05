@@ -28,7 +28,10 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
                    bool hasIOBitstreamAddressing, const IOSettings &ioSettings)
     : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
-
+    // Accept empty list of channels masks (no channels masks).
+    if(channelsMask.empty()) {
+        channelsMask = std::vector{this->probeSettings.size(), std::vector<ChannelIdx>{}};
+    }
     this->logger = getLoggerFactory()->getLogger();
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     this->us4oems = std::move(us4oems);
@@ -392,7 +395,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         const auto &txProbeSettings = probeSettings.at(txProbeId.getOrdinal());
         const auto &rxProbeSettings = probeSettings.at(rxProbeId.getOrdinal());
         const auto &txProbeMask = channelsMask.at(txProbeId.getOrdinal());
-        const auto rxProbeMask = channelsMask.at(txProbeId.getOrdinal());
+        const auto rxProbeMask = channelsMask.at(rxProbeId.getOrdinal());
         auto nAdapterChannels = probeAdapterSettings.getNumberOfChannels();
         // Find the correct probe TX, RX ordinal
         probe2Adapter.emplace_back(ProbeToAdapterMappingConverter{

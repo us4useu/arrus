@@ -229,8 +229,8 @@ class ProcessingRunner:
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
 
         self.n_arrays = len(metadatas)
-        n_gpu_buffer_elements = [p.input_buffer.size if p.input_buffer is not None else DEFAULT_BUFF.size
-                                 for p in processings]
+        n_gpu_buffer_elements = {p.input_buffer.size if p.input_buffer is not None else DEFAULT_BUFF.size
+                                 for p in processings}
 
         if len(n_gpu_buffer_elements) > 1:
             raise ValueError("Each GPU buffer should have exactly the same "

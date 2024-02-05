@@ -192,13 +192,13 @@ class Us4R(Device, Ultrasound):
         )
         self.set_tgc(tgc)
 
-    def get_probe_model(self):
+    def get_probe_model(self, ordinal=0):
         """
         Returns probe model description.
         """
         import arrus.utils.core
         return arrus.utils.core.convert_to_py_probe_model(
-            core_model=self._handle.getProbe(0).getModel())
+            core_model=self._handle.getProbe(ordinal).getModel())
 
     def set_test_pattern(self, pattern):
         """
@@ -282,6 +282,9 @@ class Us4R(Device, Ultrasound):
         Returns a list of system channels that are masked in the configuration.
         """
         return self._handle.getChannelsMask()
+
+    def get_number_of_probes(self):
+        return self._handle.getNumberOfProbes()
 
     def get_dto(self):
         import arrus.utils.core

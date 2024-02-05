@@ -566,7 +566,7 @@ void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequence
     const auto &referenceCurve = sequences.at(0).getTgcCurve();
     for(size_t i = 1; i < sequences.size(); ++i) {
         const auto &s = sequences.at(i).getTgcCurve();
-        if(s == referenceCurve) {
+        if(s != referenceCurve) {
             allCurvesTheSame = false;
             break;
         }

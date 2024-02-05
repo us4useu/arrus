@@ -113,6 +113,10 @@ public:
         return getProbeSettings(0);
     }
 
+    Ordinal getNumberOfProbes() const {
+        return (Ordinal)probeSettings.size();
+    }
+
     const std::optional<RxSettings> &getRxSettings() const {
         return rxSettings;
     }
