@@ -12,14 +12,14 @@ class HVPSMeasurement:
     """
     def __init__(self, hvps_measurement_core):
         parameters = [
-            ("PLUS", 0, "VOLTAGE"),
-            ("PLUS", 0, "CURRENT"),
-            ("PLUS", 1, "VOLTAGE"),
-            ("PLUS", 1, "CURRENT"),
             ("MINUS",0, "VOLTAGE"),
             ("MINUS",0, "CURRENT"),
             ("MINUS",1, "VOLTAGE"),
             ("MINUS",1, "CURRENT"),
+            ("PLUS", 0, "VOLTAGE"),
+            ("PLUS", 0, "CURRENT"),
+            ("PLUS", 1, "VOLTAGE"),
+            ("PLUS", 1, "CURRENT"),
         ]
         self._values = {}
         self._array = []
@@ -27,7 +27,7 @@ class HVPSMeasurement:
             polarity, level, unit = p
             polarity = self._polarity_str2enum(polarity)
             unit = self._unit_str2enum(unit)
-            m = hvps_measurement_core.get(polarity, level, unit)
+            m = list(hvps_measurement_core.get(level, polarity, unit))
             self._values[p] = m
             self._array.append(m)
         self._array = np.stack(self._array)
