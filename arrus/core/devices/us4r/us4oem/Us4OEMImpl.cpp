@@ -411,7 +411,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
                         size_t partSize = 0;
                         if (!op.isRxNOP() || acceptRxNops) {
                             partSize = nBytes;
-                        }
+                        e
                         // Otherwise, make an empty part (i.e. partSize = 0).
                         // (note: the firing number will be needed for transfer configuration to release element in
                         // us4oem sequencer).
@@ -855,10 +855,10 @@ void Us4OEMImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8
                                 const std::vector<uint16_t> &periods) {
     ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
     ARRUS_REQUIRES_TRUE(bitstreamId < bitstreamOffsets.size(), "The bitstream with the given id does not exists.");
-    if (bitstreamId == bitstreamOffsets.size() - 1) {
-        // Allow to change the last bitstream size.
+    if (bitstreamId != bitstreamOffsets.size()-1) {
         ARRUS_REQUIRES_EQUAL_IAE(levels.size(), bitstreamSizes.at(bitstreamId));
     }
+    // Allow to change the last bitstream size.
     setIOBitstreamForOffset(bitstreamOffsets.at(bitstreamId), levels, periods);
     bitstreamSizes[bitstreamId] = static_cast<uint16>(levels.size());
 }
