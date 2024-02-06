@@ -69,17 +69,13 @@ public:
             validator.validate(adapterSettings);
             validator.throwOnErrors();
             Ordinal probeOrdinal = 0;
-            bool isBitstreamAddressing = false;
+            bool isBitstreamAddr = isBitstreamAddressing(probeSettings);
             for (const auto &s : probeSettings) {
                 DeviceId id(DeviceType::Probe, probeOrdinal);
                 ProbeSettingsValidator validator(id.getOrdinal());
                 validator.validate(s);
                 validator.throwOnErrors();
                 probeOrdinal++;
-                if (isBitstreamAddressing && !s.getBitstreamId().has_value()) {
-                    throw IllegalArgumentException("All probes should use/not use bitstream addressing consistently.");
-                }
-                isBitstreamAddressing = s.getBitstreamId().has_value();
             }
             std::vector<IUs4OEM *> ius4oems;
             for (auto &us4oem : us4oems) {
@@ -91,7 +87,7 @@ public:
             return std::make_unique<Us4RImpl>(
                 id, std::move(us4oems), std::move(probeSettings), std::move(adapterSettings), std::move(hv), rxSettings,
                 settings.getChannelsMaskForAllProbes(), std::move(backplane), settings.getBitstreams(),
-                isBitstreamAddressing, adapterSettings.getIOSettings());
+                isBitstreamAddr, adapterSettings.getIOSettings());
         } else {
             throw IllegalArgumentException("Custom OEM configuration is not available since 0.11.0.");
         }
@@ -185,6 +181,16 @@ private:
                 throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");
             }
         }
+    }
+
+    bool isBitstreamAddressing(const std::vector<ProbeSettings> &probeSettings) {
+        std::unordered_set<bool> f;
+        std::transform(std::begin(probeSettings), std::end(probeSettings), std::inserter(f, std::begin(f)),
+                       [](const auto &p){return p.getBitstreamId().has_value();});
+        if(f.size() > 1) {
+            throw IllegalArgumentException("All probes should be bitsream addressable or not");
+        }
+        return *std::begin(f);
     }
 
     std::unique_ptr<IUs4OEMFactory> ius4oemFactory;

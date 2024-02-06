@@ -246,16 +246,17 @@ public:
     }
 
     /**
-     * Returns a single a unique RX aperture size, or throws IllegalStateException if the are more a .
+     * Returns a single a unique RX aperture size, or throws IllegalStateException if the size is not unique.
      */
     ChannelIdx getRxApertureSize() const {
         std::unordered_set<ChannelIdx> s;
-        auto toApertureSize = [](const TxRxParameters &params) {
-            auto padding = params.getRxPadding().sum();
-            return getNumberOfActiveChannels(params.getRxAperture()) + padding;
-        };
-        std::transform(std::begin(parameters), std::end(parameters), std::inserter(s, std::begin(s)), toApertureSize);
-        ARRUS_REQUIRES_TRUE_E(s.size() == 1, "All TX/RXs should have the same RX aperture size "
+        for(const auto &p: parameters) {
+            if(! p.isRxNOP()) {
+                auto padding = p.getRxPadding().sum();
+                s.insert(getNumberOfActiveChannels(p.getRxAperture()) + padding);
+            }
+        }
+        ARRUS_REQUIRES_TRUE_IAE(s.size() == 1, "All TX/RXs should have the same RX aperture size "
                                              "and the sequence should not be empty.");
         return *std::begin(s);
     }

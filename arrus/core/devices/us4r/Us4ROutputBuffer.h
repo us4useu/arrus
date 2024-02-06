@@ -489,7 +489,7 @@ public:
         for (ArrayId arrayId = 0; arrayId < nArrays; ++arrayId) {
             framework::NdArrayDef definition{shapes.at(arrayId), Us4ROutputBuffer::ARRAY_DATA_TYPE};
             result.emplace_back(definition, address, oemSizes.at(arrayId));
-            address = definition.getSize();
+            address += definition.getSize();
         }
 
         arrayDefs = Tuple<Us4ROutputBufferArrayDef>(result);
