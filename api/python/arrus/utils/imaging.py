@@ -349,7 +349,7 @@ class ProcessingRunner:
             for array_id, array in enumerate(input_element.arrays):
                 gpu_element = self.in_buffers_gpu[array_id].acquire(self._gpu_i)
                 gpu_array = gpu_element.data
-                gpu_array.set(input_element.data, stream=self.data_stream)
+                gpu_array.set(array, stream=self.data_stream)
                 if array_id == self.n_arrays-1:
                     # Last array.
                     self.data_stream.launch_host_func(self.__release, input_element)

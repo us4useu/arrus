@@ -470,8 +470,10 @@ TxRxParametersSequence Us4RImpl::convertToInternalSequence(const TxRxSequence &s
         auto preamble = createBitstreamSequenceSelectPreamble(sequence);
         sequenceBuilder.addEntry(preamble);
     }
+    auto rxDelay = getRxDelay(sequence);
     for (const auto &txrx : sequence.getOps()) {
         TxRxParametersBuilder builder(txrx);
+        builder.setRxDelay(rxDelay);
         if (hasIOBitstreamAdressing) {
             builder.setBitstreamId(BitstreamId(0));
         }
@@ -937,5 +939,40 @@ Ordinal Us4RImpl::getFrameMetadataOEM(const IOSettings &settings) {
 std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) { return channelsMask.at(probeNumber); }
 
 int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
+
+/**
+ * Calculates RX delay as the maximum TX delay of the sequence + burst time
+ * Only TX delays from the active (aperture) elements are considered.
+ * If the given sequence does not perform TX, this method returns 0.
+ *
+ * @return rx delay [s]
+ */
+float Us4RImpl::getRxDelay(const TxRxSequence &sequence) const {
+    std::vector<float> opDelays;
+    for(const auto &op: sequence.getOps()) {
+        std::vector<float> delays;
+        for(size_t i = 0; i < op.getTx().getAperture().size(); ++i) {
+            if(op.getTx().getAperture()[i]) {
+                delays.push_back(op.getTx().getDelays()[i]);
+            }
+        }
+        if(!delays.empty()) {
+            float txDelay = *std::max_element(std::begin(delays), std::end(delays));
+            // burst time
+            float frequency = op.getTx().getExcitation().getCenterFrequency();
+            float nPeriods = op.getTx().getExcitation().getNPeriods();
+            float burstTime = 1.0f/frequency*nPeriods;
+            // Total rx delay
+            opDelays.push_back(txDelay + burstTime);
+        }
+    }
+    if(!opDelays.empty()) {
+        return *std::max_element(std::begin(opDelays), std::end(opDelays));
+    }
+    else {
+        // No TX
+        return 0.0f;
+    }
+}
 
 }// namespace arrus::devices

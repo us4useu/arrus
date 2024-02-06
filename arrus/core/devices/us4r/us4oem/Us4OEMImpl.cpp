@@ -411,7 +411,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
                         size_t partSize = 0;
                         if (!op.isRxNOP() || acceptRxNops) {
                             partSize = nBytes;
-                        e
+                        }
                         // Otherwise, make an empty part (i.e. partSize = 0).
                         // (note: the firing number will be needed for transfer configuration to release element in
                         // us4oem sequencer).

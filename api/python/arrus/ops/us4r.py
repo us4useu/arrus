@@ -118,7 +118,7 @@ class Tx(Operation):
                 raise ValueError(
                     f"The array of delays should have the size equal "
                     f"to the number of active elements of aperture "
-                    f"({self.aperture.shape})")
+                    f"({np.asarray(self.aperture).shape})")
         if not isinstance(self.aperture, Aperture):
             object.__setattr__(self, "aperture", np.asarray(self.aperture))
 

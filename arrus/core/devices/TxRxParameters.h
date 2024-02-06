@@ -92,9 +92,12 @@ public:
         os << std::scientific;
         os << "Tx/Rx: ";
         os << "TX: ";
-        os << "aperture: " << ::arrus::toString(parameters.getTxAperture())
-           << ", delays: " << ::arrus::toString(parameters.getTxDelays())
-           << ", center frequency: " << parameters.getTxPulse().getCenterFrequency()
+        os << "aperture: " << ::arrus::toString(parameters.getTxAperture());
+        os << ", delays: ";
+        for(auto d: parameters.getTxDelays()) {
+            os << d << ", ";
+        }
+        os << ", center frequency: " << parameters.getTxPulse().getCenterFrequency()
            << ", n. periods: " << parameters.getTxPulse().getNPeriods()
            << ", inverse: " << parameters.getTxPulse().isInverse();
         os << "; RX: ";

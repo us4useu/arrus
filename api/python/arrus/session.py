@@ -152,7 +152,7 @@ class Session(AbstractSession):
             # --- Frame acquisition context
             fac = self._create_frame_acquisition_context(
                 seq, raw_seq, us_device_dto, medium, tx_delay_constants)
-            input_shape = buffer.elements[0].data.shape
+            input_shape = buffer.elements[0].arrays[i].shape
             is_iq_data = scheme.digital_down_conversion is not None
             const_metadata = arrus.metadata.ConstMetadata(
                 context=fac, data_desc=data_description,

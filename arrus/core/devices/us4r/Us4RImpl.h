@@ -169,6 +169,7 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
+    float getRxDelay(const ops::us4r::TxRxSequence &sequence) const;
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;
