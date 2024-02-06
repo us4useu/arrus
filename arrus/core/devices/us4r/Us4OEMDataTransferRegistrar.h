@@ -233,9 +233,9 @@ public:
             size_t addressSrc = element.getAddress();// bytes addressed
             uint16 elementLastFiring = element.getFiring();
             // for each element's part transfer:
+            size_t localIdx = 0;
             for (const auto &arrayTransfers : elementTransfers) {
-                for (size_t localIdx = 0; localIdx < arrayTransfers.size(); ++localIdx, ++transferIdx) {
-                    auto &transfer = arrayTransfers[localIdx];
+                for(const auto &transfer: arrayTransfers) {
                     size_t src = addressSrc + transfer.source;// used by callback strategy 2
                     size_t transferSize = transfer.size;
                     // transfer.firing - firing offset within element
@@ -259,9 +259,10 @@ public:
                         }
                     }
                     ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
+                    ++localIdx; ++transferIdx;
                 }
-                elementFirstFiring = elementLastFiring + 1;
             }
+            elementFirstFiring = elementLastFiring + 1;
         }
     }
 

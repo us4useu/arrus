@@ -258,8 +258,8 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
         for (OpId opId = 0; opId < ARRUS_SAFE_CAST(sequence.size(), OpId); ++opId, ++firingId) {
             auto const &op = sequence.at(opId);
             logger->log(LogSeverity::TRACE,
-                        format("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId,
-				op.isNOP(), ::arrus::toString(op)));
+                        format("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId, op.isNOP(),
+                               ::arrus::toString(op)));
             // TX
             auto txAperture = arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture());
             auto nTxHalfPeriods = static_cast<uint8>(op.getTxPulse().getNPeriods() * 2);
@@ -387,8 +387,8 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
     uint16 entryId = 0;
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
-        unsigned int totalSamples = 0;// Total number of samples in a single batch.
         for (SequenceId seqId = 0; seqId < nSequences; ++seqId) {
+            unsigned int totalSamples = 0; // Total number of samples in an array.
             // SEQUENCES
             Us4OEMBufferArrayParts parts;
             const auto &seq = sequences.at(seqId);
@@ -440,7 +440,8 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
         }
         // entryId-1, because the firing should point to the last firing of this element
         ARRUS_REQUIRES_TRUE(entryId > 0, "Empty sequences are not supported");
-        builder.add(Us4OEMBufferElement{elementStartAddress, outputAddress-elementStartAddress, (uint16)(entryId-1)});
+        builder.add(
+            Us4OEMBufferElement{elementStartAddress, outputAddress - elementStartAddress, (uint16) (entryId - 1)});
         elementStartAddress = outputAddress;
     }
     return builder.build();
@@ -564,9 +565,9 @@ void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequence
     }
     bool allCurvesTheSame = true;
     const auto &referenceCurve = sequences.at(0).getTgcCurve();
-    for(size_t i = 1; i < sequences.size(); ++i) {
+    for (size_t i = 1; i < sequences.size(); ++i) {
         const auto &s = sequences.at(i).getTgcCurve();
-        if(s != referenceCurve) {
+        if (s != referenceCurve) {
             allCurvesTheSame = false;
             break;
         }
@@ -873,15 +874,12 @@ void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vect
 
 size_t Us4OEMImpl::getNumberOfTriggers(const TxParametersSequenceColl &sequences, uint16 rxBufferSize) {
     return std::accumulate(std::begin(sequences), std::end(sequences), 0,
-                           [=](const auto &a, const auto &b) {
-                               return a + b.size()*b.getNRepeats()*rxBufferSize;
-                           });
+                           [=](const auto &a, const auto &b) { return a + b.size() * b.getNRepeats() * rxBufferSize; });
 }
 
 size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> &sequences) {
-    return std::accumulate(
-        std::begin(sequences), std::end(sequences), 0,
-        [](const auto &a, const auto &b) { return a + b.size(); });
+    return std::accumulate(std::begin(sequences), std::end(sequences), 0,
+                           [](const auto &a, const auto &b) { return a + b.size(); });
 }
 
 void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
