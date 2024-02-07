@@ -143,7 +143,8 @@ private:
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<framework::NdArray> &txDelayProfiles);
     us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
-    us4r::TxRxParametersSequence convertToInternalSequence(const ops::us4r::TxRxSequence &sequence);
+    std::vector<us4r::TxRxParametersSequence>
+    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences);
 
     /**
      * Applies a given function on all functions.

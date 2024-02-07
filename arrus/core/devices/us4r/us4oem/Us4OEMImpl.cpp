@@ -495,7 +495,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
                     ius4oem->SetTrigger(priMs, isCheckpoint, entryId, isCheckpoint && externalTrigger);
                     if (op.getBitstreamId().has_value() && isMaster()) {
-                        ius4oem->SetFiringIOBS(opId, bitstreamOffsets.at(op.getBitstreamId().value()));
+                        ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
                 }
             }

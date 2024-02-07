@@ -382,11 +382,8 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     // Sequence id -> converter
     std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
     // Convert API sequences to internal representation.
-    std::vector<TxRxParametersSequence> seqs;
-    std::transform(std::begin(sequences), std::end(sequences), std::back_inserter(seqs),
-                   [this](const auto &seq) { return convertToInternalSequence(seq); });
+    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences);
     // Initialize converters.
-
     auto oemMappings = getOEMMappings();
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         auto s = seqs.at(sId);
@@ -463,23 +460,33 @@ TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequenc
     return preambleBuilder.build();
 }
 
-TxRxParametersSequence Us4RImpl::convertToInternalSequence(const TxRxSequence &sequence) {
-    TxRxParametersSequenceBuilder sequenceBuilder;
-    sequenceBuilder.setCommon(sequence);
-    if (hasIOBitstreamAdressing) {
-        auto preamble = createBitstreamSequenceSelectPreamble(sequence);
-        sequenceBuilder.addEntry(preamble);
-    }
-    auto rxDelay = getRxDelay(sequence);
-    for (const auto &txrx : sequence.getOps()) {
-        TxRxParametersBuilder builder(txrx);
-        builder.setRxDelay(rxDelay);
+std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const std::vector<TxRxSequence> &sequences) {
+    std::vector<TxRxParametersSequence> result;
+    std::optional<BitstreamId> currentBitstreamId = std::nullopt;
+    for(const auto sequence: sequences) {
+        TxRxParametersSequenceBuilder sequenceBuilder;
+        sequenceBuilder.setCommon(sequence);
         if (hasIOBitstreamAdressing) {
-            builder.setBitstreamId(BitstreamId(0));
+            auto preamble = createBitstreamSequenceSelectPreamble(sequence);
+            if(!currentBitstreamId.has_value() || currentBitstreamId.value() != preamble.getBitstreamId()) {
+                // Use the preamble only when the Bitstream Id changes.
+                // For example, if the same bitstream id is used in two consecutive sequences -- skip the preamble.
+                sequenceBuilder.addEntry(preamble);
+                currentBitstreamId = preamble.getBitstreamId();
+            }
         }
-        sequenceBuilder.addEntry(builder.build());
+        auto rxDelay = getRxDelay(sequence);
+        for (const auto &txrx : sequence.getOps()) {
+            TxRxParametersBuilder builder(txrx);
+            builder.setRxDelay(rxDelay);
+            if (hasIOBitstreamAdressing) {
+                builder.setBitstreamId(BitstreamId(0));
+            }
+            sequenceBuilder.addEntry(builder.build());
+        }
+        result.emplace_back(sequenceBuilder.build());
     }
-    return sequenceBuilder.build();
+    return result;
 }
 
 void Us4RImpl::trigger() { this->getMasterOEM()->syncTrigger(); }
