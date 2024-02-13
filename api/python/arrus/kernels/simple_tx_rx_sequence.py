@@ -116,9 +116,11 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
         tx = Tx(tx_aperture, op.pulse,
                 focus=tx_focus,
                 angle=tx_angle,
-                speed_of_sound=c)
+                speed_of_sound=c,
+                placement=op.tx_placement
+        )
         rx = Rx(rx_aperture, sample_range, op.downsampling_factor,
-                init_delay=op.init_delay)
+                init_delay=op.init_delay, placement=op.rx_placement)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
     return TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats)

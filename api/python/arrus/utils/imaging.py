@@ -51,6 +51,22 @@ else:
           "operators may not be available.")
 
 
+def _read_kernel_module(path):
+    import cupy as cp
+    current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
+    kernel_src = Path(os.path.join(current_dir, path)).read_text()
+    return cp.RawModule(code=kernel_src)
+
+
+def _get_const_memory_array(module, name, input_array):
+    import cupy as cp
+    const_arr_ptr = module.get_global(name)
+    const_arr = cp.ndarray(shape=input_array.shape, dtype=input_array.dtype,
+                           memptr=const_arr_ptr)
+    const_arr.set(input_array)
+    return const_arr
+
+
 def get_extent(x_grid, z_grid):
     """
     A simple utility tool to get output image extents:
@@ -2136,6 +2152,39 @@ class Squeeze(Operation):
         return self.xp.squeeze(data)
 
 
+class GpuConstMemoryPool:
+
+    def __init__(self, kernel_module, variable_name, total_size: int, dtype):
+        import cupy as cp
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
+            raise ValueError(f"There is not enough constant memory available for {variable_name}!")
+        self.total_size = total_size
+        self.variable_name = variable_name
+        self.reference_array = np.zeros((self.total_size, ), dtype=dtype)  # Global memory
+        self.const_array = _get_const_memory_array(kernel_module, variable_name, self.reference_array)
+        self.currently_reserved = 0  # [the number of input array elements]
+        self.lock = threading.Lock()
+
+    def reserve_new_array(self, input_array) -> int:
+        """
+        :return: offset relative to the global constant pool
+        """
+        with self.lock:
+            assert len(input_array.shape) == 1, "Only 1D arrays are supported"
+            array_len = input_array.shape[0]
+            a, b = self.currently_reserved, self.currently_reserved + array_len
+            if b > self.total_size:
+                raise ValueError(f"Exceeded maximum const memory for {self.variable_name}")
+            self.reference_array[a:b] = input_array
+            # Update const array TODO consider updating only the modified part
+            self.const_array.set(self.reference_array)
+            self.currently_reserved = b
+            return a
+
+
+RECONSTRUCT_LRI_KERNEL_MODULE = _read_kernel_module("iq_raw_2_lri.cu")
+
 class ReconstructLri(Operation):
     """
     Rx beamforming for synthetic aperture imaging.
@@ -2146,6 +2195,10 @@ class ReconstructLri(Operation):
     :param rx_tang_limits: RX apodization angle limits (given as the tangent of the angle), \
       a pair of values (min, max). If not provided or None, [-0.5, 0.5] range will be used
     """
+
+    Z_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "zElemConst", 1024, np.float32)
+    X_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "xElemConst", 1024, np.float32)
+    TANG_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "tangElemConst", 1024, np.float32)
 
     def __init__(self, x_grid, z_grid, rx_tang_limits=None):
         super().__init__()
@@ -2161,12 +2214,8 @@ class ReconstructLri(Operation):
 
     def prepare(self, const_metadata):
         import cupy as cp
-        current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
-        _kernel_source = Path(os.path.join(current_dir, "iq_raw_2_lri.cu")).read_text()
-        self._kernel_module = self.num_pkg.RawModule(code=_kernel_source)
+        self._kernel_module = RECONSTRUCT_LRI_KERNEL_MODULE
         self._kernel = self._kernel_module.get_function("iqRaw2Lri")
-        self._z_elem_const = self._kernel_module.get_global("zElemConst")
-        self._tang_elem_const = self._kernel_module.get_global("tangElemConst")
 
         # INPUT PARAMETERS.
         # Input data shape.
@@ -2225,7 +2274,7 @@ class ReconstructLri(Operation):
                 apertures=rx_apertures, probe_model=probe_model
             )
             tx_center_delay = arrus.kernels.tx_rx_sequence.get_center_delay(
-                sequence=seq, probe_model=probe_model
+                sequence=seq, probe_tx=probe_model, probe_rx=probe_model
             )
         else:
             raise ValueError(f"Unsupported type of sequence: {seq}")
@@ -2273,14 +2322,12 @@ class ReconstructLri(Operation):
             raise ValueError("There is not enough constant memory available!")
 
         x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
-        self._x_elem_const = _get_const_memory_array(
-            self._kernel_module, name="xElemConst", input_array=x_elem)
         z_elem = np.asarray(element_pos_z, dtype=self.num_pkg.float32)
-        self._z_elem_const = _get_const_memory_array(
-            self._kernel_module, name="zElemConst", input_array=z_elem)
         tang_elem = np.asarray(element_angle_tang, dtype=self.num_pkg.float32)
-        self._tang_elem_const = _get_const_memory_array(
-            self._kernel_module, name="tangElemConst", input_array=tang_elem)
+
+        self._x_elem_const_offset = ReconstructLri.X_ELEM_CONST_POOL.reserve_new_array(np.squeeze(x_elem))
+        self._z_elem_const_offset = ReconstructLri.Z_ELEM_CONST_POOL.reserve_new_array(np.squeeze(z_elem))
+        self._tang_elem_const_offset = ReconstructLri.TANG_ELEM_CONST_POOL.reserve_new_array(np.squeeze(tang_elem))
 
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_centers, probe_model)
@@ -2339,7 +2386,11 @@ class ReconstructLri(Operation):
             self.tx_ap_first_elem, self.tx_ap_last_elem,
             self.rx_ap_origin, self.n_rx,
             self.min_tang, self.max_tang,
-            self.initial_delay)
+            self.initial_delay,
+            self._z_elem_const_offset,
+            self._x_elem_const_offset,
+            self._tang_elem_const_offset
+        )
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
 
@@ -2739,20 +2790,7 @@ class Reshape(Operation):
         return data.reshape(*self.shape)
 
 
-def _get_const_memory_array(module, name, input_array):
-    import cupy as cp
-    const_arr_ptr = module.get_global(name)
-    const_arr = cp.ndarray(shape=input_array.shape, dtype=input_array.dtype,
-                           memptr=const_arr_ptr)
-    const_arr.set(input_array)
-    return const_arr
 
-
-def _read_kernel_module(path):
-    import cupy as cp
-    current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
-    kernel_src = Path(os.path.join(current_dir, path)).read_text()
-    return cp.RawModule(code=kernel_src)
 
 
 def _get_speed_of_sound(context):
@@ -3188,7 +3226,7 @@ def get_unique_probe_model(const_metadata):
     elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
         placements_tx = {op.tx.placement for op in seq.ops}
         placements_rx = {op.rx.placement for op in seq.ops}
-        placements = placements_tx + placements_rx
+        placements = placements_tx.union(placements_rx)
         if len(placements) != 1:
             raise ValueError("TX and RX should be done on the same Probe.")
         placement = next(iter(placements))

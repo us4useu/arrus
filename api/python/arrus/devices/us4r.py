@@ -87,7 +87,10 @@ class Us4R(Device, Ultrasound):
 
         :param samples: a given TGC to set.
         """
-        if isinstance(tgc_curve, arrus.ops.tgc.LinearTgc):
+        if tgc_curve is None:
+            self._handle.setTgcCurve([])
+            return
+        elif isinstance(tgc_curve, arrus.ops.tgc.LinearTgc):
             if self._tgc_context is None:
                 raise ValueError("There is no tx/rx sequence currently "
                                  "uploaded.")
