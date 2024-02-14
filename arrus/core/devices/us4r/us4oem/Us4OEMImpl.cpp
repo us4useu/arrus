@@ -231,9 +231,11 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
 Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us4OEMAperture &txAperture,
                                                                         const Us4OEMAperture &rxAperture) {
     std::vector<bool> result(N_ADDR_CHANNELS, false);
-    for (ChannelIdx ch = 0; ch < N_ADDR_CHANNELS; ++ch) {
-        ChannelIdx groupNr = ch / ACTIVE_CHANNEL_GROUP_SIZE;
-        if (txAperture.test(ch) || rxAperture.test(ch)) {
+    const auto &mapping = getChannelMapping();
+    for (ChannelIdx logicalCh = 0; logicalCh < N_ADDR_CHANNELS; ++logicalCh) {
+        if (txAperture.test(logicalCh) || rxAperture.test(logicalCh)) {
+            ChannelIdx physicalCh = mapping[logicalCh];
+            ChannelIdx groupNr = physicalCh / ACTIVE_CHANNEL_GROUP_SIZE;
             result[groupNr] = true;
         }
     }
@@ -388,7 +390,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
         for (SequenceId seqId = 0; seqId < nSequences; ++seqId) {
-            unsigned int totalSamples = 0; // Total number of samples in an array.
+            unsigned int totalSamples = 0;// Total number of samples in an array.
             // SEQUENCES
             Us4OEMBufferArrayParts parts;
             const auto &seq = sequences.at(seqId);
@@ -855,7 +857,7 @@ void Us4OEMImpl::setIOBitstream(BitstreamId bitstreamId, const std::vector<uint8
                                 const std::vector<uint16_t> &periods) {
     ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
     ARRUS_REQUIRES_TRUE(bitstreamId < bitstreamOffsets.size(), "The bitstream with the given id does not exists.");
-    if (bitstreamId != bitstreamOffsets.size()-1) {
+    if (bitstreamId != bitstreamOffsets.size() - 1) {
         ARRUS_REQUIRES_EQUAL_IAE(levels.size(), bitstreamSizes.at(bitstreamId));
     }
     // Allow to change the last bitstream size.
