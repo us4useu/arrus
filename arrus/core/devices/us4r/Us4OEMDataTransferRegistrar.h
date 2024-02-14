@@ -124,6 +124,7 @@ public:
                     if (size + part.getSize() > MAX_TRANSFER_SIZE) {
                         transfers.emplace_back(destination, source, size, firing);
                         source = part.getAddress();
+                        destination += size;
                         size = 0;
                     }
                     size += part.getSize();
