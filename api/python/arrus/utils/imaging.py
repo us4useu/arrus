@@ -67,6 +67,45 @@ def _get_const_memory_array(module, name, input_array):
     return const_arr
 
 
+def _assert_unique_property(seq: TxRxSequence, getter: Callable, name: str):
+    s = {getter(op) for op in seq.ops}
+    if len(s) > 1:
+        raise ValueError("The following property should be unique "
+                         f"in the sequence: {name}, found values: "
+                         f"{s}")
+
+
+class GpuConstMemoryPool:
+
+    def __init__(self, kernel_module, variable_name, total_size: int, dtype):
+        import cupy as cp
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
+            raise ValueError(f"There is not enough constant memory available for {variable_name}!")
+        self.total_size = total_size
+        self.variable_name = variable_name
+        self.reference_array = np.zeros((self.total_size, ), dtype=dtype)  # Global memory
+        self.const_array = _get_const_memory_array(kernel_module, variable_name, self.reference_array)
+        self.currently_reserved = 0  # [the number of input array elements]
+        self.lock = threading.Lock()
+
+    def reserve_new_array(self, input_array) -> int:
+        """
+        :return: offset relative to the global constant pool
+        """
+        with self.lock:
+            assert len(input_array.shape) == 1, "Only 1D arrays are supported"
+            array_len = input_array.shape[0]
+            a, b = self.currently_reserved, self.currently_reserved + array_len
+            if b > self.total_size:
+                raise ValueError(f"Exceeded maximum const memory for {self.variable_name}")
+            self.reference_array[a:b] = input_array
+            # Update const array TODO consider updating only the modified part
+            self.const_array.set(self.reference_array)
+            self.currently_reserved = b
+            return a
+
+
 def get_extent(x_grid, z_grid):
     """
     A simple utility tool to get output image extents:
@@ -1124,129 +1163,125 @@ class Decimation(Operation):
         return data_out
 
 
+RX_BEAMFORMING_KERNEL_MODULE = _read_kernel_module("rx_beamforming.cu")
 class RxBeamforming(Operation):
     """
     Classical rx beamforming (reconstruct image scanline by scanline).
-    This operator implements beamforming for linear scanning (element by element)
-    and phased scanning (angle by angle).
     """
+    X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
 
     def __init__(self, num_pkg=None):
-        # Actual implementation of the operator.
-        self._op = None
-        self.xp = None
-
-    def set_pkgs(self, num_pkg, **kwargs):
-        self.xp = num_pkg
-
-    def prepare(self, const_metadata):
-        seq = const_metadata.context.sequence
-        # Determine scanning type based on the sequence of parameters.
-        tx_centers = seq.tx_aperture_center_element
-        if tx_centers is None:
-            tx_centers = seq.tx_aperture_center
-        tx_centers = set(np.atleast_1d(tx_centers))
-        tx_angles = set(np.atleast_1d(seq.angles))
-        # Phased array scanning:
-        # - single TX/RX aperture position
-        # - multiple different angles
-        if len(tx_centers) == 1 and len(tx_angles) > 1:
-            self._op = RxBeamformingPhasedScanning(num_pkg=self.xp)
-        # Linear array scanning:
-        # - single transmit angle (equal 0)
-        # - multiple different aperture positions
-        elif len(tx_centers) > 1 and len(tx_angles) == 1:
-            self._op = RxBeamformingLin(num_pkg=self.xp)
-        # Otherwise: unsupported scanning method (linear/phased)
-        else:
-            raise ValueError("RX beamformer does not support parameters of "
-                             "the provided TX/RX sequence.")
-        return self._op.prepare(const_metadata)
-
-    def process(self, data):
-        return self._op.process(data)
-
-
-class RxBeamformingPhasedScanning(Operation):
-    """
-    Classical beamforming for phase array scanning.
-    """
-
-    def __init__(self, num_pkg=None):
-        self.num_pkg = num_pkg
+        import cupy as cp
+        self.num_pkg = cp
 
     def prepare(self, const_metadata):
         import cupy as cp
-        if self.num_pkg != cp:
-            raise ValueError("Phased scanning is implemented for GPU only.")
-        seq = const_metadata.context.sequence
         probe_model = get_unique_probe_model(const_metadata)
         if probe_model.is_convex_array():
-            raise ValueError("Phased array scanning is implemented for "
-                             "linear phased arrays only.")
+            raise ValueError("RX beamforming is implemented for "
+                             "linear arrays only.")
 
-        self._kernel_module = _read_kernel_module("rx_beamforming.cu")
-        self._kernel = self._kernel_module.get_function("beamformPhasedArray")
+        fs = const_metadata.data_description.sampling_frequency
+        seq: Union[TxRxSequence, SimpleTxRxSequence] = const_metadata.context.sequence
 
+        if isinstance(seq, SimpleTxRxSequence):
+            rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+                op=seq, fs=fs, speed_of_sound=seq.speed_of_sound)
+            fc = seq.pulse.center_frequency
+            n_periods = seq.pulse.n_periods
+            c = seq.speed_of_sound
+            downsampling_factor = seq.downsampling_factor
+            init_delay = 0
+            if seq.init_delay == "tx_start":
+                burst_factor = n_periods / (2 * fc)
+                tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                    sequence=seq, c=c, probe_model=probe_model,
+                    fs=const_metadata.data_description.sampling_frequency
+                )
+                init_delay = tx_center_delay + burst_factor
+            elif not seq.init_delay == "tx_center":
+                raise ValueError(f"Unrecognized init_delay value:"
+                                 f"{seq.init_delay}")
+            tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(
+                probe_model, seq)
+            rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
+            rx_aperture_size = seq.rx_aperture_size
+            angles = np.array(tx_rx_params["tx_angle"])
+        elif isinstance(seq, TxRxSequence):
+            _assert_unique_property(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            _assert_unique_property(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
+            _assert_unique_property(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            _assert_unique_property(seq, lambda op: op.rx.sample_range, "sample_range")
+            _assert_unique_property(seq, lambda op: op.rx.init_delay, "init_delay")
+            _assert_unique_property(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            ref_tx = seq.ops[0].tx
+            ref_rx = seq.ops[0].rx
+            # Tx
+            fc = ref_tx.excitation.center_frequency
+            n_periods = ref_tx.excitation.n_periods
+            c = ref_tx.speed_of_sound
+            angles = np.atleast_1d([op.tx.angle for op in seq.ops])
+            if None in angles:
+                raise ValueError("Each TX angle has to be specified "
+                                 "explicitly. ")
+            # Rx
+            downsampling_factor = ref_rx.downsampling_factor
+            rx_sample_range = ref_rx.sample_range
+            rx_aperture_center_element = ref_rx.aperture.center_element
+            rx_aperture_size = ref_rx.aperture.size
+            if ref_rx.init_delay == "tx_start":
+                burst_factor = n_periods / (2 * fc)
+                tx_center_delay = arrus.kernels.tx_rx_sequence.get_center_delay(
+                    seq, probe_tx=probe_model, probe_rx=probe_model
+                )
+                init_delay = tx_center_delay+burst_factor
+            elif ref_rx.init_delay == "tx_center":
+                init_delay = 0
+            else:
+                raise ValueError(f"Unrecognized init_delay value:"
+                                 f"{seq.init_delay}")
+        else:
+            raise ValueError(f"Unrecognized sequence type: {type(seq)}")
+
+        self._kernel_module = RX_BEAMFORMING_KERNEL_MODULE
+        self._kernel = self._kernel_module.get_function("beamform")
+        medium = const_metadata.context.medium
+        if c is None:
+            c = medium.speed_of_sound
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
         self.output_buffer = cp.zeros((self.n_seq, self.n_tx, self.n_samples), dtype=cp.complex64)
 
-        self.tx_angles = cp.asarray(seq.angles, dtype=cp.float32)
-
+        self.tx_angles = cp.asarray(angles, dtype=cp.float32)
         device_fs = const_metadata.context.device.sampling_frequency
-        acq_fs = (device_fs / seq.downsampling_factor)
-        fs = const_metadata.data_description.sampling_frequency
-        fc = seq.pulse.center_frequency
-        n_periods = seq.pulse.n_periods
-        medium = const_metadata.context.medium
-        if seq.speed_of_sound is not None:
-            c = seq.speed_of_sound
-        else:
-            c = medium.speed_of_sound
-
-        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
-            op=seq, fs=fs, speed_of_sound=c)
+        acq_fs = (device_fs / downsampling_factor)
         start_sample, end_sample = rx_sample_range
-        initial_delay = - start_sample / acq_fs
-        if seq.init_delay == "tx_start":
-            burst_factor = n_periods / (2 * fc)
-            tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                sequence=seq, c=c, probe_model=probe_model, fs=fs)
-            initial_delay += tx_center_delay + burst_factor
-        elif not seq.init_delay == "tx_center":
-            raise ValueError(f"Unrecognized init_delay value: {initial_delay}")
-        lambd = c / fc
-        max_tang = abs(math.tan(
-            math.asin(min(1, 2 / 3 * lambd / probe_model.pitch))))
-
+        init_delay -= start_sample / acq_fs
+        lambd = c/fc
+        max_tang = abs(math.tan(math.asin(min(1, 2/3*lambd/probe_model.pitch))))
         self.fc = cp.float32(fc)
         self.fs = cp.float32(fs)
         self.c = cp.float32(c)
-        # Note: start sample has to be appropriately adjusted for
         # the ACQ sampling frequency.
         self.start_time = cp.float32(start_sample / acq_fs)
-        self.init_delay = cp.float32(initial_delay)
+        self.init_delay = cp.float32(init_delay)
         self.max_tang = cp.float32(max_tang)
         sample_block_size = min(self.n_samples, 16)
         scanline_block_size = min(self.n_tx, 16)
         n_seq_block_size = min(self.n_seq, 4)
         self.block_size = (sample_block_size, scanline_block_size, n_seq_block_size)
-        self.grid_size = (int((self.n_samples - 1) // sample_block_size + 1),
-                          int((self.n_tx - 1) // scanline_block_size + 1),
-                          int((self.n_seq - 1) // n_seq_block_size + 1))
+        self.grid_size = (int((self.n_samples-1)//sample_block_size + 1),
+                          int((self.n_tx-1)//scanline_block_size + 1),
+                          int((self.n_seq-1)//n_seq_block_size + 1))
         # xElemConst
         # Get aperture origin (for the given aperture center element/aperture center)
-        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(
-            probe_model, seq)
+        # TODO zElemConst for convex arrays?
         # There is a single TX and RX aperture center for all TX/RXs
-        rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
         rx_aperture_origin = _get_rx_aperture_origin(
-            rx_aperture_center_element, seq.rx_aperture_size)
-        rx_aperture_offset = rx_aperture_center_element - rx_aperture_origin
-        x_elem = (np.arange(0, self.n_rx) - rx_aperture_offset) * probe_model.pitch
+            rx_aperture_center_element, rx_aperture_size)
+        rx_aperture_offset = rx_aperture_center_element-rx_aperture_origin
+        x_elem = (np.arange(0, self.n_rx)-rx_aperture_offset)*probe_model.pitch
         x_elem = x_elem.astype(np.float32)
-        self.x_elem_const = _get_const_memory_array(
-            self._kernel_module, "xElemConst", x_elem)
+        self.x_elem_const_offset = RxBeamforming.X_ELEM_CONST_POOL.reserve_new_array(np.squeeze(x_elem))
         return const_metadata.copy(input_shape=self.output_buffer.shape)
 
     def process(self, data):
@@ -1256,7 +1291,9 @@ class RxBeamformingPhasedScanning(Operation):
             self.n_seq, self.n_tx, self.n_rx, self.n_samples,
             self.tx_angles,
             self.init_delay, self.start_time,
-            self.c, self.fs, self.fc, self.max_tang)
+            self.c, self.fs, self.fc,
+            self.max_tang,
+            self.x_elem_const_offset)
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
 
@@ -1264,10 +1301,11 @@ class RxBeamformingPhasedScanning(Operation):
 class RxBeamformingLin(Operation):
 
     def __init__(self, num_pkg=None):
+        import cupy as cp
         self.delays = None
         self.buffer = None
         self.rx_apodization = None
-        self.xp = num_pkg
+        self.xp = cp
         self.interp1d_func = None
 
     def _set_interpolator(self, **kwargs):
@@ -1296,8 +1334,8 @@ class RxBeamformingLin(Operation):
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
         self._set_interpolator()
         context = const_metadata.context
-        seq = const_metadata.context.sequence
         probe_model = get_unique_probe_model(const_metadata)
+        seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         medium = const_metadata.context.medium
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe_model, seq)
@@ -2152,37 +2190,6 @@ class Squeeze(Operation):
         return self.xp.squeeze(data)
 
 
-class GpuConstMemoryPool:
-
-    def __init__(self, kernel_module, variable_name, total_size: int, dtype):
-        import cupy as cp
-        device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
-            raise ValueError(f"There is not enough constant memory available for {variable_name}!")
-        self.total_size = total_size
-        self.variable_name = variable_name
-        self.reference_array = np.zeros((self.total_size, ), dtype=dtype)  # Global memory
-        self.const_array = _get_const_memory_array(kernel_module, variable_name, self.reference_array)
-        self.currently_reserved = 0  # [the number of input array elements]
-        self.lock = threading.Lock()
-
-    def reserve_new_array(self, input_array) -> int:
-        """
-        :return: offset relative to the global constant pool
-        """
-        with self.lock:
-            assert len(input_array.shape) == 1, "Only 1D arrays are supported"
-            array_len = input_array.shape[0]
-            a, b = self.currently_reserved, self.currently_reserved + array_len
-            if b > self.total_size:
-                raise ValueError(f"Exceeded maximum const memory for {self.variable_name}")
-            self.reference_array[a:b] = input_array
-            # Update const array TODO consider updating only the modified part
-            self.const_array.set(self.reference_array)
-            self.currently_reserved = b
-            return a
-
-
 RECONSTRUCT_LRI_KERNEL_MODULE = _read_kernel_module("iq_raw_2_lri.cu")
 
 class ReconstructLri(Operation):
@@ -2394,12 +2401,7 @@ class ReconstructLri(Operation):
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
 
-    def _assert_unique(self, seq: TxRxSequence, getter: Callable, name: str):
-        s = {getter(op) for op in seq.ops}
-        if len(s) > 1:
-            raise ValueError("The following property should be unique "
-                             f"in the sequence: {name}, found values: "
-                             f"{s}")
+
 
     def _get_min_delay(self, raw_sequence):
         all_delays = [np.min(op.tx.delays) for op in raw_sequence.ops]
@@ -3233,3 +3235,7 @@ def get_unique_probe_model(const_metadata):
     else:
         raise ValueError(f"Unsupported sequence type: {seq}")
     return const_metadata.context.device.get_probe_by_id(placement).model
+
+
+
+

@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 import numpy as np
 from arrus.ops.operation import Operation
 from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional
-from arrus.framework import Constant
 from arrus.devices.device import parse_device_id, DeviceId
 
 
@@ -75,7 +74,7 @@ class Tx(Operation):
         shape (n_a,), where n_a is a number of active elements determined by \
         tx aperture. The stored value is always of type numpy.ndarray.
     :param focus: transmission focus depth [m] np.inf means to transmit plane wave
-    :param angle: transmission angles [rad]
+    :param angle: transmission angle [rad]
     :param speed_of_sound: assumed speed of sound [m/s]
     :param placement: id of the probe that should do perform TX
     """
@@ -277,4 +276,4 @@ class Scheme:
     work_mode: str = "HOST"
     processing: Union[Callable, Sequence[Callable]] = None
     digital_down_conversion: DigitalDownConversion = None
-    constants: List[Constant] = tuple()
+    constants: List = tuple()
