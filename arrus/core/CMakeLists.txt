@@ -194,7 +194,8 @@ set(SRC_FILES
     api/session.h
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
-    devices/us4r/Us4OEMDataTransferRegistrar.h)
+    devices/us4r/Us4OEMDataTransferRegistrar.h
+    api/devices/us4r/HVPSMeasurement.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

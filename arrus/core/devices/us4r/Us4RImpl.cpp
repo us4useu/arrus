@@ -62,20 +62,17 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4RImpl::Us4OEMs us4oems, ProbeAdapterIm
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
 }
 
-std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
-    std::vector<std::pair <std::string,float>> voltages;
-    std::pair <std::string,float> temp;
+std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
+    std::vector<VoltageLogbook> voltages;
     float voltage;
     // Do not log the voltage measured by US4RPSC, as it may not be correct
     // for this hardware.
     if(isHV256) {
         //Measure voltages on HV
         voltage = this->getMeasuredPVoltage();
-        temp = std::make_pair(std::string("HVP on HV supply"), voltage);
-        voltages.push_back(temp);
+        voltages.push_back(VoltageLogbook{std::string("HVP on HV supply"), voltage, VoltageLogbook::Polarity::PLUS});
         voltage = this->getMeasuredMVoltage();
-        temp = std::make_pair(std::string("HVM on HV supply"), voltage);
-        voltages.push_back(temp);
+        voltages.push_back(VoltageLogbook{std::string("HVM on HV supply"), voltage, VoltageLogbook::Polarity::MINUS});
     }
 
     auto ver = us4oems[0]->getOemVersion();
@@ -84,31 +81,27 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
         //Verify measured voltages on OEMs
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
             voltage = this->getUCDMeasuredHVPVoltage(i);
-            temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
-            voltages.push_back(temp);
+            voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::PLUS});
             voltage = this->getUCDMeasuredHVMVoltage(i);
-            temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
-            voltages.push_back(temp);
+            voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::MINUS});
         }
     }
     else if(ver == 2) {
         //Verify measured voltages on OEM+s
         //Currently OEM+ does not support internal voltage measurement - skip
     }
-
-
-
     return voltages;
 }
 
-void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool isHV256) {
-    std::vector<std::pair <std::string,float>> voltages;
+void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isHV256) {
+    std::vector<VoltageLogbook> voltages;
     bool fail = true;
     while(retries-- && fail) {
         fail = false;
         voltages = logVoltages(isHV256);
-        for(size_t i = 0; i < voltages.size(); i++) {
-            if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
+        for (const auto &logbook: voltages) {
+            const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
+            if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
                 fail = true;
             }
         }
@@ -118,37 +111,59 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
 
     //log last measured voltages
     for(size_t i = 0; i < voltages.size(); i++) {
-        logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].first + " = {} V", voltages[i].second));
+        logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].name + " = {} V", voltages[i].voltage));
     }
 
     if(fail){
         disableHV();
         //find violating voltage
-        for(size_t i = 0; i < voltages.size(); i++) {
-            if(abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
-                throw IllegalStateException(::arrus::format(voltages[i].first + " invalid '{}', should be in range: [{}, {}]",
-                voltages[i].second, (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+        for (const auto &logbook: voltages) {
+            const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
+            if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
+                throw IllegalStateException(
+                    format(logbook.name + " invalid '{}', should be in range: [{}, {}]",
+                    logbook.voltage,
+                    (static_cast<float>(expectedVoltage) - tolerance),
+                    (static_cast<float>(expectedVoltage) + tolerance)));
             }
         }
     }
 }
 
 void Us4RImpl::setVoltage(Voltage voltage) {
-    logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
+    std::vector<HVVoltage> voltages = {HVVoltage(voltage, voltage)};
+    setVoltage(voltages);
+}
+
+void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
-    // Validate.
     auto *device = getDefaultComponent();
     auto voltageRange = device->getAcceptedVoltageRange();
 
-    // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
-    auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
-    auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
+    ARRUS_REQUIRES_TRUE(!voltages.empty(), "At least a single voltage level should be set.");
 
-    if (voltage < minVoltage || voltage > maxVoltage) {
-        throw IllegalArgumentException(
-            ::arrus::format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
+    for(size_t i = 0; i < voltages.size(); ++i) {
+        const auto& voltage = voltages[i];
+        auto voltageMinus = voltage.getVoltageMinus();
+        auto voltagePlus = voltage.getVoltagePlus();
+        logger->log(LogSeverity::INFO,
+            format("Setting voltage -{}, +{}, level: {}", voltageMinus, voltagePlus, i));
+        // Validate
+        // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
+        auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
+        auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
+
+        ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
+            IllegalArgumentException(format(
+                "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,
+                minVoltage, maxVoltage)));
+        ARRUS_REQUIRES_TRUE_E(voltagePlus >= minVoltage && voltagePlus <= maxVoltage,
+            IllegalArgumentException(format(
+                "Unaccepted voltage '{}', should be in range: [{}, {}]", voltagePlus,
+                minVoltage, maxVoltage)));
     }
 
+    // Set voltages.
     bool isHVPS = true;
 
     for(uint8_t n = 0; n < hv.size(); n++) {
@@ -162,7 +177,8 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     if(isHVPS) {
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
-            futures.push_back(std::async(std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), voltage));
+            futures.push_back(std::async(
+            std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), voltages));
         }
         for (auto &future : futures) {
             future.wait();
@@ -170,11 +186,9 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     }
     else {
         for(uint8_t n = 0; n < hv.size(); n++) {
-            hv[n]->setVoltage(voltage);
+            hv[n]->setVoltage(voltages);
         }
     }
-
-
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     float tolerance = 4.0f; // 4V tolerance
@@ -185,13 +199,14 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
 
     if(isHV256) {
-        // Do not check the voltage measured by US4RPSC, as it may not be correct
-        // for this hardware.
-        Voltage setVoltage = this->getVoltage();
-        if (setVoltage != voltage) {
+        Voltage actualVoltage = this->getVoltage();
+        // For HV256 we expect only a single voltage level, and +V == -V.
+        auto expectedVoltage = voltages[0].getVoltagePlus();
+        if (actualVoltage != expectedVoltage) {
             disableHV();
             throw IllegalStateException(
-                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",setVoltage, voltage));
+                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",
+                    actualVoltage, expectedVoltage));
         }
     }
     else {
@@ -199,8 +214,8 @@ void Us4RImpl::setVoltage(Voltage voltage) {
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
-
-    checkVoltage(voltage, tolerance, retries, isHV256);
+    // TODO what about checking voltages on rail 1?
+    checkVoltage(voltages[0].getVoltageMinus(), voltages[0].getVoltagePlus(), tolerance, retries, isHV256);
 }
 
 unsigned char Us4RImpl::getVoltage() {
@@ -823,7 +838,7 @@ void Us4RImpl::setParameters(const Parameters &params) {
             for(auto &us4oem: us4oems) {
                 us4oem->getIUs4oem()->SetTxDelays(value);
             }
-	} 
+	}
 	catch(...) {
             // Try resume.
             this->us4oems[0]->getIUs4oem()->TriggerStart();

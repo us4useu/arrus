@@ -82,6 +82,9 @@ Devices
     :project: arrus
     :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setHpfCornerFrequency, getSerialNumber, getRevision, getUs4OEM, getBackplaneSerialNumber, getBackplaneRevision
 
+.. doxygenclass:: arrus::devices::HVVoltage
+    :members:
+
 .. doxygenclass:: arrus::devices::RxSettings
     :members:
 

@@ -10,6 +10,8 @@ namespace arrus {
 template<typename T>
 class Interval {
 public:
+    Interval(): Interval(T(0), T(0)) {}
+
     Interval(const T &start, const T &end)
             : Interval(std::make_pair(start, end)) {}
 

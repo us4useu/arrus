@@ -222,6 +222,8 @@ public:
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
+    MOCK_METHOD(float, GetMinTxPulseLength, (), (const, override));
+    MOCK_METHOD(float, GetMaxTxPulseLength, (), (const, override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
