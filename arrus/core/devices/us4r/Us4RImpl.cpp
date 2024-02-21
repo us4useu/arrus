@@ -463,7 +463,7 @@ TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequenc
 std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const std::vector<TxRxSequence> &sequences) {
     std::vector<TxRxParametersSequence> result;
     std::optional<BitstreamId> currentBitstreamId = std::nullopt;
-    for(const auto sequence: sequences) {
+    for(const auto &sequence: sequences) {
         TxRxParametersSequenceBuilder sequenceBuilder;
         sequenceBuilder.setCommon(sequence);
         if (hasIOBitstreamAdressing) {
