@@ -129,10 +129,7 @@ private:
         std::unordered_set<Ordinal> pulseCounterOems;
         if (io.hasFrameMetadataCapability()) {
             pulseCounterOems = io.getFrameMetadataCapabilityOEMs();
-        } else {
-            // By default us4OEM:0 is the pulse counter.
-            pulseCounterOems.insert(Ordinal(0));
-        }
+        } 
         for (unsigned i = 0; i < ius4oems.size(); ++i) {
             // TODO(Us4R-10) use ius4oem->GetDeviceID() as an ordinal number, instead of value of i
             auto ordinal = static_cast<Ordinal>(i);

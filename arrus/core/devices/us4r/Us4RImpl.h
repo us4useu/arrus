@@ -126,7 +126,7 @@ public:
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &periods) override;
     std::vector<std::vector<uint8_t>> getOEMMappings() const;
-    Ordinal getFrameMetadataOEM(const us4r::IOSettings &settings);
+    std::optional<Ordinal> getFrameMetadataOEM(const us4r::IOSettings &settings);
 
     std::vector<unsigned short> getChannelsMask(Ordinal probeNumber) override;
     int getNumberOfProbes() const override;
@@ -194,7 +194,7 @@ private:
     // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
-    Ordinal frameMetadataOEM{0};
+    std::optional<Ordinal> frameMetadataOEM{0};
 };
 
 }// namespace arrus::devices

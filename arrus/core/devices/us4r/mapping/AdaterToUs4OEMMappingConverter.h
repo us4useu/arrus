@@ -19,7 +19,7 @@ public:
     using DelayProfilesByOEM = std::unordered_map<Ordinal, std::vector<framework::NdArray>>;
 
     AdapterToUs4OEMMappingConverter(ProbeAdapterSettings settings, const Ordinal noems,
-                                    std::vector<std::vector<uint8_t>> oemMappings, const Ordinal frameMetadataOEM)
+                                    std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM)
         : settings(std::move(settings)), noems(noems), splitter{std::move(oemMappings), frameMetadataOEM} {}
 
     std::pair<SequenceByOEM, DelayProfilesByOEM> convert(SequenceId id, const us4r::TxRxParametersSequence &seq,

@@ -930,9 +930,9 @@ std::vector<std::vector<uint8_t>> Us4RImpl::getOEMMappings() const {
     return mappings;
 }
 
-Ordinal Us4RImpl::getFrameMetadataOEM(const IOSettings &settings) {
+std::optional<Ordinal> Us4RImpl::getFrameMetadataOEM(const IOSettings &settings) {
     if (!settings.hasFrameMetadataCapability()) {
-        return 0;// By default us4OEM:0 is considered to provide frame metadata
+        return std::nullopt;
     } else {
         std::unordered_set<Ordinal> oems = settings.getFrameMetadataCapabilityOEMs();
         if (oems.size() != 1) {

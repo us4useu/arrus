@@ -29,7 +29,7 @@ public:
         std::unordered_map<Ordinal, std::vector<framework::NdArray>> delayProfiles;
     };
 
-    Us4OEMApertureSplitter(std::vector<std::vector<uint8_t>> oemMappings, const Ordinal frameMetadataOEM)
+    Us4OEMApertureSplitter(std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM)
         : oemMappings(std::move(oemMappings)), frameMetadataOEM(frameMetadataOEM) {}
 
     /**
@@ -199,7 +199,9 @@ public:
             // rx NOP will be transferred from us4OEM to host memory,
             // to get the frame metadata. Therefore we need to increase
             // the number of frames a given element contains.
-            currentFrameIdx[frameMetadataOEM] = FrameNumber(maxSize);
+	    if(frameMetadataOEM.has_value()) { 
+                currentFrameIdx[frameMetadataOEM.value()] = FrameNumber(maxSize);
+            }
 
             srcOpIdx.resize(maxSize, opIdx);
             if(!isRxNOP) {
@@ -276,7 +278,7 @@ private:
 
     // us4oem ordinal -> us4oem logical to physical mapping
     std::vector<std::vector<uint8_t>> oemMappings;
-    Ordinal frameMetadataOEM{0};
+    std::optional<Ordinal> frameMetadataOEM{std::nullopt};
 };
 
 }// namespace arrus::devices
