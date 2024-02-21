@@ -92,8 +92,9 @@ class Us4R(Device, Ultrasound):
             return
         elif isinstance(tgc_curve, arrus.ops.tgc.LinearTgc):
             if self._tgc_context is None:
-                raise ValueError("There is no tx/rx sequence currently "
-                                 "uploaded.")
+                raise ValueError("TGC context is currently not set. "
+                                 "Make sure a TX/RX sequence is uploaded and "
+                                 "a medium was specified. ")
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
                 self._tgc_context,
                 self.current_sampling_frequency,
@@ -356,29 +357,28 @@ class Us4R(Device, Ultrasound):
                 else:
                     tgcs.add(seq.tgc_curve)
             elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
-                # Determine TGC context.
-                sample_range = seq.get_sample_range_unique()
-                if medium is None:
-                    raise ValueError(
-                        "Medium definition is required for custom tx/rx "
-                        "sequence when setting linear TGC.")
-                c = medium.speed_of_sound
-                tgc_contexts.add(
-                    arrus.kernels.tgc.TgcCalculationContext(
-                        end_sample=sample_range[1],
-                        speed_of_sound=c
-                    )
-                )
-                # Determine TGC.
                 # Make the curve hashable.
                 curve = tuple(seq.tgc_curve.tolist())
                 tgcs.add(curve)
+                sample_range = seq.get_sample_range_unique()
+                if medium is None:
+                    # No context
+                    tgc_contexts.add(None)
+                else:
+                    c = medium.speed_of_sound
+                    tgc_contexts.add(
+                        arrus.kernels.tgc.TgcCalculationContext(
+                            end_sample=sample_range[1],
+                            speed_of_sound=c
+                        )
+                    )
             else:
                 raise ValueError(f"Unsupported type of TX/RX sequence: "
                                  f"{type(seq)}")
         if len(tgc_contexts) != 1:
             raise ValueError("The TGC setting context is not unique. "
                              "Please make sure that all you sequences "
+                             "are of the same type,"
                              "acquire the same number of samples and specify "
                              "the same speed of sound. "
                              f"Detected TGC contexts: {tgc_contexts}")
