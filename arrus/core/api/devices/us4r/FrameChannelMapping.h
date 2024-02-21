@@ -51,6 +51,7 @@ private:
  */
 class FrameChannelMapping {
 public:
+    using RawHandle = FrameChannelMapping*;
     using Handle = std::unique_ptr<FrameChannelMapping>;
     using SharedHandle = std::shared_ptr<FrameChannelMapping>;
     // Frame Channel Mapping supports up to 256 Us4OEMs.
@@ -58,6 +59,9 @@ public:
     using FrameNumber = uint16;
     constexpr static int8 UNAVAILABLE = -1;
 
+    FrameChannelMapping() = default;
+    FrameChannelMapping(const FrameChannelMapping&) = default;
+    FrameChannelMapping(FrameChannelMapping&&) = default;
 
     /**
      * Returns us4oem module number, physical frame number and channel number for a given,

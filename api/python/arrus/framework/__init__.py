@@ -42,14 +42,18 @@ class DataBufferElement:
     def __init__(self, element_handle):
         self._element_handle = element_handle
         self._size = element_handle.getSize()
-        self._numpy_array_wrapping = self._create_np_array(element_handle)
+        self._numpy_array_wrappings = self._create_np_arrays(element_handle)
 
     @property
     def data(self):
         """
         The data wrapped into a numpy array.
         """
-        return self._numpy_array_wrapping
+        return self._numpy_array_wrappings[0]
+
+    @property
+    def arrays(self):
+        return self._numpy_array_wrappings
 
     @property
     def size(self):
@@ -58,27 +62,18 @@ class DataBufferElement:
     def release(self):
         self._element_handle.release()
 
-    def _create_np_array(self, element):
-        ndarray = element.getData()
-        if ndarray.getDataType() != arrus.core.NdArray.DataType_INT16:
-            raise ValueError("Currently output data type int16 is supported "
-                             "only.")
-        addr = arrus.core.castToInt(ndarray.getInt16())
-        ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
-        shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())
-        arr = np.ctypeslib.as_array(ctypes_ptr, shape=shape)
-        self.shape = shape
-        return arr
-
-    def invalidate_shape(self):
-        if self._element_handle != self.shape:
-            ndarray = self._element_handle.getData()
-            shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())
+    def _create_np_arrays(self, element):
+        arrays = []
+        for i in range(element.getNumberOfArrays()):
+            ndarray = element.getData(i)
+            if ndarray.getDataType() != arrus.core.NdArrayDef.DataType_INT16:
+                raise ValueError("Currently output data type int16 is supported only.")
             addr = arrus.core.castToInt(ndarray.getInt16())
             ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
-            self._numpy_array_wrapping = np.ctypeslib.as_array(ctypes_ptr,
-                                                               shape=shape)
-            self.shape = shape
+            shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())
+            arr = np.ctypeslib.as_array(ctypes_ptr, shape=shape)
+            arrays.append(arr)
+        return arrays
 
 
 class DataBuffer:
@@ -127,7 +122,6 @@ class DataBuffer:
     def _callback(self, element):
         pos = element.getPosition()
         py_element = self.elements[pos]
-        py_element.invalidate_shape()
         for cbk in self._callbacks:
             cbk(py_element)
 

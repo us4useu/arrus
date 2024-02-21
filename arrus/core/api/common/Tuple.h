@@ -35,6 +35,13 @@ public:
         return this->values[i];
     }
 
+    /**
+     * Returns i-th value.
+     */
+    T &getMutable(size_t i) {
+        return this->values[i];
+    }
+
     Tuple<T> set(size_t i, T value) const {
         std::vector<T> newValues(values);
         newValues[i] = value;
@@ -74,6 +81,10 @@ public:
 
     bool operator!=(const Tuple &rhs) const {
         return !(rhs == *this);
+    }
+
+    bool empty() const {
+        return values.empty();
     }
 
 private:

@@ -70,14 +70,19 @@ class ConstMetadata:
     """
     def __init__(self, context: FrameAcquisitionContext,
                  data_desc: DataDescription,
-                 input_shape, is_iq_data, dtype,
-                 version=None):
+                 input_shape,
+                 is_iq_data,
+                 dtype,
+                 version=None,
+                 name: str = None
+                 ):
         self._context = context
         self._data_char = data_desc
         self._input_shape = input_shape
         self._is_iq_data = is_iq_data
         self._dtype = dtype
         self._version = version
+        self._name = name
 
     @property
     def context(self) -> FrameAcquisitionContext:
@@ -90,6 +95,10 @@ class ConstMetadata:
     @property
     def input_shape(self):
         return self._input_shape
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def is_iq_data(self):

@@ -40,7 +40,6 @@ set(SRC_FILES
     api/devices/probe/ProbeModel.h
     api/devices/probe/ProbeModelId.h
     api/devices/probe/ProbeSettings.h
-    api/devices/us4r/ProbeAdapter.h
     api/devices/us4r/ProbeAdapterModelId.h
     api/devices/us4r/ProbeAdapterSettings.h
     api/devices/us4r/Us4OEM.h
@@ -95,18 +94,11 @@ set(SRC_FILES
     devices/us4r/RxSettings.h
     devices/us4r/RxSettings.cpp
 
-    devices/us4r/probeadapter/ProbeAdapterFactory.h
-    devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h
-    devices/us4r/probeadapter/ProbeAdapterImpl.h
-    devices/us4r/probeadapter/ProbeAdapterImpl.cpp
     devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
     devices/us4r/probeadapter/ProbeAdapterSettings.h
     devices/us4r/probeadapter/ProbeAdapterSettings.cpp
 
-    devices/probe/ProbeFactory.h
-    devices/probe/ProbeFactoryImpl.h
     devices/probe/ProbeImpl.h
-    devices/probe/ProbeImpl.cpp
     devices/probe/ProbeSettingsValidator.h
     devices/probe/ProbeSettings.h
     devices/probe/ProbeSettings.cpp
@@ -143,8 +135,6 @@ set(SRC_FILES
     devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
     devices/us4r/Us4ROutputBuffer.h
     devices/us4r/Us4RImpl.cpp
-    devices/us4r/common.h
-    devices/us4r/common.cpp
 
     session/SessionImpl.h
     session/SessionImpl.cpp
@@ -171,13 +161,10 @@ set(SRC_FILES
     common/aperture.h
     external/eigen/Tensor.h
     devices/us4r/us4oem/Us4OEMImplBase.h
-    devices/us4r/probeadapter/ProbeAdapterImplBase.h
-    devices/probe/ProbeImplBase.h
     external/eigen/Dense.h
     ../common/utils.h
     devices/us4r/DataTransfer.h
     devices/us4r/us4oem/Us4OEMBuffer.h
-    devices/us4r/Us4RBuffer.h
     api/ops/us4r/Scheme.h
     api/framework/Buffer.h
     api/framework/NdArray.h
@@ -189,13 +176,17 @@ set(SRC_FILES
     api/framework/FifoBuffer.h
     api/ops/us4r/DigitalDownConversion.h
     ops/us4r/DigitalDownConversion.cpp
+    ops/us4r/Scheme.cpp
     cfg/default.h.in
     common/LogSeverity.cpp
     api/arrus.h
     api/session.h
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
-    devices/us4r/Us4OEMDataTransferRegistrar.h)
+    devices/us4r/Us4OEMDataTransferRegistrar.h
+    devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+    devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h
+    devices/us4r/us4oem/Us4OEMUploadResult.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

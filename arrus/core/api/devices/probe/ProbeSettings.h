@@ -12,6 +12,8 @@ namespace arrus::devices {
 
 class ProbeSettings {
 public:
+    using ChannelMapping = std::vector<ChannelIdx>;
+
     /**
      *
      * @param model

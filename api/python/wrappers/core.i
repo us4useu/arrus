@@ -295,8 +295,8 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
     return res;
 }
 
-std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arrus::session::UploadResult* uploadResult) {
-    return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
+std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(size_t arrayId, arrus::session::UploadResult* uploadResult) {
+    return uploadResult->getConstMetadata(arrayId)->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
 }
 
 std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {
@@ -338,12 +338,12 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceId.h"
 %include "arrus/core/api/devices/Device.h"
 %include "arrus/core/api/devices/DeviceWithComponents.h"
-%include "arrus/core/api/devices/us4r/Us4OEM.h"
-%include "arrus/core/api/devices/us4r/Us4R.h"
-%include "arrus/core/api/devices/File.h"
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/Probe.h"
+%include "arrus/core/api/devices/us4r/Us4OEM.h"
+%include "arrus/core/api/devices/us4r/Us4R.h"
+%include "arrus/core/api/devices/File.h"
 
 
 %inline %{

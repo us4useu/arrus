@@ -30,7 +30,7 @@ message Us4RSettings {
     repeated uint32 channels = 1;
   }
 
-  ChannelsMask channels_mask = 5;
+  repeated ChannelsMask channels_mask = 5;
   repeated ProbeToAdapterConnection probe_to_adapter_connection = 6;
   RxSettings rx_settings = 7;
   repeated Us4OEMSettings us4oems = 8;
