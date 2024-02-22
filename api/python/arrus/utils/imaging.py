@@ -2251,11 +2251,11 @@ class ReconstructLri(Operation):
                 fs=const_metadata.data_description.sampling_frequency
             )
         elif isinstance(seq, TxRxSequence):
-            self._assert_unique(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
-            self._assert_unique(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
-            self._assert_unique(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
-            self._assert_unique(seq, lambda op: op.rx.sample_range, "sample_range")
-            self._assert_unique(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            _assert_unique_property(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            _assert_unique_property(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
+            _assert_unique_property(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            _assert_unique_property(seq, lambda op: op.rx.sample_range, "sample_range")
+            _assert_unique_property(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
             # Reference TX/RX ops
             rx_op = seq.ops[0].rx
             tx_op = seq.ops[0].tx
