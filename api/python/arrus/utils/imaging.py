@@ -25,7 +25,7 @@ from enum import Enum
 import arrus.kernels.simple_tx_rx_sequence
 import arrus.kernels.tx_rx_sequence
 from numbers import Number
-from typing import Sequence, Dict, Callable, Union, Tuple
+from typing import Sequence, Dict, Callable, Union, Tuple, List, Optional
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
 from arrus.ops.us4r import TxRxSequence
@@ -249,6 +249,21 @@ class Buffer:
         self.elements[pos].release()
 
 
+@dataclasses.dataclass(frozen=True)
+class Graph:
+    """
+    :param dependencies: op -> name of the inputs
+    """
+    operations: List
+    dependencies: Optional[Dict] = None
+
+    def reverse_dependencies(self):
+        result = defaultdict(list)
+        for k, v in self.dependencies.items():
+            result[v].append(k)
+        return result
+
+
 class ProcessingRunner:
     """
     Runs processing on a specified processing device (GPU in particular).
@@ -266,13 +281,70 @@ class ProcessingRunner:
         READY = 1
         CLOSED = 2
 
-    def __init__(self, input_buffer, metadatas, processings):
+    def __init__(self, input_buffer, metadata, processing):
         import cupy as cp
-        # Initialize pipeline.
         self.cp = cp
-        # Pin input (host) buffer.
+        # Input buffer, stored in the host PC memory.
+        self.input_buffer = input_buffer
+        self.processing = processing
+        self.input_metadata = metadata
+
+        # host PC -> GPU RAM stream
+        self.data_stream = cp.cuda.Stream(non_blocking=True)
+        # kernel execution stream
+        self.processing_stream = cp.cuda.Stream(non_blocking=True)
+        self.input_buffers_gpu = self._create_buffers(
+            self.input_metadata,
+            buffer_spec=self.processing.input_buffer,
+            placement="/GPU:0"
+        )
+        # Serialize graph to a sequence of operations to perform, with inputs
+        # and outputs
+        self._ops = self._serialize_graph(processing, self.input_metadata)
+        # input_ordinal, input's_output_nr -> output ordinal
+        # input_ordinal, input's_output_nr -> output's input nr
+        self.output_nr, self.suboutput_nr = self._get_output_nrs(self._ops)
+        # TODO extend with Enqueue, Dequeue, Pipeline, Enqueue, Enqueue, Dequeue, Pipeline...:W
+        
+
+    def process(self, input_element):
+        with self._process_lock:
+            for i, array in enumerate(input_element.arrays):
+                self._inputs[i][0] = array
+            for i, op in enumerate(self._ops):
+                results = op.process(self._inputs[i])
+                for j, r in enumerate(results):
+                    out_nr = self.output_nr[i, j]
+                    subout_nr = self.suboutput_nr[i, j]
+                    self._inputs[out_nr][subout_nr] = r
+
+
+    def _serialize_graph(self, processing, metadata):
+        graph = processing.graph
+        # Get inputs
+        rev_deps = graph.reverse_dependencies()
+        q = deque()
+        for m in metadata:
+            sequence_name = m.context.sequence.name
+            q.extend(rev_deps[sequence_name])
+        result = []
+        visited_names = set()
+        # BFS
+        while len(q) != 0:
+            op = q.popleft()
+            name = op.name
+            if name in visited_names:
+                raise ValueError(f"Cycle detected for {name}")
+            visited_names.add(name)
+            next_ops = rev_deps[name]
+            q.extend(next_ops)
+            result.append(op)
+        return result
+
+
+    def __init__(self, input_buffer, metadatas, graph: Graph):
         self.input_buffer = self.__register_buffer(input_buffer)
-        DEFAULT_BUFF = ProcessingBuffer(size=2, type="locked")
+        DEFAULT_BUFF = ProcessingBufferDef(size=2, type="locked")
 
         self.in_buffers_gpu = []
         self.pipelines = []
@@ -554,6 +626,21 @@ def _get_op_context_param_name(op_name: str, param_name: str):
     return f"/{op_name}{param_name}"
 
 
+
+class Enqueue(Operation):
+
+    def __init__(self, buffer, stream):
+        self.buffer = buffer
+        self.stream = stream
+
+
+class Dequeue(Operation):
+
+    def __init__(self, buffer, stream):
+        self.buffer = buffer
+        self.stream = stream
+
+
 class Output(Operation):
     """
     Output node.
@@ -763,14 +850,14 @@ class Pipeline:
 
 
 @dataclasses.dataclass(frozen=True)
-class ProcessingBuffer:
+class ProcessingBufferDef:
     """
-    :param size: the number of elements in the buffer
+    :param size: the number of elements in the buffer. A single element
+        represents a tuple of input arrays
     :param type: buffer type ('locked')
     """
     size: int
     type: str
-    # TODO: placement
 
 
 class Processing:
@@ -779,18 +866,18 @@ class Processing:
     """
 
     def __init__(
-            self, pipeline: Pipeline,
+            self, graph: Graph,
             callback: Callable[[Sequence[Union[BufferElement, BufferElementLockBased]]], None] = None,
-            input_buffer: ProcessingBuffer = None,
-            output_buffer: ProcessingBuffer = None,
+            input_buffer: ProcessingBufferDef = None,
+            output_buffer: ProcessingBufferDef = None,
             on_buffer_overflow_callback=None):
-        self.pipeline = pipeline
-        self._pipeline_name = _get_default_op_name(self.pipeline, 0)
-        self._pipeline_param_names, self._param_defs = self._determine_params()
+        self.graph = graph
         self.callback = callback
         self.input_buffer = input_buffer
         self.output_buffer = output_buffer
         self.on_buffer_overflow_callback = on_buffer_overflow_callback
+        self._pipeline_name = _get_default_op_name(self.pipeline, 0)
+        self._pipeline_param_names, self._param_defs = self._determine_params()
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
