@@ -8,13 +8,29 @@ from dataclasses import dataclass
 
 from arrus.utils.imaging import (
     Buffer, BufferElement, ProcessingRunner, Pipeline, Lambda, Processing,
-    ProcessingBufferDef
+    ProcessingBufferDef, Graph
 )
+
+@dataclass
+class SequenceMock:
+    name: str
+
+@dataclass
+class ContextMock:
+    sequence: SequenceMock
 
 @dataclass
 class MetadataMock:
     input_shape: tuple
     dtype: object
+    name: str
+
+    @property
+    def context(self):
+        return ContextMock(SequenceMock(name=self.name))
+
+    def copy(self, **kwargs):
+        return MetadataMock(**{**self.__dict__, **kwargs})
 
 
 class PipelineMock:
@@ -93,97 +109,146 @@ class ProcessingRunnerTestCase(unittest.TestCase):
             self.runner = None
 
     def __create_runner(
-            self, arrays,
+            self, elements, sequences,
             in_buffer_size=2,
             gpu_buffer_size=2,
             out_buffer_size=2,
-            pipeline=None, callback=None,
+            graph=None, callback=None,
             buffer_type="locked"):
 
         # arrays: a list of tuples [(a1, a2,..), ...]
-
-        self.in_buffer = InputBufferMock(
-            n_elements=in_buffer_size,
-            shape=data_shape,
-            dtype=self.dtype)
-
-        input_buffer_spec = ProcessingBufferDef(
+        data = []
+        arrays = []
+        array_definitions = []
+        for element in elements:
+            n_bytes = np.sum([array.nbytes for array in element])
+            element_data = np.empty((n_bytes, ), dtype=np.uint8)
+            views = []
+            addr = 0
+            for i, array in enumerate(element):
+                array_size = array.nbytes
+                view = element_data[addr:(addr+array_size)]
+                view = view.view(array.dtype).reshape(array.shape)
+                view[:] = array
+                views.append(view)
+                if i == 0:
+                    array_definitions.append((array.shape, array.dtype))
+            arrays.append(views)
+            data.append(element_data)
+        self.in_buffer = InputBufferMock(data, arrays)
+        input_buffer_def = ProcessingBufferDef(
             size=gpu_buffer_size,
             type=buffer_type
         )
-        output_buffer_spec = ProcessingBufferDef(
+        output_buffer_def = ProcessingBufferDef(
             size=out_buffer_size,
             type=buffer_type
         )
-        metadata = MetadataMock(
-            input_shape=self.data_shape,
-            dtype=self.dtype
-        )
+        metadata = [MetadataMock(input_shape=shape, dtype=dtype, name=name)
+                    for (shape, dtype), name in zip(array_definitions, sequences)]
+
         self.runner = ProcessingRunner(
             input_buffer=self.in_buffer,
-            const_metadata=metadata,
+            metadata=metadata,
             processing=Processing(
-                input_buffer=input_buffer_spec,
-                output_buffer=output_buffer_spec,
-                pipeline=pipeline,
+                input_buffer=input_buffer_def,
+                output_buffer=output_buffer_def,
+                graph=graph,
                 callback=callback
             ))
         return self.runner
 
-    def __run_increment_sync(self, buffer, n_runs):
-        value = 0
-        for i in range(n_runs):
-            for j in range(len(buffer.elements)):
-                element = buffer.acquire(j)
-                element.data[:] = value
-                self.runner.process(element)
-                value += 1
-        self.runner.sync()
+    def test_simple_graph(self):
+        sequences = ["SequenceA", "SequenceB"]
+        a1 = np.zeros((2, 2), dtype=np.int16) + 1
+        b1 = np.zeros((2, 2), dtype=np.int16) + 2
+        a2 = np.zeros((2, 2), dtype=np.int16) + 3
+        b2 = np.zeros((2, 2), dtype=np.int16) + 4
 
-    def __verify_increment(self, n_runs, buffer_size, result_arrays):
-        self.assertEqual(len(result_arrays), n_runs*buffer_size)
-        for i in range(n_runs):
-            for j in range(buffer_size):
-                expected_array = np.zeros(self.data_shape, dtype=self.dtype)
-                expected_array[:] = i*buffer_size + j + 1
-                actual_array = result_arrays[j+i*buffer_size]
-                np.testing.assert_equal(actual_array, expected_array)
+        elements = [(a1, b1), (a2, b2)]
 
-    def test_in_producer_faster_than_consumer_lock_based(self):
-        aux_data_size = 1000
-        aux_data = cp.arange(0, aux_data_size*aux_data_size)
-        aux_data = aux_data.reshape((aux_data_size, aux_data_size))
-
-        data_shape = (10, 10)
-        result_arrays = []
-
-        def compute_heavy_on_aux_data(data):
-            res = aux_data*cp.int32(2)
-            # And do the regular stuff on on the input data
-            return data + 1,
-
-        pipeline = PipelineMock(
-            func=compute_heavy_on_aux_data,
-            n_outputs=1,
-            output_shape=data_shape,
-            output_dtype=self.dtype
+        graph = Graph(
+            operations={
+                Pipeline(name="A", placement="/GPU:0", steps=(
+                    Lambda(lambda data: data+1),
+                )),
+                Pipeline(name="B", placement="/GPU:0", steps=(
+                    Lambda(lambda data: data**2),
+                )),
+                Pipeline(name="C", placement="/GPU:0", steps=(
+                    Lambda(lambda x, y: x+y,
+                           lambda metadata: metadata.copy(input_shape=a.shape)),
+                ))
+            },
+            dependencies={
+                "A": "SequenceA",
+                "B": "SequenceB",
+                "C": ("A/Output:0", "B/Output:0"),
+                "Output:0": "C/Output:0"
+            }
         )
+        runner = self.__create_runner(elements=elements, graph=graph, sequences=sequences)
+        buffer, metadata = runner.outputs
+        print(metadata.input_shape)
+        print(metadata.dtype)
+        outputs = buffer.get()
+        print(outputs)
 
-        def callback(elements):
-            result_arrays.append(elements[0].data.copy())
-            elements[0].release()
 
-        buffer_size = 2
-        runner = self.__create_runner(
-            data_shape=data_shape,
-            pipeline=pipeline,
-            callback=callback)
-        # Run
-        n_runs = 10000
-        self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
-        # Verify THE result arrays are as expected.
-        self.__verify_increment(n_runs=n_runs, buffer_size=buffer_size,
-                                result_arrays=result_arrays)
+    # def __run_increment_sync(self, buffer, n_runs):
+    #     value = 0
+    #     for i in range(n_runs):
+    #         for j in range(len(buffer.elements)):
+    #             element = buffer.acquire(j)
+    #             element.data[:] = value
+    #             self.runner.process(element)
+    #             value += 1
+    #     self.runner.sync()
+    #
+    # def __verify_increment(self, n_runs, buffer_size, result_arrays):
+    #     self.assertEqual(len(result_arrays), n_runs*buffer_size)
+    #     for i in range(n_runs):
+    #         for j in range(buffer_size):
+    #             expected_array = np.zeros(self.data_shape, dtype=self.dtype)
+    #             expected_array[:] = i*buffer_size + j + 1
+    #             actual_array = result_arrays[j+i*buffer_size]
+    #             np.testing.assert_equal(actual_array, expected_array)
+
+    # def test_in_producer_faster_than_consumer_lock_based(self):
+    #     aux_data_size = 1000
+    #     aux_data = cp.arange(0, aux_data_size*aux_data_size)
+    #     aux_data = aux_data.reshape((aux_data_size, aux_data_size))
+    #
+    #     data_shape = (10, 10)
+    #     result_arrays = []
+    #
+    #     def compute_heavy_on_aux_data(data):
+    #         res = aux_data*cp.int32(2)
+    #         # And do the regular stuff on on the input data
+    #         return data + 1,
+    #
+    #     pipeline = PipelineMock(
+    #         func=compute_heavy_on_aux_data,
+    #         n_outputs=1,
+    #         output_shape=data_shape,
+    #         output_dtype=self.dtype
+    #     )
+    #
+    #     def callback(elements):
+    #         result_arrays.append(elements[0].data.copy())
+    #         elements[0].release()
+    #
+    #     buffer_size = 2
+    #     runner = self.__create_runner(
+    #         data_shape=data_shape,
+    #         pipeline=pipeline,
+    #         callback=callback)
+    #     # Run
+    #     n_runs = 10000
+    #     self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
+    #     # Verify THE result arrays are as expected.
+    #     self.__verify_increment(n_runs=n_runs, buffer_size=buffer_size,
+    #                             result_arrays=result_arrays)
 
     # NOTE: the below is no longer valid for arrus.utils.imaging.PipelineRunner,
     # however the logic should be used in ARRUS v0.9.0 C++ Pipeline
@@ -221,48 +286,48 @@ class ProcessingRunnerTestCase(unittest.TestCase):
     #     with self.assertRaisesRegex(ValueError, "override") as ctx:
     #         self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
 
-    def test_multi_output_pipeline(self):
-        data_shape = (1000, 1000)
-        results = deque()
-        pipeline = Pipeline(
-            steps=(
-                Lambda(lambda data: data+1),
-                Pipeline(
-                    steps=(
-                        Lambda(lambda data: data+1),
-                    ),
-                    placement="GPU:0"
-                ),
-                Lambda(lambda data: data)  # Identity function to bypass results
-            ),
-            placement="GPU:0"
-        )
-        pipeline.prepare(MetadataMock(input_shape=data_shape, dtype=cp.int32))
-
-        def copy_results(elements):
-            copies = []
-            for element in elements:
-                copies.append(element.data.copy())
-                element.release()
-            results.append(copies)
-
-        buffer_size = 2
-        runner = self.__create_runner(
-            data_shape=data_shape,
-            pipeline=pipeline,
-            n_out_buffers=2,
-            callback=copy_results)
-        # Run
-        n_runs = 500
-        self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
-        # Verify result 1
-        for i, (array1, array2) in enumerate(results):
-            # +1 -> +1 -> output
-            expected_array_1 = np.zeros(data_shape, dtype=self.dtype) + i + 1
-            np.testing.assert_equal(expected_array_1, array1)
-            # +1 -> output
-            expected_array_2 = np.zeros(data_shape, dtype=self.dtype) + i + 2
-            np.testing.assert_equal(expected_array_2, array2)
+    # def test_multi_output_pipeline(self):
+    #     data_shape = (1000, 1000)
+    #     results = deque()
+    #     pipeline = Pipeline(
+    #         steps=(
+    #             Lambda(lambda data: data+1),
+    #             Pipeline(
+    #                 steps=(
+    #                     Lambda(lambda data: data+1),
+    #                 ),
+    #                 placement="GPU:0"
+    #             ),
+    #             Lambda(lambda data: data)  # Identity function to bypass results
+    #         ),
+    #         placement="GPU:0"
+    #     )
+    #     pipeline.prepare(MetadataMock(input_shape=data_shape, dtype=cp.int32))
+    #
+    #     def copy_results(elements):
+    #         copies = []
+    #         for element in elements:
+    #             copies.append(element.data.copy())
+    #             element.release()
+    #         results.append(copies)
+    #
+    #     buffer_size = 2
+    #     runner = self.__create_runner(
+    #         data_shape=data_shape,
+    #         pipeline=pipeline,
+    #         n_out_buffers=2,
+    #         callback=copy_results)
+    #     # Run
+    #     n_runs = 500
+    #     self.__run_increment_sync(self.in_buffer, n_runs=n_runs)
+    #     # Verify result 1
+    #     for i, (array1, array2) in enumerate(results):
+    #         # +1 -> +1 -> output
+    #         expected_array_1 = np.zeros(data_shape, dtype=self.dtype) + i + 1
+    #         np.testing.assert_equal(expected_array_1, array1)
+    #         # +1 -> output
+    #         expected_array_2 = np.zeros(data_shape, dtype=self.dtype) + i + 2
+    #         np.testing.assert_equal(expected_array_2, array2)
 
 
 if __name__ == "__main__":

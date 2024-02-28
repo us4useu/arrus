@@ -254,7 +254,7 @@ class Buffer:
                        for shape, dtype in zip(shapes, dtypes)]
             addresses = np.cumsum([0, ]+n_bytes[:-1])
             total_n_bytes = np.sum(n_bytes)
-            data = math_pkg.zeros(total_n_bytes, dtype=np.uint8)
+            data = math_pkg.zeros((total_n_bytes, ), dtype=np.uint8)
             arrays = []
             for shape, dtype, addr, size in zip(shapes, dtypes, addresses, n_bytes):
                 array = data[addr:addr+size].view(dtype).reshape(shape)
@@ -291,7 +291,7 @@ class Graph:
         -> [(source op name: str, source output nr: int)]"""
         for t, sources in self.dependencies.items():
             t_op_name, t_input_nr = self._parse_dependency_name(t)
-            if not isinstance(sources, Iterable):
+            if not isinstance(sources, Iterable) or isinstance(sources, str):
                 sources = [sources]
             if t_input_nr is not None and len(sources) > 1:
                 raise ValueError("A single input can be connected only to a "
@@ -332,7 +332,7 @@ class Graph:
                         and not Graph._input_name_pattern.match(inout)):
                     raise ValueError(f"Invalid dependency name: {s}")
                 _, nr = inout.split(":")
-                return name, int(inout.strip())
+                return name, int(nr.strip())
             else:
                 raise ValueError(f"Invalid dependency name: {s}")
 
@@ -427,7 +427,7 @@ class ProcessingRunner:
             for target in next_ops:
                 op_name, input_nr = target
                 q.append((op_name, input_nr))
-                metadata_by_target[op_name].append((input_nr, metadata))
+                metadata_by_target[op_name].append((input_nr, m))
         input_buffer = Buffer(
             name="InputBufferGPU", n_elements=input_buffer_def.size,
             type=input_buffer_def.type,
@@ -442,6 +442,7 @@ class ProcessingRunner:
         while len(q) != 0:
             # NOTE: op_input_nr is used only in case of the Output node.
             op_name, op_input_nr = q.popleft()
+            print(op_name)
             if op_name in visited_names:
                 raise ValueError(f"Cycle detected at: {op_name}")
             visited_names.add(op_name)
@@ -450,7 +451,7 @@ class ProcessingRunner:
             op_nrs, metadata = zip(*metadata)
             # Check if there are no gaps in input numbers
             # (e.g. we have Input:0 and Input:2 but no Input:1)
-            if set(np.diff(op_nrs).tolist()) != {1}:
+            if len(op_nrs) > 1 and set(np.diff(op_nrs).tolist()) != {1}:
                 raise ValueError(f"Some inputs missing for {op_name}, "
                                  f"detected only {op_nrs}")
             if op_name == "Output":
@@ -465,6 +466,9 @@ class ProcessingRunner:
             else:
                 # op node
                 op = ops_by_name[op_name]
+                if len(metadata) == 1:
+                    # Backward compatibility
+                    metadata = metadata[0]
                 new_metadata = op.prepare(metadata)
                 if not isinstance(new_metadata, Iterable):
                     new_metadata = [new_metadata]
@@ -475,13 +479,13 @@ class ProcessingRunner:
                         input_counters[next_name] += 1
                         if input_counters[next_name] == n_inputs_by_name[next_name]:
                             q.append(next_name)
-            output_buffer = Buffer(
-                name="OutputBufferCPU",
-                n_elements=output_buffer_def.size,
-                type=output_buffer_def.type,
-                shapes=output_shapes,
-                dtypes=output_dtypes,
-                math_pkg=np)
+        output_buffer = Buffer(
+            name="OutputBufferCPU",
+            n_elements=output_buffer_def.size,
+            type=output_buffer_def.type,
+            shapes=output_shapes,
+            dtypes=output_dtypes,
+            math_pkg=np)
         return input_buffer, output_buffer, output_metadata
 
     def _preprocess_graph(self, processing, input_metadata,
@@ -1038,22 +1042,22 @@ class Processing:
         self.input_buffer = input_buffer
         self.output_buffer = output_buffer
         self.on_buffer_overflow_callback = on_buffer_overflow_callback
-        self._pipeline_name = _get_default_op_name(self.pipeline, 0)
-        self._pipeline_param_names, self._param_defs = self._determine_params()
+        self._pipeline_name = _get_default_op_name(self.graph, 0)
+        # self._pipeline_param_names, self._param_defs = self._determine_params() TODO
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
         Sets the value for parameter with the given name.
         """
         pipeline_param_name = self._pipeline_param_names[key]
-        self.pipeline.set_parameter(pipeline_param_name, value)
+        self.graph.set_parameter(pipeline_param_name, value)
 
     def get_parameter(self, key: str) -> Sequence[Number]:
         """
         Returns the current value for parameter with the given name.
         """
         pipeline_param_name = self._pipeline_param_names[key]
-        return self.pipeline.get_parameter(pipeline_param_name)
+        return self.graph.get_parameter(pipeline_param_name)
 
     def get_parameters(self) -> Dict[str, ParameterDef]:
         return self._param_defs
@@ -1061,7 +1065,7 @@ class Processing:
     def _determine_params(self):
         pipeline_param_name = {}
         param_defs = {}
-        for k, param_def in self.pipeline.get_parameters().items():
+        for k, param_def in self.graph.get_parameters().items():
             prefixed_k = _get_op_context_param_name(self._pipeline_name, k)
             pipeline_param_name[prefixed_k] = k
             param_defs[prefixed_k] = param_def
