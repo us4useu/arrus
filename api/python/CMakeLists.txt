@@ -114,7 +114,7 @@ if(ARRUS_CUDA)
     # CUDA GPU specific tests.
     # CuPy is required.
     set(TEST_FILES
-        arrus/utils/tests/graph_test.py
+            arrus/utils/tests/processing_test.py
         ${TEST_FILES})
 endif()
 

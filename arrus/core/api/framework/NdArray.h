@@ -264,6 +264,8 @@ public:
      */
     short *getInt16() { return this->get<short>(); }
 
+    unsigned char *getUint8() { return this->get<unsigned char>(); }
+
     const Shape &getShape() const { return shape; }
 
     size_t getNumberOfElements() const { return shape.product(); }

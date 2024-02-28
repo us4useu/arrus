@@ -185,6 +185,9 @@ using namespace ::arrus;
     size_t castToInt(short* ptr) {
         return (size_t)ptr;
     }
+    size_t castUint8ToInt(unsigned char* ptr) {
+        return (size_t)ptr;
+    }
 %};
 // ------------------------------------------ FRAMEWORK
 

@@ -42,13 +42,13 @@ class DataBufferElement:
     def __init__(self, element_handle):
         self._element_handle = element_handle
         self._size = element_handle.getSize()
+        # All data wrapped as a single uint8 1D array.
+        self.array = self._create_element_array(element_handle)
         self._numpy_array_wrappings = self._create_np_arrays(element_handle)
 
     @property
     def data(self):
-        """
-        The data wrapped into a numpy array.
-        """
+        """Deprecated, use arrays[0]. """
         return self._numpy_array_wrappings[0]
 
     @property
@@ -61,6 +61,13 @@ class DataBufferElement:
 
     def release(self):
         self._element_handle.release()
+
+    def _create_element_array(self, element):
+        ndarray = element.getData(0)
+        addr = arrus.core.castUint8ToInt(ndarray.getUint8())
+        ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_uint8))
+        shape = (element.getElementSize(), )  # Number of bytes
+        return np.ctypeslib.as_array(ctypes_ptr, shape=shape)
 
     def _create_np_arrays(self, element):
         arrays = []

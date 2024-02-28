@@ -25,11 +25,12 @@ from enum import Enum
 import arrus.kernels.simple_tx_rx_sequence
 import arrus.kernels.tx_rx_sequence
 from numbers import Number
-from typing import Sequence, Dict, Callable, Union, Tuple, List, Optional
+from typing import Sequence, Dict, Callable, Union, Tuple, List, Optional, Set
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
 from arrus.ops.us4r import TxRxSequence
 from arrus.ops.imaging import SimpleTxRxSequence
+from functools import reduce
 
 def is_package_available(package_name):
     return importlib.util.find_spec(package_name) is not None
@@ -187,9 +188,10 @@ class BufferElement:
     an "buffer override" exception.
     """
 
-    def __init__(self, pos, data):
+    def __init__(self, pos, data, arrays):
         self.pos = pos
         self.data = data
+        self.arrays = arrays
         self.size = self.data.nbytes
         self.occupied = False
         self._lock = threading.Lock()
@@ -199,6 +201,7 @@ class BufferElement:
             if self.occupied:
                 raise ValueError("GPU buffer override")
             self.occupied = True
+
 
     def release(self):
         with self._lock:
@@ -212,9 +215,10 @@ class BufferElementLockBased:
     until the element is released.
     """
 
-    def __init__(self, pos, data):
+    def __init__(self, pos, data, arrays):
         self.pos = pos
         self.data = data
+        self.arrays = arrays
         self.size = self.data.nbytes
         self._semaphore = threading.Semaphore()
         # The acquired semaphore means, that the buffer element is still
@@ -228,17 +232,35 @@ class BufferElementLockBased:
 
 
 class Buffer:
-    def __init__(self, name: str, n_elements, shape, dtype, math_pkg, type="locked"):
+    def __init__(self, name: str, n_elements, shapes, dtypes, math_pkg,
+                 type="locked"):
+        if len(shapes) != len(dtypes):
+            raise ValueError("The number of dtypes and shapes must match")
+        self.n_arrays = len(shapes)
+        self.n_elements = n_elements
+        self.name = name
+
         if type == "locked":
             element_type = BufferElementLockBased
         elif type == "async":
             element_type = BufferElement
         else:
             raise ValueError(f"Unrecognized buffer type: {type}")
-        self.input_array = [math_pkg.zeros(shape, dtype=dtype) for _ in range(n_elements)]
-        self.elements = [element_type(i, data) for i, data in enumerate(self.input_array)]
-        self.n_elements = n_elements
-        self.name = name
+        self.elements = []
+        for i in range(n_elements):
+            # Create a single contiguous array
+            # Split it into smaller arrays
+            n_bytes = [reduce(lambda a, b: a*b, shape)*np.dtype(dtype).itemsize
+                       for shape, dtype in zip(shapes, dtypes)]
+            addresses = np.cumsum([0, ]+n_bytes[:-1])
+            total_n_bytes = np.sum(n_bytes)
+            data = math_pkg.zeros(total_n_bytes, dtype=np.uint8)
+            arrays = []
+            for shape, dtype, addr, size in zip(shapes, dtypes, addresses, n_bytes):
+                array = data[addr:addr+size].view(dtype).reshape(shape)
+                arrays.append(array)
+            element = element_type(i, data, arrays)
+            self.elements.append(element)
 
     def acquire(self, pos):
         element = self.elements[pos]
@@ -255,35 +277,43 @@ class Graph:
     :param dependencies: input name (or operator name) -> output name
     """
     # Class
-    operations: List
+    operations: Set
     dependencies: Optional[Dict[str, str]] = None
-
     # Static
     _output_name_pattern = re.compile("^Output:\d+$")
     _input_name_pattern = re.compile("^Input:\d+$")
 
-
-
     @property
     def dependencies_parsed(self):
-        result = defaultdict(list)
+        result = dict()
         """
         Returns a map (target op name: str, target input nr: int) 
         -> [(source op name: str, source output nr: int)]"""
         for t, sources in self.dependencies.items():
-            target_op_name, target_input_nr = self._parse_dependency_name(t)
-            for s in sources:
-                source_op_name, source_output_nr = self._parse_dependency_name(s)
-                result[(target_op_name, target_input_nr)].append((source_op_name, source_output_nr))
+            t_op_name, t_input_nr = self._parse_dependency_name(t)
+            if not isinstance(sources, Iterable):
+                sources = [sources]
+            if t_input_nr is not None and len(sources) > 1:
+                raise ValueError("A single input can be connected only to a "
+                                 f"single source, for op: {t_op_name}")
+            for i, s in enumerate(sources):
+                t_input_nr = i if t_input_nr is None else t_input_nr
+                if t_input_nr is None:
+                    # Target input number determined explicitly.
+                    t_input_nr = i
+                s_op_name, s_output_nr = self._parse_dependency_name(s)
+                s_output_nr = 0 if s_output_nr is None else s_output_nr
+                result[(t_op_name, t_input_nr)] = (s_op_name, s_output_nr)
         return result
 
+    @property
     def reverse_dependencies_parsed(self):
-        """Returns a map (source op name, source output nr) -> (target op name, target input nr)"""
+        """Returns a map (source op name, source output nr) ->
+           list of (target op name, target input nr)"""
         result = defaultdict(list)
         deps = self.dependencies_parsed
-        for t, sources in deps.items():
-            for s in sources:
-                result[s].append(t)
+        for t, s in deps.items():
+            result[s].append(t)
         return result
 
     def _parse_dependency_name(self, s: str):
@@ -294,7 +324,7 @@ class Graph:
         else:
             parts = s.split("/")
             if len(parts) == 1:
-                return parts[0].strip(), 0
+                return parts[0].strip(), None
             elif len(parts) == 2:
                 name, inout = parts
                 name = name.strip()
@@ -305,7 +335,6 @@ class Graph:
                 return name, int(inout.strip())
             else:
                 raise ValueError(f"Invalid dependency name: {s}")
-
 
     def get_ops_by_name(self):
         return dict((op.name, op) for op in self.operations)
@@ -323,7 +352,6 @@ class ProcessingRunner:
     :param processings: sequence of processings
     :param metadatas: sequence of metadata objects
     """
-
     class State(Enum):
         READY = 1
         CLOSED = 2
@@ -332,303 +360,257 @@ class ProcessingRunner:
         import cupy as cp
         self.cp = cp
         # Input buffer, stored in the host PC memory.
-        self.input_buffer = input_buffer
+        self.host_input_buffer = input_buffer
         self.processing = processing
         self.input_metadata = metadata
-        self.output_name_pattern = Graph.output_name_pattern
+        self.output_name_pattern = Graph._output_name_pattern
         # host PC -> GPU RAM stream
         self.data_stream = cp.cuda.Stream(non_blocking=True)
         # kernel execution stream
         self.processing_stream = cp.cuda.Stream(non_blocking=True)
         # Convert the graph into a sequence of operations to perform.
-        self.input_buffers, self.output_buffers = self._initialize_ops(self.processing, self.metadata)
+        self.gpu_input_buffer, self.output_buffer, self.output_metadata = self._prepare_ops(
+            self.processing, self.input_metadata
+        )
         cp.cuda.Stream.null.synchronize()
-        self.graph = self._preprocess_graph(self.processing, self.input_metadata,
-                                            self.input_buffers, self.output_buffers)
-        self._ops = self._sort_graph_nodes(processing, self.input_metadata)
-        # input_ordinal, input's_output_nr -> output ordinal
-        # input_ordinal, input's_output_nr -> output's input nr
-        self.output_nr, self.suboutput_nr = self._get_output_nrs(self._ops)
-        self.input_nrs = []  # array id -> _ops index (Enqueue only)
-        # TODO add counter
-        # TODO Pipeline.prepare powinno akceptowac list metadanych, jezeli nie jest iterable
-        # TODO determine connection
-        # TODO determine to what ops the op writes - store position of each op_name, determine array using map
-        # TODO Set callback function on the last input enqueue (to release element)
-        # TODO Set callback function on the last output Enqueue (to get all the output at the same time
-        # TODO pin host buffers
-        # TODO replace multiple HtoD transfers with a single transfer of all data
+        if processing.callback is not None:
+            self.user_out_buffer = None
+            self.callback = processing.callback
+        else:
+            self.user_out_buffer = queue.Queue(maxsize=1)
+            self.callback = self.default_processing_output_callback
+
+        self.graph, self.source_node_name = self._preprocess_graph(
+            self.processing, self.input_metadata,
+            self.host_input_buffer, self.gpu_input_buffer,
+            self.output_buffer, self.callback
+        )
+        self._ops, self._arget_pos, self._target_input_nr, self._inputs = self._sort_graph_nodes(
+            processing, self.input_metadata
+        )
+        self._register_buffer(self.output_buffer)
+        self.host_input_buffer.append_on_new_data_callback(self.process)
+        self._state = ProcessingRunner.State.READY
+        self._process_lock = threading.Lock()
+        self._state_lock = threading.Lock()
+
+    def _get_input_counters(self, deps):
+        n_inputs_by_name = dict(
+            (op_name, len(vs)) # TODO(pjarosik) validate if the input nrs do not exceed the len(vs)
+            for (op_name, input_nr), vs in deps.items()
+        )
+        input_counters = dict((op_name, 0) for (op_name, _), _ in deps.items())
+        return n_inputs_by_name, input_counters
 
     def _prepare_ops(self, processing, metadata):
         graph = processing.graph
         input_buffer_def = processing.input_buffer
         output_buffer_def = processing.output_buffer
-        rev_deps = graph.reverse_dependencies_parsed()  # source, output -> target, input
-        input_buffers = {}  # name -> buffer
-        output_buffers = {}  # name -> buffer
+        # target, input -> source, output
+        deps = graph.dependencies_parsed
+        # Get number of inputs for each target
+        n_inputs_by_name, input_counters = self._get_input_counters(deps)
+        # source, output -> * target, input
+        rev_deps = graph.reverse_dependencies_parsed
         q = deque()
         metadata_by_target = defaultdict(list)  # op name -> op input, input metadata
 
+        input_shapes = []
+        input_dtypes = []
+
         for m in metadata:
             sequence_name = m.context.sequence.name
-            b = Buffer(
-                name=sequence_name,
-                n_elements=input_buffer_def.size,
-                type=input_buffer_def.type,
-                shape=metadata.input_shape,
-                dtype=metadata.dtype,
-                math_pkg=self.cp)
-            input_buffers[b.name] = b
             # Prepare next steps for initialization
+            input_shapes.append(m.input_shape)
+            input_dtypes.append(m.dtype)
             next_ops = rev_deps.get((sequence_name, 0), [])
             for target in next_ops:
                 op_name, input_nr = target
-                q.append(op_name)
+                q.append((op_name, input_nr))
                 metadata_by_target[op_name].append((input_nr, metadata))
+        input_buffer = Buffer(
+            name="InputBufferGPU", n_elements=input_buffer_def.size,
+            type=input_buffer_def.type,
+            shapes=input_shapes,
+            dtypes=input_dtypes,
+            math_pkg=self.cp)
         ops_by_name = graph.get_ops_by_name()
         visited_names = set()
-
+        output_shapes = []
+        output_dtypes = []
+        output_metadata = {}
         while len(q) != 0:
-            op_name = q.popleft()
+            # NOTE: op_input_nr is used only in case of the Output node.
+            op_name, op_input_nr = q.popleft()
             if op_name in visited_names:
-                continue
+                raise ValueError(f"Cycle detected at: {op_name}")
             visited_names.add(op_name)
-
             metadata = metadata_by_target[op_name]
-            metadata.sort(key=lambda a: a[0])  # by op_nr
+            metadata.sort(key=lambda a: a[0])  # by input_nr
             op_nrs, metadata = zip(*metadata)
             # Check if there are no gaps in input numbers
             # (e.g. we have Input:0 and Input:2 but no Input:1)
             if set(np.diff(op_nrs).tolist()) != {1}:
                 raise ValueError(f"Some inputs missing for {op_name}, "
                                  f"detected only {op_nrs}")
-
-            if self.output_name_pattern.match(op_name):
+            if op_name == "Output":
                 # Output node
                 if len(metadata) > 1:
                     raise ValueError("Only a single output should be connected "
                                      f"to the output buffer {op_name}.")
                 metadata = metadata[0]
-                buffer = Buffer(
-                    name=op_name,
-                    n_elements=output_buffer_def.size,
-                    type=output_buffer_def.type,
-                    shape=metadata.input_shape,
-                    dtype=metadata.dtype,
-                    math_pkg=np)
-                output_buffers[buffer.name] = buffer
+                output_shapes.append((op_input_nr, metadata.input_shape))
+                output_dtypes.append((op_input_nr, metadata.dtype))
+                output_metadata[f"{op_name}:{op_input_nr}"] = metadata
             else:
                 # op node
                 op = ops_by_name[op_name]
                 new_metadata = op.prepare(metadata)
                 if not isinstance(new_metadata, Iterable):
                     new_metadata = [new_metadata]
-
                 for i, m in enumerate(new_metadata):
                     next = rev_deps.get((op_name, i), [])
                     for next_name, next_input_nr in next:
-                        q.append(next_name)
                         metadata_by_target[next_name].append((next_input_nr, m))
-        return input_buffers, output_buffers
+                        input_counters[next_name] += 1
+                        if input_counters[next_name] == n_inputs_by_name[next_name]:
+                            q.append(next_name)
+            output_buffer = Buffer(
+                name="OutputBufferCPU",
+                n_elements=output_buffer_def.size,
+                type=output_buffer_def.type,
+                shapes=output_shapes,
+                dtypes=output_dtypes,
+                math_pkg=np)
+        return input_buffer, output_buffer, output_metadata
 
-    def _preprocess_graph(self, processing, input_metadata, input_buffers, output_buffers):
+    def _preprocess_graph(self, processing, input_metadata,
+                          host_input_buffer, gpu_input_buffer,
+                          host_output_buffer, host_output_callback):
         graph = processing.graph
         new_op_by_name = graph.get_ops_by_name()
         new_deps = defaultdict(list)
         metadata_nr_by_sequence_name = dict((m.context.sequence.name, i)
                                          for i, m in enumerate(input_metadata))
-        for output_name, input_names in graph.dependencies.items():
-            if not isinstance(input_names, Iterable):
-                input_names = [input_names]
-            output_name = output_name.strip()
-            if self.output_name_pattern.match(output_name):
-                # Handle Output node
-                # Create output buffer and output
-                # Extract output number
-                output_nr = int(output_name.split(":").strip()[1])
-                output_enqueue_name = f"EnqueueToHost/Output:{output_nr}"
-                output_enqueue_op = EnqueueToHost(output_buffers[output_name], stream=self.processing_stream,
-                                                  name=output_enqueue_name)
-                new_op_by_name[output_enqueue_op.name] = output_enqueue_op
-                output_name = output_enqueue_name
-            for n in input_names:
-                graph_input_nr = metadata_nr_by_sequence_name.get(n, None)
-                if graph_input_nr is not None:
-                    enqueue_name = f"{n}Enqueue/Output:0"
-                    dequeue_name = f"{n}Dequeue/Output:0"
-                    if enqueue_name not in new_op_by_name:
-                        enqueue_op = Enqueue(input_buffers[n], self.data_stream, name=enqueue_name)
-                        new_op_by_name[enqueue_name] = enqueue_op
-                    if dequeue_name not in new_op_by_name:
-                        dequeue_op = Dequeue(input_buffers[n], self.data_stream, name=enqueue_name)
-                        new_deps[dequeue_name] = [enqueue_name]
-                        new_op_by_name[dequeue_name] = dequeue_op
-                    new_deps[output_name].append(dequeue_name)
+        in_buffer_enqueue = EnqueueToGPU(
+            gpu_input_buffer, self.data_stream,
+            name=f"{gpu_input_buffer.name}Enqueue",
+        )
+        in_buffer_dequeue = Dequeue(
+            gpu_input_buffer,
+            self.data_stream,
+            name=f"{gpu_input_buffer.name}Dequeue"
+        )
+        out_buffer_enqueue = EnqueueGPUtoCPU(
+            host_output_buffer,
+            self.processing_stream,
+            name=f"{host_output_buffer.name}Enqueue",
+            callback=host_output_callback
+        )
+        new_op_by_name[in_buffer_enqueue.name] = in_buffer_enqueue
+        new_op_by_name[in_buffer_dequeue.name] = in_buffer_dequeue
+        new_deps[(in_buffer_dequeue, 0)] = (in_buffer_enqueue.name, 0)
+        new_op_by_name[out_buffer_enqueue.name] = out_buffer_enqueue
+        for (t_name, t_input_nr), (s_name, s_input_nr) in graph.dependencies.items():
+            if t_name == "Output":
+                new_deps[(out_buffer_enqueue.name, t_input_nr)] = (s_name, s_input_nr)
+            else:
+                # Determine if the target node is connected to some sequence
+                input_nr = metadata_nr_by_sequence_name.get(s_name, None)
+                if input_nr is not None:
+                    # Dequeue/Input:0 <- InputBufferEnqueue/Output:{input_nr}
+                    # Target/Input:InputNr <- Dequeue/Output:{input_nr}
+                    new_deps[(t_name, t_input_nr)] = (in_buffer_dequeue.name, input_nr)
                 else:
-                    # Just copy
-                    new_deps[output_name].append(n)
+                    # pass through
+                    new_deps[(t_name, t_input_nr)] = (s_name, s_input_nr)
         new_graph = Graph(new_op_by_name.values(), new_deps)
-        return new_graph
-        # The last EnqueueToHost in the sequence should run the callback function
+        return new_graph, source_node_name
 
-    def _sort_graph_nodes(self, processing, metadata):
-        graph = processing.graph
+    def get_output_nrs_by_op_name(self, deps):
+        result = defaultdict(list)
+        for (s_name, s_output_nr), _ in deps.items():
+            result[s_name].append(s_output_nr)
+        return result
+
+    def _sort_graph_nodes(self, graph, source_node):
         ops_by_name = graph.get_ops_by_name()
-        # Get inputs
-        rev_deps = graph.reverse_dependencies()  # input -> outputs (names)
-        q = deque()
-        for m in metadata:
-            sequence_name = m.context.sequence.name
-            q.extend(rev_deps.get(sequence_name, []))
+        # (target, input) -> (source, output)
+        deps = graph.dependencies_parsed
+        n_inputs_by_name, input_counters = self._get_input_counters(deps)
+        # (source, output) -> (target, input)
+        rev_deps = graph.reverse_dependencies()
+        output_nrs_by_op_name = self.get_output_nrs_by_op_name(rev_deps)
+        q = deque(source_node.name)
         sequence = []
+        op_position = {}
         visited_names = set()
-        # BFS
-        n_ops = len(graph.operations)
-        outputs = [[]]*n_ops  # outputs[i] is the list of outputs (positions) of the ith op
+        i = 0
         while len(q) != 0:
             name = q.popleft()
             if name in visited_names:
-                continue
+                raise ValueError(f"Detected cycle for: {name}")
             visited_names.add(name)
-
             op = ops_by_name[name]
             sequence.append(op)
-            next_ops = rev_deps.get_name()
-            current_n_ops = len(sequence)
-            q.extend(next_ops)
-        return sequence
+            op_position[name] = i
+            i += 1
+            output_nrs = output_nrs_by_op_name.get(name, [])
+            for output_nr in output_nrs:
+                targets = rev_deps[(name, output_nr)]
+                for t_name, t_input_nr in targets:
+                    input_counters[t_name] += 1
+                    if input_counters[t_name] == n_inputs_by_name[t_name]:
+                        q.append(t_name)
+        # Determine arrays:
+        # self._target_pos
+        # self._target_input_nr
+        n_ops = len(sequence)
+        max_n_outputs = np.max(len(vs) for vs in output_nrs_by_op_name.values())
+        target_pos = np.empty((n_ops, max_n_outputs), dtype=np.int32)
+        # Note: -1 is not the best sentinel choice here...
+        target_pos[:] = -1
+        target_input_nr = np.empty((n_ops, max_n_outputs), dtype=np.int32)
+        target_input_nr[:] = -1
+        t_inputs = [0]*n_ops
+        for (t_name, t_input_nr), (s_name, s_output_nr) in deps.items():
+            t_pos = op_position[t_name]
+            s_pos = op_position[s_name]
+            target_pos[s_pos, s_output_nr] = t_pos
+            target_input_nr[s_pos, s_output_nr] = t_input_nr
+            t_inputs[t_pos] += 1
+        inputs = [[None]*n for n in t_inputs]
+        return sequence, target_pos, target_input_nr, inputs
 
     def process(self, input_element):
         with self._process_lock:
             # feed inputs with the input data
-            for i, array in enumerate(input_element.arrays):
-                self._inputs[self._input_nrs[i]][0] = array
+            self._inputs[0][0] = input_element
             for i, op in enumerate(self._ops):
                 results = op.process(self._inputs[i])
                 for j, r in enumerate(results):
-                    out_nr, subout_nr = self.output_nr[i][j]
-                    self._inputs[out_nr][subout_nr] = r
-
-
-    def __init__(self, input_buffer, metadatas, graph: Graph):
-        self.input_buffer = self.__register_buffer(input_buffer)
-        DEFAULT_BUFF = ProcessingBufferDef(size=2, type="locked")
-
-        self.in_buffers_gpu = []
-        self.pipelines = []
-        self.out_metadatas = []  #  sequence array, pipeline array -> metadata
-        self.out_buffers = []  # sequence array, pipeline array -> buffer
-        # host PC -> GPU RAM stream
-        self.data_stream = cp.cuda.Stream(non_blocking=True)
-        # kernel execution stream
-        self.processing_stream = cp.cuda.Stream(non_blocking=True)
-
-        self.n_arrays = len(metadatas)
-        n_gpu_buffer_elements = {p.input_buffer.size if p.input_buffer is not None else DEFAULT_BUFF.size
-                                 for p in processings}
-
-        if len(n_gpu_buffer_elements) > 1:
-            raise ValueError("Each GPU buffer should have exactly the same "
-                             "number of elements")
-        self.n_gpu_buffer_elements = next(iter(n_gpu_buffer_elements))
-
-        # Prepare buffers and initialize pipelines.
-        for metadata, processing in zip(metadatas, processings):
-            in_buffer_def = processing.input_buffer
-            out_buffer_def = processing.output_buffer
-            in_buffer_def = in_buffer_def if in_buffer_def is not None else DEFAULT_BUFF
-            out_buffer_def = out_buffer_def if out_buffer_def is not None else DEFAULT_BUFF
-            gpu_buffer = Buffer(
-                name=f"{metadata.context.sequence.name}/Output:0",
-                n_elements=in_buffer_def.size,
-                type=in_buffer_def.type,
-                shape=metadata.input_shape,
-                dtype=metadata.dtype,
-                math_pkg=cp)
-            pipeline = processing.pipeline
-            out_metadata = pipeline.prepare(metadata)
-            outs = [Buffer(
-                name=m.name,
-                n_elements=out_buffer_def.size,
-                type=out_buffer_def.type,
-                shape=m.input_shape,
-                dtype=m.dtype,
-                math_pkg=np)
-                for m in out_metadata]
-
-            self.out_metadatas.extend(out_metadata)
-            self.out_buffers.append(outs)
-
-            self.in_buffers_gpu.append(gpu_buffer)
-            self.pipelines.append(pipeline)
-
-        cp.cuda.Stream.null.synchronize()
-        # Pin output buffers.
-        new_out_buffers = []
-        for in_array_out_buffers in self.out_buffers:
-            b = self.__register_buffer(in_array_out_buffers)
-            if not isinstance(b, Iterable):
-                b = (b,)
-            new_out_buffers.append(b)
-        self.out_buffers = new_out_buffers
-
-        # The below checks, if all processings have the callback,
-        # or None of them
-        is_callback = {p.callback is not None for p in processings}
-        if len(is_callback) > 1:
-            raise ValueError(
-                "Within a single scheme, all processings should be "
-                "defined using Pipelines or callbacks only - "
-                "mixing these two concepts is not allowed.")
-        is_callback = next(iter(is_callback))
-        if is_callback:
-            self.user_out_buffer = None
-            cbks = [p.callback for p in processings if p.callback is not None]
-            def master_callback():
-                for c in overflow_callbacks:
-                    c()
-            self.callback = master_callback
-        else:
-            self.user_out_buffer = queue.Queue(maxsize=1)
-            self.callback = self.default_processing_output_callback
-        self._gpu_i = 0
-        self._out_i = [[0]*len(ob) for ob in self.out_buffers]
-
-        self.input_buffer.append_on_new_data_callback(self.process)
-
-        overflow_callbacks = [p.on_buffer_overflow_callback
-                              for p in processings
-                              if p.on_buffer_overflow_callback is not None]
-        if overflow_callbacks:
-            def master_overflow_callback():
-                for c in overflow_callbacks:
-                    c()
-            self.input_buffer.append_on_buffer_overflow_callback(
-                master_overflow_callback)
-
-        self._state = ProcessingRunner.State.READY
-        self._process_lock = threading.Lock()
-        self._state_lock = threading.Lock()
+                    target_pos = self._target_pos[i, j]
+                    target_input_nr = self._target_input_nr[i, j]
+                    self._inputs[target_pos][target_input_nr] = r
 
     @property
     def outputs(self):
-        if len(self.out_metadatas) == 1:
+        if len(self.output_metadata) == 1:
             # Backward compatibility
-            const_metadata = self.out_metadatas[0]
+            metadata = self.output_metadata[0]
         else:
-            const_metadata = self.out_metadatas
-
+            metadata = self.output_metadata
         if self.user_out_buffer is not None:
-            return self.user_out_buffer, const_metadata
+            return self.user_out_buffer, metadata
         else:
-            return const_metadata
+            return metadata
 
-    def default_processing_output_callback(self, elements):
+    def default_processing_output_callback(self, element):
         try:
-            user_elements = [None]*len(elements)
-            for i, element in enumerate(elements):
+            user_elements = [None]*len(element.arrays)
+            for i, array in enumerate(element.arrays):
                 user_elements[i] = element.data.copy()
-                element.release()
+            element.release()
             try:
                 self.user_out_buffer.put_nowait(user_elements)
             except queue.Full:
@@ -638,68 +620,28 @@ class ProcessingRunner:
         except:
             print("Unknown exception")
 
-    def process(self, input_element):
-        out_elements = []
-        with self._process_lock:
-            for array_id, array in enumerate(input_element.arrays):
-                gpu_element = self.in_buffers_gpu[array_id].acquire(self._gpu_i)
-                gpu_array = gpu_element.data
-                gpu_array.set(array, stream=self.data_stream)
-                if array_id == self.n_arrays-1:
-                    # Last array.
-                    self.data_stream.launch_host_func(self.__release, input_element)
-                gpu_data_ready_event = self.data_stream.record()
-                self.processing_stream.wait_event(gpu_data_ready_event)
-                with self.processing_stream:
-                    results = self.pipelines[array_id](gpu_array)
-                    # Write each result gpu array to the given output array
-                    for element_id, (result, out_buffer) in enumerate(zip(results, self.out_buffers[array_id])):
-                        out_i = self._out_i[array_id][element_id]
-                        out_element = out_buffer.elements[out_i]
-                        self._out_i[array_id][element_id] = (out_i + 1) % out_buffer.n_elements
-                        out_element.acquire()
-                        # TODO(ARRUS-175) Fix the issue with incomplete output data (noticed in gui4us application)
-                        out_element.data[:] = result.get()
-                        out_elements.append(out_element)
-                self.__release(gpu_element)
-            self.callback(out_elements)
-            self._gpu_i = (self._gpu_i+1) % self.n_gpu_buffer_elements
-
     def close(self):
         with self._state_lock:
             if self._state == ProcessingRunner.State.CLOSED:
                 # Already closed.
                 return
-            self.__unregister_buffer(self.input_buffer)
-            for in_array_out_buffers in self.out_buffers:
-                self.__unregister_buffer(in_array_out_buffers)
+            self._unregister_buffer(self.input_buffer)
             self._state = ProcessingRunner.State.CLOSED
 
     def sync(self):
         self.data_stream.synchronize()
         self.processing_stream.synchronize()
 
-    def __release(self, element):
-        element.release()
-
-    def __register_buffer(self, buffers):
+    def _register_buffer(self, buffer):
         import cupy as cp
-        if not isinstance(buffers, Iterable):
-            buffers = (buffers,)
-        for buffer in buffers:
-            for element in buffer.elements:
-                cp.cuda.runtime.hostRegister(element.data.ctypes.data, element.size, 1)
-        if len(buffers) == 1:
-            buffers = next(iter(buffers))
-        return buffers
+        for e in buffer.elements:
+            cp.cuda.runtime.hostRegister(e.data.ctypes.data, e.size, 1)
+        return buffer
 
-    def __unregister_buffer(self, buffers):
+    def _unregister_buffer(self, buffer):
         import cupy as cp
-        if not isinstance(buffers, Iterable):
-            buffers = (buffers,)
-        for buffer in buffers:
-            for element in buffer.elements:
-                cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
+        for element in buffer.elements:
+            cp.cuda.runtime.hostUnregister(element.data.ctypes.data)
 
 
 class Operation:
@@ -794,49 +736,29 @@ def _get_op_context_param_name(op_name: str, param_name: str):
     return f"/{op_name}{param_name}"
 
 
-class Enqueue(Operation):
+class EnqueueToGPU(Operation):
 
-    def __init__(self, buffer, stream, callback=None, name=None):
+    def __init__(self, buffer, stream, name=None):
         super().__init__(name)
         self.buffer = buffer
         self.stream = stream
-        self.callback = callback
+        self._release_element_callback = lambda element: element.release()
         self._current_pos = 0
 
     def prepare(self, const_metadata):
         return const_metadata
 
-    def process(self, data: np.ndarray):
+    def process(self, element):
+        """
+        :param element: input host buffer element
+        """
         gpu_element = self.buffer.acquire(self._current_pos)
         gpu_array = gpu_element.data
-        gpu_array.set(data, stream=self.stream)
+        gpu_array.set(element.array, stream=self.stream)
         data_ready_event = self.stream.record()
-        if self.callback is not None:
-            # Last array.
-            self.stream.launch_host_func(self.callback)
+        self.stream.launch_host_func(self._release_element_callback, element)
         self._current_pos = (self._current_pos+1) % self.buffer.n_elements
-        return gpu_array, data_ready_event
-
-
-class EnqueueToHost(Operation):
-
-    def __init__(self, buffer, stream, callback=None, name=None):
-        super().__init__(name)
-        self.buffer = buffer
-        self.stream = stream
-        self.callback = callback
-        self._current_pos = 0
-
-    def prepare(self, const_metadata):
-        return const_metadata
-
-    def process(self, data) -> None:
-        element = self.buffer.elements[self._current_pos]
-        self.stream.launch_host_func(lambda element: element.acquire(), element)
-        data.get(stream=self.stream, out=element.data)
-        if self.callback is not None:
-            self.stream.launch_host_func(lambda pos: self.callback(pos))
-        self._current_pos = (self._current_pos+1) % self.buffer.n_elements
+        return self._current_pos, data_ready_event
 
 
 class Dequeue(Operation):
@@ -848,14 +770,37 @@ class Dequeue(Operation):
 
     def prepare(self, const_metadata):
         return const_metadata
-    def process(self, data):
+
+    def process(self, pos_event):
         """
-        :param data: a pair: array, data ready event
+        :param pos_event: a pair: buffer element position, data ready event
         :return:
         """
-        array, data_ready_event = data
+        position, data_ready_event = pos_event
         self.stream.wait_event(data_ready_event)
-        return array
+        return self.buffer.elements[position].arrays
+
+
+class EnqueueGPUtoCPU(Operation):
+
+    def __init__(self, buffer, stream, callback=None, name=None):
+        super().__init__(name)
+        self.buffer = buffer
+        self.stream = stream
+        self.callback = callback
+        self._current_pos = 0
+
+    def prepare(self, const_metadata):
+        return const_metadata
+
+    def process(self, data: Tuple) -> None:
+        element = self.buffer.elements[self._current_pos]
+        self.stream.launch_host_func(lambda element: element.acquire(), element)
+        for i, arr in enumerate(data):
+            arr.get(stream=self.stream, out=element.arrays[i])
+        if self.callback is not None:
+            self.stream.launch_host_func(lambda e: self.callback(e), element)
+        self._current_pos = (self._current_pos+1)%self.buffer.n_elements
 
 
 class Output(Operation):

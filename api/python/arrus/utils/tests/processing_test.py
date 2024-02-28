@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from arrus.utils.imaging import (
     Buffer, BufferElement, ProcessingRunner, Pipeline, Lambda, Processing,
-    ProcessingBuffer
+    ProcessingBufferDef
 )
 
 @dataclass
@@ -41,8 +41,9 @@ class PipelineMock:
 
 class InputBufferElementMock:
 
-    def __init__(self, shape, dtype):
-        self.data = np.zeros(shape, dtype=dtype)
+    def __init__(self, data, arrays):
+        self.data = data
+        self.arrays = arrays
         self.size = self.data.nbytes
 
 
@@ -50,12 +51,14 @@ class InputBufferMock:
     """
     Mock class for device buffer.
     """
-    def __init__(self, n_elements, shape, dtype):
-        self.elements = [InputBufferElementMock(shape, dtype)
-                         for _ in range(n_elements)]
+    def __init__(self, data, array_views):
+        """
+        :param element_arrays: element arrays: a list of tuple [(array_1, array_2)...]
+        """
+        self.elements = [InputBufferElementMock(d, a) for d, a in zip(data, array_views)]
         self.callbacks = []
         self.i = 0
-        self.n = n_elements
+        self.n = len(data)
 
     def append_on_new_data_callback(self, func):
         self.callbacks.append(func)
@@ -89,23 +92,26 @@ class ProcessingRunnerTestCase(unittest.TestCase):
             self.runner.close()
             self.runner = None
 
-    def __create_runner(self, data_shape,
-                        in_buffer_size=2, gpu_buffer_size=2, out_buffer_size=2,
-                        n_out_buffers=1,
-                        pipeline=None, callback=None,
-                        buffer_type="locked"):
-        self.data_shape = data_shape
+    def __create_runner(
+            self, arrays,
+            in_buffer_size=2,
+            gpu_buffer_size=2,
+            out_buffer_size=2,
+            pipeline=None, callback=None,
+            buffer_type="locked"):
+
+        # arrays: a list of tuples [(a1, a2,..), ...]
 
         self.in_buffer = InputBufferMock(
             n_elements=in_buffer_size,
             shape=data_shape,
             dtype=self.dtype)
 
-        input_buffer_spec = ProcessingBuffer(
+        input_buffer_spec = ProcessingBufferDef(
             size=gpu_buffer_size,
             type=buffer_type
         )
-        output_buffer_spec = ProcessingBuffer(
+        output_buffer_spec = ProcessingBufferDef(
             size=out_buffer_size,
             type=buffer_type
         )
@@ -113,7 +119,6 @@ class ProcessingRunnerTestCase(unittest.TestCase):
             input_shape=self.data_shape,
             dtype=self.dtype
         )
-
         self.runner = ProcessingRunner(
             input_buffer=self.in_buffer,
             const_metadata=metadata,
