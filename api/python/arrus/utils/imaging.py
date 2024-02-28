@@ -350,9 +350,10 @@ class ProcessingRunner:
         # input_ordinal, input's_output_nr -> output's input nr
         self.output_nr, self.suboutput_nr = self._get_output_nrs(self._ops)
         self.input_nrs = []  # array id -> _ops index (Enqueue only)
+        # TODO add counter
         # TODO Pipeline.prepare powinno akceptowac list metadanych, jezeli nie jest iterable
         # TODO determine connection
-        # TODO determine to what ops the op writes
+        # TODO determine to what ops the op writes - store position of each op_name, determine array using map
         # TODO Set callback function on the last input enqueue (to release element)
         # TODO Set callback function on the last output Enqueue (to get all the output at the same time
         # TODO pin host buffers
