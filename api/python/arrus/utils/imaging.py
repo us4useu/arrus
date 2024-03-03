@@ -788,9 +788,10 @@ class EnqueueToGPU(Operation):
         """
         :param element: input host buffer element
         """
+        element = element[0]
         gpu_element = self.buffer.acquire(self._current_pos)
         gpu_array = gpu_element.data
-        gpu_array.set(element[0].array, stream=self.data_stream)
+        gpu_array.set(element.array, stream=self.data_stream)
         data_ready_event = self.data_stream.record()
         self.data_stream.launch_host_func(self._release_element_callback, element)
         self._current_pos = (self._current_pos+1) % self.buffer.n_elements
