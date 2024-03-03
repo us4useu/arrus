@@ -96,14 +96,9 @@ class Session(AbstractSession):
         sequences = scheme.tx_rx_sequence
         if not isinstance(sequences, Iterable):
             sequences = (sequences, )
-        processings = scheme.processing
-        if not isinstance(processings, Iterable) and processings is not None:
-            processings = (processings, )
+        processing = scheme.processing
         constants = scheme.constants
 
-        if len(sequences) != len(processings):
-            raise ValueError("The same number of sequences and processings "
-                             "should be specified.")
         if len(constants) > 0 and len(sequences) > 1:
             raise ValueError(
                 "Currently session constants can only be provided for a "
@@ -162,25 +157,48 @@ class Session(AbstractSession):
             metadatas.append(const_metadata)
 
         # numpy/cupy processing initialization
-        if processings is not None:
+        if processing is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
-            runner_processings = []
-            for i, processing in enumerate(processings):
-                if isinstance(processing, _imaging.Pipeline):
-                    # Wrap Pipeline into the Processing object.
-                    processing.name = f"Pipeline:{i}"
-                    processing = _imaging.Processing(
-                        pipeline=processing,
-                        callback=None,
-                    )
-                if isinstance(processing, _imaging.Processing):
-                    runner_processings.append(processing)
-                else:
-                    raise ValueError("Unsupported type of processing: "
-                                    f"{type(processings)}")
+            if isinstance(processing, _imaging.Pipeline):
+                # Wrap Pipeline into the Processing object.
+                if processing.name is None:
+                    processing.name = f"Pipeline:0"
+                graph = _imaging.Graph(
+                    operations={processing},
+                    dependencies={
+                        processing.name: sequences[0].name
+                    }
+                )
+                processing = _imaging.Processing(
+                    graph=graph,
+                    callback=None,
+                )
+            if isinstance(processing, Iterable):
+                pipelines = processing
+                for i, p in enumerate(pipelines):
+                    if p.name is None:
+                        p.name = f"Pipeline:{i}"
+                ops = set(pipelines)
+                deps = dict(*[(p.name, s.name) for p, s in zip(pipelines, sequences)])
+                graph = _imaging.Graph(
+                    operations=ops,
+                    dependencies=deps
+                )
+                processing = _imaging.Processing(
+                    graph=graph,
+                    callback=None,
+                )
+            if isinstance(processing, _imaging.Graph):
+                processing = _imaging.Processing(
+                    graph=processing,
+                    callback=None,
+                )
+            if not isinstance(processing, _imaging.Processing):
+                raise ValueError(f"Unsupported type of processing: {type(processing)}")
+
             processing_runner = arrus.utils.imaging.ProcessingRunner(
-                buffer, metadatas, runner_processings,
+                input_buffer=buffer, metadata=metadatas, processing=processing,
             )
             outputs = processing_runner.outputs
             self._current_processing = processing_runner

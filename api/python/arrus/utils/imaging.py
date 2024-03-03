@@ -892,6 +892,7 @@ class Pipeline:
         self._param_ops: Dict[str, Tuple[Operation, str]] = {}
         self._param_defs: Dict[str, ParameterDef] = {}
         self._determine_params()
+        self.n_outputs = self._get_n_outputs()
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
@@ -982,7 +983,6 @@ class Pipeline:
             m._name = f"{self.name}/Output:{i}"
         return metadatas
 
-
     def set_placement(self, device):
         """
         Sets the pipeline to be executed on a particular device.
@@ -1052,6 +1052,18 @@ class Pipeline:
                 prefixed_k = _get_op_context_param_name(name, k)
                 self._param_ops[prefixed_k] = step, k
                 self._param_defs[prefixed_k] = param_def
+
+    def _get_n_outputs(self):
+        n_outputs = 0
+        for step in self.steps:
+            if isinstance(step, Pipeline):
+                n_outputs += step.n_outputs
+            if isinstance(step, Output):
+                n_outputs += 1
+        last_step = self.steps[-1]
+        if not isinstance(last_step, (Pipeline, Output)):
+            n_outputs += 1
+        return n_outputs
 
 
 @dataclasses.dataclass(frozen=True)
