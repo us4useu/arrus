@@ -648,7 +648,7 @@ class ProcessingRunner:
         try:
             user_elements = [None]*len(element.arrays)
             for i, array in enumerate(element.arrays):
-                user_elements[i] = element.data.copy()
+                user_elements[i] = array.copy()
             element.release()
             try:
                 self.user_out_buffer.put_nowait(user_elements)

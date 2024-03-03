@@ -129,6 +129,7 @@ class ProcessingRunnerTestCase(unittest.TestCase):
             for i, array in enumerate(element):
                 array_size = array.nbytes
                 view = element_data[addr:(addr+array_size)]
+                addr += array_size
                 view = view.view(array.dtype).reshape(array.shape)
                 view[:] = array
                 views.append(view)
@@ -168,15 +169,17 @@ class ProcessingRunnerTestCase(unittest.TestCase):
 
         elements = [(a1, b1), (a2, b2)]
 
-        print(f"ELEMENTS: {elements}")
-
         graph = Graph(
             operations={
                 Pipeline(name="A", placement="/GPU:0", steps=(
-                    Lambda(lambda data: (print(f"A: {data}"), data+1)[1]),
+                    Lambda(lambda data: (
+                        print(f"A: {data}"),
+                        data+1)[1]),
                 )),
                 Pipeline(name="B", placement="/GPU:0", steps=(
-                    Lambda(lambda data: (print(f"B: {data}"), data**2)[1]),
+                    Lambda(lambda data: (
+                        print(f"B: {data}"),
+                        data**2)[1]),
                 )),
                 Pipeline(name="C", placement="/GPU:0", steps=(
                     Lambda(lambda xs: xs[0]+xs[1],
@@ -191,8 +194,8 @@ class ProcessingRunnerTestCase(unittest.TestCase):
             }
         )
         input_buffer, runner = self.__create_setup(elements=elements, graph=graph, sequences=sequences)
-        print(runner._get_ops_sequence())
-        print(runner._target_pos)
+        # print(runner._get_ops_sequence())
+        # print(runner._target_pos)
         buffer, metadata = runner.outputs
         for i in range(3):
             input_buffer.produce()
