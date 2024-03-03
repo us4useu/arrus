@@ -517,19 +517,14 @@ class ProcessingRunner:
             processing_stream=self.processing_stream,
             name=f"{gpu_input_buffer.name}Enqueue",
         )
-        release_gpu = ReleaseBufferElement(
-            gpu_input_buffer,
-            self.processing_stream,
-            name=f"{gpu_input_buffer.name}Release"
-        )
         out_buffer_enqueue = EnqueueGPUtoCPU(
-            host_output_buffer,
-            self.processing_stream,
+            input_gpu_buffer=gpu_input_buffer,
+            output_buffer=host_output_buffer,
+            stream=self.processing_stream,
             name=f"{host_output_buffer.name}Enqueue",
             callback=host_output_callback
         )
         new_op_by_name[in_buffer_enqueue.name] = in_buffer_enqueue
-        new_op_by_name[release_gpu.name] = release_gpu
         new_op_by_name[out_buffer_enqueue.name] = out_buffer_enqueue
         # The list of ops that are directly connected to the graph input
         # and should trigger gpu buffer element release.
@@ -547,9 +542,6 @@ class ProcessingRunner:
                 else:
                     # pass through
                     new_deps[(t_name, t_input_nr)] = (s_name, s_input_nr)
-
-        for i, in_op_name in enumerate(input_processing_op_names):
-            new_deps[(release_gpu.name, i)] = in_op_name, 0
         # TODO prepend the last Pipeline/ != Output with ReleaseBufferElement
         new_graph = Graph(new_op_by_name.values(), new_deps)
         source_node_name = in_buffer_enqueue
@@ -806,25 +798,12 @@ class EnqueueToGPU(Operation):
         return gpu_element.arrays
 
 
-class ReleaseBufferElement(Operation):
-
-    def __init__(self, buffer, stream, name=None):
-        super().__init__(name)
-        self.buffer = buffer
-        self.stream = stream
-
-    def prepare(self, const_metadata):
-        return const_metadata
-
-    def process(self, data):
-        self.buffer.release_fifo()
-
-
 class EnqueueGPUtoCPU(Operation):
 
-    def __init__(self, buffer, stream, callback=None, name=None):
+    def __init__(self, input_gpu_buffer, output_buffer, stream, callback=None, name=None):
         super().__init__(name)
-        self.buffer = buffer
+        self.input_gpu_buffer = input_gpu_buffer
+        self.output_buffer = output_buffer
         self.stream = stream
         self.callback = callback
         self._current_pos = 0
@@ -833,14 +812,15 @@ class EnqueueGPUtoCPU(Operation):
         return const_metadata
 
     def process(self, data: Tuple) -> None:
-
-        element = self.buffer.elements[self._current_pos]
+        # Release the GPU input element.
+        self.stream.launch_host_func(lambda buffer: buffer.release_fifo(), self.input_gpu_buffer)
+        element = self.output_buffer.elements[self._current_pos]
         self.stream.launch_host_func(lambda element: element.acquire(), element)
         for i, arr_gpu in enumerate(data):
             arr_gpu.get(stream=self.stream, out=element.arrays[i])
         if self.callback is not None:
             self.stream.launch_host_func(lambda e: self.callback(e), element)
-        self._current_pos = (self._current_pos+1)%self.buffer.n_elements
+        self._current_pos = (self._current_pos+1)%self.output_buffer.n_elements
 
 
 class Output(Operation):
