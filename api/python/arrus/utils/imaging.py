@@ -1090,8 +1090,8 @@ class Processing:
             on_buffer_overflow_callback=None):
         self.graph = graph
         self.callback = callback
-        self.input_buffer = input_buffer
-        self.output_buffer = output_buffer
+        self.input_buffer = input_buffer if input_buffer is not None else ProcessingBufferDef(size=2, type="locked")
+        self.output_buffer = output_buffer if output_buffer is not None else ProcessingBufferDef(size=2, type="locked")
         self.on_buffer_overflow_callback = on_buffer_overflow_callback
         self._pipeline_name = _get_default_op_name(self.graph, 0)
         # self._pipeline_param_names, self._param_defs = self._determine_params() TODO

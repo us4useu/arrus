@@ -180,7 +180,7 @@ class Session(AbstractSession):
                     if p.name is None:
                         p.name = f"Pipeline:{i}"
                 ops = set(pipelines)
-                deps = dict(*[(p.name, s.name) for p, s in zip(pipelines, sequences)])
+                deps = dict([(p.name, s.name) for p, s in zip(pipelines, sequences)])
                 graph = _imaging.Graph(
                     operations=ops,
                     dependencies=deps

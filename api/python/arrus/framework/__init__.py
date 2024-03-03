@@ -66,7 +66,7 @@ class DataBufferElement:
         ndarray = element.getData(0)
         addr = arrus.core.castUint8ToInt(ndarray.getUint8())
         ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_uint8))
-        shape = (element.getElementSize(), )  # Number of bytes
+        shape = (element.getSize(), )  # Number of bytes
         return np.ctypeslib.as_array(ctypes_ptr, shape=shape)
 
     def _create_np_arrays(self, element):
