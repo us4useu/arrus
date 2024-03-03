@@ -30,7 +30,8 @@ class MetadataMock:
         return ContextMock(SequenceMock(name=self.name))
 
     def copy(self, **kwargs):
-        return MetadataMock(**{**self.__dict__, **kwargs})
+        d = dict(input_shape=self.input_shape, dtype=self.dtype, name=self.name)
+        return MetadataMock(**{**kwargs, **d})
 
 
 class PipelineMock:
@@ -57,10 +58,10 @@ class PipelineMock:
 
 class InputBufferElementMock:
 
-    def __init__(self, data, arrays):
-        self.data = data
+    def __init__(self, array, arrays):
+        self.array = array
         self.arrays = arrays
-        self.size = self.data.nbytes
+        self.size = self.array.nbytes
 
 
 class InputBufferMock:
@@ -74,7 +75,7 @@ class InputBufferMock:
         self.elements = [InputBufferElementMock(d, a) for d, a in zip(data, array_views)]
         self.callbacks = []
         self.i = 0
-        self.n = len(data)
+        self.n = len(self.elements)
 
     def append_on_new_data_callback(self, func):
         self.callbacks.append(func)
@@ -108,7 +109,7 @@ class ProcessingRunnerTestCase(unittest.TestCase):
             self.runner.close()
             self.runner = None
 
-    def __create_runner(
+    def __create_setup(
             self, elements, sequences,
             in_buffer_size=2,
             gpu_buffer_size=2,
@@ -156,7 +157,7 @@ class ProcessingRunnerTestCase(unittest.TestCase):
                 graph=graph,
                 callback=callback
             ))
-        return self.runner
+        return self.in_buffer, self.runner
 
     def test_simple_graph(self):
         sequences = ["SequenceA", "SequenceB"]
@@ -167,17 +168,19 @@ class ProcessingRunnerTestCase(unittest.TestCase):
 
         elements = [(a1, b1), (a2, b2)]
 
+        print(f"ELEMENTS: {elements}")
+
         graph = Graph(
             operations={
                 Pipeline(name="A", placement="/GPU:0", steps=(
-                    Lambda(lambda data: data+1),
+                    Lambda(lambda data: (print(f"A: {data}"), data+1)[1]),
                 )),
                 Pipeline(name="B", placement="/GPU:0", steps=(
-                    Lambda(lambda data: data**2),
+                    Lambda(lambda data: (print(f"B: {data}"), data**2)[1]),
                 )),
                 Pipeline(name="C", placement="/GPU:0", steps=(
-                    Lambda(lambda x, y: x+y,
-                           lambda metadata: metadata.copy(input_shape=a.shape)),
+                    Lambda(lambda xs: xs[0]+xs[1],
+                           lambda ms: ms[0].copy(input_shape=ms[0].input_shape)),
                 ))
             },
             dependencies={
@@ -187,12 +190,14 @@ class ProcessingRunnerTestCase(unittest.TestCase):
                 "Output:0": "C/Output:0"
             }
         )
-        runner = self.__create_runner(elements=elements, graph=graph, sequences=sequences)
+        input_buffer, runner = self.__create_setup(elements=elements, graph=graph, sequences=sequences)
+        print(runner._get_ops_sequence())
+        print(runner._target_pos)
         buffer, metadata = runner.outputs
-        print(metadata.input_shape)
-        print(metadata.dtype)
-        outputs = buffer.get()
-        print(outputs)
+        for i in range(3):
+            input_buffer.produce()
+            outputs = buffer.get()
+            print(outputs)
 
 
     # def __run_increment_sync(self, buffer, n_runs):
