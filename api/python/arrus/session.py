@@ -109,9 +109,10 @@ class Session(AbstractSession):
         tx_delay_constants = ()
         # TODO make sure all sequences have the same TGC (different TGCs are not supported)
         # Convert to raw sequences and upload.
+        sequences = [dataclasses.replace(s, name=f"TxRxSequence:{i}") 
+                     if s.name is None else s 
+                     for i, s in enumerate(sequences)]
         for i, sequence in enumerate(sequences):
-            if sequence.name is None:
-                sequence = dataclasses.replace(sequence, name=f"Sequence:{i}")
             kernel_context = self._create_kernel_context(
                 sequence,
                 us_device_dto,

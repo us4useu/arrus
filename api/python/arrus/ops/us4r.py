@@ -193,7 +193,7 @@ class TxRxSequence:
         default_factory=lambda: [])
     sri: float = None
     n_repeats: int = 1
-    name: str = "TxRxSequence:0"
+    name: Optional[str] = None
 
     def __post_init__(self):
         object.__setattr__(self, "tgc_curve", np.asarray(self.tgc_curve))

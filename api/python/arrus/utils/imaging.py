@@ -389,7 +389,6 @@ class ProcessingRunner:
         else:
             self.user_out_buffer = queue.Queue(maxsize=1)
             self.callback = self.default_processing_output_callback
-
         self.graph, self.source_node_name = self._preprocess_graph(
             self.processing, self.input_metadata,
             self.host_input_buffer, self.gpu_input_buffer,
@@ -452,7 +451,7 @@ class ProcessingRunner:
         while len(q) != 0:
             # NOTE: op_input_nr is used only in case of the Output node.
             op_name, op_input_nr = q.popleft()
-            if op_name in visited_names:
+            if op_name in visited_names and op_name != "Output":
                 raise ValueError(f"Cycle detected at: {op_name}")
             visited_names.add(op_name)
             metadata = metadata_by_target[op_name]
@@ -464,11 +463,7 @@ class ProcessingRunner:
                 raise ValueError(f"Some inputs missing for {op_name}, "
                                  f"detected only {op_nrs}")
             if op_name == "Output":
-                # Output node
-                if len(metadata) > 1:
-                    raise ValueError("Only a single output should be connected "
-                                     f"to the output buffer {op_name}.")
-                metadata = metadata[0]
+                metadata = metadata[op_input_nr]
                 output_shapes.append((op_input_nr, metadata.input_shape))
                 output_dtypes.append((op_input_nr, metadata.dtype))
                 # TODO store the full output name
@@ -501,6 +496,7 @@ class ProcessingRunner:
             shapes=output_shapes,
             dtypes=output_dtypes,
             math_pkg=np)
+        output_metadata = list(zip(*sorted(output_metadata.items(), key=lambda x: x[0])))[1]
         return input_buffer, output_buffer, output_metadata
 
     def _preprocess_graph(self, processing, input_metadata,
@@ -818,7 +814,9 @@ class EnqueueGPUtoCPU(Operation):
         element = self.output_buffer.elements[self._current_pos]
         self.stream.launch_host_func(lambda element: element.acquire(), element)
         for i, arr_gpu in enumerate(data):
-            arr_gpu.get(stream=self.stream, out=element.arrays[i])
+            element.arrays[i] = arr_gpu.get()
+            # TODO the line below causes data incosistency for large output arrays
+            # arr_gpu.get(stream=self.stream, out=element.arrays[i])
         if self.callback is not None:
             self.stream.launch_host_func(lambda e: self.callback(e), element)
         self._current_pos = (self._current_pos+1)%self.output_buffer.n_elements
