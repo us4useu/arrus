@@ -392,7 +392,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         const auto &txProbeSettings = probeSettings.at(txProbeId.getOrdinal());
         const auto &rxProbeSettings = probeSettings.at(rxProbeId.getOrdinal());
         const auto &txProbeMask = channelsMask.at(txProbeId.getOrdinal());
-        const auto rxProbeMask = channelsMask.at(rxProbeId.getOrdinal());
+        const auto &rxProbeMask = channelsMask.at(rxProbeId.getOrdinal());
         auto nAdapterChannels = probeAdapterSettings.getNumberOfChannels();
         // Find the correct probe TX, RX ordinal
         probe2Adapter.emplace_back(ProbeToAdapterMappingConverter{

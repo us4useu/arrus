@@ -81,7 +81,7 @@ public:
             // RX
             for (size_t pch = 0; pch < op.getTxAperture().size(); ++pch) {
                 auto achRx = probeRx.getChannelMapping().at(pch);
-                rxAperture[achRx] = getMaskedOrZero(op.getRxAperture().at(pch), pch, rxProbeMask);
+                rxAperture[achRx] = op.getRxAperture().at(pch);
                 if (op.getRxAperture()[pch]) {
                     rxApertureChannelMapping.push_back(achRx);
                 }
