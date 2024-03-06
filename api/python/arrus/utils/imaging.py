@@ -463,11 +463,10 @@ class ProcessingRunner:
                 raise ValueError(f"Some inputs missing for {op_name}, "
                                  f"detected only {op_nrs}")
             if op_name == "Output":
-                metadata = metadata[op_input_nr]
-                output_shapes.append((op_input_nr, metadata.input_shape))
-                output_dtypes.append((op_input_nr, metadata.dtype))
-                # TODO store the full output name
-                output_metadata[op_input_nr] = metadata
+                for op_input_nr, m in zip(op_nrs, metadata):
+                    output_shapes.append((op_input_nr, m.input_shape))
+                    output_dtypes.append((op_input_nr, m.dtype))
+                    output_metadata[op_input_nr] = m
             else:
                 # op node
                 op = ops_by_name[op_name]
@@ -482,10 +481,7 @@ class ProcessingRunner:
                     for next_name, next_input_nr in next:
                         metadata_by_target[next_name].append((next_input_nr, m))
                         input_counters[next_name] += 1
-                        # Output nodes are expected to have only single input
-                        if next_name == "Output":
-                            q.append((next_name, next_input_nr))
-                        elif input_counters[next_name] == n_inputs_by_name[next_name]:
+                        if input_counters[next_name] == n_inputs_by_name[next_name]:
                             q.append((next_name, next_input_nr))
         output_shapes = list(zip(*sorted(output_shapes, key=lambda a: a[0])))[1]
         output_dtypes = list(zip(*sorted(output_dtypes, key=lambda a: a[0])))[1]
@@ -497,6 +493,7 @@ class ProcessingRunner:
             dtypes=output_dtypes,
             math_pkg=np)
         output_metadata = list(zip(*sorted(output_metadata.items(), key=lambda x: x[0])))[1]
+        print(output_metadata)
         return input_buffer, output_buffer, output_metadata
 
     def _preprocess_graph(self, processing, input_metadata,
