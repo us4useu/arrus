@@ -283,9 +283,17 @@ class Us4R(Device, Ultrasound):
     @property
     def channels_mask(self):
         """
-        Returns a list of system channels that are masked in the configuration.
+        Returns a list of system channels that are masked in the configuration, for Probe:0.
+        DEPRECATED, use get_channels_mask method.
         """
-        return self._handle.getChannelsMask()
+        return self.get_channels_mask(0)
+
+    def get_channels_mask(self, probe_nr):
+        """
+        Returns a list of system channels that are masked in the configuration, for Probe:{probe_nr}.
+        """
+        return self._handle.getChannelsMask(probe_nr)
+
 
     def get_number_of_probes(self):
         return self._handle.getNumberOfProbes()
