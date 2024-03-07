@@ -652,6 +652,8 @@ class ProcessingRunner:
             self._unregister_buffer(self.host_input_buffer, lambda element: element.array)
             if hasattr(self, "output_buffer") and self.output_buffer:
                 self._unregister_buffer(self.output_buffer, lambda element: element.data)
+            for op in self._ops:
+                op.close()
             self._state = ProcessingRunner.State.CLOSED
 
     def sync(self):
@@ -749,6 +751,9 @@ class Operation:
         for this operation.
         """
         return dict()
+
+    def close(self):
+        pass
 
 
 def _get_default_op_name(op: Operation, ordinal: int):
@@ -869,6 +874,10 @@ class Pipeline:
         self._param_defs: Dict[str, ParameterDef] = {}
         self._determine_params()
         self.n_outputs = self._get_n_outputs()
+
+    def close(self):
+        for s in self.steps:
+            s.close()
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
@@ -1449,6 +1458,10 @@ class RxBeamforming(Operation):
     Classical rx beamforming (reconstruct image scanline by scanline).
     """
     X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
+
+    def close(self):
+        # Clean-up pool.
+        RxBeamforming.X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
 
     def __init__(self, num_pkg=None):
         import cupy as cp
@@ -2318,6 +2331,13 @@ class ReconstructLri(Operation):
     Z_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "zElemConst", 1024, np.float32)
     X_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "xElemConst", 1024, np.float32)
     TANG_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "tangElemConst", 1024, np.float32)
+
+    def close(self):
+        # Clean-up pool.
+        ReconstructLri.Z_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "zElemConst", 1024, np.float32)
+        ReconstructLri.X_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "xElemConst", 1024, np.float32)
+        ReconstructLri.TANG_ELEM_CONST_POOL = GpuConstMemoryPool(RECONSTRUCT_LRI_KERNEL_MODULE, "tangElemConst", 1024, np.float32)
+
 
     def __init__(self, x_grid, z_grid, rx_tang_limits=None):
         super().__init__()
