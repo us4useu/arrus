@@ -56,12 +56,14 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
     
     for (int iTx=0; iTx<nTx; iTx++) {
         
-        rxTang = __fdividef(xPix[x] - xElemConst[nElem-1], zPix[z] - zElemConst[nElem-1]);
-        rxTang = __fdividef(rxTang - tangElemConst[nElem-1], 1.f + rxTang*tangElemConst[nElem-1]);
+        iElem = (rxApOrigElem[iTx] + nRx <= nElem) ? rxApOrigElem[iTx] + nRx - 1 : nElem - 1;
+        rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+        rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
         float minRxTangPix = fmax(minRxTang[iTx], rxTang);
         
-        rxTang = __fdividef(xPix[x] - xElemConst[0], zPix[z] - zElemConst[0]);
-        rxTang = __fdividef(rxTang - tangElemConst[0], 1.f + rxTang*tangElemConst[0]);
+        iElem = (rxApOrigElem[iTx] >= 0) ? rxApOrigElem[iTx] : 0;
+        rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+        rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
         float maxRxTangPix = fmin(maxRxTang[iTx], rxTang);
         
         float const rngRxTangInv = 1 / (maxRxTangPix - minRxTangPix); // inverted tangent range
