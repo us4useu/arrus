@@ -413,6 +413,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     // Otherwise, make an empty part (i.e. partSize = 0).
                     // (note: the firing number will be needed for transfer configuration to release element in
                     // us4oem sequencer).
+                    // NOTE: this behavior must be consistent with the OpToFrameMapping implementation.
                     rxBufferElementParts.emplace_back(outputAddress, partSize, firing);
                 }
                 if (!op.isRxNOP() || acceptRxNops) {
@@ -871,5 +872,19 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
 const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
 
 const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
+
+
+OpToFrameMapping::OpToFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames) {
+    // NOTE: this method must be consistent with the assumption from the
+    // Us4OEMImpl::setTxRxSequence implementation.
+    uint16_t actualFrameNr = 0;
+    for(uint16_t firing = 0; firing < nFirings; ++firing) {
+        opToFrame.at(firing) = actualFrameNr;
+        const auto &part = frames.at(firing); // NOTE: also empty frames are stored.
+        if(part.getSize() > 0) {
+            ++actualFrameNr;
+        }
+    }
+}
 
 }// namespace arrus::devices

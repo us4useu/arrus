@@ -69,6 +69,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                                   const std::vector<arrus::framework::NdArray> &txDelayProfiles) {
     // Reset current subsequence structures.
     logicalToPhysicalOp.clear();
+    physicalOpToFrame.clear();
     fullSequenceOEMBuffers.clear();
     fullSequenceFCM.reset();
 
@@ -249,6 +250,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
         fcMappings.push_back(std::move(fcMapping));
         // fcMapping is not valid anymore here
         us4RBufferBuilder.pushBack(buffer);
+        this->fullSequenceOEMBuffers.push_back(buffer);
+        this->physicalOpToFrame.push_back(OpToFrameMapping{
+            ARRUS_SAFE_CAST(splittedOps[us4oemOrdinal].size(), uint16_t), buffer.getElementParts()});
     }
 
     // generate FrameChannelMapping for the adapter output.
@@ -301,6 +305,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     }
     outFcBuilder.setFrameOffsets(frameOffsets);
     outFcBuilder.setNumberOfFrames(numberOfFrames);
+
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
 }
 
@@ -383,21 +388,21 @@ void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequen
     }
 }
 
-std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
+std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle> ProbeAdapterImpl::setSubsequence(uint16_t start,
+                                                                                             uint16_t end) {
     // Determine start/stop OEMs op.
     uint16_t oemStart = logicalToPhysicalOp[start].first;
     uint16_t oemEnd = logicalToPhysicalOp[end].second;
     Us4RBufferBuilder us4RBufferBuilder;
     // Update us4OEM buffers.
-    for(const auto &oemBuffer: fullSequenceOEMBuffers) {
+    for (const auto &oemBuffer : fullSequenceOEMBuffers) {
         us4RBufferBuilder.pushBack(oemBuffer.getSubsequence(oemStart, oemEnd));
     }
     // Update FCM.
     FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::like(*fullSequenceFCM);
-    outFCMBuilder.slice(start, end); // Logical
+    outFCMBuilder.slice(start, end);// Logical
     // Subtract from the physical frame numbers, the number of frames.
-    for(size_t i = 0; i < fullSequenceOEMBuffers.size(); ++i) {
+    for (size_t i = 0; i < fullSequenceOEMBuffers.size(); ++i) {
         const auto &oemBuffer = fullSequenceOEMBuffers[i];
         outFCMBuilder.subtractPhysicalFrameNumber(i, oemBuffer.getOpFrame(oemStart));
     }
@@ -405,10 +410,10 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     outFCMBuilder.recalculateOffsets();
 
     // Update OEM sequencer configuration.
-    for(auto &oem: us4oems) {
+    for (auto &oem : us4oems) {
         oem->getIUs4oem()->SetSubsequence(oemStart, oemEnd);
     }
     return {us4RBufferBuilder.build(), outFCMBuilder.build()};
 }
 
-}
+}// namespace arrus::devices

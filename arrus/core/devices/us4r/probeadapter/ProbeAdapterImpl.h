@@ -52,6 +52,8 @@ public:
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle> setSubsequence(uint16_t start, uint16_t end) override;
 
 private:
+
+
     void calculateRxDelays(std::vector<TxRxParamsSequence> &sequences);
     Ordinal getFrameMetadataOem(const us4r::IOSettings &settings);
 
@@ -67,6 +69,8 @@ private:
     /** Logical -> physical [start, end] op (TX/RX) */
     std::vector<std::pair<uint16_t, uint16_t>> logicalToPhysicalOp;
     std::vector<Us4OEMBuffer> fullSequenceOEMBuffers;
+    /** OEM number -> physical op -> frame number */
+    std::vector<OpToFrameMapping> physicalOpToFrame;
     FrameChannelMapping::Handle fullSequenceFCM;
 };
 }

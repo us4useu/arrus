@@ -1,6 +1,8 @@
 #ifndef ARRUS_ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMBUFFER_H
 #define ARRUS_ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMBUFFER_H
 
+#include "arrus/common/format.h"
+
 #include <utility>
 
 #include "arrus/core/api/common/types.h"
@@ -84,7 +86,9 @@ class Us4OEMBuffer {
 public:
     explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements,
                           std::vector<Us4OEMBufferElementPart> elementParts)
-        : elements(std::move(elements)), elementParts(std::move(elementParts)) {}
+        : elements(std::move(elements)), elementParts(std::move(elementParts)) {
+
+    }
 
     [[nodiscard]] const Us4OEMBufferElement &getElement(size_t i) const {
         return elements[i];
@@ -101,16 +105,6 @@ public:
     [[nodiscard]] const std::vector<Us4OEMBufferElementPart> &getElementParts() const {
         return elementParts;
     }
-
-    uint16_t getOpFrame(uint16_t opNr) const {
-        return 0;
-    }
-
-    Us4OEMBuffer getSubsequence(uint16_t start, uint16_t end) const {
-        // recalculate parts
-        // recalculate element sizes, and addresses
-    }
-
 private:
     std::vector<Us4OEMBufferElement> elements;
     std::vector<Us4OEMBufferElementPart> elementParts;
