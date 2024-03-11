@@ -101,6 +101,9 @@ void FrameChannelMappingBuilder::subtractPhysicalFrameNumber(Ordinal oem, FrameN
     // TODO select rows, where us4oemMapping == oem, and subtract offset
     this->numberOfFrames[oem] -= offset;
 }
+void FrameChannelMappingBuilder::recalculateOffsets() {
+
+}
 
 }
 

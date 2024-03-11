@@ -216,9 +216,13 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     for(auto &us4oem: us4oems) {
         us4oemL2PChannelMappings.push_back(us4oem->getChannelMapping());
     }
-
-    auto[splittedOps, opDstSplittedOp, opDestSplittedCh, us4oemTxDelayProfiles] = splitRxAperturesIfNecessary(
+    auto splitResult = splitRxAperturesIfNecessary(
         seqs, us4oemL2PChannelMappings, txDelayProfilesList, frameMetadataOem);
+    auto &splittedOps = splitResult.sequences;
+    auto &opDstSplittedOp = splitResult.frames;
+    auto &opDestSplittedCh = splitResult.channels;
+    auto &us4oemTxDelayProfiles = splitResult.constants;
+    this->logicalToPhysicalOp = splitResult.logicalToPhysicalOp;
 
     calculateRxDelays(splittedOps);
 
@@ -395,7 +399,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     // Subtract from the physical frame numbers, the number of frames.
     for(size_t i = 0; i < fullSequenceOEMBuffers.size(); ++i) {
         const auto &oemBuffer = fullSequenceOEMBuffers[i];
-        outFCMBuilder.subtractPhysicalFrameNumber(oemBuffer.getOpFrame(oemStart));
+        outFCMBuilder.subtractPhysicalFrameNumber(i, oemBuffer.getOpFrame(oemStart));
     }
     // recalculate frame offsets
     outFCMBuilder.recalculateOffsets();
