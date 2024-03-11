@@ -58,6 +58,8 @@ classdef CustomTxRxSequence
         tgcStart (1,:)
         tgcSlope (1,:) = 0
         txInvert (1,:) {mustBeLogical} = false
+        workMode {mustBeScalarText} = "MANUAL"
+        sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
     end
     
     methods
@@ -89,6 +91,12 @@ classdef CustomTxRxSequence
             mustBeIntOrStr(obj,'nRepetitions',1,"max");
             if isstring(obj.nRepetitions)
                 error('Support for nRepetitions="max" is temporarily suspended.');
+            end
+            
+            obj.workMode = upper(string(obj.workMode));
+            if ~any(strcmp(obj.workMode,["MANUAL","HOST","SYNC","ASYNC"]))
+                error("ARRUS:IllegalArgument", ...
+                      "workMode must be one of the following: MANUAL, HOST, SYNC, or ASYNC.");
             end
             
             %% Check size compatibility of aperture/focus/angle parameters
@@ -171,6 +179,13 @@ function mustBeIntOrStr(obj,fieldName,intDomain,strDomain)
             class(argIn)])
     end
     
+end
+
+function mustBeScalarText(a)
+    if ~(isstring(a) && isscalar(a)) && ~(ischar(a) && isrow(a))
+        error("ARRUS:IllegalArgument", ...
+                          "Incompatible parameter type, must be scalar text");
+    end
 end
 
 function argOut = mustBeProperLength(argIn,propLength)

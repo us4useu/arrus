@@ -222,6 +222,7 @@ classdef Us4R < handle
             % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
             
             [rf, ~] = obj.execSequence;
+            obj.session.stopScheme();
             
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
@@ -238,6 +239,7 @@ classdef Us4R < handle
             %
             % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
             [rf, metadata] = obj.execSequence;
+            obj.session.stopScheme();
             
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
@@ -285,6 +287,7 @@ classdef Us4R < handle
                     disp('--------------------');
                 end
             end
+            obj.session.stopScheme();
         end
         
         function plotRawRf(obj,varargin)
@@ -918,7 +921,7 @@ classdef Us4R < handle
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
-            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve);
+            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve, "sri", obj.seq.sri);
             
             % Digital Down Conversion
             if obj.seq.hwDdcEnable
@@ -931,7 +934,7 @@ classdef Us4R < handle
             end
             
             % Upload scheme
-            scheme = Scheme('txRxSequence', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
+            scheme = Scheme('txRxSequence', txrxSeq, 'workMode', obj.seq.workMode, 'digitalDownConversion', ddc);
             
             [obj.buffer.data, ...
              obj.buffer.framesOffset, ...
@@ -942,6 +945,8 @@ classdef Us4R < handle
 
             obj.buffer.framesOffset = obj.buffer.framesOffset.';
             obj.buffer.framesNumber = obj.buffer.framesNumber.';
+
+            obj.buffer.iFrame = 0;
             
             % Data reorganization addresses
             nChan = obj.sys.nChArius;
@@ -972,8 +977,12 @@ classdef Us4R < handle
             nTrig0  = obj.buffer.framesNumber(1);
 
             %% Capture & transfer data to PC
-            obj.session.run();
+            if obj.buffer.iFrame == 0 || strcmp(obj.seq.workMode,"MANUAL")
+                obj.session.run();
+            end
             rf0 = obj.buffer.data.front().eval();
+
+            obj.buffer.iFrame = obj.buffer.iFrame + 1;
             
             %% Get metadata
             metadata = zeros(nChan, nTrig0, 'int16');
