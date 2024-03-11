@@ -107,6 +107,9 @@ public:
     FrameChannelMappingImpl::Handle build();
     void setFrameOffsets(const std::vector<uint32> &frameOffsets);
     void setNumberOfFrames(const std::vector<uint32> &nFrames);
+    void slice(FrameNumber start, FrameNumber end);
+    void subtractPhysicalFrameNumber(FrameNumber offset);
+    void recalculateOffsets();
 
 private:
     // logical (frame, number) -> physical (frame, number)

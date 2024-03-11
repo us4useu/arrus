@@ -102,9 +102,19 @@ public:
         return elementParts;
     }
 
+    uint16_t getOpFrame(uint16_t opNr) const {
+        return 0;
+    }
+
+    Us4OEMBuffer getSubsequence(uint16_t start, uint16_t end) const {
+        // recalculate parts
+        // recalculate element sizes, and addresses
+    }
+
 private:
     std::vector<Us4OEMBufferElement> elements;
     std::vector<Us4OEMBufferElementPart> elementParts;
+    std::vector<uint16_t> opToFrame;
 };
 
 }

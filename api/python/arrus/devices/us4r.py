@@ -67,6 +67,9 @@ class Us4R(Device, Ultrasound):
     Wraps an access to arrus.core.Us4R object.
     """
 
+    SEQUENCE_START_VAR = "/Us4R:0/sequence:0/start"
+    SEQUENCE_END_VAR = "/Us4R:0/sequence:0/end"
+
     def __init__(self, handle):
         super().__init__()
         self._handle = handle
@@ -318,6 +321,14 @@ class Us4R(Device, Ultrasound):
             sampling_frequency=self.current_sampling_frequency,
             custom={"frame_channel_mapping": fcm}
         )
+
+    def set_subsequence(self, start, end):
+        """
+        Returns a new data buffer.
+        """
+        buffer_handle = self._handle.setSubsequence(start, end)
+        return buffer_handle
+
 
 
 # ------------------------------------------ LEGACY MOCK

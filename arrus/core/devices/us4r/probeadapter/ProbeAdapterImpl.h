@@ -48,6 +48,9 @@ public:
     void stop() override;
 
     void syncTrigger() override;
+
+    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle> setSubsequence(uint16_t start, uint16_t end) override;
+
 private:
     void calculateRxDelays(std::vector<TxRxParamsSequence> &sequences);
     Ordinal getFrameMetadataOem(const us4r::IOSettings &settings);
@@ -59,6 +62,12 @@ private:
     ChannelMapping channelMapping;
     /** The OEM, which is responsible for acquiring pulse counter metadata (ordinal number). **/
     Ordinal frameMetadataOem{0};
+
+    // Subsequence selection properties.
+    /** Logical -> physical [start, end] op (TX/RX) */
+    std::vector<std::pair<uint16_t, uint16_t>> logicalToPhysicalOp;
+    std::vector<Us4OEMBuffer> fullSequenceOEMBuffers;
+    FrameChannelMapping::Handle fullSequenceFCM;
 };
 }
 

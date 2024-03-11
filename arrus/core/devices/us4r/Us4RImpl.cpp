@@ -242,7 +242,7 @@ void Us4RImpl::disableHV() {
 }
 
 std::pair<Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
-Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
+Us4RImpl::upload(const Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferNElements = scheme.getRxBufferSize();
     auto workMode = scheme.getWorkMode();
@@ -269,6 +269,17 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
 
     auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
                                           scheme.getDigitalDownConversion(), scheme.getConstants());
+
+    prepareHostBuffer(hostBufferNElements, workMode, rxBuffer);
+    // NOTE: starting from this point, rxBuffer is no longer a valid variable
+    // Metadata
+    arrus::session::MetadataBuilder metadataBuilder;
+    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+    this->scheme = scheme;
+    return {this->buffer, metadataBuilder.buildPtr()};
+}
+
+void Us4RImpl::prepareHostBuffer(unsigned nElements, Scheme::WorkMode workMode, std::unique_ptr<Us4RBuffer> &rxBuffer) {
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -294,17 +305,11 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     }
     // Create output buffer.
     this->buffer =
-        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
+        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, nElements, stopOnOverflow);
     registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
 
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
-    // TODO implement Us4RBuffer move constructor.
     this->us4rBuffer = std::move(rxBuffer);
-
-    // Metadata
-    arrus::session::MetadataBuilder metadataBuilder;
-    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
-    return {this->buffer, metadataBuilder.buildPtr()};
 }
 
 void Us4RImpl::start() {
@@ -811,27 +816,37 @@ const char *Us4RImpl::getBackplaneRevision() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    for(auto &item: params.items()) {
+    for (auto &item : params.items()) {
         auto &key = item.first;
         auto value = item.second;
         logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
-        if(key != "/sequence:0/txFocus") {
+        if (key != "/sequence:0/txFocus") {
             throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
         }
         this->us4oems[0]->getIUs4oem()->TriggerStop();
         try {
-            for(auto &us4oem: us4oems) {
+            for (auto &us4oem : us4oems) {
                 us4oem->getIUs4oem()->SetTxDelays(value);
             }
-	} 
-	catch(...) {
+        } catch (...) {
             // Try resume.
             this->us4oems[0]->getIUs4oem()->TriggerStart();
-	    throw;
-	}
-	// Everything OK, resume.
+            throw;
+        }
+        // Everything OK, resume.
         this->us4oems[0]->getIUs4oem()->TriggerStart();
     }
 }
+
+Buffer::SharedHandle Us4RImpl::setSubsequence(std::optional<uint16_t> start, std::optional<uint16_t> end) {
+    if(!scheme.has_value()) {
+        throw IllegalStateException("Please upload scheme before setting sub-sequence.");
+    }
+    const auto &s = scheme.value();
+    auto rxBuffer = this->getProbeImpl()->setSubsequence(start, end);
+    prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer);
+    return this->buffer;
+}
+
 
 }// namespace arrus::devices

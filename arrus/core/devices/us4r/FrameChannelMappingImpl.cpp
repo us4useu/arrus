@@ -91,5 +91,16 @@ void FrameChannelMappingBuilder::setNumberOfFrames(const std::vector<uint32> &nF
     this->numberOfFrames = nFrames;
 }
 
+void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
+    this->frameMapping = this->frameMapping(Eigen::seq(start, end), Eigen::all);
+    this->channelMapping = this->channelMapping(Eigen::seq(start, end), Eigen::all);
+    this->us4oemMapping = this->us4oemMapping(Eigen::seq(start, end), Eigen::all);
+}
+
+void FrameChannelMappingBuilder::subtractPhysicalFrameNumber(Ordinal oem, FrameNumber offset) {
+    // TODO select rows, where us4oemMapping == oem, and subtract offset
+    this->numberOfFrames[oem] -= offset;
+}
+
 }
 

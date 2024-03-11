@@ -314,6 +314,15 @@ public:
      */
     virtual const char* getBackplaneRevision() = 0;
 
+    /**
+     * Sets the current sequence to the subsequence [start, end).
+     *
+     * @param start the new first TX/RX
+     * @param end last TX/RX
+     * @return a new host output buffer
+     */
+    std::shared_ptr<arrus::framework::Buffer> setSubsequence(std::optional<uint16_t> start, std::optional<uint16_t> end);
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

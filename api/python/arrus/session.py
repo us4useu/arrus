@@ -27,6 +27,7 @@ from typing import Sequence, Dict
 from numbers import Number
 
 from arrus.devices.ultrasound import Ultrasound
+from arrus.devices.us4r import Us4R
 
 
 class AbstractSession(abc.ABC):
@@ -126,8 +127,8 @@ class Session(AbstractSession):
         fac = self._create_frame_acquisition_context(
             seq, raw_seq, us_device_dto, medium, tx_delay_constants)
 
-        buffer = arrus.framework.DataBuffer(buffer_handle)
-        input_shape = buffer.elements[0].data.shape
+        self.buffer = arrus.framework.DataBuffer(buffer_handle)
+        input_shape = self.buffer.elements[0].data.shape
 
         is_iq_data = scheme.digital_down_conversion is not None
         const_metadata = arrus.metadata.ConstMetadata(
@@ -150,7 +151,7 @@ class Session(AbstractSession):
                 )
             if isinstance(processing, _imaging.Processing):
                 processing = arrus.utils.imaging.ProcessingRunner(
-                    buffer, const_metadata, processing)
+                    self.buffer, const_metadata, processing)
                 outputs = processing.outputs
             else:
                 raise ValueError("Unsupported type of processing: "
@@ -158,7 +159,7 @@ class Session(AbstractSession):
             self._current_processing = processing
         else:
             # Device buffer and const_metadata
-            outputs = buffer, const_metadata
+            outputs = self.buffer, const_metadata
         return outputs
 
     def __enter__(self):
@@ -243,6 +244,9 @@ class Session(AbstractSession):
         return specific_device
 
     def set_parameters(self, params):
+        if self._contains_py_params(params):
+            self._handle_py_params(params)
+            params = self._remove_py_params(params)
         core_params = arrus.utils.core.convert_to_core_parameters(params)
         self._session_handle.setParameters(core_params)
 
@@ -283,6 +287,30 @@ class Session(AbstractSession):
         NOTE: this method is not thread-safe!
         """
         self._context = SessionContext(medium=value)
+
+    def set_subsequence(self, start, end):
+        self.stop_scheme()
+        ultrasound = self.get_device("/Ultrasound:0")
+        buffer_handle = ultrasound.set_subsequence(start, end)
+        self.buffer = arrus.framework.DataBuffer(buffer_handle)
+        self.start_scheme()
+
+    def _contains_py_params(self, params):
+        # Currently only start/stop params must by handled
+        # by the Python layer, because os the self._buffer handle
+        return Us4R.SEQUENCE_START_VAR in params or Us4R.SEQUENCE_END_VAR in params
+
+    def _remove_py_params(self, params):
+        params = params.copy()
+        params.pop(Us4R.SEQUENCE_START_VAR, None)
+        params.pop(Us4R.SEQUENCE_END_VAR, None)
+        return params
+
+    def _handle_py_params(self, params):
+        # Currently only start/stop params must be handled in the Python layer.
+        sequence_start = params.get(Us4R.SEQUENCE_START_VAR, None)
+        sequence_end = params.get(Us4R.SEQUENCE_START_VAR, None)
+        self.set_subsequence(sequence_start, sequence_end)
 
     # def set_current_medium(self, medium: arrus.medium.Medium):
     #     # TODO mutex, forbid when context is frozen (e.g. when us4r is running)

@@ -67,6 +67,11 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
                                   uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync,
                                   const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
                                   const std::vector<arrus::framework::NdArray> &txDelayProfiles) {
+    // Reset current subsequence structures.
+    logicalToPhysicalOp.clear();
+    fullSequenceOEMBuffers.clear();
+    fullSequenceFCM.reset();
+
     // Validate input sequence
     ProbeAdapterTxRxValidator validator(::arrus::format("{} tx rx sequence", getDeviceId().toString()), numberOfChannels);
     validator.validate(seq);
@@ -372,6 +377,34 @@ void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequen
             sequences[oem][txrx].setRxDelay(maxDelay);
         }
     }
+}
+
+std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
+    // Determine start/stop OEMs op.
+    uint16_t oemStart = logicalToPhysicalOp[start].first;
+    uint16_t oemEnd = logicalToPhysicalOp[end].second;
+    Us4RBufferBuilder us4RBufferBuilder;
+    // Update us4OEM buffers.
+    for(const auto &oemBuffer: fullSequenceOEMBuffers) {
+        us4RBufferBuilder.pushBack(oemBuffer.getSubsequence(oemStart, oemEnd));
+    }
+    // Update FCM.
+    FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::like(*fullSequenceFCM);
+    outFCMBuilder.slice(start, end); // Logical
+    // Subtract from the physical frame numbers, the number of frames.
+    for(size_t i = 0; i < fullSequenceOEMBuffers.size(); ++i) {
+        const auto &oemBuffer = fullSequenceOEMBuffers[i];
+        outFCMBuilder.subtractPhysicalFrameNumber(oemBuffer.getOpFrame(oemStart));
+    }
+    // recalculate frame offsets
+    outFCMBuilder.recalculateOffsets();
+
+    // Update OEM sequencer configuration.
+    for(auto &oem: us4oems) {
+        oem->getIUs4oem()->SetSubsequence(oemStart, oemEnd);
+    }
+    return {us4RBufferBuilder.build(), outFCMBuilder.build()};
 }
 
 }
