@@ -31,6 +31,9 @@ classdef CustomTxRxSequence
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param txInvert: tx pulse polarity marker
+    % :param workMode: system mode of operation, can be "MANUAL","HOST","SYNC", \
+    %   or "ASYNC".
+    % :param sri: sequence repeting interval [s]
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
