@@ -250,7 +250,7 @@ classdef Us4R < handle
             end
         end
         
-        function runLoop(obj, isContinue, callback)
+        function [rawBuffer, imgBuffer, sriBuffer] = runLoop(obj, isContinue, callback, varargin)
             % Runs the uploaded operations in a loop.
             % 
             % Supports :class:`CustomTxRxSequence` and \
@@ -261,14 +261,69 @@ classdef Us4R < handle
             % :param callback: a function to call after executing the \
             %   operation. Should take one parameter, which will be feed with \
             %   the output of the executed op.
+            % :param bufferType: type of data stored in the cineloop buffer, \
+            %   can be "none", "raw", "img", or "all" (optional, default="none").
+            % :param bufferSize: size of the cineloop buffer as a number \
+            %   of sequence executions (optional, default=1).
+            %
+            % :returns: buffers containing raw data (rawBuffer), image data \
+            %   (imgBuffer), and sequence repetition intervals (sriBuffer).
             
+            % Input parser
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'bufferType', 'none', @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'runLoop', 'bufferType'));
+            addParameter(paramsParser, 'bufferSize', 1,      @(x) validateattributes(x, {'numeric'}, {'scalar','integer','real','positive','finite'}, 'runLoop', 'bufferSize'));
+            parse(paramsParser, varargin{:});
+            
+            bufferType = paramsParser.Results.bufferType;
+            bufferSize = paramsParser.Results.bufferSize;
+            
+            if ~any(strcmp(bufferType,{'none','raw','img','all'}))
+                warning('runLoop: bufferType must be one of the following: "none", "raw", "img", or "all". Buffer disabled.');
+                bufferType = 'none';
+            end
+            
+            % Buffers initialization
+            rawBufferEnable = any(strcmp(bufferType,{'raw','all'}));
+            imgBufferEnable = any(strcmp(bufferType,{'img','all'}));
+            if imgBufferEnable && ~obj.rec.enable
+                warning('runLoop: Reconstruction must be enabled to acquire image data. Image buffer disabled.');
+                imgBufferEnable = false;
+            end
+            
+            if rawBufferEnable
+                rawBuffer = zeros(obj.seq.nSamp, obj.seq.rxApSize, obj.seq.nTx, obj.seq.nRep, bufferSize, 'int16');
+                if obj.seq.hwDdcEnable
+                    rawBuffer = complex(rawBuffer,0);
+                end
+            else
+                rawBuffer = [];
+            end
+            
+            if imgBufferEnable
+                nBufferLayers = 1 + 3*double(obj.rec.colorEnable && ~obj.rec.vectorEnable) + 4*double(obj.rec.vectorEnable);
+                imgBuffer = nan(obj.rec.zSize, obj.rec.xSize, bufferSize, nBufferLayers, 'single');
+            else
+                imgBuffer = [];
+            end
+            
+            sriBuffer = nan(bufferSize,1);
+            
+            % Loop
             i = 0;
+            tStampPrev = nan;
             while(isContinue())
+                
                 i = i + 1;
+                I = mod(i-1,bufferSize)+1;
                 
                 tic;
-                rf = obj.execSequence;
+                [rf,meta] = obj.execSequence;
                 acqTime = toc;
+                
+                tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
+                sriBuffer(I) = tStampCurr - tStampPrev;
+                tStampPrev = tStampCurr;
                 
                 if obj.rec.enable
                     tic;
@@ -279,17 +334,30 @@ classdef Us4R < handle
                     callback(rf);
                 end
                 
+                if rawBufferEnable
+                    rawBuffer(:,:,:,:, I) = rf;
+                end
+                
+                if imgBufferEnable
+                    imgBuffer(:,:,I,:) = img;
+                end
+                
                 if obj.logTime
                     disp(['Frame no. ' num2str(i)]);
-                    disp(['Acq.  time = ' num2str(acqTime,         '%5.3f') ' s']);
+                    disp(['Acq.  time = ' num2str(acqTime, '%5.3f') ' s']);
                     if exist('recTime', 'var')
-                        disp(['Rec.  time = ' num2str(recTime,         '%5.3f') ' s']);
-                        disp(['Frame rate = ' num2str(1/(acqTime+recTime),'%5.1f') ' fps']);
-                    end    
+                        disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
+                    end
+                    disp(['Frame rate = ' num2str(1/sriBuffer(I), '%5.1f') ' fps']);
                     disp('--------------------');
                 end
             end
             obj.session.stopScheme();
+
+            % Output buffer unwinding
+            rawBuffer = circshift(rawBuffer,-I,5);
+            imgBuffer = circshift(imgBuffer,-I,3);
+            sriBuffer = circshift(sriBuffer,-I,1);
         end
         
         function plotRawRf(obj,varargin)
