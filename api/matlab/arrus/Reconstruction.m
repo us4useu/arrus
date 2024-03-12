@@ -54,6 +54,8 @@ classdef Reconstruction
         wcFilterACoeff
         wcFilterBCoeff = 1
         wcFiltInitSize = 0
+        cohFiltEnable = false
+        cohCompEnable = false
     end
     
     methods

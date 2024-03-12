@@ -204,7 +204,9 @@ classdef Us4R < handle
                 'vector1RxTangLim', reconstructOperation.vector1RxTangLim, ...
                 'wcFilterACoeff', reconstructOperation.wcFilterACoeff, ...
                 'wcFilterBCoeff', reconstructOperation.wcFilterBCoeff, ...
-                'wcFiltInitSize', reconstructOperation.wcFiltInitSize);
+                'wcFiltInitSize', reconstructOperation.wcFiltInitSize, ...
+                'cohFiltEnable', reconstructOperation.cohFiltEnable, ...
+                'cohCompEnable', reconstructOperation.cohCompEnable);
             
             obj.rec.enable = true;
             
@@ -742,7 +744,9 @@ classdef Us4R < handle
                                 'vector1RxTangLim',	'vect1RxTangLim'; ...
                                 'wcFilterACoeff',   'wcFiltA'; ...
                                 'wcFilterBCoeff',   'wcFiltB'; ...
-                                'wcFiltInitSize',   'wcFiltInitSize'};
+                                'wcFiltInitSize',   'wcFiltInitSize'; ...
+                                'cohFiltEnable',    'cohFiltEnable'; ...
+                                'cohCompEnable',    'cohCompEnable'};
 
             for iPar=1:size(recParamMapping,1)
                 obj.rec.(recParamMapping{iPar,2}) = [];
@@ -1113,18 +1117,19 @@ classdef Us4R < handle
                 if obj.rec.bmodeEnable
                     rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
                     
-                    if obj.sys.interfEnable
+                    % Coherence filtration
+                    if obj.rec.cohFiltEnable
                         ccf = 1 - sqrt( var(real(rfBfr)./abs(rfBfr), 0, 3) + ...
                                         var(imag(rfBfr)./abs(rfBfr), 0, 3) );
                         rfBfr = rfBfr .* ccf;
-                        
-                        % coherent compounding for NDT
-                        rfBfr = mean(rfBfr,3,'omitnan');
-                    else
-                        % incoherent compounding for medical imaging
-                        rfBfr = mean(abs(rfBfr),3,'omitnan');
                     end
                     
+                    % Coherent/Incoherent compounding
+                    if obj.rec.cohCompEnable
+                        rfBfr = mean(rfBfr,3,'omitnan');
+                    else
+                        rfBfr = mean(abs(rfBfr),3,'omitnan');
+                    end
                 end
                 
                 % Color Doppler image reconstruction
