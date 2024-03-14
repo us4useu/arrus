@@ -175,7 +175,7 @@ private:
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
-    uint32_t getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const;
+    uint32_t getTxStartSampleNumberAfeDemod(float ddcDecimationFactor);
 
     // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
@@ -217,6 +217,7 @@ private:
     arrus::Cached<std::string> serialNumber;
     arrus::Cached<std::string> revision;
     bool acceptRxNops{false};
+    bool isDecimationFactorAdjustmentLogged{false};
 };
 
 }
