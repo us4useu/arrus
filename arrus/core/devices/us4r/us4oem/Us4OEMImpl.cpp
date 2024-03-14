@@ -210,10 +210,12 @@ Us4OEMUploadResult Us4OEMImpl::upload(const TxParametersSequenceColl &sequences,
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
     setTgcCurve(sequences);
+    ius4oem->ResetSequencer();
     ius4oem->SetNumberOfFirings(getNumberOfFirings(sequences));
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
+    this->isDecimationFactorAdjustmentLogged = false;
     uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(getNumberOfTriggers(sequences, rxBufferSize));
