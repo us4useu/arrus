@@ -150,7 +150,8 @@ private:
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
-    uint32_t getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const;
+    uint32_t getTxStartSampleNumberAfeDemod(float ddcDecimationFactor);
+
     // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
     void setPgaGainAfe(uint16 value, bool force);
@@ -216,8 +217,7 @@ private:
     std::vector<uint16> bitstreamOffsets;
     /** The size of each bitstream defined (the number of registers). */
     std::vector<uint16> bitstreamSizes;
-
-
+    bool isDecimationFactorAdjustmentLogged{false};
 };
 
 }// namespace arrus::devices

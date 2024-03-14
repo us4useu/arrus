@@ -224,6 +224,8 @@ public:
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
+    MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
+    MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
