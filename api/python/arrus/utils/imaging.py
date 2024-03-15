@@ -1,6 +1,7 @@
 import abc
 from abc import abstractmethod
 
+import re
 import numpy as np
 import math
 import scipy
