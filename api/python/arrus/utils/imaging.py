@@ -494,7 +494,6 @@ class ProcessingRunner:
             dtypes=output_dtypes,
             math_pkg=np)
         output_metadata = list(zip(*sorted(output_metadata.items(), key=lambda x: x[0])))[1]
-        print(output_metadata)
         return input_buffer, output_buffer, output_metadata
 
     def _preprocess_graph(self, processing, input_metadata,
@@ -605,7 +604,7 @@ class ProcessingRunner:
         data = None
         results = None
         target_pos, target_input_nr = None, None
-        with self._process_lock:
+        with self._process_lock, self.processing_stream:
             # feed inputs with the input data
             self._inputs[0][0] = input_element
             for source, op in enumerate(self._ops):
