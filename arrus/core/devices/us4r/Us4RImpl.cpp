@@ -288,7 +288,7 @@ void Us4RImpl::prepareHostBuffer(unsigned nElements, Scheme::WorkMode workMode, 
     std::vector<size_t> us4oemComponentSize(element.getNumberOfUs4oems(), 0);
     int i = 0;
     for (auto &component : element.getUs4oemComponents()) {
-        us4oemComponentSize[i++] = component.getSize();
+        us4oemComponentSize[i++] = component.getViewSize();
     }
     auto &shape = element.getShape();
     auto dataType = element.getDataType();
@@ -654,7 +654,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
 size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {
     std::unordered_set<size_t> sizes;
     for (auto &element: us4oemBuffer.getElements()) {
-        sizes.insert(element.getSize());
+        sizes.insert(element.getViewSize());
     }
     if (sizes.size() > 1) {
         throw ArrusException("Each us4oem buffer element should have the same size.");

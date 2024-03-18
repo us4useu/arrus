@@ -88,7 +88,7 @@ public:
         std::vector<Transfer> transfers;
         size_t address = 0;
         size_t size = 0;
-        uint16 firing = 0; // the firing that finishes given transfer
+        uint16 firing = parts.at(0).getFiring();
         for(auto &part: parts) {
             // Assumption: size of each part is less than the possible maximum
             if(size + part.getSize() > MAX_TRANSFER_SIZE) {
@@ -199,7 +199,7 @@ public:
                 size_t transferIdx = srcIdx*nTransfersPerElement + localTransferIdx; // global transfer idx
                 size_t src = addressSrc + transfer.address;
                 size_t transferSize = transfer.size;
-                // transfer.firing - firing offset within element
+                // transfer.firing - firing offset within (the whole) element
                 uint16 transferLastFiring = elementFirstFiring + transfer.firing;
 
                 bool isLastTransfer = localTransferIdx == nTransfersPerElement-1;

@@ -53,6 +53,18 @@ public:
 
 private:
 
+    struct OpToNextFrameMapping {
+        OpToNextFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames);
+        std::optional<uint16> getNextFrame(uint16 op) {
+            if(op >= opToNextFrame.size()) {
+                throw IllegalArgumentException("Accessing mapping outside the avialable range.");
+            }
+            return opToNextFrame.at(op);
+        }
+        // op (firing) number -> next frame number, when the full sequence is used.
+        std::vector<std::optional<uint16_t>> opToNextFrame;
+    };
+
 
     void calculateRxDelays(std::vector<TxRxParamsSequence> &sequences);
     Ordinal getFrameMetadataOem(const us4r::IOSettings &settings);
@@ -69,8 +81,8 @@ private:
     /** Logical -> physical [start, end] op (TX/RX) */
     std::vector<std::pair<uint16_t, uint16_t>> logicalToPhysicalOp;
     std::vector<Us4OEMBuffer> fullSequenceOEMBuffers;
-    /** OEM number -> physical op -> frame number */
-    std::vector<OpToFrameMapping> physicalOpToFrame;
+    /** OEM number -> physical op -> next frame number (from the complete frame sequence) */
+    std::vector<OpToNextFrameMapping> physicalOpToNextFrame;
     FrameChannelMapping::Handle fullSequenceFCM;
 };
 }

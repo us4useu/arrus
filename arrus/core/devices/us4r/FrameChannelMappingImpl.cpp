@@ -91,6 +91,9 @@ void FrameChannelMappingBuilder::setNumberOfFrames(const std::vector<uint32> &nF
     this->numberOfFrames = nFrames;
 }
 
+/**
+ * Creates slice [start, end] (both inclusive).
+ */
 void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
     this->frameMapping = this->frameMapping(Eigen::seq(start, end), Eigen::all);
     this->channelMapping = this->channelMapping(Eigen::seq(start, end), Eigen::all);
@@ -98,11 +101,24 @@ void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
 }
 
 void FrameChannelMappingBuilder::subtractPhysicalFrameNumber(Ordinal oem, FrameNumber offset) {
-    // TODO select rows, where us4oemMapping == oem, and subtract offset
+    for(long frame = 0; frame < this->frameMapping.rows(); ++frame) {
+        for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
+            if(this->us4oemMapping(frame, channel) == oem) {
+                this->frameMapping(frame, channel) -= offset;
+            }
+        }
+    }
     this->numberOfFrames[oem] -= offset;
 }
-void FrameChannelMappingBuilder::recalculateOffsets() {
 
+void FrameChannelMappingBuilder::recalculateOffsets() {
+    std::vector<uint32> frameOffsets;
+    uint32 currentOffset = 0;
+    for(const auto nFrames: this->numberOfFrames) {
+        frameOffsets.push_back(currentOffset);
+        currentOffset += nFrames;
+    }
+    this->frameOffsets = frameOffsets;
 }
 
 }

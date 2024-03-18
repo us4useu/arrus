@@ -158,7 +158,7 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
     Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax)
-    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
+        : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -176,8 +176,8 @@ public:
                                                        Us4OEMImpl::MAX_TX_DELAY, firingStr);
 
                 // Tx - pulse
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                    op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax, firingStr);
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax,
+                                                  firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
@@ -205,10 +205,12 @@ public:
             }
         }
     }
+
 private:
     float txFrequencyMin;
     float txFrequencyMax;
 };
+
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
@@ -407,14 +409,15 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (batchIdx == 0) {
                     size_t partSize = 0;
+                    unsigned partNSamples = 0;
                     if(!op.isRxNOP() || acceptRxNops) {
                         partSize = nBytes;
+                        partNSamples = (unsigned) nSamples;
                     }
                     // Otherwise, make an empty part (i.e. partSize = 0).
                     // (note: the firing number will be needed for transfer configuration to release element in
-                    // us4oem sequencer).
-                    // NOTE: this behavior must be consistent with the OpToFrameMapping implementation.
-                    rxBufferElementParts.emplace_back(outputAddress, partSize, firing);
+                    // us4oem sequencer, and for the subSequence setter).
+                    rxBufferElementParts.emplace_back(outputAddress, partSize, firing, partNSamples);
                 }
                 if (!op.isRxNOP() || acceptRxNops) {
                     // Also, allows rx nops.
@@ -426,16 +429,13 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             }
         }
         // The size of the chunk, in the number of BYTES.
+        // NOTE: THE BELOW LINE MUST BE CONSISTENT WITH Us4OEMBuffer::getView IMPLEMENTATION!
         auto size = outputAddress - transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
-        framework::NdArray::Shape shape;
-        if (isDDCOn) {
-            shape = {totalNSamples, 2, N_RX_CHANNELS};
-        } else {
-            shape = {totalNSamples, N_RX_CHANNELS};
-        }
+        // NOTE: THE BELOW LINE MUST BE CONSISTENT WITH Us4OEMBuffer::getView IMPLEMENTATION!
+        framework::NdArray::Shape shape = Us4OEMBuffer::getShape(isDDCOn, totalNSamples, N_RX_CHANNELS);
         rxBufferElements.emplace_back(srcAddress, size, firing, shape, NdArrayDataType);
     }
 
@@ -874,17 +874,6 @@ const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_st
 const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
 
-OpToFrameMapping::OpToFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames) {
-    // NOTE: this method must be consistent with the assumption from the
-    // Us4OEMImpl::setTxRxSequence implementation.
-    uint16_t actualFrameNr = 0;
-    for(uint16_t firing = 0; firing < nFirings; ++firing) {
-        opToFrame.at(firing) = actualFrameNr;
-        const auto &part = frames.at(firing); // NOTE: also empty frames are stored.
-        if(part.getSize() > 0) {
-            ++actualFrameNr;
-        }
-    }
-}
+
 
 }// namespace arrus::devices

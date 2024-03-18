@@ -24,10 +24,7 @@
 
 namespace arrus::devices {
 
-struct OpToFrameMapping {
-    OpToFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames);
-    std::vector<uint16_t> opToFrame;
-};
+
 
 /**
  * Us4OEM wrapper implementation.
