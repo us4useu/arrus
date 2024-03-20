@@ -41,7 +41,9 @@ def process_simple_tx_rx_sequence(context: KernelExecutionContext):
 
     # Medium
     c = __get_speed_of_sound(context)
-    probe = context.device.probe.model
+    if op.tx_placement != op.rx_placement:
+        raise ValueError("TX and RX should be done on the same Probe.")
+    probe = context.device.get_probe_by_id(op.tx_placement).model
     # TX/RX
     new_seq = convert_to_tx_rx_sequence(
         c, op, probe, fs=_get_sampling_frequency(context))
@@ -57,7 +59,8 @@ def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model, fs):
         c, sequence, probe_model, fs=fs)
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=tx_rx_sequence,
-        probe=probe_model
+        probe_tx=probe_model,
+        probe_rx=probe_model
     )
     _, center_delay = get_tx_delays(probe_model, tx_rx_sequence,
                                     sequence_with_masks)
@@ -113,9 +116,11 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
         tx = Tx(tx_aperture, op.pulse,
                 focus=tx_focus,
                 angle=tx_angle,
-                speed_of_sound=c)
+                speed_of_sound=c,
+                placement=op.tx_placement
+        )
         rx = Rx(rx_aperture, sample_range, op.downsampling_factor,
-                init_delay=op.init_delay)
+                init_delay=op.init_delay, placement=op.rx_placement)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
     return TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats)

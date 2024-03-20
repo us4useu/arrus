@@ -9,16 +9,15 @@ import "io/proto/devices/us4r/RxSettings.proto";
 import "io/proto/devices/us4r/Us4OEMSettings.proto";
 import "io/proto/devices/us4r/HVSettings.proto";
 import "io/proto/devices/us4r/DigitalBackplaneSettings.proto";
+import "io/proto/devices/us4r/Bitstream.proto";
 
 message Us4RSettings {
 
   // Only one of the following is available: (probe, adapter, rxsettings)
   // or a list of us4oem settings.
 
-  oneof one_of_probe_representation {
-    ProbeModel.Id probe_id = 1;
-    ProbeModel probe = 2;
-  }
+  repeated ProbeModel.Id probe_id = 1;
+  repeated ProbeModel probe = 2;
 
   oneof one_of_adapter_representation {
     ProbeAdapterModel.Id adapter_id = 3;
@@ -31,8 +30,8 @@ message Us4RSettings {
     repeated uint32 channels = 1;
   }
 
-  ChannelsMask channels_mask = 5;
-  ProbeToAdapterConnection probe_to_adapter_connection = 6;
+  repeated ChannelsMask channels_mask = 5;
+  repeated ProbeToAdapterConnection probe_to_adapter_connection = 6;
   RxSettings rx_settings = 7;
   repeated Us4OEMSettings us4oems = 8;
   HVSettings hv = 9;
@@ -48,4 +47,5 @@ message Us4RSettings {
     uint32 tx_frequency_range = 15;
   }
   DigitalBackplaneSettings digital_backplane = 16;
+  repeated Bitstream bitstreams = 17;
 }

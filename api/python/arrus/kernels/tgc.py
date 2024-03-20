@@ -1,32 +1,25 @@
+from dataclasses import dataclass
 import numpy as np
-import arrus.ops.imaging
-from arrus.kernels.simple_tx_rx_sequence import get_sample_range
-import arrus.ops.us4r
 
 
-def compute_linear_tgc(seq_context, fs, linear_tgc):
+@dataclass(frozen=True)
+class TgcCalculationContext:
+    end_sample: int
+    speed_of_sound: float
+
+
+def compute_linear_tgc(
+        tgc_context: TgcCalculationContext,
+        fs: float,
+        linear_tgc
+):
     tgc_start = linear_tgc.start
     tgc_slope = linear_tgc.slope
-
     if tgc_start is None or tgc_slope is None:
         return [], []
-    seq = seq_context.op
-    if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
-        c = seq.speed_of_sound
-        if c is None:
-            c = seq_context.medium.speed_of_sound
-        sample_range = get_sample_range(seq, fs=fs, speed_of_sound=c)
-    elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
-        sample_range = seq.get_sample_range_unique()
-        if seq_context.medium is None:
-            raise ValueError(
-                "Medium definition is required for custom tx/rx sequence "
-                "when setting linear TGC.")
-        c = seq_context.medium.speed_of_sound
-    else:
-        raise ValueError(f"Unsupported type of TX/RX sequence: {type(seq)}")
-    start_sample, end_sample = sample_range
-    ds = 64  # Arbitrary TGC curve sampling
+    end_sample = tgc_context.end_sample
+    c = tgc_context.speed_of_sound
+    ds = 64  # Arbitrary linear TGC curve sampling
     sampling_time = np.arange(0, end_sample, ds)
     sampling_time = np.append(sampling_time, [end_sample-1])
     sampling_time = sampling_time/fs

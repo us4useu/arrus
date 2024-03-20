@@ -18,12 +18,13 @@ import arrus.devices.gpu
 import arrus.ops.us4r
 import arrus.ops.imaging
 import arrus.ops.tgc
+import arrus.kernels.tgc
 import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.imaging
 import arrus.utils.core
 import arrus.framework
-from typing import Sequence, Dict
+from typing import Sequence, Dict, Iterable
 from numbers import Number
 
 from arrus.devices.ultrasound import Ultrasound
@@ -40,11 +41,11 @@ class AbstractSession(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_device(self, id: str):
+    def get_device(self, path: str):
         """
         Returns a device located at given path.
 
-        :param id: a path to a device, for example '/Us4R:0'
+        :param path: a path to a device, for example '/Us4R:0'
         :return: a device located in a given path.
         """
         raise ValueError("Tried to access an abstract method.")
@@ -92,73 +93,121 @@ class Session(AbstractSession):
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
         us_device_dto = us_device.get_dto()
         medium = self._context.medium
-        seq = scheme.tx_rx_sequence
+        sequences = scheme.tx_rx_sequence
+        if not isinstance(sequences, Iterable):
+            sequences = (sequences, )
         processing = scheme.processing
         constants = scheme.constants
 
-        kernel_context = self._create_kernel_context(
-            seq,
-            us_device_dto,
-            medium,
-            scheme.digital_down_conversion,
-            constants
-        )
-        conversion_results = arrus.kernels.get_kernel(type(seq))(kernel_context)
-        raw_seq = conversion_results.sequence
-        tx_delay_constants = conversion_results.constants
+        if len(constants) > 0 and len(sequences) > 1:
+            raise ValueError(
+                "Currently session constants can only be provided for a "
+                "single-sequence schemes."
+            )
+
+        raw_seqs = []
+        tx_delay_constants = ()
+        # TODO make sure all sequences have the same TGC (different TGCs are not supported)
+        # Convert to raw sequences and upload.
+        sequences = [dataclasses.replace(s, name=f"TxRxSequence:{i}") 
+                     if s.name is None else s 
+                     for i, s in enumerate(sequences)]
+        for i, sequence in enumerate(sequences):
+            kernel_context = self._create_kernel_context(
+                sequence,
+                us_device_dto,
+                medium,
+                scheme.digital_down_conversion,
+                constants
+            )
+            conversion_results = arrus.kernels.get_kernel(type(sequence))(kernel_context)
+            raw_seq = conversion_results.sequence
+            raw_seqs.append(raw_seq)
+            tx_delay_constants = conversion_results.constants
 
         actual_scheme = dataclasses.replace(
             scheme,
-            tx_rx_sequence=raw_seq,
+            tx_rx_sequence=raw_seqs,
             constants=tx_delay_constants
         )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
 
-        us_device.set_kernel_context(kernel_context)
-        data_description = us_device.get_data_description(upload_result, raw_seq)
-
         # Output buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
-        ###
-        # -- Constant metadata
-        # --- Frame acquisition context
-        fac = self._create_frame_acquisition_context(
-            seq, raw_seq, us_device_dto, medium, tx_delay_constants)
-
         buffer = arrus.framework.DataBuffer(buffer_handle)
-        input_shape = buffer.elements[0].data.shape
 
-        is_iq_data = scheme.digital_down_conversion is not None
-        const_metadata = arrus.metadata.ConstMetadata(
-            context=fac, data_desc=data_description,
-            input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
-            version=arrus.__version__
-        )
+        # Constant metadata
+        # NOTE: the below should be called after session_handle.upload()
+        us_device.set_tgc_and_context(sequences, self.medium)
+        metadatas = []
+
+        for i, (raw_seq, seq) in enumerate(zip(raw_seqs, sequences)):
+            data_description = us_device.get_data_description(upload_result, raw_seq, array_id=i)
+            # -- Constant metadata
+            # --- Frame acquisition context
+            fac = self._create_frame_acquisition_context(
+                seq, raw_seq, us_device_dto, medium, tx_delay_constants)
+            input_shape = buffer.elements[0].arrays[i].shape
+            is_iq_data = scheme.digital_down_conversion is not None
+            const_metadata = arrus.metadata.ConstMetadata(
+                context=fac, data_desc=data_description,
+                input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
+                version=arrus.__version__
+            )
+            metadatas.append(const_metadata)
 
         # numpy/cupy processing initialization
         if processing is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
-
             if isinstance(processing, _imaging.Pipeline):
                 # Wrap Pipeline into the Processing object.
-                processing = _imaging.Processing(
-                    pipeline=processing,
-                    callback=None,
-                    extract_metadata=False
+                if processing.name is None:
+                    processing.name = f"Pipeline:0"
+                graph = _imaging.Graph(
+                    operations={processing},
+                    dependencies={
+                        processing.name: sequences[0].name,
+                        "Output:0": processing.name
+                    }
                 )
-            if isinstance(processing, _imaging.Processing):
-                processing = arrus.utils.imaging.ProcessingRunner(
-                    buffer, const_metadata, processing)
-                outputs = processing.outputs
-            else:
-                raise ValueError("Unsupported type of processing: "
-                                 f"{type(processing)}")
-            self._current_processing = processing
+                processing = _imaging.Processing(
+                    graph=graph,
+                    callback=None,
+                )
+            if isinstance(processing, Iterable):
+                pipelines = processing
+                for i, p in enumerate(pipelines):
+                    if p.name is None:
+                        p.name = f"Pipeline:{i}"
+                ops = set(pipelines)
+                deps = dict([(p.name, s.name) for p, s in zip(pipelines, sequences)]
+                          + [(f"Output:{i}", p.name) for i, p in enumerate(pipelines)])
+                graph = _imaging.Graph(
+                    operations=ops,
+                    dependencies=deps
+                )
+                processing = _imaging.Processing(
+                    graph=graph,
+                    callback=None,
+                )
+            if isinstance(processing, _imaging.Graph):
+                processing = _imaging.Processing(
+                    graph=processing,
+                    callback=None,
+                )
+            if not isinstance(processing, _imaging.Processing):
+                raise ValueError(f"Unsupported type of processing: {type(processing)}")
+
+            processing_runner = arrus.utils.imaging.ProcessingRunner(
+                input_buffer=buffer, metadata=metadatas, processing=processing,
+            )
+            outputs = processing_runner.outputs
+            self._current_processing = processing_runner
         else:
             # Device buffer and const_metadata
-            outputs = buffer, const_metadata
+            outputs = buffer, metadatas
         return outputs
 
     def __enter__(self):
@@ -315,5 +364,3 @@ class Session(AbstractSession):
             medium=medium, custom_data={},
             constants=constants
         )
-
-

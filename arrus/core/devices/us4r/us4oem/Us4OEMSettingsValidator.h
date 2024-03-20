@@ -28,10 +28,6 @@ public:
         constexpr ChannelIdx N_TX_CHANNELS = Us4OEMImpl::N_TX_CHANNELS;
         constexpr ChannelIdx N_RX_GROUPS = N_TX_CHANNELS / RX_SIZE;
 
-        // Active channel groups
-        expectEqual("active channel groups", obj.getActiveChannelGroups().size(),
-                    (size_t) Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS, "(size)");
-
         // Channel mapping:
         // The size of the mapping:
         // Us4OEM mapping should include all channels, we don't want

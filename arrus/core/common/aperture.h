@@ -10,8 +10,7 @@ namespace arrus {
 
 inline
 ChannelIdx getNumberOfActiveChannels(const BitMask &aperture) {
-    return static_cast<ChannelIdx>(
-        std::accumulate(std::begin(aperture), std::end(aperture),0));
+    return static_cast<ChannelIdx>(std::accumulate(std::begin(aperture), std::end(aperture),0));
 }
 
 }

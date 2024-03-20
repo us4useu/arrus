@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+message Bitstream {
+  repeated uint32 levels = 1;
+  repeated uint32 periods = 2;
+}

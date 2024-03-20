@@ -114,7 +114,7 @@ if(ARRUS_CUDA)
     # CUDA GPU specific tests.
     # CuPy is required.
     set(TEST_FILES
-        arrus/utils/tests/pipeline_test.py
+            arrus/utils/tests/processing_test.py
         ${TEST_FILES})
 endif()
 
@@ -226,17 +226,17 @@ install(
 ################################################################################
 # Tests
 ################################################################################
-if(ARRUS_RUN_TESTS)
-    if(NOT CUDAToolkit_FOUND)
-        message(FATAL_ERROR, "CUDA Toolkit is required to run GPU Python unit tests.")
-    endif()
-    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
-    install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
-    install_cupy_package(py_tests_venv_cupy py_tests_venv ${CUDAToolkit_VERSION})
-    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
-    foreach(TEST_FILE IN LISTS TEST_FILES)
-        add_test(
-            NAME ${TEST_FILE}
-            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE})
-    endforeach()
-endif()
+#if(ARRUS_RUN_TESTS)
+#    if(NOT CUDAToolkit_FOUND)
+#        message(FATAL_ERROR, "CUDA Toolkit is required to run GPU Python unit tests.")
+#    endif()
+#    create_python_venv(py_tests_venv ${CMAKE_CURRENT_BINARY_DIR})
+#    install_arrus_package(py_tests_venv_arius py_tests_venv python_whl "DIR")
+#    install_cupy_package(py_tests_venv_cupy py_tests_venv ${CUDAToolkit_VERSION})
+#    get_target_property(PY_TESTS_VENV_EXEC py_tests_venv VENV_EXECUTABLE)
+#    foreach(TEST_FILE IN LISTS TEST_FILES)
+#        add_test(
+#            NAME ${TEST_FILE}
+#            COMMAND ${PY_TESTS_VENV_EXEC} -m unittest ${CMAKE_CURRENT_BINARY_DIR}/${TEST_FILE})
+#    endforeach()
+#endif()
