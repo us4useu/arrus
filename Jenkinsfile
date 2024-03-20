@@ -3,6 +3,15 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Publish arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
+        booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish arrus C++ API package.')
+        booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish arrus Python package.')
+        booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish arrus MATLAB package.')
+        choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], description: 'Python version to use.')
+        booleanParam(name: 'SCM_ONLY', defaultValue: false, description: 'Perform SCM checkout only, in order to e.g. update parameters of the pipeline.')
+     }
+
     environment {
         PLATFORM = us4us.getPlatformName(env)
         BUILD_ENV_ADDRESS = us4us.getUs4usJenkinsVariable(env, "BUILD_ENV_ADDRESS")
@@ -21,17 +30,22 @@ pipeline {
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
         US4R_API_RELEASE_DIR = us4us.getUs4rApiReleaseDir(env)
         IS_ARRUS_WHL_SUFFIX = us4us.isArrusSuffixWhl(env)
+        IS_SCM_ONLY = isSCMOnly(params)
     }
 
-     parameters {
-        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Publish arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
-        booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish arrus C++ API package.')
-        booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish arrus Python package.')
-        booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish arrus MATLAB package.')
-        choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], description: 'Python version to use.')
-     }
-
+     
     stages {
+        stage('Skip Build?') {
+            when {
+                environment name: 'IS_SCM_ONLY', value: 'true'
+            }
+            steps {
+                script {
+                    currentBuild.result = 'ABORTED'
+                    error("Skipping the Job to update the build info")
+                }
+            }
+        }
         stage('Configure') {
             steps {
                 sh """
@@ -195,7 +209,7 @@ pipeline {
      post {
          failure {
              script {
-                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                 if((env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) && !env.IS_SCM_ONLY) {
                      emailext(body: "Check console output at $BUILD_URL to view the results.",
                               from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
                               recipientProviders: [developers(), requestor()],
@@ -205,7 +219,7 @@ pipeline {
          }
          unstable {
              script {
-                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                 if((env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) && !env.IS_SCM_ONLY) {
                      emailext(body: "Check console output at $BUILD_URL to view the results.",
                               from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
                               recipientProviders: [developers(), requestor()],
@@ -215,7 +229,7 @@ pipeline {
          }
          changed {
              script {
-                 if(env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) {
+                 if((env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) && !env.IS_SCM_ONLY) {
                      emailext(body:    "Check console output at $BUILD_URL to view the results.",
                               from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
                               recipientProviders: [developers(), requestor()],
@@ -256,4 +270,11 @@ def getPythonExecutableParameter(env, pythonVersion) {
     else {
         return "";
     }
+}
+
+def isSCMOnly(params) {
+    // note: the fact that env.SCM_ONLY is null on the first call seems to be a bug 
+    // . Currently this is a way to detect if this is the first build of the new branch
+    // however in the future releases of Jenkins this may change.
+    return (env.SCM_ONLY == null || env.SCM_ONLY == 'true')
 }

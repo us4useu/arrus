@@ -210,10 +210,12 @@ Us4OEMUploadResult Us4OEMImpl::upload(const TxParametersSequenceColl &sequences,
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
     setTgcCurve(sequences);
+    ius4oem->ResetSequencer();
     ius4oem->SetNumberOfFirings(getNumberOfFirings(sequences));
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
+    this->isDecimationFactorAdjustmentLogged = false;
     uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(getNumberOfTriggers(sequences, rxBufferSize));
@@ -755,30 +757,45 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     }
 }
 
-uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) const {
+uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
     //DDC valid data offset
     uint32_t txOffset = ius4oem->GetTxOffset();
-    uint32_t offset = 34u + (16 * (uint32_t) ddcDecimationFactor);
+    uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
+    uint32_t offsetCorrection = 0;
+
+    float decInt = 0;
+    float decFloat = modf(ddcDecimationFactor, &decInt);
+
+    uint32_t dataStep = (uint32_t)decInt;
+    if (decFloat == 0.5f) {
+        dataStep = (uint32_t)(2.0f * ddcDecimationFactor);
+    } else if (decFloat == 0.25f || decFloat == 0.75f) {
+        dataStep = (uint32_t)(4.0f * ddcDecimationFactor);
+    }
+
+     if(ddcDecimationFactor == 4.0f) {
+        // Note: for some reason us4OEM AFE has a different offset for
+        // decimation factor = 4; the below value was determined
+        // experimentally (TX starts at 266 RX sample offset).
+        offsetCorrection = (4 * 7);
+    }
 
     //Check if data valid offset is higher than TX offset
     if (offset > txOffset) {
         //If TX offset is lower than data valid offset return just data valid offset and log warning
-        this->logger->log(LogSeverity::WARNING,
+        if(!this->isDecimationFactorAdjustmentLogged) {
+            this->logger->log(LogSeverity::INFO,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
-                                          " Delay TX by {} cycles to align start of RX data with start of TX.",
-                                          ddcDecimationFactor, (offset - txOffset)));
+                                          " Delay TX by {} microseconds to align start of RX data with start of TX.",
+                                          ddcDecimationFactor, (float)(offset - txOffset + offsetCorrection)/65.0f));
+            this->isDecimationFactorAdjustmentLogged = true;
+        }
         return offset;
     } else {
         //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
-        if (ddcDecimationFactor == 4) {
-            // Note: for some reason us4OEM AFE has a different offset for
-            // decimation factor; the below values was determined
-            // experimentally.
-            return offset + 2 * 84;
-        } else {
-            offset += ((txOffset - offset) / (uint32_t) ddcDecimationFactor) * (uint32_t) ddcDecimationFactor;
-            return offset;
-        }
+        offset += ((txOffset - offset) / dataStep) * dataStep;
+
+        return (offset + offsetCorrection);
     }
 }
 
