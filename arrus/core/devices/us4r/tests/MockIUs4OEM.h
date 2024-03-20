@@ -67,6 +67,7 @@ public:
             (const float time, const unsigned short firing), (override));
     MOCK_METHOD(void, SetRxDelay,
             (const float delay, const unsigned short firing), (override));
+    MOCK_METHOD(void, VerifyTxWaveform, (), (override));
     MOCK_METHOD(void, EnableTransmit, (), (override));
     MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger), (override));
     MOCK_METHOD(void, SetRxChannelMapping,

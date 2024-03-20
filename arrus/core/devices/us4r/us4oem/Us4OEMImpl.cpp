@@ -330,6 +330,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetRxTime(rxTime, opIdx);
         ius4oem->SetRxDelay(0, opIdx);
     }
+    //Verify waveform memory
+    ius4oem->VerifyTxWaveform();
     // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
     ius4oem->SetTxDelays(nTxDelayProfiles);
     // NOTE: for us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
