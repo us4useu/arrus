@@ -328,7 +328,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
-        ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
+        ius4oem->SetRxDelay(0, opIdx);
     }
     // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
     ius4oem->SetTxDelays(nTxDelayProfiles);
