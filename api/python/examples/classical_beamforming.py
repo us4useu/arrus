@@ -15,37 +15,31 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session() as sess:
+with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
     us4r = sess.get_device("/Us4R:0")
     us4r.set_hv_voltage(20)
-
-    tx_focuses = [
-        arrus.Constant(value=i*1e-3, placement="/Us4R:0", name=f"sequence/txFocus:{i}")
-        for i in range(5, 30)
-    ]
 
     sequence = LinSequence(
         tx_aperture_center_element=np.arange(0, 128),
         tx_aperture_size=64,
-        tx_focus=tx_focuses[5],
+        tx_focus=20e-3,
         pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
         rx_aperture_center_element=np.arange(0, 128),
         rx_aperture_size=64,
-        rx_sample_range=(0, 2048),
+        rx_sample_range=(0, 4096),
         pri=200e-6,
         tgc_start=14,
         tgc_slope=2e2,
-        downsampling_factor=2,
+        downsampling_factor=1,
         speed_of_sound=1450)
 
     # Imaging output grid.
-    x_grid = np.arange(-15, 15, 0.2) * 1e-3
-    z_grid = np.arange(5, 45, 0.2) * 1e-3
+    x_grid = np.arange(-15, 15, 0.1) * 1e-3
+    z_grid = np.arange(5, 45, 0.1) * 1e-3
 
     scheme = Scheme(
         tx_rx_sequence=sequence,
         processing=get_bmode_imaging(sequence=sequence, grid=(x_grid, z_grid)),
-        constants=tx_focuses
     )
     # Upload sequence on the us4r-lite device.
     buffer, metadata = sess.upload(scheme)
@@ -54,7 +48,6 @@ with arrus.Session() as sess:
                         extent=get_extent(x_grid, z_grid)*1e3,
                         show_colorbar=True)
     sess.start_scheme()
-    sess.set("/Us4R:0/sequence/txFocus", tx_focuses[10])
     display.start(buffer)
 
 # When we exit the above scope, the session and scheme is properly closed.

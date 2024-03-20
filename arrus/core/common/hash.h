@@ -37,6 +37,13 @@ struct ContainerHash {
         return boost::hash_range(std::begin(c), std::end(c));
     }
 };
+
+template<typename T, typename U>
+struct PairHash {
+    std::size_t operator()(const std::pair<T, U> &p) const {
+        return arrus::hash_combine(std::get<0>(p), std::get<1>(p));
+    }
+};
 }
 
 #endif //ARRUS_CORE_COMMON_HASH_H

@@ -3,7 +3,7 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/common/collections.h"
 
-namespace arrus::devices {
+namespace arrus::devices::us4r {
 
 const TxRxParameters TxRxParameters::US4OEM_NOP = TxRxParameters(
     std::vector<bool>(128, false),
@@ -16,14 +16,6 @@ const TxRxParameters TxRxParameters::US4OEM_NOP = TxRxParameters(
 
 
 
-uint16 getNumberOfNoRxNOPs(const TxRxParamsSequence &seq) {
-    uint16 res = 0;
-    for(const auto &op : seq) {
-        if(!op.isRxNOP()) {
-            ++res;
-        }
-    }
-    return res;
-}
+
 
 }

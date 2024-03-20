@@ -2,18 +2,19 @@
 
 #define CUDART_PI_F 3.141592654f
 
-__constant__ float xElemConst[256]; // [m]
+__constant__ float xElemConst[1024]; // [m]
 
 // Assumptions:
 // - TX and RX apertures have the same center position
 // - x/z/angle/Elem refers to the RX aperture (i.e. the first value is the position of first aperture element, relative
 // to the center of TX/RX aperture
 extern "C"
-__global__ void beamformPhasedArray(complex<float> *output, const complex<float> *input,
-                                    const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
-                                    const float *txAngles, // [rad]
-                                    const float initDelay, const float startTime,
-                                    const float c, const float fs, const float fc, float maxApodTang) {
+__global__ void beamform(complex<float> *output, const complex<float> *input,
+                         const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
+                         const float *txAngles, // [rad]
+                         const float initDelay, const float startTime,
+                         const float c, const float fs, const float fc, float maxApodTang, const size_t xElemConstOffset
+) {
     complex<float> a, b;
     float elementX, elementZ;
     float rxTang, pixWgh = 0;
@@ -48,7 +49,7 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
 
     for(unsigned element = 0; element < nRx; ++element) {
         // Note: relative to the center of aperture.
-        elementX = xElemConst[element];
+        elementX = xElemConst[xElemConstOffset+element];
         elementZ = 0; // Linear array.
 
         // RX apodization.
@@ -58,7 +59,7 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
         }
         // RX distance and sample number for given RX element.
         rxDistance = hypotf(elementX-pointX, elementZ-pointZ);
-        time = (txDistance + rxDistance) * cInv + initDelay;
+        time = (txDistance+rxDistance) * cInv + initDelay;
         s = time * fs;
         sInt = (int) s;
 

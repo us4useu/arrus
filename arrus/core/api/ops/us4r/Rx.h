@@ -21,37 +21,37 @@ public:
      *  aperture[i] = true means that the i-th channel should be turned on
      * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param downsamplingFactor the factor by which the sampling frequency should be divided, an integer
+     * @param placement probe on which the RX should be performed.
      */
     Rx(std::vector<bool> aperture, std::pair<unsigned int, unsigned int> sampleRange,
        unsigned int downsamplingFactor = 1,
-       std::pair<unsigned short, unsigned short> padding = {(ChannelIdx)0, (ChannelIdx) 0})
-        : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)),
-          downsamplingFactor(downsamplingFactor),
-          padding(std::move(padding)) {}
-
-    const std::vector<bool> &getAperture() const {
-        return aperture;
+       std::pair<unsigned short, unsigned short> padding = {(ChannelIdx) 0, (ChannelIdx) 0},
+       devices::DeviceId placement = devices::DeviceId(devices::DeviceType::Probe, 0))
+        : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)), downsamplingFactor(downsamplingFactor),
+          padding(std::move(padding)), placement(placement) {
+        if(placement.getDeviceType() != devices::DeviceType::Probe) {
+            throw IllegalArgumentException("Only probe can be set as a placement for RX.");
+        }
     }
 
-    const std::pair<unsigned, unsigned> &getSampleRange() const {
-        return sampleRange;
-    }
+    const std::vector<bool> &getAperture() const { return aperture; }
 
-    unsigned getDownsamplingFactor() const {
-        return downsamplingFactor;
-    }
+    const std::pair<unsigned, unsigned> &getSampleRange() const { return sampleRange; }
 
-    const std::pair<unsigned short, unsigned short> &getPadding() const {
-        return padding;
-    }
+    unsigned getDownsamplingFactor() const { return downsamplingFactor; }
+
+    const std::pair<unsigned short, unsigned short> &getPadding() const { return padding; }
+
+    devices::DeviceId getPlacement() const { return placement; }
 
 private:
     std::vector<bool> aperture;
     std::pair<unsigned, unsigned> sampleRange;
     unsigned downsamplingFactor;
     std::pair<unsigned short, unsigned short> padding;
+    devices::DeviceId placement;
 };
 
-}
+}// namespace arrus::ops::us4r
 
-#endif //ARRUS_CORE_API_OPS_US4R_RX_H
+#endif//ARRUS_CORE_API_OPS_US4R_RX_H

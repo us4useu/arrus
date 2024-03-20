@@ -74,6 +74,13 @@ setContains(const std::unordered_set<T> &set, const T &value) {
 }
 
 template<typename T, typename U>
+inline bool
+mapContains(const std::unordered_map<T, U> &map, const T &key) {
+    return map.find(key) != std::end(map);
+}
+
+
+template<typename T, typename U>
 inline std::vector<std::pair<T, U>>
 zip(const std::vector<T> &a, const std::vector<U> &b) {
     if(a.size() != b.size()) {
