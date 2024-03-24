@@ -1,5 +1,6 @@
 import abc
 import queue
+import copy
 
 import numpy as np
 import importlib
@@ -79,6 +80,8 @@ class Session(AbstractSession):
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing: arrus.utils.imaging.Processing = None
+        # Current metadata (for the full sequence)
+        self.const_metadata = None
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
@@ -131,7 +134,7 @@ class Session(AbstractSession):
         input_shape = self.buffer.elements[0].data.shape
 
         is_iq_data = scheme.digital_down_conversion is not None
-        const_metadata = arrus.metadata.ConstMetadata(
+        self.const_metadata = arrus.metadata.ConstMetadata(
             context=fac, data_desc=data_description,
             input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
             version=arrus.__version__
@@ -151,7 +154,7 @@ class Session(AbstractSession):
                 )
             if isinstance(processing, _imaging.Processing):
                 processing = arrus.utils.imaging.ProcessingRunner(
-                    self.buffer, const_metadata, processing)
+                    self.buffer, self.const_metadata, processing)
                 outputs = processing.outputs
             else:
                 raise ValueError("Unsupported type of processing: "
@@ -159,7 +162,7 @@ class Session(AbstractSession):
             self._current_processing = processing
         else:
             # Device buffer and const_metadata
-            outputs = self.buffer, const_metadata
+            outputs = self.buffer, self.const_metadata
         return outputs
 
     def __enter__(self):
@@ -289,11 +292,40 @@ class Session(AbstractSession):
         self._context = SessionContext(medium=value)
 
     def set_subsequence(self, start, end):
-        self.stop_scheme()
-        ultrasound = self.get_device("/Ultrasound:0")
-        buffer_handle = ultrasound.set_subsequence(start, end)
+        """
+        Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
+
+        This method requires that:
+
+        - start <= end (when start= == end, the system will run a single TX/RX sequence),
+        - the scheme was uploaded,
+        - the TX/RX sequence length is greater than the `end` value,
+        - the scheme is stopped.
+
+        :return: the new data buffer and metadata
+        """
+        upload_result = self._session_handle.setSubsequence(start, end)
+        # Get the new buffer
+        buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
-        self.start_scheme()
+        # Create new metadata
+        metadata = copy.deepcopy(self.const_metadata)
+        us_device: Ultrasound = self.get_device("/Ultrasound:0")
+        data_description = us_device.get_data_description_updated_for_subsequence()
+        input_shape = self.buffer.elements[0].data.shape
+        sequence = self.const_metadata.context.sequence.get_subsequence(start, end)
+        raw_sequence = self.const_metadata.context.sequence.get_subsequence(start, end)
+        fac = dataclasses.replace(
+            self.const_metadata.context,
+            sequence=sequence,
+            raw_sequence=raw_sequence
+        )
+        metadata = metadata.copy(
+            input_shape=input_shape,
+            data_description=data_description,
+            context=fac,
+        )
+        return self.buffer, metadata
 
     def _contains_py_params(self, params):
         # Currently only start/stop params must by handled

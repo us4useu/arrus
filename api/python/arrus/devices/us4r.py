@@ -307,28 +307,30 @@ class Us4R(Device, Ultrasound):
 
     def get_data_description(self, upload_result, sequence):
         # Prepare data buffer and constant context metadata
+        fcm = self._get_fcm(upload_result, sequence)
+        return arrus.metadata.EchoDataDescription(
+            sampling_frequency=self.current_sampling_frequency,
+            custom={"frame_channel_mapping": fcm}
+        )
+
+    def get_data_description_updated_for_subsequence(self, upload_result, sequence):
+        fcm = self._get_fcm(upload_result, sequence)
+        return arrus.metadata.EchoDataDescription(
+            sampling_frequency=self.current_sampling_frequency,
+            custom={"frame_channel_mapping": fcm}
+        )
+
+    def _get_fcm(self, upload_result, sequence):
         fcm = arrus.core.getFrameChannelMapping(upload_result)
         fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
             arrus.utils.core.convert_fcm_to_np_arrays(fcm, self.n_us4oems)
-        fcm = arrus.devices.us4r.FrameChannelMapping(
+        return arrus.devices.us4r.FrameChannelMapping(
             us4oems=fcm_us4oems,
             frames=fcm_frame,
             channels=fcm_channel,
             frame_offsets=frame_offsets,
             n_frames=n_frames,
             batch_size=sequence.n_repeats)
-        return arrus.metadata.EchoDataDescription(
-            sampling_frequency=self.current_sampling_frequency,
-            custom={"frame_channel_mapping": fcm}
-        )
-
-    def set_subsequence(self, start, end):
-        """
-        Returns a new data buffer.
-        """
-        buffer_handle = self._handle.setSubsequence(start, end)
-        return buffer_handle
-
 
 
 # ------------------------------------------ LEGACY MOCK

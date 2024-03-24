@@ -375,8 +375,8 @@ void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequen
     }
 }
 
-std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle> ProbeAdapterImpl::setSubsequence(uint16_t start,
-                                                                                             uint16_t end) {
+std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     // Determine start/stop OEMs op.
     uint16_t oemStart = logicalToPhysicalOp[start].first;
     uint16_t oemEnd = logicalToPhysicalOp[end].second;

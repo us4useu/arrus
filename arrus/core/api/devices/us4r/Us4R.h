@@ -312,16 +312,10 @@ public:
     /**
      * Returns serial number of the backplane (if available).
      */
-    virtual const char* getBackplaneRevision() = 0;
+    virtual const char *getBackplaneRevision() = 0;
 
-    /**
-     * Sets the current sequence to the subsequence [start, end).
-     *
-     * @param start the new first TX/RX
-     * @param end last TX/RX
-     * @return a new host output buffer
-     */
-    std::shared_ptr<arrus::framework::Buffer> setSubsequence(std::optional<uint16_t> start, std::optional<uint16_t> end);
+    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end) override = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

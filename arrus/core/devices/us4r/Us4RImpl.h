@@ -149,8 +149,9 @@ public:
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
     void setParameters(const Parameters &parameters) override;
-    void setTxDelays(int value);
-    Buffer::SharedHandle setSubsequence(std::optional<uint16_t> start, std::optional<uint16_t> end);
+
+    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();

@@ -48,6 +48,8 @@ public:
     void setParameters(const Parameters &params) override;
     State getCurrentState() override;
 
+    UploadResult setSubsequence(uint16 start, uint16 end) override;
+
 private:
     ARRUS_DEFINE_ENUM_TO_STRING(
             State,

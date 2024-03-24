@@ -20,7 +20,8 @@ public:
                     const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<framework::NdArray> &txDelayProfiles) = 0;
 
-    virtual Us4RBuffer::Handle setSubsequence(std::optional<uint16_t> start, std::optional<uint16_t> end) = 0;
+    virtual std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    setSubsequence(uint16_t start, uint16_t end) = 0;
 };
 
 }

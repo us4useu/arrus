@@ -37,8 +37,8 @@ public:
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize=2,
                     uint16 rxBatchSize=1, std::optional<float> sri=std::nullopt,
                     bool triggerSync = false,
-                    const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
-                    const std::vector<arrus::framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
+                    const std::optional<ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
+                    const std::vector<framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
                     ) override;
 
     Ordinal getNumberOfUs4OEMs() override;
@@ -49,10 +49,10 @@ public:
 
     void syncTrigger() override;
 
-    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle> setSubsequence(uint16_t start, uint16_t end) override;
+    std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+    setSubsequence(uint16_t start, uint16_t end) override;
 
 private:
-
     struct OpToNextFrameMapping {
         OpToNextFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames);
         std::optional<uint16> getNextFrame(uint16 op) {

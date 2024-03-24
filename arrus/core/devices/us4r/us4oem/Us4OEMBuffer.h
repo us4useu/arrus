@@ -132,7 +132,7 @@ public:
         IGNORE_UNUSED(oldSize);
         auto oldShape = getUniqueShape(elements);
         size_t newSize = std::accumulate(std::begin(newParts), std::end(newParts), 0,
-            [](const auto &a, const auto &b){return a + b.size();});
+            [](const auto &a, const auto &b){return a + b.getSize();});
         unsigned newNSamples = std::accumulate(std::begin(newParts), std::end(newParts), 0,
             [](const auto &a, const auto &b){return a + b.getNSamples();});
         auto newShape = getShape(oldShape, newNSamples);
@@ -163,7 +163,7 @@ private:
             throw std::runtime_error("List of elements cannot be empty");
         }
         auto &shape = elements.at(0).getViewShape();
-        for(int i = 0; i < elements.size(); ++i) {
+        for(size_t i = 0; i < elements.size(); ++i) {
             auto &otherShape = elements.at(i).getViewShape();
             if(shape != otherShape) {
                 throw IllegalArgumentException("The shape of element's NdArray must be unique for each us4OEM.");

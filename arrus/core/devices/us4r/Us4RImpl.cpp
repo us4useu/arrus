@@ -838,14 +838,17 @@ void Us4RImpl::setParameters(const Parameters &params) {
     }
 }
 
-Buffer::SharedHandle Us4RImpl::setSubsequence(std::optional<uint16_t> start, std::optional<uint16_t> end) {
+std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+Us4RImpl::setSubsequence(uint16_t start, uint16_t end) {
     if(!scheme.has_value()) {
         throw IllegalStateException("Please upload scheme before setting sub-sequence.");
     }
     const auto &s = scheme.value();
-    auto rxBuffer = this->getProbeImpl()->setSubsequence(start, end);
+    auto [rxBuffer, fcm] = this->getProbeImpl()->setSubsequence(start, end);
     prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer);
-    return this->buffer;
+    arrus::session::MetadataBuilder metadataBuilder;
+    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+    return {this->buffer, metadataBuilder.buildPtr()};
 }
 
 

@@ -95,6 +95,22 @@ public:
      */
     virtual State getCurrentState() = 0;
 
+    /**
+     * Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
+     *
+     * This method requires that:
+     *
+     * - start <= end (when start= == end, the system will run a single TX/RX sequence),
+     * - the scheme was uploaded,
+     * - the TX/RX sequence length is greater than the `end` value,
+     * - the scheme is stopped.
+     *
+     * @param start the TX/RX number which should now be the first TX/RX
+     * @param end the TX/RX number which should now be the last TX/RX
+     * @return the new data buffer and metadata
+     */
+    virtual UploadResult setSubsequence(uint16 start, uint16 end) = 0;
+
     virtual ~Session() = default;
 
 };

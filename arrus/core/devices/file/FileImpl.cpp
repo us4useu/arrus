@@ -201,26 +201,28 @@ Probe *FileImpl::getProbe(Ordinal ordinal) {
 
 void FileImpl::setParameters(const Parameters &params) {
     std::unique_lock<std::mutex> lock(parametersMutex);
-    for(auto &item: params.items()) {
+    for (auto &item : params.items()) {
         auto &key = item.first;
         auto value = item.second;
-        if(key == "/sequence:0/begin") {
-            if(value < 0) {
+        if (key == "/sequence:0/begin") {
+            if (value < 0) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be not less than 0", key));
             }
             pendingSliceBegin = value;
-        }
-        else if(key == "/sequence:0/end") {
-            int currentNTx = (int)frameShape.get(1);
-            if(value >= currentNTx) {
+        } else if (key == "/sequence:0/end") {
+            int currentNTx = (int) frameShape.get(1);
+            if (value >= currentNTx) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be less than {}", key, currentNTx));
             }
             pendingSliceEnd = value;
-        }
-        else {
+        } else {
             throw ::arrus::IllegalArgumentException("Unsupported setting: " + key);
         }
     }
+}
+std::pair<std::shared_ptr<Buffer>, std::shared_ptr<Metadata>>
+FileImpl::setSubsequence(uint16, uint16) {
+    throw std::runtime_error("Not implemented.");
 }
 
 float FileImpl::getSamplingFrequency() const { return 65e6; }
