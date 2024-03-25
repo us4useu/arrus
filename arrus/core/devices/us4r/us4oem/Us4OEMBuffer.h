@@ -40,9 +40,9 @@ class Us4OEMBuffer;
  */
 class Us4OEMBufferElement {
 public:
-    Us4OEMBufferElement(size_t address, size_t viewSize, uint16 firing, framework::NdArray::Shape &viewShape,
+    Us4OEMBufferElement(size_t address, size_t viewSize, uint16 firing, const framework::NdArray::Shape &viewShape,
                         framework::NdArray::DataType dataType)
-        : address(address), viewSize(viewSize), firing(firing), viewShape(std::move(viewShape)), dataType(dataType) {}
+        : address(address), viewSize(viewSize), firing(firing), viewShape(viewShape), dataType(dataType) {}
 
     /**
      * Returns the address OF THE WHOLE BUFFER ELEMENT (i.e. [0, nParts)). Byte-addressing.
