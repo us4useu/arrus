@@ -9,6 +9,8 @@
 
 namespace arrus::ops::us4r {
 
+class SchemeBuilder;
+
 /**
  * A scheme to be executed within the session.
  */
@@ -33,7 +35,15 @@ public:
     };
 
     /**
+     * TODO(0.12.0) Deprecated: please use Scheme::create instead
+     */
+    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
+           WorkMode workMode, std::optional<DigitalDownConversion> ddc,
+           const std::vector<arrus::framework::NdArray> &constants);
+
+    /**
      * Scheme constructor. This scheme turns off hardware IQ demodulator.
+     * TODO(0.12.0) Deprecated: please use Scheme::create instead
      *
      * @param txRxSequence tx/rx sequence to perform
      * @param rxBufferSize the size of the data acquisition buffer in the memory of the Us4R device
@@ -41,14 +51,14 @@ public:
      * @param outputBuffer output buffer specification
      * @param workMode scheme work mode
      */
-
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode)
-        : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
-          workMode(workMode), ddc(std::nullopt) {}
+        :Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, {}) {}
 
     /**
      * Scheme constructor. This scheme turns on hardware IQ demodulator (sees digital down conversion parameter).
+     *
+     * TODO(0.12.0) Deprecated: please use Scheme::create instead
      *
      * @param txRxSequence tx/rx sequence to perform
      * @param rxBufferSize the size of the data acquisition buffer in the memory of the Us4R device
@@ -58,39 +68,55 @@ public:
      * @param digitalDownConversion DDC parameters
      */
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
-           WorkMode workMode, DigitalDownConversion digitalDownConversion)
-        : txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer),
-          workMode(workMode), ddc(std::move(digitalDownConversion)) {}
+           WorkMode workMode, DigitalDownConversion ddc)
+        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::move(ddc), {}) {}
 
+
+    /**
+     * TODO(0.12.0) Deprecated: please use Scheme::create instead
+     */
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
-           WorkMode workMode, DigitalDownConversion ddc, const std::vector<arrus::framework::NdArray> &constants)
-        : txRxSequence(txRxSequence), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer), workMode(workMode),
-          ddc(std::move(ddc)), constants(constants) {}
+           WorkMode workMode, const std::vector<framework::NdArray> &constants)
+        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, constants) {}
 
-    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
-           WorkMode workMode, const std::vector<arrus::framework::NdArray> &constants)
-        : txRxSequence(txRxSequence), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer), workMode(workMode),
-          ddc(std::nullopt), constants(constants) {}
+    Scheme(const Scheme &o);
+    Scheme(Scheme &&o) noexcept;
+    virtual ~Scheme();
+    Scheme& operator=(const Scheme &o);
+    Scheme& operator=(Scheme &&o) noexcept;
 
-    const TxRxSequence &getTxRxSequence() const { return txRxSequence; }
-
-    uint16 getRxBufferSize() const { return rxBufferSize; }
-
-    const framework::DataBufferSpec &getOutputBuffer() const { return outputBuffer; }
-
-    WorkMode getWorkMode() const { return workMode; }
-
-    const std::optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
-
-    const std::vector<arrus::framework::NdArray> &getConstants() const { return constants; }
+    /**
+     * TODO(0.12.0) Deprecated: please use getTxRxSequence(int ordinal) instead
+     */
+    const TxRxSequence &getTxRxSequence() const;
+    const TxRxSequence &getTxRxSequence(size_t ordinal) const;
+    const std::vector<TxRxSequence> &getTxRxSequences() const;
+    uint16 getRxBufferSize() const;
+    const framework::DataBufferSpec &getOutputBuffer() const;
+    WorkMode getWorkMode() const;
+    const std::optional<DigitalDownConversion> &getDigitalDownConversion() const;
+    const std::vector<arrus::framework::NdArray> &getConstants() const;
 
 private:
-    TxRxSequence txRxSequence;
-    uint16 rxBufferSize;
-    ::arrus::framework::DataBufferSpec outputBuffer;
-    WorkMode workMode;
-    std::optional<DigitalDownConversion> ddc;
-    std::vector<arrus::framework::NdArray> constants;
+    friend class SchemeBuilder;
+    Scheme();
+    class Impl;
+    UniqueHandle<Impl> impl;
+};
+
+class SchemeBuilder {
+public:
+    SchemeBuilder() = default;
+    SchemeBuilder& addSequence(TxRxSequence sequence);
+    SchemeBuilder& withOutputBufferDefinition(framework::DataBufferSpec spec);
+    SchemeBuilder& withRxBufferSize(uint16 rxBufferSize);
+    SchemeBuilder& withWorkMode(Scheme::WorkMode mode);
+    SchemeBuilder& withDigitalDownConversion(DigitalDownConversion ddc);
+    // TODO support constants
+
+    Scheme build();
+private:
+    Scheme scheme;
 };
 
 }// namespace arrus::ops::us4r

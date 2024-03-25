@@ -931,7 +931,7 @@ classdef Us4R < handle
             end
             
             % Upload scheme
-            scheme = Scheme('txRxSequence', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
+            scheme = Scheme('txRxSequences', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
             
             [obj.buffer.data, ...
              obj.buffer.framesOffset, ...

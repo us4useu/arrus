@@ -26,7 +26,7 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 
 
 def main():
-    with arrus.Session("/home/pjarosik/src/us4useu/tmp/x-files/customers/nanoecho/ARRUS-221/test.prototxt") as sess:
+    with arrus.Session() as sess:
         ultrasound = sess.get_device("/Ultrasound:0")
         # NOTE: file device does not allow to set voltage, etc.
 

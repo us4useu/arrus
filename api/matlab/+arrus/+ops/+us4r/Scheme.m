@@ -9,10 +9,10 @@ classdef Scheme
     % :param workMode: ultrasound device work mode, available: "HOST", "ASYNC", "MANUAL"
     % :param digitalDownConversion: hardware DDC parameters. By default hardware DDC is turned off (empty value).
     properties(Constant, Hidden=true)
-        REQUIRED_PARAMS = {'txRxSequence'};
+        REQUIRED_PARAMS = {'txRxSequences'};
     end
     properties
-        txRxSequence arrus.ops.us4r.TxRxSequence
+        txRxSequences arrus.ops.us4r.TxRxSequence
         rxBufferSize (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 2
         outputBuffer arrus.framework.DataBufferDef = arrus.framework.DataBufferDef("type", "FIFO", "nElements", 2)
         workMode (1, 1) = "HOST"

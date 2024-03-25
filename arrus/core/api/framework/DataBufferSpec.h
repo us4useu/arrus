@@ -18,6 +18,8 @@ public:
 //    TODO CINELOOP
     };
 
+    DataBufferSpec(): bufferType(Type::FIFO), nElements(2) {}
+
     /**
      * Data buffer specification constructor.
      *
@@ -40,7 +42,7 @@ public:
 
 private:
     Type bufferType;
-    unsigned nElements;
+    unsigned nElements{};
 };
 
 }
