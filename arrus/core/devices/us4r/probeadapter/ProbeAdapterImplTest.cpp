@@ -126,6 +126,7 @@ public:
 
     MOCK_METHOD(uint32_t, getTxOffset, (), (override));
     MOCK_METHOD(uint32_t, getOemVersion, (), (override));
+    MOCK_METHOD(void, setSubsequence, (uint16 start, uint16 end), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {

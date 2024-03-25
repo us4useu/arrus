@@ -1,0 +1,899 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="arrus"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\cmake\;CMake Files\cmake-build-debug\;CMake Files\..\;CMake Files\..\..\;CMake Files\..\..\..\;CMake Files\..\..\..\.conan\;CMake Files\..\..\..\.conan\data\;CMake Files\..\..\..\.conan\data\protobuf\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\038baac88f4c7bfa972ce5adac1616bed8fe2ef4\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\038baac88f4c7bfa972ce5adac1616bed8fe2ef4\lib\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\038baac88f4c7bfa972ce5adac1616bed8fe2ef4\lib\cmake\;CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\038baac88f4c7bfa972ce5adac1616bed8fe2ef4\lib\cmake\protobuf\;CMake Files\arrus\;CMake Files\arrus\core\;CMake Files\arrus\core\cfg\;CMake Files\installer\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install/strip">
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 install/strip"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install/local">
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 install/local"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="list_install_components">
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 list_install_components"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install">
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 install"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="arrus-core">
+				<Option output="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/libarrus-core.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DBOOST_ALL_NO_LIB"/>
+					<Add option="-DARRUS_LINUX"/>
+					<Add option="-D_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING"/>
+					<Add option="-DARRUS_CPP_API_BUILD_STAGE"/>
+					<Add option="-DBOOST_ALL_DYN_LINK"/>
+					<Add option="-DGSL_TERMINATE_ON_CONTRACT_VIOLATION"/>
+					<Add directory="/home/pjarosik/src/us4useu/arrus"/>
+					<Add directory="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"/>
+					<Add directory="/home/pjarosik/src/us4useu/us4r-api/install/include"/>
+					<Add directory="/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/include"/>
+					<Add directory="/home/pjarosik/.conan/data/bzip2/1.0.8/_/_/package/1d984b241c5c01f748cafe0b37dc9567ed236fef/include"/>
+					<Add directory="/home/pjarosik/.conan/data/zlib/1.2.12/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"/>
+					<Add directory="/home/pjarosik/.conan/data/libiconv/1.16/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"/>
+					<Add directory="/home/pjarosik/.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"/>
+					<Add directory="/home/pjarosik/.conan/data/fmt/7.0.1/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"/>
+					<Add directory="/home/pjarosik/.conan/data/eigen/3.3.7/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include/eigen3"/>
+					<Add directory="/home/pjarosik/.conan/data/ms-gsl/2.1.0/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include"/>
+					<Add directory="/usr/include/c++/9"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/9"/>
+					<Add directory="/usr/include/c++/9/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/9/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 arrus-core"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="arrus-core/fast">
+				<Option output="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/libarrus-core.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DBOOST_ALL_NO_LIB"/>
+					<Add option="-DARRUS_LINUX"/>
+					<Add option="-D_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING"/>
+					<Add option="-DARRUS_CPP_API_BUILD_STAGE"/>
+					<Add option="-DBOOST_ALL_DYN_LINK"/>
+					<Add option="-DGSL_TERMINATE_ON_CONTRACT_VIOLATION"/>
+					<Add directory="/home/pjarosik/src/us4useu/arrus"/>
+					<Add directory="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"/>
+					<Add directory="/home/pjarosik/src/us4useu/us4r-api/install/include"/>
+					<Add directory="/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/include"/>
+					<Add directory="/home/pjarosik/.conan/data/bzip2/1.0.8/_/_/package/1d984b241c5c01f748cafe0b37dc9567ed236fef/include"/>
+					<Add directory="/home/pjarosik/.conan/data/zlib/1.2.12/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"/>
+					<Add directory="/home/pjarosik/.conan/data/libiconv/1.16/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"/>
+					<Add directory="/home/pjarosik/.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"/>
+					<Add directory="/home/pjarosik/.conan/data/fmt/7.0.1/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"/>
+					<Add directory="/home/pjarosik/.conan/data/eigen/3.3.7/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include/eigen3"/>
+					<Add directory="/home/pjarosik/.conan/data/ms-gsl/2.1.0/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include"/>
+					<Add directory="/usr/include/c++/9"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/9"/>
+					<Add directory="/usr/include/c++/9/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/9/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 arrus-core/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="pwi-example">
+				<Option output="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/pwi-example" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/pjarosik/src/us4useu/arrus"/>
+					<Add directory="/usr/include/c++/9"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/9"/>
+					<Add directory="/usr/include/c++/9/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/9/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 pwi-example"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="pwi-example/fast">
+				<Option output="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/pwi-example" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/pjarosik/src/us4useu/arrus"/>
+					<Add directory="/usr/include/c++/9"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/9"/>
+					<Add directory="/usr/include/c++/9/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/9/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 pwi-example/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/common/asserts.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/common/compiler.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/common/format.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/common/utils.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/arrus.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/Interval.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/LogSeverity.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/Logger.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/LoggerFactory.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/Tuple.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/exceptions.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/logging.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/macros.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/common/types.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/Device.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/DeviceId.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/DeviceWithComponents.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/File.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/TriggerGenerator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/Ultrasound.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/probe/Probe.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/probe/ProbeModel.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/probe/ProbeModelId.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/probe/ProbeSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/FrameChannelMapping.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/HVModelId.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/HVSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/ProbeAdapter.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/ProbeAdapterModelId.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/ProbeAdapterSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/RxSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/Us4OEM.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/Us4OEMSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/Us4R.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/devices/us4r/Us4RSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/framework.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/framework/Buffer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/framework/DataBuffer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/framework/DataBufferSpec.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/framework/FifoBuffer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/framework/NdArray.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/io.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/io/settings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/ops/us4r/DigitalDownConversion.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/ops/us4r/Pulse.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/ops/us4r/Scheme.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/ops/us4r/tgc.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/session.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/session/Metadata.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/session/Session.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/session/SessionSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/api/session/UploadResult.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/cfg/default.h.in">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/LogSeverity.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/aperture.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/collections.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/hash.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/interpolate.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/logging.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/logging.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/tests.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/common/validation.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/DeviceId.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/DeviceId.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/SettingsValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/TxRxParameters.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/TxRxParameters.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/UltrasoundDevice.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/file/FileImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/file/FileImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/file/FileSettings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/file/FileSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeFactory.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeFactoryImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeImplBase.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeModel.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeModel.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeSettings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/probe/ProbeSettingsValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/DataTransfer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/FrameChannelMappingImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/FrameChannelMappingImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/RxSettings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/RxSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RBuffer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RFactory.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RFactoryImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4ROutputBuffer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RSettings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RSettingsConverter.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RSettingsConverterImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/Us4RSettingsValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/common.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/common.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/external/ius4oem/Us4RLoggerWrapper.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/hv/HighVoltageSupplier.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/hv/HighVoltageSupplier.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/hv/HighVoltageSupplierFactory.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/mapping/Us4OEMSubapertureGenerator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterFactory.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterSettings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMFactory.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMSettings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/us4oem/Us4OEMUploadResult.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/us4r/validators/RxSettingsValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/devices/utils.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/examples/PwiExample.cpp">
+			<Option target="pwi-example"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/external/eigen/Dense.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/external/eigen/Tensor.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/framework/graph/Graph.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/SettingsDictionary.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/settings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/validators/DictionaryProtoValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/validators/ProbeAdapterModelProtoValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/validators/ProbeModelProtoValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/validators/ProbeToAdapterConnectionProtoValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/validators/RxSettingsProtoValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/io/validators/SessionSettingsProtoValidator.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/ops/us4r/DigitalDownConversion.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/ops/us4r/Scheme.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/session/SessionImpl.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/session/SessionImpl.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/session/SessionSettings.cpp">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/session/SessionSettings.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/Dictionary.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/Dictionary.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/Dictionary.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/IntervalDouble.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/IntervalDouble.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/IntervalDouble.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/IntervalInteger.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/IntervalInteger.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/IntervalInteger.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/LinearFunction.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/LinearFunction.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/common/LinearFunction.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/file/FileSettings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/file/FileSettings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/file/FileSettings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/probe/ProbeModel.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/probe/ProbeModel.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/probe/ProbeModel.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Bitstream.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Bitstream.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Bitstream.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/HVSettings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/HVSettings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/HVSettings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOAddress.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOAddress.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOAddress.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOCapability.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOCapability.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOCapability.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOSettings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOSettings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/IOSettings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeAdapterModel.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeAdapterModel.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeAdapterModel.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeToAdapterConnection.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeToAdapterConnection.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeToAdapterConnection.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/RxSettings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/RxSettings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/RxSettings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Settings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Settings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Settings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4OEMSettings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4OEMSettings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4OEMSettings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4RSettings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4RSettings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4RSettings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/session/SessionSettings.pb.cc">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/session/SessionSettings.pb.h">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core/io/proto/session/SessionSettings.pb.h.rule">
+			<Option target="arrus-core"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/VERSION.rst.in">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake/FindUs4.cmake">
+			<Option virtualFolder="CMake Files\cmake\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/FindBZip2.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/FindBoost.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/FindEigen3.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/FindIconv.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/FindMicrosoft.GSL.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/FindProtobuf.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/FindZLIB.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/cmake-build-debug/Findfmt.cmake">
+			<Option virtualFolder="CMake Files\cmake-build-debug\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/../../../.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/lib/cmake/protobuf/protobuf-generate.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\038baac88f4c7bfa972ce5adac1616bed8fe2ef4\lib\cmake\protobuf\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/../../../.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/lib/cmake/protobuf/protobuf-module.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\038baac88f4c7bfa972ce5adac1616bed8fe2ef4\lib\cmake\protobuf\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/../../../.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/lib/cmake/protobuf/protobuf-options.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\.conan\data\protobuf\3.11.4\_\_\package\038baac88f4c7bfa972ce5adac1616bed8fe2ef4\lib\cmake\protobuf\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\arrus\core\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/arrus/core/cfg/default.h.in">
+			<Option virtualFolder="CMake Files\arrus\core\cfg\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/installer/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\installer\"/>
+		</Unit>
+		<Unit filename="/home/pjarosik/src/us4useu/arrus/installer/install.in.py">
+			<Option virtualFolder="CMake Files\installer\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

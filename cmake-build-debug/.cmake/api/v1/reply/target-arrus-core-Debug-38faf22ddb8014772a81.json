@@ -1,0 +1,2361 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "arrus/core/libarrus-core.so"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"install",
+			"target_link_libraries",
+			"set_target_properties",
+			"find_package",
+			"set_property",
+			"find_dependency",
+			"target_compile_definitions",
+			"target_include_directories"
+		],
+		"files" : 
+		[
+			"arrus/core/CMakeLists.txt",
+			"cmake-build-debug/FindBoost.cmake",
+			"CMakeLists.txt",
+			"cmake-build-debug/FindBZip2.cmake",
+			"/home/pjarosik/.local/share/JetBrains/Toolbox/apps/CLion-Nova/ch-0/241.14024.27/bin/cmake/linux/x64/share/cmake-3.28/Modules/CMakeFindDependencyMacro.cmake",
+			"cmake-build-debug/FindZLIB.cmake",
+			"cmake-build-debug/FindIconv.cmake",
+			"cmake-build-debug/FindProtobuf.cmake",
+			"cmake-build-debug/Findfmt.cmake",
+			"cmake-build-debug/FindEigen3.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 205,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 317,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 225,
+				"parent" : 0
+			},
+			{
+				"file" : 2
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 86,
+				"parent" : 4
+			},
+			{
+				"file" : 1,
+				"parent" : 5
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3327,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3308,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3289,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3270,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3251,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3232,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3213,
+				"parent" : 6
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 1330,
+				"parent" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 4,
+				"line" : 76,
+				"parent" : 14
+			},
+			{
+				"file" : 3,
+				"parent" : 15
+			},
+			{
+				"command" : 5,
+				"file" : 3,
+				"line" : 161,
+				"parent" : 16
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 1336,
+				"parent" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 4,
+				"line" : 76,
+				"parent" : 18
+			},
+			{
+				"file" : 5,
+				"parent" : 19
+			},
+			{
+				"command" : 5,
+				"file" : 5,
+				"line" : 161,
+				"parent" : 20
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3194,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3175,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3156,
+				"parent" : 6
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 1342,
+				"parent" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 4,
+				"line" : 76,
+				"parent" : 25
+			},
+			{
+				"file" : 6,
+				"parent" : 26
+			},
+			{
+				"command" : 5,
+				"file" : 6,
+				"line" : 161,
+				"parent" : 27
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3137,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3118,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3099,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3080,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3061,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3042,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3023,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 3004,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2966,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2947,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2928,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2909,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2890,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2814,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2795,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2776,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2757,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2738,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2719,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2700,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2681,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2662,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2643,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2605,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2586,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2567,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2548,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2529,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2510,
+				"parent" : 6
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 2491,
+				"parent" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 88,
+				"parent" : 4
+			},
+			{
+				"file" : 7,
+				"parent" : 59
+			},
+			{
+				"command" : 3,
+				"file" : 7,
+				"line" : 335,
+				"parent" : 60
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 91,
+				"parent" : 4
+			},
+			{
+				"file" : 8,
+				"parent" : 62
+			},
+			{
+				"command" : 5,
+				"file" : 8,
+				"line" : 161,
+				"parent" : 63
+			},
+			{
+				"command" : 4,
+				"file" : 2,
+				"line" : 93,
+				"parent" : 4
+			},
+			{
+				"file" : 9,
+				"parent" : 65
+			},
+			{
+				"command" : 3,
+				"file" : 9,
+				"line" : 241,
+				"parent" : 66
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 246,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 209,
+				"parent" : 0
+			},
+			{
+				"command" : 8,
+				"file" : 0,
+				"line" : 217,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -std=gnu++17 -fPIC -fdiagnostics-color=always"
+				},
+				{
+					"fragment" : "-Wall -Wextra -pedantic -Werror"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 68,
+					"define" : "ARRUS_CPP_API_BUILD_STAGE"
+				},
+				{
+					"backtrace" : 68,
+					"define" : "ARRUS_LINUX"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "BOOST_ALL_DYN_LINK"
+				},
+				{
+					"backtrace" : 69,
+					"define" : "BOOST_ALL_NO_LIB"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "GSL_TERMINATE_ON_CONTRACT_VIOLATION"
+				},
+				{
+					"backtrace" : 68,
+					"define" : "_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING"
+				},
+				{
+					"define" : "arrus_core_EXPORTS"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 70,
+					"path" : "/home/pjarosik/src/us4useu/arrus"
+				},
+				{
+					"backtrace" : 70,
+					"path" : "/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/src/us4useu/us4r-api/install/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/bzip2/1.0.8/_/_/package/1d984b241c5c01f748cafe0b37dc9567ed236fef/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/zlib/1.2.12/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/libiconv/1.16/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/fmt/7.0.1/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/eigen/3.4.0/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include/eigen3"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/ms-gsl/2.1.0/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				30,
+				38,
+				42,
+				46,
+				49,
+				57,
+				59,
+				63,
+				66,
+				70,
+				73,
+				75,
+				76,
+				78,
+				80,
+				88,
+				90,
+				102,
+				104,
+				118,
+				120,
+				122,
+				143,
+				145
+			]
+		},
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -std=gnu++17 -fPIC -fdiagnostics-color=always"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 68,
+					"define" : "ARRUS_CPP_API_BUILD_STAGE"
+				},
+				{
+					"backtrace" : 68,
+					"define" : "ARRUS_LINUX"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "BOOST_ALL_DYN_LINK"
+				},
+				{
+					"backtrace" : 69,
+					"define" : "BOOST_ALL_NO_LIB"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "GSL_TERMINATE_ON_CONTRACT_VIOLATION"
+				},
+				{
+					"backtrace" : 68,
+					"define" : "_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING"
+				},
+				{
+					"define" : "arrus_core_EXPORTS"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 70,
+					"path" : "/home/pjarosik/src/us4useu/arrus"
+				},
+				{
+					"backtrace" : 70,
+					"path" : "/home/pjarosik/src/us4useu/arrus/cmake-build-debug/arrus/core"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/src/us4useu/us4r-api/install/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/bzip2/1.0.8/_/_/package/1d984b241c5c01f748cafe0b37dc9567ed236fef/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/zlib/1.2.12/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/libiconv/1.16/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/fmt/7.0.1/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/eigen/3.4.0/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include/eigen3"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/pjarosik/.conan/data/ms-gsl/2.1.0/_/_/package/5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9/include"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				152,
+				153,
+				154,
+				155,
+				156,
+				157,
+				158,
+				159,
+				160,
+				161,
+				162,
+				163,
+				164,
+				165,
+				166,
+				167,
+				168
+			]
+		}
+	],
+	"id" : "arrus-core::@95effb19ba7b1825cc7b",
+	"install" : 
+	{
+		"destinations" : 
+		[
+			{
+				"backtrace" : 2,
+				"path" : "lib64"
+			},
+			{
+				"backtrace" : 2,
+				"path" : "lib64"
+			}
+		],
+		"prefix" : 
+		{
+			"path" : "/usr/local"
+		}
+	},
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-L/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib",
+				"role" : "libraryPath"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-L/home/pjarosik/.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/lib",
+				"role" : "libraryPath"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib:/home/pjarosik/.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/lib:/home/pjarosik/src/us4useu/us4r-api/install/lib64:",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "/home/pjarosik/src/us4useu/us4r-api/install/lib64/libUs4OEM.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "/home/pjarosik/src/us4useu/us4r-api/install/lib64/libHV256.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "/home/pjarosik/src/us4useu/us4r-api/install/lib64/libDBARLite.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "/home/pjarosik/src/us4useu/us4r-api/install/lib64/libDBARLitePcie.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "/home/pjarosik/src/us4useu/us4r-api/install/lib64/libUs4RDBAR.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "/home/pjarosik/src/us4useu/us4r-api/install/lib64/libUs4RPSC.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 7,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_contract.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 8,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_coroutine.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_fiber_numa.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 10,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_fiber.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_context.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 12,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_graph.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 13,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_iostreams.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 17,
+				"fragment" : "/home/pjarosik/.conan/data/bzip2/1.0.8/_/_/package/1d984b241c5c01f748cafe0b37dc9567ed236fef/lib/libbz2.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 21,
+				"fragment" : "/home/pjarosik/.conan/data/zlib/1.2.12/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/lib/libz.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 22,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_log_setup.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 23,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_log.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 24,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_locale.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 28,
+				"fragment" : "/home/pjarosik/.conan/data/libiconv/1.16/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/lib/libiconv.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 28,
+				"fragment" : "/home/pjarosik/.conan/data/libiconv/1.16/_/_/package/23b828d52c0630e6b0b96d2945419feb7843c4f8/lib/libcharset.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 29,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_math_c99.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 30,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_math_c99f.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 31,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_math_c99l.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 32,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_math_tr1.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 33,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_math_tr1f.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 34,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_math_tr1l.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 35,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_program_options.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 36,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_random.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 37,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_regex.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 38,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_stacktrace_addr2line.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 39,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_stacktrace_backtrace.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 40,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_stacktrace_basic.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 41,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_stacktrace_noop.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 42,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_timer.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 43,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_type_erasure.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 44,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_thread.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 45,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_atomic.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 46,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_chrono.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 47,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_container.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 48,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_date_time.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 49,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_unit_test_framework.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 50,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_prg_exec_monitor.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 51,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_test_exec_monitor.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 52,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_exception.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 53,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_wave.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 54,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_filesystem.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 55,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_system.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 56,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_wserialization.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 57,
+				"fragment" : "/home/pjarosik/.conan/data/boost/1.70.0/_/_/package/6fb3e97bc32056ec10f8773cbbf5dd813a11b991/lib/libboost_serialization.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 58,
+				"fragment" : "-lrt",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 61,
+				"fragment" : "/home/pjarosik/.conan/data/protobuf/3.11.4/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/lib/libprotobufd.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 61,
+				"fragment" : "-lpthread",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 64,
+				"fragment" : "/home/pjarosik/.conan/data/fmt/7.0.1/_/_/package/038baac88f4c7bfa972ce5adac1616bed8fe2ef4/lib/libfmtd.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 67,
+				"fragment" : "-lm",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"name" : "arrus-core",
+	"nameOnDisk" : "libarrus-core.so",
+	"paths" : 
+	{
+		"build" : "arrus/core",
+		"source" : "arrus/core"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				31,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				39,
+				40,
+				41,
+				43,
+				44,
+				45,
+				47,
+				48,
+				50,
+				51,
+				52,
+				53,
+				54,
+				55,
+				56,
+				58,
+				60,
+				61,
+				62,
+				64,
+				65,
+				67,
+				68,
+				69,
+				71,
+				72,
+				74,
+				77,
+				79,
+				81,
+				82,
+				83,
+				84,
+				85,
+				86,
+				87,
+				89,
+				91,
+				92,
+				93,
+				94,
+				95,
+				96,
+				97,
+				98,
+				99,
+				100,
+				101,
+				103,
+				105,
+				106,
+				107,
+				108,
+				109,
+				110,
+				111,
+				112,
+				113,
+				114,
+				115,
+				116,
+				117,
+				119,
+				121,
+				123,
+				124,
+				125,
+				126,
+				127,
+				128,
+				129,
+				130,
+				131,
+				132,
+				133,
+				134,
+				135,
+				136,
+				137,
+				138,
+				139,
+				140,
+				141,
+				142,
+				144,
+				146,
+				147,
+				148,
+				149,
+				150,
+				151,
+				169,
+				170,
+				171,
+				172,
+				173,
+				174,
+				175,
+				176,
+				177,
+				178,
+				179,
+				180,
+				181,
+				182,
+				183,
+				184,
+				185
+			]
+		},
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				30,
+				38,
+				42,
+				46,
+				49,
+				57,
+				59,
+				63,
+				66,
+				70,
+				73,
+				75,
+				76,
+				78,
+				80,
+				88,
+				90,
+				102,
+				104,
+				118,
+				120,
+				122,
+				143,
+				145,
+				152,
+				153,
+				154,
+				155,
+				156,
+				157,
+				158,
+				159,
+				160,
+				161,
+				162,
+				163,
+				164,
+				165,
+				166,
+				167,
+				168
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				186,
+				187,
+				188,
+				189,
+				190,
+				191,
+				192,
+				193,
+				194,
+				195,
+				196,
+				197,
+				198,
+				199,
+				200,
+				201,
+				202
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/exceptions.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/logging.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/types.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/Tuple.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/Interval.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/DeviceWithComponents.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/Device.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/TriggerGenerator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/DeviceId.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/probe/Probe.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/probe/ProbeModel.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/probe/ProbeModelId.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/probe/ProbeSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/ProbeAdapter.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/ProbeAdapterModelId.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/ProbeAdapterSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/Us4OEM.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/Us4OEMSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/Us4R.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/Us4RSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/RxSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/Ultrasound.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/File.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/session/Session.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/session/SessionSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/ops/us4r/Pulse.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/common/hash.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/common/collections.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/common/validation.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/common/logging.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/common/logging.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/Logger.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/LogSeverity.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/LoggerFactory.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/common/compiler.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/common/asserts.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/common/format.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/utils.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/DeviceId.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/DeviceId.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/SettingsValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/TxRxParameters.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/TxRxParameters.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMSettings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RFactory.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RFactoryImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RSettingsValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RSettingsConverter.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RSettingsConverterImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/Us4RSettings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/RxSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/RxSettings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactory.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/probe/ProbeFactory.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/probe/ProbeFactoryImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/probe/ProbeImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/probe/ProbeImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/probe/ProbeSettingsValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/probe/ProbeSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/probe/ProbeSettings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/probe/ProbeModel.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/probe/ProbeModel.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/file/FileImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/file/FileImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/file/FileSettings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/io/settings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/io/settings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/io/validators/ProbeModelProtoValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/io/validators/ProbeAdapterModelProtoValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/io/validators/RxSettingsProtoValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/io/validators/SessionSettingsProtoValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/io/validators/DictionaryProtoValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/io/validators/ProbeToAdapterConnectionProtoValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/io/SettingsDictionary.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/session/SessionImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/session/SessionSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/session/SessionSettings.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/Us4RLoggerWrapper.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4ROutputBuffer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/Us4RImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/common.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/common.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/session/SessionImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/common/tests.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/common/interpolate.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common/macros.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/framework/graph/Graph.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/framework.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/ops/us4r/tgc.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/UltrasoundDevice.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/HVSettings.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/HVModelId.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/hv/HighVoltageSupplier.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/hv/HighVoltageSupplierFactory.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/hv/HighVoltageSupplier.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/devices/us4r/FrameChannelMapping.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/devices/us4r/FrameChannelMappingImpl.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/FrameChannelMappingImpl.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/common/aperture.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/external/eigen/Tensor.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/probe/ProbeImplBase.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/external/eigen/Dense.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/common/utils.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/DataTransfer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4RBuffer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/ops/us4r/Scheme.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/framework/Buffer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/framework/NdArray.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/session/UploadResult.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/framework/DataBufferSpec.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/session/Metadata.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/framework/DataBuffer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/framework/FifoBuffer.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/ops/us4r/DigitalDownConversion.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/ops/us4r/DigitalDownConversion.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/cfg/default.h.in",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "arrus/core/common/LogSeverity.cpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/arrus.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/session.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/common.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/api/io.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/validators/RxSettingsValidator.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/Dictionary.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/session/SessionSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/IntervalInteger.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/IntervalDouble.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/LinearFunction.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/probe/ProbeModel.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeAdapterModel.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeToAdapterConnection.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/RxSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4OEMSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/HVSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4RSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/file/FileSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOAddress.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOCapability.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/DigitalBackplaneSettings.pb.cc",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/Dictionary.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/session/SessionSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/IntervalInteger.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/IntervalDouble.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/LinearFunction.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/probe/ProbeModel.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeAdapterModel.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeToAdapterConnection.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/RxSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4OEMSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/HVSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4RSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/file/FileSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOAddress.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOCapability.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/DigitalBackplaneSettings.pb.h",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/Dictionary.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/session/SessionSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/IntervalInteger.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/IntervalDouble.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/common/LinearFunction.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/probe/ProbeModel.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeAdapterModel.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/ProbeToAdapterConnection.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/RxSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4OEMSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/HVSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/Us4RSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/file/FileSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOAddress.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOCapability.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/IOSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "cmake-build-debug/arrus/core/io/proto/devices/us4r/DigitalBackplaneSettings.pb.h.rule",
+			"sourceGroupIndex" : 2
+		}
+	],
+	"type" : "SHARED_LIBRARY"
+}

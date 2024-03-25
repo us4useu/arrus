@@ -1,0 +1,47 @@
+import setuptools
+
+
+try:
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+    class bdist_wheel(_bdist_wheel):
+        def finalize_options(self):
+            super().finalize_options()
+            self.root_is_pure = False
+except ImportError:
+    bdist_wheel = None
+
+
+setuptools.setup(
+
+    name="arrus",
+    version="0.9.0",
+    author="us4us Ltd.",
+    author_email="support@us4us.eu",
+    description="API for Research/Remote Ultrasound",
+    long_description="ARRUS - API for Research/Remote Ultrasound",
+    long_description_content_type="text/markdown",
+    url="https://us4us.eu",
+    packages=setuptools.find_packages(
+        exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+    classifiers=[
+        "Development Status :: 1 - Planning",
+
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+        "Topic :: Software Development :: Embedded Systems",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Medical Science Apps."
+    ],
+    install_requires=[
+        "numpy>=1.19.3",
+        "scipy>=1.3.1"
+    ],
+    cmdclass={'bdist_wheel': bdist_wheel},
+    package_data={
+        'arrus': ['_py_core.pyd', "*.dll", "*.so*", "utils/*.cu"]
+    },
+    python_requires='>=3.6'
+)

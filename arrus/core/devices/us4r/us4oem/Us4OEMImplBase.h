@@ -48,6 +48,8 @@ public:
 
     virtual void setTestPattern(RxTestPattern pattern) = 0;
 
+    virtual void setSubsequence(uint16 start, uint16 end) = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

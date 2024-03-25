@@ -160,6 +160,8 @@ public:
 
     const char *getRevision() override;
 
+    void setSubsequence(uint16 start, uint16 end) override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
