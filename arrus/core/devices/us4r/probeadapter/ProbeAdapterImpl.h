@@ -9,6 +9,7 @@
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/TxRxParameters.h"
+#include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/Us4RBuffer.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterImplBase.h"
@@ -83,7 +84,7 @@ private:
     std::vector<Us4OEMBuffer> fullSequenceOEMBuffers;
     /** OEM number -> physical op -> next frame number (from the complete frame sequence) */
     std::vector<OpToNextFrameMapping> physicalOpToNextFrame;
-    FrameChannelMapping::Handle fullSequenceFCM;
+    FrameChannelMappingImpl::Handle fullSequenceFCM;
 };
 }
 

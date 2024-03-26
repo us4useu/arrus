@@ -108,6 +108,10 @@ public:
     void pageLockDstMemory() {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
+            // NOTE: addressSrc should be the address of the complete buffer element here -- even if
+            // we are processing some sub-sequence buffer here (i.e. setSubsequence was used).
+            // The reason for that is that the transfer src address is relative to the begining of the FULL buffer
+            // element (because element parts are relative to the FULL element).
             size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
             for(auto &transfer: elementTransfers) {
                 uint8 *dst = addressDst + transfer.address;

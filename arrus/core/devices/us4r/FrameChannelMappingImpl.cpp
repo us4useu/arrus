@@ -9,7 +9,7 @@
 namespace arrus::devices {
 
 FrameChannelMappingImpl::FrameChannelMappingImpl(
-        Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
+        Us4OEMMapping us4oemMapping, FrameMapping frameMapping, ChannelMapping channelMapping,
         std::vector<uint32> frameOffsets, std::vector<uint32> numberOfFrames)
     : us4oemMapping(std::move(us4oemMapping)), frameMapping(std::move(frameMapping)),
     channelMapping(std::move(channelMapping)), frameOffsets(std::move(frameOffsets)),

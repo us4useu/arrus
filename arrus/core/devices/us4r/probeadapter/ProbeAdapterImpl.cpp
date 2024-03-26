@@ -300,6 +300,9 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     outFcBuilder.setFrameOffsets(frameOffsets);
     outFcBuilder.setNumberOfFrames(numberOfFrames);
 
+    // Create the copy of FCM.
+    fullSequenceFCM = outFcBuilder.build();
+    // Return the copy of FCM.
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
 }
 
@@ -403,7 +406,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
 
     // Update OEM sequencer configuration.
     for (auto &oem : us4oems) {
-        oem->getIUs4oem()->SetSubsequence(oemStart, oemEnd);
+        oem->setSubsequence(oemStart, oemEnd);
     }
     return {us4RBufferBuilder.build(), outFCMBuilder.build()};
 }

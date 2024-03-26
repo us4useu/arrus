@@ -140,6 +140,7 @@ public:
             Us4OEMBufferElement newElement(oldElement);
             newElement.viewSize = newSize;
             newElement.viewShape = newShape;
+            newElements.push_back(newElement);
         }
         return Us4OEMBuffer(newElements, newParts);
     }
