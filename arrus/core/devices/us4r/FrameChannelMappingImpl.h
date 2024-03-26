@@ -90,7 +90,15 @@ public:
     using FrameNumber = FrameChannelMapping::FrameNumber;
     using Us4OEMNumber = FrameChannelMapping::Us4OEMNumber;
 
-    static FrameChannelMappingBuilder like(const FrameChannelMappingImpl &mapping) {
+    static FrameChannelMappingBuilder like(const FrameChannelMapping &mapping) {
+        FrameChannelMappingBuilder builder{mapping.getNumberOfLogicalFrames(),
+                                           mapping.getNumberOfLogicalChannels()};
+        builder.setFrameOffsets(mapping.getFrameOffsets());
+        builder.setNumberOfFrames(mapping.getNumberOfFrames());
+        return builder;
+    }
+
+    static FrameChannelMappingBuilder copy(const FrameChannelMappingImpl &mapping) {
         FrameChannelMappingBuilder builder;
         // Copy
         builder.us4oemMapping = mapping.us4oemMapping;

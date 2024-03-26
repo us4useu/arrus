@@ -392,7 +392,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
         us4RBufferBuilder.pushBack(oemBuffer.getView(oemStart, oemEnd));
     }
     // Update FCM.
-    FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::like(*fullSequenceFCM);
+    FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*fullSequenceFCM);
     outFCMBuilder.slice(start, end);// slice to logical frames to [start, end]
     // Subtract from the physical frame numbers, the number of frames (e.g. move frame 3 to 0).
     for (size_t i = 0; i < fullSequenceOEMBuffers.size(); ++i) {
