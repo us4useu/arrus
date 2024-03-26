@@ -139,31 +139,8 @@ class Session(AbstractSession):
             input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
             version=arrus.__version__
         )
-
         # numpy/cupy processing initialization
-        if processing is not None:
-            # setup processing
-            import arrus.utils.imaging as _imaging
-
-            if isinstance(processing, _imaging.Pipeline):
-                # Wrap Pipeline into the Processing object.
-                processing = _imaging.Processing(
-                    pipeline=processing,
-                    callback=None,
-                    extract_metadata=False
-                )
-            if isinstance(processing, _imaging.Processing):
-                processing = arrus.utils.imaging.ProcessingRunner(
-                    self.buffer, self.const_metadata, processing)
-                outputs = processing.outputs
-            else:
-                raise ValueError("Unsupported type of processing: "
-                                 f"{type(processing)}")
-            self._current_processing = processing
-        else:
-            # Device buffer and const_metadata
-            outputs = self.buffer, self.const_metadata
-        return outputs
+        return  self._set_processing(self.buffer, self.const_metadata, processing)
 
     def __enter__(self):
         return self
@@ -185,6 +162,7 @@ class Session(AbstractSession):
         arrus.core.arrusSessionStopScheme(self._session_handle)
         if self._current_processing is not None:
             self._current_processing.close()
+            self._current_processing = None
 
     def run(self):
         """
@@ -291,7 +269,7 @@ class Session(AbstractSession):
         """
         self._context = SessionContext(medium=value)
 
-    def set_subsequence(self, start, end):
+    def set_subsequence(self, start, end, processing=None):
         """
         Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
 
@@ -325,7 +303,36 @@ class Session(AbstractSession):
             data_description=data_description,
             context=fac,
         )
-        return self.buffer, metadata
+        return self._set_processing(self.buffer, metadata, processing)
+
+    def _set_processing(self, buffer, const_metadata, processing):
+        # setup processing
+        if self._current_processing is not None:
+            self._current_processing.close()
+            self._current_processing = None
+
+        import arrus.utils.imaging as _imaging
+
+        if processing is not None:
+            if isinstance(processing, _imaging.Pipeline):
+                # Wrap Pipeline into the Processing object.
+                processing = _imaging.Processing(
+                    pipeline=processing,
+                    callback=None,
+                    extract_metadata=False
+                )
+            if isinstance(processing, _imaging.Processing):
+                processing = arrus.utils.imaging.ProcessingRunner(
+                    buffer, const_metadata, processing)
+                outputs = processing.outputs
+            else:
+                raise ValueError("Unsupported type of processing: "
+                                  f"{type(processing)}")
+            self._current_processing = processing
+        else:
+            # Device buffer and const_metadata
+            outputs = buffer, const_metadata
+        return outputs
 
     def _contains_py_params(self, params):
         # Currently only start/stop params must by handled
