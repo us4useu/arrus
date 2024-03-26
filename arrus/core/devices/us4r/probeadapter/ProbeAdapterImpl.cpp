@@ -408,7 +408,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     return {us4RBufferBuilder.build(), outFCMBuilder.build()};
 }
 
-ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings,  const std::vector<Us4OEMBufferElementPart> &frames) {
+ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames) {
     std::optional<uint16_t> currentFrameNr = std::nullopt;
     for (int firing = nFirings - 1; firing >= 0; --firing) {
         const auto &frame = frames.at(firing);
@@ -419,7 +419,7 @@ ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, 
                 currentFrameNr = currentFrameNr.value() + 1;
             }
         }
-        opToNextFrame.at(firing) = currentFrameNr;
+        opToNextFrame.push_back(currentFrameNr);
     }
     // Reverse the numbering.
     // e.g.

@@ -65,17 +65,32 @@ std::vector<float> getDefaultTxDelays(ChannelIdx nchannels) {
     return getNTimes(0.0f, nchannels);
 }
 
+Us4OEMBuffer createUs4OEMBuffer(FrameChannelMapping::FrameNumber nFrames, ChannelIdx nChannels, uint32_t nSamples) {
+    std::vector<Us4OEMBufferElementPart> parts;
+    size_t partAddress = 0;
+    auto dataType = NdArray::DataType::INT16;
+    NdArray::Shape shape{nFrames*nSamples, nChannels};
+    const size_t partSize = nSamples*nChannels*NdArray::getDataTypeSize(dataType);
+    for(uint16 frame = 0; frame < nFrames; ++frame) {
+        parts.push_back(Us4OEMBufferElementPart{partAddress, partSize, frame, nSamples});
+        partAddress += partSize;
+    }
+    size_t totalSize = partAddress;
+    // Single element buffer
+    Us4OEMBuffer buffer({Us4OEMBufferElement(0, totalSize, 0, shape, dataType)}, parts);
+    return buffer;
+}
+
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 createEmptySetTxRxResult(FrameChannelMapping::Us4OEMNumber us4oem, FrameChannelMapping::FrameNumber nFrames,
-                         ChannelIdx nChannels) {
+                         ChannelIdx nChannels, uint32_t nSamples = 4096) {
     FrameChannelMappingBuilder builder(nFrames, nChannels);
     for(int i = 0; i < nFrames; ++i) {
         for(int j = 0; j < nChannels; ++j) {
             builder.setChannelMapping(i, j, us4oem, i, j);
         }
     }
-    Us4OEMBuffer buffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)}, {});
-    return std::make_tuple(buffer, builder.build());
+    return std::make_tuple(createUs4OEMBuffer(nFrames, nChannels, nSamples), builder.build());
 }
 
 class MockUs4OEM : public Us4OEMImplBase {
@@ -721,8 +736,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
         builder1.setChannelMapping(0, i, 1, 0, i);
     }
     auto fcm1 = builder1.build();
-    Us4OEMBuffer
-            us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)}, {});
+    auto us4oemBuffer = createUs4OEMBuffer(1, 32, 4096);
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
@@ -800,8 +814,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMSingleDistribute
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
-                              {});
+    auto us4oemBuffer = createUs4OEMBuffer(1, 32, 4096);
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
@@ -894,8 +907,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, ProducesCorrectFCMForMultiOpRxAper
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
-                              {});
+    auto us4oemBuffer = createUs4OEMBuffer(2, 32, 4096);
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
@@ -983,8 +995,8 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectly) {
     // No active channels
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
-                              {});
+    auto us4oemBuffer = createUs4OEMBuffer(1, 32, 4096);
+
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
@@ -1043,8 +1055,8 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRxAper
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
-                              {});
+    auto us4oemBuffer = createUs4OEMBuffer(1, 32, 4096);
+
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
 
@@ -1104,8 +1116,7 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, AppliesPaddingToFCMCorrectlyRightS
     }
     auto fcm1 = builder1.build();
 
-    Us4OEMBuffer us4oemBuffer({Us4OEMBufferElement(0, 10, 0, arrus::Tuple<size_t>({1, 1}), NdArray::DataType::INT16)},
-                              {});
+    auto us4oemBuffer = createUs4OEMBuffer(1, 32, 4096);
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res0(us4oemBuffer, std::move(fcm0));
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle> res1(us4oemBuffer, std::move(fcm1));
