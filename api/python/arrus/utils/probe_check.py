@@ -8,7 +8,7 @@ from typing import Set, List, Iterable, Tuple, Dict
 
 import numpy as np
 from scipy.optimize import curve_fit
-from scipy.signal import butter, sosfilt, hilbert
+from scipy.signal import butter, sosfiltfilt, hilbert
 
 import arrus.session
 import arrus.logging
@@ -61,7 +61,7 @@ def _hpfilter(
     btype = "highpass"
     output = "sos"
     iir = butter(n, wn, btype=btype, output=output, fs=fs)
-    return sosfilt(iir, rf, axis=axis)
+    return sosfiltfilt(iir, rf, axis=axis)
 
 
 def _normalize(x: np.ndarray) -> np.ndarray:
@@ -279,6 +279,9 @@ class ProbeElementFeatureExtractor(ABC):
     """
     feature: str
 
+    def __init__(self, metadata):
+        self.metadata = metadata
+
     @abstractmethod
     def extract(self, rf: np.ndarray, *args) -> np.ndarray:
         raise ValueError("Abstract class")
@@ -289,15 +292,19 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     Feature extractor class for extracting maximal amplitudes from array of
     rf signals.
     Returns vector of lenght equal to number of transmissions (ntx), where
-    each element is a median over the frames of maximum amplitudes
+    each element is a median over the frames of maximum amplitudes (absolute values)
     occurred in each of the tramissions.
     """
     feature = "amplitude"
 
     def extract(self, rf: np.ndarray) -> np.ndarray:
-        # TODO(zklog) perhaps it might be a good idea to also remove the DC component here?
         rf = rf.copy()
-        # rf = _hpfilter(rf, axis=-2)
+        # Highpass filter data 
+        # with cutoff frequency equal 50% of tx_frequency.
+        tx_frequency = self.metadata.context.sequence.pulse.center_frequency
+        cutoff = tx_frequency/2
+        rf = _hpfilter(rf, wn=cutoff, axis=-2)
+
         rf = np.abs(rf[:, :, :, :])
         # Reduce each RF frame into a vector of n elements
         # (where n is the number of probe elements).
@@ -746,7 +753,7 @@ class ProbeHealthVerifier:
         # validator.
         results = {}
         for feature in features:
-            extractor = EXTRACTORS[feature.name]()
+            extractor = EXTRACTORS[feature.name](metadata)
             if feature.name == "footprint_pcc":
                 try:
                     extractor_result = extractor.extract(rfs, footprint.rf)
@@ -822,7 +829,7 @@ class ProbeHealthVerifier:
             rf_reorder = Pipeline(
                 steps=(
                     RemapToLogicalOrder(),
-                ),
+                 ),
                 placement="/GPU:0"
             )
             us4r = sess.get_device("/Us4R:0")

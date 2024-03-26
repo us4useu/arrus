@@ -22,7 +22,10 @@ public:
             throw IllegalArgumentException("Only 'us4us' digital backplane is supported.");
         }
         if(name == "dbarlite")  {
-            return getDBARLite(us4oems);
+            return getDBARLite(us4oems, 32);
+        }
+        if(name == "dbarlite_8bit")  {
+            return getDBARLite(us4oems, 8);
         }
         else if(name == "us4rdbar") {
             std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0])));
@@ -39,7 +42,7 @@ public:
         const std::string &manufacturer = settings.getModelId().getManufacturer();
         const std::string &name = settings.getModelId().getName();
         if(name == "hv256")  {
-            return getDBARLite(us4oems);
+            return getDBARLite(us4oems, 32);
         }
         else if(name == "us4rpsc") {
             std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0])));
@@ -54,13 +57,16 @@ public:
         }
     }
 
-    std::optional<DigitalBackplane::Handle> getDBARLite(const std::vector<IUs4OEM *> &us4oems) const {
+    std::optional<DigitalBackplane::Handle> getDBARLite(const std::vector<IUs4OEM *> &us4oems, uint8_t addrMode) const {
         auto ver = us4oems[0]->GetOemVersion();
         if(ver == 1) {
-            std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0])));
+            std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0]), addrMode));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else if(ver == 2) {
+            if(addrMode != 32) {
+                throw IllegalArgumentException("The DBARLite rev2 supports 32-bit addressing mode only.");
+            }
             std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(us4oems[0])));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
