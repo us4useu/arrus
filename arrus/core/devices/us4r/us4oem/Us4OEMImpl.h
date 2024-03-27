@@ -124,7 +124,7 @@ public:
 
     Ius4OEMRawHandle getIUs4oem() override;
 
-    void enableSequencer() override;
+    void enableSequencer(bool resetSequencerPointer) override;
 
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
@@ -161,6 +161,8 @@ public:
     const char *getRevision() override;
 
     void setSubsequence(uint16 start, uint16 end) override;
+
+    void clearCallbacksPCIDMA() override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;

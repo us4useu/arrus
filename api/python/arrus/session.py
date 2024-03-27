@@ -289,10 +289,10 @@ class Session(AbstractSession):
         # Create new metadata
         metadata = copy.deepcopy(self.const_metadata)
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
-        data_description = us_device.get_data_description_updated_for_subsequence()
         input_shape = self.buffer.elements[0].data.shape
         sequence = self.const_metadata.context.sequence.get_subsequence(start, end)
-        raw_sequence = self.const_metadata.context.sequence.get_subsequence(start, end)
+        raw_sequence = self.const_metadata.context.raw_sequence.get_subsequence(start, end)
+        data_description = us_device.get_data_description_updated_for_subsequence(upload_result, sequence)
         fac = dataclasses.replace(
             self.const_metadata.context,
             sequence=sequence,
@@ -300,7 +300,7 @@ class Session(AbstractSession):
         )
         metadata = metadata.copy(
             input_shape=input_shape,
-            data_description=data_description,
+            data_desc=data_description,
             context=fac,
         )
         return self._set_processing(self.buffer, metadata, processing)

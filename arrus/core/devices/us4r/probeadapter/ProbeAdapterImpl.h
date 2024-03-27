@@ -85,6 +85,10 @@ private:
     /** OEM number -> physical op -> next frame number (from the complete frame sequence) */
     std::vector<OpToNextFrameMapping> physicalOpToNextFrame;
     FrameChannelMappingImpl::Handle fullSequenceFCM;
+    /** Whether the sequencer pointer should be reset in the next call of the start method. NOTE: this property
+        will usually be set to false, except the case where the setting Seqeuncer pointer to 0 is not acceptable
+        e.g. after calling setSubsequence method with start > 0. */
+    bool resetSequencerPointer{true};
 };
 }
 

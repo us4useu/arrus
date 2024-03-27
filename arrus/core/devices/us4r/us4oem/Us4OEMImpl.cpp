@@ -640,13 +640,13 @@ void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer() {
+void Us4OEMImpl::enableSequencer(bool resetSequencerPointer) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, resetSequencerPointer);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
@@ -891,6 +891,10 @@ const char *Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
 void Us4OEMImpl::setSubsequence(uint16 start, uint16 end) {
     this->ius4oem->SetSubsequence(start, end);
+}
+
+void Us4OEMImpl::clearCallbacksPCIDMA() {
+    this->ius4oem->ClearCallbacksPCIDMA();
 }
 
 }// namespace arrus::devices

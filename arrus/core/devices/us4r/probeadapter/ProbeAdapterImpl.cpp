@@ -302,6 +302,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
 
     // Create the copy of FCM.
     fullSequenceFCM = outFcBuilder.build();
+    this->resetSequencerPointer = true;
     // Return the copy of FCM.
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
 }
@@ -316,7 +317,7 @@ void ProbeAdapterImpl::start() {
         // Reset tx subsystem pointers.
         us4oem->getIUs4oem()->EnableTransmit();
         // Reset sequencer pointers.
-        us4oem->enableSequencer();
+        us4oem->enableSequencer(resetSequencerPointer);
     }
     this->us4oems[0]->startTrigger();
 }
@@ -380,6 +381,10 @@ void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequen
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
+    // Cleanup.
+    for(auto &us4oem: us4oems) {
+        us4oem->clearCallbacksPCIDMA();
+    }
     // Determine start/stop OEMs op.
     uint16_t oemStart = logicalToPhysicalOp[start].first;
     uint16_t oemEnd = logicalToPhysicalOp[end].second;
@@ -408,6 +413,8 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     for (auto &oem : us4oems) {
         oem->setSubsequence(oemStart, oemEnd);
     }
+    // Do not reset sequencer pointer -- the next ptr was already handled by the setSubsequence method.
+    this->resetSequencerPointer = false;
     return {us4RBufferBuilder.build(), outFCMBuilder.build()};
 }
 
