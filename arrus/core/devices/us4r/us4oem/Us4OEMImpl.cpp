@@ -889,8 +889,8 @@ const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_st
 
 const char *Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
-void Us4OEMImpl::setSubsequence(uint16 start, uint16 end) {
-    this->ius4oem->SetSubsequence(start, end);
+void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode) {
+    this->ius4oem->SetSubsequence(start, end, syncMode);
 }
 
 void Us4OEMImpl::clearCallbacksPCIDMA() {

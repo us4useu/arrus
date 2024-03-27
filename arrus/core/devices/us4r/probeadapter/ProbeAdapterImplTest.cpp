@@ -1057,14 +1057,14 @@ TEST_F(ProbeAdapterChannelMappingEsaote3Test, SetsSubapertureCorrectly) {
     {
         testing::InSequence inSeq;
         // [1, 2]
-        EXPECT_CALL(*(us4oems[0].get()), setSubsequence(2, 5)).Times(1);
-        EXPECT_CALL(*(us4oems[1].get()), setSubsequence(2, 5)).Times(1);
+        EXPECT_CALL(*(us4oems[0].get()), setSubsequence(2, 5, false)).Times(1);
+        EXPECT_CALL(*(us4oems[1].get()), setSubsequence(2, 5, false)).Times(1);
         // [0, 1]
-        EXPECT_CALL(*(us4oems[0].get()), setSubsequence(0, 3)).Times(1);
-        EXPECT_CALL(*(us4oems[1].get()), setSubsequence(0, 3)).Times(1);
+        EXPECT_CALL(*(us4oems[0].get()), setSubsequence(0, 3, false)).Times(1);
+        EXPECT_CALL(*(us4oems[1].get()), setSubsequence(0, 3, false)).Times(1);
         // [0, 2]
-        EXPECT_CALL(*(us4oems[0].get()), setSubsequence(0, 5)).Times(1);
-        EXPECT_CALL(*(us4oems[1].get()), setSubsequence(0, 5)).Times(1);
+        EXPECT_CALL(*(us4oems[0].get()), setSubsequence(0, 5, false)).Times(1);
+        EXPECT_CALL(*(us4oems[1].get()), setSubsequence(0, 5, false)).Times(1);
     }
     auto [buffer0, fcm0] = probeAdapter->setSubsequence(1, 2);
     auto [buffer1, fcm1] = probeAdapter->setSubsequence(0, 1);

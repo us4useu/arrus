@@ -89,6 +89,7 @@ private:
         will usually be set to false, except the case where the setting Seqeuncer pointer to 0 is not acceptable
         e.g. after calling setSubsequence method with start > 0. */
     bool resetSequencerPointer{true};
+    bool isCurrentlyTriggerSync{false};
 };
 }
 

@@ -222,7 +222,7 @@ public:
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
-    MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end), (override));
+    MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end, bool syncMode), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));

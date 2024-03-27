@@ -303,6 +303,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     // Create the copy of FCM.
     fullSequenceFCM = outFcBuilder.build();
     this->resetSequencerPointer = true;
+    this->isCurrentlyTriggerSync = triggerSync;
     // Return the copy of FCM.
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
 }
@@ -409,8 +410,9 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     // recalculate frame offsets
     outFCMBuilder.recalculateOffsets();
     // Update OEM sequencer configuration.
+    bool syncMode = this->isCurrentlyTriggerSync;
     for (auto &oem : us4oems) {
-        oem->setSubsequence(oemStart, oemEnd);
+        oem->setSubsequence(oemStart, oemEnd, syncMode);
     }
     // Do not reset sequencer pointer -- the next ptr was already handled by the setSubsequence method.
     this->resetSequencerPointer = false;

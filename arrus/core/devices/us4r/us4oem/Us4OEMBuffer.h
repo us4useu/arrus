@@ -138,6 +138,7 @@ public:
         auto newShape = getShape(oldShape, newNSamples);
         for(const auto &oldElement: elements) {
             Us4OEMBufferElement newElement(oldElement);
+            newElement.address = oldElement.address + newParts.at(0).getAddress();
             newElement.viewSize = newSize;
             newElement.viewShape = newShape;
             newElements.push_back(newElement);

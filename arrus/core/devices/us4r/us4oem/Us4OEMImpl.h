@@ -160,7 +160,7 @@ public:
 
     const char *getRevision() override;
 
-    void setSubsequence(uint16 start, uint16 end) override;
+    void setSubsequence(uint16 start, uint16 end, bool syncMode) override;
 
     void clearCallbacksPCIDMA() override;
 
