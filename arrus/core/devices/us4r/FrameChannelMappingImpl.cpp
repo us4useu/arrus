@@ -126,16 +126,22 @@ void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
 /**
  * Subtracts the given 'offset' number from each channelMapping entry (i, j) that has us4oemMapping(i, j) == us4oem.
  * The negative values are clipped to 0 (i.e. the unavailable frames are set to 0).
+ * Also, determines the number of physical frames this OEM acquires (=max frame number + ).
  */
 void FrameChannelMappingBuilder::subtractPhysicalFrameNumber(Ordinal oem, FrameNumber offset) {
+    long maxFrameNumber = -1;
     for(long frame = 0; frame < this->frameMapping.rows(); ++frame) {
         for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
             if(this->us4oemMapping(frame, channel) == oem) {
-                this->frameMapping(frame, channel) = std::max(0, this->frameMapping(frame, channel)-offset);
+                auto newFrameNumber = std::max<long>(0, this->frameMapping(frame, channel)-offset);
+                this->frameMapping(frame, channel) = newFrameNumber;
+                if(newFrameNumber > maxFrameNumber) {
+                    maxFrameNumber = newFrameNumber;
+                }
             }
         }
     }
-    this->numberOfFrames[oem] = std::max<uint32>(0, this->numberOfFrames[oem]-offset);
+    this->numberOfFrames[oem] = maxFrameNumber + 1;
 }
 
 void FrameChannelMappingBuilder::recalculateOffsets() {
