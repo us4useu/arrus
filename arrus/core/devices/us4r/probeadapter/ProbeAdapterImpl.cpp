@@ -408,7 +408,6 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     }
     // recalculate frame offsets
     outFCMBuilder.recalculateOffsets();
-
     // Update OEM sequencer configuration.
     for (auto &oem : us4oems) {
         oem->setSubsequence(oemStart, oemEnd);
@@ -420,6 +419,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
 
 ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames) {
     std::optional<uint16_t> currentFrameNr = std::nullopt;
+    opToNextFrame = std::vector<std::optional<uint16_t>>(nFirings, std::nullopt);
     for (int firing = nFirings - 1; firing >= 0; --firing) {
         const auto &frame = frames.at(firing);
         if (frame.getSize() > 0) {
@@ -429,7 +429,7 @@ ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, 
                 currentFrameNr = currentFrameNr.value() + 1;
             }
         }
-        opToNextFrame.push_back(currentFrameNr);
+        opToNextFrame.at(firing) = currentFrameNr;
     }
     // Reverse the numbering.
     // e.g.
@@ -443,7 +443,7 @@ ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, 
                 nextFrame.value() = maxFrameNr - nextFrame.value();
             }
         }
-    }// otherwise opToNextFrame is all of nullopts, nothing to update
+    } // otherwise opToNextFrame is all of nullopts, nothing to update
 }
 
 }// namespace arrus::devices
