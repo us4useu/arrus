@@ -111,7 +111,7 @@ namespace std {
     }
 %}
 
-%typemap(out) std::optional<arrus::float> %{
+%typemap(out) std::optional<float> %{
     if($1) {
         $result = PyFloat_FromDouble((double)(*$1));
     }
