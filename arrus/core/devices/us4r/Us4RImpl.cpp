@@ -279,7 +279,8 @@ Us4RImpl::upload(const Scheme &scheme) {
     return {this->buffer, metadataBuilder.buildPtr()};
 }
 
-void Us4RImpl::prepareHostBuffer(unsigned nElements, Scheme::WorkMode workMode, std::unique_ptr<Us4RBuffer> &rxBuffer) {
+void Us4RImpl::prepareHostBuffer(unsigned nElements, Scheme::WorkMode workMode, std::unique_ptr<Us4RBuffer> &rxBuffer,
+                                 bool cleanupSequencer) {
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -298,7 +299,7 @@ void Us4RImpl::prepareHostBuffer(unsigned nElements, Scheme::WorkMode workMode, 
         this->buffer->shutdown();
         // We must be sure here, that there is no thread working on the us4rBuffer here.
         if (this->us4rBuffer) {
-            unregisterOutputBuffer();
+            unregisterOutputBuffer(cleanupSequencer);
             this->us4rBuffer.reset();
         }
         this->buffer.reset();
@@ -366,7 +367,7 @@ Us4RImpl::~Us4RImpl() {
             this->buffer->shutdown();
             // We must be sure here, that there is no thread working on the us4rBuffer here.
             if (this->us4rBuffer) {
-                unregisterOutputBuffer();
+                unregisterOutputBuffer(false);
                 this->us4rBuffer.reset();
             }
         }
@@ -664,13 +665,13 @@ size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuff
     return elementSize;
 }
 
-void Us4RImpl::unregisterOutputBuffer() {
+void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
     if(transferRegistrar.empty()) {
         return;
     }
     for (Ordinal i = 0; i < us4oems.size(); ++i) {
         if(transferRegistrar[i]) {
-            transferRegistrar[i]->unregisterTransfers();
+            transferRegistrar[i]->unregisterTransfers(cleanupSequencer);
         }
     }
 }
@@ -845,7 +846,7 @@ Us4RImpl::setSubsequence(uint16_t start, uint16_t end) {
     }
     const auto &s = scheme.value();
     auto [rxBuffer, fcm] = this->getProbeImpl()->setSubsequence(start, end);
-    prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer);
+    prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer, true);
     arrus::session::MetadataBuilder metadataBuilder;
     metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
     return {this->buffer, metadataBuilder.buildPtr()};

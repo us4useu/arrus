@@ -80,8 +80,23 @@ public:
         scheduleTransfers();
     }
 
-    void unregisterTransfers() {
+    void unregisterTransfers(bool cleanupSequencer = false) {
         pageUnlockDstMemory();
+        if(cleanupSequencer) {
+            cleanupSequencerTransfers();
+        }
+    }
+
+    void cleanupSequencerTransfers() {
+        uint16 elementFirstFiring = 0;
+        for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
+            for(auto &transfer: elementTransfers) {
+                auto firing = elementFirstFiring + transfer.firing;
+                ius4oem->ClearTransferRXBufferToHost(firing);
+            }
+            // element.getFiring() -- the last firing of the given element
+            elementFirstFiring = srcBuffer.getElement(srcIdx).getFiring() + 1;
+        }
     }
 
     static std::vector<Transfer> groupPartsIntoTransfers(const std::vector<Us4OEMBufferElementPart> &parts) {
