@@ -180,8 +180,9 @@ public:
     MOCK_METHOD(void, SetStandardIODriveMode, (), (override));
     MOCK_METHOD(void, SetWaveformIODriveMode, (), (override));
     MOCK_METHOD(void, SetIOLevels, (uint8_t), (override));
-    MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint8_t), (override));
-    MOCK_METHOD(void, SetIOBSRegister, (uint8_t, uint8_t, uint8_t, bool, uint16_t), (override));
+    MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint16_t), (override));
+    MOCK_METHOD(void, SetIOBSRegister, (uint16_t, uint8_t, bool, uint16_t), (override));
+    MOCK_METHOD(uint32_t, GetIOBSRegister, (uint16_t), (override));
     MOCK_METHOD(void, ListPeriphs, (), (override));
     MOCK_METHOD(void, DumpPeriph, (std::string, uint32_t), (override));
     MOCK_METHOD(size_t, GetBaseAddr, (), (override));
@@ -223,6 +224,8 @@ public:
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
+    MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
+    MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
