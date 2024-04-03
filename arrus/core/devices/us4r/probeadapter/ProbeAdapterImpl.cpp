@@ -400,14 +400,19 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     // Update FCM.
     FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*fullSequenceFCM);
     outFCMBuilder.slice(start, end);// slice to logical frames to [start, end]
-    // Subtract from the physical frame numbers, the number of frames (e.g. move frame 3 to 0).
-    for (size_t i = 0; i < fullSequenceOEMBuffers.size(); ++i) {
-        auto nextFrameNumber = physicalOpToNextFrame.at(i).getNextFrame(oemStart);
+    // OEM nr -> number of frames
+    std::vector<uint32> nFrames;
+    for (size_t oem = 0; oem < fullSequenceOEMBuffers.size(); ++oem) {
+        auto nextFrameNumber = physicalOpToNextFrame.at(oem).getNextFrame(oemStart);
+        auto n = physicalOpToNextFrame.at(oem).getNumberOfFrames(oemStart, oemEnd);
+        nFrames.push_back(n);
         if (nextFrameNumber.has_value()) {
-            outFCMBuilder.subtractPhysicalFrameNumber(i, nextFrameNumber.value());
+            // Subtract from the physical frame numbers, the number of preceeding frames (e.g. move frame 3 to 0).
+            outFCMBuilder.subtractPhysicalFrameNumber(oem, nextFrameNumber.value());
         } // Otherwise there is no frame from the given OEM in FCM, so nothing to update.
     }
     // recalculate frame offsets
+    outFCMBuilder.setNumberOfFrames(nFrames);
     outFCMBuilder.recalculateOffsets();
     // Update OEM sequencer configuration.
     bool syncMode = this->isCurrentlyTriggerSync;
@@ -422,6 +427,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
 ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames) {
     std::optional<uint16_t> currentFrameNr = std::nullopt;
     opToNextFrame = std::vector<std::optional<uint16_t>>(nFirings, std::nullopt);
+    isRxOp = std::vector<bool>(nFirings, false);
     for (int firing = nFirings - 1; firing >= 0; --firing) {
         const auto &frame = frames.at(firing);
         if (frame.getSize() > 0) {
@@ -430,6 +436,7 @@ ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, 
             } else {
                 currentFrameNr = currentFrameNr.value() + 1;
             }
+            isRxOp.at(firing) = true;
         }
         opToNextFrame.at(firing) = currentFrameNr;
     }

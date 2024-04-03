@@ -56,14 +56,33 @@ public:
 private:
     struct OpToNextFrameMapping {
         OpToNextFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferElementPart> &frames);
+
         std::optional<uint16> getNextFrame(uint16 op) {
             if(op >= opToNextFrame.size()) {
                 throw IllegalArgumentException("Accessing mapping outside the avialable range.");
             }
             return opToNextFrame.at(op);
         }
-        // op (firing) number -> next frame number, when the full sequence is used.
+
+        /**
+         * Returns the number of frames acquired by ops with numbers between [start, end] (both inclusive).
+         */
+        long getNumberOfFrames(uint16 start, uint16 end) {
+            if(start > end || end >= isRxOp.size()) {
+                throw std::runtime_error("Accessing isRxOp outside the available range.");
+            }
+            long result = 0;
+            for(uint16 i = start; i <= end; ++i) {
+                if(isRxOp.at(i)) {
+                    ++result;
+                }
+            }
+            return result;
+        }
+        // op (firing) number -> next frame number, relative to the full sequence.
         std::vector<std::optional<uint16_t>> opToNextFrame;
+        // op (firing) number -> whether there is some data acquistion done by this op
+        std::vector<bool> isRxOp;
     };
 
 
