@@ -442,23 +442,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     }
 
     // Set frame repetition interval if possible.
-    float totalPri = 0.0f;
-    for (auto &op : seq) {
-        totalPri += op.getPri();
-    }
-    std::optional<float> lastPriExtend = std::nullopt;
-
-    // Sequence repetition interval.
-    if (sri.has_value()) {
-        if (totalPri < sri.value()) {
-            lastPriExtend = sri.value() - totalPri;
-        } else {
-            // TODO move this condition to sequence validator
-            throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
-                                                  "sequence total pri is equal {}",
-                                                  sri.value(), totalPri));
-        }
-    }
+    std::optional<float> lastPriExtend = getLastPriExtend(
+        std::begin(seq), std::end(seq), sri
+    );
 
     // Program triggers
     firing = 0;
@@ -473,12 +459,13 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 if (opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
                 }
-                auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
+                auto priMs = getTimeToNextTrigger(pri);
                 ius4oem->SetTrigger(priMs, checkpoint, firing, checkpoint && externalTrigger);
             }
         }
     }
     setAfeDemod(ddc);
+    this->currentSequence = seq;
     return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
 }
 
@@ -889,8 +876,22 @@ const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_st
 
 const char *Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
-void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode) {
-    this->ius4oem->SetSubsequence(start, end, syncMode);
+void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) {
+    // NOTE: end is inclusive (and the below method expects [start, end) range.
+    std::optional<float> lastPri = getLastPriExtend(
+        std::begin(currentSequence)+start,
+        std::begin(currentSequence)+end+1,
+        sri
+    );
+    uint32_t timeToNextTrigger = 0;
+    if(lastPri.has_value()) {
+        timeToNextTrigger = getTimeToNextTrigger(lastPri.value());
+    }
+    else {
+        // Just use the PRI of the end TX/RX.
+        timeToNextTrigger = getTimeToNextTrigger(this->currentSequence.at(end).getPri());
+    }
+    this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
 }
 
 void Us4OEMImpl::clearCallbacksPCIDMA() {

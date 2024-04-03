@@ -221,7 +221,7 @@ void FileImpl::setParameters(const Parameters &params) {
     }
 }
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<Metadata>>
-FileImpl::setSubsequence(uint16, uint16) {
+FileImpl::setSubsequence(uint16, uint16, const std::optional<float> &) {
     throw std::runtime_error("Not implemented.");
 }
 

@@ -48,7 +48,7 @@ public:
 
     virtual void setTestPattern(RxTestPattern pattern) = 0;
 
-    virtual void setSubsequence(uint16 start, uint16 end, bool syncMode) = 0;
+    virtual void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) = 0;
 
     virtual void clearCallbacksPCIDMA() = 0;
 

@@ -51,7 +51,7 @@ public:
     void syncTrigger() override;
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    setSubsequence(uint16_t start, uint16_t end) override;
+    setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) override;
 
 private:
     struct OpToNextFrameMapping {

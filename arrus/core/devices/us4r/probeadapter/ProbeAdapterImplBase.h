@@ -32,8 +32,9 @@ public:
     virtual void stop() = 0;
 
     virtual void syncTrigger() = 0;
+
     virtual std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    setSubsequence(uint16_t start, uint16_t end) = 0;
+    setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) = 0;
 };
 
 }// namespace arrus::devices

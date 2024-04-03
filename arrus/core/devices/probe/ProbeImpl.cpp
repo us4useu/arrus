@@ -219,8 +219,8 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-ProbeImpl::setSubsequence(uint16_t start, uint16_t end) {
-    return this->adapter->setSubsequence(start, end);
+ProbeImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) {
+    return this->adapter->setSubsequence(start, end, sri);
 }
 
 }// namespace arrus::devices

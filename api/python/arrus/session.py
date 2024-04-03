@@ -269,7 +269,7 @@ class Session(AbstractSession):
         """
         self._context = SessionContext(medium=value)
 
-    def set_subsequence(self, start, end, processing=None):
+    def set_subsequence(self, start, end, processing=None, sri=None):
         """
         Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
 
@@ -279,10 +279,12 @@ class Session(AbstractSession):
         - the scheme was uploaded,
         - the TX/RX sequence length is greater than the `end` value,
         - the scheme is stopped.
+        
+        You can specify the new SRI with the sri parameter, if None, the total PRI will be used.
 
         :return: the new data buffer and metadata
         """
-        upload_result = self._session_handle.setSubsequence(start, end)
+        upload_result = self._session_handle.setSubsequence(start, end, sri)
         # Get the new buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)

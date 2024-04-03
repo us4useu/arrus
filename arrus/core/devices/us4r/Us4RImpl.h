@@ -151,7 +151,7 @@ public:
     void setParameters(const Parameters &parameters) override;
 
     std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(uint16 start, uint16 end) override;
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();

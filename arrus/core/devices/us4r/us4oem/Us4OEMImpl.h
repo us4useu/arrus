@@ -160,7 +160,7 @@ public:
 
     const char *getRevision() override;
 
-    void setSubsequence(uint16 start, uint16 end, bool syncMode) override;
+    void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) override;
 
     void clearCallbacksPCIDMA() override;
 
@@ -206,6 +206,28 @@ private:
     void setHpfCornerFrequency(uint32_t frequency);
     void disableHpf();
 
+    uint32_t getTimeToNextTrigger(float pri) {
+        return static_cast<uint32_t>(std::round(pri * 1e6));
+    }
+
+    std::optional<float> getLastPriExtend(const std::vector<TxRxParameters>::const_iterator &start,
+                                          const std::vector<TxRxParameters>::const_iterator &end,
+                                          std::optional<float> sri) {
+        float totalPri = std::accumulate(start, end, 0.0f, [](const auto &a, const auto &b) {return a + b.getPri();});
+        std::optional<float> lastPriExtend = std::nullopt;
+        // Sequence repetition interval.
+        if (sri.has_value()) {
+            if (totalPri < sri.value()) {
+                lastPriExtend = sri.value() - totalPri;
+            } else {
+                throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
+                                                      "sequence total pri is equal {}",
+                                                      sri.value(), totalPri));
+            }
+        }
+        return lastPriExtend;
+    }
+
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
     std::bitset<N_ACTIVE_CHANNEL_GROUPS> activeChannelGroups;
@@ -224,6 +246,8 @@ private:
     arrus::Cached<std::string> revision;
     bool acceptRxNops{false};
     bool isDecimationFactorAdjustmentLogged{false};
+    /** Currently uploaded sequence; empty when no sequence haven't been uploaded. */
+    std::vector<TxRxParameters> currentSequence;
 };
 
 }

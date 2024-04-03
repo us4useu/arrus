@@ -381,7 +381,7 @@ void ProbeAdapterImpl::calculateRxDelays(std::vector<TxRxParamsSequence> &sequen
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
+ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) {
     // Cleanup.
     for(auto &us4oem: us4oems) {
         us4oem->clearCallbacksPCIDMA();
@@ -417,7 +417,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end) {
     // Update OEM sequencer configuration.
     bool syncMode = this->isCurrentlyTriggerSync;
     for (auto &oem : us4oems) {
-        oem->setSubsequence(oemStart, oemEnd, syncMode);
+        oem->setSubsequence(oemStart, oemEnd, syncMode, sri);
     }
     // Do not reset sequencer pointer -- the next ptr was already handled by the setSubsequence method.
     this->resetSequencerPointer = false;
