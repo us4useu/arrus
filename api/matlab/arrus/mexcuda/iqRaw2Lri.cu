@@ -56,7 +56,17 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
     
     for (int iTx=0; iTx<nTx; iTx++) {
         
-        float const rngRxTangInv = 1 / (maxRxTang[iTx] - minRxTang[iTx]); // inverted tangent range
+        iElem = (rxApOrigElem[iTx] + nRx <= nElem) ? rxApOrigElem[iTx] + nRx - 1 : nElem - 1;
+        rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+        rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
+        float minRxTangPix = fmax(minRxTang[iTx], rxTang);
+        
+        iElem = (rxApOrigElem[iTx] >= 0) ? rxApOrigElem[iTx] : 0;
+        rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+        rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
+        float maxRxTangPix = fmin(maxRxTang[iTx], rxTang);
+        
+        float const rngRxTangInv = 1 / (maxRxTangPix - minRxTangPix); // inverted tangent range
         float omega = 2 * M_PI * fn[iTx];
         
         if (!isinf(txFoc[iTx])) {
@@ -117,8 +127,8 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
 //                 rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
                 rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
                 rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
-                if (rxTang < minRxTang[iTx] || rxTang > maxRxTang[iTx]) continue;
-                rxApod = (rxTang-minRxTang[iTx])*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
+                if (rxTang < minRxTangPix || rxTang > maxRxTangPix) continue;
+                rxApod = (rxTang-minRxTangPix)*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
                 rxApod = tex1D(rxApodTex, rxApod);
                 
                 time = (txDist + rxDist) * sosInv + initDel[iTx];
