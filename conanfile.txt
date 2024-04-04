@@ -4,7 +4,7 @@ protobuf/3.11.4
 gtest/1.10.0
 fmt/7.0.1
 ms-gsl/2.1.0
-eigen/3.4.0
+eigen/3.3.7
 
 zlib/1.2.12
 

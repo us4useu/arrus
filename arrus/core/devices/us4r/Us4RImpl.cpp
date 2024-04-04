@@ -275,7 +275,7 @@ Us4RImpl::upload(const Scheme &scheme) {
     // Metadata
     arrus::session::MetadataBuilder metadataBuilder;
     metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
-    this->scheme = scheme;
+    this->currentScheme = scheme;
     return {this->buffer, metadataBuilder.buildPtr()};
 }
 
@@ -841,10 +841,10 @@ void Us4RImpl::setParameters(const Parameters &params) {
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
 Us4RImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) {
-    if(!scheme.has_value()) {
+    if(!this->currentScheme.has_value()) {
         throw IllegalStateException("Please upload scheme before setting sub-sequence.");
     }
-    const auto &s = scheme.value();
+    const auto &s = this->currentScheme.value();
     auto [rxBuffer, fcm] = this->getProbeImpl()->setSubsequence(start, end, sri);
     prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer, true);
     arrus::session::MetadataBuilder metadataBuilder;

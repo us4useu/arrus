@@ -408,7 +408,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end, const std::option
         nFrames.push_back(n);
         if (nextFrameNumber.has_value()) {
             // Subtract from the physical frame numbers, the number of preceeding frames (e.g. move frame 3 to 0).
-            outFCMBuilder.subtractPhysicalFrameNumber(oem, nextFrameNumber.value());
+            outFCMBuilder.subtractPhysicalFrameNumber((Ordinal)oem, nextFrameNumber.value());
         } // Otherwise there is no frame from the given OEM in FCM, so nothing to update.
     }
     // recalculate frame offsets
@@ -432,9 +432,9 @@ ProbeAdapterImpl::OpToNextFrameMapping::OpToNextFrameMapping(uint16_t nFirings, 
         const auto &frame = frames.at(firing);
         if (frame.getSize() > 0) {
             if (!currentFrameNr.has_value()) {
-                currentFrameNr = 0;
+                currentFrameNr = (uint16_t)0;
             } else {
-                currentFrameNr = currentFrameNr.value() + 1;
+                currentFrameNr = static_cast<uint16_t>(currentFrameNr.value() + 1);
             }
             isRxOp.at(firing) = true;
         }

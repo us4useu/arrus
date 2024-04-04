@@ -106,7 +106,7 @@ void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
         throw std::runtime_error("start > end");
     }
     int nFrames = end+1-start;
-    int nChannels = this->us4oemMapping.cols();
+    int nChannels = (int)(this->us4oemMapping.cols());
     auto newUs4oemMapping = FrameChannelMappingImpl::Us4OEMMapping(nFrames, nChannels);
     auto newFrameMapping = FrameChannelMappingImpl::FrameMapping(nFrames, nChannels);
     auto newChannelMapping = FrameChannelMappingImpl::ChannelMapping(nFrames, nChannels);
@@ -134,20 +134,20 @@ void FrameChannelMappingBuilder::subtractPhysicalFrameNumber(Ordinal oem, FrameN
         for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
             if(this->us4oemMapping(frame, channel) == oem) {
                 auto newFrameNumber = std::max<long>(0, this->frameMapping(frame, channel)-offset);
-                this->frameMapping(frame, channel) = newFrameNumber;
+                this->frameMapping(frame, channel) = static_cast<FrameNumber>(newFrameNumber);
             }
         }
     }
 }
 
 void FrameChannelMappingBuilder::recalculateOffsets() {
-    std::vector<uint32> frameOffsets;
+    std::vector<uint32> offsets;
     uint32 currentOffset = 0;
     for(const auto nFrames: this->numberOfFrames) {
-        frameOffsets.push_back(currentOffset);
+        offsets.push_back(currentOffset);
         currentOffset += nFrames;
     }
-    this->frameOffsets = frameOffsets;
+    this->frameOffsets = offsets;
 }
 
 }

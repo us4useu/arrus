@@ -98,7 +98,9 @@ public:
         if(currentShape.size() != 2 && currentShape.size() != 3) {
             throw std::runtime_error("Illegal us4OEM output buffer element shape order: " + std::to_string(currentShape.size()));
         }
-        return getShape(currentShape.size() == 3, totalNSamples, currentShape.get(currentShape.size()-1));
+        auto nChannelsAxis = currentShape.size() == 0 ? uint32_t(0) : static_cast<uint32_t>(currentShape.size()-1);
+        bool isDDCOn = currentShape.size() == 3;
+        return getShape(isDDCOn, totalNSamples, static_cast<uint32_t>(currentShape.get(nChannelsAxis)));
     }
 
     explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements, std::vector<Us4OEMBufferElementPart> elementParts)
@@ -131,7 +133,7 @@ public:
         size_t oldSize = getUniqueElementSize(elements);
         IGNORE_UNUSED(oldSize);
         auto oldShape = getUniqueShape(elements);
-        size_t newSize = std::accumulate(std::begin(newParts), std::end(newParts), 0,
+        size_t newSize = std::accumulate(std::begin(newParts), std::end(newParts), (size_t)0,
             [](const auto &a, const auto &b){return a + b.getSize();});
         unsigned newNSamples = std::accumulate(std::begin(newParts), std::end(newParts), 0,
             [](const auto &a, const auto &b){return a + b.getNSamples();});
@@ -147,9 +149,9 @@ public:
     }
 
 private:
-    size_t getUniqueElementSize(const std::vector<Us4OEMBufferElement> &elements) const {
+    size_t getUniqueElementSize(const std::vector<Us4OEMBufferElement> &els) const {
         std::unordered_set<size_t> sizes;
-        for (auto &element: elements) {
+        for (auto &element: els) {
             sizes.insert(element.getViewSize());
         }
         if (sizes.size() > 1) {
@@ -160,13 +162,13 @@ private:
         return elementSize;
     }
 
-    framework::NdArray::Shape getUniqueShape(const std::vector<Us4OEMBufferElement> &elements) const {
-        if(elements.empty()) {
+    framework::NdArray::Shape getUniqueShape(const std::vector<Us4OEMBufferElement> &elems) const {
+        if(elems.empty()) {
             throw std::runtime_error("List of elements cannot be empty");
         }
-        auto &shape = elements.at(0).getViewShape();
-        for(size_t i = 0; i < elements.size(); ++i) {
-            auto &otherShape = elements.at(i).getViewShape();
+        auto &shape = elems.at(0).getViewShape();
+        for(size_t i = 0; i < elems.size(); ++i) {
+            auto &otherShape = elems.at(i).getViewShape();
             if(shape != otherShape) {
                 throw IllegalArgumentException("The shape of element's NdArray must be unique for each us4OEM.");
             }

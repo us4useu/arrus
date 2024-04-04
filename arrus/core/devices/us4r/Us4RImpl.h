@@ -206,7 +206,7 @@ private:
     bool stopOnOverflow{true};
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
     /** Currently uploaded scheme. */
-    std::optional<ops::us4r::Scheme> scheme;
+    std::optional<ops::us4r::Scheme> currentScheme;
 };
 
 }// namespace arrus::devices
