@@ -845,6 +845,12 @@ Us4RImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float
         throw IllegalStateException("Please upload scheme before setting sub-sequence.");
     }
     const auto &s = this->currentScheme.value();
+    const auto &seq = s.getTxRxSequence();
+    const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
+    if(end >= currentSequenceSize) {
+        throw IllegalArgumentException(format("The new sub-sequence [{}, {}] is outside of the scope of the currently "
+                                       "uploaded sequence: [0, {})", start, end, currentSequenceSize));
+    }
     auto [rxBuffer, fcm] = this->getProbeImpl()->setSubsequence(start, end, sri);
     prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer, true);
     arrus::session::MetadataBuilder metadataBuilder;
