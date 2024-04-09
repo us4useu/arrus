@@ -164,7 +164,8 @@ classdef Us4R < handle
                 'tgcSlope', sequenceOperation.tgcSlope, ...
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
-                'sri', sequenceOperation.sri);
+                'sri', sequenceOperation.sri, ...
+                'bufferSize', sequenceOperation.bufferSize);
             
             % Program hardware
             if nargin<4 || enableHardwareProgramming
@@ -582,7 +583,8 @@ classdef Us4R < handle
                                 'tgcSlope',         'tgcSlope'; ...
                                 'txInvert',         'txInvert'; ...
                                 'workMode',         'workMode'; ...
-                                'sri',              'sri'};
+                                'sri',              'sri'; ...
+                                'bufferSize',       'bufferSize'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -619,6 +621,16 @@ classdef Us4R < handle
             
             %% Number of Tx
             obj.seq.nTx	= length(obj.seq.txAng);
+
+            %% Validate buffer size
+            if obj.seq.bufferSize < 2
+                error("setSeqParams: bufferSize must be >= 2");
+            end
+            
+            if obj.seq.bufferSize * obj.seq.nTx > obj.sys.maxSeqLength
+                error("setSeqParams: product of bufferSize and sequence length cannot exceed " ...
+                    + num2str(obj.sys.maxSeqLength));
+            end
             
             %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
@@ -1010,7 +1022,11 @@ classdef Us4R < handle
             end
             
             % Upload scheme
-            scheme = Scheme('txRxSequence', txrxSeq, 'workMode', obj.seq.workMode, 'digitalDownConversion', ddc);
+            scheme = Scheme('txRxSequence', txrxSeq, ...
+                            'workMode', obj.seq.workMode, ...
+                            'digitalDownConversion', ddc, ...
+                            'rxBufferSize', obj.seq.bufferSize, ...
+                            'outputBuffer', arrus.framework.DataBufferDef("type", "FIFO", "nElements", obj.seq.bufferSize));
             
             [obj.buffer.data, ...
              obj.buffer.framesOffset, ...

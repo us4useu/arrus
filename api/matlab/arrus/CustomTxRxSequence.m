@@ -34,6 +34,8 @@ classdef CustomTxRxSequence
     % :param workMode: system mode of operation, can be "MANUAL","HOST","SYNC", \
     %   or "ASYNC".
     % :param sri: sequence repeting interval [s]
+    % :param bufferSize: number of buffer elements (each element contains 
+    %   data for a single sequence execution)
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -63,6 +65,7 @@ classdef CustomTxRxSequence
         txInvert (1,:) {mustBeLogical} = false
         workMode {mustBeScalarText} = "MANUAL"
         sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
+        bufferSize (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 2
     end
     
     methods
