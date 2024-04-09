@@ -1009,7 +1009,11 @@ classdef Us4R < handle
             
             import arrus.ops.us4r.*;
             
-            obj.us4r.setVoltage(obj.seq.txVoltage);
+            if obj.seq.txVoltage == 0
+                obj.us4r.disableHV();
+            else
+                obj.us4r.setVoltage(obj.seq.txVoltage);
+            end
             
             % Tx/Rx sequence
             nTx = obj.seq.nTx;
