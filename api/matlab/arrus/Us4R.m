@@ -229,6 +229,8 @@ classdef Us4R < handle
             
             [rf, ~] = obj.execSequence;
             obj.session.stopScheme();
+
+            rf = obj.rawDataReorganization(rf);
             
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
@@ -247,6 +249,8 @@ classdef Us4R < handle
             [rf, metadata] = obj.execSequence;
             obj.session.stopScheme();
             
+            rf = obj.rawDataReorganization(rf);
+
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
             else
@@ -325,6 +329,10 @@ classdef Us4R < handle
                 [rf,meta] = obj.execSequence;
                 acqTime = toc;
                 
+                tic;
+                rf = obj.rawDataReorganization(rf);
+                reorgTime = toc;
+
                 tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
                 sriBuffer(I) = tStampCurr - tStampPrev;
                 tStampPrev = tStampCurr;
@@ -349,6 +357,7 @@ classdef Us4R < handle
                 if obj.logTime
                     disp(['Frame no. ' num2str(i)]);
                     disp(['Acq.  time = ' num2str(acqTime, '%5.3f') ' s']);
+                    disp(['Reorg.  time = ' num2str(reorgTime, '%5.3f') ' s']);
                     if exist('recTime', 'var')
                         disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
                     end
@@ -1041,7 +1050,7 @@ classdef Us4R < handle
 
             obj.buffer.iFrame = 0;
             
-            % Data reorganization addresses
+            % Data reorganization addresses (old)
             nChan = obj.sys.nChArius;
             nRep = obj.seq.nRep;
             iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
@@ -1052,47 +1061,67 @@ classdef Us4R < handle
                   obj.buffer.framesNumber(1 + obj.buffer.oemId) / nRep .* iRep + ...  % offset due to iRep
                   obj.buffer.frameId ) * nChan  + ...                                 % offset due to frameId
                 uint32(obj.buffer.channelId);                                         % offset due to channelId
-
+            
             obj.buffer.reorgAddrDest = obj.buffer.reorgAddrDest(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
             obj.buffer.reorgAddrOrig = obj.buffer.reorgAddrOrig(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
+
+            % Data reorganization addresses (new)
+            obj.buffer.framesOffset = double(obj.buffer.framesOffset);
+            obj.buffer.framesNumber = double(obj.buffer.framesNumber);
+            obj.buffer.oemId        = double(obj.buffer.oemId);
+            obj.buffer.frameId      = double(obj.buffer.frameId);
+            obj.buffer.channelId    = double(obj.buffer.channelId);
+
+            nOem = numel(obj.buffer.framesNumber);
+            nChunk = sum(obj.buffer.framesNumber);
+            nChan = obj.sys.nChArius;
+            nRep = obj.seq.nRep;
+            nRx = obj.seq.rxApSize;
+            
+            obj.buffer.reorgMap = - ones(nChan, nChunk, 'int32');
+            
+            for iOem=1:nOem
+                nFrame = obj.buffer.framesNumber(iOem) / nRep;
+                for iFrame=1:nFrame
+                    isSelect = obj.buffer.oemId == iOem-1 ...
+                             & obj.buffer.frameId == iFrame-1 ...
+                             & obj.buffer.channelId >= 0;
+                    iTx = find(any(isSelect));
+                    iRx = find(isSelect(:,iTx) & obj.buffer.channelId(:,iTx) >= 0);
+                    iChan = obj.buffer.channelId(iRx,iTx) + 1;
+                    for iRep=1:nRep
+                        iChunk = obj.buffer.framesOffset(iOem) ...
+                               + obj.buffer.framesNumber(iOem) / nRep * (iRep-1) ...
+                               + iFrame;
+                        obj.buffer.reorgMap(iChan,iChunk) = (iRep-1)*nTx*nRx + (iTx-1)*nRx + iRx-1; % 0-based indexing
+                    end
+                end
+            end
+            
         end
-
+        
         function [rf, metadata] = execSequence(obj)
-
+            
             if ~obj.sys.isHardwareProgrammed
                 error("execSequence: hardware is not programmed, sequence cannot be executed");
             end
             
-            nChan	= obj.sys.nChArius;
-            nSamp	= obj.seq.nSamp;
-            nTx     = obj.seq.nTx;
-            nRep	= obj.seq.nRep;
-            nTrig0  = obj.buffer.framesNumber(1);
-
             %% Capture & transfer data to PC
             if obj.buffer.iFrame == 0 || strcmp(obj.seq.workMode,"MANUAL")
                 obj.session.run();
             end
-            rf0 = obj.buffer.data.front().eval();
-
+            rf = obj.buffer.data.front().eval();
+            
             obj.buffer.iFrame = obj.buffer.iFrame + 1;
             
             %% Get metadata
-            metadata = zeros(nChan, nTrig0, 'int16');
-            metadata(:, :) = rf0(:, 1:nSamp:nTrig0*nSamp);
+            nChan	= obj.sys.nChArius;
+            nSamp	= obj.seq.nSamp;
+            nTrig0  = obj.buffer.framesNumber(1);
 
-            %% Reorganize
-            if obj.seq.hwDdcEnable
-                rf0 = reshape(rf0, nChan, 2, nSamp, sum(obj.buffer.framesNumber));
-                rf0 = complex(rf0(:,1,:,:), rf0(:,2,:,:));
-            end
-            rf0 = reshape(rf0, nChan, nSamp, sum(obj.buffer.framesNumber));
-            rf0 = permute(rf0, [2 1 3]);
+            metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
+            metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
             
-            rf  = zeros(nSamp, obj.seq.rxApSize*nTx*nRep,'like',rf0);
-            rf(:,obj.buffer.reorgAddrDest) = rf0(:, obj.buffer.reorgAddrOrig);
-            rf  = reshape(rf, nSamp, obj.seq.rxApSize, nTx, nRep);
-
         end
         
         function img = execReconstr(obj,rfRaw)
@@ -1267,6 +1296,36 @@ classdef Us4R < handle
                                     gather(obj.seq.initDel(1)));
             end
             
+        end
+        
+        function [dataOut] = rawDataReorganization(obj, dataIn)
+            
+            if 0
+                %% OLD (disabled, to be abandoned in the future)
+                nChan	= obj.sys.nChArius;
+                nSamp	= obj.seq.nSamp;
+                nTx     = obj.seq.nTx;
+                nRep	= obj.seq.nRep;
+
+                if obj.seq.hwDdcEnable
+                    dataIn = reshape(dataIn, nChan, 2, nSamp, sum(obj.buffer.framesNumber));
+                    dataIn = complex(dataIn(:,1,:,:), dataIn(:,2,:,:));
+                end
+                dataIn = reshape(dataIn, nChan, nSamp, sum(obj.buffer.framesNumber));
+                dataIn = permute(dataIn, [2 1 3]);
+                
+                dataOut  = zeros(nSamp, obj.seq.rxApSize*nTx*nRep,'like',dataIn);
+                dataOut(:,obj.buffer.reorgAddrDest) = dataIn(:, obj.buffer.reorgAddrOrig);
+                dataOut  = reshape(dataOut, nSamp, obj.seq.rxApSize, nTx, nRep);
+            else
+                %% NEW
+                dataOut = rawReorg(dataIn(:,:), ...
+                                   obj.buffer.reorgMap, ...
+                                   uint32(obj.seq.rxApSize), ...
+                                   uint32(obj.seq.nTx), ...
+                                   uint32(obj.seq.nRep), ...
+                                   obj.seq.hwDdcEnable);
+            end
         end
         
     end
