@@ -103,6 +103,10 @@ classdef Us4R < handle
             obj.session.close();
         end
         
+        function stopScheme(obj)
+            obj.session.stopScheme();
+        end
+        
         function nProbeElem = getNProbeElem(obj)
             nProbeElem = obj.sys.nElem;
         end
