@@ -50,6 +50,7 @@ classdef Us4R < handle
             
             obj.sys.nChArius = 32;
             obj.sys.rxSampFreq = 65e6;
+            obj.sys.maxSeqLength = 2^14;
             obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
             obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
             obj.sys.tgcInterv = 153; % [samp]
