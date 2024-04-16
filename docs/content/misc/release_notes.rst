@@ -4,6 +4,14 @@ Release notes
 0.9.x
 -----
 
+0.9.3
+
+- core (C++):
+
+    - updated us4r-api to 0.10.3:
+
+        - Added support for DBARLite PCIe rev2 (firmware: 1.1.0).
+
 0.9.2
 
 - core (C++):
