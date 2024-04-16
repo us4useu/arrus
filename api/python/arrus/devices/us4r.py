@@ -321,6 +321,15 @@ class Us4R(Device, Ultrasound):
         )
 
     def _get_fcm(self, upload_result, sequence):
+        """
+        Returns frame channel mapping (FCM) extracted from the given upload result, assuming
+        the given sequence is running. The new FCM considers whether a sub-sequence is already
+        set.
+
+        :param upload_result: self.upload result
+        :param sequence: the current sequence to consider
+        :return: new frame channel mapping 
+        """
         fcm = arrus.core.getFrameChannelMapping(upload_result)
         fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
             arrus.utils.core.convert_fcm_to_np_arrays(fcm, self.n_us4oems)
