@@ -275,6 +275,11 @@ classdef Us4R < handle
             %   the output of the executed op.
             % :param bufferType: type of data stored in the cineloop buffer, \
             %   can be "none", "raw", "img", or "all" (optional, default="none").
+            % :param bufferMode: buffer mode of operation. Can be "conc" \
+            %   for concurrent or "subs" for subsequent operation with the \
+            %   callback function. For "conc" the buffer is used as long as \
+            %   isContinue is true. For "subs" the buffer is used as soon as \
+            %   isContinue is false until the buffer is full.
             % :param bufferSize: size of the cineloop buffer as a number \
             %   of sequence executions (optional, default=1).
             %
@@ -284,10 +289,12 @@ classdef Us4R < handle
             % Input parser
             paramsParser = inputParser;
             addParameter(paramsParser, 'bufferType', 'none', @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'runLoop', 'bufferType'));
+            addParameter(paramsParser, 'bufferMode', 'conc', @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'runLoop', 'bufferMode'));
             addParameter(paramsParser, 'bufferSize', 1,      @(x) validateattributes(x, {'numeric'}, {'scalar','integer','real','positive','finite'}, 'runLoop', 'bufferSize'));
             parse(paramsParser, varargin{:});
             
             bufferType = paramsParser.Results.bufferType;
+            bufferMode = paramsParser.Results.bufferMode;
             bufferSize = paramsParser.Results.bufferSize;
             
             if ~any(strcmp(bufferType,{'none','raw','img','all'}))
@@ -295,7 +302,15 @@ classdef Us4R < handle
                 bufferType = 'none';
             end
             
-            % Buffers initialization
+            if ~any(strcmp(bufferMode,{'conc','subs'}))
+                warning('runLoop: bufferMode must be one of the following: "conc" or "subs". Buffer disabled.');
+                bufferType = 'none';
+            end
+
+            if strcmp(bufferType,'none')
+                bufferMode = 'conc';
+            end
+            
             rawBufferEnable = any(strcmp(bufferType,{'raw','all'}));
             imgBufferEnable = any(strcmp(bufferType,{'img','all'}));
             if imgBufferEnable && ~obj.rec.enable
@@ -303,8 +318,18 @@ classdef Us4R < handle
                 imgBufferEnable = false;
             end
             
+            concBufferEnable = strcmp(bufferMode,'conc');
+            
+            % Buffers initialization
+            sriBuffer = nan(bufferSize,1);
+            
+            if ~concBufferEnable
+                sampSize = 1 + double(obj.seq.hwDdcEnable);
+                raw0Buffer = zeros(obj.sys.nChArius, sum(obj.buffer.framesNumber) * obj.seq.nSamp * sampSize, bufferSize, 'int16');
+            end
+                
             if rawBufferEnable
-                rawBuffer = zeros(obj.seq.nSamp, obj.seq.rxApSize, obj.seq.nTx, obj.seq.nRep, bufferSize, 'int16');
+                rawBuffer = zeros(obj.seq.nSamp, obj.seq.rxApSize, obj.seq.nTx, obj.seq.nRep, bufferSize, 'single');
                 if obj.seq.hwDdcEnable
                     rawBuffer = complex(rawBuffer,0);
                 end
@@ -319,26 +344,22 @@ classdef Us4R < handle
                 imgBuffer = [];
             end
             
-            sriBuffer = nan(bufferSize,1);
-            
-            % Loop
+            % Main loop (using buffers if bufferMode is "conc")
             i = 0;
             tStampPrev = nan;
             while(isContinue())
-                
                 i = i + 1;
-                I = mod(i-1,bufferSize)+1;
                 
                 tic;
-                [rf,meta] = obj.execSequence;
+                [rf, meta] = obj.execSequence;
                 acqTime = toc;
                 
                 tic;
                 rf = obj.rawDataReorganization(rf);
                 reorgTime = toc;
-
+                
                 tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                sriBuffer(I) = tStampCurr - tStampPrev;
+                sri = tStampCurr - tStampPrev;
                 tStampPrev = tStampCurr;
                 
                 if obj.rec.enable
@@ -350,14 +371,7 @@ classdef Us4R < handle
                     callback(rf);
                 end
                 
-                if rawBufferEnable
-                    rawBuffer(:,:,:,:, I) = rf;
-                end
-                
-                if imgBufferEnable
-                    imgBuffer(:,:,I,:) = img;
-                end
-                
+                % Log time
                 if obj.logTime
                     disp(['Frame no. ' num2str(i)]);
                     disp(['Acq.  time = ' num2str(acqTime, '%5.3f') ' s']);
@@ -365,16 +379,62 @@ classdef Us4R < handle
                     if exist('recTime', 'var')
                         disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
                     end
-                    disp(['Frame rate = ' num2str(1/sriBuffer(I), '%5.1f') ' fps']);
+                    disp(['Frame rate = ' num2str(1/sri, '%5.1f') ' fps']);
                     disp('--------------------');
                 end
+                
+                % Copy data to buffers
+                if concBufferEnable
+                    I = mod(i-1,bufferSize)+1;
+                    
+                    if rawBufferEnable
+                        rawBuffer(:,:,:,:,I) = rf;
+                    end
+                    
+                    if imgBufferEnable
+                        imgBuffer(:,:,I,:) = img;
+                    end
+                    
+                    sriBuffer(I) = sri;
+                end
             end
-            obj.session.stopScheme();
 
-            % Output buffer unwinding
-            rawBuffer = circshift(rawBuffer,-I,5);
-            imgBuffer = circshift(imgBuffer,-I,3);
-            sriBuffer = circshift(sriBuffer,-I,1);
+            if concBufferEnable
+                obj.session.stopScheme();
+                disp('runLoop: acquisition done');
+                
+                % Output buffer unwinding
+                rawBuffer = circshift(rawBuffer,-I,5);
+                imgBuffer = circshift(imgBuffer,-I,3);
+                sriBuffer = circshift(sriBuffer,-I,1);
+                
+                disp('runLoop: postprocessing done');
+            else
+                % Second loop (acquisition of raw data for "subs" bufferMode)
+                for i=1:bufferSize
+                    [raw0Buffer(:,:,i), meta] = obj.execSequence;
+                    
+                    tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
+                    sriBuffer(i) = tStampCurr - tStampPrev;
+                    tStampPrev = tStampCurr;
+                end
+                obj.session.stopScheme();
+                disp('runLoop: acquisition done');
+
+                % Postprocessing loop
+                for i=1:bufferSize
+                    rf = obj.rawDataReorganization(raw0Buffer(:,:,i));
+                    
+                    if rawBufferEnable
+                        rawBuffer(:,:,:,:,i) = rf;
+                    end
+                    
+                    if imgBufferEnable
+                        imgBuffer(:,:,i,:) = obj.execReconstr(rf(:,:,:,1));
+                    end
+                end
+                disp('runLoop: postprocessing done');
+            end
         end
         
         function plotRawRf(obj,varargin)
