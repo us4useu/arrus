@@ -56,6 +56,14 @@ classdef Us4R < handle
             obj.sys.tgcInterv = 153; % [samp]
             obj.logTime = logTime;
             
+            % Check if valid GPU is available
+            isGpuAvailable = license('test', 'Distrib_Computing_Toolbox') ...
+                           && ~isempty(ver('parallel')) ...
+                           && parallel.gpu.GPUDevice.isAvailable;
+            if ~isGpuAvailable
+                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
+            end
+            
             % Probe parameters
             probe = obj.us4r.getProbeModel;
             obj.sys.nElem = double(probe.nElements);
@@ -942,10 +950,8 @@ classdef Us4R < handle
                 [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
             end
             
-            %% If GPU is available...
-            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('parallel')) && parallel.gpu.GPUDevice.isAvailable;
-            
-            if obj.rec.gpuEnable && obj.rec.gridModeEnable
+            %% Move data to GPU...
+            if obj.rec.gridModeEnable
                 % Add location of the CUDA kernels
                 addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
                 
@@ -1179,6 +1185,7 @@ classdef Us4R < handle
                 obj.session.run();
             end
             rf = obj.buffer.data.front().eval();
+            rf = rf(:,:);
             
             obj.buffer.iFrame = obj.buffer.iFrame + 1;
             
@@ -1193,27 +1200,23 @@ classdef Us4R < handle
         end
         
         function img = execReconstr(obj,rfRaw)
-
-            %% Move data to GPU if possible
-            if obj.rec.gpuEnable
-                rfRaw = gpuArray(rfRaw);
-            end
             
-            rfRaw = double(rfRaw);
-
+            %% Move data to GPU if possible
+            rfRaw = gpuArray(rfRaw);
+            
             %% Preprocessing
             % Raw rf data filtration
             if obj.rec.filtEnable
+                rfRaw = double(rfRaw);
                 rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
+                rfRaw = single(rfRaw);
             end
-
-            rfRaw = single(rfRaw);
             
             % Digital Down Conversion
             if obj.rec.swDdcEnable
                 rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
             end
-
+            
             %% Reconstruction
             if ~obj.rec.gridModeEnable
                 if numel(obj.rec.bmodeFrames) ~= obj.seq.nTx || ...
@@ -1295,10 +1298,7 @@ classdef Us4R < handle
             end
             
             % Gather data from GPU
-            if obj.rec.gpuEnable
-                img = gather(img);
-            end
-            
+            img = gather(img);
             
         end
         
@@ -1387,7 +1387,9 @@ classdef Us4R < handle
                 dataOut  = reshape(dataOut, nSamp, obj.seq.rxApSize, nTx, nRep);
             else
                 %% NEW
-                dataOut = rawReorg(dataIn(:,:), ...
+                dataIn  = gpuArray(dataIn);
+                
+                dataOut = rawReorg(dataIn, ...
                                    obj.buffer.reorgMap, ...
                                    uint32(obj.seq.rxApSize), ...
                                    uint32(obj.seq.nTx), ...
