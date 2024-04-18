@@ -320,6 +320,13 @@ class Us4R(Device, Ultrasound):
             custom={"frame_channel_mapping": fcm}
         )
 
+    def set_stop_on_overflow(is_stop):
+        """
+        Set the system to stop when (RX or host) buffer overflow is detected (ASYNC mode only).
+        This property is set by default to true.
+        """
+        return self._handle.setStopOnOverflow(is_stop)
+
     def _get_fcm(self, upload_result, sequence):
         """
         Returns frame channel mapping (FCM) extracted from the given upload result, assuming

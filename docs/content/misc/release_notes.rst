@@ -15,6 +15,7 @@ Release notes
 - Python API:
 
     - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
+    - Added set_stop_on_overflow method #US4R-456.
 
 
 0.9.x
