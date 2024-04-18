@@ -734,6 +734,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(
                       us4oems[i]->getIUs4oem()->SyncReceive();
                   }
               }
+              outputBuffer->runOnOverflowCallback();
           } catch (const std::exception &e) {
               logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
           } catch (...) {
@@ -751,6 +752,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(
                   outputBuffer->markAsInvalid();
               } else {
                   this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+                  outputBuffer->runOnOverflowCallback();
               }
           } catch (const std::exception &e) {
               logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
@@ -787,6 +789,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
                       us4oems[i]->getIUs4oem()->SyncTransfer();
                   }
               }
+              outputBuffer->runOnOverflowCallback();
           } catch (const std::exception &e) {
               logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
           } catch (...) {
@@ -803,6 +806,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
                   this->getMasterUs4oem()->stop();
                   outputBuffer->markAsInvalid();
               } else {
+                  outputBuffer->runOnOverflowCallback();
                   this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
               }
           } catch (const std::exception &e) {
