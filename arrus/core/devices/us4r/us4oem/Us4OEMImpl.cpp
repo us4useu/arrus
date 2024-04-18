@@ -878,14 +878,14 @@ const char *Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
 
 void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) {
     // NOTE: end is inclusive (and the below method expects [start, end) range.
-    std::optional<float> lastPri = getLastPriExtend(
+    std::optional<float> priExtend = getLastPriExtend(
         std::begin(currentSequence)+start,
         std::begin(currentSequence)+end+1,
         sri
     );
     uint32_t timeToNextTrigger = 0;
-    if(lastPri.has_value()) {
-        timeToNextTrigger = getTimeToNextTrigger(lastPri.value());
+    if(priExtend.has_value()) {
+        timeToNextTrigger = getTimeToNextTrigger(priExtend.value()+this->currentSequence.at(end).getPri());
     }
     else {
         // Just use the PRI of the end TX/RX.
