@@ -313,8 +313,6 @@ Ordinal ProbeAdapterImpl::getNumberOfUs4OEMs() { return ARRUS_SAFE_CAST(this->us
 void ProbeAdapterImpl::start() {
     //  EnableSequencer resets position of the us4oem sequencer.
     for (auto &us4oem : this->us4oems) {
-        us4oem->getIUs4oem()->DisableWaitOnReceiveOverflow();
-        us4oem->getIUs4oem()->DisableWaitOnTransferOverflow();
         // Reset tx subsystem pointers.
         us4oem->getIUs4oem()->EnableTransmit();
         // Reset sequencer pointers.
