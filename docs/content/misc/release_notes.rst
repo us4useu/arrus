@@ -1,6 +1,22 @@
 Release notes
 =============
 
+0.10.x
+-----
+
+0.10.0
+
+- core (C++):
+
+    - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
+    - Fixed SYNC mode #US4R-456.
+
+
+- Python API:
+
+    - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
+
+
 0.9.x
 -----
 
