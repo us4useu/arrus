@@ -1115,23 +1115,8 @@ classdef Us4R < handle
             obj.buffer.framesNumber = obj.buffer.framesNumber.';
 
             obj.buffer.iFrame = 0;
-            
-            % Data reorganization addresses (old)
-            nChan = obj.sys.nChArius;
-            nRep = obj.seq.nRep;
-            iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
-            
-            obj.buffer.reorgAddrDest = (1 : obj.seq.rxApSize*nTx*nRep).';
-            obj.buffer.reorgAddrOrig = 1 + ...
-                ( obj.buffer.framesOffset(1 + obj.buffer.oemId) + ...                 % offset due to oemId
-                  obj.buffer.framesNumber(1 + obj.buffer.oemId) / nRep .* iRep + ...  % offset due to iRep
-                  obj.buffer.frameId ) * nChan  + ...                                 % offset due to frameId
-                uint32(obj.buffer.channelId);                                         % offset due to channelId
-            
-            obj.buffer.reorgAddrDest = obj.buffer.reorgAddrDest(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
-            obj.buffer.reorgAddrOrig = obj.buffer.reorgAddrOrig(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
 
-            % Data reorganization addresses (new)
+            % Data reorganization addresses
             obj.buffer.framesOffset = double(obj.buffer.framesOffset);
             obj.buffer.framesNumber = double(obj.buffer.framesNumber);
             obj.buffer.oemId        = double(obj.buffer.oemId);
@@ -1382,34 +1367,14 @@ classdef Us4R < handle
         
         function [dataOut] = rawDataReorganization(obj, dataIn)
             
-            if 0
-                %% OLD (disabled, to be abandoned in the future)
-                nChan	= obj.sys.nChArius;
-                nSamp	= obj.seq.nSamp;
-                nTx     = obj.seq.nTx;
-                nRep	= obj.seq.nRep;
-
-                if obj.seq.hwDdcEnable
-                    dataIn = reshape(dataIn, nChan, 2, nSamp, sum(obj.buffer.framesNumber));
-                    dataIn = complex(dataIn(:,1,:,:), dataIn(:,2,:,:));
-                end
-                dataIn = reshape(dataIn, nChan, nSamp, sum(obj.buffer.framesNumber));
-                dataIn = permute(dataIn, [2 1 3]);
-                
-                dataOut  = zeros(nSamp, obj.seq.rxApSize*nTx*nRep,'like',dataIn);
-                dataOut(:,obj.buffer.reorgAddrDest) = dataIn(:, obj.buffer.reorgAddrOrig);
-                dataOut  = reshape(dataOut, nSamp, obj.seq.rxApSize, nTx, nRep);
-            else
-                %% NEW
-                dataIn  = gpuArray(dataIn);
-                
-                dataOut = rawReorg(dataIn, ...
-                                   obj.buffer.reorgMap, ...
-                                   uint32(obj.seq.rxApSize), ...
-                                   uint32(obj.seq.nTx), ...
-                                   uint32(obj.seq.nRep), ...
-                                   obj.seq.hwDdcEnable);
-            end
+            dataIn  = gpuArray(dataIn);
+            
+            dataOut = rawReorg(dataIn, ...
+                               obj.buffer.reorgMap, ...
+                               uint32(obj.seq.rxApSize), ...
+                               uint32(obj.seq.nTx), ...
+                               uint32(obj.seq.nRep), ...
+                               obj.seq.hwDdcEnable);
         end
         
     end
