@@ -540,15 +540,7 @@ classdef Us4R < handle
                     for iLine=1:nLine
                         set(hDisp(iLine), 'XData', data(:,iLine));
                     end
-                    
-                    % TODO removed below pause
-                    % Applied the pause to make the figure window more
-                    % responsive. Removing this pause may introduce some
-                    % issues when closing the figure - e.g. a long delay
-                    % between pressing the window close button and the 
-                    % reaction to that close.
-                    % That was an issue on MATLAB 2018b, testenv2.
-                    pause(0.01);
+                    drawnow limitrate;
                     
                 catch ME
                     if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
@@ -611,15 +603,7 @@ classdef Us4R < handle
                 data = obj.run;
                 try
                     set(hDisp, 'CData', data(:,selectedLines));
-                    
-                    % TODO removed below pause
-                    % Applied the pause to make the figure window more
-                    % responsive. Removing this pause may introduce some
-                    % issues when closing the figure - e.g. a long delay
-                    % between pressing the window close button and the 
-                    % reaction to that close.
-                    % That was an issue on MATLAB 2018b, testenv2.
-                    pause(0.01);
+                    drawnow limitrate;
                     
                 catch ME
                     if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
