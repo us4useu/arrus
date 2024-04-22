@@ -1233,12 +1233,9 @@ classdef Us4R < handle
                     error("execReconstr: frames selection or doppler modes are not supported when gridModeEnable=false");
                 end
                 if obj.rec.bmodeEnable
-%                     rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
                     rfBfr = obj.runCudaReconstructionLin(rfRaw);
                 end
             else
-%                 rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
-                
                 % B-Mode image reconstruction
                 if obj.rec.bmodeEnable
                     rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
