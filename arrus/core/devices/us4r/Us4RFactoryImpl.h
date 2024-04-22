@@ -148,7 +148,7 @@ class Us4RFactoryImpl : public Us4RFactory {
         std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nOEMs);
         // Modifies input list - sorts ius4oems by ID in ascending order.
         ius4oemInitializer->sortModulesById(ius4oems);
-        return std::move(ius4oems);
+        return ius4oems;
     }
 
     /**
