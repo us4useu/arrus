@@ -63,6 +63,29 @@ classdef Session < handle
             channels = res{1, 6};
         end
 
+        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels] = setSubsequence(obj, start, end, sri)
+            % Sets the current TX/RX sequence to the [start, end] subsequence (both ends inclusive).
+            % 
+            % This method requires that:
+            % - start <= end (when start= == end, the system will run a single TX/RX sequence),
+            % - the scheme was uploaded,
+            % - the TX/RX sequence length is greater than the `end` value,
+            % - the scheme is stopped.
+            % 
+            % :param start: the TX/RX number which should now be the first TX/RX
+            % :param end: the TX/RX number which should now be the last TX/RX
+            % :param sri: the new SRI to apply [s], optional
+            % :return: the new data buffer and metadata
+
+            % TODO To be implemented.
+            buffer = zeros(1);
+            frameOffsets = zeros(1);
+            numberOfFrames = zeros(1);
+            us4oems = zeros(1);
+            frames = zeros(1);
+            channels = zeros(1);
+        end
+
         function run(obj)
             %
             % Runs the uploaded scheme.
