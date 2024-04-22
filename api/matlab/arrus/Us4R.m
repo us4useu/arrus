@@ -882,6 +882,12 @@ classdef Us4R < handle
             if isempty(obj.rec.sos)
                 obj.rec.sos = obj.seq.c;
             end
+
+            %% Radial coordinates for classical reconstruction
+            if ~obj.rec.gridModeEnable
+                t = (obj.seq.startSample + (0:(obj.seq.nSamp-1))) / obj.seq.rxSampFreq;
+                obj.rec.rGrid = t * obj.rec.sos / 2;
+            end
             
             %% Validate frames selection
             if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.seq.nTx)
@@ -951,43 +957,45 @@ classdef Us4R < handle
             end
             
             %% Move data to GPU...
-            if obj.rec.gridModeEnable
-                % Add location of the CUDA kernels
-                addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
-                
-                % move reconstruction-related data to GPU
-                obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
-                obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
-                obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
-                obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
-                obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
-                obj.rec.rxApod         = gpuArray(single(obj.rec.rxApod));
-                obj.seq.txFoc          = gpuArray(single(obj.seq.txFoc));
-                obj.seq.txAngZX        = gpuArray(single(obj.seq.txAngZX));
-                obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
-                obj.seq.txApCentX      = gpuArray(single(obj.seq.txApCentX));
-                obj.seq.txFreq         = gpuArray(single(obj.seq.txFreq));
-                obj.seq.initDel        = gpuArray(single(obj.seq.initDel));
-                obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
-                obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
-                obj.seq.rxApOrig       = gpuArray( int32(obj.seq.rxApOrig - 1));
-                obj.seq.nSampOmit      = gpuArray( int32(obj.seq.nSampOmit));
-                obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
-                obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
-                obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
-                obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
-                obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
-                obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
-                obj.seq.rxSampFreq     =          single(obj.seq.rxSampFreq);
-                obj.rec.sos            =          single(obj.rec.sos);
-                obj.seq.startSample    =          single(obj.seq.startSample);
-                obj.seq.txDelCent      =          single(obj.seq.txDelCent);
-
-                if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                    obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
-                end
-                
+            % Add location of the CUDA kernels
+            addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
+            
+            % move reconstruction-related data to GPU
+            obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
+            obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
+            obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
+            obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
+            obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
+            obj.rec.rxApod         = gpuArray(single(obj.rec.rxApod));
+            obj.seq.txFoc          = gpuArray(single(obj.seq.txFoc));
+            obj.seq.txAngZX        = gpuArray(single(obj.seq.txAngZX));
+            obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
+            obj.seq.txApCentX      = gpuArray(single(obj.seq.txApCentX));
+            obj.seq.txFreq         = gpuArray(single(obj.seq.txFreq));
+            obj.seq.initDel        = gpuArray(single(obj.seq.initDel));
+            obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
+            obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
+            obj.seq.rxApOrig       = gpuArray( int32(obj.seq.rxApOrig - 1));
+            obj.seq.nSampOmit      = gpuArray( int32(obj.seq.nSampOmit));
+            obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
+            obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
+            obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
+            obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
+            obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
+            obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
+            obj.seq.rxSampFreq     =          single(obj.seq.rxSampFreq);
+            obj.rec.sos            =          single(obj.rec.sos);
+            obj.seq.startSample    =          single(obj.seq.startSample);
+            obj.seq.txDelCent      =          single(obj.seq.txDelCent);
+            
+            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
+                obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
             end
+            
+            if ~obj.rec.gridModeEnable
+                obj.rec.rGrid      = gpuArray(single(obj.rec.rGrid));
+            end
+            
         end
         
         function calcTxRxApMask(obj)
@@ -1225,7 +1233,8 @@ classdef Us4R < handle
                     error("execReconstr: frames selection or doppler modes are not supported when gridModeEnable=false");
                 end
                 if obj.rec.bmodeEnable
-                    rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
+%                     rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
+                    rfBfr = obj.runCudaReconstructionLin(rfRaw);
                 end
             else
 %                 rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
@@ -1363,6 +1372,30 @@ classdef Us4R < handle
                                     1/64/gather(obj.seq.txFreq(1)), ...
                                     gather(obj.seq.initDel(1)));
             end
+            
+        end
+        
+        function iqLri = runCudaReconstructionLin(obj,iqRaw)
+            
+            selFrames = obj.rec.bmodeFrames;
+            
+            iqLri	= iqRaw2Lin(iqRaw(:,:,selFrames), ...
+                                obj.sys.zElem, ...
+                                obj.sys.xElem, ...
+                                obj.sys.tangElem, ...
+                                obj.rec.rGrid, ...
+                                obj.rec.rxApod, ...
+                                obj.seq.txAngZX(selFrames), ...
+                                obj.seq.txApCentZ(selFrames), ...
+                                obj.seq.txApCentX(selFrames), ...
+                                obj.seq.txFreq(selFrames), ...
+                                obj.seq.initDel(selFrames), ...
+                                obj.seq.rxApOrig(selFrames), ...
+                                obj.seq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                obj.rec.bmodeRxTangLim(:,1).', ...
+                                obj.rec.bmodeRxTangLim(:,2).', ...
+                                obj.seq.rxSampFreq/obj.rec.dec, ...
+                                obj.rec.sos);
             
         end
         
