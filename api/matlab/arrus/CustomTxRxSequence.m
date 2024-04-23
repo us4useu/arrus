@@ -63,7 +63,7 @@ classdef CustomTxRxSequence
         tgcStart (1,:)
         tgcSlope (1,:) = 0
         txInvert (1,:) {mustBeLogical} = false
-        workMode {mustBeScalarText} = "MANUAL"
+        workMode {mustBeTextScalar} = "MANUAL"
         sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
         bufferSize (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 2
     end
@@ -185,13 +185,6 @@ function mustBeIntOrStr(obj,fieldName,intDomain,strDomain)
             class(argIn)])
     end
     
-end
-
-function mustBeScalarText(a)
-    if ~(isstring(a) && isscalar(a)) && ~(ischar(a) && isrow(a))
-        error("ARRUS:IllegalArgument", ...
-                          "Incompatible parameter type, must be scalar text");
-    end
 end
 
 function argOut = mustBeProperLength(argIn,propLength)
