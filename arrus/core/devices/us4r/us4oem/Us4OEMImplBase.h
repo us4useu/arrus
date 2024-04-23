@@ -40,13 +40,17 @@ public:
     // TODO expose "registerUs4OEMOutputBuffer" function, keep this class hermetic
     virtual Ius4OEMRawHandle getIUs4oem() = 0;
 
-    virtual void enableSequencer() = 0;
+    virtual void enableSequencer(bool resetSequencerPointer = true) = 0;
 
     virtual std::vector<uint8_t> getChannelMapping() = 0;
 
     virtual void setRxSettings(const RxSettings& settings) = 0;
 
     virtual void setTestPattern(RxTestPattern pattern) = 0;
+
+    virtual void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) = 0;
+
+    virtual void clearCallbacksPCIDMA() = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

@@ -1,8 +1,33 @@
 Release notes
 =============
 
+0.10.x
+-----
+
+0.10.0
+
+- core (C++):
+
+    - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
+    - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined uffer overflow interrupts handling, #US4R-456.
+
+
+- Python API:
+
+    - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
+    - Added set_stop_on_overflow method #US4R-456.
+
+
 0.9.x
 -----
+
+0.9.3
+
+- core (C++):
+
+    - updated us4r-api to 0.10.3:
+
+        - Added support for DBARLite PCIe rev2 (firmware: 1.1.0).
 
 0.9.2
 

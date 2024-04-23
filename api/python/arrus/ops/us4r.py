@@ -4,6 +4,7 @@ import numpy as np
 from arrus.ops.operation import Operation
 from typing import Iterable
 from arrus.framework import Constant
+import dataclasses
 
 
 @dataclass(frozen=True)
@@ -214,6 +215,15 @@ class TxRxSequence:
         if len(sample_range) > 1:
             raise ValueError("All TX/RXs should acquire the same sample range.")
         return next(iter(sample_range))
+
+    def get_subsequence(self, start, end):
+        """
+        Limits the sequence to the given sub-sequence [start, end] both inclusive.
+        """
+        return dataclasses.replace(
+            self,
+            ops=self.ops[start:(end+1)],
+        )
 
 
 @dataclass(frozen=True)
