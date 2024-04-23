@@ -56,6 +56,9 @@ public:
      */
     virtual arrus::devices::Probe *getProbe(Ordinal ordinal) = 0;
 
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) = 0;
+
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;
     void operator=(Ultrasound const &) = delete;

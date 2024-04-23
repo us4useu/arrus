@@ -158,7 +158,7 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
     Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax)
-    : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
+        : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -176,8 +176,8 @@ public:
                                                        Us4OEMImpl::MAX_TX_DELAY, firingStr);
 
                 // Tx - pulse
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(
-                    op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax, firingStr);
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax,
+                                                  firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
@@ -205,10 +205,12 @@ public:
             }
         }
     }
+
 private:
     float txFrequencyMin;
     float txFrequencyMax;
 };
+
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
@@ -409,13 +411,15 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                                          op.getRxDecimationFactor() - 1, rxMapId, nullptr);
                 if (batchIdx == 0) {
                     size_t partSize = 0;
+                    unsigned partNSamples = 0;
                     if(!op.isRxNOP() || acceptRxNops) {
                         partSize = nBytes;
+                        partNSamples = (unsigned) nSamples;
                     }
                     // Otherwise, make an empty part (i.e. partSize = 0).
                     // (note: the firing number will be needed for transfer configuration to release element in
-                    // us4oem sequencer).
-                    rxBufferElementParts.emplace_back(outputAddress, partSize, firing);
+                    // us4oem sequencer, and for the subSequence setter).
+                    rxBufferElementParts.emplace_back(outputAddress, partSize, firing, partNSamples);
                 }
                 if (!op.isRxNOP() || acceptRxNops) {
                     // Also, allows rx nops.
@@ -427,37 +431,20 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
             }
         }
         // The size of the chunk, in the number of BYTES.
+        // NOTE: THE BELOW LINE MUST BE CONSISTENT WITH Us4OEMBuffer::getView IMPLEMENTATION!
         auto size = outputAddress - transferAddressStart;
         // Where the chunk starts.
         auto srcAddress = transferAddressStart;
         transferAddressStart = outputAddress;
-        framework::NdArray::Shape shape;
-        if (isDDCOn) {
-            shape = {totalNSamples, 2, N_RX_CHANNELS};
-        } else {
-            shape = {totalNSamples, N_RX_CHANNELS};
-        }
+        // NOTE: THE BELOW LINE MUST BE CONSISTENT WITH Us4OEMBuffer::getView IMPLEMENTATION!
+        framework::NdArray::Shape shape = Us4OEMBuffer::getShape(isDDCOn, totalNSamples, N_RX_CHANNELS);
         rxBufferElements.emplace_back(srcAddress, size, firing, shape, NdArrayDataType);
     }
 
     // Set frame repetition interval if possible.
-    float totalPri = 0.0f;
-    for (auto &op : seq) {
-        totalPri += op.getPri();
-    }
-    std::optional<float> lastPriExtend = std::nullopt;
-
-    // Sequence repetition interval.
-    if (sri.has_value()) {
-        if (totalPri < sri.value()) {
-            lastPriExtend = sri.value() - totalPri;
-        } else {
-            // TODO move this condition to sequence validator
-            throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
-                                                  "sequence total pri is equal {}",
-                                                  sri.value(), totalPri));
-        }
-    }
+    std::optional<float> lastPriExtend = getLastPriExtend(
+        std::begin(seq), std::end(seq), sri
+    );
 
     // Program triggers
     firing = 0;
@@ -472,12 +459,13 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 if (opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
                 }
-                auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
+                auto priMs = getTimeToNextTrigger(pri);
                 ius4oem->SetTrigger(priMs, checkpoint, firing, false);
             }
         }
     }
     setAfeDemod(ddc);
+    this->currentSequence = seq;
     return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
 }
 
@@ -639,13 +627,13 @@ void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer() {
+void Us4OEMImpl::enableSequencer(bool resetSequencerPointer) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, resetSequencerPointer);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
@@ -886,6 +874,28 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
 
 const char* Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }
 
-const char* Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
+const char *Us4OEMImpl::getRevision() { return this->revision.get().c_str(); }
+
+void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) {
+    // NOTE: end is inclusive (and the below method expects [start, end) range.
+    std::optional<float> priExtend = getLastPriExtend(
+        std::begin(currentSequence)+start,
+        std::begin(currentSequence)+end+1,
+        sri
+    );
+    uint32_t timeToNextTrigger = 0;
+    if(priExtend.has_value()) {
+        timeToNextTrigger = getTimeToNextTrigger(priExtend.value()+this->currentSequence.at(end).getPri());
+    }
+    else {
+        // Just use the PRI of the end TX/RX.
+        timeToNextTrigger = getTimeToNextTrigger(this->currentSequence.at(end).getPri());
+    }
+    this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
+}
+
+void Us4OEMImpl::clearCallbacksPCIDMA() {
+    this->ius4oem->ClearCallbacksPCIDMA();
+}
 
 }// namespace arrus::devices

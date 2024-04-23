@@ -68,7 +68,7 @@ public:
     MOCK_METHOD(void, SetRxDelay,
             (const float delay, const unsigned short firing), (override));
     MOCK_METHOD(void, EnableTransmit, (), (override));
-    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger), (override));
+    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, bool resetSequencerPointer), (override));
     MOCK_METHOD(void, SetRxChannelMapping,
             ( const std::vector<uint8_t> & mapping, const uint16_t rxMapId),
     (override));
@@ -223,9 +223,12 @@ public:
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
+    MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end, bool syncMode, uint32_t endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
+    MOCK_METHOD(void, ClearCallbacksPCIDMA, (), (override));
+    MOCK_METHOD(void, ClearTransferRXBufferToHost, (size_t firing), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

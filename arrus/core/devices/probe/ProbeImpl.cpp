@@ -187,10 +187,9 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
         // probe2AdapterMap[i] = dst adapter aperture channel number (e.g. from 0 to 64 (aperture size)).
         std::vector<ChannelIdx> probe2AdapterMap(nRxChannels, 0);
 
-        std::transform(std::begin(mapping), std::end(mapping), std::back_insert_iterator(posChannel),
-                       [i = 0](ChannelIdx channel) mutable {
-                         return std::make_pair(static_cast<ChannelIdx>(i++), channel);
-                       });
+        std::transform(
+            std::begin(mapping), std::end(mapping), std::back_insert_iterator(posChannel),
+            [i = 0](ChannelIdx channel) mutable { return std::make_pair(static_cast<ChannelIdx>(i++), channel); });
         // EXAMPLE: posChannel = {{0, 3}, {1, 1}, {2, 10}}
         std::sort(std::begin(posChannel), std::end(posChannel),
                   [](const auto &a, const auto &b) { return a.second < b.second; });
@@ -200,24 +199,28 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
 
         // probe aperture channel -> adapter aperture channel
         // EXAMPLE: probe2AdapterMap = {1, 0, 2}
-        for (const auto& posCh: posChannel) {
+        for (const auto &posCh : posChannel) {
             probe2AdapterMap[std::get<0>(posCh)] = i++;
         }
         // probe aperture rx number -> adapter aperture rx number -> physical channel
         auto nChannels = adapterFcm->getNumberOfLogicalChannels();
         for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
-            if(pch >= paddingLeft && pch < (nChannels-paddingRight)) {
-                auto address = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
+            if (pch >= paddingLeft && pch < (nChannels - paddingRight)) {
+                auto address = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch - paddingLeft] + paddingLeft);
                 auto us4oem = address.getUs4oem();
                 auto physicalFrame = address.getFrame();
                 auto physicalChannel = address.getChannel();
                 builder.setChannelMapping(frameNumber, pch, us4oem, physicalFrame, physicalChannel);
             }
-
         }
         ++frameNumber;
     }
     return builder.build();
 }
 
+std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+ProbeImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) {
+    return this->adapter->setSubsequence(start, end, sri);
 }
+
+}// namespace arrus::devices
