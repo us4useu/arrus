@@ -9,7 +9,7 @@ Release notes
 - core (C++):
 
     - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
-    - Fixed SYNC mode #US4R-456.
+    - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined uffer overflow interrupts handling, #US4R-456.
 
 
 - Python API:
