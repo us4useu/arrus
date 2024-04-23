@@ -77,13 +77,14 @@ classdef Session < handle
             % :param sri: the new SRI to apply [s], optional
             % :return: the new data buffer and metadata
 
-            % TODO To be implemented.
-            buffer = zeros(1);
-            frameOffsets = zeros(1);
-            numberOfFrames = zeros(1);
-            us4oems = zeros(1);
-            frames = zeros(1);
-            channels = zeros(1);
+            % Note: 6 == number of output arrays
+            res = obj.ptr.callMethod("setSubsequence", 6, start, end, sri);
+            buffer = arrus.framework.Buffer(res{1, 1});
+            frameOffsets = res{1, 2};
+            numberOfFrames = res{1, 3};
+            us4oems = res{1, 4};
+            frames = res{1, 5};
+            channels = res{1, 6};
         end
 
         function run(obj)

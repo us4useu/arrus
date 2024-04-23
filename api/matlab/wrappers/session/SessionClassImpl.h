@@ -30,6 +30,7 @@ public:
         ARRUS_MATLAB_ADD_METHOD("stopScheme", stopScheme);
         ARRUS_MATLAB_ADD_METHOD("run", run);
         ARRUS_MATLAB_ADD_METHOD("close", close);
+        ARRUS_MATLAB_ADD_METHOD("setSubsequence", setSubsequence);
     }
 
     MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) override {
@@ -89,6 +90,32 @@ public:
                                                 .toCore();
         auto *session = get(obj);
         auto uploadResult = session->upload(scheme);
+        setToMatlabOutput(outputs, uploadResult);
+    }
+
+    void setSubsequence(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        // start, end, sri
+        ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 3, "setSubsequence");
+        ARRUS_MATLAB_REQUIRES_TYPE_NAMED(inputs[0][0], ::matlab::data::ArrayType::UINT16, "start");
+        ARRUS_MATLAB_REQUIRES_TYPE_NAMED(inputs[0][1], ::matlab::data::ArrayType::UINT16, "end");
+        uint16 start = inputs[0][0];
+        uint16 end = inputs[0][1];
+        std::optional<float> sri = std::nullopt;
+        auto sriArr = inputs[0][2];
+        if(!sriArr.isEmpty()) {
+            ARRUS_MATLAB_REQUIRES_TYPE_NAMED(sriArr, ::matlab::data::ArrayType::SINGLE, "sri");
+            sri = static_cast<float>(sriArr);
+        }
+        auto *session = get(obj);
+        ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri));
+        auto uploadResult = session->setSubsequence(start, end, sri);
+        setToMatlabOutput(outputs, uploadResult);
+    }
+
+    /**
+     * Sets the given upload result to the Matlab outputs.
+     */
+    void setToMatlabOutput(MatlabOutputArgs &outputs, const UploadResult &uploadResult) {
         auto buffer = uploadResult.getBuffer();
         // Outputs
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, MatlabObjectHandle, MatlabObjectHandle(buffer.get()));
@@ -131,11 +158,9 @@ public:
                 channels[idx] = addr.getChannel();
             }
         }
-
         auto us4oemsArr = ctx->createTypedArray<Us4OEMNr>(us4oems, fcmArrayShape);
         auto framesArr = ctx->createTypedArray<FrameNr>(frames, fcmArrayShape);
         auto channelsArr = ctx->createTypedArray<Us4OEMChannelNr>(channels, fcmArrayShape);
-
 
         outputs[1] = frameOffsetsArr;
         outputs[2] = numberOfFramesArr;
