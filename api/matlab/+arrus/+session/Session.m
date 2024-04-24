@@ -63,22 +63,22 @@ classdef Session < handle
             channels = res{1, 6};
         end
 
-        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels] = setSubsequence(obj, start, end, sri)
-            % Sets the current TX/RX sequence to the [start, end] subsequence (both ends inclusive).
+        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels] = setSubsequence(obj, start, stop, sri)
+            % Sets the current TX/RX sequence to the [start, stop] subsequence (both ends inclusive).
             % 
             % This method requires that:
-            % - start <= end (when start= == end, the system will run a single TX/RX sequence),
+            % - start <= stop (when start == stop, the system will run a single TX/RX sequence),
             % - the scheme was uploaded,
-            % - the TX/RX sequence length is greater than the `end` value,
+            % - the TX/RX sequence length is greater than the `stop` value,
             % - the scheme is stopped.
             % 
             % :param start: the TX/RX number which should now be the first TX/RX
-            % :param end: the TX/RX number which should now be the last TX/RX
+            % :param stop: the TX/RX number which should now be the last TX/RX
             % :param sri: the new SRI to apply [s], optional
             % :return: the new data buffer and metadata
 
             % Note: 6 == number of output arrays
-            res = obj.ptr.callMethod("setSubsequence", 6, start, end, sri);
+            res = obj.ptr.callMethod("setSubsequence", 6, start, stop, sri);
             buffer = arrus.framework.Buffer(res{1, 1});
             frameOffsets = res{1, 2};
             numberOfFrames = res{1, 3};
