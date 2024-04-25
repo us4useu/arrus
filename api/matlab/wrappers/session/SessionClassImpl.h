@@ -96,18 +96,15 @@ public:
     void setSubsequence(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         // start, end, sri
         ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 3, "setSubsequence");
-        ARRUS_MATLAB_REQUIRES_TYPE_NAMED(inputs[0][0], ::matlab::data::ArrayType::UINT16, "start");
-        ARRUS_MATLAB_REQUIRES_TYPE_NAMED(inputs[0][1], ::matlab::data::ArrayType::UINT16, "end");
+        ctx->logInfo(format("Inputs size: {}", inputs.size()));
         uint16 start = inputs[0][0];
-        uint16 end = inputs[0][1];
-        std::optional<float> sri = std::nullopt;
-        auto sriArr = inputs[0][2];
-        if(!sriArr.isEmpty()) {
-            ARRUS_MATLAB_REQUIRES_TYPE_NAMED(sriArr, ::matlab::data::ArrayType::SINGLE, "sri");
-            sri = static_cast<float>(sriArr);
+        uint16 end = inputs[1][0];
+        std::optional<float> sri = static_cast<float>(inputs[2][0]);
+        if(sri == 0) {
+            sri = std::nullopt;
         }
         auto *session = get(obj);
-        ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri));
+        ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri.has_value() ? sri.value(): 0));
         auto uploadResult = session->setSubsequence(start, end, sri);
         setToMatlabOutput(outputs, uploadResult);
     }
@@ -115,7 +112,7 @@ public:
     /**
      * Sets the given upload result to the Matlab outputs.
      */
-    void setToMatlabOutput(MatlabOutputArgs &outputs, const UploadResult &uploadResult) {
+    void setToMatlabOutput(MatlabOutputArgs &outputs, const arrus::session::UploadResult &uploadResult) {
         auto buffer = uploadResult.getBuffer();
         // Outputs
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, MatlabObjectHandle, MatlabObjectHandle(buffer.get()));
