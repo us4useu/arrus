@@ -70,41 +70,42 @@ classdef Us4R < handle
             obj.sys.pitch = probe.pitch;
             obj.sys.freqRange = double(probe.txFrequencyRange);
             obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
-
-             % Position (pos,x,z) and orientation (ang) of each probe element
-             obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-             if obj.sys.curvRadius == 0
-                 obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
-                 obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                 obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
-             else
-                 obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
-                 obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
-                 obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
-                 obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
-             end
-             
-             obj.sys.interfEnable = interfEnable;
-             if obj.sys.interfEnable
-                 wedge = wedgeParams();
-                 obj.sys.interfSize = wedge.interfSize;
-                 obj.sys.interfAng  = wedge.interfAng;
-                 obj.sys.interfSos  = wedge.interfSos;
-                 
-                 obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
-                 
-                 xElemNoInterf = obj.sys.xElem;
-                 zElemNoInterf = obj.sys.zElem;
-                 obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
-                               + zElemNoInterf * sin(obj.sys.interfAng);
-                 obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
-                               - xElemNoInterf * sin(obj.sys.interfAng) ...
-                               - obj.sys.interfSize;
-             end
-             
-             obj.sys.tangElem = tan(obj.sys.angElem);
             
-             obj.sys.isHardwareProgrammed = false;
+            % Position (pos,x,z) and orientation (ang) of each probe element
+            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+            if obj.sys.curvRadius == 0
+                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
+                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
+            else
+                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
+                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
+                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
+                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+            end
+            
+            obj.sys.interfEnable = interfEnable;
+            if obj.sys.interfEnable
+                wedge = wedgeParams();
+                obj.sys.interfSize = wedge.interfSize;
+                obj.sys.interfAng  = wedge.interfAng;
+                obj.sys.interfSos  = wedge.interfSos;
+                
+                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
+                
+                xElemNoInterf = obj.sys.xElem;
+                zElemNoInterf = obj.sys.zElem;
+                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
+                              + zElemNoInterf * sin(obj.sys.interfAng);
+                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
+                              - xElemNoInterf * sin(obj.sys.interfAng) ...
+                              - obj.sys.interfSize;
+            end
+            
+            obj.sys.tangElem = tan(obj.sys.angElem);
+            
+            obj.sys.isHardwareProgrammed = false;
+
         end
         
         function closeSession(obj)
