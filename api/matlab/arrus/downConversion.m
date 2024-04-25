@@ -1,30 +1,23 @@
 % Digital Down Converter - quadrature demodulation, filtration & decimation
-function[rfOut] = downConversion(rfIn,acq,proc)
+function[rfOut] = downConversion(rfIn,fn,fs,dec,ddcFirCoeff)
 % Outputs:
-% 
-% rfOut                     - (nSamp/dec,nRx,nTx) output rf/iq data
-% 
+% rfOut         - (nSamp/dec,nRx,nTx) output rf/iq data
 % 
 % Inputs:
-% 
-% rfIn                      - (nSamp,nRx,nTx) input rf data
-% 
-% acq                       - acquisition-related parameters
-% acq.rxSampFreq            - [Hz] sampling frequency
-% acq.txFreq                - [Hz] carrier (nominal) frequency
-% 
-% proc                      - processing-related parameters
-% proc.ddcFirCoeff          - [] FIR filter coefficients (full set)
-% proc.dec                  - [] decimation factor
+% rfIn          - (nSamp,nRx,nTx) input rf data
+% fn            - [Hz] carrier (nominal) frequency
+% fs            - [Hz] sampling frequency
+% dec           - [] decimation factor
+% ddcFirCoeff   - [] FIR filter coefficients (full set)
 
 %% Quadrature demodulation
-nSample = size(rfIn,1);
-t = (0:nSample-1)'/acq.rxSampFreq;
+nSamp = size(rfIn,1);
+t = (0:nSamp-1)'/fs;
 
-rfOut = 2*rfIn.*exp(-2i*pi*reshape(acq.txFreq,1,1,[]).*t);
+rfOut = 2*rfIn.*exp(-2i*pi*reshape(fn,1,1,[]).*t);
 
 %% Downsampling (filtration + decimation)
-rfOut = convn(rfOut,proc.ddcFirCoeff(:),'same');
-rfOut = rfOut(proc.dec:proc.dec:end,:,:,:);
+rfOut = convn(rfOut,ddcFirCoeff(:),'same');
+rfOut = rfOut(dec:dec:end,:,:,:);
 
 end
