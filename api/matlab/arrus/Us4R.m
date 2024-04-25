@@ -157,7 +157,7 @@ classdef Us4R < handle
                       'Invalid reconstruction object, must be Reconstruction');
             end
 
-            [sequenceOperation,sequenceLimits] = obj.mergeSequences(sequenceOperation);
+            [sequenceOperation,obj.seq.seqLim] = obj.mergeSequences(sequenceOperation);
             
             obj.setSeqParams(...
                 'txCenterElement', sequenceOperation.txCenterElement, ...
@@ -188,6 +188,7 @@ classdef Us4R < handle
             % Program hardware
             if nargin<4 || enableHardwareProgramming
                 obj.programHW;
+                obj.selectSubsequence(1, obj.seq.sri);
                 obj.sys.isHardwareProgrammed = true;
             else
                 error('Support for enableHardwareProgramming=false is temporarily suspended');
@@ -627,13 +628,13 @@ classdef Us4R < handle
     
     methods(Access = private)
         
-        function [seqOut, seqOutLim] = mergeSequences(obj,seqIn)
+        function [seqOut, seqLim] = mergeSequences(obj,seqIn)
             
             nSeq = numel(seqIn);
 
             if nSeq==1
                 seqOut = seqIn;
-                seqOutLim = [1 numel(seqIn.txAngle)]; %#ok<MCNPN> 
+                seqLim = [1 numel(seqIn.txAngle)]; %#ok<MCNPN> 
                 return;
             end
             
@@ -699,7 +700,7 @@ classdef Us4R < handle
             for iSeq=1:nSeq
                 nTx(iSeq) = numel(seqIn(iSeq).txAngle);
             end
-            seqOutLim = [1+cumsum([0; nTx(1:nSeq-1)]), cumsum(nTx)];
+            seqLim = [1+cumsum([0; nTx(1:nSeq-1)]), cumsum(nTx)];
             
         end
         
@@ -1177,19 +1178,35 @@ classdef Us4R < handle
              obj.buffer.oemId, ...
              obj.buffer.frameId, ...
              obj.buffer.channelId] = obj.session.upload(scheme);
-
+            
+            % NOTE: the above outputs were used for calculation of data 
+            % reorganization addresses. Since subSequences are supported, 
+            % the corresponding data is obtained during setSubsequence call.
+            
+        end
+        
+        function selectSubsequence(obj, seqId, sri)
+            
+            [obj.buffer.data, ...
+             obj.buffer.framesOffset, ...
+             obj.buffer.framesNumber, ...
+             obj.buffer.oemId, ...
+             obj.buffer.frameId, ...
+             obj.buffer.channelId] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1), ...
+                                                                obj.seq.seqLim(seqId,2), sri);
+            
             obj.buffer.framesOffset = obj.buffer.framesOffset.';
             obj.buffer.framesNumber = obj.buffer.framesNumber.';
-
+            
             obj.buffer.iFrame = 0;
-
+            
             % Data reorganization addresses
             obj.buffer.framesOffset = double(obj.buffer.framesOffset);
             obj.buffer.framesNumber = double(obj.buffer.framesNumber);
             obj.buffer.oemId        = double(obj.buffer.oemId);
             obj.buffer.frameId      = double(obj.buffer.frameId);
             obj.buffer.channelId    = double(obj.buffer.channelId);
-
+            
             nOem = numel(obj.buffer.framesNumber);
             nChunk = sum(obj.buffer.framesNumber);
             nChan = obj.sys.nChArius;
