@@ -24,9 +24,7 @@ classdef CustomTxRxSequence
     %   it must be positive integer, for complex output (hwDdcEnable==true) \
     %   it must be multiple of 0.25 and be >=2
     % :param nRepetitions: number of repetitions of the sequence (positive \
-    %   integer). Can be a string "max" -- in this case, the maximum number \
-    %   of repetitions that can be performed on the system (taking into \ 
-    %   account the size of RAM, etc.) will be used.
+    %   integer).
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
@@ -92,13 +90,6 @@ classdef CustomTxRxSequence
             obj.rxNSamples = mustBeLimit(obj,'rxNSamples',1);
             
             % Specific validations
-            mustBeIntOrStr(obj,'txApertureSize',0,"nElements");
-            mustBeIntOrStr(obj,'rxApertureSize',0,"nElements");
-            mustBeIntOrStr(obj,'nRepetitions',1,"max");
-            if isstring(obj.nRepetitions)
-                error('Support for nRepetitions="max" is temporarily suspended.');
-            end
-            
             obj.workMode = upper(string(obj.workMode));
             if ~any(strcmp(obj.workMode,["MANUAL","HOST","SYNC","ASYNC"]))
                 error("ARRUS:IllegalArgument", ...
@@ -163,28 +154,6 @@ function mustBeXor(obj,fieldNames)
         error("ARRUS:params", ...
             ['One and only one of {' char(join(fieldNames,', ')) '} must be defined.'])
     end
-end
-
-function mustBeIntOrStr(obj,fieldName,intDomain,strDomain)
-    % intDomain: 0-nonnegative integers; 1-positive integers
-    % strDomain: array of accepted string values
-    
-    argIn = obj.(fieldName);
-    
-    if isnumeric(argIn)
-        mustBeInteger(argIn);
-        if intDomain
-            mustBePositive(argIn);
-        else
-            mustBeNonnegative(argIn);
-        end
-    elseif isstring(argIn)
-        mustBeMember(argIn,strDomain);
-    else
-        error(['Unhandled data type of ' fieldName ': ', ...
-            class(argIn)])
-    end
-    
 end
 
 function argOut = mustBeProperLength(argIn,propLength)

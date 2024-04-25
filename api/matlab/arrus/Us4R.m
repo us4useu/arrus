@@ -745,18 +745,8 @@ classdef Us4R < handle
                 obj.seq.tgcCurve = max(obj.seq.tgcLim(1),min(obj.seq.tgcLim(2),obj.seq.tgcCurve));
             end
             
-            %% Tx/Rx aperture string/missing parameters
-            if isstring(obj.seq.txApSize) && obj.seq.txApSize == "nElements"
-                obj.seq.txApSize = obj.sys.nElem * ones(1,obj.seq.nTx);
-                disp(['txApertureSize set to ' num2str(obj.seq.txApSize(1)) '.']);
-            end
-            
-            if isstring(obj.seq.rxApSize) && obj.seq.rxApSize == "nElements"
-                obj.seq.rxApSize = obj.sys.nElem;
-                disp(['rxApertureSize set to ' num2str(obj.seq.rxApSize) '.']);
-            end
-            
-            % delete: txApCent & rxApCent
+            %% Tx/Rx aperture missing parameters
+            % unused: txApCent & rxApCent
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.txCentElem);
             else
