@@ -156,6 +156,8 @@ classdef Us4R < handle
                 error("ARRUS:IllegalArgument", ...
                       'Invalid reconstruction object, must be Reconstruction');
             end
+
+            [sequenceOperation,sequenceLimits] = obj.mergeSequences(sequenceOperation);
             
             obj.setSeqParams(...
                 'txCenterElement', sequenceOperation.txCenterElement, ...
@@ -624,9 +626,85 @@ classdef Us4R < handle
     end
     
     methods(Access = private)
+        
+        function [seqOut, seqOutLim] = mergeSequences(obj,seqIn)
+            
+            nSeq = numel(seqIn);
 
+            if nSeq==1
+                seqOut = seqIn;
+                seqOutLim = [1 numel(seqIn.txAngle)]; %#ok<MCNPN> 
+                return;
+            end
+            
+            %% Validate sequences
+            % Some parameters must be equal (those that have to be scalars or 2-elem vectors)
+            selFieldNames = {'rxApertureSize','speedOfSound','txVoltage', ...
+                             'rxDepthRange','rxNSamples', 'hwDdcEnable', ...
+                             'decimation','nRepetitions','txPri', ...
+                             'tgcStart','tgcSlope','workMode', ...
+                             'sri','bufferSize'};
+            for iFld=1:numel(selFieldNames)
+                for iSeq=2:nSeq
+                    if  xor(isempty(seqIn(iSeq).scalarFieldNames{iFld}), ...
+                            isempty(seqIn(   1).scalarFieldNames{iFld})) || ...
+                       ~any(isempty(seqIn(iSeq).scalarFieldNames{iFld}), ...
+                            isempty(seqIn(   1).scalarFieldNames{iFld})) && ...
+                        any(seqIn(iSeq).scalarFieldNames{iFld} ~= ...
+                            seqIn(   1).scalarFieldNames{iFld})
+                        error("mergeSequences: " + selFieldNames{iFld} + ...
+                              " must be the same for all merged sequences");
+                    end
+                end
+            end
+            
+            % Some of the parameters not included in the above validation
+            % must be defined in a "one or the other" mode. Checking if the
+            % same fields are empty is enough.
+            selFieldNames = {'txCenterElement','txApertureCenter', ...
+                             'rxCenterElement','rxApertureCenter'};
+            for iFld=1:numel(selFieldNames)
+                for iSeq=2:nSeq
+                    if  xor(isempty(seqIn(iSeq).scalarFieldNames{iFld}), ...
+                            isempty(seqIn(   1).scalarFieldNames{iFld}))
+                        error("mergeSequences: " + selFieldNames{iFld} + ...
+                              " must be defined or left empty for all merged sequences");
+                    end
+                end
+            end
+
+            % nRepetitions must be equal 1 if multiple sequences are merged
+            if nRepetitions ~= 1
+                error("mergeSequences: nRepeats must be equal to 1 if multiple sequences are merged");
+            end
+            
+            %% Merge sequences
+            seqOut = seqIn(1);
+            for iSeq=2:nSeq
+                seqOut.txCenterElement   = [seqOut.txCenterElement,  seqIn(iSeq).txCenterElement];
+                seqOut.txApertureCenter  = [seqOut.txApertureCenter, seqIn(iSeq).txApertureCenter];
+                seqOut.txApertureSize    = [seqOut.txApertureSize,   seqIn(iSeq).txApertureSize];
+                seqOut.rxCenterElement   = [seqOut.rxCenterElement,  seqIn(iSeq).rxCenterElement];
+                seqOut.rxApertureCenter  = [seqOut.rxApertureCenter, seqIn(iSeq).rxApertureCenter];
+                seqOut.txFocus           = [seqOut.txFocus,          seqIn(iSeq).txFocus];
+                seqOut.txAngle           = [seqOut.txAngle,          seqIn(iSeq).txAngle];
+                seqOut.txFrequency       = [seqOut.txFrequency,      seqIn(iSeq).txFrequency];
+                seqOut.txNPeriods        = [seqOut.txNPeriods,       seqIn(iSeq).txNPeriods];
+                seqOut.txInvert          = [seqOut.txInvert,         seqIn(iSeq).txInvert];
+            end
+
+            %% Frame limits
+            % [frameStart, frameStop] of each input sequence in the output sequence
+            nTx = zeros(nSeq,1);
+            for iSeq=1:nSeq
+                nTx(iSeq) = numel(seqIn(iSeq).txAngle);
+            end
+            seqOutLim = [1+cumsum([0; nTx(1:nSeq-1)]), cumsum(nTx)];
+            
+        end
+        
         function setSeqParams(obj,varargin)
-
+            
             %% Set sequence parameters
             % Sequence parameters names mapping
             %                    public name         private name
