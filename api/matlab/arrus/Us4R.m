@@ -63,6 +63,8 @@ classdef Us4R < handle
             if ~isGpuAvailable
                 error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
             end
+            % Add location of the CUDA kernels
+            addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
             
             % Probe parameters
             probe = obj.us4r.getProbeModel;
@@ -931,11 +933,7 @@ classdef Us4R < handle
                 [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
             end
             
-            %% Move data to GPU...
-            % Add location of the CUDA kernels
-            addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
-            
-            % move reconstruction-related data to GPU
+            %% Set data types and move data to GPU memory
             obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
             obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
             obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
@@ -1168,9 +1166,6 @@ classdef Us4R < handle
         end
         
         function img = execReconstr(obj,rfRaw)
-            
-            %% Move data to GPU if possible
-            rfRaw = gpuArray(rfRaw);
             
             %% Preprocessing
             % Raw rf data filtration
