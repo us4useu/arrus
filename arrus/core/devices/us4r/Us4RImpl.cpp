@@ -346,9 +346,16 @@ void Us4RImpl::stopDevice() {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
         this->getMasterOEM()->stop();
-        for (auto &us4oem : us4oems) {
-            us4oem->getIUs4OEM()->WaitForPendingTransfers();
-            us4oem->getIUs4OEM()->WaitForPendingInterrupts();
+        try {
+            for (auto &us4oem : us4oems) {
+                us4oem->getIUs4OEM()->WaitForPendingTransfers();
+                us4oem->getIUs4OEM()->WaitForPendingInterrupts();
+            }
+        }
+        catch(const std::exception &e) {
+            logger->log(
+                LogSeverity::WARNING,
+                arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
         }
         // Here all us4R IRQ threads should not work anymore.
         // Cleanup.
@@ -805,6 +812,10 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                 // Wait for all elements to be released by the user.
                 while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
                     std::this_thread::sleep_for(1ms);
+                    if (this->state != State::STARTED) {
+                        // Device is no longer running, exit gracefully.
+                        return;
+                    }
                 }
                 // Inform about free elements only once, in the master's callback.
                 if (isMaster) {
@@ -849,6 +860,10 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                 // Wait for all elements to be released by the user.
                 while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
                     std::this_thread::sleep_for(1ms);
+                    if (this->state != State::STARTED) {
+                        // Device is no longer running, exit gracefully.
+                        return;
+                    }
                 }
                 // Inform about free elements only once, in the master's callback.
                 if (isMaster) {
