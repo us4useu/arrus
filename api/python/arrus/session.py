@@ -228,8 +228,6 @@ class Session(AbstractSession):
         Stops execution of the scheme.
         """
         arrus.core.arrusSessionStopScheme(self._session_handle)
-        if self._current_processing is not None:
-            self._current_processing.close()
 
     def run(self):
         """
@@ -251,6 +249,8 @@ class Session(AbstractSession):
         methods (e.g. upload, startScheme..) will result in exception.
         """
         self.stop_scheme()
+        if self._current_processing is not None:
+            self._current_processing.close()
         self._session_handle.close()
 
     def get_device(self, path: str):
