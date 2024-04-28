@@ -405,6 +405,15 @@ class ProcessingRunner:
         self._process_lock = threading.Lock()
         self._state_lock = threading.Lock()
 
+    def get_parameter(self, key):
+        return self.processing.get_parameter(key)
+
+    def set_parameter(self, key, value):
+        return self.processing.set_parameter(key, value)
+
+    def get_parameters(self):
+        return self.processing.get_parameters()
+
     def _get_input_counters(self, deps):
         n_inputs_by_name = defaultdict(lambda: 0)
         for target_name, input_nr in deps.keys():
@@ -1079,33 +1088,36 @@ class Processing:
         self.output_buffer = output_buffer if output_buffer is not None else ProcessingBufferDef(size=2, type="locked")
         self.on_buffer_overflow_callback = on_buffer_overflow_callback
         self._pipeline_name = _get_default_op_name(self.graph, 0)
-        # self._pipeline_param_names, self._param_defs = self._determine_params() TODO
+        self._graph_op_by_name = self.graph.get_ops_by_name()
+        self._param_defs = self._determine_params()
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
         Sets the value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_param_names[key]
-        self.graph.set_parameter(pipeline_param_name, value)
+        op_name, param_name = key.strip("/").split("/", 1)
+        self._graph_op_by_name[op_name].set_parameter("/" + param_name, value)
 
     def get_parameter(self, key: str) -> Sequence[Number]:
         """
         Returns the current value for parameter with the given name.
         """
-        pipeline_param_name = self._pipeline_param_names[key]
-        return self.graph.get_parameter(pipeline_param_name)
+        op_name, param_name = key.strip("/").split("/", 1)
+        return self._graph_op_by_name[op_name].get_parameter("/" + param_name)
 
     def get_parameters(self) -> Dict[str, ParameterDef]:
         return self._param_defs
 
     def _determine_params(self):
-        pipeline_param_name = {}
         param_defs = {}
-        for k, param_def in self.graph.get_parameters().items():
-            prefixed_k = _get_op_context_param_name(self._pipeline_name, k)
-            pipeline_param_name[prefixed_k] = k
-            param_defs[prefixed_k] = param_def
-        return pipeline_param_name, param_defs
+        graph_ops = self.graph.operations
+        for op in graph_ops:
+            name = op.name
+            params = op.get_parameters()
+            for k, param_def in params.items():
+                prefixed_k = _get_op_context_param_name(name, k)
+                param_defs[prefixed_k] = param_def
+        return param_defs
 
 
 class Lambda(Operation):
