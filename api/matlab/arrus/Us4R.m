@@ -150,8 +150,8 @@ classdef Us4R < handle
                 error("ARRUS:IllegalArgument", ...
                       'Invalid sequence object, must be CustomTxRxSequence');
             end
-
-            [sequenceOperation,obj.seq.seqLim] = obj.mergeSequences(sequenceOperation);
+            
+            sequenceOperation = obj.mergeSequences(sequenceOperation);
             
             obj.setSeqParams(...
                 'txCenterElement', sequenceOperation.txCenterElement, ...
@@ -650,13 +650,14 @@ classdef Us4R < handle
     
     methods(Access = private)
         
-        function [seqOut, seqLim] = mergeSequences(obj,seqIn)
+        function seqOut = mergeSequences(obj,seqIn)
             
-            nSeq = numel(seqIn);
+            obj.seq.nSeq = numel(seqIn);
+            nSeq = obj.seq.nSeq;
 
             if nSeq==1
                 seqOut = seqIn;
-                seqLim = [1 numel(seqIn.txAngle)]; %#ok<MCNPN> 
+                obj.seq.seqLim = [1 numel(seqIn.txAngle)]; %#ok<MCNPN> 
                 return;
             end
             
@@ -669,12 +670,12 @@ classdef Us4R < handle
                              'sri','bufferSize'};
             for iFld=1:numel(selFieldNames)
                 for iSeq=2:nSeq
-                    if  xor(isempty(seqIn(iSeq).scalarFieldNames{iFld}), ...
-                            isempty(seqIn(   1).scalarFieldNames{iFld})) || ...
-                       ~any(isempty(seqIn(iSeq).scalarFieldNames{iFld}), ...
-                            isempty(seqIn(   1).scalarFieldNames{iFld})) && ...
-                        any(seqIn(iSeq).scalarFieldNames{iFld} ~= ...
-                            seqIn(   1).scalarFieldNames{iFld})
+                    if  xor(isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
+                            isempty(seqIn(   1).(selFieldNames{iFld}))) || ...
+                       ~any([isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
+                             isempty(seqIn(   1).(selFieldNames{iFld}))]) && ...
+                        any(seqIn(iSeq).(selFieldNames{iFld}) ~= ...
+                            seqIn(   1).(selFieldNames{iFld}))
                         error("mergeSequences: " + selFieldNames{iFld} + ...
                               " must be the same for all merged sequences");
                     end
@@ -688,8 +689,8 @@ classdef Us4R < handle
                              'rxCenterElement','rxApertureCenter'};
             for iFld=1:numel(selFieldNames)
                 for iSeq=2:nSeq
-                    if  xor(isempty(seqIn(iSeq).scalarFieldNames{iFld}), ...
-                            isempty(seqIn(   1).scalarFieldNames{iFld}))
+                    if  xor(isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
+                            isempty(seqIn(   1).(selFieldNames{iFld})))
                         error("mergeSequences: " + selFieldNames{iFld} + ...
                               " must be defined or left empty for all merged sequences");
                     end
@@ -697,8 +698,8 @@ classdef Us4R < handle
             end
 
             % nRepetitions must be equal 1 if multiple sequences are merged
-            if nRepetitions ~= 1
-                error("mergeSequences: nRepeats must be equal to 1 if multiple sequences are merged");
+            if seqIn(1).nRepetitions ~= 1
+                error("mergeSequences: nRepetitions must be equal to 1 if multiple sequences are merged");
             end
             
             %% Merge sequences
@@ -722,7 +723,7 @@ classdef Us4R < handle
             for iSeq=1:nSeq
                 nTx(iSeq) = numel(seqIn(iSeq).txAngle);
             end
-            seqLim = [1+cumsum([0; nTx(1:nSeq-1)]), cumsum(nTx)];
+            obj.seq.seqLim = [1+cumsum([0; nTx(1:nSeq-1)]), cumsum(nTx)];
             
         end
         
