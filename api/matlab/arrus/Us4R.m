@@ -1425,10 +1425,7 @@ classdef Us4R < handle
             
             % Digital Down Conversion
             if obj.rec.swDdcEnable
-                rfRaw = downConversion(rfRaw, obj.subSeq.txFreq, ...
-                                              obj.subSeq.rxSampFreq, ...
-                                              obj.rec.dec, ...
-                                              obj.rec.ddcFirCoeff);
+                rfRaw = downConversion(rfRaw, obj.subSeq, obj.rec);
             end
             
             %% Reconstruction
