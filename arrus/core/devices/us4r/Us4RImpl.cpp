@@ -403,7 +403,12 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
                                            batchSize, seq.getSri(), workMode, ddc, txDelayProfiles);
 }
 
-void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
+void Us4RImpl::trigger(bool sync) {
+    this->getDefaultComponent()->syncTrigger();
+    if(sync) {
+        this->getMasterUs4oem()->waitForInterrupt();
+    }
+}
 
 // AFE parameter setters.
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }

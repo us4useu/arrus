@@ -251,7 +251,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
 
     size_t nTxDelayProfiles = txDelays.size();
 
-    bool triggerSyncPerBatch = arrus::ops::us4r::Scheme::isWorkModeManual(workMode);
+    bool triggerSyncPerBatch = arrus::ops::us4r::Scheme::isWorkModeManual(workMode) || workMode == ops::us4r::Scheme::WorkMode::HOST;
     bool triggerSyncPerTxRx = workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP;
 
 
@@ -473,6 +473,20 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     }
     setAfeDemod(ddc);
     this->currentSequence = seq;
+
+    if(arrus::ops::us4r::Scheme::isWorkModeManual(workMode)) {
+        // Register wait for soft callback in case we would like to wait for the interrupt to happen
+        this->waitForSoftIrqsRegistered = 0;
+        this->waitForSoftIrqsHandled = 0;
+        if(isMaster()) {
+            this->ius4oem->RegisterWaitForSoftCallback([this]() {
+                std::unique_lock l(waitForSoftIrqMutex);
+                waitForSoftIrqEvent.notify_one();
+                ++waitForSoftIrqsRegistered;
+            });
+        }
+    }
+
     return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
 }
 
@@ -903,6 +917,17 @@ void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, const s
 
 void Us4OEMImpl::clearCallbacksPCIDMA() {
     this->ius4oem->ClearCallbacksPCIDMA();
+}
+
+void Us4OEMImpl::waitForWaitForSoftIrq(long long milliseconds) {
+    std::unique_lock lock(waitForSoftIrqMutex);
+    waitForSoftIrqEvent.wait_for(lock, std::chrono::milliseconds(milliseconds),
+                                 [this]() {return this->waitForSoftIrqsRegistered > this->waitForSoftIrqsHandled;} );
+    if(this->waitForSoftIrqsRegistered != this->waitForSoftIrqsHandled+1) {
+        throw IllegalStateException("The number of registered IRQs is different than the number of handled IRQs."
+                                    "Some missing WAIT_FOR_SOFT IRQs?");
+    }
+    ++this->waitForSoftIrqsHandled;
 }
 
 }// namespace arrus::devices

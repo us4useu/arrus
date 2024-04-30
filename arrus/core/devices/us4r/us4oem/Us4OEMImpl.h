@@ -248,6 +248,13 @@ private:
     bool isDecimationFactorAdjustmentLogged{false};
     /** Currently uploaded sequence; empty when no sequence haven't been uploaded. */
     std::vector<TxRxParameters> currentSequence;
+    /** Conditional variable that is set when a WAIT_FOR_SOFT IRQ is detected. */
+    std::mutex waitForSoftIrqMutex;
+    std::condition_variable waitForSoftIrqEvent;
+    /** The number of WAIT_FOR_SOFT INTERRUPTS registered by the interrupt handler */
+    size_t waitForSoftIrqsHandled = 0;
+    /** The number of WAIT_FOR_SOFT IRQs handled by the waitForWaitForSoftIrqs method */
+    size_t waitForSoftIrqsRegistered = 0;
 };
 
 }

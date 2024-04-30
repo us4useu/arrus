@@ -168,7 +168,7 @@ void SessionImpl::stopScheme() {
     getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
 }
 
-void SessionImpl::run() {
+void SessionImpl::run(bool async) {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE_NOT(State::CLOSED);
 
@@ -180,7 +180,7 @@ void SessionImpl::run() {
     } else {
         if (currentScheme.value().isWorkModeManual()) {
             auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-            ultrasound->trigger();
+            ultrasound->trigger(async);
         } else {
             throw IllegalStateException("Scheme already started.");
         }
