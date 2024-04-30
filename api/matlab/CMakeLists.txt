@@ -86,6 +86,12 @@ else()
         ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
         COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/+arrus ${PACKAGE_OUTPUT_DIR}
+        COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${Us4_ROOT_DIR}/lib64 ${TOOLBOX_OUTPUT_DIR}
+        COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
         DEPENDS ${SOURCE_FILES}
         )
