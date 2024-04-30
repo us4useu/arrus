@@ -134,15 +134,13 @@ classdef Us4R < handle
             obj = varargin{1};
             obj.us4r.setTgcCurve(varargin{2:end});
         end
-
-        function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
+        
+        function uploadSequence(obj, sequenceOperation, enableHardwareProgramming)
             % Uploads operations to the us4R system.
             %
-            % Supports :class:`CustomTxRxSequence`
-            % and :class:`Reconstruction` implementations.
+            % Supports :class:`CustomTxRxSequence` implementation.
             %
             % :param sequenceOperation: TX/RX sequence to perform on the us4R system
-            % :param reconstructOperation: reconstruction to perform with the collected data
             % :param enableHardwareProgramming: determines if the hardware
             % is programmed or not (optional, default = true)
             % :returns: updated Us4R object
@@ -150,11 +148,6 @@ classdef Us4R < handle
             if ~isa(sequenceOperation,'CustomTxRxSequence')
                 error("ARRUS:IllegalArgument", ...
                       'Invalid sequence object, must be CustomTxRxSequence');
-            end
-
-            if nargin>=3 && ~isempty(reconstructOperation) && ~isa(reconstructOperation,'Reconstruction')
-                error("ARRUS:IllegalArgument", ...
-                      'Invalid reconstruction object, must be Reconstruction');
             end
 
             [sequenceOperation,obj.seq.seqLim] = obj.mergeSequences(sequenceOperation);
@@ -186,19 +179,47 @@ classdef Us4R < handle
                 'bufferSize', sequenceOperation.bufferSize);
             
             % Program hardware
-            if nargin<4 || enableHardwareProgramming
+            if nargin<3 || enableHardwareProgramming
                 obj.programHW;
                 obj.selectSubsequence(1, obj.seq.sri);
                 obj.sys.isHardwareProgrammed = true;
+                obj.rec.enable = false;
             else
                 error('Support for enableHardwareProgramming=false is temporarily suspended');
             end
+        end
+        
+        function selectSequence(obj, seqId, sri)
             
-            if nargin<3 || isempty(reconstructOperation)
-                obj.rec.enable = false;
-                return;
+            if ~obj.sys.isHardwareProgrammed
+                error('Sequences must be uploaded prior to selecting one of them.');
             end
-                
+            
+            if seqId > obj.seq.nSeq
+                error('Selected sequence ID does not point to an uploaded sequence.');
+            end
+            
+            if nargin < 3
+%                 sri = obj.seq.sri(seqId);
+                sri = obj.seq.sri;
+            end
+            
+            obj.selectSubsequence(seqId, sri);
+            obj.rec.enable = false;
+        end
+        
+        function setReconstruction(obj, reconstructOperation)
+            % Sets the reconstruction parameters.
+            %
+            % Supports :class:`Reconstruction` implementations.
+            %
+            % :param reconstructOperation: reconstruction to perform with the collected data
+            
+            if ~isa(reconstructOperation,'Reconstruction')
+                error("ARRUS:IllegalArgument", ...
+                      'Invalid reconstruction object, must be Reconstruction');
+            end
+            
             obj.setRecParams(...
                 'gridModeEnable', reconstructOperation.gridModeEnable, ...
                 'filterEnable', reconstructOperation.filterEnable, ...
