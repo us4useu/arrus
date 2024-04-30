@@ -10,6 +10,7 @@ Release notes
 
     - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
     - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined uffer overflow interrupts handling, #US4R-456.
+    - Removed HV enable on HVPS initialization #US4R-455.
 
 
 - Python API:
