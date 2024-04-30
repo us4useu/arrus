@@ -6,7 +6,7 @@ classdef Us4R < handle
     % 
     % :param configFile: name of the prototxt file containing setup information.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
-
+    
     properties(Access = private)
         sys
         seq
@@ -19,7 +19,7 @@ classdef Us4R < handle
     end
     
     methods
-
+        
         function obj = Us4R(varargin)
             
             % Input parser
@@ -122,15 +122,15 @@ classdef Us4R < handle
         function nProbeElem = getNProbeElem(obj)
             nProbeElem = obj.sys.nElem;
         end
-
+        
         function setLnaGain(obj,gain)
             obj.us4r.setLnaGain(gain);
         end
-
+        
         function setPgaGain(obj,gain)
             obj.us4r.setPgaGain(gain);
         end
-
+        
         function setTgcCurve(varargin)
             obj = varargin{1};
             obj.us4r.setTgcCurve(varargin{2:end});
@@ -784,7 +784,7 @@ classdef Us4R < handle
                     obj.seq.dec = 1;
                 end
                 obj.seq.fpgaDec = obj.seq.dec;
-                
+                obj.seq.ddcFirCoeff = [];
             end
             
             %% Sampling frequency
@@ -883,6 +883,7 @@ classdef Us4R < handle
             
             obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
+            
             if obj.seq.hwDdcEnable
                 obj.seq.initDel   = obj.seq.initDel + (8+1)/obj.seq.rxSampFreq;
             end
@@ -938,6 +939,12 @@ classdef Us4R < handle
             if obj.rec.swDdcEnable
                 if obj.subSeq.hwDdcEnable
                     error("setRecParams: hwDdcEnable & swDdcEnable cannot be set to true at a time");
+                end
+                if isa(obj.subSeq.txFreq,'gpuArray')
+                    obj.subSeq.txFreq = double(gather(obj.subSeq.txFreq));
+                end
+                if isa(obj.subSeq.rxSampFreq,'single')
+                    obj.subSeq.rxSampFreq = double(obj.subSeq.rxSampFreq);
                 end
                 if isempty(obj.rec.dec)
                     obj.rec.dec = round(obj.subSeq.rxSampFreq / max(obj.subSeq.txFreq));
@@ -1205,7 +1212,6 @@ classdef Us4R < handle
             % NOTE: the above outputs were used for calculation of data 
             % reorganization addresses. Since subSequences are supported, 
             % the corresponding data is obtained during setSubsequence call.
-            
         end
         
         function selSubSeq(obj, seqId, sri)
@@ -1473,11 +1479,11 @@ classdef Us4R < handle
             
         end
         
-        function iqLri = runCudaReconstructionLin(obj,iqRaw)
+        function iqLin = runCudaReconstructionLin(obj,iqRaw)
             
             selFrames = obj.rec.bmodeFrames;
             
-            iqLri	= iqRaw2Lin(iqRaw(:,:,selFrames), ...
+            iqLin	= iqRaw2Lin(iqRaw(:,:,selFrames), ...
                                 obj.sys.zElem, ...
                                 obj.sys.xElem, ...
                                 obj.sys.tangElem, ...
