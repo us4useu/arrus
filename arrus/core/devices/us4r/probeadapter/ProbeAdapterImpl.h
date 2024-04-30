@@ -37,7 +37,7 @@ public:
     setTxRxSequence(const std::vector<TxRxParameters> &seq,
                     const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize=2,
                     uint16 rxBatchSize=1, std::optional<float> sri=std::nullopt,
-                    bool triggerSync = false,
+                    arrus::ops::us4r::Scheme::WorkMode workMode=arrus::ops::us4r::Scheme::WorkMode::SYNC,
                     const std::optional<ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
                     const std::vector<framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
                     ) override;

@@ -88,11 +88,12 @@ protected:
     uint16 defaultRxBufferSize = 1;
     uint16 defaultBatchSize = 1;
     std::optional<float> defaultSri = std::nullopt;
+    arrus::ops::us4r::Scheme::WorkMode defaultWorkMode = arrus::ops::us4r::Scheme::WorkMode::SYNC;
 };
 
 
 #define SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc) \
-     us4oem->setTxRxSequence(seq, tgc, defaultRxBufferSize, defaultBatchSize, defaultSri)
+     us4oem->setTxRxSequence(seq, tgc, defaultRxBufferSize, defaultBatchSize, defaultSri, defaultWorkMode)
 
 #define SET_TX_RX_SEQUENCE(us4oem, seq) SET_TX_RX_SEQUENCE_TGC(us4oem, seq, defaultTGCCurve)
 
@@ -376,6 +377,7 @@ protected:
     uint16 defaultRxBufferSize = 1;
     uint16 defaultBatchSize = 1;
     std::optional<float> defaultSri = std::nullopt;
+    arrus::ops::us4r::Scheme::WorkMode defaultWorkMode = arrus::ops::us4r::Scheme::WorkMode::SYNC;
 };
 
 TEST_F(Us4OEMImplConflictingChannelsTest, TurnsOffConflictingChannels) {
@@ -720,6 +722,7 @@ protected:
     uint16 defaultRxBufferSize = 1;
     uint16 defaultBatchSize = 1;
     std::optional<float> defaultSri = std::nullopt;
+    arrus::ops::us4r::Scheme::WorkMode defaultWorkMode = arrus::ops::us4r::Scheme::WorkMode::SYNC;
 };
 
 // no masking - no channels are turned off
@@ -1006,6 +1009,7 @@ protected:
     uint16 defaultRxBufferSize = 1;
     uint16 defaultBatchSize = 1;
     std::optional<float> defaultSri = std::nullopt;
+    arrus::ops::us4r::Scheme::WorkMode defaultWorkMode = arrus::ops::us4r::Scheme::WorkMode::SYNC;
 };
 
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToShortPRIForSequential) {

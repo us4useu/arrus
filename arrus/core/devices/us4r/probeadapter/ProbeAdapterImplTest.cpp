@@ -93,7 +93,7 @@ public:
 
     MOCK_METHOD((std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>), setTxRxSequence,
                 (const TxRxParamsSequence &seq, const ::arrus::ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
-                 uint16 batchSize, std::optional<float> sri, bool triggerSync,
+                 uint16 batchSize, std::optional<float> sri, arrus::ops::us4r::Scheme::WorkMode workMode,
                  const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
                  const std::vector<arrus::framework::NdArray> &txDelayProfiles),
                 (override));

@@ -262,12 +262,9 @@ Us4RImpl::upload(const Scheme &scheme) {
     if (this->state == State::STARTED) {
         throw IllegalStateException("The device is running, uploading sequence is forbidden.");
     }
-    // Upload and register buffers.
-    bool useTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
-
     auto &seq = scheme.getTxRxSequence();
 
-    auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
+    auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), scheme.getWorkMode(),
                                           scheme.getDigitalDownConversion(), scheme.getConstants());
 
     prepareHostBuffer(hostBufferNElements, workMode, rxBuffer);
@@ -384,7 +381,8 @@ Us4RImpl::~Us4RImpl() {
 }
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize, bool triggerSync,
+Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batchSize,
+                         arrus::ops::us4r::Scheme::WorkMode workMode,
                          const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                          const std::vector<framework::NdArray> &txDelayProfiles) {
     std::vector<TxRxParameters> actualSeq;
@@ -401,8 +399,8 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
                                            sampleRange, rx.getDownsamplingFactor(), txrx.getPri(), padding));
         ++opIdx;
     }
-    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize, batchSize, seq.getSri(),
-                                           triggerSync, ddc, txDelayProfiles);
+    return getProbeImpl()->setTxRxSequence(actualSeq, seq.getTgcCurve(), bufferSize,
+                                           batchSize, seq.getSri(), workMode, ddc, txDelayProfiles);
 }
 
 void Us4RImpl::trigger() { this->getDefaultComponent()->syncTrigger(); }
@@ -699,6 +697,7 @@ std::function<void()> Us4RImpl::createReleaseCallback(
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
+    case Scheme::WorkMode::MANUAL_OP:
         return [this, startFiring, endFiring]() {
           for(int i = (int)us4oems.size()-1; i >= 0; --i) {
               us4oems[i]->getIUs4oem()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
@@ -744,6 +743,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
     case Scheme::WorkMode::MANUAL:
+    case Scheme::WorkMode::MANUAL_OP:
         return [this, outputBuffer]() {
           try {
               if(outputBuffer->isStopOnOverflow()) {
@@ -799,6 +799,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
     case Scheme::WorkMode::MANUAL:
+    case Scheme::WorkMode::MANUAL_OP:
         return [this, outputBuffer]() {
           try {
               if(outputBuffer->isStopOnOverflow()) {

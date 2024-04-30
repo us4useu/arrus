@@ -159,7 +159,8 @@ private:
     void stopDevice();
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync,
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize,
+                   arrus::ops::us4r::Scheme::WorkMode workMode,
                    const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                    const std::vector<framework::NdArray> &txDelayProfiles);
 

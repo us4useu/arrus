@@ -214,7 +214,7 @@ private:
 
 std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
 Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgc, uint16 rxBufferSize,
-                            uint16 batchSize, std::optional<float> sri, bool triggerSync,
+                            uint16 batchSize, std::optional<float> sri, arrus::ops::us4r::Scheme::WorkMode workMode,
                             const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
                             const std::vector<arrus::framework::NdArray> &txDelays) {
     std::unique_lock<std::mutex> lock{stateMutex};
@@ -250,6 +250,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     this->isDecimationFactorAdjustmentLogged = false;
 
     size_t nTxDelayProfiles = txDelays.size();
+
+    bool triggerSyncPerBatch = arrus::ops::us4r::Scheme::isWorkModeManual(workMode);
+    bool triggerSyncPerTxRx = workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP;
 
 
     // Program Tx/rx sequence ("firings")
@@ -454,13 +457,17 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                 firing = (uint16) (opIdx + seqIdx * nOps + batchIdx * batchSize * nOps);
                 auto const &op = seq[opIdx];
                 // checkpoint only when it is the last operation of the last batch element
-                bool checkpoint = triggerSync && (opIdx == seq.size() - 1 && seqIdx == batchSize - 1);
+                bool checkpoint = triggerSyncPerBatch && (opIdx == seq.size() - 1 && seqIdx == batchSize - 1);
                 float pri = op.getPri();
                 if (opIdx == nOps - 1 && lastPriExtend.has_value()) {
                     pri += lastPriExtend.value();
                 }
                 auto priMs = getTimeToNextTrigger(pri);
-                ius4oem->SetTrigger(priMs, checkpoint, firing, checkpoint && externalTrigger);
+                ius4oem->SetTrigger(
+                    priMs,
+                    checkpoint || triggerSyncPerTxRx,
+                    firing,
+                    checkpoint && externalTrigger);
             }
         }
     }

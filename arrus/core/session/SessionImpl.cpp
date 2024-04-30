@@ -178,7 +178,7 @@ void SessionImpl::run() {
     if (state == State::STOPPED) {
         startScheme();
     } else {
-        if (currentScheme.value().getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL) {
+        if (currentScheme.value().isWorkModeManual()) {
             auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
             ultrasound->trigger();
         } else {

@@ -105,7 +105,7 @@ public:
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false,
+                    uint16 rxBatchSize, std::optional<float> sri, arrus::ops::us4r::Scheme::WorkMode workMode,
                     const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
                     const std::vector<arrus::framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
                     ) override;

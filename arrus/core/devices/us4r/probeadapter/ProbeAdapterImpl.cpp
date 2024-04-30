@@ -61,7 +61,8 @@ private:
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                                  uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri, bool triggerSync,
+                                  uint16 rxBufferSize, uint16 batchSize, std::optional<float> sri,
+                                  arrus::ops::us4r::Scheme::WorkMode workMode,
                                   const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc,
                                   const std::vector<arrus::framework::NdArray> &txDelayProfiles) {
     // Reset current subsequence structures.
@@ -236,7 +237,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
             profile = us4oemTxDelayProfiles.at(us4oemOrdinal);
         }
         auto [buffer, fcMapping] = us4oem->setTxRxSequence(splittedOps[us4oemOrdinal], tgcSamples, rxBufferSize,
-                                                           batchSize, sri, triggerSync, ddc, profile);
+                                                           batchSize, sri, workMode, ddc, profile);
         frameOffsets[us4oemOrdinal] = currentFrameOffset;
         currentFrameOffset += fcMapping->getNumberOfLogicalFrames() * batchSize;
         numberOfFrames[us4oemOrdinal] = fcMapping->getNumberOfLogicalFrames() * batchSize;
@@ -303,7 +304,7 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
     // Create the copy of FCM.
     fullSequenceFCM = outFcBuilder.build();
     this->resetSequencerPointer = true;
-    this->isCurrentlyTriggerSync = triggerSync;
+    this->isCurrentlyTriggerSync = arrus::ops::us4r::Scheme::isWorkModeManual(workMode);
     // Return the copy of FCM.
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
 }
