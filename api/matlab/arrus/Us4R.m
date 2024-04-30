@@ -1175,6 +1175,8 @@ classdef Us4R < handle
             
             if ~obj.rec.gridModeEnable
                 obj.rec.rGrid      = gpuArray(single(obj.rec.rGrid));
+                obj.subSeq.txAng   = gpuArray(single(obj.subSeq.txAng));
+                obj.subSeq.txApCentAng = gpuArray(single(obj.subSeq.txApCentAng));
             end
             
         end
