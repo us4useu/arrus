@@ -4,6 +4,12 @@ Release notes
 0.10.x
 -----
 
+0.10.1
+
+- core (C++):
+    - Fixed buffer overflow handling in case setSubsequence method was called #US4R-474.
+
+
 0.10.0
 
 - core (C++):
