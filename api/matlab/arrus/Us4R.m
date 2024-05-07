@@ -188,6 +188,8 @@ classdef Us4R < handle
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
                 'bufferSize', sequenceOperation.bufferSize);
+
+            obj.seq.seqLim = [1 numel(obj.seq.txAng)];
             
             % Program hardware
             if nargin<4 || enableHardwareProgramming
