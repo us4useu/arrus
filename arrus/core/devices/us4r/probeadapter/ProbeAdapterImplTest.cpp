@@ -135,7 +135,7 @@ public:
     MOCK_METHOD(uint32_t, getTxOffset, (), (override));
     MOCK_METHOD(uint32_t, getOemVersion, (), (override));
     MOCK_METHOD(void, setSubsequence, (uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri), (override));
-    MOCK_METHOD(void, clearCallbacksPCIDMA, (), (override));
+    MOCK_METHOD(void, clearCallbacks, (), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
