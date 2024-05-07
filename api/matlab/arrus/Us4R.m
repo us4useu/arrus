@@ -466,9 +466,9 @@ classdef Us4R < handle
             end
                 
             if rawBufferEnable
-                    rawBuffer = complex(rawBuffer,0);
                 rawBuffer = zeros(obj.subSeq.nSamp, obj.subSeq.rxApSize, obj.subSeq.nTx, obj.subSeq.nRep, bufferSize, 'single');
                 if obj.subSeq.hwDdcEnable
+                    rawBuffer = complex(rawBuffer,0);   % other, less time consuming solution?
                 end
             else
                 rawBuffer = [];
