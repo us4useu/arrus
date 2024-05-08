@@ -35,7 +35,16 @@ public:
 
     virtual void start() = 0;
     virtual void stop() = 0;
-    virtual void trigger() = 0;
+    /**
+     * Trigger a single run of the current work mode (TX/RX in case of workMode=MANUAL_OP,
+     * sequence of TX/RXs in other cases).
+     *
+     * @param sync whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
+     *        the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done.
+     * @param timeout timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
+     *        sync = true.
+     */
+    virtual void trigger(bool sync = false, std::optional<long long> timeout = std::nullopt) = 0;
 
     /**
      * Returns NOMINAL Ultrasound device sampling frequency.

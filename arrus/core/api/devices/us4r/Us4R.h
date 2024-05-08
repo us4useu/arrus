@@ -226,7 +226,7 @@ public:
 
     virtual void start() override = 0;
     virtual void stop() override = 0;
-    virtual void trigger() override = 0;
+    virtual void trigger(bool sync, std::optional<long long> timeout) override = 0;
 
     virtual std::vector<unsigned short> getChannelsMask() = 0;
 

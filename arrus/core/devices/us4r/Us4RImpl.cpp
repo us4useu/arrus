@@ -403,10 +403,10 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
                                            batchSize, seq.getSri(), workMode, ddc, txDelayProfiles);
 }
 
-void Us4RImpl::trigger(bool sync) {
+void Us4RImpl::trigger(bool sync, std::optional<long long> timeout) {
     this->getDefaultComponent()->syncTrigger();
     if(sync) {
-        this->getMasterUs4oem()->waitForInterrupt();
+        this->getMasterUs4oem()->waitForWaitForSoftIrq(timeout);
     }
 }
 

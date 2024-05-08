@@ -102,7 +102,7 @@ public:
 
     void stop() override;
 
-    void trigger() override;
+    void trigger(bool sync, std::optional<long long> timeout) override;
 
     void setVoltage(Voltage voltage) override;
 

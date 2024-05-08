@@ -164,6 +164,7 @@ public:
 
     void clearCallbacksPCIDMA() override;
 
+    void waitForWaitForSoftIrq(std::optional<long long> timeout) override;
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 

@@ -481,8 +481,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         if(isMaster()) {
             this->ius4oem->RegisterWaitForSoftCallback([this]() {
                 std::unique_lock l(waitForSoftIrqMutex);
-                waitForSoftIrqEvent.notify_one();
                 ++waitForSoftIrqsRegistered;
+                waitForSoftIrqEvent.notify_one();
             });
         }
     }
@@ -919,13 +919,33 @@ void Us4OEMImpl::clearCallbacksPCIDMA() {
     this->ius4oem->ClearCallbacksPCIDMA();
 }
 
-void Us4OEMImpl::waitForWaitForSoftIrq(long long milliseconds) {
+void Us4OEMImpl::waitForWaitForSoftIrq(std::optional<long long> timeout) {
     std::unique_lock lock(waitForSoftIrqMutex);
-    waitForSoftIrqEvent.wait_for(lock, std::chrono::milliseconds(milliseconds),
-                                 [this]() {return this->waitForSoftIrqsRegistered > this->waitForSoftIrqsHandled;} );
+    if(timeout.has_value()) {
+        bool isReady = waitForSoftIrqEvent.wait_for(
+            lock, std::chrono::milliseconds(timeout.value()),
+            [this]() {
+                // Wait until the number of registered interrupts is greater than the number of IRQs already handled.
+                // (i.e. there is some new, unhandled interrupt).
+                return this->waitForSoftIrqsRegistered > this->waitForSoftIrqsHandled;
+            });
+        if(!isReady) {
+            throw TimeoutException("Timeout on waiting for trigger to be registered. Is the system still alive?");
+        }
+    }
+    else {
+        // No timeout, wait infinitely.
+        waitForSoftIrqEvent.wait(lock, [this]() {
+            return this->waitForSoftIrqsRegistered > this->waitForSoftIrqsHandled;
+        } );
+
+    }
     if(this->waitForSoftIrqsRegistered != this->waitForSoftIrqsHandled+1) {
+        // In the correct scenario, we expect that the number of already handled IRQs is equal to the number of
+        // registered IRQs minus 1.
+        // If it's not true, it means that we have lost some IRQ -- this is an exception that user should react to.
         throw IllegalStateException("The number of registered IRQs is different than the number of handled IRQs."
-                                    "Some missing WAIT_FOR_SOFT IRQs?");
+                                    "We detected missing WAIT_FOR_SOFT IRQs.");
     }
     ++this->waitForSoftIrqsHandled;
 }
