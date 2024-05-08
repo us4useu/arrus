@@ -17,7 +17,7 @@ public:
     upload(const ops::us4r::Scheme &scheme) override = 0;
     void start() override = 0;
     void stop() override = 0;
-    void trigger() override = 0;
+    void trigger(bool sync, std::optional<long long> timeout) override = 0;
     float getSamplingFrequency() const override = 0;
     float getCurrentSamplingFrequency() const override = 0;
     Probe *getProbe(Ordinal ordinal) override = 0;

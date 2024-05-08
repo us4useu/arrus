@@ -121,6 +121,34 @@ namespace std {
     }
 %}
 
+%typemap(in) std::optional<long long> %{
+    if($input == Py_None) {
+        $1 = std::optional<long long>();
+    }
+    else {
+        long long value = PyLong_AsLong($input);
+        if(value > std::numeric_limits<long long>::max() || value < std::numeric_limits<long long>::min()) {
+            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
+                + std::to_string(std::numeric_limits<long long>::min())
+                + ", " + std::to_string(std::numeric_limits<long long>::max()) + "]";
+            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
+            return NULL;
+        }
+        $1 = std::optional<long long>(value);
+    }
+    %}
+
+%typemap(out) std::optional<long long> %{
+    if($1) {
+        $result = PyLong_FromLong(*$1);
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
+
+
 
 %module(directors="1") core
 

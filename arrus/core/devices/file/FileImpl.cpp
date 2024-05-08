@@ -188,7 +188,7 @@ void FileImpl::consumer() {
     logger->log(LogSeverity::INFO, "File consumer stopped.");
 }
 
-void FileImpl::trigger() {
+void FileImpl::trigger(bool, std::optional<long long> ) {
     throw std::runtime_error("File::trigger: NYI");
 }
 
