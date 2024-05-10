@@ -180,7 +180,7 @@ class Session(AbstractSession):
         :param timeout: timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
                         sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP.
         """
-        self._session_handle.run(sync, timeout)
+        arrus.core.arrusSessionRun(self._session_handle, sync, timeout)
 
     def close(self):
         """

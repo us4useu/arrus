@@ -35,6 +35,12 @@ private:
 using namespace ::arrus;
 %};
 
+%include "arrus/core/api/common/types.h"
+
+%feature("valuewrapper", "1");
+%include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
+%feature("valuewrapper", "0");
+
 // TODO try not declaring explicitly the below types
 namespace std {
 %template(VectorBool) vector<bool>;
@@ -136,7 +142,7 @@ namespace std {
         }
         $1 = std::optional<long long>(value);
     }
-    %}
+%}
 
 %typemap(out) std::optional<long long> %{
     if($1) {
@@ -147,8 +153,6 @@ namespace std {
         Py_INCREF(Py_None);
     }
 %}
-
-
 
 %module(directors="1") core
 
@@ -330,6 +334,10 @@ using namespace ::arrus::session;
 %shared_ptr(arrus::session::Session);
 %ignore createSession;
 
+// Ignore overloaded `run` methods -- the full signature will be used only.
+%ignore arrus::session::Session::run();
+%ignore arrus::session::Session::run(bool);
+
 
 %include "arrus/core/api/session/Metadata.h"
 %include "arrus/core/api/session/UploadResult.h"
@@ -362,6 +370,11 @@ void arrusSessionStartScheme(std::shared_ptr<arrus::session::Session> session) {
 void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
     ArrusPythonGILUnlock unlock;
     session->stopScheme();
+}
+
+void arrusSessionRun(std::shared_ptr<arrus::session::Session> session, bool async, std::optional<long long> timeout) {
+    ArrusPythonGILUnlock unlock;
+    session->run(async, timeout);
 }
 
 

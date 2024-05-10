@@ -51,7 +51,7 @@ Following options are accepted:
 --help : displays help,
 --method : determines which method will be used ('threshold' (default)
   or 'neighborhood'),
---rf_file : determines the name of optional output file with rf data,
+--file: determines the name of optional output file with signal data,
 --create_footprint : creates footprint and store it in given file,
 --use_footprint : determines which footprint file to use,
 --n : the number of full Tx cycles to run (default 8),
@@ -67,7 +67,7 @@ Following options are accepted:
 Examples:
 python check_probe.py --help
 python check_probe.py --cfg_path /home/user/us4r.prototxt
-python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
+python check_probe.py --cfg_path /home/user/us4r.prototxt --file rf.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --create_footprint footprint.pkl --n=16
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl --features amplitude pcc
@@ -131,9 +131,9 @@ def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
 
     for i in range(1, ny):
         for j in range(nx):
-            rf = data[iframe, k, minsamp:maxsamp, int(nrx / 2) - 1]
-            rf = rf - np.mean(rf)
-            ax[i, j].plot(rf, c=status_color[k])
+            line = data[iframe, k, minsamp:maxsamp, int((nrx-1)/2)]
+            line = line - np.mean(line)
+            ax[i, j].plot(line, c=status_color[k])
             ax[i, j].set_title(f"{k}")
             ax[i, j].axis("off")
             k += 1
@@ -309,8 +309,8 @@ def main():
         default=32,
     )
     parser.add_argument(
-        "--rf_file", dest="rf_file",
-        help="The name of the output file with RF data.",
+        "--file", dest="file",
+        help="The name of the output file with signal data.",
         required=False,
         default=None,
     )
@@ -349,6 +349,13 @@ def main():
         nargs="+",
     )
     parser.add_argument(
+        "--signal_type", dest="signal_type",
+        help="Signal type to use for the probe elements evaluation.",
+        choices=["rf", "hvps_current"],
+        required=False,
+        default="rf",
+    )
+    parser.add_argument(
         "--display_summary", dest="display_summary",
         help="Display features values in all channels.",
         required=False,
@@ -375,7 +382,7 @@ def main():
         pickle.dump(footprint, open(args.create_footprint, "wb"))
         print("---------------------------------------------------------------")
         print("The footptint have been created "
-              f"and store in {args.create_footprint} file.")
+              f"and stored in {args.create_footprint} file.")
         print(f"The script {__file__} ends here.")
         print("---------------------------------------------------------------")
         quit()
@@ -411,13 +418,25 @@ def main():
     features = []
     for feat in given_features:
         if feat == "amplitude":
-            features.append(
-                FeatureDescriptor(
-                    name=MaxAmplitudeExtractor.feature,
-                    active_range=(0, 3000),  # [a.u.]
-                    masked_elements_range=(0, 3000)  # [a.u.]
+            if args.signal_type == "rf":
+                features.append(
+                    FeatureDescriptor(
+                        name=MaxAmplitudeExtractor.feature,
+                        active_range=(0, 3000),  # [a.u.]
+                        masked_elements_range=(0, 3000)  # [a.u.]
+                    )
                 )
-            )
+            elif args.signal_type == "hvps_current":
+                features.append(
+                    FeatureDescriptor(
+                        name=MaxHVPSCurrentAmplitudeExtractor.feature,
+                        active_range=(0, 3000),  # [A]
+                        masked_elements_range=(0, 3000)  # [A]
+                    )
+                )
+            else:
+                raise ValueError("Unsupported signal type for "
+                                 f"the 'amplitude' feature: {args.signal_type}")
         elif feat == "duration":
             features.append(
                 FeatureDescriptor(
@@ -455,6 +474,7 @@ def main():
         features=features,
         validator=validator,
         footprint=footprint,
+        signal_type=args.signal_type
     )
 
     # show results
@@ -464,6 +484,9 @@ def main():
     n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
 
     if args.display_tx_channel is not None:
+        if args.signal_type != "rf":
+            raise ValueError("The display_tx_channel parameter is available only "
+                             "for signal_type='rf'.")
         fig, ax, canvas = init_rf_display(n_elements, n_samples)
         ax.set_title(f"tx channel: {args.display_tx_channel}")
         display_rf(
@@ -481,9 +504,9 @@ def main():
     if args.display_summary:
         display_summary(n_elements, report)
 
-    if args.rf_file is not None:
+    if args.file is not None:
         data = {"rf": report.data, "context": report.sequence_metadata}
-        pickle.dump(data, open(args.rf_file, "wb"))
+        pickle.dump(data, open(args.file, "wb"))
 
     if args.show_pulse_comparison is not None:
         show_footprint_pulse_comparison(

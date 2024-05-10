@@ -137,6 +137,8 @@ public:
     MOCK_METHOD(void, setSubsequence, (uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri), (override));
     MOCK_METHOD(void, clearCallbacksPCIDMA, (), (override));
     MOCK_METHOD(void, waitForWaitForSoftIrq, (std::optional<long long> timeout), (override));
+    MOCK_METHOD(HVPSMeasurement, getHVPSMeasurement, (), (override));
+    MOCK_METHOD(float, setHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
