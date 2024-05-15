@@ -50,7 +50,7 @@ public:
 
     virtual void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) = 0;
 
-    virtual void clearCallbacksPCIDMA() = 0;
+    virtual void clearCallbacks() = 0;
 
     /**
      * Wait for WAIT_FOR_SOFT IRQ to arrive. If there is no WAIT_FOR_SOFT IRQ after the given

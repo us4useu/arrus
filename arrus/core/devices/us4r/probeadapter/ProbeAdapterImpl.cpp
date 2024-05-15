@@ -383,7 +383,7 @@ std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) {
     // Cleanup.
     for(auto &us4oem: us4oems) {
-        us4oem->clearCallbacksPCIDMA();
+        us4oem->clearCallbacks();
     }
     // Determine start/stop OEMs op.
     uint16_t oemStart = logicalToPhysicalOp[start].first;

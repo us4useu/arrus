@@ -162,7 +162,7 @@ public:
 
     void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) override;
 
-    void clearCallbacksPCIDMA() override;
+    void clearCallbacks() override;
 
     void waitForWaitForSoftIrq(std::optional<long long> timeout) override;
 
