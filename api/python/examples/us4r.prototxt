@@ -1,0 +1,38 @@
+#dictionary_file: "C:/Users/jrozb/Documents/GitHub/arrus/arrus/cfg/default.dict"
+
+us4r: {
+    probe_id: {
+        manufacturer: "atl/philips"
+        name: "l7-4"
+    }
+
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "atl/philips2"
+    }
+
+    # Default initial values.
+    rx_settings: {
+        lna_gain: 24
+        pga_gain: 30
+        lpf_cutoff: 15000000
+        active_termination: 200
+	# dtgc_attenuation: 12
+    }
+
+    hv: {
+        model_id {
+            manufacturer: "us4us"
+            name: "us4oemhvps"
+        }
+    }
+
+    #channels_mask: {channels: [43]}
+    channels_mask: {}
+
+    us4oem_channels_mask: [
+        {},{}
+    ]
+}
+
+

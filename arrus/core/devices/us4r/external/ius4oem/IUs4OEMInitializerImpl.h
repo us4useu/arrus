@@ -39,13 +39,14 @@ private:
         std::vector<std::future<void>> results;
 
         for(const IUs4OEMHandle &ius4oem : ius4oems) {
-            std::future<void> result = std::async(std::launch::async, [&ius4oem, level]() {ius4oem->Initialize(level);});
-            results.push_back(std::move(result));
+            //std::future<void> result = std::async(std::launch::async, [&ius4oem, level]() {ius4oem->Initialize(level);});
+            ius4oem->Initialize(level);
+            //results.push_back(std::move(result));
         }
-        for(auto &result: results) {
+        /*for(auto &result: results) {
             result.wait();
             result.get(); // wait and throw exception if necessary.
-        }
+        }*/
     }
 };
 
