@@ -139,6 +139,7 @@ public:
     MOCK_METHOD(void, waitForWaitForSoftIrq, (std::optional<long long> timeout), (override));
     MOCK_METHOD(HVPSMeasurement, getHVPSMeasurement, (), (override));
     MOCK_METHOD(float, setHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
+    MOCK_METHOD(void, setMaximumPulseLength, (std::optional<float> maxPulseLength), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {

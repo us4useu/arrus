@@ -187,14 +187,68 @@ TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsOnly) {
     EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
                  IllegalArgumentException);
 
-    seq = {
+    std::vector<TxRxParameters> seq2 = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(2e6, 33.0f, false)))
+            .getTxRxParameters()
+    };
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq2), IllegalArgumentException);
+    
+    // The correct one.
+    std::vector<TxRxParameters> seq3 = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
             (x.pulse = Pulse(2e6, 1.5f, false)))
             .getTxRxParameters()
     };
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    SET_TX_RX_SEQUENCE(us4oem, seq3);
 }
+
+TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsCustomMaxLengthOEMPlus) {
+    float maxPulseLength = 140e-6;
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+
+
+    us4oem->setMaximumPulseLength(maxPulseLength);
+
+    float pulseLength = 100e-6;
+    float frequency = 8e6;
+    float nPeriods = std::roundf(pulseLength*frequency);
+    // Correct
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(frequency, nPeriods, false)))
+            .getTxRxParameters()
+    };
+    SET_TX_RX_SEQUENCE(us4oem, seq); // no throw expected
+    
+    // Incorrect
+    std::vector<TxRxParameters> seq2 = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(frequency, std::roundf(frequency*150e-6), false)))
+            .getTxRxParameters()
+    };
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq2), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsCustomMaxLengthLegacyOEM) {
+    float maxPulseLength = 140e-6;
+    float frequency = 8e6;
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(1)); // OEM
+
+    EXPECT_THROW(us4oem->setMaximumPulseLength(maxPulseLength), IllegalArgumentException);
+    // Incorrect
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(frequency, std::roundf(frequency*100e-6), false)))
+            .getTxRxParameters()
+    };
+    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
+}
+
 
 TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
     // Tx delays

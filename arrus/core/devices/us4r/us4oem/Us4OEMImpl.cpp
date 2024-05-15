@@ -157,8 +157,8 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
 class Us4OEMTxRxValidator : public Validator<TxRxParamsSequence> {
 public:
-    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax)
-        : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax) {}
+    Us4OEMTxRxValidator(const std::string &componentName, float txFrequencyMin, float txFrequencyMax, std::optional<float> maxPulseLength=std::nullopt)
+        : Validator(componentName), txFrequencyMin(txFrequencyMin), txFrequencyMax(txFrequencyMax), maxPulseLength(maxPulseLength) {}
 
     void validate(const TxRxParamsSequence &txRxs) {
         // Validation according to us4oem technote
@@ -178,7 +178,14 @@ public:
                 // Tx - pulse
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getCenterFrequency(), txFrequencyMin, txFrequencyMax,
                                                   firingStr);
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
+                if(maxPulseLength.has_value()) {
+                    float pulseLength = op.getTxPulse().getNPeriods()/op.getTxPulse().getCenterFrequency();
+                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(pulseLength, 0.0f, maxPulseLength.value(), firingStr);
+                }
+                else {
+                    // The legacy OEM constraint
+                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getNPeriods(), 0.0f, 32.0f, firingStr);
+                }
                 float ignore = 0.0f;
                 float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M((fractional == 0.0f || fractional == 0.5f), (firingStr + ", n periods"));
@@ -209,6 +216,7 @@ public:
 private:
     float txFrequencyMin;
     float txFrequencyMax;
+    std::optional<float> maxPulseLength;
 };
 
 
@@ -224,7 +232,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     Us4OEMTxRxValidator seqValidator(
         format("{} tx rx sequence", deviceIdStr),
         ius4oem->GetMinTxFrequency(),
-        ius4oem->GetMaxTxFrequency());
+        ius4oem->GetMaxTxFrequency(),
+        this->maxPulseLength
+    );
     seqValidator.validate(seq);
     seqValidator.throwOnErrors();
 
@@ -966,6 +976,15 @@ HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
 
 float Us4OEMImpl::setHVPSSyncMeasurement(uint16_t nSamples, float frequency) {
     return ius4oem->SetHVPSSyncMeasurement(nSamples, frequency);
+}
+
+void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
+    // 2 means OEM+
+    // this is the only type of OEM that currently can have a maxLength != nullopt
+    if(ius4oem->GetOemVersion() != 2 && maxLength.has_value()) {
+        throw IllegalArgumentException("Currently it is possible to set maxLength value only for OEM+ (type 2)");
+    }
+    this->maxPulseLength = maxLength;
 }
 
 }// namespace arrus::devices

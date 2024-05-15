@@ -170,6 +170,8 @@ public:
 
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override;
 
+    void setMaximumPulseLength(std::optional<float> maxLength) override;
+
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
@@ -261,6 +263,8 @@ private:
     size_t waitForSoftIrqsHandled = 0;
     /** The number of WAIT_FOR_SOFT IRQs handled by the waitForWaitForSoftIrqs method */
     size_t waitForSoftIrqsRegistered = 0;
+    /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
+    std::optional<float> maxPulseLength = std::nullopt;
 };
 
 }

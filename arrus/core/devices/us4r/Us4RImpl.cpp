@@ -882,5 +882,11 @@ Us4RImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float
     return {this->buffer, metadataBuilder.buildPtr()};
 }
 
+void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
+    for(auto &us4oem: us4oems) {
+        us4oem->setMaximumPulseLength(maxLength);
+    }
+}
+
 
 }// namespace arrus::devices

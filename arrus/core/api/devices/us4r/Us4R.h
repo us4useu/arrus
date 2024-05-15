@@ -317,6 +317,14 @@ public:
     std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
     setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
 
+    /**
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * std::nullopt means to use up to 32 TX cycles.
+     *
+     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     */
+    virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

@@ -153,6 +153,8 @@ public:
     std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
     setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
+    void setMaximumPulseLength(std::optional<float> maxLength) override;
+
 private:
     UltrasoundDevice *getDefaultComponent();
 
