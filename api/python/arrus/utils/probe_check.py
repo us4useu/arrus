@@ -941,6 +941,9 @@ class ProbeHealthVerifier:
         """
         with arrus.session.Session(cfg_path) as sess:
             us4r = sess.get_device("/Us4R:0")
+            us4r.set_maximum_pulse_length(10e-6)
+            pulse_length = 5e-6
+            ncycles = pulse_length*tx_frequency
             n_elements = us4r.get_probe_model().n_elements
             masked_elements = us4r.channels_mask
             if footprint is None:
@@ -950,7 +953,7 @@ class ProbeHealthVerifier:
                     tx_focus=.1e-3,
                     pulse=Pulse(
                         center_frequency=tx_frequency,
-                        n_periods=1,
+                        n_periods=ncycles,
                         inverse=False,
                     ),
                     rx_aperture_center_element=np.arange(0, n_elements),
@@ -994,7 +997,6 @@ class ProbeHealthVerifier:
                     hvps_measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement()
                     hvp0_current = hvps_measurement.get(polarity="PLUS", level=0, unit="CURRENT")
                     ampls.append(hvp0_current)
-                    print(hvp0_current)
                 ampls = np.stack(ampls)  # (ntx, n_samples)
                 ampls = ampls[..., np.newaxis]  # (ntx, n_samples, nrx=1)
                 current.append(ampls)
