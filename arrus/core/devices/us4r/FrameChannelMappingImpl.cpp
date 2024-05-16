@@ -9,7 +9,7 @@
 namespace arrus::devices {
 
 FrameChannelMappingImpl::FrameChannelMappingImpl(
-        Us4OEMMapping &us4oemMapping, FrameMapping &frameMapping, ChannelMapping &channelMapping,
+        Us4OEMMapping us4oemMapping, FrameMapping frameMapping, ChannelMapping channelMapping,
         std::vector<uint32> frameOffsets, std::vector<uint32> numberOfFrames)
     : us4oemMapping(std::move(us4oemMapping)), frameMapping(std::move(frameMapping)),
     channelMapping(std::move(channelMapping)), frameOffsets(std::move(frameOffsets)),
@@ -89,6 +89,65 @@ void FrameChannelMappingBuilder::setFrameOffsets(const std::vector<uint32> &offs
 
 void FrameChannelMappingBuilder::setNumberOfFrames(const std::vector<uint32> &nFrames) {
     this->numberOfFrames = nFrames;
+}
+
+/**
+ * Creates slice [start, end] (both inclusive).
+ */
+void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
+    // TODO for some reason the below slicing does not work properly with Eigen 3.4.0, therefore a manual slice
+    // is performed here
+    // which might not be efficient; consider replacing that in the future with custom NdArray implementation.
+    // this->frameMapping = this->frameMapping(Eigen::seq(start, end), Eigen::all);
+    // this->channelMapping = this->channelMapping(Eigen::seq(start, end), Eigen::all);
+    // this->us4oemMapping = this->us4oemMapping(Eigen::seq(start, end), Eigen::all);
+
+    if(start > end) {
+        throw std::runtime_error("start > end");
+    }
+    int nFrames = end+1-start;
+    int nChannels = (int)(this->us4oemMapping.cols());
+    auto newUs4oemMapping = FrameChannelMappingImpl::Us4OEMMapping(nFrames, nChannels);
+    auto newFrameMapping = FrameChannelMappingImpl::FrameMapping(nFrames, nChannels);
+    auto newChannelMapping = FrameChannelMappingImpl::ChannelMapping(nFrames, nChannels);
+    for(FrameNumber frame = start; frame <= end; ++frame) {
+        for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
+            auto newFrameNr = frame-start;
+            newUs4oemMapping(newFrameNr, channel) = this->us4oemMapping(frame, channel);
+            newFrameMapping(newFrameNr, channel) = this->frameMapping(frame, channel);
+            newChannelMapping(newFrameNr, channel) = this->channelMapping(frame, channel);
+        }
+    }
+    this->us4oemMapping = std::move(newUs4oemMapping);
+    this->frameMapping = std::move(newFrameMapping);
+    this->channelMapping = std::move(newChannelMapping);
+}
+
+/**
+ * Subtracts the given 'offset' number from each channelMapping entry (i, j) that has us4oemMapping(i, j) == us4oem.
+ * The negative values are clipped to 0 (i.e. the unavailable frames are set to 0).
+ *
+ * Returns max frame number after subtracting the offset.
+ */
+void FrameChannelMappingBuilder::subtractPhysicalFrameNumber(Ordinal oem, FrameNumber offset) {
+    for(long frame = 0; frame < this->frameMapping.rows(); ++frame) {
+        for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
+            if(this->us4oemMapping(frame, channel) == oem) {
+                auto newFrameNumber = std::max<long>(0, this->frameMapping(frame, channel)-offset);
+                this->frameMapping(frame, channel) = static_cast<FrameNumber>(newFrameNumber);
+            }
+        }
+    }
+}
+
+void FrameChannelMappingBuilder::recalculateOffsets() {
+    std::vector<uint32> offsets;
+    uint32 currentOffset = 0;
+    for(const auto nFrames: this->numberOfFrames) {
+        offsets.push_back(currentOffset);
+        currentOffset += nFrames;
+    }
+    this->frameOffsets = offsets;
 }
 
 }

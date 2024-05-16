@@ -95,6 +95,8 @@ public:
 
     std::pair<std::shared_ptr<arrus::framework::Buffer>, std::shared_ptr<arrus::session::Metadata>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override;
+    void prepareHostBuffer(unsigned nElements, ops::us4r::Scheme::WorkMode workMode,
+                           std::unique_ptr<Us4RBuffer> &rxBuffer, bool cleanupSequencer = false);
 
     void start() override;
 
@@ -143,10 +145,13 @@ public:
 
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                               ::arrus::ops::us4r::Scheme::WorkMode workMode);
-    void unregisterOutputBuffer();
+    void unregisterOutputBuffer(bool cleanSequencer);
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
     void setParameters(const Parameters &parameters) override;
+
+    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -200,6 +205,8 @@ private:
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
+    /** Currently uploaded scheme. */
+    std::optional<ops::us4r::Scheme> currentScheme;
 };
 
 }// namespace arrus::devices

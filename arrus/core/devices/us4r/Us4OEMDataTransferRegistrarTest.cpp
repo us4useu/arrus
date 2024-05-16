@@ -13,7 +13,7 @@ using ::arrus::devices::Us4OEMImpl;
 
 TEST(Us4OEMDataTransferRegistrarTest, CorrectlyPassesSinglePartAsSingleTransfer) {
     std::vector<Us4OEMBufferElementPart> parts{
-        Us4OEMBufferElementPart{0, 4096, 14},
+        Us4OEMBufferElementPart{0, 4096, 14, 4096},
     };
     auto transfers = Us4OEMDataTransferRegistrar::groupPartsIntoTransfers(parts);
     std::vector<Transfer> expected{
@@ -26,10 +26,11 @@ TEST(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoSingleTran
     // Given
     std::vector<Us4OEMBufferElementPart> parts;
     size_t totalSize = ::arrus::devices::Us4OEMImpl::MAX_TRANSFER_SIZE - 64;
-    size_t partSize = 4096*128*2;
+    unsigned nSamples = 4096;
+    size_t partSize = nSamples*128*2;
     size_t nFullParts = totalSize / partSize;
-    for(int i = 0; i < nFullParts; ++i) {parts.push_back(Us4OEMBufferElementPart{i*partSize, partSize, (uint16_t)i});}
-    parts.push_back(Us4OEMBufferElementPart{nFullParts*partSize, totalSize-nFullParts*partSize, (uint16_t)nFullParts});
+    for(int i = 0; i < nFullParts; ++i) {parts.push_back(Us4OEMBufferElementPart{i*partSize, partSize, (uint16_t)i, nSamples});}
+    parts.push_back(Us4OEMBufferElementPart{nFullParts*partSize, totalSize-nFullParts*partSize, (uint16_t)nFullParts, nSamples});
 
     auto transfers = Us4OEMDataTransferRegistrar::groupPartsIntoTransfers(parts);
     std::vector<Transfer> expected{
@@ -42,10 +43,11 @@ TEST(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoTwoTransfe
     // Given
     std::vector<Us4OEMBufferElementPart> parts;
     size_t totalSize = Us4OEMImpl::MAX_TRANSFER_SIZE + 64;
-    size_t partSize = 4096*128*2;
+    unsigned nSamples = 4096;
+    size_t partSize = nSamples*128*2;
     size_t nFullParts = totalSize / partSize;
-    for(int i = 0; i < nFullParts; ++i) {parts.push_back(Us4OEMBufferElementPart{i*partSize, partSize, (uint16_t)i});}
-    parts.push_back(Us4OEMBufferElementPart{nFullParts*partSize, totalSize-nFullParts*partSize, (uint16_t)nFullParts});
+    for(int i = 0; i < nFullParts; ++i) {parts.push_back(Us4OEMBufferElementPart{i*partSize, partSize, (uint16_t)i, nSamples});}
+    parts.push_back(Us4OEMBufferElementPart{nFullParts*partSize, totalSize-nFullParts*partSize, (uint16_t)nFullParts, nSamples});
 
     auto transfers = Us4OEMDataTransferRegistrar::groupPartsIntoTransfers(parts);
 
@@ -61,10 +63,11 @@ TEST(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoThreeTrans
     // Given
     std::vector<Us4OEMBufferElementPart> parts;
     size_t totalSize = 2*Us4OEMImpl::MAX_TRANSFER_SIZE + 128;
-    size_t partSize = 4096*128*2;
+    unsigned nSamples = 4096;
+    size_t partSize = nSamples*128*2;
     size_t nFullParts = totalSize / partSize;
-    for(int i = 0; i < nFullParts; ++i) {parts.push_back(Us4OEMBufferElementPart{i*partSize, partSize, (uint16_t)i});}
-    parts.push_back(Us4OEMBufferElementPart{nFullParts*partSize, totalSize-nFullParts*partSize, (uint16_t)nFullParts});
+    for(int i = 0; i < nFullParts; ++i) {parts.push_back(Us4OEMBufferElementPart{i*partSize, partSize, (uint16_t)i, nSamples});}
+    parts.push_back(Us4OEMBufferElementPart{nFullParts*partSize, totalSize-nFullParts*partSize, (uint16_t)nFullParts, nSamples});
 
     auto transfers = Us4OEMDataTransferRegistrar::groupPartsIntoTransfers(parts);
 

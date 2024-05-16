@@ -20,33 +20,23 @@ public:
         arrus::devices::Us4RFactory::Handle us4RFactory,
         arrus::devices::FileFactory::Handle fileFactory
         );
-
     ~SessionImpl() override;
-
     arrus::devices::Device::RawHandle
     getDevice(const std::string &deviceId) override;
-
     arrus::devices::Device::RawHandle
     getDevice(const arrus::devices::DeviceId &deviceId) override;
-
     UploadResult upload(const ops::us4r::Scheme &scheme) override;
-
     void startScheme() override;
-
     void stopScheme() override;
-
     void run() override;
-
     SessionImpl(SessionImpl const &) = delete;
-
     void operator=(SessionImpl const &) = delete;
-
     SessionImpl(SessionImpl const &&) = delete;
-
     void operator=(SessionImpl const &&) = delete;
     void close() override;
     void setParameters(const Parameters &params) override;
     State getCurrentState() override;
+    UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri) override;
 
 private:
     ARRUS_DEFINE_ENUM_TO_STRING(

@@ -242,7 +242,7 @@ void Us4RImpl::disableHV() {
 }
 
 std::pair<Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
-Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
+Us4RImpl::upload(const Scheme &scheme) {
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferNElements = scheme.getRxBufferSize();
     auto workMode = scheme.getWorkMode();
@@ -269,6 +269,18 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
 
     auto [rxBuffer, fcm] = uploadSequence(seq, rxBufferNElements, seq.getNRepeats(), useTriggerSync,
                                           scheme.getDigitalDownConversion(), scheme.getConstants());
+
+    prepareHostBuffer(hostBufferNElements, workMode, rxBuffer);
+    // NOTE: starting from this point, rxBuffer is no longer a valid variable
+    // Metadata
+    arrus::session::MetadataBuilder metadataBuilder;
+    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+    this->currentScheme = scheme;
+    return {this->buffer, metadataBuilder.buildPtr()};
+}
+
+void Us4RImpl::prepareHostBuffer(unsigned nElements, Scheme::WorkMode workMode, std::unique_ptr<Us4RBuffer> &rxBuffer,
+                                 bool cleanupSequencer) {
     ARRUS_REQUIRES_TRUE(!rxBuffer->empty(), "Us4R Rx buffer cannot be empty.");
 
     // Calculate how much of the data each Us4OEM produces.
@@ -277,7 +289,7 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
     std::vector<size_t> us4oemComponentSize(element.getNumberOfUs4oems(), 0);
     int i = 0;
     for (auto &component : element.getUs4oemComponents()) {
-        us4oemComponentSize[i++] = component.getSize();
+        us4oemComponentSize[i++] = component.getViewSize();
     }
     auto &shape = element.getShape();
     auto dataType = element.getDataType();
@@ -287,24 +299,18 @@ Us4RImpl::upload(const ::arrus::ops::us4r::Scheme &scheme) {
         this->buffer->shutdown();
         // We must be sure here, that there is no thread working on the us4rBuffer here.
         if (this->us4rBuffer) {
-            unregisterOutputBuffer();
+            unregisterOutputBuffer(cleanupSequencer);
             this->us4rBuffer.reset();
         }
         this->buffer.reset();
     }
     // Create output buffer.
     this->buffer =
-        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, hostBufferNElements, stopOnOverflow);
+        std::make_shared<Us4ROutputBuffer>(us4oemComponentSize, shape, dataType, nElements, stopOnOverflow);
     registerOutputBuffer(this->buffer.get(), rxBuffer, workMode);
 
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
-    // TODO implement Us4RBuffer move constructor.
     this->us4rBuffer = std::move(rxBuffer);
-
-    // Metadata
-    arrus::session::MetadataBuilder metadataBuilder;
-    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
-    return {this->buffer, metadataBuilder.buildPtr()};
 }
 
 void Us4RImpl::start() {
@@ -338,9 +344,15 @@ void Us4RImpl::stopDevice() {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
         this->getDefaultComponent()->stop();
-        for(auto &us4oem: us4oems) {
-            us4oem->getIUs4oem()->WaitForPendingTransfers();
-            us4oem->getIUs4oem()->WaitForPendingInterrupts();
+        try {
+            for(auto &us4oem: us4oems) {
+                us4oem->getIUs4oem()->WaitForPendingTransfers();
+                us4oem->getIUs4oem()->WaitForPendingInterrupts();
+            }
+        }
+        catch(const std::exception &e) {
+            logger->log(LogSeverity::WARNING,
+                        arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
         }
         // Here all us4R IRQ threads should not work anymore.
         // Cleanup.
@@ -361,7 +373,7 @@ Us4RImpl::~Us4RImpl() {
             this->buffer->shutdown();
             // We must be sure here, that there is no thread working on the us4rBuffer here.
             if (this->us4rBuffer) {
-                unregisterOutputBuffer();
+                unregisterOutputBuffer(false);
                 this->us4rBuffer.reset();
             }
         }
@@ -649,7 +661,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
 size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const {
     std::unordered_set<size_t> sizes;
     for (auto &element: us4oemBuffer.getElements()) {
-        sizes.insert(element.getSize());
+        sizes.insert(element.getViewSize());
     }
     if (sizes.size() > 1) {
         throw ArrusException("Each us4oem buffer element should have the same size.");
@@ -659,13 +671,13 @@ size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuff
     return elementSize;
 }
 
-void Us4RImpl::unregisterOutputBuffer() {
+void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
     if(transferRegistrar.empty()) {
         return;
     }
     for (Ordinal i = 0; i < us4oems.size(); ++i) {
         if(transferRegistrar[i]) {
-            transferRegistrar[i]->unregisterTransfers();
+            transferRegistrar[i]->unregisterTransfers(cleanupSequencer);
         }
     }
 }
@@ -711,6 +723,10 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(
               // Wait for all elements to be released by the user.
               while(nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
                   std::this_thread::sleep_for(1ms);
+                  if (this->state != State::STARTED) {
+                      // Device is no longer running, exit gracefully.
+                      return;
+                  }
               }
               // Inform about free elements only once, in the master's callback.
               if(isMaster) {
@@ -718,6 +734,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(
                       us4oems[i]->getIUs4oem()->SyncReceive();
                   }
               }
+              outputBuffer->runOnOverflowCallback();
           } catch (const std::exception &e) {
               logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
           } catch (...) {
@@ -735,6 +752,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(
                   outputBuffer->markAsInvalid();
               } else {
                   this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+                  outputBuffer->runOnOverflowCallback();
               }
           } catch (const std::exception &e) {
               logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
@@ -760,6 +778,10 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
               // Wait for all elements to be released by the user.
               while(nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
                   std::this_thread::sleep_for(1ms);
+                  if (this->state != State::STARTED) {
+                      // Device is no longer running, exit gracefully.
+                      return;
+                  }
               }
               // Inform about free elements only once, in the master's callback.
               if(isMaster) {
@@ -767,6 +789,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
                       us4oems[i]->getIUs4oem()->SyncTransfer();
                   }
               }
+              outputBuffer->runOnOverflowCallback();
           } catch (const std::exception &e) {
               logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
           } catch (...) {
@@ -783,6 +806,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(
                   this->getMasterUs4oem()->stop();
                   outputBuffer->markAsInvalid();
               } else {
+                  outputBuffer->runOnOverflowCallback();
                   this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
               }
           } catch (const std::exception &e) {
@@ -811,27 +835,46 @@ const char *Us4RImpl::getBackplaneRevision() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    for(auto &item: params.items()) {
+    for (auto &item : params.items()) {
         auto &key = item.first;
         auto value = item.second;
         logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
-        if(key != "/sequence:0/txFocus") {
+        if (key != "/sequence:0/txFocus") {
             throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
         }
         this->us4oems[0]->getIUs4oem()->TriggerStop();
         try {
-            for(auto &us4oem: us4oems) {
+            for (auto &us4oem : us4oems) {
                 us4oem->getIUs4oem()->SetTxDelays(value);
             }
-	} 
-	catch(...) {
+        } catch (...) {
             // Try resume.
             this->us4oems[0]->getIUs4oem()->TriggerStart();
-	    throw;
-	}
-	// Everything OK, resume.
+            throw;
+        }
+        // Everything OK, resume.
         this->us4oems[0]->getIUs4oem()->TriggerStart();
     }
 }
+
+std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+Us4RImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) {
+    if(!this->currentScheme.has_value()) {
+        throw IllegalStateException("Please upload scheme before setting sub-sequence.");
+    }
+    const auto &s = this->currentScheme.value();
+    const auto &seq = s.getTxRxSequence();
+    const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
+    if(end >= currentSequenceSize) {
+        throw IllegalArgumentException(format("The new sub-sequence [{}, {}] is outside of the scope of the currently "
+                                       "uploaded sequence: [0, {})", start, end, currentSequenceSize));
+    }
+    auto [rxBuffer, fcm] = this->getProbeImpl()->setSubsequence(start, end, sri);
+    prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer, true);
+    arrus::session::MetadataBuilder metadataBuilder;
+    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+    return {this->buffer, metadataBuilder.buildPtr()};
+}
+
 
 }// namespace arrus::devices
