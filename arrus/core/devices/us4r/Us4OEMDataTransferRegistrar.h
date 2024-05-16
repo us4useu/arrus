@@ -80,15 +80,30 @@ public:
         scheduleTransfers();
     }
 
-    void unregisterTransfers() {
+    void unregisterTransfers(bool cleanupSequencer = false) {
         pageUnlockDstMemory();
+        if(cleanupSequencer) {
+            cleanupSequencerTransfers();
+        }
+    }
+
+    void cleanupSequencerTransfers() {
+        uint16 elementFirstFiring = 0;
+        for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
+            for(auto &transfer: elementTransfers) {
+                auto firing = elementFirstFiring + transfer.firing;
+                ius4oem->ClearTransferRXBufferToHost(firing);
+            }
+            // element.getFiring() -- the last firing of the given element
+            elementFirstFiring = srcBuffer.getElement(srcIdx).getFiring() + 1;
+        }
     }
 
     static std::vector<Transfer> groupPartsIntoTransfers(const std::vector<Us4OEMBufferElementPart> &parts) {
         std::vector<Transfer> transfers;
         size_t address = 0;
         size_t size = 0;
-        uint16 firing = 0; // the firing that finishes given transfer
+        uint16 firing = parts.at(0).getFiring();
         for(auto &part: parts) {
             // Assumption: size of each part is less than the possible maximum
             if(size + part.getSize() > MAX_TRANSFER_SIZE) {
@@ -108,6 +123,10 @@ public:
     void pageLockDstMemory() {
         for(uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx+1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx, us4oemOrdinal);
+            // NOTE: addressSrc should be the address of the complete buffer element here -- even if
+            // we are processing some sub-sequence buffer here (i.e. setSubsequence was used).
+            // The reason for that is that the transfer src address is relative to the begining of the FULL buffer
+            // element (because element parts are relative to the FULL element).
             size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress(); // byte-addressed
             for(auto &transfer: elementTransfers) {
                 uint8 *dst = addressDst + transfer.address;
@@ -199,7 +218,7 @@ public:
                 size_t transferIdx = srcIdx*nTransfersPerElement + localTransferIdx; // global transfer idx
                 size_t src = addressSrc + transfer.address;
                 size_t transferSize = transfer.size;
-                // transfer.firing - firing offset within element
+                // transfer.firing - firing offset within (the whole) element
                 uint16 transferLastFiring = elementFirstFiring + transfer.firing;
 
                 bool isLastTransfer = localTransferIdx == nTransfersPerElement-1;

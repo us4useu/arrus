@@ -323,6 +323,10 @@ public:
         return result;
     }
 
+    void runOnOverflowCallback() {
+        this->onOverflowCallback();
+    }
+
 private:
     /**
      * Throws IllegalStateException when the buffer is in invalid state.

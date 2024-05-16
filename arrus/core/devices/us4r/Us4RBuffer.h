@@ -15,7 +15,7 @@ public:
     explicit Us4RBufferElement(std::vector<Us4OEMBufferElement> us4oemComponents)
     : us4oemComponents(std::move(us4oemComponents)) {
         // Intentionally copying input shape.
-        std::vector<size_t> shapeInternal = this->us4oemComponents[0].getElementShape().getValues();
+        std::vector<size_t> shapeInternal = this->us4oemComponents[0].getViewShape().getValues();
         // It's always the last axis, regardless IQ vs RF data.
         size_t channelAxis = shapeInternal.size()-1;
 
@@ -25,7 +25,7 @@ public:
 
         // Sum buffer us4oem component number of samples to determine buffer element shape.
         for(auto& component: this->us4oemComponents) {
-            auto &componentShape = component.getElementShape();
+            auto &componentShape = component.getViewShape();
             // Verify if we have the same number of channels for each component
             if(nChannels != componentShape.get(channelAxis)) {
                 throw IllegalArgumentException("Each Us4R buffer component should have the same number of channels.");
@@ -88,14 +88,6 @@ public:
         return elements.empty();
     }
 
-    size_t getElementSize() {
-        size_t result = 0;
-        for(auto &element: elements[0].getUs4oemComponents()) {
-            result += element.getSize();
-        }
-        return result;
-    }
-
     [[nodiscard]] Us4OEMBuffer getUs4oemBuffer(Ordinal ordinal) const {
         std::vector<Us4OEMBufferElement> us4oemBufferElements;
         for(const auto &element : elements) {
@@ -106,6 +98,7 @@ public:
 
 private:
     std::vector<Us4RBufferElement> elements;
+    // OEM -> parts
     std::vector<std::vector<Us4OEMBufferElementPart>> parts;
 };
 
