@@ -894,8 +894,8 @@ void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, const s
     this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
 }
 
-void Us4OEMImpl::clearCallbacksPCIDMA() {
-    this->ius4oem->ClearCallbacksPCIDMA();
+void Us4OEMImpl::clearCallbacks() {
+    this->ius4oem->ClearCallbacks();
 }
 
 }// namespace arrus::devices

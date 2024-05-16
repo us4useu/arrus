@@ -162,7 +162,7 @@ public:
 
     void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) override;
 
-    void clearCallbacksPCIDMA() override;
+    void clearCallbacks() override;
 
 private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
