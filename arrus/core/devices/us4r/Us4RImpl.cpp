@@ -633,9 +633,6 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     if (elementSize == 0) {
         return;
     }
-    if(transferRegistrar[us4oemOrdinal]) {
-        transferRegistrar[us4oemOrdinal].reset();
-    }
     transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, bufferSrc, us4oem);
     transferRegistrar[us4oemOrdinal]->registerTransfers();
     // Register buffer element release functions.
@@ -681,6 +678,7 @@ void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
     for (Ordinal i = 0; i < us4oems.size(); ++i) {
         if(transferRegistrar[i]) {
             transferRegistrar[i]->unregisterTransfers(cleanupSequencer);
+            transferRegistrar[i].reset();
         }
     }
 }

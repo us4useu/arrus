@@ -4,7 +4,8 @@ import enum
 import math
 import time
 from abc import ABC, abstractmethod
-from typing import Set, List, Iterable, Tuple, Dict
+from typing import Set, List, Iterable, Tuple, Dict, Any
+import threading
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -14,8 +15,8 @@ import arrus.session
 import arrus.logging
 import arrus.utils.us4r
 from arrus.ops.imaging import LinSequence
-from arrus.ops.us4r import Pulse, Scheme
-from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
+from arrus.ops.us4r import Pulse, Scheme, TxRxSequence, Tx, Rx, TxRx, DataBufferSpec
+from arrus.utils.imaging import Pipeline, RemapToLogicalOrder, Squeeze, Lambda
 from arrus.metadata import Metadata
 
 
@@ -259,6 +260,7 @@ class ProbeHealthReport:
     data: np.ndarray
     footprint: np.ndarray
     validator: ProbeElementValidator
+    aux: Dict[str, Any]
 
     @property
     def characteristics(self) -> Dict[str, np.ndarray]:
@@ -323,9 +325,9 @@ class MaxHVPSCurrentAmplitudeExtractor(ProbeElementFeatureExtractor):
     feature = "amplitude"
 
     def extract(self, current: np.ndarray) -> np.ndarray:
-        current = np.abs(current[:, :, :, :])
-        frame_max = np.max(current, axis=(2, 3))
-        frame_max = np.median(frame_max, axis=0)
+        current = np.abs(current[..., 0])  # (n repeats, ntx, nsamples)
+        frame_max = np.max(current, axis=2) # (n repeats, ntx)
+        frame_max = np.median(frame_max, axis=0)  # (n tx)
         return frame_max
 
 
@@ -744,7 +746,7 @@ class ProbeHealthVerifier:
         :return: an instance of the ProbeHealthReport
         """
         if signal_type == "rf":
-            data, metadata, masked_elements = self._acquire_rf_data(
+            data, metadata, masked_elements, aux = self._acquire_rf_data(
                 cfg_path=cfg_path,
                 n=n,
                 tx_frequency=tx_frequency,
@@ -753,7 +755,7 @@ class ProbeHealthVerifier:
                 footprint=footprint,
             )
         elif signal_type == "hvps_current":
-            data, metadata, masked_elements = self._acquire_hvps_current(
+            data, metadata, masked_elements, aux = self._acquire_hvps_current(
                 cfg_path=cfg_path,
                 n=n,
                 tx_frequency=tx_frequency,
@@ -769,7 +771,8 @@ class ProbeHealthVerifier:
             masked_elements=masked_elements,
             features=features,
             validator=validator,
-            signal_type=signal_type
+            signal_type=signal_type,
+            aux=aux
         )
         return health_report
 
@@ -781,11 +784,14 @@ class ProbeHealthVerifier:
             masked_elements: Set[int],
             features: List[FeatureDescriptor],
             validator: ProbeElementValidator,
-            signal_type: str="rf"
+            signal_type: str="rf",
+            aux: Dict[str, Any]=None
     ) -> ProbeHealthReport:
         """
         Creates probe health report.
         """
+        if aux is None:
+            aux = {}
         n_repeats, ntx, n_samples, n_rx = data.shape
 
         # Compute feature values, verify the values according to given
@@ -849,6 +855,7 @@ class ProbeHealthVerifier:
             data=data,
             footprint=footprint,
             validator=validator,
+            aux=aux
         )
         return report
 
@@ -926,7 +933,7 @@ class ProbeHealthVerifier:
                 data = buffer.get()[0]
                 rfs.append(np.squeeze(data.copy()))
             rfs = np.stack(rfs)
-        return rfs, const_metadata, masked_elements
+        return rfs, const_metadata, masked_elements, {}
 
     def _acquire_hvps_current(
             self,
@@ -935,71 +942,86 @@ class ProbeHealthVerifier:
             tx_frequency,
             voltage,
             footprint=None,
+            acquisition_parameters: Dict[str, Any]=None
     ):
-        """
-        Acquires rf data. If footprint is given the footprint sequence is used,
-        """
+        if voltage > 15:
+            raise ValueError("The voltage can not be higher than 15V for probe check")
+
+        if acquisition_parameters is None:
+            acquisition_parameters = {}
+        
+        if n != 1:
+            raise ValueError("Currently a single repeat is allowed for HVPS current measurement")
+
+        pulse_length = acquisition_parameters.get("pulse_length", 150e-6)
+
         with arrus.session.Session(cfg_path) as sess:
             us4r = sess.get_device("/Us4R:0")
-            us4r.set_maximum_pulse_length(10e-6)
-            pulse_length = 5e-6
+            us4r.set_hv_voltage(voltage)
+            time.sleep(0.1)
+            LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
+            us4r.set_maximum_pulse_length(200e-6)
             ncycles = pulse_length*tx_frequency
             n_elements = us4r.get_probe_model().n_elements
             masked_elements = us4r.channels_mask
-            if footprint is None:
-                seq = LinSequence(
-                    tx_aperture_center_element=np.arange(0, n_elements),
-                    tx_aperture_size=1,
-                    tx_focus=.1e-3,
-                    pulse=Pulse(
-                        center_frequency=tx_frequency,
-                        n_periods=ncycles,
-                        inverse=False,
-                    ),
-                    rx_aperture_center_element=np.arange(0, n_elements),
-                    rx_aperture_size=1,
-                    rx_sample_range=(0, 1024),
-                    pri=1e-3,
-                    speed_of_sound=1490,
-                )
-            else:
-                seq = footprint.get_sequence()
-                n = footprint.get_number_of_frames()
-                LOGGER.info("Sequence loaded from footprint.")
-            scheme = Scheme(
-                tx_rx_sequence=seq,
-                work_mode="MANUAL_OP",
-            )
-            buffer, const_metadata = sess.upload(scheme)
-            # Set HVPS measurement settings
-            for oem_nr in range(us4r.n_us4oems):
-                oem = us4r.get_us4oem(oem_nr)
-                oem.set_hvps_sync_measurement(n_samples=512, frequency=1e6)
 
-            fcm = const_metadata.data_description.custom["frame_channel_mapping"]
-            oem_mapping = fcm.us4oems  # TX/RX -> OEM mapping
-            buffer.append_on_new_data_callback(lambda element: element.release())
-            current = []
-            if voltage > 15:
-                raise ValueError("The voltage can not be higher than 15V "
-                                 "for probe check")
-            us4r.set_hv_voltage(voltage)
-            # Wait for the voltage to stabilize.
-            time.sleep(0.1)
-            LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
-            for i in range(n):
-                LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX sequence: {i}")
-                ampls = []
-                for ch in range(n_elements):
-                    LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX op: {ch}")
-                    sess.run(sync=True, timeout=5000)
-                    oem_nr = int(oem_mapping[ch, 0])  # (TX/RX = ch, transmitting channel)
-                    hvps_measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement()
-                    hvp0_current = hvps_measurement.get(polarity="PLUS", level=0, unit="CURRENT")
-                    ampls.append(hvp0_current)
-                ampls = np.stack(ampls)  # (ntx, n_samples)
-                ampls = ampls[..., np.newaxis]  # (ntx, n_samples, nrx=1)
-                current.append(ampls)
-            current = np.stack(current)
-        return current, const_metadata, masked_elements
+            if footprint is not None:
+                raise ValueError("Currently hvps current does not support footprints.")
+            
+            measurements = []
+            ampls = []
+            oem_nrs = []
+            for channel in range(n_elements):  # n_elements
+                for oem in range(us4r.n_us4oems):
+                    us4r.get_us4oem(oem).set_hvps_sync_measurement(n_samples=509, frequency=1e6)
+                LOGGER.log(arrus.logging.INFO, f"Channel {channel}")
+                aperture = np.zeros(n_elements).astype(bool)
+                aperture[channel] = True
+
+                seq = TxRxSequence(
+                    ops=[
+                        TxRx(
+                            Tx(aperture=aperture,
+                               excitation=Pulse(center_frequency=tx_frequency, n_periods=ncycles, inverse=False),
+                               delays=[0]),
+                            Rx(aperture=aperture, sample_range=(0, 4096), downsampling_factor=1),
+                            pri=200e-6
+                        ),
+                    ],
+                    tgc_curve=[],  # [dB]
+                    sri=20e-3
+                )
+                scheme = Scheme(
+                    tx_rx_sequence=seq,
+                    work_mode="HOST",
+                    rx_buffer_size=2,
+                    output_buffer=DataBufferSpec(type="FIFO", n_elements=2)
+                )
+                buffer, metadata = sess.upload(scheme)
+                
+                sequence_ready = threading.Event()
+
+                def ready_callback(element):
+                    sequence_ready.set()
+
+                buffer.append_on_new_data_callback(ready_callback)
+                fcm = metadata.data_description.custom["frame_channel_mapping"]
+                oem_mapping = fcm.us4oems  # TX/RX -> OEM mapping
+                oem_nr = int(oem_mapping[0, 0]) 
+                # Trigger execution asynchronously.
+                sess.run()  
+                sequence_ready.wait()
+                sess.stop_scheme()
+                oem_measurements = []
+                oem = us4r.get_us4oem(oem_nr)
+                measurement = oem.get_hvps_measurement().get_array()
+                measurements.append(measurement)
+                oem_nrs.append(oem_nr)
+            measurements = np.stack(measurements)
+            n_txs, n_polarities, n_levels, n_units, n_samples = measurements.shape
+            # polarity == 0 => minus
+            # unit == 1 => current
+            hvm0_current = measurements[:, 0, 0, 1, :]
+            hvm0_current = hvm0_current[np.newaxis, :, :, np.newaxis]  # (n repeats, ntx, nsamples, nrx)
+        return hvm0_current, metadata, masked_elements, {"hvps_measurements": measurements, "oem_nrs": np.stack(oem_nrs)}
 

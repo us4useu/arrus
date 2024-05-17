@@ -302,6 +302,13 @@ def main():
         default=8e6,
     )
     parser.add_argument(
+        "--tx_voltage", dest="tx_voltage",
+        help="TX voltage.",
+        required=False,
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
         "--nrx", dest="nrx",
         help="Size of receiving aperture",
         required=False,
@@ -505,7 +512,7 @@ def main():
         display_summary(n_elements, report)
 
     if args.file is not None:
-        data = {"rf": report.data, "context": report.sequence_metadata}
+        data = {"rf": report.data, "context": report.sequence_metadata, "report": report}
         pickle.dump(data, open(args.file, "wb"))
 
     if args.show_pulse_comparison is not None:
