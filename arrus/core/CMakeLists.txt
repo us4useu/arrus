@@ -275,11 +275,11 @@ if (ARRUS_RUN_TESTS)
     # create_core_test(devices/probe/ProbeImplTest.cpp
     #     "devices/probe/ProbeImpl.cpp;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     # core::io tests
-#    set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
-#    create_core_test(io/settingsTest.cpp
-#        "" # no additional source files
-#        "protobuf::libprotobuf;arrus-core"
-#        "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
+    set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
+    create_core_test(io/settingsTest.cpp
+        "" # no additional source files
+        "protobuf::libprotobuf;arrus-core"
+        "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
 endif ()
 
 ################################################################################

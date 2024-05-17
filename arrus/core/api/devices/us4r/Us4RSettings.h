@@ -26,7 +26,6 @@ public:
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
         std::vector<std::vector<ChannelIdx>> channelsMask,
-        std::vector<std::vector<uint8>> us4oemChannelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
@@ -39,7 +38,6 @@ public:
           rxSettings(std::move(rxSettings)),
           hvSettings(std::move(hvSettings)),
           channelsMask(std::move(channelsMask)),
-          us4oemChannelsMask(std::move(us4oemChannelsMask)),
           reprogrammingMode(reprogrammingMode),
           nUs4OEMs(nUs4OEMs),
           adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
@@ -55,7 +53,6 @@ public:
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
         std::vector<ChannelIdx> probe0ChannelsMask,
-        std::vector<std::vector<uint8>> us4oemChannelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
@@ -69,7 +66,6 @@ public:
                 std::move(rxSettings),
                 std::move(hvSettings),
                 {std::move(probe0ChannelsMask)},
-                std::move(us4oemChannelsMask),
                 reprogrammingMode,
                 nUs4OEMs,
                 std::move(adapterToUs4RModuleNumber),
@@ -141,10 +137,6 @@ public:
         return channelsMask;
     }
 
-    const std::vector<std::vector<uint8>> &getUs4OEMChannelsMask() const {
-        return us4oemChannelsMask;
-    }
-
     ReprogrammingMode getReprogrammingMode() const {
         return reprogrammingMode;
     }
@@ -187,13 +179,11 @@ private:
     /** Optional (us4r devices may have externally controlled hv suppliers. */
     std::optional<HVSettings> hvSettings;
     /** A list of channels that should be turned off in the us4r system.
+     * This is list of lists; each list represents what channels of the
+     * ultrasound interface (probe) should be turned off.
+     * channelsMask[i] is a channels mask for the i-th probe (Probe:i).
      * Note that the **channel numbers start from 0**.*/
     std::vector<std::vector<ChannelIdx>> channelsMask;
-    /** A list of channels masks to apply on given us4oems.
-     * Currently us4oem channels are used for double check only.
-     * The administrator has to provide us4oem channels masks that confirms to
-     * the system us4r channels, and this way we reduce the chance of mistake. */
-    std::vector<std::vector<uint8>> us4oemChannelsMask;
     /** Reprogramming mode applied to all us4OEMs.
      * See Us4OEMSettings::ReprogrammingMode docs for more information. */
     ReprogrammingMode reprogrammingMode;

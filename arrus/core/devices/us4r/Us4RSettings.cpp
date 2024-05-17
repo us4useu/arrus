@@ -26,8 +26,7 @@ std::ostream &operator<<(std::ostream &os, const Us4RSettings &settings) {
     auto &probeAdapterSettings = settings.getProbeAdapterSettings();
     auto &probeSettings = settings.getProbeSettingsList();
     auto &rxSettings = settings.getRxSettings();
-    auto &channelsMasks = settings.getChannelsMaskForAllProbes();
-    auto &us4oemChannelsMasks = settings.getUs4OEMChannelsMask();
+    auto &channelsMask = settings.getChannelsMaskForAllProbes();
 
     os << " probeAdapterSettings: ";
     printOptionalValue(probeAdapterSettings, os);
@@ -38,21 +37,11 @@ std::ostream &operator<<(std::ostream &os, const Us4RSettings &settings) {
     os << " rxSettings: ";
     printOptionalValue(rxSettings, os);
 
-    for (auto mask : channelsMasks) {
+    for (auto mask : channelsMask) {
         os << " channels mask: ";
         for (auto ch : mask) {
             os << (int)ch << ", ";
         }
-    }
-
-    os << " us4oem channels mask: ";
-    i = 0;
-    for (const auto &vec : us4oemChannelsMasks) {
-        os << "us4oem " << i << ": ";
-        for (auto channel : vec) {
-            os << (int) channel << ", ";
-        }
-        ++i;
     }
     return os;
 }

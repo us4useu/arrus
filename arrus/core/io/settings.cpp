@@ -48,7 +48,8 @@ namespace ap = arrus::proto;
 using namespace ::arrus::devices;
 using namespace ::arrus::session;
 
-template<typename T> std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
+template<typename T>
+std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
     int fd = ARRUS_OPEN_FILE(filepath.c_str(), O_RDONLY);
     ARRUS_REQUIRES_TRUE(fd != 0, arrus::format("Could not open file {}", filepath));
     google::protobuf::io::FileInputStream input(fd);
@@ -63,7 +64,8 @@ template<typename T> std::unique_ptr<T> readProtoTxt(const std::string &filepath
     return result;
 }
 
-template<typename T> std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
+template<typename T>
+std::unique_ptr<T> readProtoTxtStr(const std::string &proto) {
     auto result = std::make_unique<T>();
     bool parseOk = google::protobuf::TextFormat::ParseFromString(proto, result.get());
     if (!parseOk) {
@@ -91,14 +93,14 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
         ARRUS_REQUIRES_EQUAL(modules.size(), channels.size(),
                              IllegalArgumentException("Us4oems and channels lists should have "
                                                       "the same size"));
-        channelMapping = std::vector<ChannelAddress>{modules.size()};
+        channelMapping = std::vector < ChannelAddress > {modules.size()};
         for (unsigned i = 0; i < modules.size(); ++i) {
             channelMapping[i] = {modules[i], channels[i]};
         }
     } else if (!proto.channel_mapping_regions().empty()) {
         std::vector<Ordinal> modules;
         std::vector<ChannelIdx> channels;
-        for (auto const &region : proto.channel_mapping_regions()) {
+        for (auto const &region: proto.channel_mapping_regions()) {
             auto module = static_cast<Ordinal>(region.us4oem());
 
             if (region.has_region()) {
@@ -111,7 +113,7 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
                 }
             } else {
                 // Just channels.
-                for (auto channel : region.channels()) {
+                for (auto channel: region.channels()) {
                     channelMapping.emplace_back(module, static_cast<ChannelIdx>(channel));
                 }
             }
@@ -121,10 +123,10 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     if (proto.has_io_settings()) {
         auto &ioSettingsProto = proto.io_settings();
         arrus::devices::us4r::IOSettingsBuilder settingsBuilder;
-        for (auto &entry : ioSettingsProto.capabilities()) {
+        for (auto &entry: ioSettingsProto.capabilities()) {
             // Convert to arrus IO address.
             std::vector<arrus::devices::us4r::IOAddress> addresses;
-            for (auto addressProto : entry.addresses()) {
+            for (auto addressProto: entry.addresses()) {
                 Ordinal us4oem = ARRUS_SAFE_CAST(addressProto.us4oem(), Ordinal);
                 uint8_t io = ARRUS_SAFE_CAST(addressProto.io(), uint8_t);
                 addresses.emplace_back(us4oem, io);
@@ -132,14 +134,15 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
             arrus::devices::us4r::IOAddressSet addressSet(addresses);
             if (addressSet.size() > 0) {
                 switch (entry.capability()) {
-                case arrus::proto::IOCapability::PROBE_CONNECTED_CHECK:
-                    settingsBuilder.setProbeConnectedCheckCapability(addressSet);
-                    break;
-                case arrus::proto::IOCapability::FRAME_METADATA:
-                    settingsBuilder.setFrameMetadataCapability(addressSet);
-                    break;
-                default:
-                    throw IllegalArgumentException("Unhandled capability nr: " + std::to_string(entry.capability()));
+                    case arrus::proto::IOCapability::PROBE_CONNECTED_CHECK:
+                        settingsBuilder.setProbeConnectedCheckCapability(addressSet);
+                        break;
+                    case arrus::proto::IOCapability::FRAME_METADATA:
+                        settingsBuilder.setFrameMetadataCapability(addressSet);
+                        break;
+                    default:
+                        throw IllegalArgumentException(
+                            "Unhandled capability nr: " + std::to_string(entry.capability()));
                 }
             }
         }
@@ -179,7 +182,7 @@ std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapt
         return castTo<ChannelIdx>(std::begin(channelMapping), std::end(channelMapping));
     } else if (!ranges.empty()) {
         std::vector<ChannelIdx> result;
-        for (auto const &range : ranges) {
+        for (auto const &range: ranges) {
             for (int i = range.begin(); i <= range.end(); ++i) {
                 result.push_back(static_cast<ChannelIdx>(i));
             }
@@ -193,7 +196,7 @@ std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapt
 std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> indexProbeToAdapterConnections(
     const google::protobuf::RepeatedPtrField<::arrus::proto::ProbeToAdapterConnection> &probeToAdapterConnections) {
     std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> connections;
-    for (const ap::ProbeToAdapterConnection &conn : probeToAdapterConnections) {
+    for (const ap::ProbeToAdapterConnection &conn: probeToAdapterConnections) {
         std::string key = SettingsDictionary::convertProtoIdToString(conn.probe_model_id());
         connections.emplace(key, conn);
     }
@@ -207,7 +210,7 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
         return result;
     }
 
-    for (auto const &adapter : proto->probe_adapter_models()) {
+    for (auto const &adapter: proto->probe_adapter_models()) {
         result.insertAdapterSettings(readAdapterSettings(adapter));
     }
 
@@ -218,7 +221,7 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
         indexProbeToAdapterConnections(probeToAdapterConnections);
 
     // Read probes.
-    for (auto const &probe : proto->probe_models()) {
+    for (auto const &probe: proto->probe_models()) {
         const ProbeModel probeModel = readProbeModel(probe);
         result.insertProbeModel(probeModel);
         std::string key = SettingsDictionary::convertProtoIdToString(probe.id());
@@ -227,7 +230,7 @@ SettingsDictionary readDictionary(const ap::Dictionary *proto) {
             auto conn = it->second;
             std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(conn);
 
-            for (auto const &adapterProtoId : conn.probe_adapter_model_id()) {
+            for (auto const &adapterProtoId: conn.probe_adapter_model_id()) {
                 const ProbeAdapterModelId adapterId(adapterProtoId.manufacturer(), adapterProtoId.name());
                 result.insertProbeSettings(ProbeSettings(probeModel, channelMapping), adapterId);
             }
@@ -305,7 +308,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
                         "You should skip probe to adapter connections list, or provide the same number of "
                         "probe to adapter connections and probe definitions in the configuration file.");
 
-    for (auto &probeId : us4r.probe_id()) {
+    for (auto &probeId: us4r.probe_id()) {
         ProbeModelId id{probeId.manufacturer(), probeId.name()};
         ProbeModel model = dictionary.getProbeModel(id);
         if (us4r.probe_to_adapter_connection_size() > 0) {
@@ -323,7 +326,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
         }
     }
 
-    for (auto &probe : us4r.probe()) {
+    for (auto &probe: us4r.probe()) {
         ProbeModel model = readProbeModel(probe);
         const auto &probeId = probe.id();
         proto::ProbeToAdapterConnection connection;
@@ -332,7 +335,7 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
             connection = *std::begin(us4r.probe_to_adapter_connection());
         } else {
             connection = getUniqueConnection(probeId, connections);
-       }
+        }
         std::vector<ChannelIdx> channelMapping = readProbeConnectionChannelMapping(connection);
         std::optional<BitstreamId> bitstreamId;
         if (connection.has_bitstream_id()) {
@@ -343,19 +346,20 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
     return result;
 }
 
-template<typename T> std::vector<std::vector<T>> readChannelsMask(const proto::Us4RSettings &us4r) {
+template<typename T>
+std::vector<std::vector<T>> readChannelsMask(const proto::Us4RSettings &us4r) {
     std::vector<std::vector<T>> result;
-    for (const auto &mask : us4r.channels_mask()) {
+    for (const auto &mask: us4r.channels_mask()) {
         auto &channels = mask.channels();
         // validate
-        for (auto channel : channels) {
+        for (auto channel: channels) {
             ARRUS_REQUIRES_DATA_TYPE(channel, T,
                                      arrus::format("Channel mask should contain only values from uint16 range "
                                                    "(found: '{}')",
                                                    channel));
         }
         std::vector<T> probeMask;
-        for (auto channel : channels) {
+        for (auto channel: channels) {
             probeMask.push_back(static_cast<T>(channel));
         }
         result.emplace_back(std::move(probeMask));
@@ -387,13 +391,13 @@ FileSettings readFileSettings(const proto::FileSettings &file, const SettingsDic
 std::vector<Bitstream>
 readBitstreams(const ::google::protobuf::RepeatedPtrField<::arrus::proto::Bitstream> &bitstreams) {
     std::vector<Bitstream> result;
-    for (auto &b : bitstreams) {
+    for (auto &b: bitstreams) {
         std::vector<uint8> levels;
         std::vector<uint16> periods;
         std::transform(std::begin(b.levels()), std::end(b.levels()), std::back_inserter(levels),
-                       [](auto v) { return (uint8) v; });
+                       [](auto v) { return (uint8)v; });
         std::transform(std::begin(b.periods()), std::end(b.periods()), std::back_inserter(periods),
-                       [](auto v) { return (uint16) v; });
+                       [](auto v) { return (uint16)v; });
         result.emplace_back(levels, periods);
     }
     return result;
@@ -428,43 +432,38 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     }
     if (!us4r.adapter_to_us4r_module_nr().empty()) {
         auto &adapter2Us4RModule = us4r.adapter_to_us4r_module_nr();
-        for (auto &nr : adapter2Us4RModule) {
+        for (auto &nr: adapter2Us4RModule) {
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
-    if (!us4r.us4oems().empty()) {
-        throw IllegalArgumentException("Us4OEM specific configuration is not supported since 0.11.0");
-    } else {
-        ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
-        std::vector<ProbeSettings> probeSettings =
-            readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
-        RxSettings rxSettings = readRxSettings(us4r.rx_settings());
+    ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
+    std::vector<ProbeSettings> probeSettings =
+        readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
+    RxSettings rxSettings = readRxSettings(us4r.rx_settings());
 
-        std::vector<std::vector<ChannelIdx>> channelsMask = readChannelsMask<ChannelIdx>(us4r);
-        std::vector<std::vector<uint8>> us4oemChannelsMask;
-        auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
-        std::vector<Bitstream> bitstreams = readBitstreams(us4r.bitstreams());
+    std::vector<std::vector<ChannelIdx>> channelsMask = readChannelsMask<ChannelIdx>(us4r);
+    std::vector<std::vector<uint8>> us4oemChannelsMask;
+    auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
+    std::vector<Bitstream> bitstreams = readBitstreams(us4r.bitstreams());
 
-        return {adapterSettings,
-                probeSettings,
-                rxSettings,
-                hvSettings,
-                channelsMask,
-                us4oemChannelsMask,
-                reprogrammingMode,
-                nUs4OEMs,
-                adapterToUs4RModuleNr,
-                us4r.external_trigger(),
-                txFrequencyRange,
-                digitalBackplaneSettings,
-                bitstreams};
-    }
+    return {adapterSettings,
+            probeSettings,
+            rxSettings,
+            hvSettings,
+            channelsMask,
+            reprogrammingMode,
+            nUs4OEMs,
+            adapterToUs4RModuleNr,
+            us4r.external_trigger(),
+            txFrequencyRange,
+            digitalBackplaneSettings,
+            bitstreams};
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
     switch (mode) {
-    case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL: return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
-    case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL: return Us4OEMSettings::ReprogrammingMode::PARALLEL;
-    default: throw std::runtime_error("Unknown reprogramming mode: " + std::to_string(mode));
+        case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL: return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
+        case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL: return Us4OEMSettings::ReprogrammingMode::PARALLEL;
+        default: throw std::runtime_error("Unknown reprogramming mode: " + std::to_string(mode));
     }
 }
 
