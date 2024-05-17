@@ -21,8 +21,8 @@ namespace arrus::devices {
  */
 class Us4OEMBufferArrayPart {
 public:
-    Us4OEMBufferArrayPart(size_t address, size_t size, uint16 arrayId, uint16 entryId, const unsigned nSamples)
-        : address(address), size(size), arrayId(arrayId), entryId(entryId), nSamples(nSamples) {}
+    Us4OEMBufferArrayPart(size_t address, size_t size, uint16 arrayId, uint16 entryId)
+        : address(address), size(size), arrayId(arrayId), entryId(entryId) {}
 
     /** Returns address of this part, relative to the beginning of the array */
     size_t getAddress() const { return address; }
@@ -34,14 +34,12 @@ public:
     /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries) */
     uint16 getEntryId() const { return entryId; }
 
-    unsigned getNSamples() const { return nSamples; }
 
 private:
     size_t address;
     size_t size;
     uint16 arrayId;
     uint16 entryId;
-    unsigned nSamples;
 };
 
 // A single array consits of multiple parts (frames).
@@ -136,7 +134,7 @@ public:
     /**
      * Returns the view of this buffer for slice [start, end] (note: end is inclusive).
      */
-    Us4OEMBuffer getView(uint16 start, uint16 end) const {
+    Us4OEMBuffer getView(uint16, uint16) const {
         throw std::runtime_error("NYI");
     }
 

@@ -248,7 +248,7 @@ void Us4RImpl::cleanupBuffers() {
     this->buffer->shutdown();
     // We must be sure here, that there is no thread working on the us4rBuffer here.
     if (!this->oemBuffers.empty()) {
-        unregisterOutputBuffer();
+        unregisterOutputBuffer(false);
         this->oemBuffers.clear();
     }
     this->buffer.reset();
@@ -324,7 +324,7 @@ void Us4RImpl::start() {
         // Reset tx subsystem pointers.
         us4oem->getIUs4OEM()->EnableTransmit();
         // Reset sequencer pointers.
-        us4oem->enableSequencer();
+        us4oem->enableSequencer(true);
     }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
@@ -1001,22 +1001,7 @@ float Us4RImpl::getRxDelay(const TxRxSequence &sequence) const {
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
 Us4RImpl::setSubsequence(uint16_t, uint16_t, const std::optional<float> &) {
-    throw std::runtime_error("setSubsequence not yet implemented.")
-    if(!this->currentScheme.has_value()) {
-        throw IllegalStateException("Please upload scheme before setting sub-sequence.");
-    }
-    const auto &s = this->currentScheme.value();
-    const auto &seq = s.getTxRxSequence();
-    const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
-    if(end >= currentSequenceSize) {
-        throw IllegalArgumentException(format("The new sub-sequence [{}, {}] is outside of the scope of the currently "
-                                       "uploaded sequence: [0, {})", start, end, currentSequenceSize));
-    }
-    auto [rxBuffer, fcm] = this->getProbeImpl()->setSubsequence(start, end, sri);
-    prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer, true);
-    arrus::session::MetadataBuilder metadataBuilder;
-    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
-    return {this->buffer, metadataBuilder.buildPtr()};
+    throw std::runtime_error("setSubsequence not yet implemented.");
 }
 
 

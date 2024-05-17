@@ -42,15 +42,12 @@ public:
            const std::optional<ops::us4r::DigitalDownConversion> &ddc,
            const std::vector<arrus::framework::NdArray> &txDelays) = 0;
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
-    virtual void enableSequencer() = 0;
+    virtual void enableSequencer(bool resetSequencerPointer) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
     virtual void setRxSettings(const RxSettings& settings) = 0;
     virtual void setTestPattern(RxTestPattern pattern) = 0;
     virtual BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
     virtual void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
-
-    virtual void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) = 0;
-
     virtual void clearCallbacks() = 0;
 
 protected:

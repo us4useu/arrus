@@ -73,7 +73,8 @@ public:
             }
 
             auto [us4oems, masterIUs4OEM] =
-                getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings());
+                getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings(),
+                           ius4oemHandles);
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
                            [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
@@ -90,10 +91,6 @@ public:
                 validator.throwOnErrors();
                 probeOrdinal++;
             }
-            std::vector<IUs4OEM *> ius4oems;
-            for (auto &us4oem : us4oems) {
-                ius4oems.push_back(us4oem->getIUs4OEM());
-            }
             if(backplane.has_value() && settings.isExternalTrigger()) {
                 backplane.value()->enableExternalTrigger();
             }
@@ -108,6 +105,14 @@ public:
     }
 
 private:
+    std::vector<IUs4OEMHandle> getIUS4OEMs(Ordinal nOEMs) {
+        ARRUS_REQUIRES_AT_LEAST(nOEMs, 1, "At least one us4oem should be configured.");
+        std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nOEMs);
+        // Modifies input list - sorts ius4oems by ID in ascending order.
+        ius4oemInitializer->sortModulesById(ius4oems);
+        return ius4oems;
+    }
+
     /**
      * @return a pair: us4oems, master ius4oem
      */

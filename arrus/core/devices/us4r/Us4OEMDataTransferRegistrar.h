@@ -98,9 +98,11 @@ public:
     void cleanupSequencerTransfers() {
         uint16 elementFirstFiring = 0;
         for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
-            for(auto &transfer: elementTransfers) {
-                auto firing = elementFirstFiring + transfer.firing;
-                ius4oem->ClearTransferRXBufferToHost(firing);
+            for(auto &arrayTransfers: elementTransfers) {
+                for(const auto &transfer: arrayTransfers) {
+                    auto firing = elementFirstFiring + transfer.firing;
+                    ius4oem->ClearTransferRXBufferToHost(firing);
+                }
             }
             // element.getFiring() -- the last firing of the given element
             elementFirstFiring = srcBuffer.getElement(srcIdx).getFiring() + 1;
@@ -116,8 +118,8 @@ public:
      *
      * This method required that each array part has size <= MAX_TRANSFER_SIZE.
      */
-    static std::vector<ArrayTransfers> createTransfers(const Us4ROutputBuffer *dst, const Us4OEMBuffer &src,
-                                                       Ordinal oem) {
+    static std::vector<ArrayTransfers> createTransfers(
+        const Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Ordinal oem) {
         std::vector<ArrayTransfers> result;
 
         for (ArrayId arrayId = 0; arrayId < src.getNumberOfArrays(); ++arrayId) {

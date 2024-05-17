@@ -233,14 +233,8 @@ void SessionImpl::verifyScheme(const ops::us4r::Scheme &scheme) {
 
 Session::State SessionImpl::getCurrentState() { return state; }
 
-UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional<float> sri) {
-    std::lock_guard guard(stateMutex);
-    ASSERT_STATE(State::STOPPED);
-
-    auto ultrasound = (Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-    auto[buffer, metadata] = ultrasound->setSubsequence(start, end, sri);
-    return UploadResult(buffer, metadata);
-
+UploadResult SessionImpl::setSubsequence(uint16, uint16, std::optional<float>) {
+    throw std::runtime_error("Setting sub-sequence not implemented.");
 }
 
 }// namespace arrus::session
