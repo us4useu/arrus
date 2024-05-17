@@ -481,7 +481,8 @@ def main():
         features=features,
         validator=validator,
         footprint=footprint,
-        signal_type=args.signal_type
+        signal_type=args.signal_type,
+        voltage=args.tx_voltage
     )
 
     # show results
