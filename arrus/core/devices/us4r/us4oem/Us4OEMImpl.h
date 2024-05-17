@@ -25,8 +25,6 @@
 
 namespace arrus::devices {
 
-// Helper classes.
-
 /**
  * Us4OEM wrapper implementation.
  *
@@ -110,7 +108,7 @@ public:
     void stop() override;
     void setTgcCurve(const RxSettings &cfg);
     Ius4OEMRawHandle getIUs4OEM() override;
-    void enableSequencer() override;
+    void enableSequencer(bool resetSequencerPointer) override;
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
@@ -140,6 +138,7 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
     Interval<Voltage> getAcceptedVoltageRange() override;
+    void clearCallbacks() override;
 
 private:
     using Us4OEMAperture = std::bitset<N_ADDR_CHANNELS>;

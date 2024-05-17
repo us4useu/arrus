@@ -21,6 +21,14 @@ public:
         return revision.get().c_str();
     }
 
+    void enableExternalTrigger() {
+        dbar->EnableExternalTrigger();
+    }
+
+    void enableInternalTrigger() {
+        dbar->EnableInternalTrigger();
+    }
+
     /**
      * TODO NOTE: this method should not be exposed in API.
      */

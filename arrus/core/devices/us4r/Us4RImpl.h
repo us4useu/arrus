@@ -119,7 +119,7 @@ public:
 
     void registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::vector<Us4OEMBuffer> &srcBuffers,
                               arrus::ops::us4r::Scheme::WorkMode workMode);
-    void unregisterOutputBuffer();
+    void unregisterOutputBuffer(bool cleanSequencer);
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
     void setParameters(const Parameters &parameters) override;
@@ -134,6 +134,9 @@ public:
     Probe::RawHandle getProbe(Ordinal ordinal) override {
         return probes.at(ordinal).get();
     }
+
+    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
 private:
     void stopDevice();

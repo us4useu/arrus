@@ -346,6 +346,10 @@ public:
         return arrayDefs.get(arrayId).getOEMAddress(oem);
     }
 
+    void runOnOverflowCallback() {
+        this->onOverflowCallback();
+    }
+
 private:
     /**
      * Throws IllegalStateException when the buffer is in invalid state.

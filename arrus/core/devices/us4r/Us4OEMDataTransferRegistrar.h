@@ -88,7 +88,24 @@ public:
         scheduleTransfers();
     }
 
-    void unregisterTransfers() { pageUnlockDstMemory(); }
+    void unregisterTransfers(bool cleanupSequencer = false) {
+        pageUnlockDstMemory();
+        if(cleanupSequencer) {
+            cleanupSequencerTransfers();
+        }
+    }
+
+    void cleanupSequencerTransfers() {
+        uint16 elementFirstFiring = 0;
+        for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
+            for(auto &transfer: elementTransfers) {
+                auto firing = elementFirstFiring + transfer.firing;
+                ius4oem->ClearTransferRXBufferToHost(firing);
+            }
+            // element.getFiring() -- the last firing of the given element
+            elementFirstFiring = srcBuffer.getElement(srcIdx).getFiring() + 1;
+        }
+    }
 
     /**
      * Creates for each array to be produced by the given OEM.
@@ -142,6 +159,10 @@ public:
     void pageLockDstMemory() {
         for (uint16 dstIdx = 0, srcIdx = 0; dstIdx < dstNElements; ++dstIdx, srcIdx = (srcIdx + 1) % srcNElements) {
             uint8 *addressDst = dstBuffer->getAddress(dstIdx);
+            // NOTE: addressSrc should be the address of the complete buffer element here -- even if
+            // we are processing some sub-sequence buffer here (i.e. setSubsequence was used).
+            // The reason for that is that the transfer src address is relative to the begining of the FULL buffer
+            // element (because element parts are relative to the FULL element).
             size_t addressSrc = srcBuffer.getElement(srcIdx).getAddress();// byte-addressed
             for (const auto &arrayTransfers : elementTransfers) {
                 for (auto &transfer : arrayTransfers) {

@@ -4,6 +4,7 @@ import arrus.ops.us4r
 import numpy as np
 import arrus.ops
 import dataclasses
+from typing import Iterable
 from collections.abc import Collection
 from arrus.framework import Constant
 
@@ -101,6 +102,26 @@ class SimpleTxRxSequence:
     @property
     def excitation(self):
         return self.pulse
+
+    def get_subsequence(self, start, end):
+        """
+        Limits the sequence to the given sub-sequence [start, end] both inclusive.
+        """
+        def _limit_if_iterable(value):
+            if isinstance(value, Iterable):
+                return value[start:(end+1)]
+            else:
+                return value
+
+        return dataclasses.replace(
+            self,
+            tx_focus=_limit_if_iterable(self.tx_focus),
+            angles=_limit_if_iterable(self.angles),
+            tx_aperture_center=_limit_if_iterable(self.tx_aperture_center),
+            tx_aperture_center_element=_limit_if_iterable(self.tx_aperture_center_element),
+            rx_aperture_center=_limit_if_iterable(self.rx_aperture_center),
+            rx_aperture_center_element=_limit_if_iterable(self.rx_aperture_center_element),
+        )
 
     def __post_init__(self):
         # Validation

@@ -266,7 +266,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                ::arrus::toString(op)));
             // TX
             auto txAperture = arrus::toBitset<N_TX_CHANNELS>(op.getTxAperture());
-            auto nTxHalfPeriods = static_cast<uint8>(op.getTxPulse().getNPeriods() * 2);
+            auto nTxHalfPeriods = static_cast<uint32>(op.getTxPulse().getNPeriods() * 2);
             // RX
             auto rxAperture = rxMappingRegister.getRxAperture(sequenceId, opId);
             auto [startSample, endSample] = op.getRxSampleRange().asPair();
@@ -582,13 +582,13 @@ void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequence
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer() {
+void Us4OEMImpl::enableSequencer(bool resetSequencerPointer) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, resetSequencerPointer);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
@@ -611,52 +611,26 @@ void Us4OEMImpl::setTgcCurve(const RxSettings &afeCfg) {
         }
         if (applyCharacteristic) {
             // TGC characteristic, experimentally verified.
-            static const std::vector<float> tgcChar = {0.0f,
-                                                       2.4999999999986144e-05f,
-                                                       5.00000000000167e-05f,
-                                                       7.500000000000284e-05f,
-                                                       0.0005999999999999784f,
-                                                       0.0041999999999999815f,
-                                                       0.01200000000000001f,
-                                                       0.020624999999999984f,
-                                                       0.03085f,
-                                                       0.04424999999999999f,
-                                                       0.06269999999999998f,
-                                                       0.08455000000000004f,
-                                                       0.11172500000000003f,
-                                                       0.14489999999999997f,
-                                                       0.173325f,
-                                                       0.19654999999999995f,
-                                                       0.22227499999999994f,
-                                                       0.252475f,
-                                                       0.28857499999999997f,
-                                                       0.3149f,
-                                                       0.341275f,
-                                                       0.370925f,
-                                                       0.406625f,
-                                                       0.44225000000000003f,
-                                                       0.4710750000000001f,
-                                                       0.501125f,
-                                                       0.538575f,
-                                                       0.5795999999999999f,
-                                                       0.6115f,
-                                                       0.642f,
-                                                       0.677075f,
-                                                       0.7185f,
-                                                       0.756725f,
-                                                       0.7885f,
-                                                       0.8234f,
-                                                       0.8618499999999999f,
-                                                       0.897375f,
-                                                       0.92415f,
-                                                       0.952075f,
-                                                       0.9814f,
-                                                       1.0f};
+            static const std::vector<float> tgcChar = {
+                0.0f, 2.4999999999986144e-05f, 5.00000000000167e-05f, 7.500000000000284e-05f,
+                0.0005999999999999784f, 0.0041999999999999815f, 0.01200000000000001f, 0.020624999999999984f,
+                0.03085f, 0.04424999999999999f, 0.06269999999999998f, 0.08455000000000004f,
+                0.11172500000000003f, 0.14489999999999997f, 0.173325f, 0.19654999999999995f,
+                0.22227499999999994f, 0.252475f, 0.28857499999999997f, 0.3149f,
+                0.341275f, 0.370925f, 0.406625f, 0.44225000000000003f,
+                0.4710750000000001f, 0.501125f, 0.538575f, 0.5795999999999999f,
+                0.6115f, 0.642f, 0.677075f, 0.7185f,
+                0.756725f, 0.7885f, 0.8234f, 0.8618499999999999f,
+                0.897375f, 0.92415f, 0.952075f, 0.9814f, 1.0f
+            };
             // the below is simply linspace(0, 1, 41)
             static const std::vector<float> tgcCharPoints = {
-                0.0f,  0.025f, 0.05f, 0.075f, 0.1f,  0.125f, 0.15f, 0.175f, 0.2f,  0.225f, 0.25f, 0.275f, 0.3f,  0.325f,
-                0.35f, 0.375f, 0.4f,  0.425f, 0.45f, 0.475f, 0.5f,  0.525f, 0.55f, 0.575f, 0.6f,  0.625f, 0.65f, 0.675f,
-                0.7f,  0.725f, 0.75f, 0.775f, 0.8f,  0.825f, 0.85f, 0.875f, 0.9f,  0.925f, 0.95f, 0.975f, 1.0f};
+                0.0f   , 0.025f, 0.05f, 0.075f, 0.1f, 0.125f, 0.15f, 0.175f, 0.2f  ,
+                0.225f, 0.25f , 0.275f, 0.3f  , 0.325f, 0.35f , 0.375f, 0.4f  , 0.425f,
+                0.45f , 0.475f, 0.5f  , 0.525f, 0.55f , 0.575f, 0.6f  , 0.625f, 0.65f ,
+                0.675f, 0.7f  , 0.725f, 0.75f , 0.775f, 0.8f  , 0.825f, 0.85f , 0.875f,
+                0.9f  , 0.925f, 0.95f , 0.975f, 1.0f
+            };
             actualTgc = ::arrus::interpolate1d(tgcChar, tgcCharPoints, actualTgc);
         }
         ius4oem->TGCEnable();
@@ -912,6 +886,10 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
         }
         ius4oem->SetTxDelay(ch, delay, firingId, delaysId);
     }
+}
+
+void Us4OEMImpl::clearCallbacks() {
+    this->ius4oem->ClearCallbacks();
 }
 
 }// namespace arrus::devices

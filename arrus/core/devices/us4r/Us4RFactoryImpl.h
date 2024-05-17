@@ -48,7 +48,7 @@ public:
             ProbeAdapterSettingsValidator adapterValidator(0);
             adapterValidator.validate(probeAdapterSettings);
             adapterValidator.throwOnErrors();
-            // Probe
+            // Probes list
             auto probeSettings = settings.getProbeSettingsList();
             // TODO validate probe settings
             auto &rxSettings = settings.getRxSettings().value();
@@ -58,6 +58,19 @@ public:
             auto [us4OEMSettings, adapterSettings] = us4RSettingsConverter->convertToUs4OEMSettings(
                 probeAdapterSettings, rxSettings, settings.getReprogrammingMode(), settings.getNumberOfUs4oems(),
                 settings.getAdapterToUs4RModuleNumber(), settings.getTxFrequencyRange());
+
+            // Get IUs4OEM handles only, without initializing them.
+            // This is in order to enable internal trigger before
+            // OEMs are initialized.
+            auto ius4oemHandles = getIUS4OEMs((Ordinal)(us4OEMSettings.size()));
+            std::vector<IUs4OEM*> ius4oems;
+            for(auto &handle: ius4oemHandles) {
+                ius4oems.push_back(handle.get());
+            }
+            auto backplane = getBackplane(settings.getDigitalBackplaneSettings(), settings.getHVSettings(), ius4oems);
+            if(backplane.has_value()) {
+                backplane.value()->enableInternalTrigger();
+            }
 
             auto [us4oems, masterIUs4OEM] =
                 getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings());
@@ -81,8 +94,9 @@ public:
             for (auto &us4oem : us4oems) {
                 ius4oems.push_back(us4oem->getIUs4OEM());
             }
-
-            auto backplane = getBackplane(settings.getDigitalBackplaneSettings(), settings.getHVSettings(), ius4oems);
+            if(backplane.has_value() && settings.isExternalTrigger()) {
+                backplane.value()->enableExternalTrigger();
+            }
             auto hv = getHV(settings.getHVSettings(), ius4oems, backplane);
             return std::make_unique<Us4RImpl>(
                 id, std::move(us4oems), std::move(probeSettings), std::move(adapterSettings), std::move(hv), rxSettings,
@@ -98,25 +112,18 @@ private:
      * @return a pair: us4oems, master ius4oem
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings &io) {
-        ARRUS_REQUIRES_AT_LEAST(us4oemCfgs.size(), 1, "At least one us4oem should be configured.");
-        auto nUs4oems = static_cast<Ordinal>(us4oemCfgs.size());
-
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings& io,
+               std::vector<IUs4OEMHandle> &ius4oems
+    ) {
+        // Pre-configure us4oems.
+        for(size_t i = 0; i < us4oemCfgs.size(); ++i) {
+            ius4oems[i]->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
+        }
         // Initialize Us4OEMs.
         // We need to initialize Us4OEMs on a Us4R system level.
         // This is because Us4OEM initialization procedure needs to consider
         // existence of some master module (by default it's the 'Us4OEM:0').
         // Check the initializeModules function to see why.
-        std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nUs4oems);
-
-        // Modifies input list - sorts ius4oems by ID in ascending order.
-        ius4oemInitializer->sortModulesById(ius4oems);
-
-        // Pre-configure us4oems.
-        for (size_t i = 0; i < us4oemCfgs.size(); ++i) {
-            ius4oems[i]->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
-        }
-
         ius4oemInitializer->initModules(ius4oems);
         auto master = ius4oems[0].get();
 
@@ -129,7 +136,7 @@ private:
         std::unordered_set<Ordinal> pulseCounterOems;
         if (io.hasFrameMetadataCapability()) {
             pulseCounterOems = io.getFrameMetadataCapabilityOEMs();
-        } 
+        }
         for (unsigned i = 0; i < ius4oems.size(); ++i) {
             // TODO(Us4R-10) use ius4oem->GetDeviceID() as an ordinal number, instead of value of i
             auto ordinal = static_cast<Ordinal>(i);

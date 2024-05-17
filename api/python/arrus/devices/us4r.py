@@ -69,6 +69,9 @@ class Us4R(Device, Ultrasound):
     Wraps an access to arrus.core.Us4R object.
     """
 
+    SEQUENCE_START_VAR = "/Us4R:0/sequence:0/start"
+    SEQUENCE_END_VAR = "/Us4R:0/sequence:0/end"
+
     def __init__(self, handle):
         super().__init__()
         self._handle = handle
@@ -294,6 +297,12 @@ class Us4R(Device, Ultrasound):
         """
         return self._handle.getChannelsMask(probe_nr)
 
+    def set_stop_on_overflow(self, is_stop):
+        """
+        Set the system to stop when (RX or host) buffer overflow is detected (ASYNC mode only).
+        This property is set by default to true.
+        """
+        return self._handle.setStopOnOverflow(is_stop)
 
     def get_number_of_probes(self):
         return self._handle.getNumberOfProbes()
@@ -318,20 +327,39 @@ class Us4R(Device, Ultrasound):
 
     def get_data_description(self, upload_result, sequence, array_id):
         # Prepare data buffer and constant context metadata
+        fcm = self._get_fcm(array_id, upload_result, sequence)
+        return arrus.metadata.EchoDataDescription(
+            sampling_frequency=self.current_sampling_frequency,
+            custom={"frame_channel_mapping": fcm}
+        )
+
+    def get_data_description_updated_for_subsequence(self, array_id, upload_result, sequence):
+        fcm = self._get_fcm(array_id, upload_result, sequence)
+        return arrus.metadata.EchoDataDescription(
+            sampling_frequency=self.current_sampling_frequency,
+            custom={"frame_channel_mapping": fcm}
+        )
+
+    def _get_fcm(self, array_id, upload_result, sequence):
+        """
+        Returns frame channel mapping (FCM) extracted from the given upload result, assuming
+        the given sequence is running. The new FCM considers whether a sub-sequence is already
+        set.
+
+        :param upload_result: self.upload result
+        :param sequence: the current sequence to consider
+        :return: new frame channel mapping
+        """
         fcm = arrus.core.getFrameChannelMapping(array_id, upload_result)
         fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
             arrus.utils.core.convert_fcm_to_np_arrays(fcm, self.n_us4oems)
-        fcm = arrus.devices.us4r.FrameChannelMapping(
+        return arrus.devices.us4r.FrameChannelMapping(
             us4oems=fcm_us4oems,
             frames=fcm_frame,
             channels=fcm_channel,
             frame_offsets=frame_offsets,
             n_frames=n_frames,
             batch_size=sequence.n_repeats)
-        return arrus.metadata.EchoDataDescription(
-            sampling_frequency=self.current_sampling_frequency,
-            custom={"frame_channel_mapping": fcm}
-        )
 
     def _get_unique_tgc_context_and_tgc(self, sequences, medium):
         # Make sure that every sequence gives us the same TGC curve.

@@ -49,13 +49,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     if (this->hasIOBitstreamAdressing) {
         // Add empty IOBitstream, to use for TX/RX between probe switching.
         getMasterOEM()->getIUs4OEM()->SetWaveformIODriveMode();
-        getMasterOEM()->addIOBitstream(
-            {
-                0,
-            },
-            {
-                1,
-            });
+        getMasterOEM()->addIOBitstream({0,}, {1,});
     }
     for (auto &bitstream : this->bitstreams) {
         getMasterOEM()->addIOBitstream(bitstream.getLevels(), bitstream.getPeriods());
@@ -762,13 +756,13 @@ size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuff
     return elementSize;
 }
 
-void Us4RImpl::unregisterOutputBuffer() {
-    if (transferRegistrar.empty()) {
+void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
+    if(transferRegistrar.empty()) {
         return;
     }
     for (Ordinal i = 0; i < us4oems.size(); ++i) {
-        if (transferRegistrar[i]) {
-            transferRegistrar[i]->unregisterTransfers();
+        if(transferRegistrar[i]) {
+            transferRegistrar[i]->unregisterTransfers(cleanupSequencer);
         }
     }
 }
@@ -823,6 +817,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                         us4oems[i]->getIUs4OEM()->SyncReceive();
                     }
                 }
+                outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
@@ -838,6 +833,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     outputBuffer->markAsInvalid();
                 } else {
                     this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+                    outputBuffer->runOnOverflowCallback();
                 }
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
@@ -871,6 +867,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                         us4oems[i]->getIUs4OEM()->SyncTransfer();
                     }
                 }
+                outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
@@ -885,6 +882,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                     this->getMasterOEM()->stop();
                     outputBuffer->markAsInvalid();
                 } else {
+                    outputBuffer->runOnOverflowCallback();
                     this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
                 }
             } catch (const std::exception &e) {
@@ -1000,5 +998,26 @@ float Us4RImpl::getRxDelay(const TxRxSequence &sequence) const {
         return 0.0f;
     }
 }
+
+std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+Us4RImpl::setSubsequence(uint16_t, uint16_t, const std::optional<float> &) {
+    throw std::runtime_error("setSubsequence not yet implemented.")
+    if(!this->currentScheme.has_value()) {
+        throw IllegalStateException("Please upload scheme before setting sub-sequence.");
+    }
+    const auto &s = this->currentScheme.value();
+    const auto &seq = s.getTxRxSequence();
+    const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
+    if(end >= currentSequenceSize) {
+        throw IllegalArgumentException(format("The new sub-sequence [{}, {}] is outside of the scope of the currently "
+                                       "uploaded sequence: [0, {})", start, end, currentSequenceSize));
+    }
+    auto [rxBuffer, fcm] = this->getProbeImpl()->setSubsequence(start, end, sri);
+    prepareHostBuffer(s.getOutputBuffer().getNumberOfElements(), s.getWorkMode(), rxBuffer, true);
+    arrus::session::MetadataBuilder metadataBuilder;
+    metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+    return {this->buffer, metadataBuilder.buildPtr()};
+}
+
 
 }// namespace arrus::devices

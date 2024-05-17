@@ -1,6 +1,10 @@
 from dataclasses import dataclass, field
+import typing
 import numpy as np
 from arrus.ops.operation import Operation
+from typing import Iterable
+from arrus.framework import Constant
+import dataclasses
 from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional
 from arrus.devices.device import parse_device_id, DeviceId
 
@@ -237,6 +241,13 @@ class TxRxSequence:
                              f"{rx_probe_ids}")
         return next(iter(rx_probe_ids))
 
+    def get_subsequence(self, start, end):
+        """
+        Limits the sequence to the given sub-sequence [start, end] both inclusive.
+        """
+        return dataclasses.replace(
+            self,
+            ops=self.ops[start:(end+1)])
 
 @dataclass(frozen=True)
 class DigitalDownConversion:

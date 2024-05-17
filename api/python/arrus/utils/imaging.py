@@ -2208,7 +2208,7 @@ class SelectFrames(Operation):
         super().__init__()
         if isinstance(frames, np.ndarray):
             frames = frames.tolist()
-        self.frames = tuple(frames)
+        self.frames = frames
 
     def set_pkgs(self, **kwargs):
         pass
@@ -2222,18 +2222,15 @@ class SelectFrames(Operation):
         if len(input_shape) == 3:
             input_n_frames, d2, d3 = input_shape
             output_shape = n_frames, d2, d3
-            self.selector = [slice(None)]*3
-            self.selector[0] = self.frames
+            self.selector = lambda data: data[self.frames, ...] 
         elif len(input_shape) == 4:
             n_seq, input_n_frames, d2, d3 = input_shape
             output_shape = n_seq, n_frames, d2, d3
-            self.selector = [slice(None)]*4
-            self.selector[1] = self.frames
+            self.selector = lambda data: data[:, self.frames, ...]
         else:
             raise ValueError("The input should be 3-D or 4-D "
                              "(frame number should be the first or second axis)")
 
-        self.selector = tuple(self.selector)
 
         # Adapt sequence and raw sequence to the changes in the number of
         # frames.
@@ -2291,7 +2288,7 @@ class SelectFrames(Operation):
             return const_metadata.copy(input_shape=output_shape)
 
     def process(self, data):
-        return data[self.selector]
+        return self.selector(data)
 
     def _limit_params(self, value, frames):
         if value is not None and hasattr(value, "__len__") and len(value) > 1:

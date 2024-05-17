@@ -223,7 +223,10 @@ void FileImpl::setParameters(const Parameters &params) {
 int FileImpl::getNumberOfProbes() const {
     return 1;
 }
-
+std::pair<std::shared_ptr<Buffer>, std::shared_ptr<Metadata>>
+FileImpl::setSubsequence(uint16, uint16, const std::optional<float> &) {
+    throw std::runtime_error("Not implemented.");
+}
 float FileImpl::getSamplingFrequency() const { return 65e6; }
 float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 

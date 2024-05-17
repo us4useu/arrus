@@ -102,6 +102,26 @@ namespace std {
     }
 %}
 
+%typemap(in) std::optional<float> %{
+    if($input == Py_None) {
+        $1 = std::optional<float>();
+    }
+    else {
+        float value = (float)(PyFloat_AsDouble($input));
+        $1 = std::optional<float>(value);
+    }
+%}
+
+%typemap(out) std::optional<float> %{
+    if($1) {
+        $result = PyFloat_FromDouble((double)(*$1));
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
+
 
 %module(directors="1") core
 
