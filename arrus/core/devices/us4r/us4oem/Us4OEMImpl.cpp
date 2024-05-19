@@ -283,20 +283,21 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
 
             // Upload
             ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
-            ius4oem->SetTxAperture(txAperture, firingId);
-            ius4oem->SetRxAperture(rxAperture, firingId);
+            ius4oem->SetTxAperture(filterAperture(txAperture, op.getMaskedChannelsTx()), firingId);
+            ius4oem->SetRxAperture(filterAperture(rxAperture, op.getMaskedChannelsRx()), firingId);
 
             // Delays
             // Set delay defintion tables.
             for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
                 auto delays = txDelays.at(delaysId).row(opId).toVector<float>();
-                setTxDelays(op.getTxAperture(), delays, firingId, delaysId);
+                setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx());
             }
             // Then set the profile from the input sequence (for backward-compatibility).
             // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
             // and reduces the risk of causing new bugs in the whole mapping implementation.
             // This will be optimized in TODO(0.12.0).
-            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size());
+            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(),
+                        op.getMaskedChannelsTx());
             ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firingId);
             ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firingId);
@@ -876,12 +877,12 @@ size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> 
 }
 
 void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
-                             size_t delaysId) {
+                             size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx) {
     ARRUS_REQUIRES_EQUAL_IAE(txAperture.size(), delays.size());
     for (uint8 ch = 0; ch < ARRUS_SAFE_CAST(txAperture.size(), uint8); ++ch) {
         bool bit = txAperture.at(ch);
         float delay = 0.0f;
-        if (bit) {
+        if (bit && !setContains(maskedChannelsTx, static_cast<ChannelIdx>(ch))) {
             delay = delays.at(ch);
         }
         ius4oem->SetTxDelay(ch, delay, firingId, delaysId);
@@ -891,5 +892,15 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
 void Us4OEMImpl::clearCallbacks() {
     this->ius4oem->ClearCallbacks();
 }
+
+std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(
+    std::bitset<N_ADDR_CHANNELS> aperture,
+    const std::unordered_set<ChannelIdx> &channelsMask) {
+    for (auto channel:channelsMask) {
+        aperture[channel] = false;
+    }
+    return aperture;
+}
+
 
 }// namespace arrus::devices

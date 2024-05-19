@@ -41,6 +41,8 @@ public:
         std::unordered_map<Ordinal, std::vector<BitMask>> txApertures, rxApertures;
         std::unordered_map<Ordinal, std::vector<std::vector<float>>> txDelaysList;
         std::unordered_map<Ordinal, std::vector<framework::NdArray>> txDelayProfilesList;
+        std::unordered_map<Ordinal, std::vector<std::unordered_set<ChannelIdx>>> maskedChannelsTx;
+        std::unordered_map<Ordinal, std::vector<std::unordered_set<ChannelIdx>>> maskedChannelsRx;
         // Here is an assumption, that each operation has the same size rx aperture, except RX nops.
         nFrames = seq.getNumberOfNoRxNOPs();
         // find the first non rx NOP and use it to determine rxApertureSize
@@ -65,6 +67,8 @@ public:
             txApertures.emplace(oem, std::vector<BitMask>(nOps));
             rxApertures.emplace(oem, std::vector<BitMask>(nOps));
             txDelaysList.emplace(oem, std::vector<std::vector<float>>(nOps));
+            maskedChannelsTx.emplace(oem, std::vector<std::unordered_set<ChannelIdx>>(nOps));
+            maskedChannelsRx.emplace(oem, std::vector<std::unordered_set<ChannelIdx>>(nOps));
 
             // Profiles.
             std::vector<framework::NdArray> txDelayProfilesForModule;
@@ -84,6 +88,8 @@ public:
             const auto &txAperture = op.getTxAperture();
             const auto &rxAperture = op.getRxAperture();
             const auto &txDelays = op.getTxDelays();
+            const auto &maskedAdapterChannelsTx = op.getMaskedChannelsTx();
+            const auto &maskedAdapterChannelsRx = op.getMaskedChannelsRx();
 
             std::vector<std::vector<int32>> us4oemChannels(noems);
             std::vector<std::vector<int32>> adapterChannels(noems);
@@ -106,6 +112,15 @@ public:
                 txApertures[oem][opId][channel] = txAperture[ach];
                 rxApertures[oem][opId][channel] = rxAperture[ach];
                 txDelaysList[oem][opId][channel] = txDelays[ach];
+
+                // channel masking
+                if(setContains(maskedAdapterChannelsTx, ARRUS_SAFE_CAST(ach, ChannelIdx))) {
+                    maskedChannelsTx[oem][opId].insert(channel);
+                }
+                if(setContains(maskedAdapterChannelsRx, ARRUS_SAFE_CAST(ach, ChannelIdx))) {
+                    maskedChannelsRx[oem][opId].insert(channel);
+                }
+
                 for (size_t i = 0; i < txDelayProfiles.size(); ++i) {
                     txDelayProfilesList[oem][i].set(opId, channel, txDelayProfiles[i].get<float>(opId, ach));
                 }
@@ -147,6 +162,8 @@ public:
                 paramsBuilder.setTxAperture(txApertures[oem][i]);
                 paramsBuilder.setRxAperture(rxApertures[oem][i]);
                 paramsBuilder.setTxDelays(txDelaysList[oem][i]);
+                paramsBuilder.setMaskedChannelsTx(maskedChannelsTx[oem][i]);
+                paramsBuilder.setMaskedChannelsRx(maskedChannelsRx[oem][i]);
                 paramsBuilder.setRxPadding(Tuple<ChannelIdx>({0, 0}));
                 seqBuilder.addEntry(paramsBuilder.build());
                 ++i;

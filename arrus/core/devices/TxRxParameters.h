@@ -22,7 +22,7 @@ public:
     static TxRxParameters createRxNOPCopy(const TxRxParameters &op) {
         return TxRxParameters(op.txAperture, op.txDelays, op.txPulse, BitMask(op.rxAperture.size(), false),
                               op.rxSampleRange, op.rxDecimationFactor, op.pri, op.rxPadding, op.rxDelay,
-                              op.bitstreamId);
+                              op.bitstreamId, op.maskedChannelsTx, op.maskedChannelsRx);
     }
 
     /**
@@ -43,11 +43,14 @@ public:
     TxRxParameters(std::vector<bool> txAperture, std::vector<float> txDelays, const ops::us4r::Pulse &txPulse,
                    std::vector<bool> rxAperture, Interval<uint32> rxSampleRange, int32 rxDecimationFactor, float pri,
                    Tuple<ChannelIdx> rxPadding = {0, 0}, float rxDelay = 0.0f,
-                   std::optional<BitstreamId> bitstreamId = std::nullopt)
+                   std::optional<BitstreamId> bitstreamId = std::nullopt,
+                   std::unordered_set<ChannelIdx> maskedChannelsTx = {},
+                   std::unordered_set<ChannelIdx> maskedChannelsRx = {}
+    )
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
-          bitstreamId(bitstreamId) {}
+          bitstreamId(bitstreamId), maskedChannelsTx(maskedChannelsTx), maskedChannelsRx(maskedChannelsRx) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const { return txAperture; }
 
@@ -88,6 +91,10 @@ public:
     // TODO(pjarosik) consider removing the below setter (keep this class immutable).
     void setRxDelay(float delay) { this->rxDelay = delay; }
 
+    [[nodiscard]] const std::unordered_set<ChannelIdx> &getMaskedChannelsTx() const { return maskedChannelsTx; }
+
+    [[nodiscard]] const std::unordered_set<ChannelIdx> &getMaskedChannelsRx() const { return maskedChannelsRx; }
+
     friend std::ostream &operator<<(std::ostream &os, const TxRxParameters &parameters) {
         os << std::scientific;
         os << "Tx/Rx: ";
@@ -109,6 +116,14 @@ public:
         if (parameters.getBitstreamId().has_value()) {
             os << ", bitstream id: " << parameters.getBitstreamId().value();
         }
+        os << ", masked channels TX: ";
+        for(auto ch: parameters.getMaskedChannelsTx()) {
+            os << ch << ", ";
+        }
+        os << ", masked channels RX: ";
+        for(auto ch: parameters.getMaskedChannelsRx()) {
+            os << ch << ", ";
+        }
         os << std::endl;
         os << std::fixed;
         return os;
@@ -118,7 +133,9 @@ public:
         return txAperture == rhs.txAperture && txDelays == rhs.txDelays && txPulse == rhs.txPulse
             && rxAperture == rhs.rxAperture && rxSampleRange == rhs.rxSampleRange
             && rxDecimationFactor == rhs.rxDecimationFactor && pri == rhs.pri && rxDelay == rhs.rxDelay
-            && bitstreamId == rhs.bitstreamId;
+            && bitstreamId == rhs.bitstreamId
+            && maskedChannelsTx == rhs.maskedChannelsTx
+            && maskedChannelsRx == rhs.maskedChannelsRx;
     }
 
     bool operator!=(const TxRxParameters &rhs) const { return !(rhs == *this); }
@@ -135,6 +152,10 @@ private:
     Tuple<ChannelIdx> rxPadding;
     float rxDelay;
     std::optional<BitstreamId> bitstreamId;
+    /** A set of masked channels. A masked channel means that it will be used in the TX or RX,
+     * however it will be present in the output RF frame, as it were a channel enabled in RX. */
+    std::unordered_set<ChannelIdx> maskedChannelsTx;
+    std::unordered_set<ChannelIdx> maskedChannelsRx;
 };
 
 class TxRxParametersBuilder {
@@ -150,6 +171,8 @@ public:
         rxPadding = params.getRxPadding();
         rxDelay = params.getRxDelay();
         bitstreamId = params.getBitstreamId();
+        maskedChannelsTx = params.getMaskedChannelsTx();
+        maskedChannelsRx = params.getMaskedChannelsRx();
     }
 
     explicit TxRxParametersBuilder(const arrus::ops::us4r::TxRx &op) {
@@ -169,6 +192,8 @@ public:
         this->rxPadding = padding;
         this->rxDelay = 0.0f;
         this->bitstreamId = std::nullopt;
+        this->maskedChannelsTx = {};
+        this->maskedChannelsRx = {};
     }
 
     TxRxParameters build() {
@@ -176,7 +201,7 @@ public:
             throw IllegalArgumentException("TX pulse definition is required");
         }
         return TxRxParameters(txAperture, txDelays, txPulse.value(), rxAperture, rxSampleRange, rxDecimationFactor, pri,
-                              rxPadding, rxDelay, bitstreamId);
+                              rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx);
     }
 
     void convertToNOP() {
@@ -195,6 +220,8 @@ public:
     void setRxPadding(const Tuple<ChannelIdx> &value) { TxRxParametersBuilder::rxPadding = value; }
     void setRxDelay(float value) { TxRxParametersBuilder::rxDelay = value; }
     void setBitstreamId(const std::optional<BitstreamId> &value) { TxRxParametersBuilder::bitstreamId = value; }
+    void setMaskedChannelsTx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsTx = value; }
+    void setMaskedChannelsRx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsRx = value; }
 
 private:
     ::std::vector<bool> txAperture;
@@ -207,6 +234,8 @@ private:
     Tuple<ChannelIdx> rxPadding;
     float rxDelay;
     std::optional<BitstreamId> bitstreamId;
+    std::unordered_set<ChannelIdx> maskedChannelsTx;
+    std::unordered_set<ChannelIdx> maskedChannelsRx;
 };
 
 class TxRxParametersSequenceBuilder;

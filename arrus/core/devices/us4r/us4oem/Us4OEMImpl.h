@@ -174,7 +174,8 @@ private:
     void setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
                                  const std::vector<uint16_t> &periods);
     void setCurrentSamplingFrequency(float fs) { this->currentSamplingFrequency = fs; }
-    void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId, size_t delaysId);
+    void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId, size_t delaysId,
+                     const std::unordered_set<ChannelIdx> &maskedChannelsTx);
     void setTgcCurve(const ops::us4r::TGCCurve &tgc);
     Us4OEMChannelsGroupsMask getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture);
     void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
@@ -196,6 +197,10 @@ private:
     size_t getNumberOfFirings(const us4r::TxParametersSequenceColl &vector);
     size_t getNumberOfTriggers(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize);
     Us4OEMRxMappingRegister setRxMappings(const us4r::TxParametersSequenceColl &sequences);
+
+    std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> filterAperture(
+        std::bitset<N_ADDR_CHANNELS> aperture,
+        const std::unordered_set<ChannelIdx> &channelsMask);
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;

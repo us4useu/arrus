@@ -96,6 +96,7 @@ public:
         size_t frameIdx = 0;
         // For each operation
         for (size_t opIdx = 0; opIdx < seqLength; ++opIdx) {// For each TX/RX
+            // Determine if the op is Rx NOP.
             bool isRxNOP = true;
             for(size_t oem = 0; oem < noems; ++oem) {
                 const auto &op = sequences.at(oem).at(opIdx);
@@ -136,6 +137,7 @@ public:
                     for (auto &subaperture : rxSubapertures) {
                         subaperture.resize(N_ADDR_CHANNELS);
                     }
+                    std::vector<std::unordered_set<ChannelIdx>> maskedChannelsRx(maxSubapertureIdx);
 
                     long long opActiveChannel = 0;
                     std::vector<ChannelIdx> subopActiveChannels(maxSubapertureIdx, 0);
@@ -143,6 +145,10 @@ public:
                         auto subapIdx = subapertureIdxs[ch];
                         if (subapIdx > 0) {
                             rxSubapertures[subapIdx - 1][ch] = true;
+                            // Channel masking
+                            if(setContains(op.getMaskedChannelsRx(),ARRUS_SAFE_CAST(ch, ChannelIdx))) {
+                                maskedChannelsRx.at(subapIdx-1).insert(ch);
+                            }
                             // FC mapping
                             // -1 because subapIdx starts from one
                             opDestOp(oem, frameIdx, opActiveChannel) = FrameNumber(currentFrameIdx[oem] + subapIdx - 1);
@@ -156,9 +162,12 @@ public:
                         }
                     }
                     // generate ops from subapertures
-                    for (auto &subaperture : rxSubapertures) {
+                    for(size_t subap = 0; subap < rxSubapertures.size(); ++subap) {
+                        auto &subaperture = rxSubapertures.at(subap);
+                        auto rxMask = maskedChannelsRx.at(subap);
                         us4r::TxRxParametersBuilder builder(op);
                         builder.setRxAperture(subaperture);
+                        builder.setMaskedChannelsRx(rxMask);
                         sequenceBuilders.at(oem).addEntry(builder.build());
                     }
                 } else {
@@ -199,10 +208,9 @@ public:
             // rx NOP will be transferred from us4OEM to host memory,
             // to get the frame metadata. Therefore we need to increase
             // the number of frames a given element contains.
-	    if(frameMetadataOEM.has_value()) { 
+            if(frameMetadataOEM.has_value()) {
                 currentFrameIdx[frameMetadataOEM.value()] = FrameNumber(maxSize);
             }
-
             srcOpIdx.resize(maxSize, opIdx);
             if(!isRxNOP) {
                 frameIdx++;

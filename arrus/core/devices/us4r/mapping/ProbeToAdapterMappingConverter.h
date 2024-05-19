@@ -62,6 +62,9 @@ public:
             BitMask txAperture(adapterNChannels);
             BitMask rxAperture(adapterNChannels);
             std::vector<float> txDelays(adapterNChannels);
+            // Masked probe adapter channels.
+            std::unordered_set<ChannelIdx> maskedChannelsTx;
+            std::unordered_set<ChannelIdx> maskedChannelsRx;
 
             ARRUS_REQUIRES_TRUE(
                 op.getTxAperture().size() == op.getTxDelays().size() && op.getTxAperture().size() == nElementsTx,
@@ -70,12 +73,15 @@ public:
             // TX
             for (size_t pch = 0; pch < op.getTxAperture().size(); ++pch) {
                 auto achTx = probeTx.getChannelMapping().at(pch);
-                txAperture[achTx] = getMaskedOrZero(op.getTxAperture().at(pch), pch, txProbeMask);
-                txDelays[achTx] = getMaskedOrZero(op.getTxDelays().at(pch), pch, txProbeMask);
+                txAperture[achTx] = op.getTxAperture().at(pch);
+                txDelays[achTx] = op.getTxDelays().at(pch);
                 size_t nTxDelayProfiles = txDelayProfiles.size();
                 for (size_t i = 0; i < nTxDelayProfiles; ++i) {
-                    auto delay = getMaskedOrZero(txDelayProfiles[i].get<float>(opIdx, pch), pch, txProbeMask);
+                    auto delay = txDelayProfiles[i].get<float>(opIdx, pch);
                     adapterTxDelayProfiles[i].set(opIdx, achTx, delay);
+                }
+                if(setContains(txProbeMask, ARRUS_SAFE_CAST(pch, ChannelIdx))) {
+                    maskedChannelsTx.insert(achTx);
                 }
             }
             // RX
@@ -85,10 +91,15 @@ public:
                 if (op.getRxAperture()[pch]) {
                     rxApertureChannelMapping.push_back(achRx);
                 }
+                if(setContains(rxProbeMask, ARRUS_SAFE_CAST(pch, ChannelIdx))) {
+                    maskedChannelsRx.insert(achRx);
+                }
             }
             paramBuilder.setTxAperture(txAperture);
             paramBuilder.setTxDelays(txDelays);
             paramBuilder.setRxAperture(rxAperture);
+            paramBuilder.setMaskedChannelsTx(maskedChannelsTx);
+            paramBuilder.setMaskedChannelsRx(maskedChannelsRx);
             seqBuilder.addEntry(paramBuilder.build());
 
             if (!op.isRxNOP()) {
@@ -164,9 +175,6 @@ public:
             return T(0);
         }
     }
-
-
-
 private:
     DeviceId probeTxId, probeRxId;
     ProbeSettings probeTx, probeRx;
