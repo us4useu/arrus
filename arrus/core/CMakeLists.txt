@@ -255,7 +255,7 @@ if (ARRUS_RUN_TESTS)
     set(US4OEM_FACTORY_IMPL_TEST_DEPS devices/DeviceId.cpp common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
         devices/TxRxParameters.cpp devices/us4r/FrameChannelMappingImpl.cpp
         ops/us4r/DigitalDownConversion.cpp)
-    # create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "${US4OEM_FACTORY_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "${US4OEM_FACTORY_IMPL_TEST_DEPS}")
     # create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
     # create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
