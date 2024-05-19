@@ -9,7 +9,6 @@ using namespace arrus::devices;
 
 struct TestUs4OEMSettings {
     std::vector<ChannelIdx> channelMapping{getRange<ChannelIdx>(0, 128)};
-    BitMask activeChannelGroups{getNTimes<bool>(true, 16)};
     std::optional<uint16> dtgcAttenuation{std::nullopt};
     uint16 pgaGain{30};
     uint16 lnaGain{24};
@@ -21,16 +20,15 @@ struct TestUs4OEMSettings {
     std::vector<std::string> invalidParameters;
 
     Us4OEMSettings getUs4OEMSettings() const {
-        return Us4OEMSettings(channelMapping, activeChannelGroups,
-                              RxSettings(dtgcAttenuation, pgaGain, lnaGain, tgcSamples, lpfCutoff, activeTermination,
-                                         isApplyCharacteristic),
-                              std::unordered_set<uint8>());
+        return Us4OEMSettings(
+            channelMapping,
+            RxSettings(dtgcAttenuation, pgaGain, lnaGain, tgcSamples, lpfCutoff,
+                       activeTermination, isApplyCharacteristic));
     }
 
     friend std::ostream &
     operator<<(std::ostream &os, const TestUs4OEMSettings &settings) {
         os << "channelMapping: " << toString(settings.channelMapping)
-           << " activeChannelGroups: " << toString(settings.activeChannelGroups)
            << " dtgcAttenuation: " << toString(settings.dtgcAttenuation)
            << " pgaGain: " << (int) settings.pgaGain
            << " lnaGain: " << (int) settings.lnaGain

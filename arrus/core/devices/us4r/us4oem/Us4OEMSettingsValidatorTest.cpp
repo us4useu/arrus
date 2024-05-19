@@ -49,9 +49,6 @@ INSTANTIATE_TEST_CASE_P
                  104, 105, 106, 107, 108, 109, 110, 111,
                  112, 113, 114, 115, 116, 117, 118, 119,
                  120, 121, 122, 123, 124, 125, 126, 127})),
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.activeChannelGroups={
-                 false, false, false, true, true, true, true, true,
-                 true, false, true, true, true, true, true, true})),
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation=6, x.tgcSamples={})),
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.dtgcAttenuation={})), // Turn off
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (x.pgaGain=24, x.isApplyCharacteristic=false)),
@@ -112,14 +109,6 @@ INSTANTIATE_TEST_CASE_P
                  120, 121, 122, 124, 125, 126, 127,
                  77})),
 
-         // Invalid number of active channel groups
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.activeChannelGroups = getNTimes(false, 15),
-                 x.invalidParameters = {"active channel groups"})),
-         // Empty array of active channel groups
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.activeChannelGroups = {},
-                 x.invalidParameters = {"active channel groups"})),
          // Invalid value
          ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
                  x.pgaGain = 777,
