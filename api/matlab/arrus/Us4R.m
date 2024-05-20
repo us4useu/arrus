@@ -58,8 +58,7 @@ classdef Us4R < handle
             obj.logTime = logTime;
             
             % Check if valid GPU is available
-            isGpuAvailable = license('test', 'Distrib_Computing_Toolbox') ...
-                           && ~isempty(ver('parallel')) ...
+            isGpuAvailable = ~isempty(ver('parallel')) ...
                            && parallel.gpu.GPUDevice.isAvailable;
             if ~isGpuAvailable
                 error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
@@ -660,7 +659,7 @@ classdef Us4R < handle
             
             while(ishghandle(hFig))
                 data = obj.run;
-                data = data(:,selectedLines);
+                data = gather(data(:,selectedLines));
                 if boundsEnable
                     data = [min(data,[],2), max(data,[],2)];
                 end
@@ -731,7 +730,7 @@ classdef Us4R < handle
             while(ishghandle(hFig))
                 data = obj.run;
                 try
-                    set(hDisp, 'CData', data(:,selectedLines));
+                    set(hDisp, 'CData', gather(data(:,selectedLines)));
                     drawnow limitrate;
                     
                 catch ME
