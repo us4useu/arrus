@@ -24,13 +24,16 @@ classdef CustomTxRxSequence
     %   it must be positive integer, for complex output (hwDdcEnable==true) \
     %   it must be multiple of 0.25 and be >=2
     % :param nRepetitions: number of repetitions of the sequence (positive \
-    %   integer). Can be a string "max" -- in this case, the maximum number \
-    %   of repetitions that can be performed on the system (taking into \ 
-    %   account the size of RAM, etc.) will be used.
+    %   integer).
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param txInvert: tx pulse polarity marker
+    % :param workMode: system mode of operation, can be "MANUAL","HOST","SYNC", \
+    %   or "ASYNC".
+    % :param sri: sequence repeting interval [s]
+    % :param bufferSize: number of buffer elements (each element contains 
+    %   data for a single sequence execution)
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -39,10 +42,10 @@ classdef CustomTxRxSequence
     properties
         txCenterElement (1,:) {mustBeFinite, mustBeReal}
         txApertureCenter (1,:) {mustBeFinite, mustBeReal}
-        txApertureSize (1,:)
+        txApertureSize (1,:) {mustBeFinite, mustBeInteger, mustBeNonnegative}
         rxCenterElement (1,:) {mustBeFinite, mustBeReal}
         rxApertureCenter (1,:) {mustBeFinite, mustBeReal}
-        rxApertureSize (1,1)
+        rxApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
@@ -58,6 +61,9 @@ classdef CustomTxRxSequence
         tgcStart (1,:)
         tgcSlope (1,:) = 0
         txInvert (1,:) {mustBeLogical} = false
+        workMode {mustBeTextScalar} = "MANUAL"
+        sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
+        bufferSize (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 2
     end
     
     methods
@@ -84,11 +90,10 @@ classdef CustomTxRxSequence
             obj.rxNSamples = mustBeLimit(obj,'rxNSamples',1);
             
             % Specific validations
-            mustBeIntOrStr(obj,'txApertureSize',0,"nElements");
-            mustBeIntOrStr(obj,'rxApertureSize',0,"nElements");
-            mustBeIntOrStr(obj,'nRepetitions',1,"max");
-            if isstring(obj.nRepetitions)
-                error('Support for nRepetitions="max" is temporarily suspended.');
+            obj.workMode = upper(string(obj.workMode));
+            if ~any(strcmp(obj.workMode,["MANUAL","HOST","SYNC","ASYNC"]))
+                error("ARRUS:IllegalArgument", ...
+                      "workMode must be one of the following: MANUAL, HOST, SYNC, or ASYNC.");
             end
             
             %% Check size compatibility of aperture/focus/angle parameters
@@ -149,28 +154,6 @@ function mustBeXor(obj,fieldNames)
         error("ARRUS:params", ...
             ['One and only one of {' char(join(fieldNames,', ')) '} must be defined.'])
     end
-end
-
-function mustBeIntOrStr(obj,fieldName,intDomain,strDomain)
-    % intDomain: 0-nonnegative integers; 1-positive integers
-    % strDomain: array of accepted string values
-    
-    argIn = obj.(fieldName);
-    
-    if isnumeric(argIn)
-        mustBeInteger(argIn);
-        if intDomain
-            mustBePositive(argIn);
-        else
-            mustBeNonnegative(argIn);
-        end
-    elseif isstring(argIn)
-        mustBeMember(argIn,strDomain);
-    else
-        error(['Unhandled data type of ' fieldName ': ', ...
-            class(argIn)])
-    end
-    
 end
 
 function argOut = mustBeProperLength(argIn,propLength)

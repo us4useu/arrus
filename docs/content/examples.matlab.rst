@@ -135,7 +135,10 @@ There are many more optional inputs for setting the raw data filtration, reconst
 Running operations in the system
 =================================
 
-First, you should create a handle to the system on which you want to perform operations. For example, to communicate 
+Preparing the system
+~~~~~~~~~~~~~~~~~~~~
+
+First, you should create a handle to the system on which you want to perform operations. To communicate 
 with the Us4R system, create an instance of the Us4R class. You will need to indicate a prototxt config file 
 containing the information on the probe, adapter, gains, etc. It is **extremly important** to make sure that the 
 **system configuration agrees with the content of the config file**.
@@ -150,8 +153,37 @@ To run the TX/RX sequence and the reconstruction (optionally), upload them onto 
 
     us.upload(seq, rec);
 
-If you only want to run the uploaded operation once (for example, to acquire a single RF frame), 
-use the ``run`` function. It will return the RF data (or IQ data if the hwDdcEnable is set to true) 
+Depending on the sequence length, its upload can take a while. In the use cases that at some point need switching 
+to another sequence (uploading a new sequence), this upload time can significantly delay the switching. To overcome 
+this you can upload multiple sequences at once using ``uploadSequence`` method:
+
+.. code-block:: matlab
+
+    us.uploadSequence([seq, anotherSeq, yetAnotherSeq]);
+
+The first of the uploaded sequences is selected for execution by default. You can select 
+any other sequence using its index from the vector of sequences passed to ``uploadSequence`` 
+(indices start from 1):
+
+.. code-block:: matlab
+
+    us.selectSequence(2); % selects anotherSeq
+
+Note that unlike in case of ``upload``, ``uploadSequence`` does not assign a reconstruction object 
+to the uploaded sequences. If you want to do a reconstruction on the data acquired using the selected 
+sequence, you need to pass the reconstruction object to the system:
+
+.. code-block:: matlab
+
+    us.setReconstruction(rec);
+
+Assigning the reconstruction to a selected sequence works until the next ``selectSequence`` call.
+
+Running the operations
+~~~~~~~~~~~~~~~~~~~~~~
+
+If you only want to run the uploaded/selected operation once (for example, to acquire a single RF frame), 
+use the ``run`` function. It will return the raw RF data (or IQ data if the hwDdcEnable is set to true) 
 and the reconstructed image data if the reconstruction was uploaded together with the TX/RX sequence.
 
 .. code-block:: matlab
@@ -419,3 +451,29 @@ one has to know the Pulse Repetition Frequency (PRF) which is given by the formu
 the time between physical emissions and is one of the parameters of the CustomTxRxSequence. nFirePerTx is the number of
 repeting the emissions needed to acquire the echoes with the programmed RX aperture (e.g. 'rxApertureSize' is 192, number 
 of system RX channels is 64, then each TX must be repeated 3 times so that the 64-channel system can acquire 192-channel data).
+
+Quick switching between sequences
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Let's assume that we want a live preview (using sequence seq1 and reconstruction rec1) immediately followed by a collection 
+of raw data using another sequence (seq2). To avoid time delay due to uploading seq2 after closing the preview, all sequences 
+should be uploaded together before running the preview, using ``uploadSequence`` method. First of the uploaded sequences (seq1) 
+is selected by default, we just need to set the reconstruction parameters for it using ``setReconstruction`` method. To display 
+the preview, a ``BModeDisplay`` object will be used. 
+Now the system is ready for running live preview using the ``runLoop`` method. Immediately after closing the preview window, 
+seq2 is selected using ``selectSequence`` and the raw data is collected using ``run``.
+
+.. code-block:: matlab
+
+    us.uploadSequence([seq1, seq2]);
+    us.setReconstruction(rec1);
+
+    display = BModeDisplay(rec1, 'dynamicRange', [10 70]);
+    us.runLoop(@display.isOpen, @display.updateImg);
+
+    us.selectSequence(2);
+    rf = us.run;
+
+
+
+

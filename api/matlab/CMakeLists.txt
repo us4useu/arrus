@@ -14,8 +14,6 @@ set(SOURCE_FILES
     arrus/DuplexDisplay.m
     arrus/mustBeDivisible.m
     arrus/Reconstruction.m
-    arrus/reconstructRfImg.m
-    arrus/reconstructRfLin.m
     arrus/scanConversion.m
     arrus/Us4R.m
     arrus/wedgeParams.m
@@ -27,8 +25,10 @@ set(SOURCE_FILES
 )
 
 set(ARRUS_CUDA_MEX_SRC_FILES
+    arrus/mexcuda/rawReorg.cu
     arrus/mexcuda/wcFilter.cu
     arrus/mexcuda/dopplerColor.cu
+    arrus/mexcuda/iqRaw2Lin.cu
     arrus/mexcuda/iqRaw2Lri.cu
     arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu
 )
@@ -85,6 +85,12 @@ else()
         COMMAND
         ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
+        COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/+arrus ${PACKAGE_OUTPUT_DIR}
+        COMMAND
+        ${CMAKE_COMMAND} -E copy_directory
+        ${Us4_ROOT_DIR}/lib64 ${TOOLBOX_OUTPUT_DIR}
         COMMAND
         ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
         DEPENDS ${SOURCE_FILES}

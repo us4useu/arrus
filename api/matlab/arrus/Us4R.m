@@ -6,10 +6,11 @@ classdef Us4R < handle
     % 
     % :param configFile: name of the prototxt file containing setup information.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
-
+    
     properties(Access = private)
         sys
         seq
+        subSeq
         rec
         us4r
         session
@@ -18,7 +19,7 @@ classdef Us4R < handle
     end
     
     methods
-
+        
         function obj = Us4R(varargin)
             
             % Input parser
@@ -50,10 +51,20 @@ classdef Us4R < handle
             
             obj.sys.nChArius = 32;
             obj.sys.rxSampFreq = 65e6;
+            obj.sys.maxSeqLength = 2^14;
             obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
             obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
             obj.sys.tgcInterv = 153; % [samp]
             obj.logTime = logTime;
+            
+            % Check if valid GPU is available
+            isGpuAvailable = ~isempty(ver('parallel')) ...
+                           && parallel.gpu.GPUDevice.isAvailable;
+            if ~isGpuAvailable
+                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
+            end
+            % Add location of the CUDA kernels
+            addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
             
             % Probe parameters
             probe = obj.us4r.getProbeModel;
@@ -61,64 +72,69 @@ classdef Us4R < handle
             obj.sys.pitch = probe.pitch;
             obj.sys.freqRange = double(probe.txFrequencyRange);
             obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
-
-             % Position (pos,x,z) and orientation (ang) of each probe element
-             obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-             if obj.sys.curvRadius == 0
-                 obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
-                 obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                 obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
-             else
-                 obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
-                 obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
-                 obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
-                 obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
-             end
-             
-             obj.sys.interfEnable = interfEnable;
-             if obj.sys.interfEnable
-                 wedge = wedgeParams();
-                 obj.sys.interfSize = wedge.interfSize;
-                 obj.sys.interfAng  = wedge.interfAng;
-                 obj.sys.interfSos  = wedge.interfSos;
-                 
-                 obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
-                 
-                 xElemNoInterf = obj.sys.xElem;
-                 zElemNoInterf = obj.sys.zElem;
-                 obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
-                               + zElemNoInterf * sin(obj.sys.interfAng);
-                 obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
-                               - xElemNoInterf * sin(obj.sys.interfAng) ...
-                               - obj.sys.interfSize;
-             end
-             
-             obj.sys.tangElem = tan(obj.sys.angElem);
             
-             obj.sys.isHardwareProgrammed = false;
+            % Position (pos,x,z) and orientation (ang) of each probe element
+            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+            if obj.sys.curvRadius == 0
+                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
+                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
+            else
+                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
+                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
+                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
+                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+            end
+            
+            obj.sys.interfEnable = interfEnable;
+            if obj.sys.interfEnable
+                wedge = wedgeParams();
+                obj.sys.interfSize = wedge.interfSize;
+                obj.sys.interfAng  = wedge.interfAng;
+                obj.sys.interfSos  = wedge.interfSos;
+                
+                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
+                
+                xElemNoInterf = obj.sys.xElem;
+                zElemNoInterf = obj.sys.zElem;
+                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
+                              + zElemNoInterf * sin(obj.sys.interfAng);
+                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
+                              - xElemNoInterf * sin(obj.sys.interfAng) ...
+                              - obj.sys.interfSize;
+            end
+            
+            obj.sys.tangElem = tan(obj.sys.angElem);
+            
+            obj.sys.isHardwareProgrammed = false;
+
         end
         
         function closeSession(obj)
             obj.session.close();
         end
         
+        function stopScheme(obj)
+            obj.session.stopScheme();
+        end
+        
         function nProbeElem = getNProbeElem(obj)
             nProbeElem = obj.sys.nElem;
         end
-
+        
         function setLnaGain(obj,gain)
             obj.us4r.setLnaGain(gain);
         end
-
+        
         function setPgaGain(obj,gain)
             obj.us4r.setPgaGain(gain);
         end
-
+        
         function setTgcCurve(varargin)
             obj = varargin{1};
             obj.us4r.setTgcCurve(varargin{2:end});
         end
-
+        
         function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
             % Uploads operations to the us4R system.
             %
@@ -134,6 +150,11 @@ classdef Us4R < handle
             if ~isa(sequenceOperation,'CustomTxRxSequence')
                 error("ARRUS:IllegalArgument", ...
                       'Invalid sequence object, must be CustomTxRxSequence');
+            end
+            
+            if ~isscalar(sequenceOperation)
+                error("ARRUS:IllegalArgument", ...
+                      'Upload requires scalar inputs. Use uploadSequence to upload a list of CustomTxRxSequence.');
             end
 
             if nargin>=3 && ~isempty(reconstructOperation) && ~isa(reconstructOperation,'Reconstruction')
@@ -162,11 +183,17 @@ classdef Us4R < handle
                 'txPri', sequenceOperation.txPri, ...
                 'tgcStart', sequenceOperation.tgcStart, ...
                 'tgcSlope', sequenceOperation.tgcSlope, ...
-                'txInvert', sequenceOperation.txInvert);
+                'txInvert', sequenceOperation.txInvert, ...
+                'workMode', sequenceOperation.workMode, ...
+                'sri', sequenceOperation.sri, ...
+                'bufferSize', sequenceOperation.bufferSize);
+
+            obj.seq.seqLim = [1 numel(obj.seq.txAng)];
             
             % Program hardware
             if nargin<4 || enableHardwareProgramming
                 obj.programHW;
+                obj.selSubSeq(1, obj.seq.sri);
                 obj.sys.isHardwareProgrammed = true;
             else
                 error('Support for enableHardwareProgramming=false is temporarily suspended');
@@ -176,7 +203,7 @@ classdef Us4R < handle
                 obj.rec.enable = false;
                 return;
             end
-                
+            
             obj.setRecParams(...
                 'gridModeEnable', reconstructOperation.gridModeEnable, ...
                 'filterEnable', reconstructOperation.filterEnable, ...
@@ -202,7 +229,126 @@ classdef Us4R < handle
                 'vector1RxTangLim', reconstructOperation.vector1RxTangLim, ...
                 'wcFilterACoeff', reconstructOperation.wcFilterACoeff, ...
                 'wcFilterBCoeff', reconstructOperation.wcFilterBCoeff, ...
-                'wcFiltInitSize', reconstructOperation.wcFiltInitSize);
+                'wcFiltInitSize', reconstructOperation.wcFiltInitSize, ...
+                'cohFiltEnable', reconstructOperation.cohFiltEnable, ...
+                'cohCompEnable', reconstructOperation.cohCompEnable);
+            
+            obj.rec.enable = true;
+        end
+
+        function uploadSequence(obj, sequenceOperation, enableHardwareProgramming)
+            % Uploads operations to the us4R system.
+            %
+            % Supports :class:`CustomTxRxSequence` implementation.
+            %
+            % :param sequenceOperation: TX/RX sequence to perform on the us4R system
+            % :param enableHardwareProgramming: determines if the hardware
+            % is programmed or not (optional, default = true)
+            % :returns: updated Us4R object
+            
+            if ~isa(sequenceOperation,'CustomTxRxSequence')
+                error("ARRUS:IllegalArgument", ...
+                      'Invalid sequence object, must be CustomTxRxSequence');
+            end
+            
+            sequenceOperation = obj.mergeSequences(sequenceOperation);
+            
+            obj.setSeqParams(...
+                'txCenterElement', sequenceOperation.txCenterElement, ...
+                'txApertureCenter', sequenceOperation.txApertureCenter, ...
+                'txApertureSize', sequenceOperation.txApertureSize, ...
+                'rxCenterElement', sequenceOperation.rxCenterElement, ...
+                'rxApertureCenter', sequenceOperation.rxApertureCenter, ...
+                'rxApertureSize', sequenceOperation.rxApertureSize, ...
+                'txFocus', sequenceOperation.txFocus, ...
+                'txAngle', sequenceOperation.txAngle, ...
+                'speedOfSound', sequenceOperation.speedOfSound, ...
+                'txVoltage', sequenceOperation.txVoltage, ...
+                'txFrequency', sequenceOperation.txFrequency, ...
+                'txNPeriods', sequenceOperation.txNPeriods, ...
+                'rxDepthRange', sequenceOperation.rxDepthRange, ...
+                'rxNSamples', sequenceOperation.rxNSamples, ...
+                'hwDdcEnable', sequenceOperation.hwDdcEnable, ...
+                'decimation', sequenceOperation.decimation, ...
+                'nRepetitions', sequenceOperation.nRepetitions, ...
+                'txPri', sequenceOperation.txPri, ...
+                'tgcStart', sequenceOperation.tgcStart, ...
+                'tgcSlope', sequenceOperation.tgcSlope, ...
+                'txInvert', sequenceOperation.txInvert, ...
+                'workMode', sequenceOperation.workMode, ...
+                'sri', sequenceOperation.sri, ...
+                'bufferSize', sequenceOperation.bufferSize);
+            
+            % Program hardware
+            if nargin<3 || enableHardwareProgramming
+                obj.programHW;
+                obj.selSubSeq(1, obj.seq.sri);
+                obj.sys.isHardwareProgrammed = true;
+                obj.rec.enable = false;
+            else
+                error('Support for enableHardwareProgramming=false is temporarily suspended');
+            end
+        end
+        
+        function selectSequence(obj, seqId, sri)
+            
+            if ~obj.sys.isHardwareProgrammed
+                error('Sequences must be uploaded prior to selecting one of them.');
+            end
+            
+            if seqId > obj.seq.nSeq
+                error('Selected sequence ID does not point to an uploaded sequence.');
+            end
+            
+            if nargin < 3
+%                 sri = obj.seq.sri(seqId);
+                sri = obj.seq.sri;
+            end
+            
+            obj.selSubSeq(seqId, sri);
+            obj.rec.enable = false;
+        end
+        
+        function setReconstruction(obj, reconstructOperation)
+            % Sets the reconstruction parameters.
+            %
+            % Supports :class:`Reconstruction` implementations.
+            %
+            % :param reconstructOperation: reconstruction to perform with the collected data
+            
+            if ~isa(reconstructOperation,'Reconstruction')
+                error("ARRUS:IllegalArgument", ...
+                      'Invalid reconstruction object, must be Reconstruction');
+            end
+            
+            obj.setRecParams(...
+                'gridModeEnable', reconstructOperation.gridModeEnable, ...
+                'filterEnable', reconstructOperation.filterEnable, ...
+                'filterACoeff', reconstructOperation.filterACoeff, ...
+                'filterBCoeff', reconstructOperation.filterBCoeff, ...
+                'filterDelay', reconstructOperation.filterDelay, ...
+                'swDdcEnable', reconstructOperation.swDdcEnable, ...
+                'decimation', reconstructOperation.decimation, ...
+                'xGrid', reconstructOperation.xGrid, ...
+                'zGrid', reconstructOperation.zGrid, ...
+                'sos', reconstructOperation.sos, ...
+                'rxApod', reconstructOperation.rxApod, ...
+                'bmodeEnable', reconstructOperation.bmodeEnable, ...
+                'colorEnable', reconstructOperation.colorEnable, ...
+                'vectorEnable', reconstructOperation.vectorEnable, ...
+                'bmodeFrames', reconstructOperation.bmodeFrames, ...
+                'colorFrames', reconstructOperation.colorFrames, ...
+                'vector0Frames', reconstructOperation.vector0Frames, ...
+                'vector1Frames', reconstructOperation.vector1Frames, ...
+                'bmodeRxTangLim', reconstructOperation.bmodeRxTangLim, ...
+                'colorRxTangLim', reconstructOperation.colorRxTangLim, ...
+                'vector0RxTangLim', reconstructOperation.vector0RxTangLim, ...
+                'vector1RxTangLim', reconstructOperation.vector1RxTangLim, ...
+                'wcFilterACoeff', reconstructOperation.wcFilterACoeff, ...
+                'wcFilterBCoeff', reconstructOperation.wcFilterBCoeff, ...
+                'wcFiltInitSize', reconstructOperation.wcFiltInitSize, ...
+                'cohFiltEnable', reconstructOperation.cohFiltEnable, ...
+                'cohCompEnable', reconstructOperation.cohCompEnable);
             
             obj.rec.enable = true;
             
@@ -222,6 +368,9 @@ classdef Us4R < handle
             % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
             
             [rf, ~] = obj.execSequence;
+            obj.session.stopScheme();
+
+            rf = obj.rawDataReorganization(rf);
             
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
@@ -238,7 +387,10 @@ classdef Us4R < handle
             %
             % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
             [rf, metadata] = obj.execSequence;
+            obj.session.stopScheme();
             
+            rf = obj.rawDataReorganization(rf);
+
             if obj.rec.enable
                 img = obj.execReconstr(rf(:,:,:,1));
             else
@@ -246,7 +398,7 @@ classdef Us4R < handle
             end
         end
         
-        function runLoop(obj, isContinue, callback)
+        function [rawBuffer, imgBuffer, sriBuffer] = runLoop(obj, isContinue, callback, varargin)
             % Runs the uploaded operations in a loop.
             % 
             % Supports :class:`CustomTxRxSequence` and \
@@ -257,14 +409,94 @@ classdef Us4R < handle
             % :param callback: a function to call after executing the \
             %   operation. Should take one parameter, which will be feed with \
             %   the output of the executed op.
+            % :param bufferType: type of data stored in the cineloop buffer, \
+            %   can be "none", "raw", "img", or "all" (optional, default="none").
+            % :param bufferMode: buffer mode of operation. Can be "conc" \
+            %   for concurrent or "subs" for subsequent operation with the \
+            %   callback function. For "conc" the buffer is used as long as \
+            %   isContinue is true. For "subs" the buffer is used as soon as \
+            %   isContinue is false until the buffer is full.
+            % :param bufferSize: size of the cineloop buffer as a number \
+            %   of sequence executions (optional, default=1).
+            %
+            % :returns: buffers containing raw data (rawBuffer), image data \
+            %   (imgBuffer), and sequence repetition intervals (sriBuffer).
             
+            % Input parser
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'bufferType', 'none', @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'runLoop', 'bufferType'));
+            addParameter(paramsParser, 'bufferMode', 'conc', @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'runLoop', 'bufferMode'));
+            addParameter(paramsParser, 'bufferSize', 1,      @(x) validateattributes(x, {'numeric'}, {'scalar','integer','real','positive','finite'}, 'runLoop', 'bufferSize'));
+            parse(paramsParser, varargin{:});
+            
+            bufferType = paramsParser.Results.bufferType;
+            bufferMode = paramsParser.Results.bufferMode;
+            bufferSize = paramsParser.Results.bufferSize;
+            
+            if ~any(strcmp(bufferType,{'none','raw','img','all'}))
+                warning('runLoop: bufferType must be one of the following: "none", "raw", "img", or "all". Buffer disabled.');
+                bufferType = 'none';
+            end
+            
+            if ~any(strcmp(bufferMode,{'conc','subs'}))
+                warning('runLoop: bufferMode must be one of the following: "conc" or "subs". Buffer disabled.');
+                bufferType = 'none';
+            end
+
+            if strcmp(bufferType,'none')
+                bufferMode = 'conc';
+            end
+            
+            rawBufferEnable = any(strcmp(bufferType,{'raw','all'}));
+            imgBufferEnable = any(strcmp(bufferType,{'img','all'}));
+            if imgBufferEnable && ~obj.rec.enable
+                warning('runLoop: Reconstruction must be enabled to acquire image data. Image buffer disabled.');
+                imgBufferEnable = false;
+            end
+            
+            concBufferEnable = strcmp(bufferMode,'conc');
+            
+            % Buffers initialization
+            sriBuffer = nan(bufferSize,1);
+            
+            if ~concBufferEnable
+                sampSize = 1 + double(obj.subSeq.hwDdcEnable);
+                raw0Buffer = zeros(obj.sys.nChArius, sum(obj.buffer.framesNumber) * obj.subSeq.nSamp * sampSize, bufferSize, 'int16');
+            end
+                
+            if rawBufferEnable
+                rawBuffer = zeros(obj.subSeq.nSamp, obj.subSeq.rxApSize, obj.subSeq.nTx, obj.subSeq.nRep, bufferSize, 'single');
+                if obj.subSeq.hwDdcEnable
+                    rawBuffer = complex(rawBuffer,0);   % other, less time consuming solution?
+                end
+            else
+                rawBuffer = [];
+            end
+            
+            if imgBufferEnable
+                nBufferLayers = 1 + 3*double(obj.rec.colorEnable && ~obj.rec.vectorEnable) + 4*double(obj.rec.vectorEnable);
+                imgBuffer = nan(obj.rec.zSize, obj.rec.xSize, bufferSize, nBufferLayers, 'single');
+            else
+                imgBuffer = [];
+            end
+            
+            % Main loop (using buffers if bufferMode is "conc")
             i = 0;
+            tStampPrev = nan;
             while(isContinue())
                 i = i + 1;
                 
                 tic;
-                rf = obj.execSequence;
+                [rf, meta] = obj.execSequence;
                 acqTime = toc;
+                
+                tic;
+                rf = obj.rawDataReorganization(rf);
+                reorgTime = toc;
+                
+                tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
+                sri = tStampCurr - tStampPrev;
+                tStampPrev = tStampCurr;
                 
                 if obj.rec.enable
                     tic;
@@ -275,15 +507,69 @@ classdef Us4R < handle
                     callback(rf);
                 end
                 
+                % Log time
                 if obj.logTime
                     disp(['Frame no. ' num2str(i)]);
-                    disp(['Acq.  time = ' num2str(acqTime,         '%5.3f') ' s']);
+                    disp(['Acq.  time = ' num2str(acqTime, '%5.3f') ' s']);
+                    disp(['Reorg.  time = ' num2str(reorgTime, '%5.3f') ' s']);
                     if exist('recTime', 'var')
-                        disp(['Rec.  time = ' num2str(recTime,         '%5.3f') ' s']);
-                        disp(['Frame rate = ' num2str(1/(acqTime+recTime),'%5.1f') ' fps']);
-                    end    
+                        disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
+                    end
+                    disp(['Frame rate = ' num2str(1/sri, '%5.1f') ' fps']);
                     disp('--------------------');
                 end
+                
+                % Copy data to buffers
+                if concBufferEnable
+                    I = mod(i-1,bufferSize)+1;
+                    
+                    if rawBufferEnable
+                        rawBuffer(:,:,:,:,I) = rf;
+                    end
+                    
+                    if imgBufferEnable
+                        imgBuffer(:,:,I,:) = img;
+                    end
+                    
+                    sriBuffer(I) = sri;
+                end
+            end
+
+            if concBufferEnable
+                obj.session.stopScheme();
+                disp('runLoop: acquisition done');
+                
+                % Output buffer unwinding
+                rawBuffer = circshift(rawBuffer,-I,5);
+                imgBuffer = circshift(imgBuffer,-I,3);
+                sriBuffer = circshift(sriBuffer,-I,1);
+                
+                disp('runLoop: postprocessing done');
+            else
+                % Second loop (acquisition of raw data for "subs" bufferMode)
+                for i=1:bufferSize
+                    [raw0Buffer(:,:,i), meta] = obj.execSequence;
+                    
+                    tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
+                    sriBuffer(i) = tStampCurr - tStampPrev;
+                    tStampPrev = tStampCurr;
+                end
+                obj.session.stopScheme();
+                disp('runLoop: acquisition done');
+
+                % Postprocessing loop
+                for i=1:bufferSize
+                    rf = obj.rawDataReorganization(raw0Buffer(:,:,i));
+                    
+                    if rawBufferEnable
+                        rawBuffer(:,:,:,:,i) = rf;
+                    end
+                    
+                    if imgBufferEnable
+                        imgBuffer(:,:,i,:) = obj.execReconstr(rf(:,:,:,1));
+                    end
+                end
+                disp('runLoop: postprocessing done');
             end
         end
         
@@ -303,14 +589,14 @@ classdef Us4R < handle
             if ~obj.sys.isHardwareProgrammed
                 error("plotRawRf: hardware is not programmed, rf cannot be collected");
             end
-            if obj.seq.hwDdcEnable
+            if obj.subSeq.hwDdcEnable
                 error("plotRawRf: hardware DDC is enabled, rf cannot be collected");
             end
             
             %% Input parser
             dispParParser = inputParser;
             
-            nLine = obj.seq.rxApSize * obj.seq.nTx * obj.seq.nRep;
+            nLine = obj.subSeq.rxApSize * obj.subSeq.nTx * obj.subSeq.nRep;
             addParameter(dispParParser, 'selectedLines', 1:nLine, ...
                 @(x) assert(isvector(x) && isnumeric(x) && all(x>0), ...
                 "selectedLines must be a positive numerical vector."));
@@ -335,7 +621,7 @@ classdef Us4R < handle
             linRngEnable  = dispParParser.Results.linRangeEnable;
             
             %% Prepare figure
-            nSamp = obj.seq.nSamp;
+            nSamp = obj.subSeq.nSamp;
             if boundsEnable
                 nLine = 2;
             else
@@ -362,8 +648,8 @@ classdef Us4R < handle
                         error('Unsupported LNA gain value.');
                 end
                 
-                tgcCurveResamp = interp1(obj.seq.tgcPoints, obj.seq.tgcCurve, ...
-                                         (obj.seq.startSample + (1:nSamp) - 1)*obj.seq.dec, "linear", nan);
+                tgcCurveResamp = interp1(obj.subSeq.tgcPoints, obj.subSeq.tgcCurve, ...
+                                         (obj.subSeq.startSample + (1:nSamp) - 1)*obj.subSeq.dec, "linear", nan);
                 ampUndistortLim = voltLim * 10.^(tgcCurveResamp/20) * obj.sys.adcVolt2Lsb;
                 ampUndistortLim = min(ampUndistortLim, 2^15, "includenan");
                 
@@ -373,7 +659,7 @@ classdef Us4R < handle
             
             while(ishghandle(hFig))
                 data = obj.run;
-                data = data(:,selectedLines);
+                data = gather(data(:,selectedLines));
                 if boundsEnable
                     data = [min(data,[],2), max(data,[],2)];
                 end
@@ -382,15 +668,7 @@ classdef Us4R < handle
                     for iLine=1:nLine
                         set(hDisp(iLine), 'XData', data(:,iLine));
                     end
-                    
-                    % TODO removed below pause
-                    % Applied the pause to make the figure window more
-                    % responsive. Removing this pause may introduce some
-                    % issues when closing the figure - e.g. a long delay
-                    % between pressing the window close button and the 
-                    % reaction to that close.
-                    % That was an issue on MATLAB 2018b, testenv2.
-                    pause(0.01);
+                    drawnow limitrate;
                     
                 catch ME
                     if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
@@ -413,14 +691,14 @@ classdef Us4R < handle
             if ~obj.sys.isHardwareProgrammed
                 error("plotRawRf: hardware is not programmed, rf cannot be collected");
             end
-            if obj.seq.hwDdcEnable
+            if obj.subSeq.hwDdcEnable
                 error("plotRawRf: hardware DDC is enabled, rf cannot be collected");
             end
             
             %% Input parser
             dispParParser = inputParser;
             
-            nLine = obj.seq.rxApSize * obj.seq.nTx * obj.seq.nRep;
+            nLine = obj.subSeq.rxApSize * obj.subSeq.nTx * obj.subSeq.nRep;
             addParameter(dispParParser, 'selectedLines', 1:nLine, ...
                 @(x) assert(isvector(x) && isnumeric(x) && all(x>0), ...
                 "selectedLines must be a positive numerical vector."));
@@ -435,7 +713,7 @@ classdef Us4R < handle
             amplitudeLim  = dispParParser.Results.amplitudeLim;
             
             %% Prepare figure
-            nSamp = obj.seq.nSamp;
+            nSamp = obj.subSeq.nSamp;
             nLine = numel(selectedLines);
             
             % Create figure.
@@ -452,16 +730,8 @@ classdef Us4R < handle
             while(ishghandle(hFig))
                 data = obj.run;
                 try
-                    set(hDisp, 'CData', data(:,selectedLines));
-                    
-                    % TODO removed below pause
-                    % Applied the pause to make the figure window more
-                    % responsive. Removing this pause may introduce some
-                    % issues when closing the figure - e.g. a long delay
-                    % between pressing the window close button and the 
-                    % reaction to that close.
-                    % That was an issue on MATLAB 2018b, testenv2.
-                    pause(0.01);
+                    set(hDisp, 'CData', gather(data(:,selectedLines)));
+                    drawnow limitrate;
                     
                 catch ME
                     if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))
@@ -479,9 +749,86 @@ classdef Us4R < handle
     end
     
     methods(Access = private)
+        
+        function seqOut = mergeSequences(obj,seqIn)
+            
+            obj.seq.nSeq = numel(seqIn);
+            nSeq = obj.seq.nSeq;
 
+            if nSeq==1
+                seqOut = seqIn;
+                obj.seq.seqLim = [1 numel(seqIn.txAngle)]; %#ok<MCNPN> 
+                return;
+            end
+            
+            %% Validate sequences
+            % Some parameters must be equal (those that have to be scalars or 2-elem vectors)
+            selFieldNames = {'rxApertureSize','speedOfSound','txVoltage', ...
+                             'rxDepthRange','rxNSamples', 'hwDdcEnable', ...
+                             'decimation','nRepetitions','txPri', ...
+                             'tgcStart','tgcSlope','workMode', ...
+                             'sri','bufferSize'};
+            for iFld=1:numel(selFieldNames)
+                for iSeq=2:nSeq
+                    if  xor(isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
+                            isempty(seqIn(   1).(selFieldNames{iFld}))) || ...
+                       ~any([isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
+                             isempty(seqIn(   1).(selFieldNames{iFld}))]) && ...
+                        any(seqIn(iSeq).(selFieldNames{iFld}) ~= ...
+                            seqIn(   1).(selFieldNames{iFld}))
+                        error("mergeSequences: " + selFieldNames{iFld} + ...
+                              " must be the same for all merged sequences");
+                    end
+                end
+            end
+            
+            % Some of the parameters not included in the above validation
+            % must be defined in a "one or the other" mode. Checking if the
+            % same fields are empty is enough.
+            selFieldNames = {'txCenterElement','txApertureCenter', ...
+                             'rxCenterElement','rxApertureCenter'};
+            for iFld=1:numel(selFieldNames)
+                for iSeq=2:nSeq
+                    if  xor(isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
+                            isempty(seqIn(   1).(selFieldNames{iFld})))
+                        error("mergeSequences: " + selFieldNames{iFld} + ...
+                              " must be defined or left empty for all merged sequences");
+                    end
+                end
+            end
+
+            % nRepetitions must be equal 1 if multiple sequences are merged
+            if seqIn(1).nRepetitions ~= 1
+                error("mergeSequences: nRepetitions must be equal to 1 if multiple sequences are merged");
+            end
+            
+            %% Merge sequences
+            seqOut = seqIn(1);
+            for iSeq=2:nSeq
+                seqOut.txCenterElement   = [seqOut.txCenterElement,  seqIn(iSeq).txCenterElement];
+                seqOut.txApertureCenter  = [seqOut.txApertureCenter, seqIn(iSeq).txApertureCenter];
+                seqOut.txApertureSize    = [seqOut.txApertureSize,   seqIn(iSeq).txApertureSize];
+                seqOut.rxCenterElement   = [seqOut.rxCenterElement,  seqIn(iSeq).rxCenterElement];
+                seqOut.rxApertureCenter  = [seqOut.rxApertureCenter, seqIn(iSeq).rxApertureCenter];
+                seqOut.txFocus           = [seqOut.txFocus,          seqIn(iSeq).txFocus];
+                seqOut.txAngle           = [seqOut.txAngle,          seqIn(iSeq).txAngle];
+                seqOut.txFrequency       = [seqOut.txFrequency,      seqIn(iSeq).txFrequency];
+                seqOut.txNPeriods        = [seqOut.txNPeriods,       seqIn(iSeq).txNPeriods];
+                seqOut.txInvert          = [seqOut.txInvert,         seqIn(iSeq).txInvert];
+            end
+
+            %% Frame limits
+            % [frameStart, frameStop] of each input sequence in the output sequence
+            nTx = zeros(nSeq,1);
+            for iSeq=1:nSeq
+                nTx(iSeq) = numel(seqIn(iSeq).txAngle);
+            end
+            obj.seq.seqLim = [1+cumsum([0; nTx(1:nSeq-1)]), cumsum(nTx)];
+            
+        end
+        
         function setSeqParams(obj,varargin)
-
+            
             %% Set sequence parameters
             % Sequence parameters names mapping
             %                    public name         private name
@@ -505,7 +852,10 @@ classdef Us4R < handle
                                 'txPri',            'txPri'; ...
                                 'tgcStart',         'tgcStart'; ...
                                 'tgcSlope',         'tgcSlope'; ...
-                                'txInvert'          'txInvert'};
+                                'txInvert',         'txInvert'; ...
+                                'workMode',         'workMode'; ...
+                                'sri',              'sri'; ...
+                                'bufferSize',       'bufferSize'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -534,7 +884,7 @@ classdef Us4R < handle
                     obj.seq.dec = 1;
                 end
                 obj.seq.fpgaDec = obj.seq.dec;
-                
+                obj.seq.ddcFirCoeff = [];
             end
             
             %% Sampling frequency
@@ -542,6 +892,16 @@ classdef Us4R < handle
             
             %% Number of Tx
             obj.seq.nTx	= length(obj.seq.txAng);
+
+            %% Validate buffer size
+            if obj.seq.bufferSize < 2
+                error("setSeqParams: bufferSize must be >= 2");
+            end
+            
+            if obj.seq.bufferSize * obj.seq.nTx > obj.sys.maxSeqLength
+                error("setSeqParams: product of bufferSize and sequence length cannot exceed " ...
+                    + num2str(obj.sys.maxSeqLength));
+            end
             
             %% rxNSamples & rxDepthRange
             % rxDepthRange was given in sequence (rxNSamples is empty)
@@ -590,18 +950,8 @@ classdef Us4R < handle
                 obj.seq.tgcCurve = max(obj.seq.tgcLim(1),min(obj.seq.tgcLim(2),obj.seq.tgcCurve));
             end
             
-            %% Tx/Rx aperture string/missing parameters
-            if isstring(obj.seq.txApSize) && obj.seq.txApSize == "nElements"
-                obj.seq.txApSize = obj.sys.nElem * ones(1,obj.seq.nTx);
-                disp(['txApertureSize set to ' num2str(obj.seq.txApSize(1)) '.']);
-            end
-            
-            if isstring(obj.seq.rxApSize) && obj.seq.rxApSize == "nElements"
-                obj.seq.rxApSize = obj.sys.nElem;
-                disp(['rxApertureSize set to ' num2str(obj.seq.rxApSize) '.']);
-            end
-            
-            % delete: txApCent & rxApCent
+            %% Tx/Rx aperture missing parameters
+            % unused: txApCent & rxApCent
             if isempty(obj.seq.txApCent)
                 obj.seq.txApCent	= interp1(1:obj.sys.nElem, obj.sys.posElem, obj.seq.txCentElem);
             else
@@ -633,6 +983,7 @@ classdef Us4R < handle
             
             obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
+            
             if obj.seq.hwDdcEnable
                 obj.seq.initDel   = obj.seq.initDel + (8+1)/obj.seq.rxSampFreq;
             end
@@ -667,7 +1018,9 @@ classdef Us4R < handle
                                 'vector1RxTangLim',	'vect1RxTangLim'; ...
                                 'wcFilterACoeff',   'wcFiltA'; ...
                                 'wcFilterBCoeff',   'wcFiltB'; ...
-                                'wcFiltInitSize',   'wcFiltInitSize'};
+                                'wcFiltInitSize',   'wcFiltInitSize'; ...
+                                'cohFiltEnable',    'cohFiltEnable'; ...
+                                'cohCompEnable',    'cohCompEnable'};
 
             for iPar=1:size(recParamMapping,1)
                 obj.rec.(recParamMapping{iPar,2}) = [];
@@ -681,19 +1034,25 @@ classdef Us4R < handle
             
             %% Software DDC parameters
             if isempty(obj.rec.swDdcEnable)
-                obj.rec.swDdcEnable = ~obj.seq.hwDdcEnable;
+                obj.rec.swDdcEnable = ~obj.subSeq.hwDdcEnable;
             end
             if obj.rec.swDdcEnable
-                if obj.seq.hwDdcEnable
+                if obj.subSeq.hwDdcEnable
                     error("setRecParams: hwDdcEnable & swDdcEnable cannot be set to true at a time");
                 end
+                if isa(obj.subSeq.txFreq,'gpuArray')
+                    obj.subSeq.txFreq = double(gather(obj.subSeq.txFreq));
+                end
+                if isa(obj.subSeq.rxSampFreq,'single')
+                    obj.subSeq.rxSampFreq = double(obj.subSeq.rxSampFreq);
+                end
                 if isempty(obj.rec.dec)
-                    obj.rec.dec = round(obj.seq.rxSampFreq / max(obj.seq.txFreq));
+                    obj.rec.dec = round(obj.subSeq.rxSampFreq / max(obj.subSeq.txFreq));
                 end
                 
                 % Filter design the same as in hardware DDC
                 % downConvertion.m performs filtration with no phase delay
-                cutoffFrequency = mean(obj.seq.txFreq)/(obj.seq.rxSampFreq/2);
+                cutoffFrequency = mean(obj.subSeq.txFreq)/(obj.subSeq.rxSampFreq/2);
                 firOrder = obj.rec.dec * 16 - 1;
                 obj.rec.ddcFirCoeff = fir1(firOrder, cutoffFrequency, "low");
             else
@@ -707,29 +1066,35 @@ classdef Us4R < handle
             
             %% Default sos
             if isempty(obj.rec.sos)
-                obj.rec.sos = obj.seq.c;
+                obj.rec.sos = obj.subSeq.c;
+            end
+
+            %% Radial coordinates for classical reconstruction
+            if ~obj.rec.gridModeEnable
+                t = (obj.subSeq.startSample + (0:(obj.subSeq.nSamp-1))) / obj.subSeq.rxSampFreq;
+                obj.rec.rGrid = t * obj.rec.sos / 2;
             end
             
             %% Validate frames selection
-            if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.seq.nTx)
+            if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.subSeq.nTx)
                 error("setRecParams: bmodeFrames refers to nonexistent transmission id");
             end
             
-            if obj.rec.colorEnable && any(obj.rec.colorFrames > obj.seq.nTx)
+            if obj.rec.colorEnable && any(obj.rec.colorFrames > obj.subSeq.nTx)
                 error("setRecParams: colorFrames refers to nonexistent transmission id");
             end
             
-            if obj.rec.vectorEnable && any(obj.rec.vect0Frames > obj.seq.nTx)
+            if obj.rec.vectorEnable && any(obj.rec.vect0Frames > obj.subSeq.nTx)
                 error("setRecParams: vector0Frames refers to nonexistent transmission id");
             end
             
-            if obj.rec.vectorEnable && any(obj.rec.vect1Frames > obj.seq.nTx)
+            if obj.rec.vectorEnable && any(obj.rec.vect1Frames > obj.subSeq.nTx)
                 error("setRecParams: vector1Frames refers to nonexistent transmission id");
             end
             
             %% Default bmodeFrames
             if obj.rec.bmodeEnable && isempty(obj.rec.bmodeFrames)
-                obj.rec.bmodeFrames = 1:obj.seq.nTx;
+                obj.rec.bmodeFrames = 1:obj.subSeq.nTx;
             end
             
             %% Validate/adjust size of the RxTangLims
@@ -777,46 +1142,44 @@ classdef Us4R < handle
                 [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
             end
             
-            %% If GPU is available...
-            obj.rec.gpuEnable	= license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('parallel')) && parallel.gpu.GPUDevice.isAvailable;
+            %% Set data types and move data to GPU memory
+            obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
+            obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
+            obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
+            obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
+            obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
+            obj.rec.rxApod         = gpuArray(single(obj.rec.rxApod));
+            obj.subSeq.txFoc       = gpuArray(single(obj.subSeq.txFoc));
+            obj.subSeq.txAngZX     = gpuArray(single(obj.subSeq.txAngZX));
+            obj.subSeq.txApCentZ   = gpuArray(single(obj.subSeq.txApCentZ));
+            obj.subSeq.txApCentX   = gpuArray(single(obj.subSeq.txApCentX));
+            obj.subSeq.txFreq      = gpuArray(single(obj.subSeq.txFreq));
+            obj.subSeq.initDel     = gpuArray(single(obj.subSeq.initDel));
+            obj.subSeq.txApFstElem = gpuArray( int32(obj.subSeq.txApFstElem - 1));
+            obj.subSeq.txApLstElem = gpuArray( int32(obj.subSeq.txApLstElem - 1));
+            obj.subSeq.rxApOrig    = gpuArray( int32(obj.subSeq.rxApOrig - 1));
+            obj.subSeq.nSampOmit   = gpuArray( int32(obj.subSeq.nSampOmit));
+            obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
+            obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
+            obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
+            obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
+            obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
+            obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
+            obj.subSeq.rxSampFreq  =          single(obj.subSeq.rxSampFreq);
+            obj.rec.sos            =          single(obj.rec.sos);
+            obj.subSeq.startSample =          single(obj.subSeq.startSample);
+            obj.subSeq.txDelCent   =          single(obj.subSeq.txDelCent);
             
-            if obj.rec.gpuEnable && obj.rec.gridModeEnable
-                % Add location of the CUDA kernels
-                addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
-                
-                % move reconstruction-related data to GPU
-                obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
-                obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
-                obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
-                obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
-                obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
-                obj.rec.rxApod         = gpuArray(single(obj.rec.rxApod));
-                obj.seq.txFoc          = gpuArray(single(obj.seq.txFoc));
-                obj.seq.txAngZX        = gpuArray(single(obj.seq.txAngZX));
-                obj.seq.txApCentZ      = gpuArray(single(obj.seq.txApCentZ));
-                obj.seq.txApCentX      = gpuArray(single(obj.seq.txApCentX));
-                obj.seq.txFreq         = gpuArray(single(obj.seq.txFreq));
-                obj.seq.initDel        = gpuArray(single(obj.seq.initDel));
-                obj.seq.txApFstElem    = gpuArray( int32(obj.seq.txApFstElem - 1));
-                obj.seq.txApLstElem    = gpuArray( int32(obj.seq.txApLstElem - 1));
-                obj.seq.rxApOrig       = gpuArray( int32(obj.seq.rxApOrig - 1));
-                obj.seq.nSampOmit      = gpuArray( int32(obj.seq.nSampOmit));
-                obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
-                obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
-                obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
-                obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
-                obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
-                obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
-                obj.seq.rxSampFreq     =          single(obj.seq.rxSampFreq);
-                obj.rec.sos            =          single(obj.rec.sos);
-                obj.seq.startSample    =          single(obj.seq.startSample);
-                obj.seq.txDelCent      =          single(obj.seq.txDelCent);
-
-                if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                    obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
-                end
-                
+            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
+                obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
             end
+            
+            if ~obj.rec.gridModeEnable
+                obj.rec.rGrid      = gpuArray(single(obj.rec.rGrid));
+                obj.subSeq.txAng   = gpuArray(single(obj.subSeq.txAng));
+                obj.subSeq.txApCentAng = gpuArray(single(obj.subSeq.txApCentAng));
+            end
+            
         end
         
         function calcTxRxApMask(obj)
@@ -908,7 +1271,11 @@ classdef Us4R < handle
             
             import arrus.ops.us4r.*;
             
-            obj.us4r.setVoltage(obj.seq.txVoltage);
+            if obj.seq.txVoltage == 0
+                obj.us4r.disableHV();
+            else
+                obj.us4r.setVoltage(obj.seq.txVoltage);
+            end
             
             % Tx/Rx sequence
             nTx = obj.seq.nTx;
@@ -918,7 +1285,7 @@ classdef Us4R < handle
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
-            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve);
+            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve, "sri", obj.seq.sri);
             
             % Digital Down Conversion
             if obj.seq.hwDdcEnable
@@ -931,7 +1298,11 @@ classdef Us4R < handle
             end
             
             % Upload scheme
-            scheme = Scheme('txRxSequence', txrxSeq, 'workMode', "MANUAL", 'digitalDownConversion', ddc);
+            scheme = Scheme('txRxSequence', txrxSeq, ...
+                            'workMode', obj.seq.workMode, ...
+                            'digitalDownConversion', ddc, ...
+                            'rxBufferSize', obj.seq.bufferSize, ...
+                            'outputBuffer', arrus.framework.DataBufferDef("type", "FIFO", "nElements", obj.seq.bufferSize));
             
             [obj.buffer.data, ...
              obj.buffer.framesOffset, ...
@@ -939,118 +1310,162 @@ classdef Us4R < handle
              obj.buffer.oemId, ...
              obj.buffer.frameId, ...
              obj.buffer.channelId] = obj.session.upload(scheme);
+            
+            % NOTE: the above outputs were used for calculation of data 
+            % reorganization addresses. Since subSequences are supported, 
+            % the corresponding data is obtained during setSubsequence call.
+        end
+        
+        function selSubSeq(obj, seqId, sri)
+            
+            % Copy selected part of sequence to subsequence
+            seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
+                                'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
+                                'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
+                                'rxSampFreq', 'tgcLim', 'tgcPoints', 'tgcCurve', 'txDelCent'};
+            for iFld=1:numel(seqFieldsToCopy)
+                obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
+            end
 
+            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
+                                'txFoc', 'txAng', 'txFreq', 'txNPer', 'txInvert', ...
+                                'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
+                                'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
+                                'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
+                                'nSampOmit', 'initDel'};
+            for iFld=1:numel(seqFieldsToExtr)
+                obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
+                                                                                     : obj.seq.seqLim(seqId,2));
+            end
+
+            obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
+
+            % Set the subsequence limits
+            [obj.buffer.data, ...
+             obj.buffer.framesOffset, ...
+             obj.buffer.framesNumber, ...
+             obj.buffer.oemId, ...
+             obj.buffer.frameId, ...
+             obj.buffer.channelId] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
+                                                                obj.seq.seqLim(seqId,2)-1, sri);
+            
             obj.buffer.framesOffset = obj.buffer.framesOffset.';
             obj.buffer.framesNumber = obj.buffer.framesNumber.';
             
             % Data reorganization addresses
-            nChan = obj.sys.nChArius;
-            nRep = obj.seq.nRep;
-            iRep = uint32(reshape(0:(nRep-1),1,1,nRep));
+            obj.buffer.framesOffset = double(obj.buffer.framesOffset);
+            obj.buffer.framesNumber = double(obj.buffer.framesNumber);
+            obj.buffer.oemId        = double(obj.buffer.oemId);
+            obj.buffer.frameId      = double(obj.buffer.frameId);
+            obj.buffer.channelId    = double(obj.buffer.channelId);
             
-            obj.buffer.reorgAddrDest = (1 : obj.seq.rxApSize*nTx*nRep).';
-            obj.buffer.reorgAddrOrig = 1 + ...
-                ( obj.buffer.framesOffset(1 + obj.buffer.oemId) + ...                 % offset due to oemId
-                  obj.buffer.framesNumber(1 + obj.buffer.oemId) / nRep .* iRep + ...  % offset due to iRep
-                  obj.buffer.frameId ) * nChan  + ...                                 % offset due to frameId
-                uint32(obj.buffer.channelId);                                         % offset due to channelId
-
-            obj.buffer.reorgAddrDest = obj.buffer.reorgAddrDest(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
-            obj.buffer.reorgAddrOrig = obj.buffer.reorgAddrOrig(repmat(obj.buffer.channelId,1,1,nRep) >= 0);
+            nOem = numel(obj.buffer.framesNumber);
+            nChunk = sum(obj.buffer.framesNumber);
+            nChan = obj.sys.nChArius;
+            nRep = obj.subSeq.nRep;
+            nRx = obj.subSeq.rxApSize;
+            nTx = obj.subSeq.nTx;
+            
+            obj.buffer.reorgMap = - ones(nChan, nChunk, 'int32');
+            
+            for iOem=1:nOem
+                nFrame = obj.buffer.framesNumber(iOem) / nRep;
+                for iFrame=1:nFrame
+                    isSelect = obj.buffer.oemId == iOem-1 ...
+                             & obj.buffer.frameId == iFrame-1 ...
+                             & obj.buffer.channelId >= 0;
+                    iTx = find(any(isSelect));
+                    iRx = find(isSelect(:,iTx) & obj.buffer.channelId(:,iTx) >= 0);
+                    iChan = obj.buffer.channelId(iRx,iTx) + 1;
+                    for iRep=1:nRep
+                        iChunk = obj.buffer.framesOffset(iOem) ...
+                               + obj.buffer.framesNumber(iOem) / nRep * (iRep-1) ...
+                               + iFrame;
+                        obj.buffer.reorgMap(iChan,iChunk) = (iRep-1)*nTx*nRx + (iTx-1)*nRx + iRx-1; % 0-based indexing
+                    end
+                end
+            end
+            
+            obj.buffer.iFrame = 0;
+            obj.rec.enable = false;
+            
         end
-
+        
         function [rf, metadata] = execSequence(obj)
-
+            
             if ~obj.sys.isHardwareProgrammed
                 error("execSequence: hardware is not programmed, sequence cannot be executed");
             end
             
-            nChan	= obj.sys.nChArius;
-            nSamp	= obj.seq.nSamp;
-            nTx     = obj.seq.nTx;
-            nRep	= obj.seq.nRep;
-            nTrig0  = obj.buffer.framesNumber(1);
-
             %% Capture & transfer data to PC
-            obj.session.run();
-            rf0 = obj.buffer.data.front().eval();
+            if obj.buffer.iFrame == 0 || strcmp(obj.subSeq.workMode,"MANUAL")
+                obj.session.run();
+            end
+            rf = obj.buffer.data.front().eval();
+            rf = rf(:,:);
+            
+            obj.buffer.iFrame = obj.buffer.iFrame + 1;
             
             %% Get metadata
-            metadata = zeros(nChan, nTrig0, 'int16');
-            metadata(:, :) = rf0(:, 1:nSamp:nTrig0*nSamp);
+            nChan	= obj.sys.nChArius;
+            nSamp	= obj.subSeq.nSamp;
+            nTrig0  = obj.buffer.framesNumber(1);
 
-            %% Reorganize
-            if obj.seq.hwDdcEnable
-                rf0 = reshape(rf0, nChan, 2, nSamp, sum(obj.buffer.framesNumber));
-                rf0 = complex(rf0(:,1,:,:), rf0(:,2,:,:));
-            end
-            rf0 = reshape(rf0, nChan, nSamp, sum(obj.buffer.framesNumber));
-            rf0 = permute(rf0, [2 1 3]);
+            metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
+            metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
             
-            rf  = zeros(nSamp, obj.seq.rxApSize*nTx*nRep,'like',rf0);
-            rf(:,obj.buffer.reorgAddrDest) = rf0(:, obj.buffer.reorgAddrOrig);
-            rf  = reshape(rf, nSamp, obj.seq.rxApSize, nTx, nRep);
-
         end
         
         function img = execReconstr(obj,rfRaw)
-
-            %% Move data to GPU if possible
-            if obj.rec.gpuEnable
-                rfRaw = gpuArray(rfRaw);
-            end
             
-            rfRaw = double(rfRaw);
-
             %% Preprocessing
             % Raw rf data filtration
             if obj.rec.filtEnable
+                rfRaw = double(rfRaw);
                 rfRaw = filter(obj.rec.filtB,obj.rec.filtA,rfRaw);
+                rfRaw = single(rfRaw);
             end
-
-            rfRaw = single(rfRaw);
             
             % Digital Down Conversion
             if obj.rec.swDdcEnable
-                rfRaw = downConversion(rfRaw,obj.seq,obj.rec);
+                rfRaw = downConversion(rfRaw, obj.subSeq, obj.rec);
             end
-
+            
             %% Reconstruction
             if ~obj.rec.gridModeEnable
-                if numel(obj.rec.bmodeFrames) ~= obj.seq.nTx || ...
-                   any(obj.rec.bmodeFrames ~= 1:obj.seq.nTx) || ...
+                if numel(obj.rec.bmodeFrames) ~= obj.subSeq.nTx || ...
+                   any(obj.rec.bmodeFrames ~= 1:obj.subSeq.nTx) || ... % check if this is correctly implemented
                    obj.rec.colorEnable || obj.rec.vectorEnable
                     error("execReconstr: frames selection or doppler modes are not supported when gridModeEnable=false");
                 end
                 if obj.rec.bmodeEnable
-                    rfBfr = reconstructRfLin(rfRaw,obj.sys,obj.seq,obj.rec);
+                    rfBfr = obj.runCudaReconstructionLin(rfRaw);
                 end
             else
-%                 rfBfr = reconstructRfImg(rfRaw,obj.sys,obj.seq,obj.rec);
-                
                 % B-Mode image reconstruction
                 if obj.rec.bmodeEnable
                     rfBfr = obj.runCudaReconstruction(rfRaw,'bmode');
                     
-                    if obj.sys.interfEnable
+                    % Coherence filtration
+                    if obj.rec.cohFiltEnable
                         ccf = 1 - sqrt( var(real(rfBfr)./abs(rfBfr), 0, 3) + ...
                                         var(imag(rfBfr)./abs(rfBfr), 0, 3) );
                         rfBfr = rfBfr .* ccf;
-                        
-                        % coherent compounding for NDT
-                        rfBfr = mean(rfBfr,3,'omitnan');
-                    else
-                        % incoherent compounding for medical imaging
-                        rfBfr = mean(abs(rfBfr),3,'omitnan');
                     end
                     
+                    % Coherent/Incoherent compounding
+                    if obj.rec.cohCompEnable
+                        rfBfr = mean(rfBfr,3,'omitnan');
+                    else
+                        rfBfr = mean(abs(rfBfr),3,'omitnan');
+                    end
                 end
                 
                 % Color Doppler image reconstruction
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
-                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.seq, obj.rec);
+                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.subSeq, obj.rec);
                 end
                 
                 % Vector Doppler image reconstruction
@@ -1058,13 +1473,13 @@ classdef Us4R < handle
                     rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
                     rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
                     
-                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.seq, obj.rec);
+                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.subSeq, obj.rec);
                 end
             end
 
             %% Postprocessing
             % Obtain complex signal (if it isn't complex already)
-            if ~obj.seq.hwDdcEnable && ~obj.rec.swDdcEnable
+            if ~obj.subSeq.hwDdcEnable && ~obj.rec.swDdcEnable
                 nanMask = isnan(rfBfr);
                 rfBfr(nanMask) = 0;
                 rfBfr = hilbert(rfBfr);
@@ -1076,7 +1491,7 @@ classdef Us4R < handle
             
             % Scan conversion
             if ~obj.rec.gridModeEnable
-                envImg = scanConversion(envImg,obj.sys,obj.seq,obj.rec);
+                envImg = scanConversion(envImg,obj.sys,obj.subSeq,obj.rec);
                 
                 % Doppler is not implemented for 'lin' mode
                 % NDT interface is not supported in scanConversion
@@ -1095,10 +1510,7 @@ classdef Us4R < handle
             end
             
             % Gather data from GPU
-            if obj.rec.gpuEnable
-                img = gather(img);
-            end
-            
+            img = gather(img);
             
         end
         
@@ -1129,19 +1541,19 @@ classdef Us4R < handle
                                     obj.rec.zGrid, ...
                                     obj.rec.xGrid, ...
                                     obj.rec.rxApod, ...
-                                    obj.seq.txFoc(selFrames), ...
-                                    obj.seq.txAngZX(selFrames), ...
-                                    obj.seq.txApCentZ(selFrames), ...
-                                    obj.seq.txApCentX(selFrames), ...
-                                    obj.seq.txFreq(selFrames), ...
-                                    obj.seq.initDel(selFrames), ...
-                                    obj.seq.txApFstElem(selFrames), ...
-                                    obj.seq.txApLstElem(selFrames), ...
-                                    obj.seq.rxApOrig(selFrames), ...
-                                    obj.seq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                    obj.subSeq.txFoc(selFrames), ...
+                                    obj.subSeq.txAngZX(selFrames), ...
+                                    obj.subSeq.txApCentZ(selFrames), ...
+                                    obj.subSeq.txApCentX(selFrames), ...
+                                    obj.subSeq.txFreq(selFrames), ...
+                                    obj.subSeq.initDel(selFrames), ...
+                                    obj.subSeq.txApFstElem(selFrames), ...
+                                    obj.subSeq.txApLstElem(selFrames), ...
+                                    obj.subSeq.rxApOrig(selFrames), ...
+                                    obj.subSeq.nSampOmit(selFrames)/obj.rec.dec, ...
                                     rxTangLim(:,1).', ...
                                     rxTangLim(:,2).', ...
-                                    obj.seq.rxSampFreq/obj.rec.dec, ...
+                                    obj.subSeq.rxSampFreq/obj.rec.dec, ...
                                     obj.rec.sos);
             else
                 iqLri	= iqRaw2Lri_SSTA_Wedge( ...
@@ -1151,19 +1563,55 @@ classdef Us4R < handle
                                     obj.sys.tangElem, ...
                                     obj.rec.zGrid, ...
                                     obj.rec.xGrid, ...
-                                    obj.seq.txApCentZ(selFrames), ...
-                                    obj.seq.txApCentX(selFrames), ...
-                                    obj.seq.rxApOrig(selFrames), ...
+                                    obj.subSeq.txApCentZ(selFrames), ...
+                                    obj.subSeq.txApCentX(selFrames), ...
+                                    obj.subSeq.rxApOrig(selFrames), ...
                                     gather(rxTangLim(1,1)), ...
                                     gather(rxTangLim(1,2)), ...
-                                    obj.seq.rxSampFreq/obj.rec.dec, ...
-                                    gather(obj.seq.txFreq(1)), ...
+                                    obj.subSeq.rxSampFreq/obj.rec.dec, ...
+                                    gather(obj.subSeq.txFreq(1)), ...
                                     obj.rec.sos, ...
                                     obj.sys.interfSos, ...
-                                    1/64/gather(obj.seq.txFreq(1)), ...
-                                    gather(obj.seq.initDel(1)));
+                                    1/64/gather(obj.subSeq.txFreq(1)), ...
+                                    gather(obj.subSeq.initDel(1)));
             end
             
+        end
+        
+        function iqLin = runCudaReconstructionLin(obj,iqRaw)
+            
+            selFrames = obj.rec.bmodeFrames;
+            
+            iqLin	= iqRaw2Lin(iqRaw(:,:,selFrames), ...
+                                obj.sys.zElem, ...
+                                obj.sys.xElem, ...
+                                obj.sys.tangElem, ...
+                                obj.rec.rGrid, ...
+                                obj.rec.rxApod, ...
+                                obj.subSeq.txAngZX(selFrames), ...
+                                obj.subSeq.txApCentZ(selFrames), ...
+                                obj.subSeq.txApCentX(selFrames), ...
+                                obj.subSeq.txFreq(selFrames), ...
+                                obj.subSeq.initDel(selFrames), ...
+                                obj.subSeq.rxApOrig(selFrames), ...
+                                obj.subSeq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                obj.rec.bmodeRxTangLim(:,1).', ...
+                                obj.rec.bmodeRxTangLim(:,2).', ...
+                                obj.subSeq.rxSampFreq/obj.rec.dec, ...
+                                obj.rec.sos);
+            
+        end
+        
+        function [dataOut] = rawDataReorganization(obj, dataIn)
+            
+            dataIn  = gpuArray(dataIn);
+            
+            dataOut = rawReorg(dataIn, ...
+                               obj.buffer.reorgMap, ...
+                               uint32(obj.subSeq.rxApSize), ...
+                               uint32(obj.subSeq.nTx), ...
+                               uint32(obj.subSeq.nRep), ...
+                               obj.subSeq.hwDdcEnable);
         end
         
     end
