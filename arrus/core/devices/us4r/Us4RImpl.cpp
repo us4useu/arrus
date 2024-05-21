@@ -406,8 +406,13 @@ Us4RImpl::uploadSequence(const TxRxSequence &seq, uint16 bufferSize, uint16 batc
 void Us4RImpl::trigger(bool sync, std::optional<long long> timeout) {
     this->getDefaultComponent()->syncTrigger();
     if(sync) {
-        this->getMasterUs4oem()->waitForWaitForSoftIrq(timeout);
+        this->sync(timeout);
     }
+}
+
+void Us4RImpl::sync(std::optional<long long> timeout)  {
+    logger->log(LogSeverity::TRACE, "Waiting for SEQ IRQ");
+    this->getMasterUs4oem()->waitForWaitForSoftIrq(timeout);
 }
 
 // AFE parameter setters.

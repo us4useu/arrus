@@ -228,6 +228,16 @@ public:
     virtual void stop() override = 0;
     virtual void trigger(bool sync, std::optional<long long> timeout) override = 0;
 
+    /**
+     * Synchronization point with us4R system. After returning from this method, the last "TX/RX" (triggered by the
+     * trigger method will be  fully executed by the system.
+     *
+     * Sync with "SEQ_IRQ" interrupt (i.e. wait until the SEQ IRQ will occur).
+     *
+     * @param timeout timeout in number of milliseconds
+     */
+    virtual void sync(std::optional<long long> timeout) override = 0;
+
     virtual std::vector<unsigned short> getChannelsMask() = 0;
 
     /**

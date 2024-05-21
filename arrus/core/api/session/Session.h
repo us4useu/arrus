@@ -84,7 +84,7 @@ public:
      * @param timeout timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
      *        sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP
      */
-    virtual void run(bool async = false, std::optional<long long> timeout = std::nullopt) = 0;
+    virtual void run(bool sync = false, std::optional<long long> timeout = std::nullopt) = 0;
 
     /**
      * Closes session.

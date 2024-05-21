@@ -956,6 +956,7 @@ class ProbeHealthVerifier:
             us4r = sess.get_device("/Us4R:0")
             LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
             us4r.set_maximum_pulse_length(200e-6)
+            us4r.set_hv_voltage(voltage)
             ncycles = pulse_length*tx_frequency
             n_elements = us4r.get_probe_model().n_elements
             masked_elements = us4r.channels_mask
@@ -982,12 +983,6 @@ class ProbeHealthVerifier:
                 work_mode="MANUAL_OP",
             )
             buffer, metadata = sess.upload(scheme)
-            us4r.set_hv_voltage(voltage)
-            # Set HVPS measurement settings
-            # for oem_nr in range(us4r.n_us4oems):
-            #     oem = us4r.get_us4oem(oem_nr)
-            #     oem.set_hvps_sync_measurement(n_samples=509, frequency=1e6)
-
             fcm = metadata.data_description.custom["frame_channel_mapping"]
             oem_mapping = fcm.us4oems  # TX/RX -> OEM mapping
             buffer.append_on_new_data_callback(lambda element: element.release())
@@ -999,16 +994,18 @@ class ProbeHealthVerifier:
             time.sleep(0.1)
             LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
             measurements = []
+            for oem_nr in range(us4r.n_us4oems):
+                oem = us4r.get_us4oem(oem_nr)
+                oem.set_hvps_sync_measurement(n_samples=509, frequency=1e6)
+
             for i in range(n):
                 for ch in range(n_elements):
                     LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX op: {ch}")
                     oem_nr = int(oem_mapping[ch, 0])  # (TX/RX = ch, transmitting channel)
-                    oem = us4r.get_us4oem(oem_nr)
-                    oem.set_hvps_sync_measurement(n_samples=509, frequency=1e6)
+                    oem_nrs.append(oem_nr)
                     sess.run(sync=True, timeout=5000)
                     measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement().get_array()
                     measurements.append(measurement)
-                    oem_nrs.append(oem_nr)
             measurements = np.stack(measurements)
             measurements_shape = (n, n_elements) + measurements.shape[1:]
             measurements = measurements.reshape(measurements_shape)

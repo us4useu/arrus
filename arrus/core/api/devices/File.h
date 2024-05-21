@@ -18,6 +18,7 @@ public:
     void start() override = 0;
     void stop() override = 0;
     void trigger(bool sync, std::optional<long long> timeout) override = 0;
+    void sync(std::optional<long long> timeout) override = 0;
     float getSamplingFrequency() const override = 0;
     float getCurrentSamplingFrequency() const override = 0;
     Probe *getProbe(Ordinal ordinal) override = 0;

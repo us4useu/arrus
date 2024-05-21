@@ -104,6 +104,8 @@ public:
 
     void trigger(bool sync, std::optional<long long> timeout) override;
 
+    void sync(std::optional<long long> timeout) override;
+
     void setVoltage(Voltage voltage) override;
 
     void disableHV() override;

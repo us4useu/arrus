@@ -106,6 +106,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from arrus.utils.probe_check import *
+import arrus.logging
+
+arrus.logging.set_clog_level(arrus.logging.TRACE)
 
 # ------------------------- Utility functions ---------------------------------
 

@@ -46,6 +46,17 @@ public:
      */
     virtual void trigger(bool sync = false, std::optional<long long> timeout = std::nullopt) = 0;
 
+
+    /**
+     * Synchronization point with us4R system. After returning from this method, the last "TX/RX" (triggered by the
+     * trigger method will be  fully executed by the system.
+     *
+     * Sync with "SEQ_IRQ" interrupt (i.e. wait until the SEQ IRQ will occur).
+     *
+     * @param timeout timeout in number of milliseconds
+     */
+    virtual void sync(std::optional<long long> timeout) = 0;
+
     /**
      * Returns NOMINAL Ultrasound device sampling frequency.
      */
