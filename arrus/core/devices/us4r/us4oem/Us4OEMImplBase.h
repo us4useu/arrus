@@ -73,6 +73,20 @@ public:
     virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
 
 
+    virtual void sync(std::optional<long long> timeout) = 0;
+
+    /**
+     * Configures the system to sync with the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void setWaitForHVPSMeasurementDone() override = 0;
+    /**
+     * Waits for the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) override = 0;
+
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

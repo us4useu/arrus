@@ -485,16 +485,15 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     this->currentSequence = seq;
 
     if(arrus::ops::us4r::Scheme::isWorkModeManual(workMode)) {
-        // Register wait for soft callback in case we would like to wait for the interrupt to happen
-        this->waitForSoftIrqsRegistered = 0;
-        this->waitForSoftIrqsHandled = 0;
-        if(isMaster()) {
-            this->ius4oem->RegisterWaitForSoftCallback([this]() {
-                std::unique_lock l(waitForSoftIrqMutex);
-                ++waitForSoftIrqsRegistered;
-                waitForSoftIrqEvent.notify_one();
-            });
-        }
+        // Register event_done callback in case we would like to wait for the interrupt to happen
+        auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
+        irqsRegistered.at(eventDoneIrq) = 0;
+        irqsHandled.at(eventDoneIrq) = 0;
+        ius4oem->RegisterCallback(eventDoneIrq, [eventDoneIrq, this]() {
+            std::unique_lock l(irqMutex.at(eventDoneIrq));
+            ++(irqsRegistered.at(eventDoneIrq));
+            irqEvent.at(eventDoneIrq).notify_one();
+        });
     }
 
     return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
@@ -655,6 +654,29 @@ void Us4OEMImpl::start() { this->startTrigger(); }
 void Us4OEMImpl::stop() { this->stopTrigger(); }
 
 void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
+
+void Us4OEMImpl::sync(std::optional<long long> timeout) {
+    logger->log(LogSeverity::TRACE, "Waiting for EVENT_DONE IRQ");
+    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENT_DONE);
+    this->waitForIrq(eventDoneIrq, timeout);
+}
+
+void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
+    auto measurementDoneIrq = 7;// TODO static_cast<unsigned>(IUs4OEM::MSINumber::);
+    irqsRegistered.at(measurementDoneIrq) = 0;
+    irqsHandled.at(measurementDoneIrq) = 0;
+    ius4oem->RegisterCallback(measurementDoneIrq, [measurementDoneIrq, this]() {
+        std::unique_lock l(irqMutex.at(measurementDoneIrq));
+        ++(irqsRegistered.at(measurementDoneIrq));
+        irqEvent.at(measurementDoneIrq).notify_one();
+    });
+}
+
+void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
+    logger->log(LogSeverity::TRACE, "Waiting for HVPS Measurement done IRQ");
+    auto measurementDoneIrq = 7; // static_cast<unsigned>(IUs4OEM::MSINumber::EVENT_DONE);
+    this->waitForIrq(measurementDoneIrq, timeout);
+}
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() { return ius4oem.get(); }
 
@@ -929,15 +951,14 @@ void Us4OEMImpl::clearCallbacks() {
     this->ius4oem->ClearCallbacks();
 }
 
-void Us4OEMImpl::waitForWaitForSoftIrq(std::optional<long long> timeout) {
-    std::unique_lock lock(waitForSoftIrqMutex);
+void Us4OEMImpl::waitForIrq(unsigned int irq, std::optional<long long> timeout) {
+    std::unique_lock lock(irqMutex.at(irq));
     if(timeout.has_value()) {
-        bool isReady = waitForSoftIrqEvent.wait_for(
-            lock, std::chrono::milliseconds(timeout.value()),
-            [this]() {
+        bool isReady = irqEvent.at(irq).wait_for(lock, std::chrono::milliseconds(timeout.value()),
+            [irq, this]() {
                 // Wait until the number of registered interrupts is greater than the number of IRQs already handled.
                 // (i.e. there is some new, unhandled interrupt).
-                return this->waitForSoftIrqsRegistered > this->waitForSoftIrqsHandled;
+                return this->irqsRegistered.at(irq) > this->irqsHandled.at(irq);
             });
         if(!isReady) {
             throw TimeoutException("Timeout on waiting for trigger to be registered. Is the system still alive?");
@@ -945,19 +966,19 @@ void Us4OEMImpl::waitForWaitForSoftIrq(std::optional<long long> timeout) {
     }
     else {
         // No timeout, wait infinitely.
-        waitForSoftIrqEvent.wait(lock, [this]() {
-            return this->waitForSoftIrqsRegistered > this->waitForSoftIrqsHandled;
+        irqEvent.at(irq).wait(lock, [this]() {
+            return this->irqsRegistered.at(irq) > this->irqsHandled.at(irq);
         } );
 
     }
-    if(this->waitForSoftIrqsRegistered != this->waitForSoftIrqsHandled+1) {
+    if(this->irqsRegistered.at(irq) != this->irqsHandled.at(irq)+1) {
         // In the correct scenario, we expect that the number of already handled IRQs is equal to the number of
         // registered IRQs minus 1.
         // If it's not true, it means that we have lost some IRQ -- this is an exception that user should react to.
-        throw IllegalStateException("The number of registered IRQs is different than the number of handled IRQs."
-                                    "We detected missing WAIT_FOR_SOFT IRQs.");
+        throw IllegalStateException(format("The number of registered IRQs is different than the number of handled IRQs."
+                                    " We detected missing {} IRQs.", irq));
     }
-    ++this->waitForSoftIrqsHandled;
+    ++this->irqsHandled.at(irq);
 }
 
 HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {

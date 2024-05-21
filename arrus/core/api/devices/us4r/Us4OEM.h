@@ -176,6 +176,18 @@ public:
      */
     virtual float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) = 0;
 
+    /**
+     * Configures the system to sync with the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void setWaitForHVPSMeasurementDone() = 0;
+
+    /**
+     * Waits for the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) = 0;
+
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
     void operator=(Us4OEM const&) = delete;

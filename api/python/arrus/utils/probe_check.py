@@ -997,13 +997,16 @@ class ProbeHealthVerifier:
             for oem_nr in range(us4r.n_us4oems):
                 oem = us4r.get_us4oem(oem_nr)
                 oem.set_hvps_sync_measurement(n_samples=509, frequency=1e6)
+                oem.set_wait_for_hvps_measurement_done()
 
             for i in range(n):
                 for ch in range(n_elements):
                     LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX op: {ch}")
                     oem_nr = int(oem_mapping[ch, 0])  # (TX/RX = ch, transmitting channel)
                     oem_nrs.append(oem_nr)
+                    oem = us4r.get_us4oem(oem_nr)
                     sess.run(sync=True, timeout=5000)
+                    oem.wait_for_hvps_measurement_done()
                     measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement().get_array()
                     measurements.append(measurement)
             measurements = np.stack(measurements)

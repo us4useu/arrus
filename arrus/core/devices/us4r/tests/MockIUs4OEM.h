@@ -113,7 +113,7 @@ public:
     MOCK_METHOD(void, MarkEntriesAsReadyForTransfer, (unsigned short,unsigned short), (override));
     MOCK_METHOD(void, RegisterReceiveOverflowCallback, (const std::function<void (void)> &), (override));
     MOCK_METHOD(void, RegisterTransferOverflowCallback, (const std::function<void (void)> &), (override));
-    MOCK_METHOD(void, RegisterWaitForSoftCallback, (const std::function<void (void)> &), (override));
+    MOCK_METHOD(void, RegisterCallback, (IUs4OEM::MSINumber, const std::function<void (void)> &), (override));
     MOCK_METHOD(void, EnableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, EnableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, SyncReceive, (), (override));

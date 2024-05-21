@@ -4,6 +4,7 @@
 #include <utility>
 #include <iostream>
 #include <unordered_set>
+#include <ius4oem.h>
 
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
@@ -79,6 +80,7 @@ public:
     static constexpr float RX_TIME_EPSILON = 5e-6f; // [s]
     // 2^14 descriptors * 2^12 (4096, minimum page size) bytes
     static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14+12); // bytes
+    static constexpr unsigned MAX_IRQ_NR = IUs4OEM::MAX_IRQ_NR;
 
     /**
      * Us4OEMImpl constructor.
@@ -164,7 +166,6 @@ public:
 
     void clearCallbacks() override;
 
-    void waitForWaitForSoftIrq(std::optional<long long> timeout) override;
 
     HVPSMeasurement getHVPSMeasurement() override;
 
@@ -172,7 +173,11 @@ public:
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
 
-private:
+    void sync(std::optional<long long> timeout) override;
+    void setWaitForHVPSMeasurementDone() override;
+    void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
+
+ private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
@@ -213,6 +218,7 @@ private:
     void resetAfe();
     void setHpfCornerFrequency(uint32_t frequency);
     void disableHpf();
+    void waitForIrq(std::optional<long long> timeout);
 
     uint32_t getTimeToNextTrigger(float pri) {
         return static_cast<uint32_t>(std::round(pri * 1e6));
@@ -256,13 +262,13 @@ private:
     bool isDecimationFactorAdjustmentLogged{false};
     /** Currently uploaded sequence; empty when no sequence haven't been uploaded. */
     std::vector<TxRxParameters> currentSequence;
-    /** Conditional variable that is set when a WAIT_FOR_SOFT IRQ is detected. */
-    std::mutex waitForSoftIrqMutex;
-    std::condition_variable waitForSoftIrqEvent;
+    /** Conditional variable that is set when an IRQ with given number is detected. */
+    std::vector<std::mutex> irqEventMutex = std::vector<std::mutex>(MAX_IRQ_NR);
+    std::vector<std::condition_variable> irqEvent = std::vector<std::condition_variable>(MAX_IRQ_NR);
     /** The number of WAIT_FOR_SOFT INTERRUPTS registered by the interrupt handler */
-    size_t waitForSoftIrqsHandled = 0;
+    std::vector<size_t> irqsHandled = std::vector<size_t>(MAX_IRQ_NR, 0);
     /** The number of WAIT_FOR_SOFT IRQs handled by the waitForWaitForSoftIrqs method */
-    size_t waitForSoftIrqsRegistered = 0;
+    std::vector<size_t> irqsRegistered = std::vector<size_t>(IUs4OEM::MAX_IRQ_NR, 0);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
 };

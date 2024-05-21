@@ -377,6 +377,11 @@ void arrusSessionRun(std::shared_ptr<arrus::session::Session> session, bool asyn
     session->run(async, timeout);
 }
 
+void arrusUs4OEMWaitForHVPSMeasuerementDone(arrus::devices::Us4OEM *us4oem, std::optional<long long> timeout) {
+    ArrusPythonGILUnlock unlock;
+    us4oem->waitForHVPSMeasurementDone(timeout);
+}
+
 
 %};
 // ------------------------------------------ DEVICES

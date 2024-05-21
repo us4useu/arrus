@@ -411,8 +411,9 @@ void Us4RImpl::trigger(bool sync, std::optional<long long> timeout) {
 }
 
 void Us4RImpl::sync(std::optional<long long> timeout)  {
-    logger->log(LogSeverity::TRACE, "Waiting for SEQ IRQ");
-    this->getMasterUs4oem()->waitForWaitForSoftIrq(timeout);
+    for(auto &us4oem: us4oems) {
+        us4oem->sync(timeout);
+    }
 }
 
 // AFE parameter setters.

@@ -114,3 +114,19 @@ class Us4OEM(Device):
 
     def set_hvps_sync_measurement(self, n_samples: int, frequency: float) -> float:
         return self._handle.setHVPSSyncMeasurement(n_samples, frequency)
+
+    def set_wait_for_hvps_measurement_done(self):
+        """
+        Configures the system to sync with the HVPS Measurement done irq.
+
+        This method is intended to be used in the probe_check implementation.
+        """
+        return self._handle.setWaitForHVPSMeasurementDone()
+
+    def wait_for_hvps_measurement_done(self):
+        """
+        Waits for the HVPS Measurement done irq.
+
+        This method is intended to be used in the probe_check implementation.
+        """
+        return arrus.core.arrusUs4OEMWaitForHVPSMeasuerementDone(self._handle, timeout)
