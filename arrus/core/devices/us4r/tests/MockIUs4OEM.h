@@ -85,7 +85,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode),
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode, bool irqDone),
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
@@ -228,7 +228,9 @@ public:
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
     MOCK_METHOD(void, ClearCallbacks, (), (override));
-    MOCK_METHOD(void, ClearTransferRXBufferToHost, (size_t firing), (override));
+    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
+    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
+    MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
