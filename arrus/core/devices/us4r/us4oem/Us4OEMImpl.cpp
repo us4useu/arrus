@@ -477,7 +477,9 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
                     priMs,
                     checkpoint || triggerSyncPerTxRx,
                     firing,
-                    checkpoint && externalTrigger);
+                    checkpoint && externalTrigger,
+                    triggerSyncPerTxRx
+                );
             }
         }
     }
@@ -662,10 +664,11 @@ void Us4OEMImpl::sync(std::optional<long long> timeout) {
 }
 
 void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
-    auto measurementDoneIrq = 7;// TODO static_cast<unsigned>(IUs4OEM::MSINumber::);
+    ius4oem->EnableHVPSMeasurementReadyIRQ();
+    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
     irqsRegistered.at(measurementDoneIrq) = 0;
     irqsHandled.at(measurementDoneIrq) = 0;
-    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [measurementDoneIrq, this]() { // TODO zmienic na wlasciwy numer
+    ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
         std::unique_lock l(irqEventMutex.at(measurementDoneIrq));
         ++(irqsRegistered.at(measurementDoneIrq));
         irqEvent.at(measurementDoneIrq).notify_one();
@@ -674,7 +677,7 @@ void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
 
 void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
     logger->log(LogSeverity::TRACE, "Waiting for HVPS Measurement done IRQ");
-    auto measurementDoneIrq = 7; // static_cast<unsigned>(IUs4OEM::MSINumber::EVENT_DONE);
+    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
     this->waitForIrq(measurementDoneIrq, timeout);
 }
 
