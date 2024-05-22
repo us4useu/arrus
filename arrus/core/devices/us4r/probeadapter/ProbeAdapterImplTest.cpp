@@ -136,12 +136,12 @@ public:
     MOCK_METHOD(uint32_t, getOemVersion, (), (override));
     MOCK_METHOD(void, setSubsequence, (uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri), (override));
     MOCK_METHOD(void, clearCallbacks, (), (override));
-    MOCK_METHOD(void, sync, (std::optional<long long> timeout), (override));
-    MOCK_METHOD(void, setWaitForHVPSMeasurementDone, (), (override));
-    MOCK_METHOD(void, waitForHVPSMeasurementDone, (), (override));
     MOCK_METHOD(HVPSMeasurement, getHVPSMeasurement, (), (override));
     MOCK_METHOD(float, setHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
     MOCK_METHOD(void, setMaximumPulseLength, (std::optional<float> maxPulseLength), (override));
+    MOCK_METHOD(void, waitForHVPSMeasurementDone, (std::optional<long long> timeout), (override));
+    MOCK_METHOD(void, setWaitForHVPSMeasurementDone, (), (override));
+    MOCK_METHOD(void, sync, (std::optional<long long> timeout), (override));
 };
 
 class AbstractProbeAdapterImplTest : public ::testing::Test {
