@@ -412,42 +412,22 @@ def main():
         validator = ByThresholdValidator()
 
     # prepare examined features list
-    available_features = [
-        "amplitude",
-        "duration",
-        "energy",
-        "pcc"
-    ]
-    can_use_footprint = args.method == "threshold" and footprint is not None
+    available_features = EXTRACTORS[args.signal_type].keys()
     if args.features == 'all':
         given_features = available_features
-        if not can_use_footprint:
-            given_features.pop(3)
     else:
         given_features = args.features
     features = []
-    for feat in given_features:
-        if feat == "amplitude":
-            if args.signal_type == "rf":
-                features.append(
-                    FeatureDescriptor(
-                        name=MaxAmplitudeExtractor.feature,
-                        active_range=(0, 3000),  # [a.u.]
-                        masked_elements_range=(0, 3000)  # [a.u.]
-                    )
+    for feature_name in given_features:
+        if feature_name == "amplitude":
+            features.append(
+                FeatureDescriptor(
+                    name=MaxAmplitudeExtractor.feature,
+                    active_range=(0, 3000),  # [a.u.]
+                    masked_elements_range=(0, 3000)  # [a.u.]
                 )
-            elif args.signal_type == "hvps_current":
-                features.append(
-                    FeatureDescriptor(
-                        name=MaxHVPSCurrentAmplitudeExtractor.feature,
-                        active_range=(0, 3000),  # [A]
-                        masked_elements_range=(0, 3000)  # [A]
-                    )
-                )
-            else:
-                raise ValueError("Unsupported signal type for "
-                                 f"the 'amplitude' feature: {args.signal_type}")
-        elif feat == "duration":
+            )
+        elif feature_name == "duration":
             features.append(
                 FeatureDescriptor(
                     name=SignalDurationTimeExtractor.feature,
@@ -455,7 +435,7 @@ def main():
                     masked_elements_range=(200, np.inf)  # number of samples
                 )
             )
-        elif feat == "energy":
+        elif feature_name == "energy":
             features.append(
                 FeatureDescriptor(
                     name=EnergyExtractor.feature,
@@ -463,7 +443,7 @@ def main():
                     masked_elements_range=(0, np.inf)  # [a.u.]
                 )
             )
-        elif feat == "pcc":
+        elif feature_name == "pcc":
             if can_use_footprint:
                 features.append(
                     FeatureDescriptor(
@@ -472,8 +452,16 @@ def main():
                         masked_elements_range=(0, 1)  # [a.u.]
                     )
                 )
+        elif feature_name == "impedance":
+            features.append(
+                FeatureDescriptor(
+                    name=MaxHVPSInstantaneousImpedanceExtractor.feature,
+                    active_range=(0, 3000),  # [Ohm]
+                    masked_elements_range=(0, 3000)  # [Ohm]
+                )
+            )
         else:
-            raise ValueError(f"{feat} is a bad feature name")
+            raise ValueError(f"Unsupported feature '{feature_name}' for signal type: '{args.signal_type}'")
 
     # check probe
     report = verifier.check_probe(
