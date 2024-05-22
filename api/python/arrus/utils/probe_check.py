@@ -671,8 +671,8 @@ EXTRACTORS = {
                     SignalDurationTimeExtractor,
                     EnergyExtractor,
                     FootprintSimilarityPCCExtractor]]),
-    "hvps_measurement": dict([(e.feature, e) for e in
-                        [MaxHVPSCurrentAmplitudeExtractor]]),
+    "hvps": dict([(e.feature, e) for e in
+                        [MaxHVPSInstantaneousImpedanceExtractor]]),
 }
 
 
@@ -749,7 +749,7 @@ class ProbeHealthVerifier:
         :param footprint: object of the Footprint class;
                           if given, footprint tx/rx scheme will be used
         :param signal_type: type of signal to be verified; available values: rf, hvps_current.
-                           NOTE: hvps_current is only available for the us4OEM+ rev 1 or later.
+                           NOTE: hvps is only available for the us4OEM+ rev 1 or later.
         :return: an instance of the ProbeHealthReport
         """
         if signal_type == "rf":
@@ -761,7 +761,7 @@ class ProbeHealthVerifier:
                 voltage=voltage,
                 footprint=footprint,
             )
-        elif signal_type == "hvps_current":
+        elif signal_type == "hvps":
             data, metadata, masked_elements, aux = self._acquire_hvps_current(
                 cfg_path=cfg_path,
                 n=n,
@@ -1004,7 +1004,7 @@ class ProbeHealthVerifier:
             for oem_nr in range(us4r.n_us4oems):
                 oem = us4r.get_us4oem(oem_nr)
                 oem.set_hvps_sync_measurement(n_samples=509, frequency=1e6)
-                oem.set_wait_for_hvps_measurement_done()
+                # oem.set_wait_for_hvps_measurement_done()
 
             for i in range(n):
                 for ch in range(n_elements):
@@ -1013,7 +1013,7 @@ class ProbeHealthVerifier:
                     oem_nrs.append(oem_nr)
                     oem = us4r.get_us4oem(oem_nr)
                     sess.run(sync=True, timeout=5000)
-                    oem.wait_for_hvps_measurement_done(timeout=5000)
+                    # oem.wait_for_hvps_measurement_done(timeout=5000)
                     measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement().get_array()
                     measurements.append(measurement)
             measurements = np.stack(measurements)
