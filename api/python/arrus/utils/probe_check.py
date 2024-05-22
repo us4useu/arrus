@@ -315,17 +315,19 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
         return frame_max
 
 
-class MaxHVPSCurrentAmplitudeExtractor(ProbeElementFeatureExtractor):
+class MaxHVPSInstantaneousImpedanceExtractor(ProbeElementFeatureExtractor):
     """
-    Feature extractor class for extracting maximal amplitudes from array of
-    HVPS current measurement.
-    NOTE: this extractor, contrary to the MaxAmplitudeExtractor, does not perform
-    any additional filtering.
+    Feature extractor class for extracting maximal instantaneous power from
+    HVPS current measurement. Considers the pulser as a simple resistor.
     """
-    feature = "amplitude"
+    feature = "impedance"
 
-    def extract(self, current: np.ndarray) -> np.ndarray:
-        current = np.abs(current[..., 0])  # (n repeats, ntx, nsamples)
+    def extract(self, measurement: np.ndarray) -> np.ndarray:
+        n_repeats, n_tx, polarity, level, unit, sample = measurement.shape
+        voltage_hvm0 = measurement[:, :, 0, 0, 0, :]  # n repeats, ntx, nsamples
+        current_hvm0 = measurement[:, :, 0, 0, 1, :]
+        power_hvm0 = voltage_hvm0*current_hvm0
+        current_hvm0 = np.abs(current[..., 0])  # (n repeats, ntx, nsamples)
         frame_max = np.max(current, axis=2) # (n repeats, ntx)
         frame_max = np.median(frame_max, axis=0)  # (n tx)
         return frame_max
@@ -664,8 +666,8 @@ EXTRACTORS = {
                     SignalDurationTimeExtractor,
                     EnergyExtractor,
                     FootprintSimilarityPCCExtractor]]),
-    "hvps_current": dict([(e.feature, e) for e in
-                          [MaxHVPSCurrentAmplitudeExtractor]]),
+    "hvps_measurement": dict([(e.feature, e) for e in
+                        [MaxHVPSCurrentAmplitudeExtractor]]),
 }
 
 
@@ -792,7 +794,7 @@ class ProbeHealthVerifier:
         """
         if aux is None:
             aux = {}
-        n_repeats, ntx, n_samples, n_rx = data.shape
+        n_repeats, ntx = data.shape[0], data.shape[1]
 
         # Compute feature values, verify the values according to given
         # validator.
@@ -1006,7 +1008,7 @@ class ProbeHealthVerifier:
                     oem_nrs.append(oem_nr)
                     oem = us4r.get_us4oem(oem_nr)
                     sess.run(sync=True, timeout=5000)
-                    oem.wait_for_hvps_measurement_done()
+                    oem.wait_for_hvps_measurement_done(timeout=5000)
                     measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement().get_array()
                     measurements.append(measurement)
             measurements = np.stack(measurements)
@@ -1016,5 +1018,5 @@ class ProbeHealthVerifier:
             # unit == 1 => current
             hvm0_current = measurements[:, :, 0, 0, 1, :]
             hvm0_current = hvm0_current[:, :, :, np.newaxis]  # (n repeats, ntx, nsamples, nrx)
-        return hvm0_current, metadata, masked_elements, {"hvps_measurements": measurements, "oem_nrs": np.stack(oem_nrs)}
+        return measurements, metadata, masked_elements, {"oem_nrs": np.stack(oem_nrs)}
 

@@ -41,6 +41,10 @@ class HVPSMeasurement:
         """
         Returns the measurement as numpy array.
         The output shape is (polarity, level, unit, sample)
+
+        polarity: 0: MINUS, 1: PLUS
+        level: 0 or 1
+        unit: 0: voltage, 1: current
         """
         return self._array
 
@@ -123,7 +127,7 @@ class Us4OEM(Device):
         """
         return self._handle.setWaitForHVPSMeasurementDone()
 
-    def wait_for_hvps_measurement_done(self):
+    def wait_for_hvps_measurement_done(self, timeout: int=None):
         """
         Waits for the HVPS Measurement done irq.
 

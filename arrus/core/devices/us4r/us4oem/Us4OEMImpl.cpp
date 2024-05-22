@@ -656,7 +656,7 @@ void Us4OEMImpl::stop() { this->stopTrigger(); }
 void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
 
 void Us4OEMImpl::sync(std::optional<long long> timeout) {
-    logger->log(LogSeverity::TRACE, "Waiting for EVENT_DONE IRQ");
+    logger->log(LogSeverity::TRACE, "Waiting for EVENTDONE IRQ");
     auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
     this->waitForIrq(eventDoneIrq, timeout);
 }
