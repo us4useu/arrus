@@ -324,13 +324,18 @@ class MaxHVPSInstantaneousImpedanceExtractor(ProbeElementFeatureExtractor):
 
     def extract(self, measurement: np.ndarray) -> np.ndarray:
         n_repeats, n_tx, polarity, level, unit, sample = measurement.shape
-        voltage_hvm0 = measurement[:, :, 0, 0, 0, :]  # n repeats, ntx, nsamples
-        current_hvm0 = measurement[:, :, 0, 0, 1, :]
-        power_hvm0 = voltage_hvm0*current_hvm0
-        current_hvm0 = np.abs(current[..., 0])  # (n repeats, ntx, nsamples)
-        frame_max = np.max(current, axis=2) # (n repeats, ntx)
-        frame_max = np.median(frame_max, axis=0)  # (n tx)
-        return frame_max
+        # Skip the first 10 samples due to the initial noise in the voltage
+        # and current measurements.
+        n_skipped_samples = 10
+        # n_repeats, ntx, nsamples
+        voltage_hvm0 = np.abs(measurement[:, :, 0, 0, 0, n_skipped_samples:])
+        current_hvm0 = np.abs(measurement[:, :, 0, 0, 1, n_skipped_samples:])
+        max_current = np.max(current_hvm0, axis=-1)  # (n repeats, ntx)
+        sample_nr = np.argwhere(current_hvm0 == max_current[..., np.newaxis])
+        voltage = voltage_hvm0[sample_nr[:, 0], sample_nr[:, 1], sample_nr[: 2]]
+        max_inst_impedance = max_current/voltage  # (n_repeats, ntx)
+        impedance = np.median(max_inst_impedance, axis=0)  # (n tx)
+        return impedance
 
 
 class EnergyExtractor(ProbeElementFeatureExtractor):
