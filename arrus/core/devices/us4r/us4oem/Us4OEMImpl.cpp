@@ -489,8 +489,8 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
         irqsRegistered.at(eventDoneIrq) = 0;
         irqsHandled.at(eventDoneIrq) = 0;
-        ius4oem->RegisterCallback(eventDoneIrq, [eventDoneIrq, this]() {
-            std::unique_lock l(irqMutex.at(eventDoneIrq));
+        ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
+            std::unique_lock l(irqEventMutex.at(eventDoneIrq));
             ++(irqsRegistered.at(eventDoneIrq));
             irqEvent.at(eventDoneIrq).notify_one();
         });
@@ -657,7 +657,7 @@ void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
 
 void Us4OEMImpl::sync(std::optional<long long> timeout) {
     logger->log(LogSeverity::TRACE, "Waiting for EVENT_DONE IRQ");
-    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENT_DONE);
+    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
     this->waitForIrq(eventDoneIrq, timeout);
 }
 
@@ -665,8 +665,8 @@ void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
     auto measurementDoneIrq = 7;// TODO static_cast<unsigned>(IUs4OEM::MSINumber::);
     irqsRegistered.at(measurementDoneIrq) = 0;
     irqsHandled.at(measurementDoneIrq) = 0;
-    ius4oem->RegisterCallback(measurementDoneIrq, [measurementDoneIrq, this]() {
-        std::unique_lock l(irqMutex.at(measurementDoneIrq));
+    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [measurementDoneIrq, this]() { // TODO zmienic na wlasciwy numer
+        std::unique_lock l(irqEventMutex.at(measurementDoneIrq));
         ++(irqsRegistered.at(measurementDoneIrq));
         irqEvent.at(measurementDoneIrq).notify_one();
     });
@@ -952,7 +952,7 @@ void Us4OEMImpl::clearCallbacks() {
 }
 
 void Us4OEMImpl::waitForIrq(unsigned int irq, std::optional<long long> timeout) {
-    std::unique_lock lock(irqMutex.at(irq));
+    std::unique_lock lock(irqEventMutex.at(irq));
     if(timeout.has_value()) {
         bool isReady = irqEvent.at(irq).wait_for(lock, std::chrono::milliseconds(timeout.value()),
             [irq, this]() {
@@ -966,7 +966,7 @@ void Us4OEMImpl::waitForIrq(unsigned int irq, std::optional<long long> timeout) 
     }
     else {
         // No timeout, wait infinitely.
-        irqEvent.at(irq).wait(lock, [this]() {
+        irqEvent.at(irq).wait(lock, [irq, this]() {
             return this->irqsRegistered.at(irq) > this->irqsHandled.at(irq);
         } );
 

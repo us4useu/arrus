@@ -52,14 +52,6 @@ public:
 
     virtual void clearCallbacks() = 0;
 
-    /**
-     * Wait for WAIT_FOR_SOFT IRQ to arrive. If there is no WAIT_FOR_SOFT IRQ after the given
-     * number of timeout milliseconds.
-     *
-     * @param timeout timeout [ms]; nullopt means to wait infinitely.
-     */
-    virtual void waitForWaitForSoftIrq(std::optional<long long> timeout) = 0;
-
     HVPSMeasurement getHVPSMeasurement() override = 0;
 
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;

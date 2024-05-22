@@ -218,7 +218,7 @@ public:
     void resetAfe();
     void setHpfCornerFrequency(uint32_t frequency);
     void disableHpf();
-    void waitForIrq(std::optional<long long> timeout);
+    void waitForIrq(unsigned int irq, std::optional<long long> timeout);
 
     uint32_t getTimeToNextTrigger(float pri) {
         return static_cast<uint32_t>(std::round(pri * 1e6));
