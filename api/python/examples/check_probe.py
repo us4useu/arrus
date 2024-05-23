@@ -401,7 +401,7 @@ def main():
     if args.method == "threshold":
         validator = ByThresholdValidator()
     elif args.method == "neighborhood":
-        validator = ByNeighborhoodValidator(feature_range_in_neighborhood=(0.7, 1.8))
+        validator = ByNeighborhoodValidator(feature_range_in_neighborhood=(0.5, 1.5))
     else:
         import warnings
         warnings.warn(
@@ -410,9 +410,10 @@ def main():
         validator = ByThresholdValidator()
 
     # prepare examined features list
-    available_features = EXTRACTORS[args.signal_type].keys()
+    available_features = set(EXTRACTORS[args.signal_type].keys())
     if args.features == 'all':
         given_features = available_features
+        given_features.remove("footprint_pcc")
     else:
         given_features = args.features
     features = []
@@ -456,6 +457,14 @@ def main():
                     name=MaxHVPSInstantaneousImpedanceExtractor.feature,
                     active_range=(0, 3000),  # [Ohm]
                     masked_elements_range=(0, 3000)  # [Ohm]
+                )
+            )
+        elif feature_name == "signal_duration_time":
+            features.append(
+                FeatureDescriptor(
+                    name=SignalDurationTimeExtractor.feature,
+                    active_range=(0, 3000),
+                    masked_elements_range=(0, 3000)
                 )
             )
         else:
