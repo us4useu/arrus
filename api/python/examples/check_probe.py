@@ -108,6 +108,8 @@ import pickle
 from arrus.utils.probe_check import *
 import arrus.logging
 
+arrus.logging.add_log_file("probe_check.log", arrus.logging.TRACE)
+
 # ------------------------- Utility functions ---------------------------------
 
 def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
