@@ -6,22 +6,22 @@
 #include <unordered_set>
 #include <ius4oem.h>
 
-#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-#include "arrus/common/format.h"
+#include "IRQEvent.h"
 #include "arrus/common/cache.h"
-#include "arrus/core/common/logging.h"
-#include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "arrus/common/format.h"
 #include "arrus/core/api/common/types.h"
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/common/logging.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
-#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
-#include "arrus/core/api/ops/us4r/tgc.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 #include "arrus/core/devices/us4r/DataTransfer.h"
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
-
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 
 namespace arrus::devices {
 
@@ -263,12 +263,8 @@ public:
     /** Currently uploaded sequence; empty when no sequence haven't been uploaded. */
     std::vector<TxRxParameters> currentSequence;
     /** Conditional variable that is set when an IRQ with given number is detected. */
-    std::vector<std::mutex> irqEventMutex = std::vector<std::mutex>(MAX_IRQ_NR+1);
-    std::vector<std::condition_variable> irqEvent = std::vector<std::condition_variable>(MAX_IRQ_NR+1);
-    /** The number of WAIT_FOR_SOFT INTERRUPTS registered by the interrupt handler */
-    std::vector<size_t> irqsHandled = std::vector<size_t>(MAX_IRQ_NR+1, 0);
-    /** The number of WAIT_FOR_SOFT IRQs handled by the waitForWaitForSoftIrqs method */
-    std::vector<size_t> irqsRegistered = std::vector<size_t>(IUs4OEM::MAX_IRQ_NR+1, 0);
+
+    std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(IUs4OEM::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
 };

@@ -194,7 +194,9 @@ set(SRC_FILES
     api/session.h
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
-    devices/us4r/Us4OEMDataTransferRegistrar.h)
+    devices/us4r/Us4OEMDataTransferRegistrar.h
+    devices/us4r/us4oem/IRQEvent.h
+)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -288,6 +290,7 @@ if (ARRUS_RUN_TESTS)
         "" # no additional source files
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
+    create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
 endif ()
 
 ################################################################################

@@ -489,15 +489,11 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
     if(arrus::ops::us4r::Scheme::isWorkModeManual(workMode)) {
         // Register event_done callback in case we would like to wait for the interrupt to happen
         auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
-        irqsRegistered.at(eventDoneIrq) = 0;
-        irqsHandled.at(eventDoneIrq) = 0;
+        irqEvents.at(eventDoneIrq).resetCounters();
         ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
-            std::unique_lock l(irqEventMutex.at(eventDoneIrq));
-            ++(irqsRegistered.at(eventDoneIrq));
-            irqEvent.at(eventDoneIrq).notify_one();
+            this->irqEvents.at(eventDoneIrq).notifyOne();
         });
     }
-
     return {Us4OEMBuffer(rxBufferElements, rxBufferElementParts), std::move(fcm)};
 }
 
@@ -666,12 +662,9 @@ void Us4OEMImpl::sync(std::optional<long long> timeout) {
 void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
     ius4oem->EnableHVPSMeasurementReadyIRQ();
     auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
-    irqsRegistered.at(measurementDoneIrq) = 0;
-    irqsHandled.at(measurementDoneIrq) = 0;
+    irqEvents.at(measurementDoneIrq).resetCounters();
     ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
-        std::unique_lock l(irqEventMutex.at(measurementDoneIrq));
-        ++(irqsRegistered.at(measurementDoneIrq));
-        irqEvent.at(measurementDoneIrq).notify_one();
+        this->irqEvents.at(measurementDoneIrq).notifyOne();
     });
 }
 
@@ -955,33 +948,7 @@ void Us4OEMImpl::clearCallbacks() {
 }
 
 void Us4OEMImpl::waitForIrq(unsigned int irq, std::optional<long long> timeout) {
-    std::unique_lock lock(irqEventMutex.at(irq));
-    if(timeout.has_value()) {
-        bool isReady = irqEvent.at(irq).wait_for(lock, std::chrono::milliseconds(timeout.value()),
-            [irq, this]() {
-                // Wait until the number of registered interrupts is greater than the number of IRQs already handled.
-                // (i.e. there is some new, unhandled interrupt).
-                return this->irqsRegistered.at(irq) > this->irqsHandled.at(irq);
-            });
-        if(!isReady) {
-            throw TimeoutException("Timeout on waiting for trigger to be registered. Is the system still alive?");
-        }
-    }
-    else {
-        // No timeout, wait infinitely.
-        irqEvent.at(irq).wait(lock, [irq, this]() {
-            return this->irqsRegistered.at(irq) > this->irqsHandled.at(irq);
-        } );
-
-    }
-    if(this->irqsRegistered.at(irq) != this->irqsHandled.at(irq)+1) {
-        // In the correct scenario, we expect that the number of already handled IRQs is equal to the number of
-        // registered IRQs minus 1.
-        // If it's not true, it means that we have lost some IRQ -- this is an exception that user should react to.
-        throw IllegalStateException(format("The number of registered IRQs is different than the number of handled IRQs."
-                                    " We detected missing {} IRQs.", irq));
-    }
-    ++this->irqsHandled.at(irq);
+    this->irqEvents.at(irq).wait(timeout);
 }
 
 HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
