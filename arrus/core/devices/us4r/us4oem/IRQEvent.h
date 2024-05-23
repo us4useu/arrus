@@ -48,8 +48,8 @@ public:
             // In the correct scenario, we expect that the number of already handled IRQs is equal to the number of
             // registered IRQs minus 1.
             // If it's not true, it means that we have lost some IRQ -- this is an exception that user should react to.
-            throw IllegalStateException("The number of registered IRQs is different than the number of handled IRQs."
-                                        " We detected missing IRQs.");
+            throw IllegalStateException(format("The number of registered IRQs is different than the number of handled IRQs."
+                                        " We detected missing IRQs: handled: {}, registered: {}.", irqsHandled, irqsRegistered));
         }
         ++this->irqsHandled;
     }

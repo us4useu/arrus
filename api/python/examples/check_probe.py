@@ -108,8 +108,6 @@ import pickle
 from arrus.utils.probe_check import *
 import arrus.logging
 
-arrus.logging.set_clog_level(arrus.logging.TRACE)
-
 # ------------------------- Utility functions ---------------------------------
 
 def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
@@ -361,7 +359,7 @@ def main():
     parser.add_argument(
         "--signal_type", dest="signal_type",
         help="Signal type to use for the probe elements evaluation.",
-        choices=["rf", "hvps_current"],
+        choices=["rf", "hvps"],
         required=False,
         default="rf",
     )
@@ -403,7 +401,7 @@ def main():
     if args.method == "threshold":
         validator = ByThresholdValidator()
     elif args.method == "neighborhood":
-        validator = ByNeighborhoodValidator()
+        validator = ByNeighborhoodValidator(feature_range_in_neighborhood=(0.7, 1.8))
     else:
         import warnings
         warnings.warn(
@@ -504,7 +502,7 @@ def main():
         display_summary(n_elements, report)
 
     if args.file is not None:
-        data = {"rf": report.data, "context": report.sequence_metadata, "report": report}
+        data = {"report": report}
         pickle.dump(data, open(args.file, "wb"))
 
     if args.show_pulse_comparison is not None:

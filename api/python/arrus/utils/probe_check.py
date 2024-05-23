@@ -977,7 +977,7 @@ class ProbeHealthVerifier:
                             excitation=Pulse(center_frequency=tx_frequency, n_periods=ncycles, inverse=False),
                             delays=[0]),
                         Rx(aperture=aperture, sample_range=(0, 4096), downsampling_factor=1),
-                        pri=100e-3
+                        pri=20e-3
                     )
                     ops.append(op)
                 seq = TxRxSequence(ops)
@@ -1013,7 +1013,13 @@ class ProbeHealthVerifier:
                     oem_nrs.append(oem_nr)
                     oem = us4r.get_us4oem(oem_nr)
                     sess.run(sync=True, timeout=5000)
-                    # oem.wait_for_hvps_measurement_done(timeout=5000)
+
+                    # Wait for the measurement to be finished on all OEMs (we turned on HVPS
+                    # measurement on all OEMs, so to avoid unhandled IRQs error, just wait for 
+                    # all OEMs to finish the measurement).
+                    for nr in range(us4r.n_us4oems):
+                        us4r.get_us4oem(nr).wait_for_hvps_measurement_done(timeout=5000)
+
                     measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement().get_array()
                     measurements.append(measurement)
             measurements = np.stack(measurements)
