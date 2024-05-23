@@ -331,8 +331,8 @@ class MaxHVPSInstantaneousImpedanceExtractor(ProbeElementFeatureExtractor):
         voltage_hvm0 = np.abs(measurement[:, :, 0, 0, 0, n_skipped_samples:])
         current_hvm0 = np.abs(measurement[:, :, 0, 0, 1, n_skipped_samples:])
         max_current = np.max(current_hvm0, axis=-1)  # (n repeats, ntx)
-        sample_nr = np.argwhere(current_hvm0 == max_current[..., np.newaxis])
-        voltage = voltage_hvm0[sample_nr[:, 0], sample_nr[:, 1], sample_nr[: 2]]
+        sample_nr = np.argmax(current_hvm0, axis=-1) 
+        voltage = voltage_hvm0[np.arange(n_repeats)[:, None], np.arange(n_tx), sample_nr]
         max_inst_impedance = max_current/voltage  # (n_repeats, ntx)
         impedance = np.median(max_inst_impedance, axis=0)  # (n tx)
         return impedance
@@ -1004,7 +1004,7 @@ class ProbeHealthVerifier:
             for oem_nr in range(us4r.n_us4oems):
                 oem = us4r.get_us4oem(oem_nr)
                 oem.set_hvps_sync_measurement(n_samples=509, frequency=1e6)
-                # oem.set_wait_for_hvps_measurement_done()
+                oem.set_wait_for_hvps_measurement_done()
 
             for i in range(n):
                 for ch in range(n_elements):

@@ -263,12 +263,12 @@ public:
     /** Currently uploaded sequence; empty when no sequence haven't been uploaded. */
     std::vector<TxRxParameters> currentSequence;
     /** Conditional variable that is set when an IRQ with given number is detected. */
-    std::vector<std::mutex> irqEventMutex = std::vector<std::mutex>(MAX_IRQ_NR);
-    std::vector<std::condition_variable> irqEvent = std::vector<std::condition_variable>(MAX_IRQ_NR);
+    std::vector<std::mutex> irqEventMutex = std::vector<std::mutex>(MAX_IRQ_NR+1);
+    std::vector<std::condition_variable> irqEvent = std::vector<std::condition_variable>(MAX_IRQ_NR+1);
     /** The number of WAIT_FOR_SOFT INTERRUPTS registered by the interrupt handler */
-    std::vector<size_t> irqsHandled = std::vector<size_t>(MAX_IRQ_NR, 0);
+    std::vector<size_t> irqsHandled = std::vector<size_t>(MAX_IRQ_NR+1, 0);
     /** The number of WAIT_FOR_SOFT IRQs handled by the waitForWaitForSoftIrqs method */
-    std::vector<size_t> irqsRegistered = std::vector<size_t>(IUs4OEM::MAX_IRQ_NR, 0);
+    std::vector<size_t> irqsRegistered = std::vector<size_t>(IUs4OEM::MAX_IRQ_NR+1, 0);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
 };
