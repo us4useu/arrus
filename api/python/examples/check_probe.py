@@ -80,7 +80,7 @@ python check_probe.py --cfg_path ~/us4r.prototxt --display_tx_channel 64
 python check_probe.py --cfg_path ~/us4r.prototxt --display_summary
 
 (OEM+ only).
-python check_probe.py --n 1 --cfg_path ~/us4r.prototxt --tx_frequency 9e6 --display_summary --tx_voltage 15 --signal_type hvps --feature currrent --method neighborhood
+python check_probe.py --n 1 --cfg_path ~/us4r.prototxt --tx_frequency 9e6 --display_summary --tx_voltage 10 --signal_type hvps --feature current --method neighborhood
 
 Additional notes:
 1. This script tries to identify channels it considers suspicious.
