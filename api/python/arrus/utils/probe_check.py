@@ -148,6 +148,7 @@ class FeatureDescriptor:
     name: str
     active_range: tuple
     masked_elements_range: tuple
+    params: Dict[str, Any] = dataclasses.field(default_factory=lambda: {})
 
 
 class ElementValidationVerdict(enum.Enum):
@@ -315,27 +316,41 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
         return frame_max
 
 
-class MaxHVPSInstantaneousImpedanceExtractor(ProbeElementFeatureExtractor):
+class MaxHVPSCurrentExtractor(ProbeElementFeatureExtractor):
     """
-    Feature extractor class for extracting maximal instantaneous power from
-    HVPS current measurement. Considers the pulser as a simple resistor.
+    Feature extractor class for extracting maximal P current from
+    HVPS current measurement.
+
+    :param polarity: signal polarity:  0: MINUS, 1: PLUS
+    :param level: rail level
     """
-    feature = "impedance"
+    feature = "current"
+
+    def __init__(self, metadata, polarity=1, level=0):
+        super().__init__(metadata)
+        self.polarity = polarity
+        self.level = level
 
     def extract(self, measurement: np.ndarray) -> np.ndarray:
-        n_repeats, n_tx, polarity, level, unit, sample = measurement.shape
+        n_repeats, n_tx, p, l, unit, sample = measurement.shape
+        fcm = self.metadata.data_description.custom["frame_channel_mapping"]
+        us4oems = fcm.us4oems.squeeze()
+        max_oem_nr = np.max(us4oems)
+
         # Skip the first 10 samples due to the initial noise in the voltage
         # and current measurements.
         n_skipped_samples = 10
         # n_repeats, ntx, nsamples
-        voltage_hvm0 = np.abs(measurement[:, :, 0, 0, 0, n_skipped_samples:])
-        current_hvm0 = np.abs(measurement[:, :, 0, 0, 1, n_skipped_samples:])
-        max_current = np.max(current_hvm0, axis=-1)  # (n repeats, ntx)
-        sample_nr = np.argmax(current_hvm0, axis=-1) 
-        voltage = voltage_hvm0[np.arange(n_repeats)[:, None], np.arange(n_tx), sample_nr]
-        max_inst_impedance = max_current/voltage  # (n_repeats, ntx)
-        impedance = np.median(max_inst_impedance, axis=0)  # (n tx)
-        return impedance
+        current = measurement[:, :, self.polarity, self.level, 1, n_skipped_samples:]
+
+        # Subtract hardware specific bias.
+        for oem in range(max_oem_nr + 1):
+            med_bias = np.median(np.min(current[:, us4oems == oem, :], axis=-1))
+            current[:, us4oems == oem, :] -= med_bias
+
+        current = np.max(current, axis=-1)  # (n repeats, ntx)
+        current = np.median(current, axis=0)  # (n tx)
+        return current
 
 
 class EnergyExtractor(ProbeElementFeatureExtractor):
@@ -672,7 +687,7 @@ EXTRACTORS = {
                     EnergyExtractor,
                     FootprintSimilarityPCCExtractor]]),
     "hvps": dict([(e.feature, e) for e in
-                        [MaxHVPSInstantaneousImpedanceExtractor]]),
+                        [MaxHVPSCurrentExtractor]]),
 }
 
 
@@ -805,7 +820,7 @@ class ProbeHealthVerifier:
         # validator.
         results = {}
         for feature in features:
-            extractor = EXTRACTORS[signal_type][feature.name](metadata)
+            extractor = EXTRACTORS[signal_type][feature.name](metadata, **feature.params)
             if feature.name == "footprint_pcc":
                 try:
                     extractor_result = extractor.extract(data, footprint.rf)

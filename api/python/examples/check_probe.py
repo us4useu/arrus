@@ -7,11 +7,15 @@ to be reflection from the lens surface.
 The transmit-receive scheme includes transmitting by single transducer
 and receiving by transducers in aperture centered on the transmitter.
 
-Current features are
+Current features are (RF):
 1. amplitude,
 2. pulse duration,
 3. energy of normalised signal,
 4. pearson correlation coefficient (PCC) with 'footprint' signal.
+
+HVPS measurement (OEM+ only):
+1. current.
+
 PCC require a footprint (i.e. object containing reference rf signal array).
 The footprint should be acquired earlier using the same setup.
 This feature measure how much the signals changed comparing to footprint.
@@ -63,6 +67,7 @@ Following options are accepted:
 --features: features to evaluation (amplitude, energy, duration, pcc)
 --display_summary : (flag) displays features values on figure,
 --visual_eval : (flag) displays pulses from all channels in single figure,
+-- signal_type: signal type; 'rf' or 'hvps'. NOTE: hvps is available for OEM+ rev1 or later only.
 
 Examples:
 python check_probe.py --help
@@ -73,6 +78,9 @@ python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl --features amplitude pcc
 python check_probe.py --cfg_path ~/us4r.prototxt --display_tx_channel 64
 python check_probe.py --cfg_path ~/us4r.prototxt --display_summary
+
+(OEM+ only).
+python check_probe.py --n 1 --cfg_path ~/us4r.prototxt --tx_frequency 9e6 --display_summary --tx_voltage 15 --signal_type hvps --feature currrent --method neighborhood
 
 Additional notes:
 1. This script tries to identify channels it considers suspicious.
@@ -453,10 +461,10 @@ def main():
                         masked_elements_range=(0, 1)  # [a.u.]
                     )
                 )
-        elif feature_name == "impedance":
+        elif feature_name == "current":
             features.append(
                 FeatureDescriptor(
-                    name=MaxHVPSInstantaneousImpedanceExtractor.feature,
+                    name=MaxHVPSCurrentExtractor.feature,
                     active_range=(0, 3000),  # [Ohm]
                     masked_elements_range=(0, 3000)  # [Ohm]
                 )
