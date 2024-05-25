@@ -20,14 +20,14 @@ public:
             std::accumulate(std::begin(refOp.getRxAperture()), std::end(refOp.getRxAperture()), 0);
         nActiveRxChannels += refOp.getRxPadding().sum();
         for (size_t firing = 0; firing < txRxs.size(); ++firing) {
-            const auto &op = txRxs.at(firing);
+            const auto &firingOp = txRxs.at(firing);
             auto firingStr = ::arrus::format("firing {}", firing);
-            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(nChannels), firingStr);
-            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(nChannels), firingStr);
-            ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(firingOp.getRxAperture().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(firingOp.getTxAperture().size(), size_t(nChannels), firingStr);
+            ARRUS_VALIDATOR_EXPECT_EQUAL_M(firingOp.getTxDelays().size(), size_t(nChannels), firingStr);
 
-            if (!op.isRxNOP()) {
-                ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getNumberOfSamples() == nSamples,
+            if (!firingOp.isRxNOP()) {
+                ARRUS_VALIDATOR_EXPECT_TRUE_M(firingOp.getNumberOfSamples() == nSamples,
                                               "Each Rx should acquire the same number of samples.");
                 size_t currActiveRxChannels = std::accumulate(std::begin(txRxs.at(firing).getRxAperture()),
                                                               std::end(txRxs.at(firing).getRxAperture()), 0);

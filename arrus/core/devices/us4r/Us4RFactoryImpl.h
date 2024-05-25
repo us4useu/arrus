@@ -79,16 +79,16 @@ public:
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
                            [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
             // validate probe and adapter settings
-            ProbeAdapterSettingsValidator validator(id.getOrdinal());
-            validator.validate(adapterSettings);
-            validator.throwOnErrors();
+            ProbeAdapterSettingsValidator paValidator(id.getOrdinal());
+            paValidator.validate(adapterSettings);
+            paValidator.throwOnErrors();
             Ordinal probeOrdinal = 0;
             bool isBitstreamAddr = isBitstreamAddressing(probeSettings);
             for (const auto &s : probeSettings) {
-                DeviceId id(DeviceType::Probe, probeOrdinal);
-                ProbeSettingsValidator validator(id.getOrdinal());
-                validator.validate(s);
-                validator.throwOnErrors();
+                DeviceId probeId(DeviceType::Probe, probeOrdinal);
+                ProbeSettingsValidator pValidator(probeId.getOrdinal());
+                pValidator.validate(s);
+                pValidator.throwOnErrors();
                 probeOrdinal++;
             }
             if(backplane.has_value() && settings.isExternalTrigger()) {

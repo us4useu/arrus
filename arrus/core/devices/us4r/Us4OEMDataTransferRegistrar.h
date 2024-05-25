@@ -34,11 +34,12 @@ public:
 class Us4OEMDataTransferRegistrar {
 public:
     using ArrayTransfers = std::vector<Transfer>;
+    // TODO expose the below constant to Us4OEMDescriptor
     static constexpr size_t MAX_N_TRANSFERS = 256;
-    static constexpr size_t MAX_TRANSFER_SIZE = Us4OEMImpl::MAX_TRANSFER_SIZE;
 
-    Us4OEMDataTransferRegistrar(Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Us4OEMImplBase *us4oem)
-        : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src) {
+    Us4OEMDataTransferRegistrar(Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Us4OEMImplBase *us4oem,
+                                size_t maxTransferSize)
+        : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src), maxTransferSize(maxTransferSize) {
         ARRUS_INIT_COMPONENT_LOGGER(logger, "Us4OEMDataTransferRegistrar");
         if (dst->getNumberOfElements() % src.getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
@@ -118,7 +119,7 @@ public:
      *
      * This method required that each array part has size <= MAX_TRANSFER_SIZE.
      */
-    static std::vector<ArrayTransfers> createTransfers(
+    std::vector<ArrayTransfers> createTransfers(
         const Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Ordinal oem) {
         std::vector<ArrayTransfers> result;
 
@@ -136,11 +137,11 @@ public:
                 size_t size = 0;
                 uint16 firing = parts[0].getEntryId();// the firing that finishes given transfer
                 for (auto &part : parts) {
-                    ARRUS_REQUIRES_TRUE_E(part.getSize() <= MAX_TRANSFER_SIZE,
+                    ARRUS_REQUIRES_TRUE_E(part.getSize() <= maxTransferSize,
                                           ArrusException(format("A single frame cannot exceed {} bytes, got: {}",
-                                                                part.getSize(), MAX_TRANSFER_SIZE)));
+                                                                part.getSize(), maxTransferSize)));
 
-                    if (size + part.getSize() > MAX_TRANSFER_SIZE) {
+                    if (size + part.getSize() > maxTransferSize) {
                         transfers.emplace_back(destination, source, size, firing);
                         source = part.getAddress();
                         destination += size;
@@ -307,6 +308,8 @@ private:
     // Number of transfer dst points.
     size_t dstNTransfers{0};
     int strategy{0};
+    /** Maximum allowable size of a single transfer. */
+    size_t maxTransferSize;
 };
 
 }// namespace arrus::devices

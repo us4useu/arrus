@@ -44,6 +44,7 @@ class Us4OEMFactorySimpleParametersTest
 TEST_P(Us4OEMFactorySimpleParametersTest, VerifyUs4OEMFactorySimpleParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetPGAGain(us4rParameters.pgaGain));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetLNAGain(us4rParameters.lnaGain));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(us4rParameters.dtgcAttEnabled, us4rParameters.dtgcAttValue));
@@ -74,6 +75,7 @@ class Us4OEMFactoryOptionalParametersTest
 TEST_P(Us4OEMFactoryOptionalParametersTest, VerifyUs4OEMFactoryOptionalParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
     if(GetParam().first.dtgcAttenuation.has_value()) {
         // NO disable
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(EN_DIG_TGC::EN_DIG_TGC_DIS, _)).Times(0);
@@ -125,6 +127,7 @@ TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
     RxSettings::TGCCurve tgcCurve = GetParam().first.getUs4OEMSettings().getRxSettings().getTgcSamples();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
 
     if(tgcCurve.empty()) {
         // NO TGC enable
@@ -162,6 +165,7 @@ INSTANTIATE_TEST_CASE_P
 TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
 
     // Mapping includes groups of 32 channel, each has the same permutation
     std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
@@ -189,6 +193,7 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
 TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
 
     // Mapping includes groups of 32 channel, each has the same permutation
     std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
@@ -215,6 +220,8 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
 TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
+
     std::vector<ChannelIdx> channelMapping = getRange<ChannelIdx>(0, 128, 1);
     TestUs4OEMSettings cfg;
     cfg.channelMapping = channelMapping;
@@ -222,7 +229,7 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
     // Expect
     {
         InSequence seq;
-        for(ChannelIdx i = 0; i < Us4OEMImpl::N_TX_CHANNELS; ++i) {
+        for(ChannelIdx i = 0; i < Us4OEMDescriptor::N_TX_CHANNELS; ++i) {
             EXPECT_CALL(GET_MOCK_PTR(ius4oem),
                         SetTxChannelMapping(i, channelMapping[i]));
         }

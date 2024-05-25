@@ -297,7 +297,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
         metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
-        metadatas.emplace_back(std::move(metadataBuilder.buildPtr()));
+        metadatas.emplace_back(metadataBuilder.buildPtr());
     }
     return {this->buffer, metadatas};
 }
@@ -403,7 +403,9 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         probe2Adapter.emplace_back(ProbeToAdapterMappingConverter{
             txProbeId, rxProbeId, txProbeSettings, rxProbeSettings, txProbeMask, rxProbeMask, nAdapterChannels});
         adapter2OEM.emplace_back(
-            AdapterToUs4OEMMappingConverter{probeAdapterSettings, noems, oemMappings, frameMetadataOEM});
+            AdapterToUs4OEMMappingConverter{probeAdapterSettings, noems, oemMappings, frameMetadataOEM,
+                // TODO assuming that all OEMs have the same number of RX channels
+                                            getMasterOEM()->getDescriptor().getNRxChannels()});
     }
 
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
@@ -718,7 +720,8 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     if (transferRegistrar[us4oemOrdinal]) {
         transferRegistrar[us4oemOrdinal].reset();
     }
-    transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(bufferDst, bufferSrc, us4oem);
+    transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(
+        bufferDst, bufferSrc, us4oem, us4oem->getDescriptor().getMaxTransferSize());
     transferRegistrar[us4oemOrdinal]->registerTransfers();
     // Register buffer element release functions.
     bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterOEM()->getDeviceId().getOrdinal();

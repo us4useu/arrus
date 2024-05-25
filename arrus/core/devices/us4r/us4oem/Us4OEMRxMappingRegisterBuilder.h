@@ -1,5 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPING_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMRXMAPPING_H
+
+#include "Us4OEMDescriptor.h"
 #include "Us4OEMImplBase.h"
 #include "arrus/common/utils.h"
 #include "arrus/core/common/hash.h"
@@ -15,7 +17,7 @@ class Us4OEMRxMappingRegister {
 public:
     using RxMapId = uint16;
     using RxMap = std::vector<uint8>;
-    using RxAperture = std::bitset<Us4OEMImplBase::N_ADDR_CHANNELS>;
+    using RxAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
 
     // Disable copy constructor (fcms is not copiable)
     Us4OEMRxMappingRegister(const Us4OEMRxMappingRegister &other) = delete;
@@ -73,11 +75,10 @@ public:
     using RxMapId = Us4OEMRxMappingRegister::RxMapId;
     using RxMap = Us4OEMRxMappingRegister::RxMap;
 
-    static constexpr ChannelIdx N_CHANNELS = Us4OEMImplBase::N_RX_CHANNELS;
-
     Us4OEMRxMappingRegisterBuilder(FrameChannelMapping::Us4OEMNumber oem, bool acceptRxNops,
-                                   const std::vector<uint8_t> &channelMapping)
-        : oem(oem), acceptRxNops(acceptRxNops), channelMapping(channelMapping) {}
+                                   const std::vector<uint8_t> &channelMapping,
+                                   ChannelIdx nRxChannels)
+        : oem(oem), acceptRxNops(acceptRxNops), channelMapping(channelMapping), nRxChannels(nRxChannels) {}
 
     void add(const std::vector<us4r::TxRxParametersSequence> &sequences) {
         for (size_t sequenceId = 0; sequenceId < sequences.size(); ++sequenceId) {
@@ -91,7 +92,7 @@ public:
             // We transfer all module frames due to possible metadata stored in the frame (if enabled).
             numberOfOutputFrames = ARRUS_SAFE_CAST(sequence.size(), ChannelIdx);
         }
-        FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, N_CHANNELS);
+        FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, nRxChannels);
         OpId opId = 0;
         OpId noRxNopId = 0;
 
@@ -111,11 +112,11 @@ public:
             for (const auto isOn : op.getRxAperture()) {
                 if (isOn) {
                     isRxNop = false;
-                    ARRUS_REQUIRES_TRUE(onChannel < N_CHANNELS,
-                                        format("Up to {} active rx channels can be set.", N_CHANNELS));
+                    ARRUS_REQUIRES_TRUE(onChannel < nRxChannels,
+                                        format("Up to {} active rx channels can be set.", nRxChannels));
                     // Physical channel number, values 0-31
                     auto rxChannel = channelMapping[channel];
-                    rxChannel = rxChannel % N_CHANNELS;
+                    rxChannel = rxChannel % nRxChannels;
                     if (!setContains(channelsUsed, rxChannel) && !setContains(op.getMaskedChannelsRx(), static_cast<ChannelIdx>(rxChannel))) {
                         // This channel is OK.
                         // STRATEGY: if there are conflicting/masked rx channels, keep the
@@ -143,7 +144,7 @@ public:
             // SET RX MAPPING.
             auto mappingIt = rxMappings.find(rxMapping);
             if (mappingIt == std::end(rxMappings)) {
-                ARRUS_REQUIRES_TRUE(rxMapping.size() == N_CHANNELS,
+                ARRUS_REQUIRES_TRUE(rxMapping.size() == nRxChannels,
                                     format("Invalid size of the RX channel mapping: {}", rxMapping.size()));
                 ARRUS_REQUIRES_TRUE(currentMapId < 128,
                                     format("128 different rx mappings can be loaded only, oem: {}.", oem));
@@ -161,7 +162,7 @@ public:
                 ++noRxNopId;
             }
         }
-        result.push_back(std::move(fcmBuilder.build()));
+        result.push_back(fcmBuilder.build());
     }
 
     Us4OEMRxMappingRegister build() { return std::move(result); }
@@ -172,7 +173,7 @@ private:
         std::vector<uint8> rxMapping;
         // - Determine unused channels.
         std::list<uint8> unusedChannels;
-        for (uint8 i = 0; i < N_CHANNELS; ++i) {
+        for (uint8 i = 0; i < nRxChannels; ++i) {
             if (!setContains(channelsInUse, i)) {
                 unusedChannels.push_back(i);
             }
@@ -186,7 +187,7 @@ private:
             }
         }
         // - Move all the non-active channels to the end of mapping.
-        while (rxMapping.size() != 32) {
+        while (rxMapping.size() != nRxChannels) {
             rxMapping.push_back(unusedChannels.front());
             unusedChannels.pop_front();
         }
@@ -200,6 +201,7 @@ private:
     std::unordered_map<std::vector<uint8>, uint16, ContainerHash<std::vector<uint8>>> rxMappings;
     RxMapId currentMapId{0};
     Us4OEMRxMappingRegister result;
+    ChannelIdx nRxChannels;
 };
 
 }// namespace arrus::devices

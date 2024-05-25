@@ -29,8 +29,9 @@ public:
         std::unordered_map<Ordinal, std::vector<framework::NdArray>> delayProfiles;
     };
 
-    Us4OEMApertureSplitter(std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM)
-        : oemMappings(std::move(oemMappings)), frameMetadataOEM(frameMetadataOEM) {}
+    Us4OEMApertureSplitter(std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM,
+                           const ChannelIdx nRxChannels)
+        : oemMappings(std::move(oemMappings)), frameMetadataOEM(frameMetadataOEM), nRxChannels(nRxChannels) {}
 
     /**
     * Splits each tx/rx operation into multiple ops so that each rx aperture
@@ -81,9 +82,8 @@ public:
         opDestOp.setZero();
         opDestChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
-        constexpr ChannelIdx N_RX_CHANNELS = Us4OEMImpl::N_RX_CHANNELS;
-        constexpr ChannelIdx N_GROUPS = Us4OEMImpl::N_ADDR_CHANNELS / Us4OEMImpl::N_RX_CHANNELS;
-        constexpr ChannelIdx N_ADDR_CHANNELS = Us4OEMImpl::N_ADDR_CHANNELS;
+        ChannelIdx nGroups = Us4OEMDescriptor::N_ADDR_CHANNELS / nRxChannels;
+        constexpr ChannelIdx N_ADDR_CHANNELS = Us4OEMDescriptor::N_ADDR_CHANNELS;
 
         std::vector<std::vector<uint8_t>> us4oemP2LMappings(oemMappings.size());
         int i = 0;
@@ -113,11 +113,11 @@ public:
                 // subaperture number starts from 1, 0 means that the channel
                 // should be inactive.
                 std::vector<ChannelIdx> subapertureIdxs(op.getRxAperture().size());
-                for (ChannelIdx ch = 0; ch < N_RX_CHANNELS; ++ch) {
+                for (ChannelIdx ch = 0; ch < nRxChannels; ++ch) {
                     ChannelIdx subaperture = 1;
-                    for (ChannelIdx group = 0; group < N_GROUPS; ++group) {
+                    for (ChannelIdx group = 0; group < nGroups; ++group) {
                         // Us4OEM Physical address
-                        ChannelIdx physicalIdx = group * N_RX_CHANNELS + ch;
+                        ChannelIdx physicalIdx = group * nRxChannels + ch;
                         // Us4OEM Logical address
                         ChannelIdx logicalIdx = us4oemP2LMappings[oem][physicalIdx];
                         if (op.getRxAperture()[logicalIdx]) {
@@ -206,7 +206,7 @@ public:
             }
             // NOTE: for us4OEM that acquires metadata, even if it is RX nop, the results of this
             // rx NOP will be transferred from us4OEM to host memory,
-            // to get the frame metadata. Therefore we need to increase
+            // to get the frame metadata. Therefore, we need to increase
             // the number of frames a given element contains.
             if(frameMetadataOEM.has_value()) {
                 currentFrameIdx[frameMetadataOEM.value()] = FrameNumber(maxSize);
@@ -228,7 +228,7 @@ public:
         } else {
             for (size_t seqIdx = 0; seqIdx < result.size(); ++seqIdx) {
                 size_t nOps = result[seqIdx].size();
-                framework::NdArray::Shape shape{nOps, Us4OEMImpl::N_TX_CHANNELS};
+                framework::NdArray::Shape shape{nOps, Us4OEMDescriptor::N_TX_CHANNELS};
                 framework::NdArray::DataType dataType = framework::NdArray::DataType::FLOAT32;
                 std::vector<::arrus::framework::NdArray> outputProfiles;
                 for (auto &profile : delayProfiles.at(static_cast<uint16_t>(seqIdx))) {
@@ -287,6 +287,7 @@ private:
     // us4oem ordinal -> us4oem logical to physical mapping
     std::vector<std::vector<uint8_t>> oemMappings;
     std::optional<Ordinal> frameMetadataOEM{std::nullopt};
+    ChannelIdx nRxChannels;
 };
 
 }// namespace arrus::devices

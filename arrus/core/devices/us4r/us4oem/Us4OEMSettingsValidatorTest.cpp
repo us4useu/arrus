@@ -17,7 +17,7 @@ class CorrectUs4OEMSettingsTest
 };
 
 TEST_P(CorrectUs4OEMSettingsTest, ValidateCorrectUs4OEMSettings) {
-    Us4OEMSettingsValidator validator(0);
+    Us4OEMSettingsValidator validator(0, DEFAULT_DESCRIPTOR);
     TestUs4OEMSettings val = GetParam();
     validator.validate(val.getUs4OEMSettings());
     EXPECT_NO_THROW(validator.throwOnErrors());
@@ -65,7 +65,7 @@ class InCorrectUs4OEMSettingsTest
 };
 
 TEST_P(InCorrectUs4OEMSettingsTest, ValidateInCorrectUs4OEMSettings) {
-    Us4OEMSettingsValidator validator(0);
+    Us4OEMSettingsValidator validator(0, DEFAULT_DESCRIPTOR);
     TestUs4OEMSettings val = GetParam();
     validator.validate(val.getUs4OEMSettings());
     EXPECT_THROW(validator.throwOnErrors(), IllegalArgumentException);

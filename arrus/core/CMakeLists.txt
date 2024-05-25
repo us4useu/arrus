@@ -186,7 +186,15 @@ set(SRC_FILES
     devices/us4r/Us4OEMDataTransferRegistrar.h
     devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
     devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h
-    devices/us4r/us4oem/Us4OEMUploadResult.h)
+    devices/us4r/us4oem/Us4OEMUploadResult.h
+    devices/us4r/us4oem/Us4OEMTxRxValidator.h
+    devices/us4r/us4oem/Us4OEMDescriptor.h
+    api/ops/us4r/constraints/TxLimits.h
+    api/ops/us4r/constraints/RxLimits.h
+    api/ops/us4r/constraints/TxRxLimits.h
+    api/ops/us4r/constraints/TxRxSequenceLimits.h
+    api/ops/us4r/constraints/TxRxSequenceLimits.h
+    devices/us4r/us4oem/Us4OEMDescriptorFactory.h)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")

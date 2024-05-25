@@ -18,10 +18,6 @@ public:
     using Handle = std::unique_ptr<Us4OEMImplBase>;
     using RawHandle = PtrHandle<Us4OEMImplBase>;
 
-    static constexpr ChannelIdx N_TX_CHANNELS = 128;
-    static constexpr ChannelIdx N_RX_CHANNELS = 32;
-    static constexpr ChannelIdx N_ADDR_CHANNELS = N_TX_CHANNELS;
-
     ~Us4OEMImplBase() override = default;
 
     Us4OEMImplBase(Us4OEMImplBase const &) = delete;
@@ -49,6 +45,7 @@ public:
     virtual BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
     virtual void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
     virtual void clearCallbacks() = 0;
+    virtual Us4OEMDescriptor getDescriptor() const = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

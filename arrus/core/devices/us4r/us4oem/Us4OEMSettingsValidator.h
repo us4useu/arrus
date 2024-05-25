@@ -20,46 +20,49 @@ namespace arrus::devices {
 
 class Us4OEMSettingsValidator : public SettingsValidator<Us4OEMSettings> {
 public:
-    explicit Us4OEMSettingsValidator(Ordinal moduleOrdinal)
-            : SettingsValidator<Us4OEMSettings>(DeviceId(DeviceType::Us4OEM, moduleOrdinal)) {}
+    explicit Us4OEMSettingsValidator(Ordinal moduleOrdinal, Us4OEMDescriptor descriptor)
+            : SettingsValidator<Us4OEMSettings>(DeviceId(DeviceType::Us4OEM, moduleOrdinal)),
+              descriptor(std::move(descriptor)){}
 
     void validate(const Us4OEMSettings &obj) {
-        constexpr ChannelIdx RX_SIZE = Us4OEMImpl::N_RX_CHANNELS;
-        constexpr ChannelIdx N_TX_CHANNELS = Us4OEMImpl::N_TX_CHANNELS;
-        constexpr ChannelIdx N_RX_GROUPS = N_TX_CHANNELS / RX_SIZE;
+        ChannelIdx nRxChannels = descriptor.getNRxChannels();
+        ChannelIdx nAddressableRxChannels = descriptor.getNAddressableRxChannels();
+        ChannelIdx nRxGroups = nAddressableRxChannels / nRxChannels;
 
         // Channel mapping:
         // The size of the mapping:
         // Us4OEM mapping should include all channels, we don't want
         // the situation, where some o channels are not defined.
-        expectEqual("channel mapping", obj.getChannelMapping().size(), (size_t) N_TX_CHANNELS, "(size)");
+        expectEqual("channel mapping", obj.getChannelMapping().size(), (size_t) nAddressableRxChannels, "(size)");
 
-        if(obj.getChannelMapping().size() == (size_t) N_TX_CHANNELS) {
+        if(obj.getChannelMapping().size() == (size_t) nAddressableRxChannels) {
             auto &channelMapping = obj.getChannelMapping();
 
             // Check if contains (possibly permuted) groups:
             // 0-31, 32-63, 64-95, 96-127
-            for(unsigned char group = 0; group < N_RX_GROUPS; ++group) {
+            for(unsigned char group = 0; group < nRxGroups; ++group) {
                 std::unordered_set<ChannelIdx> groupValues{
-                        std::begin(channelMapping) + group * RX_SIZE,
-                        std::begin(channelMapping) + (group + 1) * RX_SIZE};
+                        std::begin(channelMapping) + group * nRxChannels,
+                        std::begin(channelMapping) + (group + 1) * nRxChannels};
 
                 std::vector<ChannelIdx> missingValues;
-                for(ChannelIdx j = group * RX_SIZE;
-                    j < (ChannelIdx) (group + 1) * RX_SIZE; ++j) {
+                for(ChannelIdx j = group * nRxChannels;
+                    j < (ChannelIdx) (group + 1) * nRxChannels; ++j) {
                     if(groupValues.find(j) == groupValues.end()) {
                         missingValues.push_back(j);
                     }
                 }
                 expectTrue("channel mapping", missingValues.empty(),
                            arrus::format("Some of Us4OEM channels: '{}' are missing in the group of channels [{}, {}]",
-                                         ::arrus::toString(missingValues), group * RX_SIZE, (group + 1) * RX_SIZE));
+                                         ::arrus::toString(missingValues), group * nRxChannels, (group + 1) * nRxChannels));
             }
         }
         RxSettingsValidator rxSettingsValidator;
         rxSettingsValidator.validate(obj.getRxSettings());
         copyErrorsFrom(rxSettingsValidator);
     }
+private:
+    Us4OEMDescriptor descriptor;
 };
 
 }

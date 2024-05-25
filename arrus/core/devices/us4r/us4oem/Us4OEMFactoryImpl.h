@@ -1,13 +1,14 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H
 
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "Us4OEMDescriptorFactory.h"
 #include "arrus/common/asserts.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"
 
 namespace arrus::devices {
 class Us4OEMFactoryImpl : public Us4OEMFactory {
@@ -17,13 +18,15 @@ public:
     Us4OEMImplBase::Handle getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem, const Us4OEMSettings &cfg,
                                      bool isExternalTrigger, bool acceptRxNops = false) override {
         // Validate settings.
-        Us4OEMSettingsValidator validator(ordinal);
+        auto descriptor = Us4OEMDescriptorFactory::getDescriptor(ius4oem, ordinal == 0);
+        Us4OEMSettingsValidator validator(ordinal, descriptor);
         validator.validate(cfg);
         validator.throwOnErrors();
 
+
         // We assume here, that the ius4oem is already initialized.
         // Configure IUs4OEM
-        ChannelIdx chGroupSize = Us4OEMImpl::N_RX_CHANNELS;
+        ChannelIdx chGroupSize = descriptor.getNRxChannels();
         ARRUS_REQUIRES_TRUE(IUs4OEM::NCH % chGroupSize == 0,
                             arrus::format("Number of Us4OEM channels ({}) is not divisible by the size of channel group ({})",
                                     IUs4OEM::NCH, chGroupSize));
@@ -70,6 +73,7 @@ public:
                                             channelMapping,
                                             cfg.getRxSettings(),
                                             cfg.getReprogrammingMode(),
+                                            descriptor,
                                             isExternalTrigger, acceptRxNops);
     }
 

@@ -43,5 +43,33 @@ struct TestUs4OEMSettings {
     }
 };
 
+Us4OEMDescriptor DEFAULT_DESCRIPTOR {
+    32, // RX channels
+    20e-6f,  // min. RX time,
+    5e-6, // RX time epsilon,
+    35e-6, // TX parameters reprogramming time,
+    65e6, // Sampling frequency [Hz]
+    1ull << 32u, // DDR memory size [B]
+    1ull << (14+12), // Max transfer size [B]
+    0.5f,  // number of TX periods resolution
+    true,
+    arrus::ops::us4r::TxRxSequenceLimits {
+        arrus::ops::us4r::TxRxLimits {
+            arrus::ops::us4r::TxLimits {
+                Interval<float>{1e6, 60e6},  // Frequency
+                Interval<float>{0.0f, 16.96e-6f}, // delay
+                Interval<float>{0.0f, 32.0f/10e6}, // pulse length,
+                Interval<Voltage>{5, 90}
+            },
+            arrus::ops::us4r::RxLimits {
+                Interval<uint32>{64, 16384}
+            },
+            Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
+        },
+        Interval<uint32>{0, 16384} // sequence length
+    }
+
+};
+
 
 #endif //ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H

@@ -19,8 +19,9 @@ public:
     using DelayProfilesByOEM = std::unordered_map<Ordinal, std::vector<framework::NdArray>>;
 
     AdapterToUs4OEMMappingConverter(ProbeAdapterSettings settings, const Ordinal noems,
-                                    std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM)
-        : settings(std::move(settings)), noems(noems), splitter{std::move(oemMappings), frameMetadataOEM} {}
+                                    std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM,
+                                    ChannelIdx nRxChannelsOEM)
+        : settings(std::move(settings)), noems(noems), splitter{std::move(oemMappings), frameMetadataOEM, nRxChannelsOEM} {}
 
     std::pair<SequenceByOEM, DelayProfilesByOEM> convert(SequenceId id, const us4r::TxRxParametersSequence &seq,
                                                          const std::vector<framework::NdArray> &txDelayProfiles) {
@@ -60,7 +61,7 @@ public:
         frameChannel = Eigen::MatrixXi(nFrames, rxApertureSize);
         frameChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
-        framework::NdArray::Shape txDelaysProfileShape = {seq.size(), Us4OEMImpl::N_TX_CHANNELS};
+        framework::NdArray::Shape txDelaysProfileShape = {seq.size(), Us4OEMDescriptor::N_TX_CHANNELS};
 
         // Initialize helper arrays.
         for (Ordinal oem = 0; oem < noems; ++oem) {
@@ -98,9 +99,9 @@ public:
                                 format("Tx and Rx apertures should have a size: {}", nChannels));
 
             for (Ordinal oem = 0; oem < noems; ++oem) {
-                txApertures[oem][opId].resize(Us4OEMImpl::N_ADDR_CHANNELS, false);
-                rxApertures[oem][opId].resize(Us4OEMImpl::N_ADDR_CHANNELS, false);
-                txDelaysList[oem][opId].resize(Us4OEMImpl::N_ADDR_CHANNELS, 0.0f);
+                txApertures[oem][opId].resize(Us4OEMDescriptor::N_ADDR_CHANNELS, false);
+                rxApertures[oem][opId].resize(Us4OEMDescriptor::N_ADDR_CHANNELS, false);
+                txDelaysList[oem][opId].resize(Us4OEMDescriptor::N_ADDR_CHANNELS, 0.0f);
             }
             size_t adapterApCh = 0;// Adapter aperture channel
             bool isRxNop = true;

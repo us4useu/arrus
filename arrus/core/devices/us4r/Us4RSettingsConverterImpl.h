@@ -41,8 +41,9 @@ public:
         }
 
         // Convert to list of us4oem mappings and active channel groups
-        auto const nRx = Us4OEMImpl::N_RX_CHANNELS;
-        auto const nTx = Us4OEMImpl::N_TX_CHANNELS;
+        // TODO how to make
+        auto const nRx = Us4OEMDescriptor::N_RX_CHANNELS;
+        auto const nTx = Us4OEMDescriptor::N_TX_CHANNELS;
 
         std::vector<Us4OEMSettings> result;
         std::vector<ChannelIdx> currentRxGroup(nUs4OEMs);

@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "Us4OEMDescriptor.h"
 #include "arrus/common/cache.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/types.h"
@@ -28,56 +29,15 @@ namespace arrus::devices {
 /**
  * Us4OEM wrapper implementation.
  *
- * Note: the current implementation assumes the first revision of us4OEM.
- *
  * This class stores reordered channels, as it is required in IUs4OEM docs.
  */
 class Us4OEMImpl : public Us4OEMImplBase {
 public:
     using Handle = std::unique_ptr<Us4OEMImpl>;
     using RawHandle = PtrHandle<Us4OEMImpl>;
-
     using FiringId = uint16;
     using RawDataType = int16;
     static constexpr framework::NdArray::DataType DataType = framework::NdArray::DataType::INT16;
-
-    // voltage, +/- [V] amplitude, (ref: technote)
-    static constexpr Voltage MIN_VOLTAGE = 0;
-    static constexpr Voltage MAX_VOLTAGE = 90;// 180 vpp
-
-    // TGC constants.
-    static constexpr float TGC_ATTENUATION_RANGE = RxSettings::TGC_ATTENUATION_RANGE;
-    static constexpr float TGC_SAMPLING_FREQUENCY = 1e6;
-    static constexpr size_t TGC_N_SAMPLES = 1022;
-
-    // Number of tx/rx channels.
-    static constexpr ChannelIdx N_TX_CHANNELS = Us4OEMImplBase::N_TX_CHANNELS;
-    static constexpr ChannelIdx N_RX_CHANNELS = Us4OEMImplBase::N_RX_CHANNELS;
-    static constexpr ChannelIdx N_ADDR_CHANNELS = Us4OEMImplBase::N_ADDR_CHANNELS;
-    static constexpr ChannelIdx ACTIVE_CHANNEL_GROUP_SIZE = 8;
-    static constexpr ChannelIdx N_ACTIVE_CHANNEL_GROUPS = N_TX_CHANNELS / ACTIVE_CHANNEL_GROUP_SIZE;
-
-    static constexpr float MIN_TX_DELAY = 0.0f;
-    static constexpr float MAX_TX_DELAY = 16.96e-6f;
-
-    static constexpr int DEFAULT_TX_FREQUENCY_RANGE = 1;
-    static constexpr float MIN_TX_FREQUENCY = 1e6f;
-    static constexpr float MAX_TX_FREQUENCY = 60e6f;
-
-    static constexpr float MIN_RX_TIME = 20e-6f;
-
-    // Sampling
-    static constexpr float SAMPLING_FREQUENCY = 65e6;
-    static constexpr uint32 MIN_NSAMPLES = 64;
-    static constexpr uint32 MAX_NSAMPLES = 16384;
-    // Data
-    static constexpr size_t DDR_SIZE = 1ull << 32u;
-    static constexpr float SEQUENCER_REPROGRAMMING_TIME = 35e-6f;// [s]
-    static constexpr float MIN_PRI = SEQUENCER_REPROGRAMMING_TIME;
-    static constexpr float MAX_PRI = 1.0f;         // [s]
-    static constexpr float RX_TIME_EPSILON = 5e-6f;// [s]
-    // 2^14 descriptors * 2^12 (4096, minimum page size) bytes
-    static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14 + 12);// bytes
 
     /**
      * Us4OEMImpl constructor.
@@ -89,7 +49,8 @@ public:
      */
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                std::vector<uint8_t> channelMapping, RxSettings rxSettings,
-               Us4OEMSettings::ReprogrammingMode reprogrammingMode, bool externalTrigger, bool acceptRxNops);
+               Us4OEMSettings::ReprogrammingMode reprogrammingMode, Us4OEMDescriptor descriptor,
+               bool externalTrigger, bool acceptRxNops);
     ~Us4OEMImpl() override;
 
     bool isMaster() override;
@@ -139,13 +100,14 @@ public:
     void disableHpf() override;
     Interval<Voltage> getAcceptedVoltageRange() override;
     void clearCallbacks() override;
+    Us4OEMDescriptor getDescriptor() const override;
 
 private:
-    using Us4OEMAperture = std::bitset<N_ADDR_CHANNELS>;
-    using Us4OEMChannelsGroupsMask = std::bitset<N_ACTIVE_CHANNEL_GROUPS>;
+    using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
+    using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;
 
     float getTxRxTime(float rxTime) const;
-    static float getRxTime(size_t nSamples, float samplingFrequency);
+    float getRxTime(size_t nSamples, float samplingFrequency);
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
@@ -198,12 +160,13 @@ private:
     size_t getNumberOfTriggers(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize);
     Us4OEMRxMappingRegister setRxMappings(const us4r::TxParametersSequenceColl &sequences);
 
-    std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> filterAperture(
-        std::bitset<N_ADDR_CHANNELS> aperture,
+    std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> filterAperture(
+        std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
         const std::unordered_set<ChannelIdx> &channelsMask);
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
+    Us4OEMDescriptor descriptor;
     // Tx channel mapping (and Rx implicitly): logical channel -> physical channel
     std::vector<uint8_t> channelMapping;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
@@ -211,7 +174,7 @@ private:
     RxSettings rxSettings;
     bool externalTrigger{false};
     /** Current sampling frequency of the data produced by us4OEM. */
-    float currentSamplingFrequency{SAMPLING_FREQUENCY};
+    float currentSamplingFrequency{0};
     /** Global state mutex */
     mutable std::mutex stateMutex;
     arrus::Cached<std::string> serialNumber;

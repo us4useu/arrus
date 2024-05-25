@@ -109,7 +109,7 @@ public:
             }
             ++opIdx;
         }
-        return std::make_pair(std::move(seqBuilder.build()), std::move(adapterTxDelayProfiles));
+        return std::make_pair(seqBuilder.build(), std::move(adapterTxDelayProfiles));
     }
 
     FrameChannelMapping::Handle convert(const FrameChannelMapping::Handle &adapterFCM) {
@@ -164,16 +164,6 @@ public:
             ++frameNumber;
         }
         return builder.build();
-    }
-
-    template<typename T>
-    T getMaskedOrZero(T value, ChannelIdx channel, std::unordered_set<ChannelIdx> mask) {
-        if(!setContains(mask, channel)) {
-            return value;
-        }
-        else {
-            return T(0);
-        }
     }
 private:
     DeviceId probeTxId, probeRxId;
