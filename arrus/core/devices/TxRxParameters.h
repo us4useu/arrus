@@ -244,9 +244,9 @@ class TxRxParametersSequence {
 public:
     TxRxParametersSequence() = default;
     TxRxParametersSequence(const std::vector<TxRxParameters> &parameters, const uint16 nRepeats,
-                           const std::optional<float> &sri, const ops::us4r::TGCCurve &tgcCurve,
+                           const std::optional<float> &sri, ops::us4r::TGCCurve tgcCurve,
                            const DeviceId &txProbeId, const DeviceId &rxProbeId)
-        : parameters(parameters), nRepeats(nRepeats), sri(sri), tgcCurve(tgcCurve), txProbeId(txProbeId),
+        : parameters(parameters), nRepeats(nRepeats), sri(sri), tgcCurve(std::move(tgcCurve)), txProbeId(txProbeId),
           rxProbeId(rxProbeId) {}
 
     [[nodiscard]] std::vector<TxRxParameters> getParameters() const { return parameters; }

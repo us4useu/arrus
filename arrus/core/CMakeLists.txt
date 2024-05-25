@@ -194,7 +194,8 @@ set(SRC_FILES
     api/ops/us4r/constraints/TxRxLimits.h
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     api/ops/us4r/constraints/TxRxSequenceLimits.h
-    devices/us4r/us4oem/Us4OEMDescriptorFactory.h)
+    devices/us4r/us4oem/Us4OEMDescriptorFactory.h
+)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -269,10 +270,11 @@ if (ARRUS_RUN_TESTS)
     # create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
 
     set(US4OEM_IMPL_TEST_DEPS common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
-        devices/us4r/common.cpp devices/TxRxParameters.cpp devices/DeviceId.cpp
+        devices/TxRxParameters.cpp devices/DeviceId.cpp
         devices/us4r/FrameChannelMappingImpl.cpp
         ops/us4r/DigitalDownConversion.cpp)
     # create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/us4oem/Us4OEMTxRxValidatorTest.cpp "devices/TxRxParameters.cpp;devices/DeviceId.cpp;common/logging.cpp")
 
     set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
         devices/us4r/common.cpp

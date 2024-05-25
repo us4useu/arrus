@@ -58,6 +58,17 @@ namespace arrus::devices {
                                               "Start sample should be the same for all operations." + firingStr);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M((op.getRxPadding() == ::arrus::Tuple<ChannelIdx>{0, 0}),
                                               ("Rx padding is not allowed for us4oems. " + firingStr));
+                // Channel masking
+                ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_IM(
+                    op.getMaskedChannelsTx(),
+                    ChannelIdx(0), ChannelIdx(Us4OEMDescriptor::N_TX_CHANNELS-1),
+                    firingStr
+                    );
+                ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_IM(
+                    op.getMaskedChannelsRx(),
+                    ChannelIdx(0), ChannelIdx(Us4OEMDescriptor::N_ADDR_CHANNELS-1),
+                    firingStr
+                );
             }
             if (op.getBitstreamId().has_value() && descriptor.isMaster()) {
                 ARRUS_REQUIRES_TRUE(op.getBitstreamId().value() < nBitstreams,
