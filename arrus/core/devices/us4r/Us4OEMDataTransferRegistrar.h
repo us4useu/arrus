@@ -7,6 +7,7 @@
 #include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include <ostream>
 
 namespace arrus::devices {
 
@@ -26,6 +27,12 @@ public:
     size_t source{0};
     size_t size{0};
     uint16 firing{0};
+
+    friend std::ostream &operator<<(std::ostream &os, const Transfer &transfer) {
+        os << "Transfer: destination: " << transfer.destination << " source: " << transfer.source << " size: " << transfer.size
+           << " firing: " << transfer.firing;
+        return os;
+    }
 };
 
 /**
@@ -46,7 +53,7 @@ public:
         }
         ius4oem = us4oem->getIUs4OEM();
         us4oemOrdinal = us4oem->getDeviceId().getOrdinal();
-        elementTransfers = createTransfers(dst, src, us4oem->getDeviceId().getOrdinal());
+        elementTransfers = createTransfers(dst, src, us4oem->getDeviceId().getOrdinal(), maxTransferSize);
 
         srcNElements = src.getNumberOfElements();
         dstNElements = dst->getNumberOfElements();
@@ -119,8 +126,8 @@ public:
      *
      * This method required that each array part has size <= MAX_TRANSFER_SIZE.
      */
-    std::vector<ArrayTransfers> createTransfers(
-        const Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Ordinal oem) {
+    static std::vector<ArrayTransfers> createTransfers(
+        const Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Ordinal oem, size_t maxTransferSize) {
         std::vector<ArrayTransfers> result;
 
         for (ArrayId arrayId = 0; arrayId < src.getNumberOfArrays(); ++arrayId) {
