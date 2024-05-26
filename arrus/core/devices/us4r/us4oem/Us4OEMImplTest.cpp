@@ -251,6 +251,36 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
     upload(seq);
 }
 
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectActiveChannelGroups) {
+    BitMask rxAperture(128, false);
+    BitMask txAperture(128, false);
+    std::vector<float> txDelays(128, 0.0);
+    txAperture[0] = txAperture[9] = txAperture[32] = txAperture[63] = true;
+    rxAperture[6] = rxAperture[33] = rxAperture[34] = true;
+
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.rxAperture = rxAperture,
+                x.txAperture = txAperture,
+                x.maskedChannelsTx = {0},
+                x.maskedChannelsRx = {6}
+            )
+        )
+        .get()
+    };
+    // groups: 1, 4, 7
+    // active channel group mapping:
+    // 1 -> 4
+    // 4 -> 2
+    // 7 -> 14
+    std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS> expectedChannelGroups;
+    expectedChannelGroups[4] = expectedChannelGroups[2] = expectedChannelGroups[14] = true;
+    EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(expectedChannelGroups, 0));
+    upload(seq);
+}
+
 //// ------------------------------------------
 /// TESTING CHANNEL MASKING
 //// ------------------------------------------
@@ -457,8 +487,6 @@ TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannelForAllOperations) {
     ::testing::Sequence rxApertureCallSequence;
 
     for(int i = 0; i < expectedRxApertures.size(); ++i) {
-        std::cout << "Expected TX aperture: " << arrus::toString(expectedTxApertures[i]) << std::endl;
-        std::cout << "Expected RX aperture: " << arrus::toString(expectedRxApertures[i]) << std::endl;
         EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxApertures[i], i)).InSequence(rxApertureCallSequence);
         EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxApertures[i], i)).InSequence(txApertureCallSequence);
     }

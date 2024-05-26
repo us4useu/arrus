@@ -215,19 +215,17 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             float rxTime = getRxTime(endSample, this->currentSamplingFrequency);
             // Common
             float txrxTime = getTxRxTime(rxTime);
+            auto filteredTxAperture = filterAperture(txAperture, op.getMaskedChannelsTx());
+            auto filteredRxAperture = filterAperture(rxAperture, op.getMaskedChannelsRx());
             Us4OEMChannelsGroupsMask channelsGroups =
-                op.isNOP() ? emptyChannelGroups : getActiveChannelGroups(txAperture, rxAperture);
+                op.isNOP() ? emptyChannelGroups : getActiveChannelGroups(filteredTxAperture, filteredRxAperture);
             ARRUS_REQUIRES_TRUE_IAE(txrxTime <= op.getPri(),
                                     format("Total time required for a single TX/RX ({}) should not exceed PRI ({})",
                                            txrxTime, op.getPri()));
-
             // Upload
             ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
-            auto filteredTxAperture = filterAperture(txAperture, op.getMaskedChannelsTx());
-            auto filteredRxAperture = filterAperture(rxAperture, op.getMaskedChannelsRx());
             ius4oem->SetTxAperture(filteredTxAperture, firingId);
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
-
             // Delays
             // Set delay defintion tables.
             for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
