@@ -41,6 +41,11 @@ public:
 
     RxMapId getMapId(SequenceId sequenceId, OpId opId) const { return opToRxMappingId.at(std::make_pair(sequenceId, opId)); }
 
+    RxMap getMap(SequenceId sequenceId, OpId opId) {
+        auto mapId = getMapId(sequenceId, opId);
+        return getMappings().at(mapId);
+    }
+
     RxAperture getRxAperture(SequenceId sequenceId, OpId opId) const {
         return rxApertures.at(std::make_pair(sequenceId, opId));
     }
