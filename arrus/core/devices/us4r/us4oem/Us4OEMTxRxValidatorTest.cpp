@@ -21,49 +21,6 @@ using ::testing::Ge;
 using ::testing::FloatNear;
 using ::testing::Pointwise;
 
-struct TestTxRxParams {
-
-    TestTxRxParams() {
-        for (int i = 0; i < 32; ++i) {
-            rxAperture[i] = true;
-        }
-    }
-
-    BitMask txAperture = getNTimes(true, Us4OEMDescriptor::N_TX_CHANNELS);
-    std::vector<float> txDelays = getNTimes(0.0f, Us4OEMDescriptor::N_TX_CHANNELS);
-    ops::us4r::Pulse pulse{2.0e6f, 2.5f, true};
-    BitMask rxAperture = getNTimes(false, Us4OEMDescriptor::N_ADDR_CHANNELS);
-    uint32 decimationFactor = 1;
-    float pri = 200e-6f;
-    Interval<uint32> sampleRange{0, 4096};
-    std::optional<BitstreamId> bitstreamId{std::nullopt};
-    std::unordered_set<ChannelIdx> maskedChannelsTx = {};
-    std::unordered_set<ChannelIdx> maskedChannelsRx = {};
-    Tuple<ChannelIdx> rxPadding = {0, 0};
-    float rxDelay = 0.0f;
-
-    [[nodiscard]] arrus::devices::us4r::TxRxParameters get() const {
-        return TxRxParameters(
-            txAperture, txDelays, pulse, rxAperture, sampleRange, decimationFactor, pri,
-            rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx);
-    }
-};
-
-struct TestTxRxParamsSequence {
-    std::vector<TxRxParameters> txrx = {TestTxRxParams{}.get()};
-    uint16 nRepeats = 1;
-    std::optional<float> sri = std::nullopt;
-    ops::us4r::TGCCurve tgcCurve = {};
-    DeviceId txProbeId{arrus::devices::DeviceType::Probe, 0};
-    DeviceId rxProbeId{arrus::devices::DeviceType::Probe, 0};
-
-    [[nodiscard]] arrus::devices::us4r::TxRxParametersSequence get() const {
-        return TxRxParametersSequence{
-            txrx, nRepeats, sri, tgcCurve, txProbeId, rxProbeId
-        };
-    }
-};
-
 class Us4OEMTxRxValidatorTest : public ::testing::Test {
 protected:
     void SetUp() override {}
@@ -221,6 +178,21 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsTooLowFrequency) {
     EXPECT_THROW(validate(seq), IllegalArgumentException);
 }
 
+TEST_F(Us4OEMTxRxValidatorTest, PreventsTooLongPulse) {
+    const auto maxLength = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx().getPulseLength().end();
+    float frequency = 5e6;
+    const float maxNCycles = maxLength*frequency;
+    std::vector<TxRxParameters> txrxs = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(frequency, maxNCycles+1.0f, false))
+        )
+        .get()
+    };
+    TxRxParametersSequence seq = getSequence(txrxs);
+    EXPECT_THROW(validate(seq), IllegalArgumentException);
+}
+
 TEST_F(Us4OEMTxRxValidatorTest, PreventsInvaldTxChannelsMask) {
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
@@ -247,6 +219,8 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsInvaldRxChannelsMask) {
 
 }// namespace
 
+// TODO multiple ops to verify
+// TODO PreventsToManyOps
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG(arrus::Logging);
     ::testing::InitGoogleTest(&argc, argv);

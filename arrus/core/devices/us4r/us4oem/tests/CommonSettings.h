@@ -71,5 +71,48 @@ Us4OEMDescriptor DEFAULT_DESCRIPTOR {
 
 };
 
+struct TestTxRxParams {
+
+    TestTxRxParams() {
+        for (int i = 0; i < 32; ++i) {
+            rxAperture[i] = true;
+        }
+    }
+
+    BitMask txAperture = getNTimes(true, Us4OEMDescriptor::N_TX_CHANNELS);
+    std::vector<float> txDelays = getNTimes(0.0f, Us4OEMDescriptor::N_TX_CHANNELS);
+    ops::us4r::Pulse pulse{10.0e6f, 2.5f, true};
+    BitMask rxAperture = getNTimes(false, Us4OEMDescriptor::N_ADDR_CHANNELS);
+    uint32 decimationFactor = 1;
+    float pri = 200e-6f;
+    Interval<uint32> sampleRange{0, 4096};
+    std::optional<BitstreamId> bitstreamId{std::nullopt};
+    std::unordered_set<ChannelIdx> maskedChannelsTx = {};
+    std::unordered_set<ChannelIdx> maskedChannelsRx = {};
+    Tuple<ChannelIdx> rxPadding = {0, 0};
+    float rxDelay = 0.0f;
+
+    [[nodiscard]] arrus::devices::us4r::TxRxParameters get() const {
+        return arrus::devices::us4r::TxRxParameters(
+            txAperture, txDelays, pulse, rxAperture, sampleRange, decimationFactor, pri,
+            rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx);
+    }
+};
+
+struct TestTxRxParamsSequence {
+    std::vector<arrus::devices::us4r::TxRxParameters> txrx = {TestTxRxParams{}.get()};
+    uint16 nRepeats = 1;
+    std::optional<float> sri = std::nullopt;
+    ops::us4r::TGCCurve tgcCurve = {};
+    DeviceId txProbeId{arrus::devices::DeviceType::Probe, 0};
+    DeviceId rxProbeId{arrus::devices::DeviceType::Probe, 0};
+
+    [[nodiscard]] arrus::devices::us4r::TxRxParametersSequence get() const {
+        return arrus::devices::us4r::TxRxParametersSequence {
+            txrx, nRepeats, sri, tgcCurve, txProbeId, rxProbeId
+        };
+    }
+};
+
 
 #endif //ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H

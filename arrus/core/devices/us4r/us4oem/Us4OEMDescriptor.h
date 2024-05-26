@@ -7,6 +7,8 @@
 #include "arrus/core/api/ops/us4r/constraints/TxRxSequenceLimits.h"
 #include <ius4oem.h>
 
+#include <utility>
+
 namespace arrus::devices {
 
 /**
@@ -28,11 +30,11 @@ public:
 
     Us4OEMDescriptor(ChannelIdx nRxChannels, float minRxTime, float rxTimeEpsilon, float sequenceReprogrammingTime,
                      float samplingFrequency, size_t ddrSize, size_t maxTransferSize, float nPeriodsResolution,
-                     bool master, const ops::us4r::TxRxSequenceLimits &txRxSequenceLimits)
+                     bool master, ops::us4r::TxRxSequenceLimits txRxSequenceLimits)
         : nRxChannels(nRxChannels), minRxTime(minRxTime), rxTimeEpsilon(rxTimeEpsilon),
           sequenceReprogrammingTime(sequenceReprogrammingTime), samplingFrequency(samplingFrequency), ddrSize(ddrSize),
           maxTransferSize(maxTransferSize), nPeriodsResolution(nPeriodsResolution),
-          master(master), txRxSequenceLimits(txRxSequenceLimits) {}
+          master(master), txRxSequenceLimits(std::move(txRxSequenceLimits)) {}
 
     ChannelIdx getNTxChannels() const { return N_TX_CHANNELS; }
     ChannelIdx getNRxChannels() const { return nRxChannels; }

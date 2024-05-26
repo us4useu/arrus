@@ -117,7 +117,7 @@ public:
                     // Physical channel number, values 0-31
                     auto rxChannel = channelMapping[channel];
                     rxChannel = rxChannel % nRxChannels;
-                    if (!setContains(channelsUsed, rxChannel) && !setContains(op.getMaskedChannelsRx(), static_cast<ChannelIdx>(rxChannel))) {
+                    if (!setContains(channelsUsed, rxChannel) && !setContains(op.getMaskedChannelsRx(), static_cast<ChannelIdx>(channel))) {
                         // This channel is OK.
                         // STRATEGY: if there are conflicting/masked rx channels, keep the
                         // first one (with the lowest channel number), turn off all

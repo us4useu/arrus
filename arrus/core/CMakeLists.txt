@@ -273,8 +273,9 @@ if (ARRUS_RUN_TESTS)
         devices/TxRxParameters.cpp devices/DeviceId.cpp
         devices/us4r/FrameChannelMappingImpl.cpp
         ops/us4r/DigitalDownConversion.cpp)
-    # create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
     create_core_test(devices/us4r/us4oem/Us4OEMTxRxValidatorTest.cpp "devices/TxRxParameters.cpp;devices/DeviceId.cpp;common/logging.cpp")
+    # create_core_test(devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder "${US4OEM_IMPL_TEST_DEPS}")
 
     set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
         devices/us4r/common.cpp

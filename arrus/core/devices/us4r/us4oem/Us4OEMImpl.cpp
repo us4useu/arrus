@@ -223,8 +223,10 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
 
             // Upload
             ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
-            ius4oem->SetTxAperture(filterAperture(txAperture, op.getMaskedChannelsTx()), firingId);
-            ius4oem->SetRxAperture(filterAperture(rxAperture, op.getMaskedChannelsRx()), firingId);
+            auto filteredTxAperture = filterAperture(txAperture, op.getMaskedChannelsTx());
+            auto filteredRxAperture = filterAperture(rxAperture, op.getMaskedChannelsRx());
+            ius4oem->SetTxAperture(filteredTxAperture, firingId);
+            ius4oem->SetRxAperture(filteredRxAperture, firingId);
 
             // Delays
             // Set delay defintion tables.

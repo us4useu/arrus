@@ -38,7 +38,7 @@ public:
      * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param rxDecimationFactor
      * @param pri
-     * @param rxPadding how many 0-channels padd from the left and right
+     * @param rxPadding how many 0-channels pad from the left and right
      */
     TxRxParameters(std::vector<bool> txAperture, std::vector<float> txDelays, const ops::us4r::Pulse &txPulse,
                    std::vector<bool> rxAperture, Interval<uint32> rxSampleRange, int32 rxDecimationFactor, float pri,
@@ -50,7 +50,7 @@ public:
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
-          bitstreamId(bitstreamId), maskedChannelsTx(maskedChannelsTx), maskedChannelsRx(maskedChannelsRx) {}
+          bitstreamId(bitstreamId), maskedChannelsTx(std::move(maskedChannelsTx)), maskedChannelsRx(std::move(maskedChannelsRx)) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const { return txAperture; }
 
