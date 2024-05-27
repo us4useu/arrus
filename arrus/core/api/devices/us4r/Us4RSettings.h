@@ -25,7 +25,7 @@ public:
         std::vector<ProbeSettings> probeSettings,
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
-        std::vector<std::vector<ChannelIdx>> channelsMask,
+        std::vector<std::unordered_set<ChannelIdx>> channelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
@@ -52,7 +52,7 @@ public:
         ProbeSettings probeSettings,
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
-        std::vector<ChannelIdx> probe0ChannelsMask,
+        std::unordered_set<ChannelIdx> probe0ChannelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
@@ -125,15 +125,15 @@ public:
      * Returns channels mask to be applied for Probe:0 TX/RX apertures.
      * DEPRECATED (v0.11.0): please use getChannelsMask(probeNr).
      */
-    const std::vector<ChannelIdx> &getChannelsMask() const {
+    const std::unordered_set<ChannelIdx> &getChannelsMask() const {
         return getChannelsMaskForProbe(0);
     }
 
-    const std::vector<ChannelIdx> &getChannelsMaskForProbe(Ordinal probeNr) const {
+    const std::unordered_set<ChannelIdx> &getChannelsMaskForProbe(Ordinal probeNr) const {
         return channelsMask.at(probeNr);
     }
 
-    const std::vector<std::vector<ChannelIdx>> &getChannelsMaskForAllProbes() const {
+    const std::vector<std::unordered_set<ChannelIdx>> &getChannelsMaskForAllProbes() const {
         return channelsMask;
     }
 
@@ -178,12 +178,12 @@ private:
     std::optional<RxSettings> rxSettings;
     /** Optional (us4r devices may have externally controlled hv suppliers. */
     std::optional<HVSettings> hvSettings;
-    /** A list of channels that should be turned off in the us4r system.
+    /** A set of channels that should be turned off in the us4r system.
      * This is list of lists; each list represents what channels of the
      * ultrasound interface (probe) should be turned off.
      * channelsMask[i] is a channels mask for the i-th probe (Probe:i).
      * Note that the **channel numbers start from 0**.*/
-    std::vector<std::vector<ChannelIdx>> channelsMask;
+    std::vector<std::unordered_set<ChannelIdx>> channelsMask;
     /** Reprogramming mode applied to all us4OEMs.
      * See Us4OEMSettings::ReprogrammingMode docs for more information. */
     ReprogrammingMode reprogrammingMode;

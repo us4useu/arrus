@@ -3,7 +3,9 @@
 
 #include <utility>
 
+#include "arrus/common/utils.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+
 #include "arrus/core/api/framework/NdArray.h"
 #include "arrus/core/devices/us4r/validators/ProbeTxRxValidator.h"
 
@@ -18,8 +20,8 @@ public:
      * Probe <-> adapter (and adapter to probe) mapping converter.
      */
     ProbeToAdapterMappingConverter(const DeviceId &probeTxId, const DeviceId &probeRxId, ProbeSettings probeTx,
-                                   ProbeSettings probeRx, std::vector<ChannelIdx> txProbeMask,
-                                   std::vector<ChannelIdx> rxProbeMask, const ChannelIdx adapterNChannels)
+                                   ProbeSettings probeRx, std::unordered_set<ChannelIdx> txProbeMask,
+                                   std::unordered_set<ChannelIdx> rxProbeMask, const ChannelIdx adapterNChannels)
         : probeTxId(probeTxId), probeRxId(probeRxId), probeTx(std::move(probeTx)), probeRx(std::move(probeRx)),
           adapterNChannels(adapterNChannels) {
         std::copy(std::begin(txProbeMask), std::end(txProbeMask),
@@ -150,11 +152,13 @@ public:
                 probe2AdapterMap[std::get<0>(posCh)] = i++;
             }
             // probe aperture rx number -> adapter aperture rx number -> physical channel
+            // NOTE: the below nChannels will not be larger than the number of elements in the probe, and the reason
+            // for that is that we are not able to set the aperture larger than the one determined by the probe.
             auto nChannels = adapterFCM->getNumberOfLogicalChannels();
             for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
                 if (pch >= paddingLeft && pch < (nChannels - paddingRight)) {
                     auto address =
-                        adapterFCM->getLogical(frameNumber, probe2AdapterMap[pch - paddingLeft] + paddingLeft);
+                        adapterFCM->getLogical(frameNumber, probe2AdapterMap.at(pch - paddingLeft) + paddingLeft);
                     auto us4oem = address.getUs4oem();
                     auto physicalFrame = address.getFrame();
                     auto physicalChannel = address.getChannel();

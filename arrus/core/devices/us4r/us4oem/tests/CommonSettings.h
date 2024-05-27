@@ -1,8 +1,10 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H
 
-#include "arrus/core/common/collections.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+#include "arrus/core/api/ops/us4r/constraints/TxRxSequenceLimits.h"
+#include "arrus/core/common/collections.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMDescriptor.h"
 
 using namespace arrus;
 using namespace arrus::devices;

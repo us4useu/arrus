@@ -24,13 +24,13 @@ using namespace ::arrus::devices::us4r;
 
 Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
                    ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
-                   const RxSettings &rxSettings, std::vector<std::vector<ChannelIdx>> channelsMask,
+                   const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
                    bool hasIOBitstreamAddressing, const IOSettings &ioSettings)
     : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
-        channelsMask = std::vector{this->probeSettings.size(), std::vector<ChannelIdx>{}};
+        channelsMask = std::vector{this->probeSettings.size(), std::unordered_set<ChannelIdx>{}};
     }
     this->logger = getLoggerFactory()->getLogger();
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
@@ -400,12 +400,12 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         const auto &rxProbeMask = channelsMask.at(rxProbeId.getOrdinal());
         auto nAdapterChannels = probeAdapterSettings.getNumberOfChannels();
         // Find the correct probe TX, RX ordinal
-        probe2Adapter.emplace_back(ProbeToAdapterMappingConverter{
-            txProbeId, rxProbeId, txProbeSettings, rxProbeSettings, txProbeMask, rxProbeMask, nAdapterChannels});
+        probe2Adapter.emplace_back(
+            txProbeId, rxProbeId, txProbeSettings, rxProbeSettings, txProbeMask, rxProbeMask, nAdapterChannels);
         adapter2OEM.emplace_back(
-            AdapterToUs4OEMMappingConverter{probeAdapterSettings, noems, oemMappings, frameMetadataOEM,
-                // TODO assuming that all OEMs have the same number of RX channels
-                                            getMasterOEM()->getDescriptor().getNRxChannels()});
+            probeAdapterSettings, noems, oemMappings, frameMetadataOEM,
+            // NOTE assuming that all OEMs have the same number of RX channels
+            getMasterOEM()->getDescriptor().getNRxChannels());
     }
 
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
@@ -963,7 +963,13 @@ std::optional<Ordinal> Us4RImpl::getFrameMetadataOEM(const IOSettings &settings)
         }
     }
 }
-std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) { return channelsMask.at(probeNumber); }
+
+std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) {
+    const auto &mask = channelsMask.at(probeNumber);
+    std::vector<unsigned short> vec(std::begin(mask), std::end(mask));
+    std::sort(std::begin(vec), std::end(vec));
+    return vec;
+}
 
 int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
 

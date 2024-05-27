@@ -347,8 +347,8 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
 }
 
 template<typename T>
-std::vector<std::vector<T>> readChannelsMask(const proto::Us4RSettings &us4r) {
-    std::vector<std::vector<T>> result;
+std::vector<std::unordered_set<T>> readChannelsMask(const proto::Us4RSettings &us4r) {
+    std::vector<std::unordered_set<T>> result;
     for (const auto &mask: us4r.channels_mask()) {
         auto &channels = mask.channels();
         // validate
@@ -358,9 +358,9 @@ std::vector<std::vector<T>> readChannelsMask(const proto::Us4RSettings &us4r) {
                                                    "(found: '{}')",
                                                    channel));
         }
-        std::vector<T> probeMask;
+        std::unordered_set<T> probeMask;
         for (auto channel: channels) {
-            probeMask.push_back(static_cast<T>(channel));
+            probeMask.insert(static_cast<T>(channel));
         }
         result.emplace_back(std::move(probeMask));
     }
@@ -441,7 +441,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
     RxSettings rxSettings = readRxSettings(us4r.rx_settings());
 
-    std::vector<std::vector<ChannelIdx>> channelsMask = readChannelsMask<ChannelIdx>(us4r);
+    std::vector<std::unordered_set<ChannelIdx>> channelsMask = readChannelsMask<ChannelIdx>(us4r);
     std::vector<std::vector<uint8>> us4oemChannelsMask;
     auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
     std::vector<Bitstream> bitstreams = readBitstreams(us4r.bitstreams());

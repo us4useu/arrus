@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_PROBE_PROBEIMPL_H
 #define ARRUS_CORE_DEVICES_PROBE_PROBEIMPL_H
 
+#include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
 
 namespace arrus::devices {

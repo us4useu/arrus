@@ -13,7 +13,8 @@ Release notes
     - The arrus::devices::Us4RSettings::Us4RSettings constructor now takes a different set of parameters #ARRUS-197:
 
         - the us4oemChannelsMask is no longer available,
-        - the channelsMask now takes a list of lists; each list represents a channel mask for a given probe.
+        - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
+
 
 
 0.10.x

@@ -33,7 +33,7 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     std::vector<Ordinal> expectedAdapterToUs4RMapping = {1, 0};
     EXPECT_EQ(us4rSettings.getAdapterToUs4RModuleNumber(), expectedAdapterToUs4RMapping);
 
-    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({}));
+    EXPECT_EQ(us4rSettings.getChannelsMask(), std::unordered_set<ChannelIdx>({}));
 
     // Probe settings
     // Probe model
@@ -105,7 +105,7 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
-    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({0, 15, 30}));
+    EXPECT_EQ(us4rSettings.getChannelsMask(), std::unordered_set<ChannelIdx>({0, 15, 30}));
     // Probe settings
     // Probe model
     auto const &probeSettings = us4rSettings.getProbeSettings();

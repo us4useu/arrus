@@ -3,9 +3,11 @@
 
 #include <utility>
 
+#include "arrus/core/common/validation.h"
 #include "arrus/core/devices/TxRxParameters.h"
 
 namespace arrus::devices {
+
 class ProbeTxRxValidator : public Validator<us4r::TxRxParametersSequence> {
 public:
     ProbeTxRxValidator(const std::string &componentName, ProbeModel probeTx, ProbeModel probeRx)
@@ -27,10 +29,10 @@ public:
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), nChannelsRx, firingStr);
         }
     }
-
 private:
     ProbeModel probeTx, probeRx;
 };
+
 }// namespace arrus::devices
 
 #endif// ARRUS_CORE_DEVICES_US4R_VALIDATORS_PROBETXRXVALIDATOR_H

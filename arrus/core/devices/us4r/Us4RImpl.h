@@ -34,7 +34,7 @@ public:
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
-             const RxSettings &rxSettings, std::vector<std::vector<unsigned short>> channelsMask,
+             const RxSettings &rxSettings, std::vector<std::unordered_set<unsigned short>> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
              bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings);
 
@@ -188,7 +188,7 @@ private:
     std::vector<Probe::Handle> probes;
     std::vector<ProbeSettings> probeSettings;
     ProbeAdapterSettings probeAdapterSettings;
-    std::vector<std::vector<ChannelIdx>> channelsMask;
+    std::vector<std::unordered_set<ChannelIdx>> channelsMask;
     bool stopOnOverflow{true};
     // Buffers.
     std::vector<Us4OEMBuffer> oemBuffers;
