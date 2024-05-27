@@ -277,15 +277,59 @@ TEST_F(P2AConverterTest, ConvertsNonStandardMapping) {
     EXPECT_EQ(actualTxRx.getTxDelays(), expectedDelays);
     // FCM:
     auto outputFCM = converter.convert(inputFCM);
-    std::cout << "OUTPUT: " << std::endl;
-    std::cout << outputFCM->toString() << std::endl;
 
-    auto expectedFCM = createFCM(1, mapping, aperture);
+    auto newMapping = ::arrus::rank(mapping);
+    auto newMapping2 = arrus::castTo<ChannelIdx>(begin(newMapping), end(newMapping));
+    auto expectedFCM = createFCM(1, newMapping2, aperture);
 
-    std::cout << "EXPECTED: " << std::endl;
-    std::cout << expectedFCM->toString() << std::endl;
     // The output FCM should be the same as the input one (we are using the full RX aperture, pin mapping is one to one).
     expectEqual(expectedFCM, outputFCM);
+}
+
+TEST_F(P2AConverterTest, ProperlyHandlesSingleElementAperture) {
+    // Given
+    // Channel mapping.
+    auto probeNElements = probeModel.getNumberOfElements().get(0);
+    std::vector<ChannelIdx> mapping = ::arrus::getRange<ChannelIdx>(0, probeNElements);
+    // Input sequence.
+    BitMask aperture(probeModel.getNumberOfElements().get(0), false);
+    aperture.at(42) = true;
+    std::vector<float> delays(probeModel.getNumberOfElements().get(0), 0.0f);
+    delays.at(42) = 1e-6f;
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = aperture,
+                x.rxAperture = aperture,
+                x.txDelays = delays
+            )
+        )
+        .get()
+    };
+    auto adapterNChannels = 2*probeNElements;
+    // FCM
+    auto inputFCM = createFCM(1, 1);
+
+    auto converter = createConverter(mapping, {}, adapterNChannels);
+    // Expect
+
+    // Sequence:
+    auto outputSequence = convert(converter, seq);
+    EXPECT_EQ(outputSequence.size(), 1);
+
+    auto actualTxRx = outputSequence.at(0);
+    BitMask expectedAperture(adapterNChannels, false);
+    expectedAperture.at(42) = true;
+    std::vector<float> expectedDelays(adapterNChannels, 0.0f);
+    expectedDelays.at(42) = 1.0e-6f;
+    EXPECT_EQ(actualTxRx.getTxAperture(), expectedAperture);
+    EXPECT_EQ(actualTxRx.getRxAperture(), expectedAperture);
+    EXPECT_EQ(actualTxRx.getTxDelays(), expectedDelays);
+
+    // FCM:
+    auto outputFCM = converter.convert(inputFCM);
+    expectEqual(inputFCM, outputFCM);
 }
 
 }
