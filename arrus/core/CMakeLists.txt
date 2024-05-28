@@ -195,6 +195,8 @@ set(SRC_FILES
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     devices/us4r/us4oem/Us4OEMDescriptorFactory.h
+        devices/us4r/Us4RImplTEst.cpp
+        devices/us4r/Us4RImplTest.cpp
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
@@ -274,16 +276,26 @@ if (ARRUS_RUN_TESTS)
         ops/us4r/DigitalDownConversion.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
     create_core_test(devices/us4r/us4oem/Us4OEMTxRxValidatorTest.cpp "devices/TxRxParameters.cpp;devices/DeviceId.cpp;common/logging.cpp")
-     create_core_test(devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilderTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilderTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
 
-    set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
-        devices/us4r/common.cpp
-        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp
-        ops/us4r/DigitalDownConversion.cpp)
-     create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
-     create_core_test(devices/us4r/mapping/ProbeToAdapterMappingConverterTest.cpp
+    set(ADAPTER_IMPL_TEST_DEPS
+            devices/TxRxParameters.cpp
+            devices/DeviceId.cpp
+            devices/us4r/FrameChannelMappingImpl.cpp
+            devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+    )
+
+    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/mapping/ProbeToAdapterMappingConverterTest.cpp
          "devices/us4r/mapping/ProbeToAdapterMappingConverter.h;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
-    # create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/mapping/AdapterToUs4OEMMappingConverterTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
+#    set(US4R_IMPL_TEST_DEPS
+#            devices/TxRxParameters.cpp
+#            devices/DeviceId.cpp
+#            devices/us4r/FrameChannelMappingImpl.cpp
+#            devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+#    )
+#    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}")
     # create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
@@ -312,7 +324,6 @@ while(${ARRUS_DEFAULT_DICT_CURRENT_POS} LESS_EQUAL ${ARRUS_DEFAULT_DICT_LEN})
 endwhile()
 # Splitting done
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cfg/default.h.in ${CMAKE_CURRENT_BINARY_DIR}/cfg/default.h)
-
 
 ################################################################################
 # Installation
