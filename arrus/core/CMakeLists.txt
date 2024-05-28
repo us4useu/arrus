@@ -195,8 +195,6 @@ set(SRC_FILES
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     devices/us4r/us4oem/Us4OEMDescriptorFactory.h
-        devices/us4r/Us4RImplTEst.cpp
-        devices/us4r/Us4RImplTest.cpp
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
@@ -279,10 +277,11 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilderTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
 
     set(ADAPTER_IMPL_TEST_DEPS
-            devices/TxRxParameters.cpp
-            devices/DeviceId.cpp
-            devices/us4r/FrameChannelMappingImpl.cpp
-            devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+        devices/TxRxParameters.cpp
+        devices/DeviceId.cpp
+        devices/us4r/FrameChannelMappingImpl.cpp
+        devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+        common/logging.cpp
     )
 
     create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)

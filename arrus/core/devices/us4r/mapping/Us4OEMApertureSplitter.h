@@ -8,15 +8,18 @@
 
 #include "arrus/core/common/aperture.h"
 #include "arrus/core/common/collections.h"
+#include "arrus/common/utils.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMDescriptor.h"
 
 #include "arrus/core/external/eigen/Tensor.h"
+#include "arrus/core/devices/TxRxParameters.h"
 
 namespace arrus::devices {
 
 class Us4OEMApertureSplitter {
 public:
-    using SequenceByOEM = std::vector<us4r::TxRxParametersSequence>;
-    using SequenceBuilderByOEM = std::vector<us4r::TxRxParametersSequenceBuilder>;
+    using SequenceByOEM = std::vector<::arrus::devices::us4r::TxRxParametersSequence>;
+    using SequenceBuilderByOEM = std::vector<::arrus::devices::us4r::TxRxParametersSequenceBuilder>;
     using DelayProfileByOEM = std::unordered_map<Ordinal, std::vector<framework::NdArray>>;
 
     struct Result {
@@ -165,7 +168,7 @@ public:
                     for(size_t subap = 0; subap < rxSubapertures.size(); ++subap) {
                         auto &subaperture = rxSubapertures.at(subap);
                         auto rxMask = maskedChannelsRx.at(subap);
-                        us4r::TxRxParametersBuilder builder(op);
+                        ::arrus::devices::us4r::TxRxParametersBuilder builder(op);
                         builder.setRxAperture(subaperture);
                         builder.setMaskedChannelsRx(rxMask);
                         sequenceBuilders.at(oem).addEntry(builder.build());
@@ -201,7 +204,7 @@ public:
                     // create rxnop copy from the last element of this sequence
                     // note, that even if the last element is rx nop it should be added
                     // in this method in some of the code above.
-                    b.resize(maxSize, us4r::TxRxParameters::createRxNOPCopy(b.getCurrent().getLastOp()));
+                    b.resize(maxSize, ::arrus::devices::us4r::TxRxParameters::createRxNOPCopy(b.getCurrent().getLastOp()));
                 }
             }
             // NOTE: for us4OEM that acquires metadata, even if it is RX nop, the results of this
@@ -249,7 +252,7 @@ public:
     }
 
 private:
-    static ChannelIdx getMaximumRxAperture(const std::vector<us4r::TxRxParametersSequence> &seqs) {
+    static ChannelIdx getMaximumRxAperture(const std::vector<::arrus::devices::us4r::TxRxParametersSequence> &seqs) {
         ChannelIdx maxElementSize = 0;
         for (const auto &seq : seqs) {
             for (const auto &op : seq) {
@@ -262,7 +265,7 @@ private:
         return maxElementSize;
     }
 
-    static FrameChannelMapping::FrameNumber getNumberOfFrames(const std::vector<us4r::TxRxParametersSequence> &seqs) {
+    static FrameChannelMapping::FrameNumber getNumberOfFrames(const std::vector<::arrus::devices::us4r::TxRxParametersSequence> &seqs) {
         FrameChannelMapping::FrameNumber numberOfFrames = 0;
         auto numberOfOps = seqs[0].size();
         for (size_t opIdx = 0; opIdx < numberOfOps; ++opIdx) {
