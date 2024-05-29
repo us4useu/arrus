@@ -980,7 +980,7 @@ int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
  *
  * @return rx delay [s]
  */
-float Us4RImpl::getRxDelay(const TxRxSequence &sequence) const {
+float Us4RImpl::getRxDelay(const TxRxSequence &sequence) {
     std::vector<float> opDelays;
     for(const auto &op: sequence.getOps()) {
         std::vector<float> delays;

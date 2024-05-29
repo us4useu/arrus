@@ -18,13 +18,6 @@ using namespace arrus::devices;
 using namespace arrus::devices::us4r;
 using namespace arrus::ops::us4r;
 using ::arrus::framework::NdArray;
-//using ::testing::_;
-//using ::testing::AllOf;
-//using ::testing::ByMove;
-//using ::testing::ElementsAre;
-//using ::testing::Eq;
-//using ::testing::Property;
-//using ::testing::Return;
 
 class A2OConverterTest : public ::testing::Test {
 protected:

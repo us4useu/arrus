@@ -30,6 +30,8 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
+    static float getRxDelay(const ops::us4r::TxRxSequence &sequence);
+
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
@@ -173,7 +175,6 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
-    float getRxDelay(const ops::us4r::TxRxSequence &sequence) const;
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;

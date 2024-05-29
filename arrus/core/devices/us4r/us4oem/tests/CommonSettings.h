@@ -99,6 +99,12 @@ struct TestTxRxParams {
             txAperture, txDelays, pulse, rxAperture, sampleRange, decimationFactor, pri,
             rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx);
     }
+
+    [[nodiscard]] arrus::ops::us4r::TxRx getTxRx() const {
+        arrus:ops::us4r::Tx tx{txAperture, txDelays, pulse, DeviceId(DeviceType::Probe, 0)};
+        arrus::ops::us4r::Rx rx{rxAperture, sampleRange.asPair(), decimationFactor, rxPadding.asPair(), DeviceId(DeviceType::Probe, 0)};
+        return arrus::ops::us4r::TxRx{tx, rx, pri};
+    };
 };
 
 struct TestTxRxParamsSequence {

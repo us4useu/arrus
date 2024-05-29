@@ -288,14 +288,17 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/mapping/ProbeToAdapterMappingConverterTest.cpp
          "devices/us4r/mapping/ProbeToAdapterMappingConverter.h;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     create_core_test(devices/us4r/mapping/AdapterToUs4OEMMappingConverterTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
-#    set(US4R_IMPL_TEST_DEPS
-#            devices/TxRxParameters.cpp
-#            devices/DeviceId.cpp
-#            devices/us4r/FrameChannelMappingImpl.cpp
-#            devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
-#    )
-#    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}")
-    # create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
+
+    set(US4R_IMPL_TEST_DEPS
+        devices/TxRxParameters.cpp
+        devices/DeviceId.cpp
+        devices/us4r/FrameChannelMappingImpl.cpp
+        common/logging.cpp
+        devices/us4r/Us4RImpl.cpp
+        ops/us4r/Scheme.cpp
+        ops/us4r/DigitalDownConversion.cpp
+    )
+    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}")
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
     create_core_test(io/settingsTest.cpp
