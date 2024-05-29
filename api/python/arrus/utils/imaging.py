@@ -100,7 +100,10 @@ class GpuConstMemoryPool:
             array_len = input_array.shape[0]
             a, b = self.currently_reserved, self.currently_reserved + array_len
             if b > self.total_size:
-                raise ValueError(f"Exceeded maximum const memory for {self.variable_name}")
+                raise ValueError(f"Exceeded maximum const memory "
+                                 f"for {self.variable_name} "
+                                 f"currently reserved: {a}, to be reserved: {b}, "
+                                 f"total size: {self.total_size} ")
             self.reference_array[a:b] = input_array
             # Update const array TODO consider updating only the modified part
             self.const_array.set(self.reference_array)
@@ -1820,7 +1823,266 @@ class Transpose(Operation):
 
 
 class ScanConversion(Operation):
+    """
+    Scan conversion (interpolation to target mesh).
 
+    Currently linear interpolation is used by default, values outside
+    the input mesh will be set to 0.0.
+
+    Currently the op is (mostly) implemented for CPU only.
+
+    Currently, the op is available only for convex probes.
+    """
+
+    def __init__(self, x_grid, z_grid):
+        """
+        Scan converter constructor.
+
+        :param x_grid: a vector of grid points along OX axis [m]
+        :param z_grid: a vector of grid points along OZ axis [m]
+        """
+        self.dst_points = None
+        self.dst_shape = None
+        self.x_grid = x_grid.reshape(1, -1)
+        self.z_grid = z_grid.reshape(1, -1)
+        self.is_gpu = False
+        self.num_pkg = None
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        if num_pkg != np:
+            self.is_gpu = True
+        self.num_pkg = num_pkg
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        probe = const_metadata.context.device.probe.model
+
+        new_signal_description = dataclasses.replace(
+            const_metadata.data_description,
+            spacing=arrus.metadata.Grid(
+                coordinates=(self.z_grid, self.x_grid)
+            )
+        )
+        const_metadata = const_metadata.copy(
+            data_desc=new_signal_description
+        )
+        if probe.is_convex_array():
+            self.process = self._process_convex
+            return self._prepare_convex(const_metadata)
+        else:
+            # linear array or phased array
+            seq = const_metadata.context.sequence
+            # Determine scanning type based on the sequence of parameters.
+            tx_centers = seq.tx_aperture_center_element
+            if tx_centers is None:
+                tx_centers = seq.tx_aperture_center
+            tx_centers = set(np.atleast_1d(tx_centers))
+            tx_angles = set(np.atleast_1d(seq.angles))
+            # Phased array scanning:
+            # - single TX/RX aperture position
+            # - multiple different angles
+            if len(tx_centers) == 1 and len(tx_angles) > 1:
+                self.process = self._process_phased_array
+                return self._prepare_phased_array(const_metadata)
+            # Linear array scanning:
+            # - single transmit angle (equal 0)
+            # - multiple different aperture positions
+            elif len(tx_centers) > 1 and len(tx_angles) == 1:
+                self.process = self._process_linear_array
+                return self._prepare_linear_array(const_metadata)
+            else:
+                raise ValueError("The given combination of TX/RX parameters is "
+                                 "not supported by ScanConversion")
+
+    def _prepare_linear_array(self, const_metadata: arrus.metadata.ConstMetadata):
+        # Determine interpolation function.
+        if self.num_pkg == np:
+            raise ValueError("Currently scan conversion for linear array "
+                             "probe is implemented only for GPU devices.")
+        import cupy as cp
+        import cupyx.scipy.ndimage
+        self.interp_function = cupyx.scipy.ndimage.map_coordinates
+        self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+        if not isinstance(seq, arrus.ops.imaging.LinSequence):
+            raise ValueError("Scan conversion works only with LinSequence.")
+        medium = const_metadata.context.medium
+        probe = const_metadata.context.device.probe.model
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
+        tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
+        n_elements = probe.n_elements
+        if n_elements % 2 != 0:
+            raise ValueError("Even number of probe elements is required.")
+        pitch = probe.pitch
+        data_desc = const_metadata.data_description
+        c = _get_speed_of_sound(const_metadata.context)
+        tx_center_diff = np.diff(tx_aperture_center_element)
+        # Check if tx aperture centers are evenly spaced.
+        if not np.allclose(tx_center_diff, [tx_center_diff[0]] * len(tx_center_diff)):
+            raise ValueError("Transmits should be done by consecutive "
+                             "center elements (got tx center elements: "
+                             f"{tx_aperture_center_element}")
+        tx_center_diff = tx_center_diff[0]
+        # Determine input grid.
+        input_x_grid_diff = tx_center_diff * pitch
+        input_x_grid_origin = (tx_aperture_center_element[0] - (n_elements - 1) / 2) * pitch
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = data_desc.sampling_frequency
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
+        input_z_grid_origin = start_sample / acq_fs * c / 2
+        input_z_grid_diff = c / (fs * 2)
+        # Map x_grid and z_grid to the RF frame coordinates.
+        interp_x_grid = (self.x_grid - input_x_grid_origin) / input_x_grid_diff
+        interp_z_grid = (self.z_grid - input_z_grid_origin) / input_z_grid_diff
+        self._interp_mesh = cp.asarray(np.meshgrid(interp_z_grid, interp_x_grid, indexing="ij"))
+
+        self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        self.buffer = cp.zeros(self.dst_shape, dtype=cp.float32)
+        return const_metadata.copy(input_shape=self.dst_shape)
+
+    def _process_linear_array(self, data):
+        for i in range(self.n_frames):
+            self.buffer[i] = self.interp_function(data[i], self._interp_mesh, order=1)
+        return self.buffer
+
+    def _prepare_convex(self, const_metadata: arrus.metadata.ConstMetadata):
+        if self.num_pkg is np:
+            self.interpolator = scipy.ndimage.map_coordinates
+        else:
+            import cupyx.scipy.ndimage
+            self.interpolator = cupyx.scipy.ndimage.map_coordinates
+        probe = const_metadata.context.device.probe.model
+        medium = const_metadata.context.medium
+        data_desc = const_metadata.data_description
+
+        if not self.num_pkg == np:
+            import cupy as cp
+            self.x_grid = self.num_pkg.asarray(self.x_grid).astype(cp.float32)
+            self.z_grid = self.num_pkg.asarray(self.z_grid).astype(cp.float32)
+
+        self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = data_desc.sampling_frequency
+
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
+
+        tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
+            seq.tx_aperture_center_element, probe)
+
+        z_grid_moved = self.z_grid.T + probe.curvature_radius \
+                       - self.num_pkg.max(probe.element_pos_z)
+
+        self.radGridIn = (
+                (start_sample / acq_fs + self.num_pkg.arange(0, n_samples) / fs)
+                * c / 2)
+
+        self.azimuthGridIn = tx_ap_cent_ang
+        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, z_grid_moved)
+        radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
+                      - probe.curvature_radius)
+
+        self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+
+        dst_points = self.num_pkg.dstack((radGridOut, azimuthGridOut))
+        dst_points = self.num_pkg.transpose(dst_points, axes=(2, 0, 1))
+
+        def get_equalized_diff(values, param_name):
+            diffs = np.diff(values)
+            # Check if all values are evenly spaced
+            if not np.allclose(diffs, [diffs[0]] * len(diffs)):
+                raise ValueError(f"{param_name} should be evenly spaced, "
+                                 f"got {values}")
+            return diffs[0]
+
+        dst_points[0] -= self.radGridIn[0]
+        dst_points[0] /= get_equalized_diff(self.radGridIn,
+                                            "Input radial distance")
+        dst_points[1] -= self.azimuthGridIn[0]
+        dst_points[1] /= get_equalized_diff(self.azimuthGridIn,
+                                            "Azimuth angle")
+        self.dst_points = self.num_pkg.asarray(dst_points,
+                                               dtype=self.num_pkg.float32)
+        self.output_buffer = self.num_pkg.zeros(self.dst_shape, dtype=np.float32)
+        return const_metadata.copy(input_shape=self.dst_shape)
+
+    def _process_convex(self, data):
+        data[np.isnan(data)] = 0.0
+        # TODO do batch-wise processing here
+        for i in range(self.n_frames):
+            self.output_buffer[i] = self.interpolator(data[i],
+                                                      self.dst_points,
+                                                      order=1)
+        return self.output_buffer
+
+    def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
+        probe = const_metadata.context.device.probe.model
+        data_desc = const_metadata.data_description
+
+        self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+        fs = const_metadata.context.device.sampling_frequency
+        acq_fs = fs / seq.downsampling_factor
+        fs = data_desc.sampling_frequency
+        c = _get_speed_of_sound(const_metadata.context)
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+
+        start_sample, _ = rx_sample_range
+        start_time = start_sample / acq_fs
+        tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
+        tx_ap_cent_elem = np.array(tx_rx_params["tx_ap_cent"])[0]
+        tx_ap_cent_ang, tx_ap_cent_x, tx_ap_cent_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
+            tx_ap_cent_elem, probe)
+
+        # There is a single position of TX aperture.
+        tx_ap_cent_x = tx_ap_cent_x.squeeze().item()
+        tx_ap_cent_z = tx_ap_cent_z.squeeze().item()
+        tx_ap_cent_ang = tx_ap_cent_ang.squeeze().item()
+
+        self.radGridIn = (start_time + np.arange(0, n_samples) / fs) * c / 2
+        self.azimuthGridIn = seq.angles + tx_ap_cent_ang
+        azimuthGridOut = np.arctan2((self.x_grid - tx_ap_cent_x), (self.z_grid.T - tx_ap_cent_z))
+        radGridOut = np.sqrt((self.x_grid - tx_ap_cent_x) ** 2 + (self.z_grid.T - tx_ap_cent_z) ** 2)
+        dst_points = np.dstack((radGridOut, azimuthGridOut))
+        w, h, d = dst_points.shape
+        self.dst_points = dst_points.reshape((w * h, d))
+        self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        self.output_buffer = np.zeros(self.dst_shape, dtype=np.float32)
+        return const_metadata.copy(input_shape=self.dst_shape)
+
+    def _process_phased_array(self, data):
+        if self.is_gpu:
+            data = data.get()
+        data[np.isnan(data)] = 0.0
+        for i in range(self.n_frames):
+            self.interpolator = scipy.interpolate.RegularGridInterpolator(
+                (self.radGridIn, self.azimuthGridIn), data[i], method="linear",
+                bounds_error=False, fill_value=0)
+            result = self.interpolator(self.dst_points).reshape(self.dst_shape[1:])
+            self.output_buffer[i] = result
+        return self.num_pkg.asarray(self.output_buffer).astype(np.float32)
+
+
+class ScanConversionV2(Operation):
+    """
+    Scan Conversion v2 operator implementation.
+    Compared to ScanConversion op, this operator allows to scan convert Tx/Rx sequenes
+    with the mixed TX angle and aperture centers.
+    Still, please consider this implementation as experimental.
+    """
     def __init__(self, x_grid, z_grid):
         super().__init__()
         self.x_grid = x_grid
@@ -1831,10 +2093,13 @@ class ScanConversion(Operation):
     def _get_speed_of_sound(self, context):
         seq = context.sequence
         medium = context.medium
-        if seq.ops[0].tx.speed_of_sound is not None:
-            return seq.ops[0].tx.speed_of_sound
+        if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
+            seq_c = seq.speed_of_sound
+        elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
+            seq_c = seq.ops[0].tx.speed_of_sound
         else:
-            return medium.speed_of_sound
+            raise ValueError(f"Unsupported sequence type: {type(seq)}")
+        return seq_c if seq_c is not None else medium.speed_of_sound
 
     def _get_polar_coords(self, cart, center):
         # cart: (2, nz, nx), 2: z, x
@@ -1887,15 +2152,16 @@ class ScanConversion(Operation):
         self.interp_function = cupyx.scipy.ndimage.map_coordinates
         self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
         seq = const_metadata.context.sequence
-        if not isinstance(seq, arrus.ops.us4r.TxRxSequence):
-            # TODO convert to TxRxSequence
-            raise ValueError("Scan conversion works only with TxRxSequences.")
-        medium = const_metadata.context.medium
+        c = self._get_speed_of_sound(const_metadata.context)
         probe = get_unique_probe_model(const_metadata)
+        if not isinstance(seq, arrus.ops.us4r.TxRxSequence):
+            seq = arrus.kernels.simple_tx_rx_sequence.convert_to_tx_rx_sequence(
+                c=c, op=seq, probe_model=probe, fs=const_metadata.context.device.data_sampling_frequency
+            )
+        medium = const_metadata.context.medium
         n_elements = probe.n_elements
         pitch = probe.pitch
         data_desc = const_metadata.data_description
-        c = self._get_speed_of_sound(const_metadata.context)
         nz, nx = len(self.z_grid), len(self.x_grid)
         cartesian_grid = np.asarray(np.meshgrid(self.z_grid, self.x_grid,
                                                 indexing="ij"))

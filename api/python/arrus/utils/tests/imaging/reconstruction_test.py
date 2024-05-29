@@ -79,7 +79,8 @@ class ReconstructionTestCase(ArrusImagingTestCase):
             )
         device = self.get_ultrasound_device(
             probe=probe,
-            sampling_frequency=65e6
+            sampling_frequency=65e6,
+            data_sampling_frequency=65e6
             )
         return device
 

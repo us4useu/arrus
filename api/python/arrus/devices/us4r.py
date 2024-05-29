@@ -322,7 +322,8 @@ class Us4R(Device, Ultrasound):
 
         return Us4RDTO(
             probe=probes,
-            sampling_frequency=self.sampling_frequency
+            sampling_frequency=self.sampling_frequency,
+            data_sampling_frequency=self.current_sampling_frequency
         )
 
     def get_data_description(self, upload_result, sequence, array_id):
@@ -431,8 +432,16 @@ class Us4R(Device, Ultrasound):
 # ------------------------------------------ LEGACY MOCK
 @dataclasses.dataclass(frozen=True)
 class Us4RDTO:
+    """
+    Us4R Data Transfer Object.
+
+    :param probe: a probe/collections of probes connected to the Us4R device
+    :param sampling_frequency: nominal sampling frequency of the device
+    :param data_sampling_frequency: the actual data sampling frequency
+    """
     probe: Union[ProbeDTO, Sequence[ProbeDTO]]
     sampling_frequency: float
+    data_sampling_frequency: float
     # TODO(0.12.0) make id obligatory (will break previous const metadata)
     device_id: DeviceId = DeviceId(DEVICE_TYPE, 0)
 

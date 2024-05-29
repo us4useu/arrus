@@ -136,6 +136,11 @@ class Session(AbstractSession):
         )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
+        # Update the DTO with the new data sampling frequency (determined by the scheme).
+        us_device_dto = dataclasses.replace(
+            us_device_dto,
+            data_sampling_frequency=us_device.current_sampling_frequency
+        )
 
         # Output buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
