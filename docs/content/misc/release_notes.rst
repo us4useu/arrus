@@ -2,9 +2,9 @@ Release notes
 =============
 
 0.11.x
+-----
 
 0.11.0
-------
 
 - core (C++):
 
@@ -15,6 +15,10 @@ Release notes
         - the us4oemChannelsMask is no longer available,
         - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
 
+- MATLAB API:
+
+    - Fixed the RX apodization #ARRUS-288.
+    - Exposed SYNC/ASYNC modes and switchable multi-sequences; Added coherent filtering and compounding flags; Implemented cineloop buffers; Improved processing speed; Removed "nElements" option for tx/rx aperture size; #ARRUS-195;
 
 
 0.10.x
@@ -32,7 +36,7 @@ Release notes
 - core (C++):
 
     - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
-    - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined uffer overflow interrupts handling, #US4R-456.
+    - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined buffer overflow interrupts handling, #US4R-456.
     - Removed HV enable on HVPS initialization #US4R-455.
 
 

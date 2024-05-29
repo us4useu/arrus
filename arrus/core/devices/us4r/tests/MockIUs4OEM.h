@@ -225,7 +225,7 @@ public:
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
     MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end, bool syncMode, uint32_t endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
-    MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
+    MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
     MOCK_METHOD(void, ClearCallbacks, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (size_t firing), (override));
