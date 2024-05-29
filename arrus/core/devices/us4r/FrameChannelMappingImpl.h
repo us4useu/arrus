@@ -75,6 +75,8 @@ public:
 
     ~FrameChannelMappingImpl() override;
 
+    std::string toString() const override;
+
 private:
     friend class FrameChannelMappingBuilder;
     // logical (frame, number) -> physical (us4oem, frame, number)

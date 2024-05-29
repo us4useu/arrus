@@ -371,8 +371,7 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
         nx_grid_samples = n_scanlines
         nz_grid_samples = 8
         x_grid, z_grid = self.get_grid_data(
-                                   nx_grid_samples,
-                                   nz_grid_samples)
+            nx_grid_samples, nz_grid_samples)
         data = np.arange(n_scanlines)
         data = np.tile(data, (n_samples, 1))
 
@@ -380,7 +379,6 @@ class ScanConversionLinearArrayTestCase(AbstractScanConversionTestCase):
         result = self.run_op(data=data,
                              x_grid=x_grid,
                              z_grid=z_grid)
-
         # Expect
         expected = np.arange(n_scanlines)
         expected = np.tile(expected, (nz_grid_samples, 1))
@@ -569,7 +567,8 @@ class ScanConversionConvexArrayTestCase(AbstractScanConversionTestCase):
                 pitch=0.2e-3,
                 curvature_radius=0.1
             ),
-            sampling_frequency=65e6
+            sampling_frequency=65e6,
+            data_sampling_frequency=65e6
         )
         self.context = self.get_default_context(
             sequence=sequence,

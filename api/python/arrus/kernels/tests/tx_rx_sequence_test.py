@@ -22,6 +22,10 @@ class ProbeMock:
 class DeviceMock:
     probe: ProbeMock
     sampling_frequency: float = 65e6
+    data_sampling_freuency: float = 65e6
+
+    def get_probe_by_id(self, id):
+        return self.probe
 
 
 @dataclasses.dataclass(frozen=True)

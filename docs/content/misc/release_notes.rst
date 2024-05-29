@@ -6,6 +6,15 @@ Release notes
 
 0.11.0
 
+- core (C++):
+
+    - The .prototxt field us4oem_channels_mask is no longer required #ARRUS-197.
+    - arrus::devices::Us4RSettings::getUs4OEMChannelsMask() is no longer available # ARRUS-197.
+    - The arrus::devices::Us4RSettings::Us4RSettings constructor now takes a different set of parameters #ARRUS-197:
+
+        - the us4oemChannelsMask is no longer available,
+        - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
+
 - MATLAB API:
 
     - Fixed the RX apodization #ARRUS-288.

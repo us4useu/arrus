@@ -15,10 +15,16 @@ class Ultrasound(ABC):
     """
 
     @abstractmethod
-    def set_kernel_context(self, context):
+    def set_tgc_and_context(self, sequences, medium):
         """
         This method is intended to provide any session specific data to
         the device, on the stage of sequence upload.
+
+        # TODO(0.11.0) Deprecated: we should avoid storing linear tgc variables
+        ( speed of sound, number of samples) and instead keep the information
+        in the low-level software (ARRUS C++), simply the current TxRxSequences.
+        Setting TGC should also have a parameter "tgc_profile" which should
+        be variable that can be modified in real-time.
         """
         pass
 
@@ -30,7 +36,7 @@ class Ultrasound(ABC):
         pass
 
     @abstractmethod
-    def get_data_description(self, upload_result, sequence):
+    def get_data_description(self, upload_result, sequence, array_id):
         """
         DEPRECATED: This method will be removed after moving most of the
         session-related code to the ARRUS core.

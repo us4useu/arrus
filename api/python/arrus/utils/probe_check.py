@@ -660,6 +660,7 @@ class ProbeHealthVerifier:
             tx_frequency: float,
             nrx: int=32,
             voltage: int=_VOLTAGE,
+            probe_nr: int = 0
     )-> Footprint:
         """
         Creates and returns Footprint object.
@@ -689,6 +690,8 @@ class ProbeHealthVerifier:
             nrx: int=32,
             voltage: int=_VOLTAGE,
             footprint: Footprint=None,
+            probe_nr: int = 0,
+            hpf_corner_frequency: float = None
     )-> ProbeHealthReport:
         """
         Checks probe elements by validating selected features
@@ -715,6 +718,9 @@ class ProbeHealthVerifier:
         :param voltage: voltage to be used in tx/rx scheme
         :param footprint: object of the Footprint class;
                           if given, footprint tx/rx scheme will be used
+        :param probe_nr: number of the probe to verify
+        :param hpf_corner_frequency: HPF corner frequency to apply (see Us4R documentation)
+
         :return: an instance of the ProbeHealthReport
         """
         rfs, metadata, masked_elements = self._acquire_rf_data(
@@ -724,6 +730,8 @@ class ProbeHealthVerifier:
             nrx=nrx,
             voltage=voltage,
             footprint=footprint,
+            probe_nr=probe_nr,
+            hpf_corner_frequency=hpf_corner_frequency
         )
         health_report = self._check_probe_data(
             rfs=rfs,
@@ -821,6 +829,8 @@ class ProbeHealthVerifier:
             nrx,
             voltage,
             footprint=None,
+            probe_nr: int = 0,
+            hpf_corner_frequency: float = None
     ):
         """
         Acquires rf data. If footprint is given the footprint sequence is used,
@@ -833,8 +843,10 @@ class ProbeHealthVerifier:
                 placement="/GPU:0"
             )
             us4r = sess.get_device("/Us4R:0")
-            n_elements = us4r.get_probe_model().n_elements
-            masked_elements = us4r.channels_mask
+            if hpf_corner_frequency is not None:
+                us4r.set_hpf_corner_frequency(hpf_corner_frequency)
+            n_elements = us4r.get_probe_model(probe_nr).n_elements
+            masked_elements = us4r.get_channels_mask(probe_nr)
             if footprint is None:
                 seq = LinSequence(
                     tx_aperture_center_element=np.arange(0, n_elements),
@@ -853,6 +865,8 @@ class ProbeHealthVerifier:
                     tgc_slope=0,
                     downsampling_factor=1,
                     speed_of_sound=1490,
+                    tx_placement=f"Probe:{probe_nr}",
+                    rx_placement=f"Probe:{probe_nr}",
                 )
             else:
                 seq = footprint.get_sequence()

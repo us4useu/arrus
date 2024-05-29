@@ -9,11 +9,13 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
+#include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 
 namespace {
 using namespace arrus;
 using namespace arrus::devices;
 using namespace arrus::ops::us4r;
+using namespace arrus::devices::us4r;
 using ::testing::_;
 using ::testing::Ge;
 using ::testing::FloatEq;
@@ -30,485 +32,162 @@ constexpr float MAX_TX_FREQUENCY = 65e6f;
 constexpr float MIN_TX_FREQUENCY = 1e6f;
 constexpr uint32_t TX_OFFSET = 123;
 
-struct TestTxRxParams {
-
-    TestTxRxParams() {
-        for(int i = 0; i < 32; ++i) {
-            rxAperture[i] = true;
-        }
-    }
-
-    BitMask txAperture = getNTimes(true, Us4OEMImpl::N_TX_CHANNELS);;
-    std::vector<float> txDelays = getNTimes(0.0f, Us4OEMImpl::N_TX_CHANNELS);
-    ops::us4r::Pulse pulse{2.0e6f, 2.5f, true};
-    BitMask rxAperture = getNTimes(false, Us4OEMImpl::N_ADDR_CHANNELS);
-    uint32 decimationFactor = 1;
-    float pri = 200e-6f;
-    Interval<uint32> sampleRange{0, 4096};
-
-    [[nodiscard]] TxRxParameters getTxRxParameters() const {
-        return TxRxParameters(txAperture, txDelays, pulse,
-                              rxAperture, sampleRange,
-                              decimationFactor, pri);
-    }
-};
-
-
-class Us4OEMImplEsaote3LikeTest : public ::testing::Test {
+class Us4OEMImplTest: public ::testing::Test {
 protected:
+
     void SetUp() override {
-        std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+        ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
         // Default values returned by us4oem.
         ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetTxOffset).WillByDefault(testing::Return(TX_OFFSET));
-
-        BitMask activeChannelGroups = {true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true};
-        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
-        uint16 lnaGain = DEFAULT_LNA_GAIN;
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
-        us4oem = std::make_unique<Us4OEMImpl>(
-            DeviceId(DeviceType::Us4OEM, 0),
-            std::move(ius4oem), activeChannelGroups,
-            channelMapping, rxSettings,
-            std::unordered_set<uint8>(),
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
-            false,
-            false
-        );
     }
 
+    Us4OEMUploadResult upload(const TxParametersSequenceColl &sequences) {
+        return us4oem-> upload(sequences, defaultRxBufferSize, defaultWorkMode);
+    }
+
+    Us4OEMUploadResult upload(const TxRxParametersSequence &seq) {
+        TxParametersSequenceColl seqs = {seq};
+        return upload(seqs);
+    }
+
+    Us4OEMUploadResult upload(const std::vector<TxRxParameters> &txrxs) {
+        auto seq = ARRUS_STRUCT_INIT_LIST(TestTxRxParamsSequence, (x.txrx = txrxs)).get();
+        return upload(seq);
+    }
+
+    Us4OEMUploadResult upload(const std::vector<TxRxParameters> &txrxs, TGCCurve tgc) {
+        auto seq = ARRUS_STRUCT_INIT_LIST(TestTxRxParamsSequence, (x.txrx = txrxs, x.tgcCurve = tgc)).get();
+        return upload(seq);
+    }
+
+    std::unique_ptr<IUs4OEM> ius4oem;
+    // A raw pointer stored to the object stored in the above unique_ptr.
     MockIUs4OEM *ius4oemPtr;
     Us4OEMImpl::Handle us4oem;
-    TGCCurve defaultTGCCurve;
-    uint16 defaultRxBufferSize = 1;
-    uint16 defaultBatchSize = 1;
-    std::optional<float> defaultSri = std::nullopt;
+    const TGCCurve defaultTGCCurve;
+    const uint16 defaultRxBufferSize = 1;
+    const uint16 defaultBatchSize = 1;
+    const Scheme::WorkMode defaultWorkMode = arrus::ops::us4r::Scheme::WorkMode::MANUAL;
+    const std::optional<float> defaultSri = std::nullopt;
+    const Us4OEMDescriptor defaultDescriptor = DEFAULT_DESCRIPTOR;
+    const RxSettings defaultRxSettings{std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true};
 };
 
 
-#define SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc) \
-     us4oem->setTxRxSequence(seq, tgc, defaultRxBufferSize, defaultBatchSize, defaultSri)
-
-#define SET_TX_RX_SEQUENCE(us4oem, seq) SET_TX_RX_SEQUENCE_TGC(us4oem, seq, defaultTGCCurve)
-
-// ------------------------------------------ TESTING VALIDATION
-TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidApertureSize) {
-    // Tx aperture.
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txAperture = getNTimes(true, Us4OEMImpl::N_TX_CHANNELS + 1)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
-
-    // Rx aperture: total size
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = getNTimes(true, Us4OEMImpl::N_TX_CHANNELS - 1)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-
-//     Rx aperture: number of active elements
-    BitMask rxAperture(128, false);
-    for(size_t i = 0; i < 33; ++i) {
-        rxAperture[i] = true;
-    }
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-
-    // Tx delays
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txDelays = getNTimes(0.0f, Us4OEMImpl::N_TX_CHANNELS / 2)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidTxDelays) {
-    // Tx delays
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txDelays = getNTimes(Us4OEMImpl::MAX_TX_DELAY + 1e-6f, Us4OEMImpl::N_TX_CHANNELS)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.txDelays = getNTimes(Us4OEMImpl::MIN_TX_DELAY - 1e-6f, Us4OEMImpl::N_TX_CHANNELS)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidPri) {
-    // Tx delays
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pri = Us4OEMImpl::MAX_PRI + 1e-6f))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidNPeriodsOnly) {
-    // Tx delays
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pulse = Pulse(2e6, 1.3f, false)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq),
-                 IllegalArgumentException);
-
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pulse = Pulse(2e6, 1.5f, false)))
-            .getTxRxParameters()
-    };
-    SET_TX_RX_SEQUENCE(us4oem, seq);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, PreventsInvalidFrequency) {
-    // Tx delays
-    const auto maxFreq = MAX_TX_FREQUENCY;
-    const auto minFreq = MIN_TX_FREQUENCY;
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pulse = Pulse(std::nextafter(maxFreq, maxFreq + 1e6f), 1.0f, false)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
-
-    seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pulse = Pulse(minFreq - 0.5e6f, 1.0f, false)))
-            .getTxRxParameters()
-    };
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
-}
-// TODO test memory overflow protection
-// ------------------------------------------ Testing parameters set to IUs4OEM
-
-TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping032) {
-    // Rx aperture 0-32
-    BitMask rxAperture(128, false);
-    setValuesInRange(rxAperture, 0, 32, true);
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    std::vector<uint8> expectedRxMapping = getRange<uint8>(0, 32);
-    EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
-
-    SET_TX_RX_SEQUENCE(us4oem, seq);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping032Missing1518) {
-    // Rx aperture 0-32
-    BitMask rxAperture(128, false);
-    setValuesInRange(rxAperture, 0, 32, true);
-    rxAperture[15] = false;
-    rxAperture[18] = false;
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    std::vector<uint8> expectedRxMapping = getRange<uint8>(0, 32);
-    // 0, 1, 2, .., 14, 16, 17, 19, 20, ..., 29, 15, 18
-    setValuesInRange<uint8>(expectedRxMapping, 0, 15,
-                            [](size_t i) { return (uint8) (i); });
-    setValuesInRange<uint8>(expectedRxMapping, 15, 17,
-                            [](size_t i) { return (uint8) (i + 1); });
-    setValuesInRange<uint8>(expectedRxMapping, 17, 30,
-                            [](size_t i) { return (uint8) (i + 2); });
-    expectedRxMapping[30] = 15;
-    expectedRxMapping[31] = 18;
-
-    EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
-
-    SET_TX_RX_SEQUENCE(us4oem, seq);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxMapping1648) {
-    // Rx aperture 0-32
-    BitMask rxAperture(128, false);
-    setValuesInRange(rxAperture, 16, 48, true);
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    std::vector<uint8> expectedRxMapping(32, 0);
-    setValuesInRange<uint8>(expectedRxMapping, 0, 16,
-                            [](size_t i) { return static_cast<uint8>(i + 16); });
-    setValuesInRange<uint8>(expectedRxMapping, 16, 32,
-                            [](size_t i) { return static_cast<uint8>(i % 16); });
-    EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
-
-    SET_TX_RX_SEQUENCE(us4oem, seq);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfMappings) {
-    // Rx aperture 0-32
-    BitMask rxAperture1(128, false);
-    setValuesInRange(rxAperture1, 0, 32, true);
-    BitMask rxAperture2(128, false);
-    setValuesInRange(rxAperture2, 16, 48, true);
-    BitMask rxAperture3(128, false);
-    setValuesInRange(rxAperture3, 32, 64, true);
-
-    std::vector<TxRxParameters> seq = {
-        // 1st tx/rx
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture1))
-            .getTxRxParameters(),
-        // 2nd tx/rx
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture2))
-            .getTxRxParameters(),
-        // 3rd tx/rx
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture3))
-            .getTxRxParameters()
-    };
-    std::vector<uint8> expectedRxMapping1 = getRange<uint8>(0, 32);
-    std::vector<uint8> expectedRxMapping2(32, 0);
-    setValuesInRange<uint8>(expectedRxMapping2, 0, 16,
-                            [](size_t i) { return static_cast<uint8>(i + 16); });
-    setValuesInRange<uint8>(expectedRxMapping2, 16, 32,
-                            [](size_t i) { return static_cast<uint8>(i % 16); });
-
-    EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping1, 0));
-    EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping2, 1));
-
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, _, _, _, 0, _));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(1, _, _, _, _, 1, _));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(2, _, _, _, _, 0, _));
-
-    SET_TX_RX_SEQUENCE(us4oem, seq);
-}
-
-class Us4OEMImplConflictingChannelsTest : public ::testing::Test {
+class Us4OEMImplEsaote3LikeTest : public Us4OEMImplTest {
 protected:
     void SetUp() override {
-        std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-        ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
-        BitMask activeChannelGroups = {true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true};
-        // Esaote 2 Us4OEM:0 channel mapping
-        std::vector<uint8> channelMapping = castTo<uint8, uint32>({26, 27, 25, 23, 28, 22, 20, 21,
-                                                                   24, 18, 19, 15, 17, 16, 29, 13,
-                                                                   11, 14, 30, 8, 12, 5, 10, 9,
-                                                                   31, 7, 3, 6, 0, 2, 4, 1,
-                                                                   56, 55, 54, 53, 57, 52, 51, 49,
-                                                                   50, 48, 47, 46, 44, 45, 58, 42,
-                                                                   43, 59, 40, 41, 60, 38, 61, 39,
-                                                                   62, 34, 37, 63, 36, 35, 32, 33,
-                                                                   92, 93, 89, 91, 88, 90, 87, 85,
-                                                                   86, 84, 83, 82, 81, 80, 79, 77,
-                                                                   78, 76, 95, 75, 74, 94, 73, 72,
-                                                                   70, 64, 71, 68, 65, 69, 67, 66,
-                                                                   96, 97, 98, 99, 100, 101, 102, 103,
-                                                                   104, 105, 106, 107, 108, 109, 110, 111,
-                                                                   112, 113, 114, 115, 116, 117, 118, 119,
-                                                                   120, 121, 122, 123, 124, 125, 126, 127});
+        Us4OEMImplTest::SetUp();
 
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
+        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
         us4oem = std::make_unique<Us4OEMImpl>(
             DeviceId(DeviceType::Us4OEM, 0),
-            std::move(ius4oem), activeChannelGroups,
-            channelMapping, rxSettings,
-            std::unordered_set<uint8>(),
+            std::move(ius4oem),
+            channelMapping, defaultRxSettings,
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            defaultDescriptor,
             false,
             false
         );
     }
-
-    MockIUs4OEM *ius4oemPtr;
-    Us4OEMImpl::Handle us4oem;
-    TGCCurve defaultTGCCurve;
-    uint16 defaultRxBufferSize = 1;
-    uint16 defaultBatchSize = 1;
-    std::optional<float> defaultSri = std::nullopt;
 };
 
-TEST_F(Us4OEMImplConflictingChannelsTest, TurnsOffConflictingChannels) {
-    BitMask rxAperture(128, false);
-
-    //  11, 14, 30, 8, 12, 5, 10, 9,
-    //  31, 7, 3, 6, 0, 2, 4, 1,
-    //  56, 55, 54, 53, 57, 52, 51, 49,
-    //  50, 48, 47, 46, 44, 45, 58, 42,
-
-    // 10 (10, 42), 12 (12, 44), 14 (14, 46) are conflicting:
-
-    // (11, 14, 30,  8, 12,  5, 10,  9,
-    //  31,  7,  3,  6,  0,  2,  4,  1,
-    //  24, 23, 22, 21, 25, 20, 19, 17,
-    //  18, 16, 15, 14, 12, 13, 26, 10)
-
-    setValuesInRange(rxAperture, 16, 48, true);
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-
-    std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> expectedRxAperture;
-    setValuesInRange(expectedRxAperture, 16, 48, true);
-    expectedRxAperture[43] = false;
-    expectedRxAperture[44] = false;
-    expectedRxAperture[47] = false;
-    EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
-
-    // The channel mapping should stay unmodified
-    // 27, 28, 29 are not used (should be turned off)
-    std::vector<uint8> expectedRxMapping = {11, 14, 30, 8, 12, 5, 10, 9,
-                                            31, 7, 3, 6, 0, 2, 4, 1,
-                                            24, 23, 22, 21, 25, 20, 19, 17,
-                                            18, 16, 15, 27, 28, 13, 26, 29};
-
-    EXPECT_CALL(*ius4oemPtr, SetRxChannelMapping(expectedRxMapping, 0));
-
-    SET_TX_RX_SEQUENCE(us4oem, seq);
-}
-
-// active channel groups! (NOP, no NOP)
-
+// ------------------------------------------ Parameter setters
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
-    // Sample range -> rx delay
+    // Sample range -> rx time
     // end-start / sampling frequency
     Interval<uint32> sampleRange(0, 1024);
+    float rxDelay = 0.0f;
 
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.sampleRange = sampleRange))
-            .getTxRxParameters()
+            (x.sampleRange = sampleRange, x.rxDelay = rxDelay)
+        )
+        .get()
     };
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(0.0f, 0)); // Note: the value 0.0 is the default value
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0));
     uint32 nSamples = sampleRange.end() - sampleRange.start();
-    float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
-    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
+    float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
+    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
     EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, TX_OFFSET + sampleRange.start(), _, _, _));
-    // ScheduleReceive: starting sample
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
-    // Sample range -> rx delay
+    // Sample range -> rx time
     // end-start / sampling frequency
     Interval<uint32> sampleRange(40, 1024 + 40);
+    float rxDelay = 1e-6f;
 
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.sampleRange = sampleRange))
-            .getTxRxParameters()
+            (x.sampleRange = sampleRange, x.rxDelay = rxDelay)
+        )
+        .get()
     };
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(0.0f, 0)); // Note: the default value of TxRxParameters
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0));
     uint32 nSamples = sampleRange.end() - sampleRange.start();
-    float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
-    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(minimumRxTime), 0));
+    float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
+    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
     EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, TX_OFFSET + sampleRange.start(), _, _, _));
-    // ScheduleReceive: starting sample
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse = Pulse(3e6f, 1.5, true)))
-            .getTxRxParameters()
+            (x.pulse = Pulse(3e6f, 1.5, true))
+        )
+        .get()
     };
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(3, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxFreqency(3e6f, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxInvert(true, 0));
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse = Pulse(3e6, 3, false)))
-            .getTxRxParameters()
+            (x.pulse = Pulse(3e6, 3, false))
+        )
+        .get()
     };
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(6, 0));
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse = Pulse(3e6, 30.5, false)))
-            .getTxRxParameters()
+            (x.pulse = Pulse(10e6, 30.5, false))
+        )
+        .get()
     };
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(61, 0));
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
     std::vector<TxRxParameters> seq = {
-        TestTxRxParams().getTxRxParameters()
+        TestTxRxParams().get()
     };
     EXPECT_CALL(*ius4oemPtr, TGCDisable);
-    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, {});
+    EXPECT_CALL(*ius4oemPtr, TGCEnable).Times(0);
+    upload(seq, {});
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
     std::vector<TxRxParameters> seq = {
-        TestTxRxParams().getTxRxParameters()
+        TestTxRxParams().get()
     };
     TGCCurve tgc = {14.000f, 14.001f, 14.002f};
 
@@ -520,13 +199,12 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
         i = (i - 14.0f) / 40.f;
     }
     EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-
-    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
+    upload(seq, tgc);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
     std::vector<TxRxParameters> seq = {
-        TestTxRxParams().getTxRxParameters()
+        TestTxRxParams().get()
     };
     TGCCurve tgc = {14.000f, 14.0005f, 14.001f};
 
@@ -538,12 +216,12 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
         i = (i - 14.0f) / 40.f;
     }
     EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
+    upload(seq, tgc);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
     std::vector<TxRxParameters> seq = {
-        TestTxRxParams().getTxRxParameters()
+        TestTxRxParams().get()
     };
     TGCCurve tgc = {14.000f, 14.0002f, 14.0007f, 14.001f, 14.0015f};
 
@@ -555,7 +233,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
         i = (i - 14.0f) / 40.f;
     }
     EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-    SET_TX_RX_SEQUENCE_TGC(us4oem, seq, tgc);
+    upload(seq, tgc);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
@@ -563,173 +241,53 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
         TxRxParameters::US4OEM_NOP
     };
     // empty
-    std::bitset<Us4OEMImpl::N_ADDR_CHANNELS> rxAperture, txAperture;
+    std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> rxAperture, txAperture;
     // empty
-    std::bitset<Us4OEMImpl::N_ACTIVE_CHANNEL_GROUPS> activeChannelGroup;
+    std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS> activeChannelGroup;
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(rxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(txAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(activeChannelGroup, 0));
 
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    upload(seq);
 }
 
-TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapping) {
-    BitMask rxAperture(128, false);
-    setValuesInRange(rxAperture, 0, 32, true);
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
-
-    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
-
-    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto address = fcm->getLogical(0, i);
-        EXPECT_EQ(address.getUs4oem(), 0);
-        EXPECT_EQ(address.getChannel(), i);
-        EXPECT_EQ(address.getFrame(), 0);
-    }
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingForNonconflictingRxMapping2) {
-    BitMask rxAperture(128, false);
-    setValuesInRange(rxAperture, 16, 48, true);
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
-
-    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
-
-    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto address = fcm->getLogical(0, i);
-        EXPECT_EQ(address.getUs4oem(), 0);
-        EXPECT_EQ(address.getChannel(), i);
-        EXPECT_EQ(address.getFrame(), 0);
-    }
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, TestFrameChannelMappingIncompleteRxAperture) {
-    BitMask rxAperture(128, false);
-    setValuesInRange(rxAperture, 0, 32, true);
-
-    rxAperture[31] = rxAperture[15] = false;
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
-
-    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
-
-    for(size_t i = 0; i < 30; ++i) {
-        auto address = fcm->getLogical(0, i);
-        EXPECT_EQ(address.getUs4oem(), 0);
-        EXPECT_EQ(address.getChannel(), i);
-        EXPECT_EQ(address.getFrame(), 0);
-    }
-}
-
-TEST_F(Us4OEMImplConflictingChannelsTest, TestFrameChannelMappingForConflictingMapping) {
-    BitMask rxAperture(128, false);
-    // (11, 14, 30,  8, 12,  5, 10,  9,
-    //  31,  7,  3,  6,  0,  2,  4,  1,
-    //  24, 23, 22, 21, 25, 20, 19, 17,
-    //  18, 16, 15, 14, 12, 13, 26, 10)
-    setValuesInRange(rxAperture, 16, 48, true);
-
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.rxAperture = rxAperture))
-            .getTxRxParameters()
-    };
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
-
-    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto address = fcm->getLogical(0, i);
-        std::cerr << (int16) address.getChannel() << ", ";
-    }
-    std::cerr << std::endl;
-
-    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
-    // turned off channels should be zeroed, so we just expect 0-31 here
-    std::vector<int8> expectedDstChannels = {
-        0, 1, 2, 3, 4, 5, 6, 7,
-        8, 9, 10, 11, 12, 13, 14, 15,
-        16, 17, 18, 19, 20, 21, 22, 23,
-        24, 25, 26, 27, 28, 29, 30, 31
-    };
-
-    for(size_t i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
-        auto address = fcm->getLogical(0, i);
-        EXPECT_EQ(address.getUs4oem(), 0);
-        EXPECT_EQ(address.getChannel(), expectedDstChannels[i]);
-        EXPECT_EQ(address.getFrame(), 0);
-    }
-}
-
-// ------------------------------------------ TESTING CHANNEL MASKING
-
-class Us4OEMImplEsaote3ChannelsMaskTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-        ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
-    }
-
-    Us4OEMImpl::Handle createHandle(const std::unordered_set<uint8> &channelsMask) {
-        // This function can be called only once.
-
-        BitMask activeChannelGroups = {true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true};
-
-        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
-
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
-        return std::make_unique<Us4OEMImpl>(
-            DeviceId(DeviceType::Us4OEM, 0),
-            // NOTE: due to the below move this function can be called only once
-            std::move(ius4oem), activeChannelGroups,
-            channelMapping, rxSettings, channelsMask,
-            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
-            false,
-            false
-            );
-
-    }
-
-    std::unique_ptr<IUs4OEM> ius4oem;
-    MockIUs4OEM *ius4oemPtr;
-    TGCCurve defaultTGCCurve;
-    uint16 defaultRxBufferSize = 1;
-    uint16 defaultBatchSize = 1;
-    std::optional<float> defaultSri = std::nullopt;
-};
-
-// no masking - no channels are turned off
-TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, DoesNothingWithAperturesWhenNoChannelMask) {
-    auto us4oem = createHandle(std::unordered_set<uint8>({}));
-
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectActiveChannelGroups) {
     BitMask rxAperture(128, false);
     BitMask txAperture(128, false);
     std::vector<float> txDelays(128, 0.0);
+    txAperture[0] = txAperture[9] = txAperture[32] = txAperture[63] = true;
+    rxAperture[6] = rxAperture[33] = rxAperture[34] = true;
 
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.rxAperture = rxAperture,
+                x.txAperture = txAperture,
+                x.maskedChannelsTx = {0},
+                x.maskedChannelsRx = {6}
+            )
+        )
+        .get()
+    };
+    // groups: 1, 4, 7
+    // active channel group mapping:
+    // 1 -> 4
+    // 4 -> 2
+    // 7 -> 14
+    std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS> expectedChannelGroups;
+    expectedChannelGroups[4] = expectedChannelGroups[2] = expectedChannelGroups[14] = true;
+    EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(expectedChannelGroups, 0));
+    upload(seq);
+}
+
+//// ------------------------------------------
+/// TESTING CHANNEL MASKING
+//// ------------------------------------------
+TEST_F(Us4OEMImplEsaote3LikeTest, DoesNothingWithAperturesWhenNoChannelMask) {
+    BitMask rxAperture(128, false);
+    BitMask txAperture(128, false);
+    std::vector<float> txDelays(128, 0.0);
     txAperture[0] = txAperture[6] = txAperture[31] = txAperture[59] = true;
     txDelays[0] = 1e-6;
     txDelays[6] = 2e-6;
@@ -743,13 +301,16 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, DoesNothingWithAperturesWhenNoChannelM
             (
                 x.rxAperture = rxAperture,
                 x.txAperture = txAperture,
-                x.txDelays = txDelays
-            ))
-            .getTxRxParameters()
+                x.txDelays = txDelays,
+                x.maskedChannelsTx = {},
+                x.maskedChannelsRx = {}
+            )
+        )
+        .get()
     };
 
-    auto expectedTxAperture = ::arrus::toBitset<Us4OEMImpl::N_ADDR_CHANNELS>(txAperture);
-    auto expectedRxAperture = ::arrus::toBitset<Us4OEMImpl::N_ADDR_CHANNELS>(rxAperture);
+    auto expectedTxAperture = ::arrus::toBitset<Us4OEMDescriptor::N_ADDR_CHANNELS>(txAperture);
+    auto expectedRxAperture = ::arrus::toBitset<Us4OEMDescriptor::N_ADDR_CHANNELS>(rxAperture);
     auto &expectedTxDelays = txDelays;
 
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
@@ -757,21 +318,17 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, DoesNothingWithAperturesWhenNoChannelM
     for(int i = 0; i < expectedTxDelays.size(); ++i) {
         EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
     }
-
-    SET_TX_RX_SEQUENCE(us4oem, seq);
+    upload(seq);
 }
 
-
-TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
-    auto us4oem = createHandle(std::unordered_set<uint8>({7}));
-
+TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannel) {
     BitMask rxAperture(128, false);
     BitMask txAperture(128, false);
     std::vector<float> txDelays(128, 0.0);
 
     txAperture[0] = txAperture[7] = txAperture[33] = txAperture[95] = true;
     txDelays[0] = txDelays[7] = txDelays[33] = txDelays[95] = 1e-6;
-    rxAperture[0] = rxAperture[7] = rxAperture[31] = rxAperture[60] = true;
+    rxAperture[0] = rxAperture[10] = rxAperture[31] = rxAperture[60] = true;
 
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
@@ -779,15 +336,17 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
             (
                 x.rxAperture = rxAperture,
                 x.txAperture = txAperture,
-                x.txDelays = txDelays
+                x.txDelays = txDelays,
+                x.maskedChannelsTx = {7},
+                x.maskedChannelsRx = {10}
             ))
-            .getTxRxParameters()
+            .get()
     };
 
-    auto expectedTxAperture = ::arrus::toBitset<Us4OEMImpl::N_ADDR_CHANNELS>(txAperture);
+    auto expectedTxAperture = ::arrus::toBitset<Us4OEMDescriptor::N_ADDR_CHANNELS>(txAperture);
     expectedTxAperture[7] = false;
-    auto expectedRxAperture = ::arrus::toBitset<Us4OEMImpl::N_ADDR_CHANNELS>(rxAperture);
-    expectedRxAperture[7] = false;
+    auto expectedRxAperture = ::arrus::toBitset<Us4OEMDescriptor::N_ADDR_CHANNELS>(rxAperture);
+    expectedRxAperture[10] = false;
 
     std::vector<float> expectedTxDelays(txDelays);
     expectedTxDelays[7] = 0.0f;
@@ -797,19 +356,19 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
     for(int i = 0; i < expectedTxDelays.size(); ++i) {
         EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
     }
-
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
+    auto result = upload(seq);
+    auto fcm = result.getFCM(0);
 
     EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 1);
-    ASSERT_EQ(fcm->getNumberOfLogicalChannels(), Us4OEMImpl::N_RX_CHANNELS);
+    ASSERT_EQ(fcm->getNumberOfLogicalChannels(), defaultDescriptor.getNRxChannels());
 
-    std::vector<int8> expectedSrcChannels(Us4OEMImpl::N_RX_CHANNELS, -1);
+    std::vector<int8> expectedSrcChannels(defaultDescriptor.getNRxChannels(), -1);
     expectedSrcChannels[0] = 0;
     expectedSrcChannels[1] = 1;
     expectedSrcChannels[2] = 2;
     expectedSrcChannels[3] = 3;
 
-    for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
+    for(int i = 0; i < defaultDescriptor.getNRxChannels(); ++i) {
         auto address = fcm->getLogical(0, i);
         EXPECT_EQ(address.getUs4oem(), 0);
         EXPECT_EQ(address.getFrame(), 0);
@@ -817,27 +376,24 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannel) {
     }
 }
 
-#define MASK_CHANNELS(aperture, channelsToMask) \
-do {                                            \
-    for(auto channel: channelsToMask) {         \
-        aperture[channel] = false;              \
-    }\
-} while(0)
 
-#define SET_EXPECTED_MASKED_APERTURES(txAperture, rxAperture, channelsMask) \
-    BitMask expectedTxAperture(txAperture); \
-    MASK_CHANNELS(expectedTxAperture, channelsMask); \
-    expectedTxApertures.push_back(::arrus::toBitset<N_ADDR_CHANNELS>(expectedTxAperture)); \
-    BitMask expectedRxAperture(rxAperture); \
-    MASK_CHANNELS(expectedRxAperture, channelsMask); \
-    expectedRxApertures.push_back(::arrus::toBitset<N_ADDR_CHANNELS>(expectedRxAperture));
+BitMask getMaskedApertureAsBitMask(BitMask aperture, std::unordered_set<ChannelIdx> mask) {
+    for(auto channel: mask) {
+        aperture[channel] = false;
+    }
+    return aperture;
+}
 
-TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOperations) {
-    std::unordered_set<uint8> channelsMask {7, 60, 93};
-    auto us4oem = createHandle(channelsMask);
+std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> getMaskedAperture(const BitMask &aperture, std::unordered_set<ChannelIdx> mask) {
+    return ::arrus::toBitset<Us4OEMDescriptor::N_ADDR_CHANNELS>(getMaskedApertureAsBitMask(aperture, mask));
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannelForAllOperations) {
+    std::unordered_set<ChannelIdx> txChannelsMask = {7, 60, 93};
+    std::unordered_set<ChannelIdx> rxChannelsMask = {21, 31};
     std::vector<TxRxParameters> seq;
 
-    const auto N_ADDR_CHANNELS = Us4OEMImpl::N_ADDR_CHANNELS;
+    const auto N_ADDR_CHANNELS = Us4OEMDescriptor::N_ADDR_CHANNELS;
 
     std::vector<BitMask> txApertures;
     std::vector<BitMask> rxApertures;
@@ -845,7 +401,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
     std::vector<std::bitset<N_ADDR_CHANNELS>> expectedRxApertures;
 
     {
-        // Op 0:
+        // Op :
         // Given
         BitMask txAperture(128, false);
         BitMask rxAperture(128, false);
@@ -860,12 +416,15 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
                 TestTxRxParams,
                 (
                     x.rxAperture = rxAperture,
-                    x.txAperture = txAperture
-                ))
-                .getTxRxParameters());
-
+                    x.txAperture = txAperture,
+                    x.maskedChannelsTx = txChannelsMask,
+                    x.maskedChannelsRx = rxChannelsMask
+                )
+            )
+            .get());
         // Expected:
-        SET_EXPECTED_MASKED_APERTURES(txAperture, rxAperture, channelsMask);
+        expectedTxApertures.push_back(getMaskedAperture(txAperture, txChannelsMask));
+        expectedRxApertures.push_back(getMaskedAperture(rxAperture, rxChannelsMask));
     }
     {
         // Op 1:
@@ -885,11 +444,14 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
                 (
                     x.rxAperture = rxAperture,
                     x.txAperture = txAperture,
-                    x.txDelays = txDelays
+                    x.txDelays = txDelays,
+                    x.maskedChannelsTx = txChannelsMask,
+                    x.maskedChannelsRx = rxChannelsMask
                 ))
-                .getTxRxParameters());
+                .get());
         // Expected:
-        SET_EXPECTED_MASKED_APERTURES(txAperture, rxAperture, channelsMask);
+        expectedTxApertures.push_back(getMaskedAperture(txAperture, txChannelsMask));
+        expectedRxApertures.push_back(getMaskedAperture(rxAperture, rxChannelsMask));
     }
     {
         // Op 2:
@@ -909,30 +471,39 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
                 (
                     x.rxAperture = rxAperture,
                     x.txAperture = txAperture,
-                    x.txDelays = txDelays
+                    x.txDelays = txDelays,
+                    x.maskedChannelsTx = txChannelsMask,
+                    x.maskedChannelsRx = rxChannelsMask
                 ))
-                .getTxRxParameters());
+                .get());
         // Expected:
-        SET_EXPECTED_MASKED_APERTURES(txAperture, rxAperture, channelsMask);
+        expectedTxApertures.push_back(getMaskedAperture(txAperture, txChannelsMask));
+        expectedRxApertures.push_back(getMaskedAperture(rxAperture, rxChannelsMask));
     }
 
     ASSERT_EQ(expectedRxApertures.size(), expectedTxApertures.size());
 
+    ::testing::Sequence txApertureCallSequence;
+    ::testing::Sequence rxApertureCallSequence;
+
     for(int i = 0; i < expectedRxApertures.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxApertures[i], i));
-        EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxApertures[i], i));
+        EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxApertures[i], i)).InSequence(rxApertureCallSequence);
+        EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxApertures[i], i)).InSequence(txApertureCallSequence);
     }
 
-    auto [buffer, fcm] = SET_TX_RX_SEQUENCE(us4oem, seq);
+    auto result = upload(seq);
+    auto fcm = result.getFCM(0);
+
+    const auto nRxChannels = defaultDescriptor.getNRxChannels();
 
     // Validate generated FCM
     ASSERT_EQ(fcm->getNumberOfLogicalFrames(), 3);
-    ASSERT_EQ(fcm->getNumberOfLogicalChannels(), Us4OEMImpl::N_RX_CHANNELS);
+    ASSERT_EQ(fcm->getNumberOfLogicalChannels(), nRxChannels);
 
     {
         // Frame 0
 
-        std::vector<int8> expectedSrcChannels(Us4OEMImpl::N_RX_CHANNELS, -1);
+        std::vector<int8> expectedSrcChannels(nRxChannels, -1);
         expectedSrcChannels[0] = 0;
         expectedSrcChannels[1] = 1;
         // rx aperture channel 1 is turned off (channel 7), but still we want to have it here
@@ -940,7 +511,7 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
         // rx aperture channel 3 is missing (channel 60)
         expectedSrcChannels[3] = 3;
 
-        for(int i = 0; i < Us4OEMImpl::N_RX_CHANNELS; ++i) {
+        for(int i = 0; i < nRxChannels; ++i) {
             auto address = fcm->getLogical(0, i);
             EXPECT_EQ(address.getUs4oem(), 0);
             EXPECT_EQ(address.getFrame(), 0);
@@ -965,51 +536,35 @@ TEST_F(Us4OEMImplEsaote3ChannelsMaskTest, MasksProperlyASingleChannelForAllOpera
     }
 }
 
-// TX/RX reprogramming tests
-class Us4OEMImplEsaote3ReprogrammingTest : public ::testing::Test {
+// ------------------------------------------
+// TX/RX REPROGRAMMING TESTS
+// ------------------------------------------
+
+class Us4OEMImplEsaote3ReprogrammingTest : public Us4OEMImplTest {
 protected:
     void SetUp() override {
-        ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-        ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        Us4OEMImplTest::SetUp();
     }
 
-    Us4OEMImpl::Handle createHandle(Us4OEMSettings::ReprogrammingMode reprogrammingMode) {
+    void setReprogrammingMode(Us4OEMSettings::ReprogrammingMode reprogrammingMode) {
         // This function can be called only once.
-
-        BitMask activeChannelGroups = {true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true,
-                                       true, true, true, true};
-
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
 
-        RxSettings rxSettings(std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true);
-
-        return std::make_unique<Us4OEMImpl>(
-                DeviceId(DeviceType::Us4OEM, 0),
-                // NOTE: due to the below move this function can be called only once
-                std::move(ius4oem), activeChannelGroups,
-                channelMapping, rxSettings,
-                std::unordered_set<uint8>({}),
-                reprogrammingMode,
-                false,
-                false
+        us4oem = std::make_unique<Us4OEMImpl>(
+            DeviceId(DeviceType::Us4OEM, 0),
+            // NOTE: due to the below move THIS FUNCTION CAN BE CALLED ONLY ONCE PER TEST.
+            std::move(ius4oem),
+            channelMapping, defaultRxSettings,
+            reprogrammingMode,
+            defaultDescriptor,
+            false, false
         );
 
     }
-
-    std::unique_ptr<IUs4OEM> ius4oem;
-    MockIUs4OEM *ius4oemPtr;
-    TGCCurve defaultTGCCurve;
-    uint16 defaultRxBufferSize = 1;
-    uint16 defaultBatchSize = 1;
-    std::optional<float> defaultSri = std::nullopt;
 };
 
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToShortPRIForSequential) {
-    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+    setReprogrammingMode(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
 
     std::vector<TxRxParameters> seq = {
             ARRUS_STRUCT_INIT_LIST(
@@ -1018,22 +573,21 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToShortPRIForSequential) {
                             // acquisition time + reprogramming time -1us [s]
                             // Assuming
                             x.pri = 63e-6f
-                                + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME
-                                + Us4OEMImpl::RX_TIME_EPSILON
+                                + defaultDescriptor.getSequenceReprogrammingTime()
+                                + defaultDescriptor.getRxTimeEpsilon()
                                 - 1e-6f,
                             x.sampleRange = {0, 4096}
                     ))
-                    .getTxRxParameters()
+                    .get()
     };
-
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
+    EXPECT_THROW(upload(seq), IllegalArgumentException);
 }
 
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeSequential) {
-    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
+    setReprogrammingMode(Us4OEMSettings::ReprogrammingMode::SEQUENTIAL);
 
-    float pri = 63e-6f + Us4OEMImpl::SEQUENCER_REPROGRAMMING_TIME
-        + Us4OEMImpl::RX_TIME_EPSILON;
+    float pri = 63e-6f + defaultDescriptor.getSequenceReprogrammingTime()
+        + defaultDescriptor.getRxTimeEpsilon();
 
     std::vector<TxRxParameters> seq = {
             ARRUS_STRUCT_INIT_LIST(
@@ -1043,16 +597,16 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeSequential) {
                             x.pri = pri,
                             x.sampleRange = {0, 4032}
                     ))
-                    .getTxRxParameters()
+                    .get()
     };
-
-    EXPECT_NO_THROW(SET_TX_RX_SEQUENCE(us4oem, seq));
+//    EXPECT_NO_THROW(upload(seq));
+    upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeParallel) {
-    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
+    setReprogrammingMode(Us4OEMSettings::ReprogrammingMode::PARALLEL);
 
-    float pri = 63e-6f + Us4OEMImpl::RX_TIME_EPSILON;
+    float pri = 63e-6f + defaultDescriptor.getRxTimeEpsilon();
 
     std::vector<TxRxParameters> seq = {
             ARRUS_STRUCT_INIT_LIST(
@@ -1062,16 +616,16 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, AcceptsPriCloseTxRxTimeParallel) {
                             x.pri = pri,
                             x.sampleRange = {0, 4032}
                     ))
-                    .getTxRxParameters()
+                    .get()
     };
 
-    EXPECT_NO_THROW(SET_TX_RX_SEQUENCE(us4oem, seq));
+    EXPECT_NO_THROW(upload(seq));
 }
 
 TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
-    auto us4oem = createHandle(Us4OEMSettings::ReprogrammingMode::PARALLEL);
+    setReprogrammingMode(Us4OEMSettings::ReprogrammingMode::PARALLEL);
 
-    float pri = 63e-6f-1e-6f + Us4OEMImpl::RX_TIME_EPSILON;
+    float pri = 63e-6f-1e-6f + defaultDescriptor.getRxTimeEpsilon();
 
     std::vector<TxRxParameters> seq = {
             ARRUS_STRUCT_INIT_LIST(
@@ -1081,10 +635,10 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
                             x.pri = pri,
                             x.sampleRange = {0, 4096}
                     ))
-                    .getTxRxParameters()
+                    .get()
     };
 
-    EXPECT_THROW(SET_TX_RX_SEQUENCE(us4oem, seq), IllegalArgumentException);
+    EXPECT_THROW(upload(seq), IllegalArgumentException);
 }
 }
 

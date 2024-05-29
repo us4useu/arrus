@@ -43,13 +43,14 @@ public:
     void trigger() override;
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
-    std::pair<arrus::framework::Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
+    std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ops::us4r::Scheme &scheme) override;
-    Probe *getProbe(Ordinal ordinal) override;
+    Probe::RawHandle getProbe(Ordinal ordinal) override;
     void setParameters(const Parameters &params) override;
-
+    int getNumberOfProbes() const override;
     std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
     setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
+
 
 private:
     using Frame = std::vector<int16_t>;
@@ -69,7 +70,7 @@ private:
     std::optional<ops::us4r::Scheme> currentScheme;
     float currentFs;
     std::shared_ptr<FileBuffer> buffer;
-    std::unique_ptr<FileProbe> probe;
+    FileProbe::Handle probe;
 
     std::mutex parametersMutex;
     std::optional<int> pendingSliceBegin;

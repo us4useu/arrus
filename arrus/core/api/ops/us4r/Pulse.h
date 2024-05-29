@@ -9,6 +9,8 @@ namespace arrus::ops::us4r {
 class Pulse {
 
 public:
+
+
 	/**
 	 * Pulse constructor.
 	 *
