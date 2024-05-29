@@ -48,7 +48,7 @@ public:
      * Returns true if the work mode is MANUAL (MANUAL per sequence or MANUAL_TX_RX (per TX/RX).
      */
     bool isWorkModeManual() const {
-        return isWorkModeManual(this->workMode);
+        return isWorkModeManual(this->getWorkMode());
     }
 
     /**

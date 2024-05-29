@@ -55,7 +55,7 @@ public:
      * Sets maximum pulse length that can be set during the TX/RX sequence programming.
      * std::nullopt means to use up to 32 TX cycles.
      *
-     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     * @param maxLength maximum pulse length (s) nullopt means to use the default 32 TX cycles (legacy OEM constraint)
      */
     virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
 

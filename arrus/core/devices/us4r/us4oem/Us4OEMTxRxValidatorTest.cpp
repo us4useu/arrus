@@ -152,6 +152,17 @@ TEST_F(Us4OEMTxRxValidatorTest, AcceptsCorrectNPeriods) {
     validate(seq);
 }
 
+TEST_F(Us4OEMTxRxValidatorTest, PreventsToLongPulse) {
+    std::vector<TxRxParameters> txrxs = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(10e6, 33.0f, false))
+        ).get()
+    };
+    TxRxParametersSequence seq = getSequence(txrxs);
+    EXPECT_THROW(validate(seq), IllegalArgumentException);
+}
+
 TEST_F(Us4OEMTxRxValidatorTest, PreventsTooHighFrequency) {
     const auto maxFreq = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx().getFrequency().end();
     std::vector<TxRxParameters> txrxs = {
