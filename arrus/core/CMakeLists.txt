@@ -195,6 +195,7 @@ set(SRC_FILES
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     devices/us4r/us4oem/Us4OEMDescriptorFactory.h
+    devices/us4r/us4oem/IRQEvent.h
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
@@ -305,6 +306,7 @@ if (ARRUS_RUN_TESTS)
         "" # no additional source files
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
+    create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
 endif ()
 
 ################################################################################

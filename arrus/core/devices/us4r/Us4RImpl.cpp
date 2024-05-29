@@ -496,7 +496,18 @@ std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const s
     return result;
 }
 
-void Us4RImpl::trigger() { this->getMasterOEM()->syncTrigger(); }
+void Us4RImpl::trigger(bool sync, std::optional<long long> timeout) {
+    this->getMasterOEM()->syncTrigger();
+    if(sync) {
+        this->sync(timeout);
+    }
+}
+
+void Us4RImpl::sync(std::optional<long long> timeout)  {
+    for(auto &us4oem: us4oems) {
+        us4oem->sync(timeout);
+    }
+}
 
 // AFE parameter setters.
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
@@ -766,6 +777,7 @@ void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
     for (Ordinal i = 0; i < us4oems.size(); ++i) {
         if(transferRegistrar[i]) {
             transferRegistrar[i]->unregisterTransfers(cleanupSequencer);
+            transferRegistrar[i].reset();
         }
     }
 }
@@ -786,6 +798,7 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
+    case Scheme::WorkMode::MANUAL_OP:
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
@@ -828,6 +841,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
     case Scheme::WorkMode::MANUAL:
+    case Scheme::WorkMode::MANUAL_OP:
         return [this, outputBuffer]() {
             try {
                 if (outputBuffer->isStopOnOverflow()) {
@@ -878,6 +892,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
     case Scheme::WorkMode::MANUAL:
+    case Scheme::WorkMode::MANUAL_OP:
         return [this, outputBuffer]() {
             try {
                 if (outputBuffer->isStopOnOverflow()) {
@@ -1011,6 +1026,12 @@ float Us4RImpl::getRxDelay(const TxRxSequence &sequence) {
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
 Us4RImpl::setSubsequence(uint16_t, uint16_t, const std::optional<float> &) {
     throw std::runtime_error("setSubsequence not yet implemented.");
+}
+
+void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
+    for(auto &us4oem: us4oems) {
+        us4oem->setMaximumPulseLength(maxLength);
+    }
 }
 
 

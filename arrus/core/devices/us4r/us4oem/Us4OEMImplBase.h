@@ -47,6 +47,33 @@ public:
     virtual void clearCallbacks() = 0;
     virtual Us4OEMDescriptor getDescriptor() const = 0;
 
+    HVPSMeasurement getHVPSMeasurement() override = 0;
+
+    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
+
+    /**
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * std::nullopt means to use up to 32 TX cycles.
+     *
+     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     */
+    virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
+
+
+    virtual void sync(std::optional<long long> timeout) = 0;
+
+    /**
+     * Configures the system to sync with the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void setWaitForHVPSMeasurementDone() override = 0;
+    /**
+     * Waits for the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) override = 0;
+
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

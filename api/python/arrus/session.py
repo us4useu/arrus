@@ -191,16 +191,23 @@ class Session(AbstractSession):
             self._current_processing.close()
             self._current_processing = None
 
-    def run(self):
+    def run(self, sync: bool=False, timeout: int=None):
         """
         Runs the uploaded scheme.
 
         The behaviour of this method depends on the work mode:
         - MANUAL: triggers execution of batch of sequences only ONCE,
+        - MANUAL_OP: triggers execution of a single TX/RX only ONCE,
         - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
-         The run function can be called only once (before the scheme is stopped).
+          The run function can be called only once (before the scheme is stopped).
+
+        :param sync: whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
+                     the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done. This parameter only
+                     matters when the work mode is set to MANUAL or MANUAL_OP.
+        :param timeout: timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
+                        sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP.
         """
-        self._session_handle.run()
+        arrus.core.arrusSessionRun(self._session_handle, sync, timeout)
 
     def close(self):
         """

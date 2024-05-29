@@ -158,7 +158,8 @@ def convert_to_core_scheme(scheme):
         "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
         "SYNC": arrus.core.Scheme.WorkMode_SYNC,
         "HOST": arrus.core.Scheme.WorkMode_HOST,
-        "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
+        "MANUAL": arrus.core.Scheme.WorkMode_MANUAL,
+        "MANUAL_OP": arrus.core.Scheme.WorkMode_MANUAL_OP
     }[scheme.work_mode]
     builder.withWorkMode(core_work_mode)
     ddc = scheme.digital_down_conversion

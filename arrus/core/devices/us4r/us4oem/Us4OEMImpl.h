@@ -7,9 +7,14 @@
 #include <unordered_set>
 #include <utility>
 
+#include <ius4oem.h>
+#include "IRQEvent.h"
 #include "Us4OEMDescriptor.h"
-#include "arrus/common/cache.h"
+#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
+#include "arrus/common/cache.h"
+#include "arrus/core/common/logging.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
@@ -102,6 +107,16 @@ public:
     void clearCallbacks() override;
     Us4OEMDescriptor getDescriptor() const override;
 
+    HVPSMeasurement getHVPSMeasurement() override;
+
+    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override;
+
+    void setMaximumPulseLength(std::optional<float> maxLength) override;
+
+    void sync(std::optional<long long> timeout) override;
+    void setWaitForHVPSMeasurementDone() override;
+    void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
+
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;
@@ -154,6 +169,7 @@ private:
                                    const Us4OEMRxMappingRegister &rxMappingRegister);
     void uploadTriggersIOBS(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
                             ops::us4r::Scheme::WorkMode workMode);
+    void waitForIrq(unsigned int irq, std::optional<long long> timeout);
 
     void validate(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize);
     size_t getNumberOfFirings(const us4r::TxParametersSequenceColl &vector);
@@ -185,6 +201,9 @@ private:
     /** The size of each bitstream defined (the number of registers). */
     std::vector<uint16> bitstreamSizes;
     bool isDecimationFactorAdjustmentLogged{false};
+    std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
+    /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
+    std::optional<float> maxPulseLength = std::nullopt;
 };
 
 }// namespace arrus::devices

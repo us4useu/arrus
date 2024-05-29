@@ -205,7 +205,17 @@ public:
 
     virtual void start() override = 0;
     virtual void stop() override = 0;
-    virtual void trigger() override = 0;
+    virtual void trigger(bool sync, std::optional<long long> timeout) override = 0;
+
+    /**
+     * Synchronization point with us4R system. After returning from this method, the last "TX/RX" (triggered by the
+     * trigger method will be  fully executed by the system.
+     *
+     * Sync with "SEQ_IRQ" interrupt (i.e. wait until the SEQ IRQ will occur).
+     *
+     * @param timeout timeout in number of milliseconds
+     */
+    virtual void sync(std::optional<long long> timeout) override = 0;
 
     virtual std::vector<unsigned short> getChannelsMask(Ordinal probeNumber) = 0;
 
@@ -310,6 +320,14 @@ public:
      * @return probe handle
      */
     Probe* getProbe(Ordinal ordinal) override = 0;
+
+    /**
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * std::nullopt means to use up to 32 TX cycles.
+     *
+     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     */
+    virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
