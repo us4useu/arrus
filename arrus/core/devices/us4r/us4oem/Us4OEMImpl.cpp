@@ -5,6 +5,7 @@
 #include <thread>
 #include <utility>
 
+#include "Us4OEMDescriptorFactory.h"
 #include "Us4OEMTxRxValidator.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
@@ -415,6 +416,10 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
     // Upload triggers and IOBS
     FiringId entryId = 0;
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
+
+    bool triggerSyncPerBatch = arrus::ops::us4r::Scheme::isWorkModeManual(workMode) || workMode == ops::us4r::Scheme::WorkMode::HOST;
+    bool triggerSyncPerTxRx = workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP;
+
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
         for (SequenceId seqId = 0; seqId < nSequences; ++seqId) {
@@ -425,11 +430,11 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                 for (OpId opId = 0; opId < seq.size(); ++opId, ++entryId) {
                     // OPS
                     auto const &op = seq.at(opId);
-                    bool isTriggerSync = workMode == Scheme::WorkMode::HOST || workMode == Scheme::WorkMode::MANUAL;
+
                     bool isLastOp = opId == seq.size() - 1;
                     bool isLastRepeat = repeatId == seq.getNRepeats() - 1;
                     bool isLastSequence = seqId == sequences.size() - 1;
-                    bool isCheckpoint = isTriggerSync && isLastOp && isLastRepeat && isLastSequence;
+                    bool isCheckpoint = triggerSyncPerBatch && isLastOp && isLastRepeat && isLastSequence;
                     float pri = op.getPri();
                     if (isLastOp) {
                         auto lastPriExtension = lastPriExtensions.at(seqId);
@@ -438,7 +443,8 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                         }
                     }
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
-                    ius4oem->SetTrigger(priMs, isCheckpoint, entryId, isCheckpoint && externalTrigger);
+                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
+                                        triggerSyncPerTxRx);
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
@@ -841,8 +847,78 @@ std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(
     }
     return aperture;
 }
+
 Us4OEMDescriptor Us4OEMImpl::getDescriptor() const {
     return descriptor;
 }
+
+void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
+    // 2 means OEM+
+    // this is the only type of OEM that currently can have a maxLength != nullopt
+    if(ius4oem->GetOemVersion() != 2 && maxLength.has_value()) {
+        throw IllegalArgumentException("Currently it is possible to set maxLength value only for OEM+ (type 2)");
+    }
+    TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTx()};
+    if(maxLength.has_value()) {
+        txBuilder.setPulseLength(Interval<float>{0.0f, maxLength.value()});
+    }
+    else {
+        // Set the default setting.
+        auto defaultLimits = Us4OEMDescriptorFactory::getDescriptor(ius4oem, isMaster()).getTxRxSequenceLimits().getTxRx().getTx().getPulseLength();
+        txBuilder.setPulseLength(defaultLimits);
+    }
+    TxLimits txLimits = txBuilder.build();
+    TxRxSequenceLimitsBuilder seqBuilder{descriptor.getTxRxSequenceLimits()};
+    seqBuilder.setTxRxLimits(txLimits, descriptor.getTxRxSequenceLimits().getTxRx().getRx(),
+                             descriptor.getTxRxSequenceLimits().getTxRx().getPri());
+    Us4OEMDescriptorBuilder builder{descriptor};
+    builder.setTxRxSequenceLimits(seqBuilder.build());
+    // Set the new descriptor.
+    descriptor = builder.build();
+}
+
+HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
+    auto m = ius4oem->GetHVPSMeasurements();
+    HVPSMeasurementBuilder builder;
+    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP0Voltage);
+    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP0Current);
+    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP1Voltage);
+    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP1Current);
+    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.HVM0Voltage);
+    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.HVM0Current);
+    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.HVM1Voltage);
+    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.HVM1Current);
+    return builder.build();
+}
+
+float Us4OEMImpl::setHVPSSyncMeasurement(uint16_t nSamples, float frequency) {
+    return ius4oem->SetHVPSSyncMeasurement(nSamples, frequency);
+}
+
+void Us4OEMImpl::waitForIrq(unsigned int irq, std::optional<long long> timeout) {
+    this->irqEvents.at(irq).wait(timeout);
+}
+
+void Us4OEMImpl::sync(std::optional<long long> timeout) {
+    logger->log(LogSeverity::TRACE, "Waiting for EVENTDONE IRQ");
+    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
+    this->waitForIrq(eventDoneIrq, timeout);
+}
+
+void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
+    ius4oem->EnableHVPSMeasurementReadyIRQ();
+    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
+    irqEvents.at(measurementDoneIrq).resetCounters();
+    ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
+        this->irqEvents.at(measurementDoneIrq).notifyOne();
+    });
+}
+
+void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
+    logger->log(LogSeverity::TRACE, "Waiting for HVPS Measurement done IRQ");
+    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
+    this->waitForIrq(measurementDoneIrq, timeout);
+}
+
 
 }// namespace arrus::devices

@@ -5,6 +5,8 @@
 #include "arrus/core/api/common/types.h"
 namespace arrus::ops::us4r {
 
+class TxRxSequenceLimitsBuilder;
+
 /**
  * TX/RX sequence limits.
  */
@@ -16,9 +18,30 @@ public:
     const Interval<uint32> &getSize() const { return size; }
 
 private:
+    friend class TxRxSequenceLimitsBuilder;
     TxRxLimits txrx;
     Interval<uint32> size;
 };
+
+class TxRxSequenceLimitsBuilder {
+public:
+    explicit TxRxSequenceLimitsBuilder(TxRxSequenceLimits limits): limits(std::move(limits)) {}
+
+    TxRxSequenceLimitsBuilder& setTxRxLimits(const TxLimits &txLimits, const RxLimits &rxLimits,
+                                          const Interval<float> &pri) {
+        limits->txrx = TxRxLimits{txLimits, rxLimits, pri};
+        return *this;
+    }
+
+    TxRxSequenceLimits build() {
+        return limits.value();
+    }
+
+private:
+    std::optional<TxRxSequenceLimits> limits;
+};
+
+
 
 }
 

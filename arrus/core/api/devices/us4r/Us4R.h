@@ -227,7 +227,7 @@ public:
     /**
      * Returns the number of probes that are connected to the system.
      */
-    int getNumberOfProbes() const = 0;
+    int getNumberOfProbes() const override = 0;
 
     /**
      * Returns NOMINAL us4R device sampling frequency.

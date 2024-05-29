@@ -6,6 +6,8 @@
 
 namespace arrus::ops::us4r {
 
+class TxLimitsBuilder;
+
 /**
  * RX op limits.
  *
@@ -23,10 +25,29 @@ public:
     const Interval<float> &getDelay() const { return delay; }
 
 private:
+    friend class TxLimitsBuilder;
     Interval<float> frequency;
     Interval<float> delay;
     Interval<float> pulseLength;
     Interval<Voltage> voltage;
+};
+
+class TxLimitsBuilder {
+
+public:
+    explicit TxLimitsBuilder(const TxLimits tx) : tx(std::move(tx)) {}
+
+    TxLimitsBuilder& setFrequency(const Interval<float> &frequency) { tx->frequency = frequency; return *this;  }
+    TxLimitsBuilder& setDelay(const Interval<float> &delay) { tx->delay = delay; return *this; }
+    TxLimitsBuilder& setPulseLength(const Interval<float> &pulseLength) { tx->pulseLength = pulseLength; return *this; }
+    TxLimitsBuilder& setVoltage(const Interval<Voltage> &voltage) { tx->voltage = voltage; return *this; }
+
+    TxLimits build() {
+        return tx.value();
+    }
+
+private:
+    std::optional<TxLimits> tx;
 };
 
 

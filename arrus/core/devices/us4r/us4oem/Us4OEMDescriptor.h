@@ -11,6 +11,8 @@
 
 namespace arrus::devices {
 
+class Us4OEMDescriptorBuilder;
+
 /**
  * Us4OEM parameters and constraints.
  *
@@ -27,6 +29,8 @@ public:
     static constexpr ChannelIdx N_RX_CHANNELS = 32;
     // TODO deprecated!
     static constexpr size_t TGC_N_SAMPLES = 1022;
+    static constexpr unsigned MAX_IRQ_NR = IUs4OEM::MAX_IRQ_NR;
+
 
     Us4OEMDescriptor(ChannelIdx nRxChannels, float minRxTime, float rxTimeEpsilon, float sequenceReprogrammingTime,
                      float samplingFrequency, size_t ddrSize, size_t maxTransferSize, float nPeriodsResolution,
@@ -50,8 +54,10 @@ public:
     const ops::us4r::TxRxSequenceLimits &getTxRxSequenceLimits() const { return txRxSequenceLimits; }
     float getNPeriodsResolution() const { return nPeriodsResolution; }
     bool isMaster() const { return master; }
+    unsigned getMaxIRQNumber() {return MAX_IRQ_NR; }
 
 private:
+    friend class Us4OEMDescriptorBuilder;
     ChannelIdx nRxChannels;
     float minRxTime;
     float rxTimeEpsilon;
@@ -62,6 +68,29 @@ private:
     float nPeriodsResolution;
     bool master;
     arrus::ops::us4r::TxRxSequenceLimits txRxSequenceLimits;
+};
+
+class Us4OEMDescriptorBuilder {
+public:
+
+    explicit Us4OEMDescriptorBuilder(Us4OEMDescriptor descriptor): descriptor(std::move(descriptor)) {}
+
+    void setTxRxSequenceLimits(const ::arrus::ops::us4r::TxRxSequenceLimits &limits) {
+        this->descriptor->txRxSequenceLimits = limits;
+    }
+
+    Us4OEMDescriptor build() {
+        if(!descriptor.has_value()) {
+            throw IllegalStateException("No parameters set for the new descriptor!");
+        }
+        auto result = descriptor.value();
+        descriptor.reset();
+        return result;
+    }
+
+private:
+    std::optional<Us4OEMDescriptor> descriptor;
+
 };
 
 }
