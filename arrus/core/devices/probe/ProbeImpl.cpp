@@ -51,7 +51,8 @@ class ProbeTxRxValidator : public Validator<TxRxParamsSequence> {
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                           uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
+                           uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri,
+                           arrus::ops::us4r::Scheme::WorkMode workMode,
                            const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                            const std::vector<framework::NdArray> &txDelayProfiles) {
     // Validate input sequence
@@ -125,7 +126,7 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
         ++opIdx;
     }
 
-    auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
+    auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, workMode,
                                                  ddc, adapterTxDelayProfiles);
     FrameChannelMapping::Handle actualFcm = remapFcm(fcm, rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
     return std::make_tuple(std::move(buffer), std::move(actualFcm));

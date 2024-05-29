@@ -102,7 +102,9 @@ public:
 
     void stop() override;
 
-    void trigger() override;
+    void trigger(bool sync, std::optional<long long> timeout) override;
+
+    void sync(std::optional<long long> timeout) override;
 
     void setVoltage(Voltage voltage) override;
 
@@ -153,13 +155,16 @@ public:
     std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
     setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
+    void setMaximumPulseLength(std::optional<float> maxLength) override;
+
 private:
     UltrasoundDevice *getDefaultComponent();
 
     void stopDevice();
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync,
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize,
+                   arrus::ops::us4r::Scheme::WorkMode workMode,
                    const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                    const std::vector<framework::NdArray> &txDelayProfiles);
 
