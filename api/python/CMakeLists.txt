@@ -101,15 +101,14 @@ set(SOURCE_FILES
         )
 
 set(TEST_FILES
+    # Image reconstruction tests.
     arrus/utils/tests/processing_test.py
     arrus/utils/tests/imaging/preprocessing_test.py
     arrus/utils/tests/imaging/filters_test.py
     arrus/utils/tests/imaging/reconstruction_test.py
     # Computing TX/RX delays (obsolete).
-#    arrus/kernels/tests/simple_tx_rx_sequence_test.py
-#    arrus/kernels/tests/tx_rx_sequence_test.py
-    # Image reconstruction tests.
-
+    arrus/kernels/tests/simple_tx_rx_sequence_test.py
+    arrus/kernels/tests/tx_rx_sequence_test.py
 )
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")

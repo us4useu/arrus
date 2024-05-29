@@ -23,6 +23,10 @@ MOCKED_DEVICE_SAMPLING_FREQUENCY = 65e6
 class DeviceMock:
     probe: ProbeMock
     sampling_frequency: float = MOCKED_DEVICE_SAMPLING_FREQUENCY
+    data_sampling_frequency: float = MOCKED_DEVICE_SAMPLING_FREQUENCY
+
+    def get_probe_by_id(self, id):
+        return self.probe
 
 
 @dataclasses.dataclass(frozen=True)
@@ -327,7 +331,7 @@ class LinSequenceTest(SimpleTxRxSequenceTest):
             fs=MOCKED_DEVICE_SAMPLING_FREQUENCY,
         )
         seq2_with_mask: TxRxSequence = arrus.kernels.tx_rx_sequence.set_aperture_masks(
-            sequence=seq2, probe=probe_model
+            sequence=seq2, probe_tx=probe_model, probe_rx=probe_model
         )
         delays, _ = arrus.kernels.tx_rx_sequence.get_tx_delays(probe_model, seq2, seq2_with_mask)
 
