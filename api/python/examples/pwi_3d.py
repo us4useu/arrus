@@ -56,7 +56,6 @@ def main():
                     pri=200e-6
                 ),
             ],
-            # Turn off TGC.
             tgc_curve=[14]*200,  # [dB]
             # Time between consecutive acquisitions, i.e. 1/frame rate.
             sri=50e-3

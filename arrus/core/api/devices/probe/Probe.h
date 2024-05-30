@@ -13,7 +13,7 @@ public:
 
     virtual ~Probe() = default;
 
-    virtual const arrus::devices::ProbeModel &getModel() const = 0;
+    virtual const ProbeModel &getModel() const = 0;
 
     Probe(Probe const&) = delete;
     Probe(Probe const&&) = delete;

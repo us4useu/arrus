@@ -1,11 +1,12 @@
 #ifndef ARRUS_CORE_API_DEVICES_US4R_US4OEM_H
 #define ARRUS_CORE_API_DEVICES_US4R_US4OEM_H
 
+#include <memory>
+
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/TriggerGenerator.h"
 #include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
-#include <memory>
 
 namespace arrus::devices {
 
@@ -175,6 +176,18 @@ public:
      * :return: Actual sampling frequency
      */
     virtual float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) = 0;
+
+    /**
+     * Configures the system to sync with the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void setWaitForHVPSMeasurementDone() = 0;
+
+    /**
+     * Waits for the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

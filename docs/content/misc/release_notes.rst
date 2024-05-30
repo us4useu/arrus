@@ -1,30 +1,136 @@
 Release notes
 =============
 
+0.11.x
+-----
+
+0.11.0
+
+- core (C++):
+
+    - The .prototxt field us4oem_channels_mask is no longer required #ARRUS-197.
+    - arrus::devices::Us4RSettings::getUs4OEMChannelsMask() is no longer available # ARRUS-197.
+    - The arrus::devices::Us4RSettings::Us4RSettings constructor now takes a different set of parameters #ARRUS-197:
+
+        - the us4oemChannelsMask is no longer available,
+        - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
+
+- MATLAB API:
+
+    - Fixed the RX apodization #ARRUS-288.
+    - Exposed SYNC/ASYNC modes and switchable multi-sequences; Added coherent filtering and compounding flags; Implemented cineloop buffers; Improved processing speed; Removed "nElements" option for tx/rx aperture size; #ARRUS-195;
+
+
+0.10.x
+-----
+
+0.10.2
+
+- core (C++):
+
+    - Exposed HVPS measurements and MANUAL_OP work mode #US4R-395.
+
+        - Implemented MANUAL_OP work mode #US4R-395.
+        - Exposed the Us4R::setMaximumPulseLength(pulseLength) function, which allows you to set what is the maximum allowable pulse length. The function was prepared in order to provide the possibility to transmit with more than 32 cycles (available only for OEM+), and that is necessary for the new probe_check function to get reliable results. By default (when the method is not explicitly called), the maximum pulse length is set to 32 cycles. 
+
+- Python API:
+
+    - Implement HVPS-based probe check and MANUAL_OP work mode #US4R-395.
+        
+        - Exposed HVPS measurement in the Python API
+        - Implemented MANUAL_OP work mode
+        - Updated arrus.utils.probe_check module to use the HVPS measurements (OEM+ rev1 only). Exposed the new parameters: signal_type (rf or hvps), current (hvps only).
+        - Exposed the us4r.set_maximum_pulse_length(pulse_length) function. See the core (C++) release notes for more details.
+
+0.10.1
+
+- core (C++):
+
+    - Fixed buffer overflow handling in case setSubsequence method was called #US4R-474.
+
+
+0.10.0
+
+- core (C++):
+
+    - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
+    - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined buffer overflow interrupts handling, #US4R-456.
+    - Removed HV enable on HVPS initialization #US4R-455.
+
+
+- Python API:
+
+    - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
+    - Added set_stop_on_overflow method #US4R-456.
+
+
 0.9.x
 -----
+
+0.9.3
+
+- core (C++):
+
+    - updated us4r-api to 0.10.3:
+
+        - Added support for DBARLite PCIe rev2 (firmware: 1.1.0).
+
+0.9.2
+
+- core (C++):
+
+    - updated us4r-api to 0.10.2:
+
+        - Fixed FPGA decimation setting when hardware DDC not used #US4R-398.
+
+0.9.1
+
+- core (C++):
+
+    - updated us4r-api to 0.10.1:
+
+        - Fixed AFE test patterns generation (RAMP, etc.) #US4R-381.
+        - Added HVP1/M1 voltages calibration skip when not used #US4R-376.       
 
 0.9.0
 
 - core (C++): 
 
-    - us4R: exposed SYNC mode
-    - Implemented File device (for simulated mode) #221, #ARRUS-248.
+    - us4R: exposed SYNC mode #ARRUS-83.
+    - Fixed RX aperture < 32 elements #ARRUS-206
+    - Added support for us4OEM+ hardware with and without external HVPS. #MD_us4OEM-12, #M_OEM-10, #M_OEM52, #ARRUS-272, #ARRUS-274.
+    - Added support for DBARLite-PCIe and DBARLite 8-bit #M_USSS2-103, #US4R-333. 
+    - Implemented probe connected check functionality for atl/philips2 adapter #US4R-314.
+    - Made it possible to execute the sequence of: triggerStart, triggerStop, triggerStart #US4R-147 
+    - Implemented File device (for simulated mode) #ARRUS-221, #ARRUS-248.
     - us4R: exposed us4OEM and digital backplane serial number and revision #ARRUS-267.
-    - Added Session::getCurrentState method, which returns the current state of the session (e.g if the devices are running or not).
+    - Made it possible to choose which us4OEM produces frame metadata #US4R-324.
+    - Added Session::getCurrentState method, which returns the current state of the session (e.g if the devices are running or not) #ARRUS-273.
     - us4R: Provided the possibility to explicitly specify what digital backplane is used #US4R-352.
+    - us4R Linux driver: disabled trigger stopping in the linux character device release: NOTE: please make sure to stop the system before disconnecting the probe #US4R-338.
+    - Default HV voltage (5V) is set on us4r device initialization #ARRUS-41.
     
 - Python API:
 
-    - us4R: exposed SYNC mode
-    - Added the possibility to change session medium after its initialization
-    - Added the possibility to specify rx depth range in the SimpleTxRxSequences.
-    - Exposed OX min/max position of the probe elements.
-    - Created cupy -> DL pack operator.
+    - us4R: exposed SYNC mode #ARRUS-83.
+    - Added support for Python 3.9 and Python 3.10 #ARRUS-208.
+    - Added the possibility to change session medium after its initialization #ARRUS-232.
+    - Added the possibility to specify rx depth range in the SimpleTxRxSequences #ARRUS-232.
+    - Exposed OX min/max position of the probe elements #ARRUS-232.
+    - Created cupy -> DL pack operator #ARRUS-232.
     - Created an example for file device (simulated mode) #221, #ARRUS-248.
-    - Added spacing to echo data description #295 #ARRUS-251.
+    - Created dictionary of media #ARRUS-231, #ARRUS-247.
+    - Added spacing to echo data description #ARRUS-251.
+    - Python API minor package fixes: fixed imaging pipeline parameter setting #ARRUS-265.
     - us4R: exposed us4OEM and digital backplane serial number and revision #ARRUS-267.
     - us4R: provided the possibility to dynamically change TX focus, #US4R-326.
+    - us4R: added high pass filter in the probe check implementation to support us4OEM+ #US4R-356.
+    - Made tgc_curve parameter optional (default: no TGC) #ARRUS-278.
+
+- MATLAB API:
+
+    - Fixed issues with TGC in Matlab, enable the RF display #ARRUS-202, ARRUS-203.
+    - Color Doppler - thresholding and wall clutter filtration #ARRUS-239.
 
 
 0.8.x

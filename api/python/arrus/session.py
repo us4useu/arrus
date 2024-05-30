@@ -1,5 +1,6 @@
 import abc
 import queue
+import copy
 
 import numpy as np
 import importlib
@@ -18,15 +19,17 @@ import arrus.devices.gpu
 import arrus.ops.us4r
 import arrus.ops.imaging
 import arrus.ops.tgc
+import arrus.kernels.tgc
 import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.imaging
 import arrus.utils.core
 import arrus.framework
-from typing import Sequence, Dict
+from typing import Sequence, Dict, Iterable
 from numbers import Number
 
 from arrus.devices.ultrasound import Ultrasound
+from arrus.devices.us4r import Us4R
 
 
 class AbstractSession(abc.ABC):
@@ -40,11 +43,11 @@ class AbstractSession(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_device(self, id: str):
+    def get_device(self, path: str):
         """
         Returns a device located at given path.
 
-        :param id: a path to a device, for example '/Us4R:0'
+        :param path: a path to a device, for example '/Us4R:0'
         :return: a device located in a given path.
         """
         raise ValueError("Tried to access an abstract method.")
@@ -78,6 +81,8 @@ class Session(AbstractSession):
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing: arrus.utils.imaging.Processing = None
+        # Current metadata (for the full sequence)
+        self.const_metadata = None
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
@@ -92,74 +97,77 @@ class Session(AbstractSession):
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
         us_device_dto = us_device.get_dto()
         medium = self._context.medium
-        seq = scheme.tx_rx_sequence
+        sequences = scheme.tx_rx_sequence
+        if not isinstance(sequences, Iterable):
+            sequences = (sequences, )
         processing = scheme.processing
         constants = scheme.constants
 
-        kernel_context = self._create_kernel_context(
-            seq,
-            us_device_dto,
-            medium,
-            scheme.digital_down_conversion,
-            constants
-        )
-        conversion_results = arrus.kernels.get_kernel(type(seq))(kernel_context)
-        raw_seq = conversion_results.sequence
-        tx_delay_constants = conversion_results.constants
+        if len(constants) > 0 and len(sequences) > 1:
+            raise ValueError(
+                "Currently session constants can only be provided for a "
+                "single-sequence schemes."
+            )
+
+        raw_seqs = []
+        tx_delay_constants = ()
+        # TODO make sure all sequences have the same TGC (different TGCs are not supported)
+        # Convert to raw sequences and upload.
+        sequences = [dataclasses.replace(s, name=f"TxRxSequence:{i}")
+                     if s.name is None else s
+                     for i, s in enumerate(sequences)]
+        for i, sequence in enumerate(sequences):
+            kernel_context = self._create_kernel_context(
+                sequence,
+                us_device_dto,
+                medium,
+                scheme.digital_down_conversion,
+                constants
+            )
+            conversion_results = arrus.kernels.get_kernel(type(sequence))(kernel_context)
+            raw_seq = conversion_results.sequence
+            raw_seqs.append(raw_seq)
+            tx_delay_constants = conversion_results.constants
 
         actual_scheme = dataclasses.replace(
             scheme,
-            tx_rx_sequence=raw_seq,
+            tx_rx_sequence=raw_seqs,
             constants=tx_delay_constants
         )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
-
-        us_device.set_kernel_context(kernel_context)
-        data_description = us_device.get_data_description(upload_result, raw_seq)
+        # Update the DTO with the new data sampling frequency (determined by the scheme).
+        us_device_dto = dataclasses.replace(
+            us_device_dto,
+            data_sampling_frequency=us_device.current_sampling_frequency
+        )
 
         # Output buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
-        ###
-        # -- Constant metadata
-        # --- Frame acquisition context
-        fac = self._create_frame_acquisition_context(
-            seq, raw_seq, us_device_dto, medium, tx_delay_constants)
+        self.buffer = arrus.framework.DataBuffer(buffer_handle)
 
-        buffer = arrus.framework.DataBuffer(buffer_handle)
-        input_shape = buffer.elements[0].data.shape
+        # Constant metadata
+        # NOTE: the below should be called after session_handle.upload()
+        us_device.set_tgc_and_context(sequences, self.medium)
+        self.metadatas = []
 
-        is_iq_data = scheme.digital_down_conversion is not None
-        const_metadata = arrus.metadata.ConstMetadata(
-            context=fac, data_desc=data_description,
-            input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
-            version=arrus.__version__
-        )
+        for i, (raw_seq, seq) in enumerate(zip(raw_seqs, sequences)):
+            data_description = us_device.get_data_description(upload_result, raw_seq, array_id=i)
+            # -- Constant metadata
+            # --- Frame acquisition context
+            fac = self._create_frame_acquisition_context(
+                seq, raw_seq, us_device_dto, medium, tx_delay_constants)
+            input_shape = self.buffer.elements[0].arrays[i].shape
+            is_iq_data = scheme.digital_down_conversion is not None
+            const_metadata = arrus.metadata.ConstMetadata(
+                context=fac, data_desc=data_description,
+                input_shape=input_shape, is_iq_data=is_iq_data, dtype="int16",
+                version=arrus.__version__
+            )
+            self.metadatas.append(const_metadata)
 
         # numpy/cupy processing initialization
-        if processing is not None:
-            # setup processing
-            import arrus.utils.imaging as _imaging
-
-            if isinstance(processing, _imaging.Pipeline):
-                # Wrap Pipeline into the Processing object.
-                processing = _imaging.Processing(
-                    pipeline=processing,
-                    callback=None,
-                    extract_metadata=False
-                )
-            if isinstance(processing, _imaging.Processing):
-                processing = arrus.utils.imaging.ProcessingRunner(
-                    buffer, const_metadata, processing)
-                outputs = processing.outputs
-            else:
-                raise ValueError("Unsupported type of processing: "
-                                 f"{type(processing)}")
-            self._current_processing = processing
-        else:
-            # Device buffer and const_metadata
-            outputs = buffer, const_metadata
-        return outputs
+        return  self._set_processing(self.buffer, self.const_metadata, processing)
 
     def __enter__(self):
         return self
@@ -181,17 +189,25 @@ class Session(AbstractSession):
         arrus.core.arrusSessionStopScheme(self._session_handle)
         if self._current_processing is not None:
             self._current_processing.close()
+            self._current_processing = None
 
-    def run(self):
+    def run(self, sync: bool=False, timeout: int=None):
         """
         Runs the uploaded scheme.
 
         The behaviour of this method depends on the work mode:
         - MANUAL: triggers execution of batch of sequences only ONCE,
+        - MANUAL_OP: triggers execution of a single TX/RX only ONCE,
         - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
-         The run function can be called only once (before the scheme is stopped).
+          The run function can be called only once (before the scheme is stopped).
+
+        :param sync: whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
+                     the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done. This parameter only
+                     matters when the work mode is set to MANUAL or MANUAL_OP.
+        :param timeout: timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
+                        sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP.
         """
-        self._session_handle.run()
+        arrus.core.arrusSessionRun(self._session_handle, sync, timeout)
 
     def close(self):
         """
@@ -202,6 +218,8 @@ class Session(AbstractSession):
         methods (e.g. upload, startScheme..) will result in exception.
         """
         self.stop_scheme()
+        if self._current_processing is not None:
+            self._current_processing.close()
         self._session_handle.close()
 
     def get_device(self, path: str):
@@ -243,6 +261,9 @@ class Session(AbstractSession):
         return specific_device
 
     def set_parameters(self, params):
+        if self._contains_py_params(params):
+            self._handle_py_params(params)
+            params = self._remove_py_params(params)
         core_params = arrus.utils.core.convert_to_core_parameters(params)
         self._session_handle.setParameters(core_params)
 
@@ -252,18 +273,18 @@ class Session(AbstractSession):
         TODO: note: this method currently is not thread-safe
         """
         if self._current_processing is not None:
-            return self._current_processing.pipeline.set_parameter(key, value)
+            return self._current_processing.set_parameter(key, value)
 
     def get_parameter(self, key: str) -> Sequence[Number]:
         """
         Returns the current value for parameter with the given name.
         """
         if self._current_processing is not None:
-            return self._current_processing.pipeline.get_parameter(key)
+            return self._current_processing.processing.get_parameter(key)
 
     def get_parameters(self) -> Dict[str, arrus.params.ParameterDef]:
         if self._current_processing is not None:
-            return self._current_processing.pipeline.get_parameters()
+            return self._current_processing.get_parameters()
 
     def get_session_context(self):
         return self._context
@@ -283,6 +304,123 @@ class Session(AbstractSession):
         NOTE: this method is not thread-safe!
         """
         self._context = SessionContext(medium=value)
+
+    def set_subsequence(self, start, end, processing=None, sri=None):
+        """
+        Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
+
+        This method requires that:
+
+        - start <= end (when start= == end, the system will run a single TX/RX sequence),
+        - the scheme was uploaded,
+        - the TX/RX sequence length is greater than the `end` value,
+        - the scheme is stopped.
+
+        You can specify the new SRI with the sri parameter, if None, the total PRI will be used.
+
+        :return: the new data buffer and metadata
+        """
+        if len(self.const_metadata) > 1:
+            raise ValueError("Set sub-sequence works only for "
+                             "single-sequence schemes.")
+
+        upload_result = self._session_handle.setSubsequence(start, end, sri)
+        # Get the new buffer
+        buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
+        self.buffer = arrus.framework.DataBuffer(buffer_handle)
+        # Create new metadata
+        metadata = copy.deepcopy(self.const_metadata)
+        us_device: Ultrasound = self.get_device("/Ultrasound:0")
+        input_shape = self.buffer.elements[0].data.shape
+        sequence = self.const_metadata.context.sequence.get_subsequence(start, end)
+        raw_sequence = self.const_metadata.context.raw_sequence.get_subsequence(start, end)
+        data_description = us_device.get_data_description_updated_for_subsequence(upload_result, sequence)
+        fac = dataclasses.replace(
+            self.const_metadata.context,
+            sequence=sequence,
+            raw_sequence=raw_sequence
+        )
+        metadata = metadata.copy(
+            input_shape=input_shape,
+            data_desc=data_description,
+            context=fac,
+        )
+        return self._set_processing(self.buffer, metadata, processing)
+
+    def _set_processing(self, buffer, const_metadata, processing):
+        # setup processing
+        if self._current_processing is not None:
+            self._current_processing.close()
+            self._current_processing = None
+
+        if processing is not None:
+            # setup processing
+            import arrus.utils.imaging as _imaging
+            if isinstance(processing, _imaging.Pipeline):
+                # Wrap Pipeline into the Processing object.
+                if processing.name is None:
+                    processing.name = f"Pipeline:0"
+                graph = _imaging.Graph(
+                    operations={processing},
+                    dependencies={
+                        processing.name: sequences[0].name,
+                        "Output:0": processing.name
+                    }
+                )
+                processing = _imaging.Processing(
+                    graph=graph,
+                    callback=None,
+                )
+            if isinstance(processing, Iterable):
+                pipelines = processing
+                for i, p in enumerate(pipelines):
+                    if p.name is None:
+                        p.name = f"Pipeline:{i}"
+                ops = set(pipelines)
+                deps = dict([(p.name, s.name) for p, s in zip(pipelines, sequences)]
+                            + [(f"Output:{i}", p.name) for i, p in enumerate(pipelines)])
+                graph = _imaging.Graph(
+                    operations=ops,
+                    dependencies=deps
+                )
+                processing = _imaging.Processing(
+                    graph=graph,
+                    callback=None,
+                )
+            if isinstance(processing, _imaging.Graph):
+                processing = _imaging.Processing(
+                    graph=processing,
+                    callback=None,
+                )
+            if not isinstance(processing, _imaging.Processing):
+                raise ValueError(f"Unsupported type of processing: {type(processing)}")
+
+            processing_runner = arrus.utils.imaging.ProcessingRunner(
+                input_buffer=buffer, metadata=metadatas, processing=processing,
+            )
+            outputs = processing_runner.outputs
+            self._current_processing = processing_runner
+        else:
+            # Device buffer and const_metadata
+            outputs = buffer, metadatas
+        return outputs
+
+    def _contains_py_params(self, params):
+        # Currently only start/stop params must by handled
+        # by the Python layer, because os the self._buffer handle
+        return Us4R.SEQUENCE_START_VAR in params or Us4R.SEQUENCE_END_VAR in params
+
+    def _remove_py_params(self, params):
+        params = params.copy()
+        params.pop(Us4R.SEQUENCE_START_VAR, None)
+        params.pop(Us4R.SEQUENCE_END_VAR, None)
+        return params
+
+    def _handle_py_params(self, params):
+        # Currently only start/stop params must be handled in the Python layer.
+        sequence_start = params.get(Us4R.SEQUENCE_START_VAR, None)
+        sequence_end = params.get(Us4R.SEQUENCE_START_VAR, None)
+        self.set_subsequence(sequence_start, sequence_end)
 
     # def set_current_medium(self, medium: arrus.medium.Medium):
     #     # TODO mutex, forbid when context is frozen (e.g. when us4r is running)
@@ -315,5 +453,3 @@ class Session(AbstractSession):
             medium=medium, custom_data={},
             constants=constants
         )
-
-

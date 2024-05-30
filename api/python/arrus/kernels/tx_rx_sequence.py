@@ -23,14 +23,20 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
     """
     sequence: TxRxSequence = context.op
     tx_delay_constants = context.constants
-    probe_model = context.device.probe.model
+
+    # Determine unique probe tx and rx id.
+    probe_tx_id = sequence.get_tx_probe_id_unique()
+    probe_rx_id = sequence.get_rx_probe_id_unique()
+    probe_tx = context.device.get_probe_by_id(probe_tx_id).model
+    probe_rx = context.device.get_probe_by_id(probe_rx_id).model
     fs: float = __get_sampling_frequency(context)
     # Update the following sequence parameters (if necessary):
     # - tx: aperture (to binary mask)
     # - rx: aperture (to binary mask), rx padding
     sequence, _, constants = convert_to_us4r_sequence_with_constants(
         sequence=sequence,
-        probe_model=probe_model,
+        probe_tx=probe_tx,
+        probe_rx=probe_rx,
         fs=fs,
         tx_focus_constants=tx_delay_constants
     )
@@ -40,13 +46,14 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
     )
 
 
-def convert_to_us4r_sequence(sequence: TxRxSequence, probe_model, fs: float):
+def convert_to_us4r_sequence(sequence: TxRxSequence, probe_tx, probe_rx, fs: float):
     """
     for backward compatibility
     """
     seq, center_delay, constants = convert_to_us4r_sequence_with_constants(
         sequence=sequence,
-        probe_model=probe_model,
+        probe_tx=probe_tx,
+        probe_rx=probe_rx,
         fs=fs,
         tx_focus_constants=()
     )
@@ -67,11 +74,12 @@ def _get_full_tx_delays(constant_delays, sequence_with_masks):
 
 
 def convert_to_us4r_sequence_with_constants(
-        sequence: TxRxSequence, probe_model, fs: float, tx_focus_constants
+        sequence: TxRxSequence, probe_tx, probe_rx, fs: float, tx_focus_constants
 ):
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=sequence,
-        probe=probe_model
+        probe_tx=probe_tx,
+        probe_rx=probe_rx
     )
     original_sequence = sequence
     # We want all operators to have exactly the same combination
@@ -95,7 +103,9 @@ def convert_to_us4r_sequence_with_constants(
         # - rx: init_delay, sample_range
         # Otherwise, we need to convert focus, angle, c to raw TX delays.
         dels, tx_center_delay = get_tx_delays(
-            probe_model, sequence, sequence_with_masks,
+            probe=probe_tx,
+            sequence=sequence,
+            seq_with_masks=sequence_with_masks,
         )
         # Calculate delays for each constant.
         new_ops = []
@@ -122,8 +132,10 @@ def convert_to_us4r_sequence_with_constants(
             focus = tx_focus_const.value
             focuses = [focus]*len(sequence_with_masks.ops)
             constant_delays, _ = get_tx_delays_for_focuses(
-                probe_model, original_sequence, sequence_with_masks,
-                focuses
+                probe=probe_tx,
+                sequence=original_sequence,
+                seq_with_masks=sequence_with_masks,
+                tx_focuses=focuses
             )
             full_tx_delays = _get_full_tx_delays(
                 constant_delays, sequence_with_masks)
@@ -330,8 +342,9 @@ def __get_aperture_center_element(aperture: Aperture, probe_model):
         assert False
 
 
-def set_aperture_masks(sequence, probe) -> TxRxSequence:
-    def get_new_ap_if_necessary(ap):
+def set_aperture_masks(sequence, probe_tx, probe_rx) -> TxRxSequence:
+
+    def get_new_ap_if_necessary(ap, probe):
         if isinstance(ap, Aperture):
             center_element = __get_aperture_center_element(ap, probe)
             return __get_aperture_mask_with_padding(
@@ -347,8 +360,10 @@ def set_aperture_masks(sequence, probe) -> TxRxSequence:
         # Replace
         old_tx = op.tx
         old_rx = op.rx
-        new_tx_ap, _ = get_new_ap_if_necessary(old_tx.aperture)
-        new_rx_ap, padding = get_new_ap_if_necessary(old_rx.aperture)
+        new_tx_ap, _ = get_new_ap_if_necessary(old_tx.aperture,
+                                               probe=probe_tx)
+        new_rx_ap, padding = get_new_ap_if_necessary(old_rx.aperture,
+                                                     probe=probe_rx)
 
         new_tx = dataclasses.replace(old_tx, aperture=new_tx_ap)
         new_rx = dataclasses.replace(old_rx, aperture=new_rx_ap,
@@ -411,14 +426,15 @@ def get_init_delay(pulse, tx_delay_center):
     return delay
 
 
-def get_center_delay(sequence: TxRxSequence, probe_model):
+def get_center_delay(sequence: TxRxSequence, probe_tx, probe_rx):
     """
     NOTE: the input sequence TX must be defined by focus, angle speed of sound
     This function does not work with the tx rx sequence with raw delays.
     """
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=sequence,
-        probe=probe_model
+        probe_tx=probe_tx,
+        probe_rx=probe_rx
     )
-    _, center_delay = get_tx_delays(probe_model, sequence, sequence_with_masks)
+    _, center_delay = get_tx_delays(probe_tx, sequence, sequence_with_masks)
     return center_delay

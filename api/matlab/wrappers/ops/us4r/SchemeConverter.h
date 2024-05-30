@@ -29,6 +29,7 @@ public:
         // NOTE: thread unsafe
         if (strToEnum.empty()) {
             strToEnum.insert(enummapElement{"ASYNC", Scheme::WorkMode::ASYNC});
+            strToEnum.insert(enummapElement{"SYNC", Scheme::WorkMode::SYNC});
             strToEnum.insert(enummapElement{"HOST", Scheme::WorkMode::HOST});
             strToEnum.insert(enummapElement{"MANUAL", Scheme::WorkMode::MANUAL});
         }

@@ -74,10 +74,17 @@ public:
      *
      * The behaviour of this method depends on the work mode:
      * - MANUAL: triggers execution of batch of sequences only ONCE,
+     * - MANUAL_OP: triggers execution of a single TX/RX only ONCE,
      * - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
      *   The run function can be called only once (before the scheme is stopped).
+     *
+     * @param sync whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
+     *        the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done. This parameter only
+     *        matters when the work mode is set to MANUAL or MANUAL_OP.
+     * @param timeout timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
+     *        sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP
      */
-    virtual void run() = 0;
+    virtual void run(bool sync = false, std::optional<long long> timeout = std::nullopt) = 0;
 
     /**
      * Closes session.
@@ -94,6 +101,23 @@ public:
      * Returns the current state of the session. See also Session::State.
      */
     virtual State getCurrentState() = 0;
+
+    /**
+     * Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
+     *
+     * This method requires that:
+     *
+     * - start <= end (when start= == end, the system will run a single TX/RX sequence),
+     * - the scheme was uploaded,
+     * - the TX/RX sequence length is greater than the `end` value,
+     * - the scheme is stopped.
+     *
+     * @param start the TX/RX number which should now be the first TX/RX
+     * @param end the TX/RX number which should now be the last TX/RX
+     * @param sri the new SRI to apply
+     * @return the new data buffer and metadata
+     */
+    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri) = 0;
 
     virtual ~Session() = default;
 

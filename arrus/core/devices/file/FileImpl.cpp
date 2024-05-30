@@ -28,33 +28,32 @@ std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) 
     file.seekg(0, std::ios::end);
     std::streampos fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
-    logger->log(LogSeverity::INFO, format("Input file size: {} MiB", float(fileSize)/(1<<20)));
-    if(fileSize == 0) {
+    logger->log(LogSeverity::INFO, format("Input file size: {} MiB", float(fileSize) / (1 << 20)));
+    if (fileSize == 0) {
         throw ArrusException("Empty input file. Is your input file correct?");
     }
-    if(fileSize % sizeof(int16_t) != 0) {
+    if (fileSize % sizeof(int16_t) != 0) {
         throw ArrusException("Invalid input data size: the number of read bytes is not divisible by 2 (int16_t). "
                              "Is your input file correct?");
     }
     std::vector<int16_t> all(fileSize / sizeof(int16_t));
-    if(all.size() % settings.getNFrames() != 0) {
-        throw ArrusException(format(
-            "Invalid input data size: the number of int16_t values {} is not divisible by {}. "
-            "(the number of declared frames). Is your input file correct?",
-            all.size(), settings.getNFrames()));
+    if (all.size() % settings.getNFrames() != 0) {
+        throw ArrusException(format("Invalid input data size: the number of int16_t values {} is not divisible by {}. "
+                                    "(the number of declared frames). Is your input file correct?",
+                                    all.size(), settings.getNFrames()));
     }
-    file.read((char*)all.data(), fileSize);
-    size_t frameSize = all.size()/settings.getNFrames();
+    file.read((char *) all.data(), fileSize);
+    size_t frameSize = all.size() / settings.getNFrames();
     std::vector<Frame> result;
-    for(size_t i = 0; i < settings.getNFrames(); ++i) {
-        Frame frame(std::begin(all)+i*frameSize, std::begin(all)+(i+1)*frameSize);
+    for (size_t i = 0; i < settings.getNFrames(); ++i) {
+        Frame frame(std::begin(all) + i * frameSize, std::begin(all) + (i + 1) * frameSize);
         result.push_back(std::move(frame));
     }
     logger->log(LogSeverity::INFO, "Data ready.");
     return result;
 }
 
-std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const ops::us4r::Scheme &scheme) {
+std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> FileImpl::upload(const ops::us4r::Scheme &scheme) {
     this->currentScheme = scheme;
     auto &seq = this->currentScheme->getTxRxSequence();
 
@@ -62,17 +61,17 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     // NOTE: assuming that each RX has the same number of channels and samples.
     size_t nTx = seq.getOps().size();
     auto [startSample, stopSample] = seq.getOps().at(0).getRx().getSampleRange();
-    size_t nSamples = stopSample-startSample;
+    size_t nSamples = stopSample - startSample;
     auto &rxAperture = seq.getOps()[0].getRx().getAperture();
     size_t nRx = std::accumulate(std::begin(rxAperture), std::end(rxAperture), 0);
     nRx += seq.getOps()[0].getRx().getPadding().first;
     nRx += seq.getOps()[0].getRx().getPadding().second;
-    size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1; // I/Q or raw data.
+    size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1;// I/Q or raw data.
     this->frameShape = NdArray::Shape{1, nTx, nRx, nSamples, nValues};
     this->txBegin = 0;
-    this->txEnd = (int)nTx;
+    this->txEnd = (int) nTx;
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
-    if(this->frameShape.product() != dataset.at(0).size()) {
+    if (this->frameShape.product() != dataset.at(0).size()) {
         throw ArrusException(
             format("The provided sequence (output dimensions: nTx: {}, nRx: {}, nSamples: {}, nComponents: {})) "
                    "does not correspond to the data from the file (number of int16_t values: {}). "
@@ -81,18 +80,26 @@ std::pair<Buffer::SharedHandle, Metadata::SharedHandle> FileImpl::upload(const o
     }
 
     // Determine current sampling frequency
-    if(this->currentScheme->getDigitalDownConversion().has_value()) {
+    if (this->currentScheme->getDigitalDownConversion().has_value()) {
         auto dec = this->currentScheme->getDigitalDownConversion().value().getDecimationFactor();
-        this->currentFs = this->getSamplingFrequency()/dec;
-    }
-    else {
+        this->currentFs = this->getSamplingFrequency() / dec;
+    } else {
         auto dec = seq.getOps().at(0).getRx().getDownsamplingFactor();
-        this->currentFs = this->getSamplingFrequency()/dec;
+        this->currentFs = this->getSamplingFrequency() / dec;
     }
     this->buffer = std::make_shared<FileBuffer>(this->settings.getNFrames(), this->frameShape);
     // Metadata
     MetadataBuilder metadataBuilder;
-    return std::make_pair(this->buffer, metadataBuilder.buildPtr());
+    std::vector<Metadata::SharedHandle> metadatas = {metadataBuilder.buildPtr()};
+    return std::make_pair(this->buffer, std::move(metadatas));
+}
+Probe::RawHandle FileImpl::getProbe(Ordinal ordinal) {
+    if(ordinal == 0) {
+        return probe.get();
+    }
+    else {
+        throw IllegalArgumentException("Probe ordinal outside of acceptable range.");
+    }
 }
 
 void FileImpl::start() {
@@ -188,41 +195,38 @@ void FileImpl::consumer() {
     logger->log(LogSeverity::INFO, "File consumer stopped.");
 }
 
-void FileImpl::trigger() {
+void FileImpl::trigger(bool, std::optional<long long> ) {
     throw std::runtime_error("File::trigger: NYI");
-}
-
-Probe *FileImpl::getProbe(Ordinal ordinal) {
-    if(ordinal > 0) {
-        throw arrus::IllegalArgumentException("Probe with ordinal > 0 is not available in the File device.");
-    }
-    return probe.get();
 }
 
 void FileImpl::setParameters(const Parameters &params) {
     std::unique_lock<std::mutex> lock(parametersMutex);
-    for(auto &item: params.items()) {
+    for (auto &item : params.items()) {
         auto &key = item.first;
         auto value = item.second;
-        if(key == "/sequence:0/begin") {
-            if(value < 0) {
+        if (key == "/sequence:0/begin") {
+            if (value < 0) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be not less than 0", key));
             }
             pendingSliceBegin = value;
-        }
-        else if(key == "/sequence:0/end") {
-            int currentNTx = (int)frameShape.get(1);
-            if(value >= currentNTx) {
+        } else if (key == "/sequence:0/end") {
+            int currentNTx = (int) frameShape.get(1);
+            if (value >= currentNTx) {
                 throw ::arrus::IllegalArgumentException(::arrus::format("{} should be less than {}", key, currentNTx));
             }
             pendingSliceEnd = value;
-        }
-        else {
+        } else {
             throw ::arrus::IllegalArgumentException("Unsupported setting: " + key);
         }
     }
 }
-
+int FileImpl::getNumberOfProbes() const {
+    return 1;
+}
+std::pair<std::shared_ptr<Buffer>, std::shared_ptr<Metadata>>
+FileImpl::setSubsequence(uint16, uint16, const std::optional<float> &) {
+    throw std::runtime_error("Not implemented.");
+}
 float FileImpl::getSamplingFrequency() const { return 65e6; }
 float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 

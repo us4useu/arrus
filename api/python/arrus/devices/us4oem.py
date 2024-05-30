@@ -3,6 +3,7 @@ from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.core
 import numpy as np
 
+
 DEVICE_TYPE = DeviceType("Us4OEM")
 
 
@@ -40,6 +41,10 @@ class HVPSMeasurement:
         """
         Returns the measurement as numpy array.
         The output shape is (polarity, level, unit, sample)
+
+        polarity: 0: MINUS, 1: PLUS
+        level: 0 or 1
+        unit: 0: voltage, 1: current
         """
         return self._array
 
@@ -54,7 +59,6 @@ class HVPSMeasurement:
             "VOLTAGE": arrus.core.HVPSMeasurement.VOLTAGE,
             "CURRENT": arrus.core.HVPSMeasurement.CURRENT
         }[value]
-
 
 
 class Us4OEM(Device):
@@ -114,3 +118,19 @@ class Us4OEM(Device):
 
     def set_hvps_sync_measurement(self, n_samples: int, frequency: float) -> float:
         return self._handle.setHVPSSyncMeasurement(n_samples, frequency)
+
+    def set_wait_for_hvps_measurement_done(self):
+        """
+        Configures the system to sync with the HVPS Measurement done irq.
+
+        This method is intended to be used in the probe_check implementation.
+        """
+        return self._handle.setWaitForHVPSMeasurementDone()
+
+    def wait_for_hvps_measurement_done(self, timeout: int=None):
+        """
+        Waits for the HVPS Measurement done irq.
+
+        This method is intended to be used in the probe_check implementation.
+        """
+        return arrus.core.arrusUs4OEMWaitForHVPSMeasuerementDone(self._handle, timeout)

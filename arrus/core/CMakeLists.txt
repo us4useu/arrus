@@ -21,6 +21,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/IOCapability.proto
     io/proto/devices/us4r/IOSettings.proto
     io/proto/devices/us4r/DigitalBackplaneSettings.proto
+    io/proto/devices/us4r/Bitstream.proto
     )
 ################################################################################
 # Target
@@ -39,7 +40,6 @@ set(SRC_FILES
     api/devices/probe/ProbeModel.h
     api/devices/probe/ProbeModelId.h
     api/devices/probe/ProbeSettings.h
-    api/devices/us4r/ProbeAdapter.h
     api/devices/us4r/ProbeAdapterModelId.h
     api/devices/us4r/ProbeAdapterSettings.h
     api/devices/us4r/Us4OEM.h
@@ -94,18 +94,11 @@ set(SRC_FILES
     devices/us4r/RxSettings.h
     devices/us4r/RxSettings.cpp
 
-    devices/us4r/probeadapter/ProbeAdapterFactory.h
-    devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h
-    devices/us4r/probeadapter/ProbeAdapterImpl.h
-    devices/us4r/probeadapter/ProbeAdapterImpl.cpp
     devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
     devices/us4r/probeadapter/ProbeAdapterSettings.h
     devices/us4r/probeadapter/ProbeAdapterSettings.cpp
 
-    devices/probe/ProbeFactory.h
-    devices/probe/ProbeFactoryImpl.h
     devices/probe/ProbeImpl.h
-    devices/probe/ProbeImpl.cpp
     devices/probe/ProbeSettingsValidator.h
     devices/probe/ProbeSettings.h
     devices/probe/ProbeSettings.cpp
@@ -142,8 +135,6 @@ set(SRC_FILES
     devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
     devices/us4r/Us4ROutputBuffer.h
     devices/us4r/Us4RImpl.cpp
-    devices/us4r/common.h
-    devices/us4r/common.cpp
 
     session/SessionImpl.h
     session/SessionImpl.cpp
@@ -170,13 +161,10 @@ set(SRC_FILES
     common/aperture.h
     external/eigen/Tensor.h
     devices/us4r/us4oem/Us4OEMImplBase.h
-    devices/us4r/probeadapter/ProbeAdapterImplBase.h
-    devices/probe/ProbeImplBase.h
     external/eigen/Dense.h
     ../common/utils.h
     devices/us4r/DataTransfer.h
     devices/us4r/us4oem/Us4OEMBuffer.h
-    devices/us4r/Us4RBuffer.h
     api/ops/us4r/Scheme.h
     api/framework/Buffer.h
     api/framework/NdArray.h
@@ -188,6 +176,7 @@ set(SRC_FILES
     api/framework/FifoBuffer.h
     api/ops/us4r/DigitalDownConversion.h
     ops/us4r/DigitalDownConversion.cpp
+    ops/us4r/Scheme.cpp
     cfg/default.h.in
     common/LogSeverity.cpp
     api/arrus.h
@@ -195,7 +184,20 @@ set(SRC_FILES
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
     devices/us4r/Us4OEMDataTransferRegistrar.h
-    api/devices/us4r/HVPSMeasurement.h)
+    devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+    devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h
+    devices/us4r/us4oem/Us4OEMUploadResult.h
+    devices/us4r/us4oem/Us4OEMTxRxValidator.h
+    devices/us4r/us4oem/Us4OEMDescriptor.h
+    api/ops/us4r/constraints/TxLimits.h
+    api/ops/us4r/constraints/RxLimits.h
+    api/ops/us4r/constraints/TxRxLimits.h
+    api/ops/us4r/constraints/TxRxSequenceLimits.h
+    api/ops/us4r/constraints/TxRxSequenceLimits.h
+    devices/us4r/us4oem/Us4OEMDescriptorFactory.h
+    devices/us4r/us4oem/IRQEvent.h
+    api/devices/us4r/HVPSMeasurement.h
+)
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -267,28 +269,45 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/us4oem/Us4OEMFactoryImplTest.cpp "${US4OEM_FACTORY_IMPL_TEST_DEPS}")
     create_core_test(devices/us4r/Us4RSettingsConverterImplTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/us4r/external/ius4oem/IUs4OEMInitializerImplTest.cpp)
-    create_core_test(devices/us4r/commonTest.cpp "devices/us4r/common.cpp;devices/TxRxParameters.cpp")
 
     set(US4OEM_IMPL_TEST_DEPS common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp
-        devices/us4r/common.cpp devices/TxRxParameters.cpp devices/DeviceId.cpp
+        devices/TxRxParameters.cpp devices/DeviceId.cpp
         devices/us4r/FrameChannelMappingImpl.cpp
         ops/us4r/DigitalDownConversion.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/us4oem/Us4OEMTxRxValidatorTest.cpp "devices/TxRxParameters.cpp;devices/DeviceId.cpp;common/logging.cpp")
+    create_core_test(devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilderTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
 
-    set(ADAPTER_IMPL_TEST_DEPS common/logging.cpp devices/us4r/probeadapter/ProbeAdapterImpl.cpp
-        devices/us4r/common.cpp
-        devices/TxRxParameters.cpp devices/DeviceId.cpp devices/us4r/FrameChannelMappingImpl.cpp
-        ops/us4r/DigitalDownConversion.cpp)
-    create_core_test(devices/us4r/probeadapter/ProbeAdapterImplTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
+    set(ADAPTER_IMPL_TEST_DEPS
+        devices/TxRxParameters.cpp
+        devices/DeviceId.cpp
+        devices/us4r/FrameChannelMappingImpl.cpp
+        devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+        common/logging.cpp
+    )
+
     create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
-    create_core_test(devices/probe/ProbeImplTest.cpp
-        "devices/probe/ProbeImpl.cpp;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
+    create_core_test(devices/us4r/mapping/ProbeToAdapterMappingConverterTest.cpp
+         "devices/us4r/mapping/ProbeToAdapterMappingConverter.h;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
+    create_core_test(devices/us4r/mapping/AdapterToUs4OEMMappingConverterTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
+
+    set(US4R_IMPL_TEST_DEPS
+        devices/TxRxParameters.cpp
+        devices/DeviceId.cpp
+        devices/us4r/FrameChannelMappingImpl.cpp
+        common/logging.cpp
+        devices/us4r/Us4RImpl.cpp
+        ops/us4r/Scheme.cpp
+        ops/us4r/DigitalDownConversion.cpp
+    )
+    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}")
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
     create_core_test(io/settingsTest.cpp
         "" # no additional source files
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
+    create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
 endif ()
 
 ################################################################################
@@ -310,7 +329,6 @@ while(${ARRUS_DEFAULT_DICT_CURRENT_POS} LESS_EQUAL ${ARRUS_DEFAULT_DICT_LEN})
 endwhile()
 # Splitting done
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cfg/default.h.in ${CMAKE_CURRENT_BINARY_DIR}/cfg/default.h)
-
 
 ################################################################################
 # Installation
@@ -341,9 +359,3 @@ install(
 add_executable(pwi-example examples/PwiExample.cpp)
 target_link_libraries(pwi-example PRIVATE arrus-core)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
-#
-#add_executable(demod-example examples/AfeDDCExample_v2.cpp)
-#target_link_libraries(demod-example PRIVATE arrus-core Boost::Boost)
-#target_include_directories(demod-example PRIVATE ${ARRUS_ROOT_DIR})
-#configure_file(examples/fir.txt fir.txt COPYONLY)
-#configure_file(examples/AfeDDCExample_v2_FirGen.py AfeDDCExample_v2_FirGen.py COPYONLY)

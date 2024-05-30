@@ -7,7 +7,6 @@ ms-gsl/2.1.0
 eigen/3.3.7
 zlib/1.2.12
 
-
 [options]
 boost:shared=True
 
