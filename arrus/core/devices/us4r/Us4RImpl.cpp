@@ -143,8 +143,27 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 
 void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
-    auto *device = getDefaultComponent();
-    auto voltageRange = device->getAcceptedVoltageRange();
+
+    // Determine the narrowest voltage range for us4OEMs and the connected probes
+    // (i.e. find the maximum start voltage, minimum end voltage).
+    std::vector<Voltage> voltageStart, voltageEnd;
+    for(auto &oem: us4oems) {
+        const auto &voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx().getVoltage();
+        voltageStart.push_back(voltageLimits.start());
+        voltageEnd.push_back(voltageLimits.end());
+    }
+    for(const auto &probe: probeSettings) {
+        const auto &voltageLimits = probe.getModel().getVoltageRange();
+        voltageStart.push_back(voltageLimits.start());
+        voltageEnd.push_back(voltageLimits.end());
+    }
+    auto minVoltage = *std::max_element(std::begin(voltageStart), std::end(voltageStart));
+    auto maxVoltage = *std::min_element(std::begin(voltageEnd), std::end(voltageEnd));
+    if(minVoltage > maxVoltage) {
+        throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
+                                           "the actual minimum voltage {} is greater than the maximum: {}.",
+                                           minVoltage, maxVoltage));
+    }
 
     ARRUS_REQUIRES_TRUE(!voltages.empty(), "At least a single voltage level should be set.");
 
@@ -154,11 +173,6 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
         auto voltagePlus = voltage.getVoltagePlus();
         logger->log(LogSeverity::INFO,
             format("Setting voltage -{}, +{}, level: {}", voltageMinus, voltagePlus, i));
-        // Validate
-        // Note: us4R HV voltage: minimum: 5V, maximum: 90V (this is true for HV256 and US4RPSC).
-        auto minVoltage = std::max<unsigned char>(voltageRange.start(), 5);
-        auto maxVoltage = std::min<unsigned char>(voltageRange.end(), 90);
-
         ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
             IllegalArgumentException(format(
                 "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,
