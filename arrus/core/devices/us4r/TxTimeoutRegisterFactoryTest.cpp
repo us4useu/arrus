@@ -67,6 +67,9 @@ TEST(TxTimeoutRegisterFactoryTest, Calculate) {
 
     std::cout << "Timeouts: " << std::endl;
     std::cout << ::arrus::toString(reg.getTimeouts()) << std::endl;
+    std::cout << "Timeout id: " << (int)reg.getTimeoutId({SequenceId{0}, OpId{0}}) << std::endl;
+    std::cout << "Timeout id: " << (int)reg.getTimeoutId({SequenceId{0}, OpId{1}}) << std::endl;
+    std::cout << "Timeout id: " << (int)reg.getTimeoutId({SequenceId{0}, OpId{2}}) << std::endl;
 }
 }
 

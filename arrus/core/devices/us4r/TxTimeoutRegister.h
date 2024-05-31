@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <vector>
 #include <optional>
-#include <iostream>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
@@ -85,8 +84,6 @@ public:
         TxTimeout timeout = txTimes.at(0);
         timeouts.push_back(timeout);
         for(auto t: txTimes) {
-            std::cout << "TIMEOUT: " << timeout << std::endl;
-            std::cout << "TX TIME:" << t << std::endl;
             auto newTimeout = timeout;
             while(timeout > t) {
                 newTimeout = timeout;
@@ -109,8 +106,8 @@ public:
         // Assign to buckets.
         SequenceId sId = 0;
         for(const auto &s: sequences) {
+            OpId opId = 0;
             for(const auto &op: s.getOps()) {
-                OpId opId = 0;
                 uint32_t txTime = getTxTimeUs(op);
                 // Find the first timeout, that is greater or equal than the given tx time.
                 auto it = std::find_if(std::begin(timeouts), std::end(timeouts),
@@ -121,7 +118,10 @@ public:
                 }
                 auto timeoutId = ARRUS_SAFE_CAST(std::distance(std::begin(timeouts), it), uint8_t);
                 result.timeoutIds.insert({{sId, opId}, timeoutId});
+
+                ++opId;
             }
+            ++sId;
         }
         return result;
     }
