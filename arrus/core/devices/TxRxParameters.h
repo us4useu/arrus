@@ -130,7 +130,7 @@ public:
             os << ch << ", ";
         }
         if(parameters.txTimeoutId.has_value()) {
-            os << ", tx timeout: " << parameters.txTimeoutId.value();
+            os << ", tx timeout: " << (int)parameters.txTimeoutId.value();
         }
         os << std::endl;
         os << std::fixed;
