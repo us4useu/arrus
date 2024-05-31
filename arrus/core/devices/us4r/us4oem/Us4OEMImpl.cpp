@@ -210,7 +210,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             auto nTxHalfPeriods = static_cast<uint32>(op.getTxPulse().getNPeriods() * 2);
             // RX
             auto rxAperture = rxMappingRegister.getRxAperture(sequenceId, opId);
-            auto [startSample, endSample] = op.getRxSampleRange().asPair();
             float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float) op.getRxDecimationFactor();
             setCurrentSamplingFrequency(descriptor.getSamplingFrequency() / decimationFactor);
             float rxTime = getRxTime(op, this->currentSamplingFrequency);
@@ -242,7 +241,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firingId);
             ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firingId);
-            ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), opIdx);
+            ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
             ius4oem->SetRxTime(rxTime, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
         }

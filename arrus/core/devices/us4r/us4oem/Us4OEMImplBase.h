@@ -47,9 +47,6 @@ public:
     virtual void clearCallbacks() = 0;
     virtual Us4OEMDescriptor getDescriptor() const = 0;
 
-    HVPSMeasurement getHVPSMeasurement() override = 0;
-
-    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
     /**
      * Sets maximum pulse length that can be set during the TX/RX sequence programming.
