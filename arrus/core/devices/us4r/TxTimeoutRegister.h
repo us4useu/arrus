@@ -52,6 +52,8 @@ private:
 
 class TxTimeoutRegisterFactory {
 public:
+    static constexpr uint16_t EPSILON = 10; // an additional margin for TX timeout [us]
+
     explicit TxTimeoutRegisterFactory(size_t nTimeouts, std::function<float(float)> actualTxFunc)
         : nTimeouts(nTimeouts), actualTxFunc(std::move(actualTxFunc)) {}
 
@@ -82,15 +84,17 @@ public:
         }
         std::sort(std::begin(txTimes), std::end(txTimes), std::greater{}); // descending order
         TxTimeout timeout = txTimes.at(0);
-        timeouts.push_back(timeout);
+        timeouts.push_back(timeout + EPSILON);
         for(auto t: txTimes) {
-            auto newTimeout = timeout;
-            while(timeout > t) {
-                newTimeout = timeout;
-                timeout = timeout / 2; // NOTE arbitrary heuristic
+            auto prevTimeout = timeout;
+            auto it = timeout;
+            while(it > t) {
+                prevTimeout = it;
+                it = it / 2; // NOTE arbitrary heuristic
             }
-            if(newTimeout != timeout) {
-                timeouts.push_back(newTimeout);
+            if(prevTimeout != timeout) {
+                timeouts.push_back(prevTimeout + EPSILON);
+                timeout = prevTimeout;
             }
             if(timeouts.size() == nTimeouts) {
                 break;
@@ -108,7 +112,7 @@ public:
         for(const auto &s: sequences) {
             OpId opId = 0;
             for(const auto &op: s.getOps()) {
-                uint32_t txTime = getTxTimeUs(op);
+                uint32_t txTime = getTxTimeUs(op) + EPSILON;
                 // Find the first timeout, that is greater or equal than the given tx time.
                 auto it = std::find_if(std::begin(timeouts), std::end(timeouts),
                              [txTime](auto t) {return t >= txTime; });
@@ -128,7 +132,6 @@ public:
 
 
 private:
-    static constexpr uint16_t EPSILON = 10; // an additional margin for TX [us]
     static constexpr TxTimeout MAX_TIMEOUT = (1 << 11) - 1; // TODO move that to the Us4OEMDescriptor?
 
     [[nodiscard]] uint32_t getTxTimeUs(const ops::us4r::TxRx &op) const {
@@ -137,7 +140,7 @@ private:
         float frequency = actualTxFunc(op.getTx().getExcitation().getCenterFrequency());
         float nPeriods = op.getTx().getExcitation().getNPeriods();
         float burstTime = 1.0f/frequency*nPeriods;
-        auto txTimeUs = static_cast<uint32_t>(std::ceil((maxDelay + burstTime)*1e6 + EPSILON));
+        auto txTimeUs = static_cast<uint32_t>(std::roundf((maxDelay + burstTime)*1e6));
         return txTimeUs;
     }
 
