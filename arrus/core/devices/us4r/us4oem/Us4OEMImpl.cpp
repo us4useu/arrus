@@ -508,7 +508,7 @@ float Us4OEMImpl::getRxTime(const TxRxParameters &op, float samplingFrequency) {
     float rxTime = nSamples / samplingFrequency;
     // TODO consider txTime+rxTime
     rxTime = std::max(txTime, rxTime);
-    return std::max(descriptor.getMinRxTime(), (float) nSamples / samplingFrequency + descriptor.getRxTimeEpsilon());
+    return std::max(descriptor.getMinRxTime(), (float) rxTime + descriptor.getRxTimeEpsilon());
 }
 
 void Us4OEMImpl::start() { this->startTrigger(); }
