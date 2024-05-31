@@ -16,13 +16,15 @@ public:
     Us4OEMFactoryImpl() = default;
 
     Us4OEMImplBase::Handle getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem, const Us4OEMSettings &cfg,
-                                     bool isExternalTrigger, bool acceptRxNops = false) override {
+                                     bool isExternalTrigger, bool acceptRxNops,
+                                     const std::optional<Us4RTxRxLimits> &limits) override {
         // Validate settings.
-        auto descriptor = Us4OEMDescriptorFactory::getDescriptor(ius4oem, ordinal == 0);
+        Us4OEMDescriptor descriptor = getOEMDescriptor(ordinal, ius4oem, limits);
+
         Us4OEMSettingsValidator validator(ordinal, descriptor);
+
         validator.validate(cfg);
         validator.throwOnErrors();
-
 
         // We assume here, that the ius4oem is already initialized.
         // Configure IUs4OEM
@@ -77,6 +79,40 @@ public:
                                             isExternalTrigger, acceptRxNops);
     }
 
+
+    [[nodiscard]] static Us4OEMDescriptor getOEMDescriptor(Ordinal ordinal, const IUs4OEMHandle &ius4oem,
+                                                           const std::optional<Us4RTxRxLimits> &limits) {
+        auto descriptor = Us4OEMDescriptorFactory::getDescriptor(ius4oem, ordinal == 0);
+        if(limits.has_value()) {
+            // Update the defualt limits with the limits defined by the user.
+            ops::us4r::TxRxSequenceLimitsBuilder sequenceLimitsBuilder{descriptor.getTxRxSequenceLimits()};
+            ops::us4r::TxLimitsBuilder txLimitsBuilder{descriptor.getTxRxSequenceLimits().getTxRx().getTx()};
+            if(limits->getPulseLength().has_value()) {
+                txLimitsBuilder.setPulseLength(limits->getPulseLength().value());
+            }
+            if(limits->getVoltage().has_value()) {
+                txLimitsBuilder.setVoltage(limits->getVoltage().value());
+            }
+            Interval<float> newPri;
+            if(limits->getPri().has_value()) {
+                newPri = limits->getPri().value();
+            }
+            else {
+                newPri = descriptor.getTxRxSequenceLimits().getTxRx().getPri();
+            }
+            auto newTxLimits = txLimitsBuilder.build();
+            auto currentRxLimits = descriptor.getTxRxSequenceLimits().getTxRx().getRx();
+            sequenceLimitsBuilder.setTxRxLimits(newTxLimits, currentRxLimits, newPri);
+            auto txRxSequenceLimits = sequenceLimitsBuilder.build();
+            auto newDescriptor = Us4OEMDescriptorBuilder{descriptor}
+                                     .setTxRxSequenceLimits(txRxSequenceLimits)
+                                     .build();
+            return newDescriptor;
+        }
+        else {
+            return descriptor;
+        }
+    }
 private:
 
     static bool

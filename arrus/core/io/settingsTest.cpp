@@ -96,6 +96,10 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
               std::vector<TGCSampleValue>({}));
     EXPECT_EQ(rxSettings->getLpfCutoff(), 15000000);
     EXPECT_EQ(rxSettings->getActiveTermination(), 200);
+    EXPECT_TRUE(us4rSettings.getTxRxLimits().has_value());
+    EXPECT_EQ(us4rSettings.getTxRxLimits()->getVoltage(), ::arrus::Interval<Voltage>(10, 30));
+    EXPECT_EQ(us4rSettings.getTxRxLimits()->getPri(), ::arrus::Interval<float>(2e-6, 1));
+    EXPECT_EQ(us4rSettings.getTxRxLimits()->getPulseLength(), ::arrus::Interval<float>(1e-6, 10e-6));
 }
 
 TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
@@ -154,6 +158,8 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
               std::vector<TGCSampleValue>({20, 21, 22}));
     EXPECT_EQ(rxSettings->getLpfCutoff(), 1000000);
     EXPECT_FALSE(rxSettings->getActiveTermination().has_value());
+    EXPECT_FALSE(us4rSettings.getTxRxLimits().has_value());
+
 }
 
 TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {

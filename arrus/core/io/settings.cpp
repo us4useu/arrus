@@ -403,6 +403,36 @@ readBitstreams(const ::google::protobuf::RepeatedPtrField<::arrus::proto::Bitstr
     return result;
 }
 
+Interval<float> getInterval(const ::arrus::proto::IntervalDouble& interval) {
+    return Interval<float>{static_cast<float>(interval.begin()), static_cast<float>(interval.end())};
+}
+
+template<typename T>
+Interval<T> getInterval(const ::arrus::proto::IntervalInteger& interval) {
+    return Interval<T>{static_cast<T>(interval.begin()), static_cast<T>(interval.end())};
+}
+
+std::optional<Us4RTxRxLimits>
+readUs4RTxRxLimits(const proto::Us4RSettings &us4r) {
+    if(us4r.has_tx_rx_limits()) {
+        auto &limits = us4r.tx_rx_limits();
+        std::optional<Interval<float>> pri, pulseLength;
+        std::optional<Interval<Voltage>> voltage;
+        if(limits.has_pri()) {
+            pri = getInterval(limits.pri());
+        }
+        if(limits.has_pulse_length()) {
+            pulseLength = getInterval(limits.pulse_length());
+        }
+        if(limits.has_voltage()) {
+            voltage = getInterval<Voltage>(limits.voltage());
+        }
+        return Us4RTxRxLimits{pulseLength, voltage, pri};
+    } else {
+        return std::nullopt;
+    }
+}
+
 Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDictionary &dictionary) {
     std::optional<HVSettings> hvSettings;
     std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
@@ -445,6 +475,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     std::vector<std::vector<uint8>> us4oemChannelsMask;
     auto reprogrammingMode = convertToReprogrammingMode(us4r.reprogramming_mode());
     std::vector<Bitstream> bitstreams = readBitstreams(us4r.bitstreams());
+    std::optional<Us4RTxRxLimits> limits = readUs4RTxRxLimits(us4r);
 
     return {adapterSettings,
             probeSettings,
@@ -457,7 +488,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             us4r.external_trigger(),
             txFrequencyRange,
             digitalBackplaneSettings,
-            bitstreams};
+            bitstreams,
+            limits
+    };
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
     switch (mode) {

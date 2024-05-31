@@ -74,7 +74,7 @@ public:
 
             auto [us4oems, masterIUs4OEM] =
                 getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings(),
-                           ius4oemHandles);
+                           ius4oemHandles, settings.getTxRxLimits());
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
                            [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
@@ -118,7 +118,7 @@ private:
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
     getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings& io,
-               std::vector<IUs4OEMHandle> &ius4oems
+               std::vector<IUs4OEMHandle> &ius4oems, const std::optional<Us4RTxRxLimits> &limits
     ) {
         // Pre-configure us4oems.
         for(size_t i = 0; i < us4oemCfgs.size(); ++i) {
@@ -147,9 +147,9 @@ private:
             auto ordinal = static_cast<Ordinal>(i);
             us4oems.push_back(us4oemFactory->getUs4OEM(
                 static_cast<Ordinal>(i), ius4oems[i], us4oemCfgs[i], isExternalTrigger,
-                setContains(pulseCounterOems, ordinal)// accept RX nops?
+                setContains(pulseCounterOems, ordinal), // accept RX nops?
                 // NOTE: the above should be consistent with the ProbeAdapterImpl::frameMetadataOem
-                ));
+                limits));
         }
         initCapabilities(us4oems, io);
         return {std::move(us4oems), master};

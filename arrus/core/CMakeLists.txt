@@ -22,7 +22,8 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/IOSettings.proto
     io/proto/devices/us4r/DigitalBackplaneSettings.proto
     io/proto/devices/us4r/Bitstream.proto
-    )
+    io/proto/devices/us4r/Us4RTxRxLimits.proto
+)
 ################################################################################
 # Target
 ################################################################################
@@ -197,6 +198,7 @@ set(SRC_FILES
     devices/us4r/us4oem/Us4OEMDescriptorFactory.h
     devices/us4r/us4oem/IRQEvent.h
     api/devices/us4r/HVPSMeasurement.h
+    api/devices/us4r/Us4RTxRxLimits.h
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS

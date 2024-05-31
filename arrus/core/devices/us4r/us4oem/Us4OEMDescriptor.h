@@ -75,8 +75,9 @@ public:
 
     explicit Us4OEMDescriptorBuilder(Us4OEMDescriptor descriptor): descriptor(std::move(descriptor)) {}
 
-    void setTxRxSequenceLimits(const ::arrus::ops::us4r::TxRxSequenceLimits &limits) {
+    Us4OEMDescriptorBuilder &setTxRxSequenceLimits(const ::arrus::ops::us4r::TxRxSequenceLimits &limits) {
         this->descriptor->txRxSequenceLimits = limits;
+        return *this;
     }
 
     Us4OEMDescriptor build() {

@@ -8,6 +8,7 @@
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "RxSettings.h"
+#include "Us4RTxRxLimits.h"
 #include "arrus/core/api/devices/us4r/HVSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -32,7 +33,8 @@ public:
         bool externalTrigger = false,
         int txFrequencyRange = 1,
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
-        std::vector<Bitstream> bitstreams = std::vector<Bitstream>()
+        std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
+        std::optional<Us4RTxRxLimits> limits = std::nullopt
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -44,7 +46,8 @@ public:
           externalTrigger(externalTrigger),
           txFrequencyRange(txFrequencyRange),
           digitalBackplaneSettings(std::move(digitalBackplaneSettings)),
-          bitstreams(std::move(bitstreams))
+          bitstreams(std::move(bitstreams)),
+          limits(std::move(limits))
     {}
 
     Us4RSettings(
@@ -59,7 +62,8 @@ public:
         bool externalTrigger = false,
         int txFrequencyRange = 1,
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
-        std::vector<Bitstream> bitstreams = std::vector<Bitstream>()
+        std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
+        std::optional<Us4RTxRxLimits> limits = std::nullopt
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -72,7 +76,8 @@ public:
                 externalTrigger,
                 txFrequencyRange,
                 std::move(digitalBackplaneSettings),
-                std::move(bitstreams)
+                std::move(bitstreams),
+                std::move(limits)
         )
     {}
 
@@ -100,7 +105,7 @@ public:
 
     /**
      * Returns probe settings for probe 0.
-     * TODO (ARRUS-276) deprecated, will be removed in v0.11.0
+     * TODO (ARRUS-276) deprecated, will be removed in v0.12.0
      */
     std::optional<ProbeSettings> getProbeSettings() const {
         if(probeSettings.empty()) {
@@ -163,6 +168,8 @@ public:
 
     const std::vector<Bitstream> &getBitstreams() const { return bitstreams; }
 
+    const std::optional<Us4RTxRxLimits> &getTxRxLimits() const { return limits; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -209,6 +216,10 @@ private:
       * Bitstream definitions.
       */
      std::vector<Bitstream> bitstreams;
+     /**
+      * TxRx limits to apply for in this session with us4R. Optional, by default the us4us-defined limits are applied.
+      */
+     std::optional<Us4RTxRxLimits> limits{std::nullopt};
 };
 
 }
