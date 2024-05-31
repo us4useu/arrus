@@ -429,6 +429,10 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
             return this->getActualTxFrequency(frequency);
         }};
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
+    // Register pulser IRQ handling procedure.
+    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
+        registerPulserIRQCallback();
+    }
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
     // Initialize converters.
@@ -1091,6 +1095,24 @@ void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
 float Us4RImpl::getActualTxFrequency(float frequency) {
     // NOTE! we are assuming here that all OEMs have the same target TX frequency.
     return getMasterOEM()->getActualTxFrequency(frequency);
+}
+
+void Us4RImpl::registerPulserIRQCallback() {
+    for(auto &oem: us4oems) {
+        const auto &ius4oem = oem->getIUs4OEM();
+        ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
+            try{
+                ius4oem->LogPulsersInterruptRegister();
+                ius4oem->TriggerStop();
+            }
+            catch(const std::exception &e) {
+                logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
+            }
+            catch(...) {
+                logger->log(LogSeverity::ERROR, "Unknown exception on handling pulser IRQ.");
+            }
+        });
+    }
 }
 
 }// namespace arrus::devices
