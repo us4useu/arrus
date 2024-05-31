@@ -189,6 +189,10 @@ private:
             } else {
                 throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");
             }
+        } else {
+            for(auto &us4oem: us4oems) {
+               us4oem->getIUs4OEM()->DisableProbeCheck();
+            }
         }
     }
 
