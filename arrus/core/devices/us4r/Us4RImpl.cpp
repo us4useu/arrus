@@ -3,7 +3,7 @@
 
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/devices/probe/ProbeImpl.h"
-#include "arrus/core/devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h"
+#include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include <chrono>
 #include <future>
@@ -514,9 +514,9 @@ std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const s
                 currentBitstreamId = preamble.getBitstreamId();
             }
         }
-        auto rxDelay = getRxDelay(sequence);
         for (const auto &txrx : sequence.getOps()) {
             TxRxParametersBuilder builder(txrx);
+            auto rxDelay = getRxDelay(txrx);
             builder.setRxDelay(rxDelay);
             if (hasIOBitstreamAdressing) {
                 builder.setBitstreamId(BitstreamId(0));
@@ -1021,38 +1021,34 @@ std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) {
 int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
 
 /**
- * Calculates RX delay as the maximum TX delay of the sequence + burst time
+ * Calculates RX delay as the maximum TX delay of the TX/RX + burst time
  * Only TX delays from the active (aperture) elements are considered.
- * If the given sequence does not perform TX, this method returns 0.
- *
+ * If the given TX/RX does not perform TX, this method returns 0.
+ * If the given RX does not perform RX, this method also return 0.
  * @return rx delay [s]
+ *
  */
-float Us4RImpl::getRxDelay(const TxRxSequence &sequence) {
-    std::vector<float> opDelays;
-    for(const auto &op: sequence.getOps()) {
-        std::vector<float> delays;
-        for(size_t i = 0; i < op.getTx().getAperture().size(); ++i) {
-            if(op.getTx().getAperture()[i]) {
-                delays.push_back(op.getTx().getDelays()[i]);
-            }
-        }
-        if(!delays.empty()) {
-            float txDelay = *std::max_element(std::begin(delays), std::end(delays));
-            // burst time
-            float frequency = op.getTx().getExcitation().getCenterFrequency();
-            float nPeriods = op.getTx().getExcitation().getNPeriods();
-            float burstTime = 1.0f/frequency*nPeriods;
-            // Total rx delay
-            opDelays.push_back(txDelay + burstTime);
+float Us4RImpl::getRxDelay(const TxRx &op) {
+    float rxDelay = 0.0f; // default value.
+    if(op.getRx().isNOP()) {
+        return rxDelay;
+    }
+    std::vector<float> txDelays;
+    for(size_t i = 0; i < op.getTx().getAperture().size(); ++i) {
+        if(op.getTx().getAperture()[i]) {
+            txDelays.push_back(op.getTx().getDelays()[i]);
         }
     }
-    if(!opDelays.empty()) {
-        return *std::max_element(std::begin(opDelays), std::end(opDelays));
+    if(!txDelays.empty()) {
+        float txDelay = *std::max_element(std::begin(txDelays), std::end(txDelays));
+        // burst time
+        float frequency = op.getTx().getExcitation().getCenterFrequency();
+        float nPeriods = op.getTx().getExcitation().getNPeriods();
+        float burstTime = 1.0f/frequency*nPeriods;
+        // Total rx delay
+        rxDelay = txDelay + burstTime;
     }
-    else {
-        // No TX
-        return 0.0f;
-    }
+    return rxDelay;
 }
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>

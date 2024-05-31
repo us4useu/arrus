@@ -44,6 +44,14 @@ public:
 
     devices::DeviceId getPlacement() const { return placement; }
 
+    bool isNOP() const {
+        bool atLeastOneActive = false;
+        for(auto bit: aperture) {
+            atLeastOneActive = atLeastOneActive | bit;
+        }
+        return !atLeastOneActive;
+    }
+
 private:
     std::vector<bool> aperture;
     std::pair<unsigned, unsigned> sampleRange;

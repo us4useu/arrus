@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include "AdaterToUs4OEMMappingConverter.h"
+#include "AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/TxRxParameters.h"

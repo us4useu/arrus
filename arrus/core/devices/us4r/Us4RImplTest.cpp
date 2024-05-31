@@ -66,17 +66,22 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
         ).getTxRx()
     };
     TxRxSequence seq{txrxs, {}};
-    float actualRxDelay = Us4RImpl::getRxDelay(seq);
 
-    float rxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0))
+    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0));
+    float expectedRxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0))
         + 1.0f / pulse0.getCenterFrequency() * pulse0.getNPeriods();
-    float rxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1))
-        + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
-    float rxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0) + 10)
-        + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
+    EXPECT_EQ(expectedRxDelay0, actualRxDelay0);
 
-    float expectedRxDelay = std::max(std::max(rxDelay0, rxDelay1), rxDelay2);
-    EXPECT_EQ(expectedRxDelay, actualRxDelay);
+    float expectedRxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1))
+        + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
+    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1));
+    EXPECT_EQ(expectedRxDelay1, actualRxDelay1);
+
+
+    float expectedRxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0) + 10)
+        + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
+    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2));
+    EXPECT_EQ(expectedRxDelay2, actualRxDelay2);
 }
 
 //TEST_F(A2OConverterTestMappingEsaote3, SetsSubapertureCorrectly) {

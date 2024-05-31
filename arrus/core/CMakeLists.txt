@@ -184,7 +184,7 @@ set(SRC_FILES
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
     devices/us4r/Us4OEMDataTransferRegistrar.h
-    devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+    devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h
     devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h
     devices/us4r/us4oem/Us4OEMUploadResult.h
     devices/us4r/us4oem/Us4OEMTxRxValidator.h
@@ -282,7 +282,7 @@ if (ARRUS_RUN_TESTS)
         devices/TxRxParameters.cpp
         devices/DeviceId.cpp
         devices/us4r/FrameChannelMappingImpl.cpp
-        devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+        devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h
         common/logging.cpp
     )
 

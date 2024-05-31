@@ -30,7 +30,7 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
-    static float getRxDelay(const ops::us4r::TxRxSequence &sequence);
+    static float getRxDelay(const ops::us4r::TxRx &op);
 
     ~Us4RImpl() override;
 
