@@ -116,6 +116,7 @@ public:
     void sync(std::optional<long long> timeout) override;
     void setWaitForHVPSMeasurementDone() override;
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
+    float getActualTxFrequency(float frequency) override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;

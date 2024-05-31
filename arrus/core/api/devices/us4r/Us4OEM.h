@@ -189,6 +189,15 @@ public:
      */
     virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) = 0;
 
+    /**
+     * Return the system TX frequency that would be actually set for the given TX frequency.
+     * The output frequency depends on the frequency discretization performed by the driver.
+     *
+     * @param frequency input frequency
+     * @return the actual frequency that will be set
+     */
+    virtual float getActualTxFrequency(float frequency) = 0;
+
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
     void operator=(Us4OEM const&) = delete;

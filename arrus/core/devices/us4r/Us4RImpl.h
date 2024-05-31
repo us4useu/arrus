@@ -143,6 +143,7 @@ public:
     setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
+    float getActualTxFrequency(float frequency) override;
 
 private:
     struct VoltageLogbook {

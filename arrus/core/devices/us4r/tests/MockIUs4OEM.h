@@ -240,6 +240,7 @@ public:
     MOCK_METHOD(void, SetTxTimeout, (uint8_t id, uint16_t timeoutUs), (override));
     MOCK_METHOD(void, SetFiringTxTimoutId, (uint16_t firing, uint8_t id), (override));
     MOCK_METHOD(void, SetTxVoltageLevel, (uint8_t level, uint16_t firing), (override));
+    MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

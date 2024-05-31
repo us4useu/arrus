@@ -927,5 +927,8 @@ void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
     this->waitForIrq(measurementDoneIrq, timeout);
 }
 
+float Us4OEMImpl::getActualTxFrequency(float frequency) {
+    return ius4oem->GetOCWSFrequency(frequency);
+}
 
 }// namespace arrus::devices

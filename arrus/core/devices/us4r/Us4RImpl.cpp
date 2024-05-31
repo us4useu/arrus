@@ -1062,5 +1062,9 @@ void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     }
 }
 
+float Us4RImpl::getActualTxFrequency(float frequency) {
+    // NOTE! we are assuming here that all OEMs have the same target TX frequency.
+    return getMasterOEM()->getActualTxFrequency(frequency);
+}
 
 }// namespace arrus::devices

@@ -339,6 +339,15 @@ public:
      */
     virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
 
+    /**
+     * Return the system TX frequency that would be actually set for the given TX frequency.
+     * The output frequency depends on the frequency discretization performed by the driver.
+     *
+     * @param frequency input frequency
+     * @return the actual frequency that will be set
+     */
+    virtual float getActualTxFrequency(float frequency) = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

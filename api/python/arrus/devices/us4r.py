@@ -309,6 +309,18 @@ class Us4R(Device, Ultrasound):
         """
         return self._handle.getChannelsMask(probe_nr)
 
+    def get_actual_frequency(self, frequency: float) -> float:
+        """
+        Return the system TX frequency that would be actually set for the given
+        TX frequency.
+        The output frequency depends on the frequency discretization performed
+        by the driver.
+
+        :param frequency: input frequency
+        :return: the actual frequency that will be set
+        """
+        return self._handle.getActualFrequency(frequency)
+
     def set_stop_on_overflow(self, is_stop):
         """
         Set the system to stop when (RX or host) buffer overflow is detected (ASYNC mode only).
