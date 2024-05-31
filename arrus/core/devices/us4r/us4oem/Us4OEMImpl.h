@@ -63,11 +63,11 @@ public:
     void stopTrigger() override;
     void syncTrigger() override;
     void setTgcCurve(const std::vector<us4r::TxRxParametersSequence> & sequences);
-    Us4OEMUploadResult
-    upload(const us4r::TxParametersSequenceColl &sequences,
-           uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
-           const std::optional<ops::us4r::DigitalDownConversion> &ddc=std::nullopt,
-           const std::vector<framework::NdArray> &txDelays = std::vector<framework::NdArray>()) override;
+    Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
+                              ops::us4r::Scheme::WorkMode workMode,
+                              const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                              const std::vector<arrus::framework::NdArray> &txDelays,
+                              const std::vector<TxTimeout> &txTimeouts) override;
 
     float getSamplingFrequency() override;
     void start() override;
@@ -205,6 +205,7 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
+    void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
 };
 
 }// namespace arrus::devices

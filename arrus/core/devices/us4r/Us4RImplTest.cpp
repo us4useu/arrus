@@ -16,6 +16,7 @@ using namespace arrus::devices::us4r;
 using namespace arrus::ops::us4r;
 
 TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
+    std::function<float(float)> defaultTxFunc = [] (float frequency) {return frequency;};
     constexpr ChannelIdx nChannels = 192;
     std::vector<float> delays0(nChannels, 0.0f);
     std::vector<float> delays1(nChannels, 0.0f);
@@ -67,20 +68,20 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
     };
     TxRxSequence seq{txrxs, {}};
 
-    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0));
+    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0), defaultTxFunc);
     float expectedRxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0))
         + 1.0f / pulse0.getCenterFrequency() * pulse0.getNPeriods();
     EXPECT_EQ(expectedRxDelay0, actualRxDelay0);
 
     float expectedRxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1))
         + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
-    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1));
+    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1), defaultTxFunc);
     EXPECT_EQ(expectedRxDelay1, actualRxDelay1);
 
 
     float expectedRxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0) + 10)
         + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
-    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2));
+    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2), defaultTxFunc);
     EXPECT_EQ(expectedRxDelay2, actualRxDelay2);
 }
 
@@ -153,23 +154,23 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
 //    // OEM 0 layout
 //    NdArray::Shape expectedShape0 = {4 * nSamples, 32};
 //    size_t expectedSize0 = expectedShape0.product() * sizeof(int16);
-//    std::vector<uint16> firings;
+//    std::vector<uint16> timeoutIds;
 //    EXPECT_EQ(us4oemBuffer00.getNumberOfElements(), 1);
 //    EXPECT_EQ(us4oemBuffer00.getElement(0).getViewSize(), expectedSize0);
 //    EXPECT_EQ(us4oemBuffer00.getElement(0).getViewShape(), expectedShape0);
 //    auto parts = us4oemBuffer00.getElementParts();
-//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(firings),
+//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(timeoutIds),
 //                   [](const auto &part) { return part.getFiring(); });
-//    EXPECT_EQ(firings, std::vector<uint16>({2, 3, 4, 5}));
+//    EXPECT_EQ(timeoutIds, std::vector<uint16>({2, 3, 4, 5}));
 //    // OEM 1 layout
 //    EXPECT_EQ(us4oemBuffer01.getNumberOfElements(), 1);
 //    EXPECT_EQ(us4oemBuffer01.getElement(0).getViewSize(), expectedSize0);
 //    EXPECT_EQ(us4oemBuffer01.getElement(0).getViewShape(), expectedShape0);
 //    parts = us4oemBuffer01.getElementParts();
-//    firings.clear();
-//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(firings),
+//    timeoutIds.clear();
+//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(timeoutIds),
 //                   [](const auto &part) { return part.getFiring(); });
-//    EXPECT_EQ(firings, std::vector<uint16>({2, 3, 4, 5}));
+//    EXPECT_EQ(timeoutIds, std::vector<uint16>({2, 3, 4, 5}));
 //
 //    // Buffer 1
 //    EXPECT_EQ(buffer1->getNumberOfElements(), 1);
@@ -184,19 +185,19 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
 //    EXPECT_EQ(us4oemBuffer10.getElement(0).getViewSize(), expectedSize1);
 //    EXPECT_EQ(us4oemBuffer10.getElement(0).getViewShape(), expectedShape1);
 //    parts = us4oemBuffer10.getElementParts();
-//    firings.clear();
-//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(firings),
+//    timeoutIds.clear();
+//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(timeoutIds),
 //                   [](const auto &part) { return part.getFiring(); });
-//    EXPECT_EQ(firings, std::vector<uint16>({0, 1, 2, 3}));
+//    EXPECT_EQ(timeoutIds, std::vector<uint16>({0, 1, 2, 3}));
 //
 //    // OEM 1 layout
 //    EXPECT_EQ(us4oemBuffer11.getNumberOfElements(), 1);
 //    EXPECT_EQ(us4oemBuffer11.getElement(0).getViewSize(), expectedSize1);
-//    EXPECT_EQ(us4oemBuffer11.getElement(0).getViewShape(), expectedShape1);firings.clear();
+//    EXPECT_EQ(us4oemBuffer11.getElement(0).getViewShape(), expectedShape1);timeoutIds.clear();
 //    parts = us4oemBuffer11.getElementParts();
-//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(firings),
+//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(timeoutIds),
 //                   [](const auto &part) { return part.getFiring(); });
-//    EXPECT_EQ(firings, std::vector<uint16>({0, 1, 2, 3}));
+//    EXPECT_EQ(timeoutIds, std::vector<uint16>({0, 1, 2, 3}));
 //
 //    // Buffer 2
 //    EXPECT_EQ(buffer2->getNumberOfElements(), 1);
@@ -211,20 +212,20 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
 //    EXPECT_EQ(us4oemBuffer20.getElement(0).getViewSize(), expectedSize2);
 //    EXPECT_EQ(us4oemBuffer20.getElement(0).getViewShape(), expectedShape2);
 //    parts = us4oemBuffer20.getElementParts();
-//    firings.clear();
-//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(firings),
+//    timeoutIds.clear();
+//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(timeoutIds),
 //                   [](const auto &part) { return part.getFiring(); });
-//    EXPECT_EQ(firings, std::vector<uint16>({0, 1, 2, 3, 4, 5}));
+//    EXPECT_EQ(timeoutIds, std::vector<uint16>({0, 1, 2, 3, 4, 5}));
 //
 //    // OEM 1 layout
 //    EXPECT_EQ(us4oemBuffer21.getNumberOfElements(), 1);
 //    EXPECT_EQ(us4oemBuffer21.getElement(0).getViewSize(), expectedSize2);
 //    EXPECT_EQ(us4oemBuffer21.getElement(0).getViewShape(), expectedShape2);
 //    parts = us4oemBuffer21.getElementParts();
-//    firings.clear();
-//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(firings),
+//    timeoutIds.clear();
+//    std::transform(std::begin(parts), std::end(parts), std::back_inserter(timeoutIds),
 //                   [](const auto &part) { return part.getFiring(); });
-//    EXPECT_EQ(firings, std::vector<uint16>({0, 1, 2, 3, 4, 5}));
+//    EXPECT_EQ(timeoutIds, std::vector<uint16>({0, 1, 2, 3, 4, 5}));
 //}
 
 

@@ -7,6 +7,7 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "TxTimeoutRegister.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -30,7 +31,7 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
-    static float getRxDelay(const ops::us4r::TxRx &op);
+    static float getRxDelay(const ops::us4r::TxRx &op, const std::function<float(float)> &actualTxFunc);
 
     ~Us4RImpl() override;
 
@@ -163,7 +164,8 @@ private:
                     const std::vector<framework::NdArray> &txDelayProfiles);
     us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
     std::vector<us4r::TxRxParametersSequence>
-    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences);
+    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
+                               const TxTimeoutRegister &timeoutRegister);
 
     /**
      * Applies a given function on all functions.
@@ -189,6 +191,7 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
+    float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;

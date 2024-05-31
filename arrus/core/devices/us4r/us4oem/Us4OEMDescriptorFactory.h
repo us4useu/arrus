@@ -20,6 +20,7 @@ public:
         case 1:
             // Legacy us4OEM
             return Us4OEMDescriptor{
+                version, // Us4OEM version
                 32, // RX channels
                 20e-6f,  // min. RX time,
                 5e-6, // RX time epsilon,
@@ -43,11 +44,13 @@ public:
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
                     Interval<uint32>{0, 16383} // sequence length
-                }
+                },
+                0 // maximum number of TX timeouts
             };
         case 2:
             // us4OEM+ variant 0
             return Us4OEMDescriptor{
+                version, // us4OEM version
                 32, // RX channels
                 20e-6f,  // min. RX time,
                 5e-6, // RX time epsilon,
@@ -71,7 +74,8 @@ public:
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
                     Interval<uint32>{0, 2047} // sequence length
-                }
+                },
+                4 // maximum number of timeouts
             };
         default:
             throw arrus::IllegalArgumentException(format("Unsupported us4OEM version: {}", version));

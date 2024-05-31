@@ -32,11 +32,12 @@ public:
 
     virtual bool isMaster() = 0;
 
-    virtual Us4OEMUploadResult
-    upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
-           uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
-           const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-           const std::vector<arrus::framework::NdArray> &txDelays) = 0;
+    virtual Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
+                                      ops::us4r::Scheme::WorkMode workMode,
+                                      const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                                      const std::vector<arrus::framework::NdArray> &txDelays,
+                                      const std::vector<TxTimeout> &txTimeouts = {}) = 0;
+
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
     virtual void enableSequencer(bool resetSequencerPointer) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;

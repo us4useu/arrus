@@ -41,6 +41,31 @@ public:
 
     const devices::DeviceId &getPlacement() const { return placement; }
 
+    /**
+     * Returns an array with delays for active (i.e. aperture[i] = true) channels only.
+     */
+    std::vector<float> getDelaysApertureOnly() const {
+        std::vector<float> txDelays;
+        for(size_t i = 0; i < getAperture().size(); ++i) {
+            if(getAperture()[i]) {
+                txDelays.push_back(getDelays()[i]);
+            }
+        }
+        return txDelays;
+    }
+
+    /**
+     * Returns true if this operator does not perform TX at all (i.e. aperture is set to false).
+     */
+    bool isNOP() const {
+        bool atLeastOneActive = false;
+        for(auto bit: aperture) {
+            atLeastOneActive = atLeastOneActive | bit;
+        }
+        return !atLeastOneActive;
+    }
+
+
 private:
     std::vector<bool> aperture;
     std::vector<float> delays;

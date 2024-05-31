@@ -24,6 +24,8 @@ using ChannelIdx = uint16;
 typedef std::vector<bool> BitMask;
 using Voltage = uint8;
 using BitstreamId = uint16;
+using TxTimeoutId = uint8;
+using TxTimeout = uint16_t; // [us]
 
 // ultrasound output dimensions.
 using BatchId = uint16;

@@ -1,6 +1,7 @@
 #include "Us4RImpl.h"
 #include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
+#include "TxTimeoutRegister.h"
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
@@ -17,6 +18,7 @@
 
 namespace arrus::devices {
 
+using namespace ::std;
 using namespace ::arrus::framework;
 using namespace ::arrus::ops::us4r;
 using namespace ::arrus::session;
@@ -411,6 +413,8 @@ std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
+    // NOTE: assuming all OEMs are of the same version (legacy or OEM+)
+    auto oemDescriptor = getMasterOEM()->getDescriptor();
     // Convert to intermediate representation (TxRxParameters).
     auto noems = ARRUS_SAFE_CAST(this->us4oems.size(), Ordinal);
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
@@ -418,8 +422,15 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<ProbeToAdapterMappingConverter> probe2Adapter;
     // Sequence id -> converter
     std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
+    // Calculate TX timeouts
+    TxTimeoutRegisterFactory txTimeoutRegisterFactory{
+        oemDescriptor.getNTimeouts(),
+        [this](const float frequency) {
+            return this->getActualTxFrequency(frequency);
+        }};
+    TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
     // Convert API sequences to internal representation.
-    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences);
+    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
     // Initialize converters.
     auto oemMappings = getOEMMappings();
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -460,8 +471,8 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
         // TODO Consider implementing dynamic change of delay profiles
-        auto uploadResult =
-            us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc, std::vector<NdArray>{});
+        auto uploadResult = us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc,
+                                                    std::vector<NdArray>{}, timeouts.getTimeouts());
         buffers.emplace_back(uploadResult.getBufferDescription());
         auto oemFCM = uploadResult.acquireFCMs();
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -499,9 +510,12 @@ TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequenc
     return preambleBuilder.build();
 }
 
-std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const std::vector<TxRxSequence> &sequences) {
+std::vector<us4r::TxRxParametersSequence>
+Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
+                                     const TxTimeoutRegister &txTimeoutRegister) {
     std::vector<TxRxParametersSequence> result;
     std::optional<BitstreamId> currentBitstreamId = std::nullopt;
+    SequenceId sequenceId = 0;
     for(const auto &sequence: sequences) {
         TxRxParametersSequenceBuilder sequenceBuilder;
         sequenceBuilder.setCommon(sequence);
@@ -514,6 +528,8 @@ std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const s
                 currentBitstreamId = preamble.getBitstreamId();
             }
         }
+
+        OpId opId = 0;
         for (const auto &txrx : sequence.getOps()) {
             TxRxParametersBuilder builder(txrx);
             auto rxDelay = getRxDelay(txrx);
@@ -521,9 +537,15 @@ std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const s
             if (hasIOBitstreamAdressing) {
                 builder.setBitstreamId(BitstreamId(0));
             }
+            if(! txTimeoutRegister.empty()) {
+                auto timeoutId = txTimeoutRegister.getTimeoutId({sequenceId, opId});
+                builder.setTxTimeoutId(timeoutId);
+            }
             sequenceBuilder.addEntry(builder.build());
+            ++opId;
         }
         result.emplace_back(sequenceBuilder.build());
+        ++sequenceId;
     }
     return result;
 }
@@ -1028,7 +1050,7 @@ int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
  * @return rx delay [s]
  *
  */
-float Us4RImpl::getRxDelay(const TxRx &op) {
+float Us4RImpl::getRxDelay(const TxRx &op, const std::function<float(float)> &actualTxFunc) {
     float rxDelay = 0.0f; // default value.
     if(op.getRx().isNOP()) {
         return rxDelay;
@@ -1042,13 +1064,17 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
     if(!txDelays.empty()) {
         float txDelay = *std::max_element(std::begin(txDelays), std::end(txDelays));
         // burst time
-        float frequency = op.getTx().getExcitation().getCenterFrequency();
+        float frequency = actualTxFunc(op.getTx().getExcitation().getCenterFrequency());
         float nPeriods = op.getTx().getExcitation().getNPeriods();
         float burstTime = 1.0f/frequency*nPeriods;
         // Total rx delay
         rxDelay = txDelay + burstTime;
     }
     return rxDelay;
+}
+
+float Us4RImpl::getRxDelay(const TxRx &op) {
+    return getRxDelay(op, [this](float frequency) {return this->getActualTxFrequency(frequency); });
 }
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>

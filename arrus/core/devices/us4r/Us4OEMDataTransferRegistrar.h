@@ -228,7 +228,7 @@ public:
 // Strategy 0: keep transfers as they are (nSrc == nDst)
 #define ARRUS_ON_NEW_DATA_CALLBACK_strategy_0
 
-// Strategy 1: change sequencer firings definition, so the next firing will trigger the next portion of transfers
+// Strategy 1: change sequencer timeoutIds definition, so the next firing will trigger the next portion of transfers
 // (nSrc < nDst && nDst <= 256)
 #define ARRUS_ON_NEW_DATA_CALLBACK_strategy_1                                                                          \
     currentTransferIdx = (int16) ((currentTransferIdx + srcNTransfers) % dstNTransfers);                               \

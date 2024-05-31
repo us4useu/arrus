@@ -45,7 +45,7 @@ protected:
     }
 
     Us4OEMUploadResult upload(const TxParametersSequenceColl &sequences) {
-        return us4oem-> upload(sequences, defaultRxBufferSize, defaultWorkMode);
+        return us4oem->upload(sequences, defaultRxBufferSize, defaultWorkMode, std::nullopt, {}, {});
     }
 
     Us4OEMUploadResult upload(const TxRxParametersSequence &seq) {

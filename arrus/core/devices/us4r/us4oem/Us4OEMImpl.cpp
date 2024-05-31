@@ -145,9 +145,11 @@ Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltag
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
-Us4OEMUploadResult Us4OEMImpl::upload(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
-                                      Scheme::WorkMode workMode, const std::optional<DigitalDownConversion> &ddc,
-                                      const std::vector<arrus::framework::NdArray> &txDelays) {
+Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
+                                      ops::us4r::Scheme::WorkMode workMode,
+                                      const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                                      const std::vector<arrus::framework::NdArray> &txDelays,
+                                      const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
     setTgcCurve(sequences);
@@ -157,6 +159,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const TxParametersSequenceColl &sequences,
     ius4oem->ResetCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
+    setTxTimeouts(txTimeouts);
     uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(getNumberOfTriggers(sequences, rxBufferSize));
@@ -164,6 +167,15 @@ Us4OEMUploadResult Us4OEMImpl::upload(const TxParametersSequenceColl &sequences,
     uploadTriggersIOBS(sequences, rxBufferSize, workMode);
     setAfeDemod(ddc);
     return Us4OEMUploadResult{bufferDef, rxMappingRegister.acquireFCMs()};
+}
+void Us4OEMImpl::setTxTimeouts(const std::vector<TxTimeout> &txTimeouts) {
+    if(!txTimeouts.empty()) {
+        ius4oem->EnableTxTimeout();
+        TxTimeoutId id = 0;
+        for(auto &t: txTimeouts) {
+            ius4oem->SetTxTimeout(id, t);
+        }
+    }
 }
 
 void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
@@ -244,6 +256,9 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
             ius4oem->SetRxTime(rxTime, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
+            if(op.getTxTimeoutId().has_value()) {
+                ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
+            }
         }
     }
     // Set the last profile as the current TX delay
@@ -468,7 +483,7 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
     auto nFirings = getNumberOfFirings(sequences);
     auto nTriggers = getNumberOfTriggers(sequences, rxBufferSize);
 
-    ARRUS_REQUIRES_AT_MOST(nFirings, 1024, format("Exceeded the maximum ({}) number of firings: {}", 1024, nFirings));
+    ARRUS_REQUIRES_AT_MOST(nFirings, 1024, format("Exceeded the maximum ({}) number of timeoutIds: {}", 1024, nFirings));
     const auto maxSequenceSize = descriptor.getTxRxSequenceLimits().getSize().end();
     ARRUS_REQUIRES_AT_MOST(nTriggers, maxSequenceSize,
                            format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
