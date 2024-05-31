@@ -115,6 +115,7 @@ public:
                 // Split rx aperture, if necessary.
                 // subaperture number starts from 1, 0 means that the channel
                 // should be inactive.
+                // (NOTE: greedy approach).
                 std::vector<ChannelIdx> subapertureIdxs(op.getRxAperture().size());
                 for (ChannelIdx ch = 0; ch < nRxChannels; ++ch) {
                     ChannelIdx subaperture = 1;
