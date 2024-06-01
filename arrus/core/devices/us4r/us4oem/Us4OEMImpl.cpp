@@ -166,6 +166,9 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     auto bufferDef = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
     uploadTriggersIOBS(sequences, rxBufferSize, workMode);
     setAfeDemod(ddc);
+    if(workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP) {
+        setWaitForEventDone();
+    }
     return Us4OEMUploadResult{bufferDef, rxMappingRegister.acquireFCMs()};
 }
 void Us4OEMImpl::setTxTimeouts(const std::vector<TxTimeout> &txTimeouts) {
@@ -925,6 +928,14 @@ void Us4OEMImpl::sync(std::optional<long long> timeout) {
     logger->log(LogSeverity::TRACE, "Waiting for EVENTDONE IRQ");
     auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
     this->waitForIrq(eventDoneIrq, timeout);
+}
+
+void Us4OEMImpl::setWaitForEventDone() {
+    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
+    irqEvents.at(eventDoneIrq).resetCounters();
+    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
+        this->irqEvents.at(eventDoneIrq).notifyOne();
+    });
 }
 
 void Us4OEMImpl::setWaitForHVPSMeasurementDone() {

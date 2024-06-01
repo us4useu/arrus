@@ -71,7 +71,8 @@ public:
                 if(! op.getTx().isNOP()) {
                     uint32_t txTime = getTxTimeUs(op);
                     if(txTime > MAX_TIMEOUT) {
-                        throw IllegalArgumentException("TX ");
+                        throw IllegalArgumentException(
+                            format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
                     }
                     txTimes.push_back(txTime);
                 }

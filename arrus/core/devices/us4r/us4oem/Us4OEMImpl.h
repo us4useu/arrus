@@ -176,7 +176,7 @@ private:
     size_t getNumberOfFirings(const us4r::TxParametersSequenceColl &vector);
     size_t getNumberOfTriggers(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize);
     Us4OEMRxMappingRegister setRxMappings(const us4r::TxParametersSequenceColl &sequences);
-
+    void setWaitForEventDone();
     std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> filterAperture(
         std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
         const std::unordered_set<ChannelIdx> &channelsMask);
