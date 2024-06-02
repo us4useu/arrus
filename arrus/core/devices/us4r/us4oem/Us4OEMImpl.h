@@ -28,6 +28,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMSubsequence.h"
 
 namespace arrus::devices {
 
@@ -117,6 +118,7 @@ public:
     void setWaitForHVPSMeasurementDone() override;
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
     float getActualTxFrequency(float frequency) override;
+    void clearCallbacks(IUs4OEM::MSINumber irq) override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
@@ -180,6 +182,8 @@ private:
     std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> filterAperture(
         std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
         const std::unordered_set<ChannelIdx> &channelsMask);
+    void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
+    void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) override;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -205,7 +209,7 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
-    void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
+
 };
 
 }// namespace arrus::devices

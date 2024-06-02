@@ -304,36 +304,51 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
-    auto [buffers, fcms] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+    auto [buffers, fcms, l2pMapping, masterOEMSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
-
-    // Cleanup.
-    // If the output buffer already exists - remove it.
-    if (this->buffer) {
-        cleanupBuffers();
-    }
-    // Reset previously set properties for buffer handling.
-    for(auto &us4oem: this->us4oems) {
-        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
-        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
-    }
-    // Create output buffer.
-    Us4ROutputBufferBuilder builder;
-    this->buffer = builder.setStopOnOverflow(stopOnOverflow)
-                          .setNumberOfElements(scheme.getOutputBuffer().getNumberOfElements())
-                          .setLayoutTo(buffers)
-                          .build();
-    registerOutputBuffer(this->buffer.get(), buffers, workMode);
-    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
-    this->oemBuffers = std::move(buffers);
+    currentScheme = scheme;
+    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(),
+                      std::move(buffers));
     // Metadata
+    std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms));
+
+    // Reset sub-sequence factory and params.
+    currentSubsequenceParams.reset();
+    subsequenceFactory = Us4RSubsequenceFactory{l2pMapping, masterOEMSequences};
+
+    return {this->buffer, metadatas};
+}
+
+vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMapping::Handle> fcms) const {
     std::vector<Metadata::SharedHandle> metadatas;
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
         metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
         metadatas.emplace_back(metadataBuilder.buildPtr());
     }
-    return {this->buffer, metadatas};
+    return metadatas;
+}
+
+void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode workMode, vector<Us4OEMBuffer> buffers) {
+    // Cleanup.
+    // If the output buffer already exists - remove it.
+    if (buffer) {
+        cleanupBuffers();
+    }
+    // Reset previously set properties for buffer handling.
+    for(auto &us4oem: us4oems) {
+        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
+        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
+    }
+    // Create output buffer.
+    Us4ROutputBufferBuilder builder;
+    buffer = builder.setStopOnOverflow(stopOnOverflow)
+                          .setNumberOfElements(hostBufNElements)
+                          .setLayoutTo(buffers)
+                          .build();
+    registerOutputBuffer(buffer.get(), buffers, workMode);
+    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
+    oemBuffers = std::move(buffers);
 }
 
 void Us4RImpl::start() {
@@ -358,7 +373,11 @@ void Us4RImpl::start() {
         // Reset tx subsystem pointers.
         us4oem->getIUs4OEM()->EnableTransmit();
         // Reset sequencer pointers.
-        us4oem->enableSequencer(true);
+        // The sequencer pointer (the entry from which sequencer starts) should not be reset when
+        // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
+        // the sequencer pointers will appropriately set to the start param value.
+        bool shouldResetSequencerPointers = currentSubsequenceParams.has_value();
+        us4oem->enableSequencer(shouldResetSequencerPointers);
     }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
@@ -409,7 +428,12 @@ Us4RImpl::~Us4RImpl() {
     }
 }
 
-std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
+std::tuple<
+    std::vector<Us4OEMBuffer>,
+    std::vector<FrameChannelMapping::Handle>,
+    std::vector<LogicalToPhysicalOp>,
+    std::vector<TxRxParametersSequence>
+>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
@@ -458,11 +482,18 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
     // OEM -> list of sequences to upload on the OEM
     auto sequencesByOEM = std::vector{noems, OEMSequences{}};
+    // sequence -> op -> a range of physical TX/RXs [start, end]
+    std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
+    std::vector<TxRxParametersSequence> masterSequences;
     // Convert probe sequence -> OEM Sequences
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
         auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
+
+        logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
+        masterSequences.push_back(oemSeqs.at(getMasterOEM()->getDeviceId().getOrdinal()));
+
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
         }
@@ -489,7 +520,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_pair(std::move(buffers), std::move(fcms));
+    return std::make_tuple(std::move(buffers), std::move(fcms), logicalToPhysicalMapping);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
@@ -1082,8 +1113,32 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
 }
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-Us4RImpl::setSubsequence(uint16_t, uint16_t, const std::optional<float> &) {
-    throw std::runtime_error("setSubsequence not yet implemented.");
+Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float> &sri) {
+    if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
+        throw ::arrus::IllegalStateException("Call upload method before setting a new sub-sequence.");
+    }
+    // Clear callback (the new one will be registered later, in the prepareHostBuffer
+    for(auto &us4oem: us4oems) {
+        us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIDMA);
+        us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
+        us4oem->clearCallbacks(IUs4OEM::MSINumber::RXDMAOVERFLOW);
+    }
+    auto params = subsequenceFactory->get(sequenceId, start, end, sri);
+    bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    for (auto &oem : us4oems) {
+        oem->setSubsequence(params.getStart(), params.getEnd(),
+                            isSyncMode, params.getTimeToNextTrigger());
+    }
+    currentSubsequenceParams = params;
+
+    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
+                      currentScheme->getWorkMode(), params.getOemBuffers());
+    // Create metadata
+    std::vector<FrameChannelMapping::Handle> fcms;
+    fcms.emplace_back(params.buildFCM());
+    auto metadatas = createMetadata(std::move(fcms));
+    // A single metadata is assumed here.
+    return {this->buffer, metadatas.at(0)};
 }
 
 void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
@@ -1114,5 +1169,4 @@ void Us4RImpl::registerPulserIRQCallback() {
         });
     }
 }
-
 }// namespace arrus::devices

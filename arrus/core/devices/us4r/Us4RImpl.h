@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "TxTimeoutRegister.h"
+#include "Us4RSubsequence.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -141,7 +142,7 @@ public:
     }
 
     std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
+    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
@@ -158,7 +159,12 @@ private:
 
     void stopDevice();
 
-    std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
+    std::tuple<
+        std::vector<Us4OEMBuffer>,
+        std::vector<FrameChannelMapping::Handle>,
+        std::vector<LogicalToPhysicalOp>,
+        std::vector<::arrus::devices::us4r::TxRxParametersSequence>
+    >
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<framework::NdArray> &txDelayProfiles);
@@ -193,6 +199,10 @@ private:
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
     void registerPulserIRQCallback();
+    void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode,
+                           std::vector<Us4OEMBuffer> buffers);
+    std::vector<arrus::session::Metadata::SharedHandle>
+    createMetadata(std::vector<FrameChannelMapping::Handle> fcms) const;
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;
@@ -217,6 +227,11 @@ private:
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{0};
+    std::optional<Us4RSubsequenceFactory> subsequenceFactory;
+    std::optional<Us4RSubsequence> currentSubsequenceParams;
+    /** The currently uploaded scheme */
+    std::optional<::arrus::ops::us4r::Scheme> currentScheme;
+
 };
 
 }// namespace arrus::devices

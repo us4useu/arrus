@@ -76,6 +76,16 @@ public:
 
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
+    /**
+     * Sets a given sub-sequence.
+     *
+     * NOTE! start and end are the global firings numbers!
+     *
+     * @param timeToNextTrigger PRI to be applied to the end of the new sub-sequence
+     */
+    virtual void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) = 0;
+    virtual void clearCallbacks(IUs4OEM::MSINumber irq) = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

@@ -134,7 +134,7 @@ public:
     /**
      * Returns the view of this buffer for slice [start, end] (note: end is inclusive).
      */
-    Us4OEMBuffer getView(uint16, uint16) const {
+    Us4OEMBuffer getView(SequenceId sequenceId, uint16 start, uint16 end) const {
         throw std::runtime_error("NYI");
     }
 

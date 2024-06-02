@@ -381,6 +381,10 @@ public:
         return *this;
     }
 
+    size_t size() const {
+        return sequence.parameters.size();
+    }
+
     TxRxParametersSequence build() {
         auto tmp = std::move(sequence);
         sequence = TxRxParametersSequence{};

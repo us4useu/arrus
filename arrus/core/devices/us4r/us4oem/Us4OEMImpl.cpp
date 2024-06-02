@@ -25,6 +25,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
+#include "utils.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -435,7 +436,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
     FiringId entryId = 0;
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
 
-    bool triggerSyncPerBatch = arrus::ops::us4r::Scheme::isWorkModeManual(workMode) || workMode == ops::us4r::Scheme::WorkMode::HOST;
+    bool triggerSyncPerBatch = isWaitForSoftMode(workMode);
     bool triggerSyncPerTxRx = workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP;
 
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
@@ -956,5 +957,14 @@ void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
 float Us4OEMImpl::getActualTxFrequency(float frequency) {
     return ius4oem->GetOCWSFrequency(frequency);
 }
+
+void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
+    this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
+}
+
+void Us4OEMImpl::clearCallbacks(IUs4OEM::MSINumber irq) {
+    this->ius4oem->ClearCallbacks(irq);
+}
+
 
 }// namespace arrus::devices
